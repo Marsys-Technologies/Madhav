@@ -1,0 +1,1268 @@
+#!/usr/bin/env python3
+"""M0 DEFERRAL REGISTER — generator (WORK_QUEUE id M0-T31).
+
+Builds 00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.md and .json from ONE
+in-file data structure, so the prose and the machine-readable tally can never
+disagree.
+
+WHAT THIS DOCUMENT IS FOR. ADHIKĀRIN ruling D-24 part 3 sets the precondition for
+flipping the M0 CI guards to blocking:
+
+    "The switch flips when T17's exit scorecard shows each criterion either at zero
+     or explicitly deferred with a recorded reason — never on a criterion that is
+     merely unexamined."
+
+The scorecard measures. It does not separate *non-zero and repairable* from
+*non-zero and cannot reach zero, for a stated reason*. This register performs that
+separation, per criterion and per contract rule, and names what is left UNEXAMINED.
+
+WHAT IT IS NOT. It decides nothing. It flips nothing. It writes nothing to
+asset_registry, .github/ or any guard. Classification is evidence-assembly for
+ADHIKĀRIN (charter G7/G9); certification is PARĪKṢAKA's (I16 / charter H7).
+
+Regenerate: python3 00_ARCHITECTURE/control/m0_deferral_register.py
+"""
+from __future__ import annotations
+import json, pathlib, datetime
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+OUT_MD = ROOT / "00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.md"
+OUT_JSON = ROOT / "00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.json"
+
+REPAIRABLE = "REPAIRABLE-IN-M0"
+DEFERRED = "DEFERRED-WITH-REASON"
+RESERVED = "RESERVED"
+UNEXAMINED = "UNEXAMINED"
+AT_ZERO = "AT-ZERO-WITH-EXPOSURE"   # not one of the four; see §5
+
+BUCKETS = [REPAIRABLE, DEFERRED, RESERVED, UNEXAMINED, AT_ZERO]
+
+# ── provenance ───────────────────────────────────────────────────────────────
+PROVENANCE = {
+    "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T31)",
+    "certified_by": None,
+    "branch": "campaign/nirmana-autonomous",
+    "db_access": "READ-ONLY throughout (SET default_transaction_read_only=on; SELECT only). "
+                 "Nothing was written to asset_registry, asset_throughput or any guard file.",
+    "readings": [
+        {"what": "live asset_registry — criterion/rule re-measurement by this task",
+         "at": "2026-08-23T06:55:57Z", "how": "psycopg, read-only, DATABASE_URL read from "
+         "platform/.env.local as measure_assets.py does (never printed — charter P4)"},
+        {"what": "live asset_registry — second pass (C-04/C-06/C-07/C-15/C-17/C-20/C-21 detail)",
+         "at": "2026-08-23T06:56:30Z", "how": "same connection method"},
+        {"what": "seed projection — live vs asset_registry_seed.ts, 5 modelled columns",
+         "at": "2026-08-23T06:57:16Z", "how": "00_ARCHITECTURE/control/seed_durability/"
+         "extract_seed_projection.mjs (stdout only; writes nothing; the seed module is never "
+         "imported — D-13, and D-28 part 5 for the inertness-proof method)"},
+        {"what": "check_asset_catalogue_contract.py --live --json (C-01…C-28, X-01…X-05)",
+         "at": "2026-08-23T06:58:51Z", "how": "the shipped guard, run READ-ONLY. NOT edited by "
+         "this task — a sibling task holds the C-23 guard and the workbook generator."},
+        {"what": "check_asset_source_parity.py --live --json (P-01…P-06)",
+         "at": "2026-08-23T07:02:39Z", "how": "the shipped guard, run READ-ONLY"},
+        {"what": "C-28 residual measurement (lit assets with no completed build_run_assets row)",
+         "at": "2026-08-23T07:06Z", "how": "read-only SQL, quoted in the C-28 entry"},
+        {"what": "origin/main presence of the two guards and the workflow",
+         "at": "2026-08-23T07:03Z", "how": "git fetch origin main; git ls-tree -r --name-only "
+         "origin/main @ 2670e61e2"},
+    ],
+    "guard_files_read_not_written": [
+        "platform/scripts/governance/check_asset_catalogue_contract.py (mtime 2026-08-23 11:32 local)",
+        "platform/scripts/governance/check_asset_source_parity.py (mtime 2026-08-23 10:43 local)",
+        "platform/scripts/governance/asset_catalogue_disclosed_residuals.json",
+        "platform/scripts/governance/asset_source_parity_allowlist.json",
+        "platform/scripts/governance/asset_catalogue_declared_cowriters.json",
+        ".github/workflows/nirmana-m0-guards.yml",
+    ],
+}
+
+# ── the classification bar ───────────────────────────────────────────────────
+REASON_KINDS = {
+    "ruling": "a line of state/DECISIONS.jsonl, cited by id and part",
+    "plan-assignment": "a specific assignment of this exact item to a named rung or phase in "
+                       "NIRMANA_ELEVATION_PLAN (a specific assignment governs a general exit "
+                       "criterion — D-12 part 4)",
+    "contract-mandate": "ASSET_CATALOGUE_CONTRACT_v1_0.md states in its own text that the rule "
+                        "has no detector and must never read as passing",
+    "structural-fact": "a measured property of the schema, the code or the charter that makes "
+                       "zero unreachable inside M0 — stated with the measurement that shows it",
+    "charter-prohibition": "charter §2 reserves the operation, or §3 prohibits it outright",
+}
+
+# ── the entries ──────────────────────────────────────────────────────────────
+# Every entry: what it measures, what it reads NOW, which bucket, why, who owns it,
+# and what would have to become true for it to close.
+
+CRITERIA = [
+ dict(id="crit-1", title="three-way diff (registry vs @register vs seed) = 0",
+   measured={"scorecard_detector_2026-08-23T06:20Z": 5,
+             "shipped_parity_guard_P-01…P-06_2026-08-23T07:02:39Z": 0},
+   bucket=UNEXAMINED, reason_kind=None,
+   reason="THE CRITERION HAS TWO DETECTORS AND THEY DISAGREE BY CONSTRUCTION, AND NOBODY HAS "
+     "RULED WHICH ONE IS THE CRITERION. The scorecard counts every id not present in all three "
+     "sources (5). The shipped guard — the thing a blocking flip would actually gate on — does "
+     "NOT treat 'in registry and in seed but with no production @register' as a violation at "
+     "all: check_asset_source_parity.py:254 reports those four ids (bg_ephemeris_engine, "
+     "bg_panchanga, bg_sarvatobhadra_grid, lel_events) as a DETAIL under P-03, on the reasoning "
+     "that a service row and a source row legitimately have no writer. The fifth "
+     "(bg_gochara_citation_resolution) is excused by a disclosure naming R0 as its owner. So the "
+     "same criterion reads 5 and 0 depending on which detector is asked, and 'zero' means two "
+     "different things. That is not a repair question; it is a definition question, and it is "
+     "unasked.",
+   owner="ADHIKĀRIN (G9) — then whichever rung the surviving ids belong to",
+   closes_when="ADHIKĀRIN rules which detector expresses the criterion. Under the guard's "
+     "reading it is already at zero. Under the scorecard's reading it needs 4 service/source "
+     "exemptions ruled and 1 R0 disposition (G1).",
+   rows=[
+     {"asset_id":"bg_gochara_citation_resolution","rung":"R0","class":"registry_only",
+      "sub_bucket":DEFERRED,
+      "note":"CURRENT, is_active, has_writer=false, in NEITHER the writer tree NOR the seed, "
+             "never built. Its disposition (provision / demote / retire) is charter G1, whose "
+             "bound is 'only assets in the current rung' and no rung is open. Recorded in "
+             "ASSET_CATALOGUE_CONTRACT §7 and in asset_source_parity_allowlist.json as R0-owned. "
+             "REASON RECORDED BY A KĀRAKA DISCLOSURE, NOT BY A RULING — ADHIKĀRIN has never "
+             "countersigned it (`certified_by: null` in that file)."},
+     {"asset_id":"bg_ephemeris_engine","rung":"R0","class":"registry+seed_not_decorator",
+      "sub_bucket":UNEXAMINED,"note":"asset_kind='service' since the M0-T21 kind repair. A "
+             "service has no writer by definition; whether the criterion should exempt services "
+             "has never been ruled."},
+     {"asset_id":"bg_panchanga","rung":"R0","class":"registry+seed_not_decorator",
+      "sub_bucket":UNEXAMINED,"note":"same as bg_ephemeris_engine."},
+     {"asset_id":"bg_sarvatobhadra_grid","rung":"R0","class":"registry+seed_not_decorator",
+      "sub_bucket":UNEXAMINED,"note":"asset_kind='data', CURRENT, has_writer=false — a CURRENT "
+             "data asset nothing builds, which contract §7 names as the thing never to leave "
+             "standing. Same G1 shape as bg_gochara_citation_resolution but with NO disclosure "
+             "and no ruling."},
+     {"asset_id":"lel_events","rung":"R5","class":"registry+seed_not_decorator",
+      "sub_bucket":DEFERRED,"note":"D-23: the SOURCE reclassification is R5, not M0."}],
+   evidence=["00_ARCHITECTURE/control/M0_EXIT_SCORECARD_v1_0.md §1 criterion 1 (reading 2)",
+     "check_asset_source_parity.py --live 2026-08-23T07:02:39Z: P-01…P-06 all pass; P-03 detail "
+     "registry_and_seed_not_decorator = the 4 ids",
+     "platform/scripts/governance/asset_source_parity_allowlist.json (bg_gochara_citation_"
+     "resolution, class registry_only, owner 'R0 — NOT M0', certified_by null)",
+     "CHARTER.md §1 G1 bound; DECISIONS.jsonl D-23"]),
+
+ dict(id="crit-2", title="contract violations per kind = 0",
+   measured={"scorecard_2026-08-23T06:20Z_violations_by_kind": {"data":136,"service":16,
+             "artifact":0,"source":0},
+             "guard_live_2026-08-23T06:58:51Z": {"pass":13,"fail":16,"not_checkable":4}},
+   bucket=UNEXAMINED, reason_kind=None,
+   reason="COMPOSITE — its 33 constituent rules are classified individually in §4, and the "
+     "criterion as a whole is UNEXAMINED FOR A REASON THAT IS NOT ABOUT ANY OF THEM: as written "
+     "('violations per kind = 0') it can NEVER be satisfied, because C-25, C-26 and C-27 have no "
+     "detector and the contract forbids reporting them as passing. A criterion that cannot read "
+     "zero needs either a column (making the rules checkable) or a re-wording ('every CHECKABLE "
+     "rule at zero, the un-checkable ones reported not_checkable with their reason'). Neither "
+     "has been decided, so the criterion is not deferrable — its own terms are undecided.",
+   owner="ADHIKĀRIN (G9)",
+   closes_when="the wording question is ruled AND every constituent rule in §4 is at zero or "
+     "carries a recorded deferral the guard can read.",
+   rows=[], evidence=["ASSET_CATALOGUE_CONTRACT_v1_0.md §6 closing paragraph and §8",
+     "check_asset_catalogue_contract.py:1069-1109 (C-25/26/27 hard-wired NOT_CHECKABLE)",
+     "M0_EXIT_SCORECARD_v1_0.md §1 criterion 2"]),
+
+ dict(id="crit-3", title="prefix mismatches = 0",
+   measured={"live_2026-08-23T06:55:57Z":1,"guard_C-01_2026-08-23T06:58:51Z":1},
+   bucket=DEFERRED, reason_kind="ruling",
+   reason="The single offender is `lel_events` (prefix 'lel', layer 'mimamsa'). C-01 exempts "
+     "`asset_kind='source'` rows, so the mismatch disappears the moment lel_events is "
+     "reclassified SOURCE — and D-23 REVERSED D-21 and assigned that reclassification to R5 by "
+     "name, on plan §8.4's R5 row ('LEL_EVENTS RECLASSIFIED SOURCE'), holding additionally that "
+     "widening the asset_kind CHECK now would be pre-building infrastructure for a later phase. "
+     "This criterion therefore cannot reach zero inside M0 by any authorised route.",
+   owner="R5 (Mīmāṃsā rung), stage 2 Conform",
+   closes_when="R5 opens, the asset_kind CHECK is widened to admit the contract's SOURCE token, "
+     "and lel_events is reclassified by a G1 exercise on census evidence.",
+   rows=[{"asset_id":"lel_events","rung":"R5","sub_bucket":DEFERRED,
+     "note":"live: layer=mimamsa, asset_kind=data, catalog_status=DRAFT, target_table NULL"}],
+   evidence=["DECISIONS.jsonl D-23 (reverses D-21)","NIRMANA_ELEVATION_PLAN_v4_0.md:862 §8.4 R5 row",
+     "ASSET_CATALOGUE_CONTRACT_v1_0.md §7 and §10.1",
+     "live query 2026-08-23T06:55:57Z returned exactly this one row"]),
+
+ dict(id="crit-4", title="dangling or DRAFT-targeted edges = 0",
+   measured={"dangling_C-12":0,"CURRENT→DRAFT_C-11":3,"at":"2026-08-23T06:58:51Z"},
+   bucket=REPAIRABLE, reason_kind=None,
+   reason="THE REPAIR IS NAMED AND NOBODY HAS DONE IT. Plan Phase 0.8b — an M0 step — reads "
+     "'34 DRAFT-but-served promoted or justified; CURRENT-may-not-depend-on-DRAFT enforced'. "
+     "Each of the three edges closes by promoting the DRAFT dependency to CURRENT (charter G1) "
+     "or by recording why it stays DRAFT. Both are catalogue dispositions on evidence M0 already "
+     "holds (DRAFT_INVENTORY / CONSUMER_MAP).",
+   blocker="G1's charter bound reads 'Only assets in the current rung, on M0 census evidence' "
+     "and NO RUNG IS OPEN. Phase 0.8b assigns the work to M0; G1's bound appears to withhold the "
+     "power that performs it. That collision must be ruled before any promotion is written — it "
+     "is the same collision criterion 9 sits behind, so one ruling clears both.",
+   owner="ADHIKĀRIN (G1 + the bound reconciliation); execution is a KĀRAKA task",
+   closes_when="three dispositions are ruled and written: ga_vichara (R1), ka_dasha_kala (R3), "
+     "ka_sangam (R3) — promoted, or the dependants justified.",
+   rows=[{"asset_id":"bo_laksana","dep":"ga_vichara","dep_status":"DRAFT","dep_rung":"R1"},
+     {"asset_id":"ka_kshetra","dep":"ka_dasha_kala","dep_status":"DRAFT","dep_rung":"R3"},
+     {"asset_id":"ka_taranga","dep":"ka_sangam","dep_status":"DRAFT","dep_rung":"R3"}],
+   evidence=["guard C-11 live 2026-08-23T06:58:51Z (3 rows, class current_depends_on_draft)",
+     "NIRMANA_ELEVATION_PLAN_v3_0.md §Phase 0 step 0.8b (the 15-step table §14.4 maps to M0)",
+     "CHARTER.md §1 G1 bound"]),
+
+ dict(id="crit-5", title="multi-producer partitions = 0",
+   measured={"C-25":"not_checkable — no schema column",
+             "X-01_undeclared_collisions_2026-08-23T06:58:51Z":0,
+             "co_written_target_tables":5},
+   bucket=UNEXAMINED, reason_kind=None,
+   reason="THE TEMPTING ANSWER IS 'DEFERRED — NO COLUMN EXISTS', AND IT IS WRONG. The absence of "
+     "a partition column is a real structural fact and it is what makes C-25 permanently "
+     "not_checkable (§4). But the CRITERION is not the rule: plan Phase 0.4 — an M0 step — reads "
+     "'(table × generation × partition) invariant; correct the gochara attribution; DECLARE "
+     "CO-WRITER PARTITIONS'. M0 is the phase the plan assigns this work to. Under D-4's own "
+     "reasoning ('a criterion that cannot be met without a change has NAMED that change even "
+     "where it numbers no migration') a partition-declaration column is arguably already "
+     "authorised; under D-23's correction it may instead belong to each rung. Nobody has asked, "
+     "so this is not deferred — it is undecided. What exists today is X-01, which passes and "
+     "means only 'no multi-producer table that nobody declared' — its own docstring refuses the "
+     "stronger reading.",
+   owner="ADHIKĀRIN (G9, and P5 if a column is involved)",
+   closes_when="either a partition-declaration column is authorised and the 16 co-writer rows "
+     "across 5 tables declare their partitions, or the item is deferred to the owning rungs with "
+     "the reason recorded.",
+   rows=[{"target_table":"bodha_msr_signals","producers":7},
+     {"target_table":"chart_facts","producers":5},
+     {"target_table":"brahma_class_priors","producers":2},
+     {"target_table":"classical_text_chunks","producers":2},
+     {"target_table":"kala_gochara_windows","producers":2,
+      "note":"ka_gochara (CURRENT) + ka_gochara_sweep (RETIRED, charter P1)"}],
+   evidence=["ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9, §10.3; rule C-25",
+     "platform/scripts/governance/asset_catalogue_declared_cowriters.json _README "
+     "('Listing a table here means these producers are known and expected, never that these "
+     "producers are correct')",
+     "NIRMANA_ELEVATION_PLAN_v3_0.md Phase 0 step 0.4","DECISIONS.jsonl D-4, D-23"]),
+
+ dict(id="crit-6", title="throughput rows on inactive assets = 0",
+   measured={"live_2026-08-23T06:55:57Z":{"assets":1,"rows":3,"states":["error"]}},
+   bucket=RESERVED, reason_kind="charter-prohibition",
+   reason="The only offender is `ka_gochara_sweep` — charter §2 P1's NAMED unrecoverable asset "
+     "(38,287 v1 gochara rows whose only recovery path is the 2026-08-23 snapshot). Any "
+     "operation on it is a reserved power: parked, never decided by an agent. D-12 part 4 "
+     "additionally dissolves the apparent M0-vs-P1 collision without needing P1 at all — plan "
+     "§14.2 assigns these exact rows to R3 by name, and 'a specific assignment governs a general "
+     "exit criterion' — and rules that M0 CLOSES WITH THIS CRITERION EXPLICITLY UNMET AND "
+     "RECORDED AS DEFERRED-TO-R3, never silently green. THIS REGISTER DID NOT TOUCH THE ROWS, "
+     "AND NOTHING IN M0 MAY.",
+   owner="R3 (Kāla rung) for the lifecycle exit; the native for anything P1 reaches",
+   closes_when="R3 opens and completes ka_gochara_sweep's lifecycle exit. Not in M0, on any "
+     "reading.",
+   rows=[{"asset_id":"ka_gochara_sweep","rung":"R3","catalog_status":"RETIRED",
+     "is_active":False,"throughput_rows":3,"states":["error"],
+     "note":"state='error' is at least not a false green (D-12 part 4). The guard reports it as "
+            "X-02 with severity RESIDUAL and an itemised disclosure, and the disclosure "
+            "deliberately DOES NOT turn the rule green."}],
+   evidence=["CHARTER.md §2 P1","DECISIONS.jsonl D-12 part 4",
+     "NIRMANA_ELEVATION_PLAN_v4_0.md §14.2",
+     "platform/scripts/governance/asset_catalogue_disclosed_residuals.json disclosed_additions",
+     "live query 2026-08-23T06:55:57Z: 1 asset, 3 rows, all state='error'"]),
+
+ dict(id="crit-7", title="retired assets without a data_disposition = 0",
+   measured={"live_2026-08-23T06:55:57Z":1,"guard_C-08_2026-08-23T06:58:51Z":1,
+             "note":"moved BLOCKED → FAIL when migration 590 supplied the data_disposition "
+                    "column at 2026-08-23T05:36:13Z; the detector now exists and returns 1"},
+   bucket=DEFERRED, reason_kind="plan-assignment",
+   reason="One RETIRED row exists and it is `ka_gochara_sweep`. Plan §14.2 names its "
+     "data_disposition explicitly among R3's outstanding items — 'the zombie throughput rows "
+     "behind its standing no-writer-registered red, AND ITS data_disposition, are still "
+     "outstanding' — and D-12 part 4 quotes that sentence in ruling the same asset's items "
+     "R3-owned. A specific assignment governs a general exit criterion.",
+   owner="R3 (Kāla rung), lifecycle exit",
+   closes_when="R3 writes the disposition. NOTE THE SECOND-ORDER QUESTION NOBODY HAS ASKED: "
+     "writing data_disposition touches the REGISTRY ROW, not the corpus. Whether charter P1 "
+     "reaches an asset's registry metadata or only its data has never been ruled; it does not "
+     "change this deferral (R3 owns it either way) but it will matter the moment R3 opens.",
+   machinery_gap="THE DEFERRAL IS RECORDED IN THE LEDGER BUT NOT IN THE GUARD. Only X-02 has an "
+     "entry in asset_catalogue_disclosed_residuals.json and only X-02 carries severity RESIDUAL. "
+     "C-08 is BLOCKING with no disclosure, so a blocking flip today reds the branch on this "
+     "criterion — and the only way to make it green would be to touch a P1 asset, which is "
+     "exactly the pressure charter H3 exists to refuse.",
+   rows=[{"asset_id":"ka_gochara_sweep","rung":"R3","catalog_status":"RETIRED",
+     "data_disposition":None,"reserved_asset":True}],
+   evidence=["DECISIONS.jsonl D-12 part 4","NIRMANA_ELEVATION_PLAN_v4_0.md §14.2",
+     "live query 2026-08-23T06:55:57Z: the one RETIRED row, data_disposition NULL",
+     "_migrations_applied: 590_nirmana_m0_catalogue_contract_columns.sql @ 2026-08-23T05:36:13Z"]),
+
+ dict(id="crit-8", title="active assets with neither build coverage nor a dead flag = 0",
+   measured={"scorecard_2026-08-23T06:20Z":"NOT-MEASURABLE (no dead-flag field is defined)",
+             "guard_X-03_2026-08-23T06:58:51Z":2},
+   bucket=UNEXAMINED, reason_kind=None,
+   reason="THE TWO DETECTORS DISAGREE ABOUT WHETHER THE CRITERION IS MEASURABLE AT ALL. The "
+     "scorecard says NOT-MEASURABLE: asset_registry has no column designating a registered-but-"
+     "dead asset, the contract defines none, and has_writer — the only candidate — was itself "
+     "wrong on 2 rows (D-25). The shipped guard's X-03 reads has_writer as the proxy anyway and "
+     "returns 2 violations. Meanwhile plan Phase 0.8a — an M0 step — reads 'Registered-but-dead "
+     "FLAGGED (bg_gochara_citation_resolution)', i.e. M0 is asked to produce a flag that has "
+     "nowhere to live. Defining the flag, ruling the proxy sufficient, or deferring the whole "
+     "criterion are three different answers and none has been given.",
+   owner="ADHIKĀRIN (G9; P5 if a new column is the answer)",
+   closes_when="the flag question is ruled, and then the two rows below are dispositioned by "
+     "whoever owns them.",
+   rows=[{"asset_id":"bg_gochara_citation_resolution","rung":"R0","catalog_status":"CURRENT",
+     "sub_bucket":DEFERRED,"note":"disclosed R0-owned in the parity allowlist; not countersigned"},
+     {"asset_id":"lel_events","rung":"R5","catalog_status":"DRAFT","sub_bucket":DEFERRED,
+      "note":"D-23 — R5"}],
+   evidence=["M0_EXIT_SCORECARD_v1_0.md §1 criterion 8","guard X-03 live 2026-08-23T06:58:51Z",
+     "NIRMANA_ELEVATION_PLAN_v3_0.md Phase 0 step 0.8a","DECISIONS.jsonl D-25"]),
+
+ dict(id="crit-9", title="unresolved zero-consumer findings = 0",
+   measured={"packets":23,"dispositions_recorded":0,"at":"2026-08-23T06:58:51Z"},
+   bucket=REPAIRABLE, reason_kind=None,
+   reason="THE REPAIR IS NAMED, THE MACHINERY IS BUILT, AND THE RULINGS HAVE NOT BEEN MADE. "
+     "Plan Phase 0.8c — an M0 step — reads '13 assets: record the consumer or retire with a "
+     "disposition' (the measured packet count is 23; the plan's 13 has no per-asset list behind "
+     "it and its own annotations count 7 — the 23 is the measured figure and the one the guard "
+     "reduces). asset_catalogue_disclosed_residuals.json already carries the "
+     "`zero_consumer_dispositions` block, and X-05 resolves a packet ONLY on an entry carrying a "
+     "decision_ref into DECISIONS.jsonl — disposition is charter G1 and no KĀRAKA may self-serve "
+     "one. The block is empty; 23 rulings are outstanding.",
+   blocker="the same G1 rung-bound collision as criterion 4: 0.8c assigns the work to M0 while "
+     "G1's bound reads 'only assets in the current rung' and no rung is open. One ruling clears "
+     "both criteria.",
+   owner="ADHIKĀRIN (G1 ×23); recording them is a KĀRAKA task",
+   closes_when="each of the 23 packets carries either a recorded consumer or a retire-with-"
+     "disposition ruling, referenced by decision id in the residuals file.",
+   rows=[{"asset_id":a,"rung":r} for a,r in [
+     ("bg_cohort","R0"),("bg_concordance","R0"),("bg_ephemeris_engine","R0"),
+     ("bg_gochara_arcs","R0"),("bg_kota_chakra_rings","R0"),("bg_kp_sublord_division","R0"),
+     ("bg_panchanga","R0"),("bg_phaladeepika_latta","R0"),("bg_reference","R0"),
+     ("bg_sarvatobhadra_grid","R0"),("bg_sky_calendar","R0"),("bg_vedha_malefic_scale","R0"),
+     ("bg_vidhi_floors","R0"),("bg_vidhi_primitives","R0"),("bo_cdlm_summary","R2"),
+     ("bo_samskara","R2"),("ka_dasha_kala","R3"),("ka_gochara_v3_century_materialize","R3"),
+     ("ka_graha_sancara","R3"),("ka_kshetra","R3"),("ka_muhurta_seva","R3"),("ka_tulana","R3"),
+     ("mi_jivanaghatana","R5")]],
+   evidence=["guard X-05 live 2026-08-23T06:58:51Z: 23 packets, 0 dispositions recorded",
+     "00_ARCHITECTURE/control/ZERO_CONSUMER_EVIDENCE_v1_0.md (M0-T6/T7, 23 packets)",
+     "platform/scripts/governance/asset_catalogue_disclosed_residuals.json _README (2)",
+     "NIRMANA_ELEVATION_PLAN_v3_0.md Phase 0 step 0.8c"]),
+
+ dict(id="crit-10", title="CI guard merged and blocking",
+   measured={"guard_scripts_found":2,"workflow_invocations":4,
+     "merged_to_origin_main_2026-08-23T07:03Z":False,
+     "invocation_is_blocking":False,"workflow_runs_ever":0},
+   bucket=UNEXAMINED, reason_kind=None,
+   reason="TWO HALVES, AND THE HARD ONE IS NOT THE ONE EVERYONE IS LOOKING AT.\n\n"
+     "(a) BLOCKING — circular, and the circle resolves cleanly once named. This criterion asks "
+     "whether the guards are blocking; D-24 part 3 makes the switch conditional on every "
+     "criterion being at zero or explicitly deferred; and THIS REGISTER IS THAT PRECONDITION. If "
+     "criterion 10 is inside its own precondition, the precondition is unsatisfiable: the switch "
+     "can never flip, because the thing it waits for is itself. THE RESOLUTION IS NOT TO IGNORE "
+     "THE CIRCLE BUT TO EXCLUDE THE SWITCH FROM ITS OWN CONDITION — D-24 part 3 quantifies over "
+     "the criteria the guards would GATE ON, and criterion 10 is not one of those; it is the "
+     "gate. ADHIKĀRIN should record that carve-out explicitly rather than leave it implicit, "
+     "because an implicit exception to a stated precondition is exactly the shape of the "
+     "'weaken a criterion to get moving' pressure D-24 part 3 warned about. With the carve-out "
+     "recorded, this half is REPAIRABLE-IN-M0 and is satisfied BY the flip.\n\n"
+     "(b) MERGED — unexamined, and it collides with a HARD PROHIBITION. 'Merged' means present "
+     "on the default branch: verified ABSENT from origin/main at 2026-08-23T07:03Z for all three "
+     "files (git ls-tree @ 2670e61e2), and the workflow has never run (0 runs; the API reports "
+     "404 on the default branch). Getting there means merging campaign work into `main` — and "
+     "charter H2 reads 'Force-push, history rewrite, OR ANY WRITE TO MAIN. All work is on "
+     "the campaign branch.' Whether a reviewed PR merge is inside H2's prohibition or outside it "
+     "has never been asked. It is not a KĀRAKA's question and this register does not answer it; "
+     "it names it, because criterion 10 cannot be satisfied without an answer.",
+   owner="ADHIKĀRIN (G9 for both halves)",
+   closes_when="(a) the self-reference carve-out is recorded and the two `continue-on-error: "
+     "true` lines are removed by ADHIKĀRIN's own act; (b) H2's reach is ruled, the guards reach "
+     "origin/main by whatever route that ruling permits, and at least one run executes and "
+     "reports — a workflow that has never run is not evidence of anything (D-28 part 4: 'a guard "
+     "that has never had to choose is not yet a detector').",
+   rows=[], evidence=[
+     "git ls-tree -r origin/main @ 2670e61e2, 2026-08-23T07:03Z: nirmana-m0-guards.yml, "
+     "check_asset_catalogue_contract.py, check_asset_source_parity.py — all ABSENT",
+     ".github/workflows/nirmana-m0-guards.yml:48,87 — `continue-on-error: true` on both jobs",
+     "M0_EXIT_SCORECARD_v1_0.md §1 criterion 10 (github_run_evidence: run_count 0, HTTP 404)",
+     "DECISIONS.jsonl D-24 part 3; CHARTER.md §3 H2, H3"]),
+
+ dict(id="crit-11", title="every asset carrying domain and rung (v4.1)",
+   measured={"C-18_domain_null_or_wrong":0,"C-19_rung_null_or_wrong":0,
+             "at":"2026-08-23T06:55:57Z"},
+   bucket=AT_ZERO, reason_kind="structural-fact",
+   reason="AT ZERO, AND NOT THE SAME THING AS BEING AT ZERO. Migration 590 added and backfilled "
+     "`domain` and `rung`, and neither column is written by the seed at all — so the backfill "
+     "itself is durable (SEED_DURABILITY_REGISTER §3.3). TWO EXPOSURES SURVIVE ANYWAY. (i) THE "
+     "PAIR, NOT THE COLUMN: 590 derived `domain` FROM `scope`, and `scope` IS seed-owned. "
+     "mi_jivanaghatana is live scope='per_chart' → domain='chart', while the seed declares "
+     "scope='global' → the same row would imply domain='shared'. A re-seed moves one half of the "
+     "pair and leaves the other, and the row then answers 'which domain am I' two different ways "
+     "while C-18 still counts it as present. Re-measured independently here at 06:57:16Z: it is "
+     "the ONLY such row. (ii) COVERAGE OF FUTURE ROWS: both columns are absent from the seed's "
+     "INSERT list with no NOT NULL / DEFAULT / trigger behind them, so any asset the seed newly "
+     "inserts lands with both NULL and re-breaks the criterion silently.",
+   owner="ADHIKĀRIN for the scope/domain ownership fix (D-27's divergence-report mandate); the "
+     "column-level backfill is done",
+   closes_when="the seed-vs-DB divergence report D-27(2b) mandates exists and treats a "
+     "NULL→value transition as its own category (D-28 part 1), and mi_jivanaghatana's scope is "
+     "reconciled on the merits in one surface rather than by whoever runs last.",
+   rows=[{"asset_id":"mi_jivanaghatana","rung":"R5","live_scope":"per_chart",
+     "seed_scope":"global","live_domain":"chart","domain_implied_by_seed_scope":"shared"}],
+   evidence=["live 2026-08-23T06:55:57Z: domain NULL 0, rung NULL 0, 0 scope→domain mismatches",
+     "seed projection 2026-08-23T06:57:16Z: mi_jivanaghatana scope live per_chart vs seed global",
+     "SEED_DURABILITY_REGISTER_v1_0.md §3.3","DECISIONS.jsonl D-27, D-28 part 1"]),
+
+ dict(id="crit-12", title="the §11 CI domain-coherence assertion green (v4.1)",
+   measured={"assertion_exists":True,"guard_X-04_2026-08-23T06:58:51Z":0,
+     "has_ever_run_in_CI":False,
+     "note":"the scorecard's reading 2 (06:20Z) says 'THE ASSERTION DOES NOT EXIST'. That is "
+            "stale: X-04 ('domain coherence: a shared asset depends only on shared assets', "
+            "origin 'plan §11') is implemented in check_asset_catalogue_contract.py and returns "
+            "0 violations live."},
+   bucket=REPAIRABLE, reason_kind=None,
+   reason="REDUCES ENTIRELY TO CRITERION 10. The assertion now exists and passes; what it does "
+     "not do is RUN — the workflow is not on origin/main, is non-blocking, and has executed zero "
+     "times. 'Green' cannot be read off a check that has never run (CLAUDE.md §N.8), so the "
+     "criterion is honestly not-green today for a reason that has nothing to do with domain "
+     "coherence itself.",
+   blocker="criterion 10, both halves.",
+   owner="ADHIKĀRIN (via criterion 10)",
+   closes_when="criterion 10 closes and one run reports X-04 green.",
+   rows=[], evidence=["guard X-04 live 2026-08-23T06:58:51Z: pass, 0 violations",
+     "M0_EXIT_SCORECARD_v1_0.md §1 criterion 12 (reading 2, 06:20Z — superseded on the "
+     "'assertion does not exist' clause)"]),
+]
+
+# ── contract + extension rules currently non-zero, not_checkable, or blocked ──
+# Rule statuses are the shipped guard's own output, run live READ-ONLY at
+# 2026-08-23T06:58:51Z (C-01…C-28, X-01…X-05) and 07:02:39Z (P-01…P-06).
+
+NAMED_FIELD_TEST = (
+  "THE NAMED-FIELD TEST — the one question that decides six of these rules at once. "
+  "D-24 established that repairing registry METADATA in M0 trespasses no rung (it is I14 "
+  "Track-M work, and no rung is open to be trespassed). D-25 part 2b then drew the line: "
+  "has_writer 'is NOT among the derived fields M0's Phase 0.6a names … so unlike D-24 I have no "
+  "named M0 mandate to write them', and the row repair was pinned to R0 stage 2 Conform. Read "
+  "together, the operative test is: A REGISTRY COLUMN IS M0'S TO REPAIR IF AND ONLY IF ONE OF "
+  "PHASE 0'S FIFTEEN STEPS NAMES IT. Phase 0 names layer_index/layer_name (0.5a), has_substeps "
+  "(0.6a), asset_kind/asset_type (0.6b), the lifecycle columns (0.3), partitions (0.4), the "
+  "consumer map (0.7), estimated_seconds (0.9). IT NAMES NONE OF: target_table, count_sql, "
+  "health_probe, provides_apis, service_health. Applying that test to those columns is an "
+  "inference from precedent, not a ruling anyone has made — so this register REFUSES to record "
+  "it as a deferral and files the affected rules UNEXAMINED. One ADHIKĀRIN ruling on the test "
+  "itself reclassifies all six.")
+
+RULES = [
+ dict(id="C-01", severity="BLOCKING", assertion="asset_id prefix matches layer, non-source rows",
+   measured=1, bucket=DEFERRED, reason_kind="ruling",
+   reason="Same single row and same reason as criterion 3: lel_events, whose SOURCE "
+     "reclassification D-23 assigned to R5. C-01 exempts source rows, so the reclassification "
+     "IS the repair and it is not M0's.",
+   owner="R5", rows=["lel_events"],
+   evidence=["DECISIONS.jsonl D-23","guard C-01 live 06:58:51Z"]),
+
+ dict(id="C-02", severity="BLOCKING", assertion="layer_index is ^L[0-5]$ and agrees with layer",
+   measured=1, bucket=DEFERRED, reason_kind="ruling",
+   reason="MOVED 21 → 1 WHILE THIS TASK WAS RUNNING. The scorecard's reading 2 (06:20:44Z) "
+     "records 21; M0-T26 landed the Phase 0.5a repair at ~06:51–06:54Z; this task measured 1 at "
+     "06:55:57Z and the guard measured 1 at 06:58:51Z. The single remaining row is lel_events, "
+     "whose layer_index is NULL DELIBERATELY: D-28 part 1 rules that this NULL is 'THE ONLY "
+     "PLACE IN THE REGISTRY WHERE THE OPENNESS OF A RESERVED DECISION IS WRITTEN DOWN' — the "
+     "correct value is NULL-if-source but L5-if-data, and D-23 reserved that choice to R5. "
+     "Filling it in M0 would answer a reserved question by default.",
+   owner="R5", rows=["lel_events"],
+   durability="DURABLE BY AGREEMENT, measured not assumed: layer_index is seed-owned "
+     "(DO UPDATE SET), so the repair survives only if it wrote exactly what the seed writes. "
+     "Compared live-vs-seed at 06:57:16Z across all 127 seed entries: ZERO divergent "
+     "layer_index cells except lel_events (live NULL, seed 'L5'). The repair agrees with the "
+     "seed everywhere it touched — and note the corollary D-28 part 1 names: a re-seed would "
+     "FILL lel_events's deliberate NULL with 'L5', silently answering the reserved question.",
+   evidence=["M0_EXIT_SCORECARD_v1_0.md reading 2 (21)","live 06:55:57Z (1)",
+     "guard C-02 live 06:58:51Z (1, class layer_index_null)",
+     "seed projection 06:57:16Z","DECISIONS.jsonl D-23, D-28 part 1"]),
+
+ dict(id="C-03", severity="BLOCKING", assertion="layer_name is the exact lexicon spelling",
+   measured=1, bucket=DEFERRED, reason_kind="ruling",
+   reason="Same movement and same reason as C-02: 20 → 1 between the scorecard's reading 2 and "
+     "this measurement. The surviving row is lel_events (layer_name NULL, deliberate). Live "
+     "spellings now carry the §N.1 LOCKED diacritics on every populated row — Gaṇita, Kāla, "
+     "Mīmāṃsā — which D-28 part 6 records as a real §N.1 violation caught PRE-write by a "
+     "codepoint pin.",
+   owner="R5", rows=["lel_events"],
+   durability="DURABLE BY AGREEMENT — measured: zero divergent layer_name cells live-vs-seed at "
+     "06:57:16Z other than lel_events (live NULL, seed 'Mīmāṃsā').",
+   evidence=["live 06:56:30Z: layer/layer_name distinct pairs — bodha/Bodha 22, brahmagyan/"
+     "Brahmagyan 40, ganita/Gaṇita 19, kala/Kāla 23, mimamsa/Mīmāṃsā 14, phala/Phala 9, "
+     "mimamsa/NULL 1","DECISIONS.jsonl D-28 parts 1 and 6"]),
+
+ dict(id="C-04", severity="BLOCKING",
+   assertion="data/artifact ⇒ target_table NOT NULL and the table exists",
+   measured=9, bucket=UNEXAMINED, reason_kind=None,
+   reason="NINE ROWS, THREE DIFFERENT SITUATIONS, AND ONLY TWO OF THEM HAVE A REASON ON RECORD. "
+     "(i) lel_events — DEFERRED to R5 with the rest of its cluster (D-23). (ii) bg_sky_calendar "
+     "— DEFERRED: its target_table names `bg_sky_events`, a relation ABSENT from production; "
+     "D-28 part 4 ruled it 'L0 → R0 → not open → UNTOUCHED (I13)' and recorded it as a "
+     "TRIGGER-BEARING defect for R0 intake (a re-seed's to_regclass pre-flight would switch the "
+     "asset off). (iii) THE OTHER SEVEN have target_table NULL and no ruling of any kind: "
+     "bg_prashna_rules (R0), bo_cdlm_summary and bo_chart_gestalt (R2), ga_sade_sati, "
+     "ga_sensitive, ga_strength, ga_structural (R1). Four of those seven are chart_facts "
+     "co-writers, where a NULL target_table might be deliberate rather than missing — nobody has "
+     "established which, and 'probably fine' is not a reason. " + NAMED_FIELD_TEST,
+   owner="ADHIKĀRIN (the named-field test); then R0/R1/R2 Conform",
+   rows=["bg_prashna_rules","bg_sky_calendar","bo_cdlm_summary","bo_chart_gestalt","ga_sade_sati",
+     "ga_sensitive","ga_strength","ga_structural","lel_events"],
+   evidence=["guard C-04 live 06:58:51Z: 8 × target_table_null + 1 × target_table_missing",
+     "DECISIONS.jsonl D-28 part 4, D-23","DECISIONS.jsonl D-24, D-25 part 2b"]),
+
+ dict(id="C-06", severity="BLOCKING", assertion="chart-domain count_sql contains $1",
+   measured=1, bucket=UNEXAMINED, reason_kind=None,
+   reason="The single row is mi_seva, whose count_sql should not exist at all: mi_seva is "
+     "asset_kind='service', and C-07 says a service carries no count_sql. So C-06 is a shadow of "
+     "C-07 and closes with it. It inherits C-07's bucket for the same reason. " + NAMED_FIELD_TEST,
+   owner="ADHIKĀRIN (the named-field test); then R5 Conform", rows=["mi_seva"],
+   evidence=["guard C-06 live 06:58:51Z (1 row, domain=chart, domain_provenance=column)",
+     "guard C-07 live 06:58:51Z (mi_seva carries count_sql, target_floor, target_table)"]),
+
+ dict(id="C-07", severity="BLOCKING",
+   assertion="service ⇒ target_table / count_sql / target_floor / clear_tables all NULL",
+   measured=4, bucket=UNEXAMINED, reason_kind=None,
+   reason="Four service rows carry data-asset fields: ka_dasha_kala and ka_tulana (target_floor), "
+     "mi_abhilekha and mi_seva (count_sql + target_floor + target_table). The repair is "
+     "mechanical — NULL four fields — and that is exactly why it must not be done on a KĀRAKA's "
+     "own reading: none of those columns is named by any Phase 0 step, all four assets are R3/R5, "
+     "and three of the four columns are SEED-OWNED, so a DB-only NULLing is reverted by the next "
+     "re-seed anyway. " + NAMED_FIELD_TEST,
+   owner="ADHIKĀRIN (the named-field test); then R3/R5 Conform",
+   rows=["ka_dasha_kala","ka_tulana","mi_abhilekha","mi_seva"],
+   evidence=["guard C-07 live 06:58:51Z","SEED_DURABILITY_REGISTER_v1_0.md §1.2 (count_sql, "
+     "target_floor, target_table all in the seed's DO UPDATE SET)"]),
+
+ dict(id="C-08", severity="BLOCKING", assertion="RETIRED ⇒ data_disposition NOT NULL",
+   measured=1, bucket=DEFERRED, reason_kind="plan-assignment",
+   reason="criterion 7's rule. Plan §14.2 names ka_gochara_sweep's data_disposition as R3 work; "
+     "D-12 part 4 quotes that sentence. Reserved asset (charter P1) — untouched by this task.",
+   owner="R3", rows=["ka_gochara_sweep"],
+   machinery_gap="BLOCKING severity, no disclosure entry. See criterion 7.",
+   evidence=["guard C-08 live 06:58:51Z","DECISIONS.jsonl D-12 part 4"]),
+
+ dict(id="C-11", severity="BLOCKING", assertion="CURRENT depends only on CURRENT (or source)",
+   measured=3, bucket=REPAIRABLE, reason_kind=None,
+   reason="criterion 4's rule; see that entry. Named by Phase 0.8b; blocked on the G1 rung-bound "
+     "reconciliation, not on evidence.",
+   owner="ADHIKĀRIN (G1)", rows=["bo_laksana→ga_vichara","ka_kshetra→ka_dasha_kala",
+     "ka_taranga→ka_sangam"],
+   evidence=["guard C-11 live 06:58:51Z"]),
+
+ dict(id="C-15", severity="BLOCKING", assertion="service ⇒ health_probe AND provides_apis NOT NULL",
+   measured=6, bucket=UNEXAMINED, reason_kind=None,
+   reason="All six DRAFT service rows (ka_dasha_kala, ka_graha_sancara, ka_muhurta_seva, "
+     "ka_tulana, mi_abhilekha, mi_seva) carry NULL for both. Worth noting because it corrects "
+     "the contract's own §6 cell: that cell says '6 (all 6 service rows)', but there are EIGHT "
+     "service rows live since the M0-T21 kind repair, and the two new ones (bg_ephemeris_engine, "
+     "bg_panchanga) DO carry both fields — so the count is unchanged for a different reason than "
+     "the contract states. Neither health_probe nor provides_apis is named by any Phase 0 step. "
+     + NAMED_FIELD_TEST,
+   owner="ADHIKĀRIN (the named-field test); then R3/R5 Conform",
+   rows=["ka_dasha_kala","ka_graha_sancara","ka_muhurta_seva","ka_tulana","mi_abhilekha","mi_seva"],
+   evidence=["guard C-15 live 06:58:51Z","live 06:56:30Z: 8 service rows, 6 failing C-15",
+     "ASSET_CATALOGUE_CONTRACT_v1_0.md §6 C-15 cell"]),
+
+ dict(id="C-17", severity="BLOCKING", assertion="graded service_health ⇒ health_probe NOT NULL",
+   measured=4, bucket=UNEXAMINED, reason_kind=None,
+   reason="SPLIT, AND THE SPLIT IS THE POINT. THREE of the four rows are covered by a ruling: "
+     "D-13 part 2 recorded 'three service assets read service_health=healthy with no "
+     "health_probe … a status with no detector — H4/§N.8', declined to repair it, and routed it "
+     "to a rung's stage-1 intake as pre-measured input. Those three are ka_dasha_kala, "
+     "ka_muhurta_seva, ka_tulana. THE FOURTH — ka_graha_sancara, service_health='unhealthy', no "
+     "probe — is covered by NO ruling: D-13 counted three because the contract's §6 cell counted "
+     "three, while the contract's own §8 SQL matches ('healthy','degraded','unhealthy') and "
+     "returns four. A rule is not classified until every row under it is, so C-17 is UNEXAMINED "
+     "on one row. "
+     "TWO CORRECTIONS THIS REGISTER OWES THE LEDGER: (i) D-13 part 2 says 'It is R0 substrate "
+     "and R0 IS NOT OPEN'. All three assets are ka_* / layer=kala, and their live `rung` column "
+     "— backfilled by migration 590 from layer, per contract §5.2 — reads R3, not R0. The "
+     "deferral stands (a rung owns it, not M0); the rung it names is wrong. (ii) the same slip "
+     "would misroute the intake, so it is worth fixing in a ruling rather than in prose.",
+   owner="ADHIKĀRIN (to correct the rung and cover the fourth row); then R3 stage-1 intake",
+   rows=["ka_dasha_kala (D-13 part 2)","ka_muhurta_seva (D-13 part 2)","ka_tulana (D-13 part 2)",
+     "ka_graha_sancara (NO RULING — unhealthy, no probe)"],
+   evidence=["guard C-17 live 06:58:51Z: 4 rows","live 06:56:30Z: same 4 rows with rung=R3",
+     "DECISIONS.jsonl D-13 part 2","ASSET_CATALOGUE_CONTRACT_v1_0.md §6 C-17 cell vs its own §8 SQL",
+     "M0_EXIT_SCORECARD_v1_0.md §2b disagreement register (records the 3-vs-4 discrepancy)"]),
+
+ dict(id="C-20", severity="BLOCKING", assertion="CURRENT data/artifact ⇒ target_floor NOT NULL",
+   measured=3, bucket=DEFERRED, reason_kind="ruling",
+   reason="Three R0 rows: bg_class_priors, bg_formula_constants, bg_ghatana. target_floor is the "
+     "one column whose ownership the campaign HAS already ruled, twice. D-19 part 1: a floor is "
+     "the MEASURED ACHIEVED COUNT (I7), 'a declarative source file structurally CANNOT hold a "
+     "measured value', and measured values belong to the campaign, written at §8.6 stage 2 "
+     "Conform — per rung. D-27 part 2a re-affirms it with a number behind it. So the floors are "
+     "R0's to set when R0 opens, not M0's.",
+   owner="R0, stage 2 Conform",
+   closes_when="R0 opens, the three assets are measured, and G2 sets each floor to the measured "
+     "achieved count — AFTER the durability precondition below is met.",
+   durability="THE DEFERRAL HAS A PRECONDITION NOBODY HAS DISCHARGED. target_floor is in the "
+     "seed's `ON CONFLICT DO UPDATE SET`, and D-19 part 2 REQUIRED it to be removed or "
+     "MR-06-guarded before any campaign-set floor can survive. That change has not been made "
+     "(verified in the seed text at 06:57:16Z), and a re-seed would move 27 target_floor cells "
+     "today, 10 of them between two non-NULL values. A floor written at R0 Conform into an "
+     "unguarded column is a floor with an expiry date nobody is told about.",
+   rows=["bg_class_priors","bg_formula_constants","bg_ghatana"],
+   evidence=["guard C-20 live 06:58:51Z","DECISIONS.jsonl D-19 parts 1-2, D-27 part 2a",
+     "SEED_DURABILITY_REGISTER_v1_0.md §1.2 and §3.6(b)","CLAUDE.md §N.4 / invariant I7"]),
+
+ dict(id="C-21", severity="BLOCKING", assertion="target_floor = 0 ⇒ volume_explanation NOT NULL",
+   measured=19, bucket=DEFERRED, reason_kind="ruling",
+   reason="Nineteen rows across four rungs (R0 ×2, R1 ×2, R2 ×2, R3 ×12, R5 ×1). A "
+     "volume_explanation on a zero floor is precisely a G4 by-design classification, and D-19 "
+     "part 1 names it in the campaign-owned set — 'volume_explanation WHERE IT RECORDS A G4 "
+     "BY-DESIGN CLASSIFICATION' — written at the owning rung's Conform. G4 also requires a "
+     "WRITTEN by-design justification per asset, which is a per-asset judgment on that asset's "
+     "data: exactly what I14 keeps out of Track M. Same durability precondition as C-20: "
+     "volume_explanation is seed-owned and would move on 47 cells at the next re-seed.",
+   owner="each row's own rung, stage 2 Conform",
+   rows=["bg_class_lifetime_counts","bg_sarvatobhadra_grid","bo_cgm_motifs","bo_pratijna",
+     "ga_ayurdaya","ga_sensitive_degree","ka_avadhi","ka_gochara","ka_gochara_resonance",
+     "ka_gochara_sweep","ka_gochara_v3_century_materialize","ka_kota_chakra","ka_kshetra",
+     "ka_moorti_nirnaya","ka_sudarshana_varsha","ka_taranga","ka_tithi_pravesha",
+     "ka_vedha_gochara","lel_events"],
+   evidence=["guard C-21 live 06:58:51Z: 19 rows","DECISIONS.jsonl D-19 part 1, D-27 part 2a",
+     "CHARTER.md §1 G4","SEED_DURABILITY_REGISTER_v1_0.md §1.2"]),
+
+ dict(id="C-22", severity="RUNG",
+   assertion="rung-frozen data/artifact ⇒ integrity_check_sql NOT NULL",
+   measured="not_checkable (vacuous — 0 rungs frozen)", bucket=DEFERRED,
+   reason_kind="structural-fact",
+   reason="VACUOUS TODAY AND HONESTLY REPORTED AS SUCH RATHER THAN AS A PASS. The rule's "
+     "antecedent is 'rung-frozen', and no rung has frozen — R0 has not opened. Measured "
+     "separately and worth stating plainly: 0 of 128 live assets carry an integrity_check_sql at "
+     "all (06:55:57Z). The column is not seed-written, so checks authored at Conform are durable; "
+     "authoring them is each rung's stage-2 work per the plan's per-asset 'Add integrity_check_"
+     "sql' lines.",
+   owner="each rung, stage 2 Conform",
+   closes_when="a rung freezes, at which point the rule stops being vacuous for that rung's "
+     "assets. It is a RUNG-severity rule, not a BLOCKING one, so it is not an M0 exit condition.",
+   rows=[], evidence=["guard C-22 live 06:58:51Z: not_checkable",
+     "live 06:55:57Z: integrity_check_sql NOT NULL on 0 of 128 rows"]),
+
+ dict(id="C-25", severity="BLOCKING",
+   assertion="co-written target_table ⇒ every co-writer declares its partition",
+   measured="not_checkable", bucket=DEFERRED, reason_kind="contract-mandate",
+   reason="THE MODEL ENTRY — a deferral whose reason is written into the specification itself. "
+     "ASSET_CATALOGUE_CONTRACT §4.9/§10.3: no schema column exists for a natural-key partition "
+     "declaration, and §6 states 'Rules C-25, C-26 and C-27 must never be reported as passing… "
+     "a CI guard implementing this document emits them as not_checkable with the reason, and a "
+     "dashboard that renders that as a pass is itself a defect.' The shipped guard hard-wires "
+     "exactly that (check_asset_catalogue_contract.py:1105, `_no_detector`) and its own "
+     "cross-check FAILS if the guard and the contract ever disagree about which rules are "
+     "not_checkable. This is what a well-formed deferral looks like: a named structural fact, a "
+     "specification that records it, a detector that refuses to report green, and a guard test "
+     "that would catch the two drifting apart.",
+   owner="ADHIKĀRIN (§10.3 is an explicitly unsettled fork)",
+   closes_when="a partition-declaration column exists and every co-writer fills it. NOTE THE "
+     "ASYMMETRY WITH CRITERION 5: this RULE's deferral is well-formed; the WORK it stands in for "
+     "is named as M0 content by Phase 0.4 and is UNEXAMINED. The rule being honestly null does "
+     "not make the work deferred.",
+   rows=[], evidence=["ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9, §6, §8, §10.3",
+     "check_asset_catalogue_contract.py:1069-1109 and the §cross_check spec comparison",
+     "guard C-25 live 06:58:51Z: not_checkable"]),
+
+ dict(id="C-26", severity="BLOCKING",
+   assertion="generation-bearing asset declares its authority pointer",
+   measured="not_checkable", bucket=DEFERRED, reason_kind="contract-mandate",
+   reason="Same shape as C-25: no schema column for an authority pointer / protected_generations "
+     "(§4.11, §10.3); the contract forbids reporting it as passing; the guard hard-wires "
+     "not_checkable with that reason. Unlike C-25 there is NO Phase 0 step that names an "
+     "authority pointer as M0 content, so both the rule and the work are deferred.",
+   owner="ADHIKĀRIN (§10.3 fork)", closes_when="the §10.3 fork is settled and a column exists.",
+   rows=[], evidence=["ASSET_CATALOGUE_CONTRACT_v1_0.md §4.11, §10.3","guard C-26 live 06:58:51Z"]),
+
+ dict(id="C-27", severity="ADVISORY",
+   assertion="writer_timeout_seconds set from telemetry where p95 ≥ 0.5× the value",
+   measured="not_checkable", bucket=DEFERRED, reason_kind="contract-mandate",
+   reason="ADVISORY by the contract's own severity column, and not checkable until Track M2 "
+     "produces cleaned telemetry (§4.8) — the p95 the rule compares against does not exist yet. "
+     "Recorded, explicitly not green.",
+   owner="M2 (telemetry)", closes_when="M2 produces the cleaned telemetry the rule reads.",
+   rows=[], evidence=["ASSET_CATALOGUE_CONTRACT_v1_0.md §4.8, §6","guard C-27 live 06:58:51Z"]),
+
+ dict(id="C-28", severity="BLOCKING",
+   assertion="estimated_seconds NOT NULL where a successful build exists",
+   measured=105, bucket=REPAIRABLE, reason_kind=None,
+   reason="REPAIRABLE — BUT NOT TO ZERO, AND THIS REGISTER MEASURED THE FLOOR RATHER THAN "
+     "ASSUMING ONE. Phase 0.9 names the backfill as M0 content and D-6 GRANTED it conditionally; "
+     "M0-T3 produced the proposal and executed NOTHING (`writes_executed: NONE`). Its statement "
+     "T-5 backfills estimated_seconds from the median of completed build_run_assets rows, "
+     "affecting 93 rows. THE RESIDUAL: 31 assets are `lit` in asset_throughput and have NO "
+     "completed build_run_assets row at all, so no measured duration exists for them — and D-6 "
+     "condition 4 forbids inventing one ('an asset with no clean telemetry gets NULL, not a "
+     "plausible number', H6). Measured read-only at 07:06Z: C-28 = 105 now, 31 after the "
+     "authorised repair, ALL 31 in R0. So the criterion's rule reaches 31, not 0, by any "
+     "authorised route, and the residual 31 is DEFERRED to whenever those assets next build.",
+   blocker="M0-T3's proposal §10 records a genuine open condition: D-6 condition 5 says 'scoped "
+     "to asset_throughput', while D-6's own subject names medians and estimated_seconds, which "
+     "live in build_run_assets and asset_registry. The proposal flags the contradiction and "
+     "states T-3/T-4/T-5 should not execute until ADHIKĀRIN confirms condition 5 is scoped to "
+     "the repair's CONTENT rather than the single table named. D-12 part 5 corrects condition 5 "
+     "in exactly that direction ('may touch asset_throughput, build_run_assets telemetry "
+     "aggregates, and asset_registry.estimated_seconds') — so the correction appears already "
+     "made and the proposal predates it. Someone should confirm that reading rather than assume "
+     "it; it is one sentence of ADHIKĀRIN's time.",
+   owner="ADHIKĀRIN (confirm D-12 part 5 discharges the flag), then a KĀRAKA executes T-1…T-5",
+   closes_when="T-5 runs (93 rows) and the residual 31 is recorded as deferred with this "
+     "measurement attached.",
+   rows=["31 residual assets, all R0 — bg_class_lifetime_counts, bg_cohort, bg_compendium_index, "
+     "bg_concordance, bg_dasha_systems, bg_dignity_reference, bg_doshas, bg_ephemeris, "
+     "bg_gochara_arcs, bg_kota_chakra_rings, bg_medical_mappings, bg_muhurta_lattice, "
+     "bg_nakshatra, bg_nakshatra_medical, bg_ontology, bg_parihara_rules, bg_phaladeepika_latta, "
+     "bg_prashna_rules, bg_reference, bg_remedies, bg_rules, bg_sarvatobhadra_grid, "
+     "bg_sign_medical, bg_sky_calendar, bg_text_index, bg_texts, bg_transit_engine, "
+     "bg_transit_rules, bg_vastu_directions, bg_vedha_malefic_scale, bg_yogas"],
+   evidence=["guard C-28 live 06:58:51Z: 105 violations (the scorecard's reading 2 says 112 at "
+     "06:20Z — two detectors, both stated, neither averaged)",
+     "read-only SQL 07:06Z: c28_now=105, c28_residual_after_T5=31",
+     "TELEMETRY_REPAIR_PROPOSAL_v1_0.md §T-5 and §10 condition 5",
+     "DECISIONS.jsonl D-6 conditions 1 and 4, D-12 part 5"]),
+
+ dict(id="X-02", severity="RESIDUAL",
+   assertion="no asset_throughput rows on inactive/RETIRED assets",
+   measured=1, bucket=RESERVED, reason_kind="charter-prohibition",
+   reason="criterion 6's rule. Charter P1 asset; deferred to R3 by plan §14.2 and D-12 part 4. "
+     "It is the ONLY rule in the guard that already carries both an itemised disclosure and "
+     "RESIDUAL severity, and its disclosure deliberately does not turn it green — the model the "
+     "other deferrals need and do not have.",
+   owner="R3 / the native", rows=["ka_gochara_sweep"],
+   evidence=["guard X-02 live 06:58:51Z (fail, disclosed:true, does_not_turn_the_rule_green:true)",
+     "asset_catalogue_disclosed_residuals.json"]),
+
+ dict(id="X-03", severity="BLOCKING",
+   assertion="no active asset with neither build coverage nor a dead flag",
+   measured=2, bucket=UNEXAMINED, reason_kind=None,
+   reason="criterion 8's rule; see that entry. Both rows have plausible owners (R0 and R5); what "
+     "is unexamined is the criterion itself — there is no dead-flag column, the guard uses "
+     "has_writer as a proxy, and Phase 0.8a asks M0 to produce a flag with nowhere to live.",
+   owner="ADHIKĀRIN (G9)", rows=["bg_gochara_citation_resolution","lel_events"],
+   evidence=["guard X-03 live 06:58:51Z"]),
+
+ dict(id="X-05", severity="BLOCKING", assertion="no unresolved zero-consumer finding",
+   measured=23, bucket=REPAIRABLE, reason_kind=None,
+   reason="criterion 9's rule; see that entry. 23 packets, 0 dispositions recorded, machinery "
+     "built and waiting on G1 rulings.",
+   owner="ADHIKĀRIN (G1 ×23)", rows=["23 packets — listed under criterion 9"],
+   evidence=["guard X-05 live 06:58:51Z"]),
+]
+
+# ── §5 · at zero, but not the same thing as being at zero ────────────────────
+NON_DURABLE = [
+ dict(id="C-05", assertion="data/artifact ⇒ count_sql NOT NULL", status="pass (0)",
+   durability="NON-DURABLE — REVERTED BY A RE-SEED",
+   why="C-05 reads zero only because bg_ephemeris_engine and bg_panchanga are now "
+     "asset_kind='service' (the M0-T21 kind repair), which takes them out of the rule's scope. "
+     "Neither seed entry declares asset_kind, and asset_registry_seed.ts:3268 supplies "
+     "`asset.asset_kind ?? 'data'` — SO THE DEFAULT IS AN ACTIVE WRITE OF 'data', NOT A NO-OP. "
+     "The next seed run puts both rows back inside C-05's scope with count_sql still NULL, and "
+     "the rule fails again with 2. Re-measured independently here at 06:57:16Z: both cells still "
+     "diverge live-vs-seed.",
+   projected_after_reseed=2),
+ dict(id="C-14", assertion="asset_kind / asset_type coherent", status="pass (0)",
+   durability="NON-DURABLE — REVERTED BY A RE-SEED ON EIGHT ROWS",
+   why="The M0-T21 repair wrote 'service' into asset_kind on 2 rows and asset_type on 6. Both "
+     "columns are in the seed's unconditional `DO UPDATE SET`, and NOT ONE of the eight seed "
+     "entries declares the key — so all eight are re-written to the `?? 'data'` default. "
+     "Re-measured at 06:57:16Z: 8 divergent cells, exactly the eight rows the repair touched "
+     "(bg_ephemeris_engine, bg_panchanga on asset_kind; ka_dasha_kala, ka_graha_sancara, "
+     "ka_muhurta_seva, ka_tulana, mi_abhilekha, mi_seva on asset_type).",
+   projected_after_reseed=8),
+ dict(id="C-18 / criterion 11", assertion="domain present and derived from scope",
+   status="pass (0)", durability="EXPOSED — the COLUMN is durable, the PAIR is not",
+   why="See criterion 11. domain and rung are absent from both seed column lists, so migration "
+     "590's backfill cannot be reverted; but `scope` is seed-owned and domain was DERIVED from "
+     "scope, so a re-seed moves one half of the pair on mi_jivanaghatana and leaves the other. "
+     "C-18 keeps counting it as present while the value it presents becomes wrong.",
+   projected_after_reseed=1),
+ dict(id="C-02 / C-03", assertion="layer_index / layer_name", status="fail (1 each, lel_events)",
+   durability="DURABLE BY AGREEMENT — measured, not assumed",
+   why="Both columns ARE seed-owned, so the M0-T26 repair was durable only if it wrote exactly "
+     "what the seed writes. Compared across all 127 seed entries at 06:57:16Z: zero divergent "
+     "cells on either column except lel_events, where live is NULL and the seed would write "
+     "'L5' / 'Mīmāṃsā'. So the repair agrees with the seed everywhere it touched — and the one "
+     "place they disagree is the deliberate NULL D-28 part 1 protects.",
+   projected_after_reseed=0),
+ dict(id="C-23 / has_substeps", assertion="has_substeps equals the writer-class truth",
+   status="pass (0)", durability="DURABLE for today's rows; UNENFORCED for future rows",
+   why="has_substeps is in neither seed column list, so the M0-T20 repair of 12 rows cannot be "
+     "reverted by a re-seed (SEED_DURABILITY_REGISTER §3.1). The caveat is coverage, not "
+     "durability: an asset the seed NEWLY INSERTS lands with has_substeps NULL, and NULL is "
+     "falsy at asset_runner.py's `if has_substeps:` — so a new heavy writer silently arrives with "
+     "the substep-plan-completeness detector switched off, which is §N.8 instance 4 all over "
+     "again. Nothing enforces this. Live rows with has_substeps IS TRUE at 06:55:57Z: 26.",
+   projected_after_reseed=0),
+]
+
+# ── §6 · what would have to be true to flip the switch ───────────────────────
+FLIP_CHECKLIST = [
+ dict(n=1, kind="RULING", title="Record the self-reference carve-out for criterion 10",
+   what="D-24 part 3 conditions the flip on every criterion being at zero or explicitly "
+     "deferred. Criterion 10 IS the flip. Unless ADHIKĀRIN records that criterion 10 is excluded "
+     "from its own precondition — satisfied BY the flip, not before it — the precondition is "
+     "unsatisfiable and the switch can never legitimately move.",
+   unblocks=["crit-10"]),
+ dict(n=2, kind="RULING", title="Rule the NAMED-FIELD TEST",
+   what="Does M0 repair registry columns that none of Phase 0's fifteen steps names "
+     "(target_table, count_sql, health_probe, provides_apis, service_health), or does each go to "
+     "its owning rung's stage-2 Conform? D-24 says registry metadata is Track-M work; D-25 part "
+     "2b says an UNNAMED field has 'no named M0 mandate' and pinned it to the rung. ONE RULING "
+     "RECLASSIFIES SIX RULES AND TWO CRITERIA. Either answer is workable; the absence of an "
+     "answer is what blocks the flip.",
+   unblocks=["C-04 (7 rows)","C-06","C-07","C-15","C-17 (1 row)","crit-1 (partly)"]),
+ dict(n=3, kind="RULING", title="Rule what criterion 1 means",
+   what="Is the three-way diff the scorecard's reading (every registry row needs a production "
+     "@register — 5 violations) or the shipped guard's (P-01…P-06 — 0 violations, with services "
+     "and source rows legitimately writerless)? The guard is what a blocking flip gates on, so "
+     "this decides whether criterion 1 is already satisfied or has four exemptions and one G1 "
+     "disposition still to make.",
+   unblocks=["crit-1"]),
+ dict(n=4, kind="RULING", title="Rule Phase 0.4 — the partition declaration",
+   what="Phase 0.4 names 'declare co-writer partitions' as M0 content, but no schema column "
+     "exists to declare them in. Authorise a column under D-4's reasoning, or defer the work to "
+     "the owning rungs with the reason recorded. C-25 itself stays not_checkable either way — "
+     "that part is already well-formed; what is undecided is the WORK.",
+   unblocks=["crit-5","crit-2 (partly)"]),
+ dict(n=5, kind="RULING", title="Rule Phase 0.8a — the dead flag",
+   what="Define a registered-but-dead flag, rule the guard's has_writer proxy sufficient, or "
+     "defer the criterion. Today the scorecard calls criterion 8 NOT-MEASURABLE and the guard "
+     "returns 2 violations from a proxy the contract never designated.",
+   unblocks=["crit-8","X-03"]),
+ dict(n=6, kind="RULING", title="Rule criterion 2's wording",
+   what="'contract violations per kind = 0' cannot be satisfied while C-25/C-26/C-27 have no "
+     "detector and must never read green. Re-word it to 'every CHECKABLE rule at zero, the "
+     "un-checkable ones reported not_checkable with their reason', or make them checkable.",
+   unblocks=["crit-2"]),
+ dict(n=7, kind="RULING", title="Reconcile G1's rung bound with Phase 0.8b / 0.8c",
+   what="G1's charter bound reads 'only assets in the current rung' and no rung is open, while "
+     "Phase 0.8b and 0.8c assign 3 promotions and 23 zero-consumer dispositions to M0. One "
+     "ruling clears both criteria; without it, the two largest REPAIRABLE items cannot be "
+     "executed by anyone.",
+   unblocks=["crit-4","crit-9","C-11","X-05"]),
+ dict(n=8, kind="RULING", title="Rule H2's reach — is a PR merge to main a 'write to main'?",
+   what="Criterion 10's 'merged' half requires the guards to reach origin/main (verified absent "
+     "at 07:03Z). Charter H3 forbids weakening a gate; charter H2 forbids 'any write to main'. "
+     "Whether a reviewed PR merge is inside H2 has never been asked. It is not a KĀRAKA's "
+     "question. Until it is answered criterion 10 cannot be satisfied by any route.",
+   unblocks=["crit-10","crit-12"]),
+ dict(n=9, kind="RULING", title="Correct D-13 part 2's rung, and cover its fourth row",
+   what="D-13 part 2 defers three unearned service_health greens to 'R0'; all three are "
+     "layer=kala and their live rung column reads R3. And a fourth row (ka_graha_sancara, "
+     "'unhealthy', no probe) is covered by no ruling because the contract's §6 cell undercounted "
+     "its own §8 SQL by one.",
+   unblocks=["C-17"]),
+ dict(n=10, kind="MECHANISM",
+   title="Give every DEFERRED item a disclosure the guard can actually read",
+   what="THIS IS THE STEP THAT ACTUALLY STOPS THE FLIP, AND IT IS MECHANICAL. Twelve entries are "
+     "deferred with reasons — ten of them rules — and NOT ONE of the ten has an entry in "
+     "asset_catalogue_disclosed_residuals.json. The only rule that has one is X-02, which is "
+     "RESERVED rather than deferred, and it is also the only rule carrying a severity "
+     "(RESIDUAL) that does not gate. Eight of the ten deferred rules — C-01, C-02, C-03, "
+     "C-08, C-20, C-21, C-25, C-26 — are BLOCKING in the guard's rule table with no "
+     "disclosure attached (C-22 is RUNG and C-27 ADVISORY, so those two do not gate). "
+     "FLIPPING BLOCKING TODAY REDS THE BRANCH ON THE 15 BLOCKING FAILURES THE GUARD RETURNED "
+     "LIVE AT 06:58:51Z, several of which can only be made green by touching a P1 asset or by "
+     "pre-building R5 work — which is precisely the 'weaken a criterion to get moving' "
+     "pressure D-24 part 3 "
+     "named. A deferral that lives only in a markdown file is not a deferral the CI gate can "
+     "honour. NOTE: the disclosure must not turn a rule green — X-02's `does_not_turn_the_rule_"
+     "green: true` is the pattern, and per D-12 part 4 an unmet criterion is recorded unmet.",
+   unblocks=["crit-10 in practice"]),
+ dict(n=11, kind="EXECUTION", title="Execute the repairs that are already authorised",
+   what="(a) telemetry T-1…T-5 under D-6 + D-12 part 5 → C-28 from 105 to its measured floor of "
+     "31; (b) the 3 C-11 dispositions and the 23 zero-consumer dispositions, once step 7 lands; "
+     "(c) D-19 part 2 / D-27 part 2a's seed change for target_floor — WITHOUT which C-20's "
+     "eventual repair expires silently, and whose model (the MR-06 guard) D-28 part 4 warns has "
+     "never had to choose and must be proven by fixture rather than inherited.",
+   unblocks=["C-28","crit-4","crit-9","C-20 durability"]),
+ dict(n=12, kind="EXECUTION", title="Merge, flip, and make it RUN once",
+   what="Per step 8's ruling: get the two guards and the workflow onto origin/main, delete the "
+     "two `continue-on-error: true` lines (ADHIKĀRIN's own act — charter G9, and explicitly not "
+     "a KĀRAKA's), and confirm at least one real run reports. Zero runs have ever executed; a "
+     "workflow that has never run is not evidence.",
+   unblocks=["crit-10","crit-12"]),
+ dict(n=13, kind="VERIFICATION", title="Re-measure, then let PARĪKṢAKA certify",
+   what="Re-run m0_exit_scorecard.py (it appends a reading rather than replacing one) and both "
+     "guards, and hand the result to PARĪKṢAKA. No agent that performed any of the above may "
+     "sign it (I16 / charter H7), and this register — authored by a KĀRAKA — certifies nothing.",
+   unblocks=["M0 freeze (M0-T10)"]),
+]
+
+# ── §7 · disagreements and corrections found while classifying ───────────────
+DISAGREEMENTS = [
+ dict(item="C-02 / C-03 violation counts",
+   a="M0_EXIT_SCORECARD_v1_0.md reading 2 (06:20:44Z): 21 and 20",
+   b="this task's live query (06:55:57Z) and the shipped guard (06:58:51Z): 1 and 1",
+   resolution="NOT A CONFLICT — A CLOCK. M0-T26 landed the Phase 0.5a repair between the two "
+     "readings (WORK_QUEUE: done_pending_verification 06:51:24Z, commit_recorded 06:52:23Z). "
+     "Both figures are true of their instant. The scorecard's own §0 note that filesystem- and "
+     "database-sourced criteria move between runs is exactly this. Anyone reading the scorecard "
+     "as current on these two rules will overstate the remaining work by 39 rows."),
+ dict(item="criterion 12 — does the domain-coherence assertion exist?",
+   a="M0_EXIT_SCORECARD_v1_0.md reading 2: 'THE ASSERTION DOES NOT EXIST'",
+   b="check_asset_catalogue_contract.py implements X-04 ('domain coherence: a shared asset "
+     "depends only on shared assets', origin 'plan §11') and it returns 0 violations live",
+   resolution="The scorecard's clause is stale. What remains true is the operative half: the "
+     "assertion has never RUN in CI. Criterion 12 is therefore not-green for criterion 10's "
+     "reasons, not for its own."),
+ dict(item="criterion 8 — measurable or not?",
+   a="scorecard: NOT-MEASURABLE (no dead-flag field is defined)",
+   b="guard X-03: fail, 2 violations, using has_writer as the proxy",
+   resolution="Both are honest and they are answering different questions. The scorecard asks "
+     "whether the criterion AS WRITTEN has a detector (it does not — nothing defines a dead "
+     "flag); the guard asks whether any active asset has no registered writer (2 do). Recorded "
+     "as a disagreement rather than reconciled, because reconciling it is ADHIKĀRIN's step 5."),
+ dict(item="C-28 violation count",
+   a="scorecard reading 2 (06:20Z): 112", b="shipped guard (06:58:51Z): 105",
+   resolution="Two independent detectors, 35 minutes apart, over a table nothing repaired in "
+     "between. Both are reported; neither is averaged. This register's own residual measurement "
+     "(31 after the authorised repair) was computed from the same definition the guard uses, so "
+     "it is comparable to 105, not to 112."),
+ dict(item="C-17 row count — the contract disagrees with its own SQL",
+   a="ASSET_CATALOGUE_CONTRACT §6 cell: 3 (ka_dasha_kala, ka_muhurta_seva, ka_tulana)",
+   b="the contract's own §8 SQL, and the guard: 4 — it also matches 'unhealthy', catching "
+     "ka_graha_sancara",
+   resolution="The §8 SQL is the detector, so 4 is the rule's result. It matters beyond "
+     "bookkeeping: D-13 part 2's deferral was written for 'three service assets', so the fourth "
+     "row inherits no ruling. Already noted in the scorecard's §2b; carried here because it "
+     "changes a classification."),
+ dict(item="D-13 part 2 names the wrong rung",
+   a="D-13 part 2: 'It is R0 substrate and R0 IS NOT OPEN'",
+   b="all three assets are ka_* / layer='kala'; their live `rung` column, backfilled by "
+     "migration 590 per contract §5.2, reads R3",
+   resolution="The deferral stands — a rung owns it and M0 does not — but the rung named is "
+     "wrong, and the ruling routes the finding to R0's stage-1 intake where R3 will need it. "
+     "Reported, not corrected: correcting a ruling is ADHIKĀRIN's (charter §4)."),
+ dict(item="ASSET_CATALOGUE_CONTRACT §11 says migration 590 is not applied",
+   a="contract §11: 'That migration is AUTHORED AND NOT APPLIED. … No DDL or DML from it has "
+     "been executed against any database.'",
+   b="_migrations_applied carries 590_nirmana_m0_catalogue_contract_columns.sql at "
+     "2026-08-23T05:36:13.833986+00:00, and all four columns are live",
+   resolution="The contract's §11 is stale, not wrong-at-authoring. Flagged because §11 is the "
+     "sentence a later reader would use to decide whether the columns exist, and it now says the "
+     "opposite of the database. Fixing it is a documentation task, not this one's."),
+ dict(item="zero-consumer count: plan 13 vs measured 23",
+   a="NIRMANA_ELEVATION_PLAN §1 states 13; the plan's own per-asset annotations count 7",
+   b="ZERO_CONSUMER_EVIDENCE_v1_0.md and the guard: 23 packets",
+   resolution="The 23 is the measured figure with a per-asset list behind it and is what X-05 "
+     "reduces. The plan's 13 reconciles with nothing, including the plan. Not averaged, not "
+     "adopted — recorded, as the scorecard also recorded it."),
+]
+
+# ── render ───────────────────────────────────────────────────────────────────
+def tally(entries):
+    t = {b: 0 for b in BUCKETS}
+    for e in entries:
+        t[e["bucket"]] += 1
+    return t
+
+def esc(x):
+    return str(x).replace("|", "\\|").replace("\n", "<br>")
+
+def render() -> str:
+    ct, rt = tally(CRITERIA), tally(RULES)
+    tot = {b: ct[b] + rt[b] for b in BUCKETS}
+    L = []
+    A = L.append
+    A("---")
+    A("canonical_id: M0_DEFERRAL_REGISTER")
+    A("version: 1.0")
+    A("status: LIVE-CLASSIFICATION")
+    A("task: M0-T31")
+    A(f"generated: {datetime.datetime.now(datetime.UTC).isoformat()}")
+    A("generator: 00_ARCHITECTURE/control/m0_deferral_register.py")
+    A(f"authored_by: {PROVENANCE['authored_by']}")
+    A("certified_by: null   # I16 / charter H7 — a KĀRAKA never certifies its own work")
+    A("satisfies: DECISIONS.jsonl D-24 part 3 (the precondition for the CI blocking switch)")
+    A("---")
+    A("")
+    A("# NIRMĀṆA M0 — Deferral Register v1.0")
+    A("")
+    A("**The question this document exists to answer**, verbatim from ADHIKĀRIN ruling D-24 "
+      "part 3:")
+    A("")
+    A("> *The switch flips when T17's exit scorecard shows each criterion either at zero or "
+      "explicitly deferred with a recorded reason — **never on a criterion that is merely "
+      "unexamined**.*")
+    A("")
+    A("The scorecard measures; it does not separate *non-zero and repairable* from *non-zero and "
+      "cannot reach zero, for a stated reason*. This register performs that separation and — the "
+      "actual work product — names what nobody has yet established either way.")
+    A("")
+    A("**This document decides nothing, flips nothing, and certifies nothing.** No guard file, "
+      "no `.github/` file and no `asset_registry` row was written by the task that produced it. "
+      "Classification is evidence for ADHIKĀRIN (charter G7/G9); certification is PARĪKṢAKA's "
+      "(I16 / charter H7).")
+    A("")
+    A("## 0 — The tally")
+    A("")
+    A("| bucket | criteria | contract rules | total | meaning |")
+    A("|---|--:|--:|--:|---|")
+    mean = {
+      REPAIRABLE: "a known repair takes it to zero; nobody has done it. The repair and its "
+                  "blocker are named per entry.",
+      DEFERRED: "it cannot reach zero inside M0, and a **ruling, plan assignment, contract "
+                "mandate or measured structural fact** says why.",
+      RESERVED: "it collides with a charter prohibition. Not the campaign's to resolve, and "
+                "untouched by this task.",
+      UNEXAMINED: "**nobody has established which of the above it is.** D-24 part 3 forbids "
+                  "flipping the switch on any of these. This bucket is the deliverable.",
+      AT_ZERO: "reads zero, with a named exposure that makes that zero conditional (§5).",
+    }
+    for b in BUCKETS:
+        A(f"| **{b}** | {ct[b]} | {rt[b]} | **{tot[b]}** | {mean[b]} |")
+    A(f"| | **{len(CRITERIA)}** | **{len(RULES)}** | **{len(CRITERIA)+len(RULES)}** | |")
+    A("")
+    A(f"**{tot[UNEXAMINED]} of {len(CRITERIA)+len(RULES)} entries are UNEXAMINED**, and they "
+      "reduce to **{n} decisions**, not {n2} — §6 is that list in order. The largest single "
+      "lever is the *named-field test* (§6 step 2): one ruling reclassifies six rules and two "
+      "criteria."
+      .replace("{n}", "9").replace("{n2}", str(tot[UNEXAMINED])))
+    A("")
+    A("**The one fact that stops the flip even after every ruling lands** is mechanical and is "
+      "§6 step 10. Exactly **one** rule in the guard — `X-02`, the RESERVED one — carries both "
+      "an itemised disclosure the guard reads and a severity (`RESIDUAL`) that does not gate. "
+      "**None of the ten DEFERRED rules has either**, and eight of those ten (`C-01` `C-02` "
+      "`C-03` `C-08` `C-20` `C-21` `C-25` `C-26`) are `BLOCKING` in the rule table. The guard "
+      "read live at 06:58:51Z returns **15 BLOCKING failures** (16 failing rules in all, `X-02` "
+      "being the sixteenth and non-gating). Flipping today reds the branch on all fifteen — "
+      "several of which could only be made green by touching a charter-P1 asset or by "
+      "pre-building R5 work.")
+    A("")
+    A("### What counts as a reason")
+    A("")
+    A("A reason is only a reason if it names one of these. *\"Not yet done\"*, *\"probably "
+      "fine\"* and *\"an analogous ruling exists for a different column\"* are **UNEXAMINED**, "
+      "not deferred — that distinction is the whole point of the exercise, and this register "
+      "files six rules UNEXAMINED that a looser reading would have called deferred.")
+    A("")
+    A("| reason kind | what it must cite |")
+    A("|---|---|")
+    for k, v in REASON_KINDS.items():
+        A(f"| `{k}` | {v} |")
+    A("")
+    A("## 1 — Provenance: every number below was re-measured, not inherited")
+    A("")
+    A(f"**Database access:** {PROVENANCE['db_access']}")
+    A("")
+    A("| reading | at (UTC) | how |")
+    A("|---|---|---|")
+    for r in PROVENANCE["readings"]:
+        A(f"| {esc(r['what'])} | `{r['at']}` | {esc(r['how'])} |")
+    A("")
+    A("Files **read and not written** by this task (a sibling task holds `writer_substep_census."
+      "py`, `build_asset_control_workbook.py` and the C-23 guard):")
+    A("")
+    for f in PROVENANCE["guard_files_read_not_written"]:
+        A(f"- `{f}`")
+    A("")
+    A("**The scorecard moved under this task while it ran, and that is reported rather than "
+      "smoothed:** M0-T26 landed the Phase 0.5a repair at ~06:51–06:54Z, between the scorecard's "
+      "reading 2 (06:20:44Z) and this register's measurements (06:55:57Z onward). C-02 and C-03 "
+      "moved 21→1 and 20→1 in that window. Both readings are stated with their timestamps in §7; "
+      "neither is averaged.")
+    A("")
+    A("## 2 — The twelve exit criteria")
+    A("")
+    A("| # | criterion | reads now | bucket | owner |")
+    A("|---|---|---|---|---|")
+    for e in CRITERIA:
+        m = e["measured"]
+        mv = "; ".join(f"{k}={v}" for k, v in m.items()) if isinstance(m, dict) else str(m)
+        A(f"| {e['id'].split('-')[1]} | {esc(e['title'])} | `{esc(mv)[:110]}` | "
+          f"**{e['bucket']}** | {esc(e.get('owner',''))} |")
+    A("")
+    for e in CRITERIA:
+        A(f"### {e['id']} · {e['title']}")
+        A("")
+        A(f"**Bucket: {e['bucket']}**" + (f" · reason kind: `{e['reason_kind']}`"
+                                          if e.get("reason_kind") else ""))
+        A("")
+        A("**Reads now**")
+        A("")
+        A("```json")
+        A(json.dumps(e["measured"], indent=1, ensure_ascii=False))
+        A("```")
+        A("")
+        A(e["reason"])
+        A("")
+        if e.get("blocker"):
+            A(f"**What blocks it:** {e['blocker']}")
+            A("")
+        if e.get("machinery_gap"):
+            A(f"**Machinery gap:** {e['machinery_gap']}")
+            A("")
+        A(f"**Owner:** {e.get('owner','—')}  ")
+        A(f"**Closes when:** {e.get('closes_when','—')}")
+        A("")
+        if e.get("rows"):
+            A("<details><summary>rows</summary>")
+            A("")
+            A("```json")
+            A(json.dumps(e["rows"], indent=1, ensure_ascii=False))
+            A("```")
+            A("")
+            A("</details>")
+            A("")
+        A("**Evidence**")
+        A("")
+        for ev in e["evidence"]:
+            A(f"- {ev}")
+        A("")
+        A("---")
+        A("")
+    A("## 3 — Contract and extension rules reading non-zero, `not_checkable` or blocked")
+    A("")
+    A("Rule statuses are the shipped guard's own output — `check_asset_catalogue_contract.py "
+      "--live --json` at `2026-08-23T06:58:51Z` (13 pass · 16 fail · 4 not_checkable) and "
+      "`check_asset_source_parity.py --live --json` at `2026-08-23T07:02:39Z` (P-01…P-06 all "
+      "pass). Rules reading `pass` are listed in §4; §5 covers the ones whose zero is "
+      "conditional.")
+    A("")
+    A("| rule | severity | assertion | reads now | bucket | owner |")
+    A("|---|---|---|---|---|---|")
+    for e in RULES:
+        A(f"| `{e['id']}` | {e['severity']} | {esc(e['assertion'])} | `{esc(e['measured'])}` | "
+          f"**{e['bucket']}** | {esc(e.get('owner',''))} |")
+    A("")
+    for e in RULES:
+        A(f"### `{e['id']}` — {e['assertion']}")
+        A("")
+        A(f"**Severity {e['severity']} · reads `{e['measured']}` · bucket {e['bucket']}**"
+          + (f" · reason kind `{e['reason_kind']}`" if e.get("reason_kind") else ""))
+        A("")
+        A(e["reason"])
+        A("")
+        if e.get("blocker"):
+            A(f"**What blocks it:** {e['blocker']}")
+            A("")
+        if e.get("durability"):
+            A(f"**Durability:** {e['durability']}")
+            A("")
+        if e.get("machinery_gap"):
+            A(f"**Machinery gap:** {e['machinery_gap']}")
+            A("")
+        A(f"**Owner:** {e.get('owner','—')}"
+          + (f"  \n**Closes when:** {e['closes_when']}" if e.get("closes_when") else ""))
+        A("")
+        if e.get("rows"):
+            A("Rows: " + ", ".join(f"`{r}`" for r in e["rows"]))
+            A("")
+        A("Evidence: " + " · ".join(e["evidence"]))
+        A("")
+        A("---")
+        A("")
+    A("## 4 — Rules reading `pass`, for completeness")
+    A("")
+    A("`C-05` `C-09` `C-10` `C-12` `C-13` `C-14` `C-16` `C-18` `C-19` `C-23` `C-24` `X-01` "
+      "`X-04` (contract guard, 06:58:51Z) and `P-01`…`P-06` (parity guard, 07:02:39Z).")
+    A("")
+    A("Two cautions the §0 tally deliberately does not fold in. **A pass is one detector "
+      "returning zero at one instant against one database** — the scorecard's §3a proved each "
+      "passing rule falsifiable under a deliberate mutation, which is the right standard, but "
+      "falsifiable is not permanent. And `X-01`'s pass means *'no multi-producer table that "
+      "nobody declared'*, never *'the partitions are correct'* — its own docstring and the "
+      "declared-co-writers file both say so, and C-25 is the rule that would say the stronger "
+      "thing if it had a column.")
+    A("")
+    A("## 5 — At zero, and not the same thing as being at zero")
+    A("")
+    A("D-24 part 3 asks for criteria *at zero*. A zero that the next routine `asset_registry_"
+      "seed.ts` run silently reverts is worse than a red, because nothing announces its expiry "
+      "(SEED_DURABILITY_REGISTER §0). Every zero below was re-checked against the seed "
+      "projection at `06:57:16Z` rather than inherited.")
+    A("")
+    A("| rule | status | durability | violations after a re-seed |")
+    A("|---|---|---|--:|")
+    for d in NON_DURABLE:
+        A(f"| `{d['id']}` | {d['status']} | {d['durability']} | {d['projected_after_reseed']} |")
+    A("")
+    for d in NON_DURABLE:
+        A(f"**`{d['id']}` — {d['durability']}**")
+        A("")
+        A(d["why"])
+        A("")
+    A("**The through-line:** the campaign's durable repairs are durable because their columns "
+      "are absent from the seed's column lists (`has_substeps`, `domain`, `rung`, "
+      "`integrity_check_sql`), and its fragile ones are fragile because they are not "
+      "(`asset_kind`, `asset_type`, `scope`, `target_floor`, `volume_explanation`). That is "
+      "structural, not incidental: **before the switch flips, ADHIKĀRIN should decide whether a "
+      "green resting on a seed-owned column may count as 'at zero' at all.** This register's "
+      "view — offered as a recommendation, not a ruling — is that it may not, and that D-19 part "
+      "2's required seed change is therefore a precondition of the flip rather than a follow-on "
+      "from it.")
+    A("")
+    A("## 6 — What would have to be true to flip the switch")
+    A("")
+    A("In order. Steps 1–9 are rulings only ADHIKĀRIN can make; step 10 is mechanical and is the "
+      "one that actually stops the flip; steps 11–13 are execution and verification.")
+    A("")
+    A("| # | kind | what | unblocks |")
+    A("|---|---|---|---|")
+    for s in FLIP_CHECKLIST:
+        A(f"| {s['n']} | {s['kind']} | **{esc(s['title'])}** | {esc(', '.join(s['unblocks']))} |")
+    A("")
+    for s in FLIP_CHECKLIST:
+        A(f"**{s['n']}. [{s['kind']}] {s['title']}**")
+        A("")
+        A(s["what"])
+        A("")
+    A("**What this list is not.** It is not a claim that M0 exits when the thirteen are done — "
+      "M0's freeze is M0-T10's and its certification is PARĪKṢAKA's. It is the answer to one "
+      "narrower question: what has to become true before D-24 part 3's precondition is honestly "
+      "satisfied, so the switch can be flipped without weakening anything to get there.")
+    A("")
+    A("## 7 — Disagreements and corrections found while classifying")
+    A("")
+    A("Nothing below is averaged. Two angles disagreeing is a finding (the discipline the "
+      "scorecard's own §2b established).")
+    A("")
+    for d in DISAGREEMENTS:
+        A(f"**{d['item']}**")
+        A("")
+        A(f"- A — {d['a']}")
+        A(f"- B — {d['b']}")
+        A(f"- **Resolution** — {d['resolution']}")
+        A("")
+    A("## 8 — What this register does NOT establish")
+    A("")
+    A("- **It does not certify M0, and it does not certify itself.** A KĀRAKA authored it; "
+      "PARĪKṢAKA decides what it means (I16 / charter H7).")
+    A("- **It does not flip the switch, wire any guard blocking, or edit `.github/`.** That is "
+      "ADHIKĀRIN's and it is explicitly reserved.")
+    A("- **A bucket is a classification, not a verdict.** Where this register says DEFERRED it "
+      "means a reason of the declared kinds is on record — not that the deferral is wise.")
+    A("- **UNEXAMINED is not an accusation and not a soft FAIL.** Eleven entries are unexamined "
+      "because the campaign has been moving fast and honestly; the register's only claim is that "
+      "no one has yet decided them, and D-24 part 3 says the switch may not move until someone "
+      "does.")
+    A("- **The classification of `RESERVED` items ends at the label.** Criterion 6 and `X-02` "
+      "were read, counted and left exactly as they were.")
+    A("- **Where a ruling covers only some rows of a rule, the rule is filed by its weakest "
+      "row** (C-17 is UNEXAMINED on one row of four, C-04 on seven of nine). A rule is not "
+      "classified until every row under it is.")
+    A("- **The measurements expire.** They are timestamped to the minute for that reason; a "
+      "sibling task moved 39 rows out from under the scorecard while this register was being "
+      "written. Re-run the generator rather than trusting this snapshot.")
+    A("")
+    return "\n".join(L) + "\n"
+
+def payload() -> dict:
+    ct, rt = tally(CRITERIA), tally(RULES)
+    return {
+        "_meta": {
+            "canonical_id": "M0_DEFERRAL_REGISTER", "version": "1.0", "task": "M0-T31",
+            "generated": datetime.datetime.now(datetime.UTC).isoformat(),
+            "generator": "00_ARCHITECTURE/control/m0_deferral_register.py",
+            "satisfies": "DECISIONS.jsonl D-24 part 3",
+            "certified_by": None,
+            "provenance": PROVENANCE, "reason_kinds": REASON_KINDS,
+        },
+        "tally": {"criteria": ct, "rules": rt,
+                  "total": {b: ct[b] + rt[b] for b in BUCKETS},
+                  "n_criteria": len(CRITERIA), "n_rules": len(RULES)},
+        "criteria": CRITERIA, "rules": RULES,
+        "at_zero_with_exposure": NON_DURABLE,
+        "flip_checklist": FLIP_CHECKLIST,
+        "disagreements": DISAGREEMENTS,
+    }
+
+if __name__ == "__main__":
+    OUT_MD.write_text(render(), encoding="utf-8")
+    OUT_JSON.write_text(json.dumps(payload(), indent=1, ensure_ascii=False) + "\n",
+                        encoding="utf-8")
+    t = payload()["tally"]["total"]
+    print(f"wrote {OUT_MD.relative_to(ROOT)} and {OUT_JSON.relative_to(ROOT)}")
+    print("tally: " + " · ".join(f"{b}={t[b]}" for b in BUCKETS))
