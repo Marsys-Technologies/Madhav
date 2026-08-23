@@ -20,6 +20,50 @@ WHAT IT IS NOT. It decides nothing. It flips nothing. It writes nothing to
 asset_registry, .github/ or any guard. Classification is evidence-assembly for
 ADHIKĀRIN (charter G7/G9); certification is PARĪKṢAKA's (I16 / charter H7).
 
+DECLARED WRITE SCOPE — ENFORCED AT RUNTIME, NOT ASSERTED IN PROSE.
+This generator writes EXACTLY the two paths in `DECLARED_WRITES` below:
+
+    00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.md
+    00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.json
+
+Every write goes through `_write()`, which raises `ScopeViolation` on any other path.
+The declaration and the detector are the same object; a future edit that adds a write
+outside the list fails loudly instead of succeeding quietly.
+
+IT DOES NOT WRITE platform/scripts/governance/asset_catalogue_disclosed_residuals.json.
+It READS that file, and only to REPORT divergence (`_report_disclosure_divergence()`).
+
+WHY THAT MATTERS, recorded rather than left as folklore (KĀRAKA M0-T62, Standing Queue
+SQ-12, on ADHIKĀRIN D-44 part 4). Until 2026-08-23 this generator had a
+`_write_disclosure_block()` that wrote four `deferred_rule_disclosures*` keys into that
+guard file as a SIDE EFFECT, outside the scope this docstring and PROVENANCE
+["guard_files_read_not_written"] both declared. Consequences, measured not supposed:
+
+  * M0-T46 had to reach for `git checkout --` to undo the side effect — the command the
+    campaign's standing restore rule forbids. D-44 granted a narrow carve-out for that
+    instance and named THIS side effect as "the defect underneath, which is the one
+    worth fixing".
+  * By 2026-08-23T15:5xZ the side effect had become destructive. The block in the live
+    file is no longer this module's output: KĀRAKA M0-T49/T51/T55 wrote D-54's fifteen
+    AUTHORISED disclosures into it on D-57's corrected ground, certified V-35/V-37, and
+    the in-file `DISCLOSURE_DRAFT` was never updated to match. Measured at
+    2026-08-23T15:5xZ: live block 19 entries, DISCLOSURE_DRAFT 16; 3 live entries
+    (C-11, X-03, X-05) absent from the draft entirely; 12 of the remaining 16 differing;
+    only 4 identical; all 4 `deferred_rule_disclosures_not_drafted` values differing;
+    `deferred_rule_disclosures_count` 19 vs 16. A run would have deleted three
+    authorised entries and reverted twelve to unauthorised drafts carrying
+    `gating_effect: "none"` and no `authorised_by` — REVERTING AUTHORISED GOVERNANCE
+    WORK, and looking like a clean generator run while doing it.
+  * Nothing depends on the write. The only reader of that file is
+    check_asset_catalogue_contract.py, which needs the AUTHORISED content; and the live
+    file contains ZERO references to this module (grep, 2026-08-23), so it makes no
+    claim that this generator owns it. The block was detached; the writer was not.
+
+THE LIVE FILE IS THE SOURCE OF TRUTH FOR ITS OWN `deferred_rule_disclosures` BLOCK.
+`DISCLOSURE_DRAFT` below is retained as the M0-T36 HISTORICAL DRAFT — it is the record
+of what M0-T36 drafted, still rendered into this register's §10, and it is no longer a
+thing this module writes anywhere.
+
 Regenerate: python3 00_ARCHITECTURE/control/m0_deferral_register.py
 """
 from __future__ import annotations
@@ -28,6 +72,37 @@ import json, pathlib, datetime
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT_MD = ROOT / "00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.md"
 OUT_JSON = ROOT / "00_ARCHITECTURE/control/M0_DEFERRAL_REGISTER_v1_0.json"
+
+# ── declared write scope, with its own detector (CLAUDE.md §N.8, on the control plane) ─
+# A scope declaration nothing can falsify is a declaration with no detector behind it.
+# These two lines ARE the declaration, and `_write()` is the detector: it is the only
+# way this module puts bytes on disk, and it refuses any path not named here.
+DECLARED_WRITES = (OUT_MD, OUT_JSON)
+
+
+class ScopeViolation(RuntimeError):
+    """Raised when this module attempts a write outside `DECLARED_WRITES`."""
+
+
+def _write(path: pathlib.Path, text: str) -> pathlib.Path:
+    """The module's ONLY write path. Refuses anything not in `DECLARED_WRITES`.
+
+    Deliberately compares resolved paths, so a relative or symlinked spelling of an
+    undeclared path cannot slip through. Raises BEFORE opening the file, so a refused
+    write leaves nothing partially written and no agent needs git to undo it.
+    """
+    resolved = pathlib.Path(path)
+    allowed = {pathlib.Path(p) for p in DECLARED_WRITES}
+    if resolved not in allowed:
+        raise ScopeViolation(
+            f"UNDECLARED WRITE REFUSED: {resolved}\n"
+            f"This generator's declared write scope is exactly:\n  "
+            + "\n  ".join(str(p) for p in DECLARED_WRITES)
+            + "\nIf a new output is genuinely intended, add it to DECLARED_WRITES and say "
+              "so in the module docstring and in PROVENANCE — the declaration and the "
+              "detector move together, or neither moves. See M0-T62 / SQ-12 / D-44 part 4.")
+    resolved.write_text(text, encoding="utf-8")
+    return resolved
 
 REPAIRABLE = "REPAIRABLE-IN-M0"
 DEFERRED = "DEFERRED-WITH-REASON"
@@ -74,6 +149,18 @@ PROVENANCE = {
         "platform/scripts/governance/asset_catalogue_declared_cowriters.json",
         ".github/workflows/nirmana-m0-guards.yml",
     ],
+    # The list above used to be a claim this module falsified: it named
+    # asset_catalogue_disclosed_residuals.json as read-not-written while
+    # `_write_disclosure_block()` wrote four keys into it. M0-T62 removed the write and
+    # gave the claim a detector, so the list is now enforced rather than asserted.
+    "write_scope_enforced_by": (
+        "DECLARED_WRITES + _write() in this module (an undeclared write raises "
+        "ScopeViolation before any bytes are written), proved by the sandboxed "
+        "regression test 00_ARCHITECTURE/control/test_m0_deferral_register_scope.py — "
+        "which runs this generator against a throwaway copy of the tree, byte-compares "
+        "every file, and includes a MUTATION control that re-injects an undeclared "
+        "write and requires the test to go red. KĀRAKA M0-T62, Standing Queue SQ-12, "
+        "ADHIKĀRIN D-44 part 4."),
 }
 
 # ── the classification bar ───────────────────────────────────────────────────
@@ -1626,13 +1713,28 @@ def _apply_d3842():
 # deferred AND EVERY DEFERRED RULE CARRIES ITS DISCLOSURE ENTRY, itemized and dated, in
 # the same discipline D-10 part 3 granted for the migration-number allowlist."
 #
-# These are DRAFTS. They are written into a NEW, INERT top-level block
-# (`deferred_rule_disclosures`) of platform/scripts/governance/
-# asset_catalogue_disclosed_residuals.json. That block is read by NO code — see finding
-# F-T36-3 — and is deliberately NOT merged into `disclosed_additions`, which `x02()` reads
-# and validates. Nothing here changes any rule's severity, status or exit code, and
-# nothing here turns a rule green: X-02's `does_not_turn_the_rule_green: true` is the
-# pattern and every entry carries it, per D-12 part 4's "never silently green".
+# THESE ARE THE M0-T36 HISTORICAL DRAFTS, AND THIS MODULE NO LONGER WRITES THEM ANYWHERE.
+# Read this before reading anything below it, or the block reads as live and it is not.
+#
+# M0-T36 wrote these into a then-new top-level block (`deferred_rule_disclosures`) of
+# platform/scripts/governance/asset_catalogue_disclosed_residuals.json, deliberately NOT
+# merged into `disclosed_additions`, which `x02()` reads and validates. Two things have
+# happened since:
+#   (1) the block is no longer inert — M0-T40 wired check_asset_catalogue_contract.py to
+#       read it BY RULE ID and compute each rule's `effective_severity` from it, which
+#       closed finding F-T36-3; and
+#   (2) the block is no longer this module's output — M0-T49/T51/T55 wrote D-54's fifteen
+#       AUTHORISED disclosures into the live file on D-57's corrected ground (certified
+#       V-35/V-37) and this draft was never updated to match.
+# So M0-T62 REMOVED THE WRITE (Standing Queue SQ-12, ADHIKĀRIN D-44 part 4): the live
+# file owns its own block; what follows is the record of what M0-T36 drafted, rendered
+# into this register's §10 and written to no guard file. `_report_disclosure_divergence()`
+# reads the live file and PRINTS the difference, so the staleness is visible rather than
+# silently overwriting the authorised entries.
+#
+# Nothing here changes any rule's severity, status or exit code, and nothing here turns a
+# rule green: X-02's `does_not_turn_the_rule_green: true` is the pattern and every entry
+# carries it, per D-12 part 4's "never silently green".
 #
 # Field discipline mirrors X-02's exactly (owner / landed_at / disclosed_via / reason /
 # deferred_to are the five the guard would ERROR on if absent), plus the four this block
@@ -2413,13 +2515,25 @@ def render() -> str:
       "deferred **and every deferred rule carries its disclosure entry**, itemised and dated, in "
       "the discipline D-10 part 3 granted for the migration-number allowlist.")
     A("")
-    A("M0-T36 drafts all of them. They are written into a **new, inert** top-level block "
+    A("M0-T36 drafted all of them and wrote them into a then-new top-level block "
       "`deferred_rule_disclosures` in "
       "`platform/scripts/governance/asset_catalogue_disclosed_residuals.json` — deliberately NOT "
       "merged into `disclosed_additions`, which `x02()` reads and validates. **Nothing is wired "
       "blocking, no severity is changed, no `.github/` file was touched, and no rule is turned "
       "green:** every entry carries `does_not_turn_the_rule_green: true`, per D-12 part 4's "
       "*never silently green*.")
+    A("")
+    A("**WHAT FOLLOWS IS THE M0-T36 HISTORICAL DRAFT, NOT THE LIVE BLOCK — and this generator "
+      "no longer writes it anywhere.** KĀRAKA M0-T49/T51/T55 wrote D-54's fifteen AUTHORISED "
+      "disclosures into the live file on D-57's corrected ground (certified V-35/V-37), and this "
+      "draft was never updated to match. Regenerating this register used to overwrite that live "
+      "block from the draft below — deleting three authorised entries and reverting twelve to "
+      "unauthorised ones — which is the side effect ADHIKĀRIN D-44 part 4 named as the defect "
+      "worth fixing and Standing Queue SQ-12 assigned. **KĀRAKA M0-T62 removed the write.** The "
+      "live file is the source of truth for its own block; this generator READS it and reports "
+      "the divergence on stdout (`_report_disclosure_divergence()`), and its declared write "
+      "scope is now enforced at runtime by `DECLARED_WRITES` + `_write()` rather than asserted "
+      "in prose.")
     A("")
     A("**They are also inert, and that is finding `F-T36-3`** — see §11. Writing them satisfies "
       "D-30 part 4's letter and changes nothing the guard does, because the guard has no code path "
@@ -2443,9 +2557,11 @@ def render() -> str:
     A("")
     A("**A tension this task found and does not resolve.** D-39's characterisation of "
       "`F-T36-3` as still-inert rests on SUTRADHĀRA's mailbox escalation timestamped "
-      "`20260823T082157Z` (from M0-T36's own close-readiness pass). This file's own "
-      "`_write_disclosure_block()` docstring and README text (below, and unchanged by this "
-      "task) assert that a LATER task, M0-T40, closed `F-T36-3` by making the guard read "
+      "`20260823T082157Z` (from M0-T36's own close-readiness pass). This file's own §9 "
+      "header comment — and, until M0-T62 removed the write, the `_write_disclosure_block()` "
+      "docstring and the README text it used to write into the guard file, which is where "
+      "that text now lives and is maintained — assert that a LATER task, M0-T40, closed "
+      "`F-T36-3` by making the guard read "
       "`deferred_rule_disclosures` BY RULE ID and compute `effective_severity` from it — and "
       "M0-T46 verified, read-only, that `check_asset_catalogue_contract.py` does contain "
       "exactly that code path (`effective_severity`, a rule-id-keyed reader). D-39 is timestamped "
@@ -2609,14 +2725,30 @@ def render() -> str:
       "every other detector in `check_asset_catalogue_contract.py` and "
       "`check_asset_source_parity.py` are unchanged. No `.github/` file was touched. No new "
       "entry was added to `DISCLOSURE_DRAFT` (C-11's newly-deferred status has no disclosure "
-      "drafted for it — see `DISCLOSURE_NOT_DRAFTED`), so a re-run of this generator's "
-      "`_write_disclosure_block()` should not change "
-      "`platform/scripts/governance/asset_catalogue_disclosed_residuals.json`'s content; if "
-      "it does, M0-T46 reverted that file to keep this task's footprint inside "
-      "`00_ARCHITECTURE/control/`, per its own scope instruction. No `DECISIONS.jsonl` or "
+      "drafted for it — see `DISCLOSURE_NOT_DRAFTED`). No `DECISIONS.jsonl` or "
       "`state/*.jsonl` line was edited. `ka_gochara_sweep` (charter P1) was not touched. No "
       "UNEXAMINED entry this task did not name was resolved, and nothing here is certified "
       "— that is PARĪKṢAKA's (I16 / H7).")
+    A("")
+    A("**AMENDED 2026-08-23 BY KĀRAKA M0-T62 (Standing Queue SQ-12, on ADHIKĀRIN D-44 part "
+      "4).** The clause that stood at the end of the paragraph above is preserved verbatim "
+      "here because it is the defect's own confession, written by the agent that hit it: "
+      "«so a re-run of this generator's `_write_disclosure_block()` should not change "
+      "`platform/scripts/governance/asset_catalogue_disclosed_residuals.json`'s content; if "
+      "it does, M0-T46 reverted that file to keep this task's footprint inside "
+      "`00_ARCHITECTURE/control/`, per its own scope instruction.» That sentence describes "
+      "an agent planning to reach for `git checkout --` — the command the standing restore "
+      "rule forbids — to undo a write its own generator performed outside its declared "
+      "scope. It is removed from the live text because it is now false in both halves: "
+      "`_write_disclosure_block()` no longer exists, and a re-run CANNOT change that file. "
+      "The write was removed rather than re-declared, on measured evidence that nothing "
+      "depends on it: the only reader of that file is `check_asset_catalogue_contract.py`, "
+      "which needs the AUTHORISED content M0-T49/T51/T55 wrote there under D-54/D-57 "
+      "(certified V-35/V-37), and the live file contains zero references to this module. "
+      "Measured divergence at the moment of the fix — live block 19 entries vs "
+      "`DISCLOSURE_DRAFT` 16, three live entries absent from the draft, twelve of sixteen "
+      "differing, all four `*_not_drafted` values differing — means a run would have "
+      "REVERTED authorised governance work while printing a clean-looking success line.")
     A("")
 
     return "\n".join(L) + "\n"
@@ -2669,61 +2801,82 @@ def payload() -> dict:
         "remeasurement": REMEASUREMENT,
     }
 
+# READ ONLY. Deliberately NOT in `DECLARED_WRITES`, and `_write()` would refuse it if a
+# future edit tried. See the module docstring for why the write that used to target this
+# path was removed (M0-T62, Standing Queue SQ-12, ADHIKĀRIN D-44 part 4).
 RESIDUALS_JSON = ROOT / "platform/scripts/governance/asset_catalogue_disclosed_residuals.json"
 
 
-def _write_disclosure_block() -> str:
-    """Write the DRAFT `deferred_rule_disclosures` block into the guard's residuals file.
+def _report_disclosure_divergence() -> str:
+    """READ-ONLY. Report how the historical `DISCLOSURE_DRAFT` differs from the live block.
 
-    PRESERVES every other key byte-for-byte in value (`disclosed_additions`,
-    `zero_consumer_dispositions`, `_README`, …). Adds ONE new top-level key that no code
-    reads — see finding F-T36-3. This does NOT wire anything blocking, does NOT change a
-    severity, and does NOT turn a rule green. Generated, never hand-edited (plan §16).
+    THIS FUNCTION WRITES NOTHING. It replaced `_write_disclosure_block()`, which wrote four
+    `deferred_rule_disclosures*` keys into
+    platform/scripts/governance/asset_catalogue_disclosed_residuals.json as a side effect,
+    outside this module's declared scope — the defect ADHIKĀRIN D-44 part 4 named and
+    Standing Queue SQ-12 assigned to KĀRAKA M0-T62.
+
+    The live block is owned by the live file. It carries D-54's fifteen AUTHORISED
+    disclosures on D-57's corrected ground, written by M0-T49/T51/T55 and certified across
+    V-35/V-37. `DISCLOSURE_DRAFT` is the M0-T36 historical draft and is NOT authorised —
+    every entry in it carries `gating_effect: "none"` and no `authorised_by`. Overwriting
+    the former from the latter reverts authorised governance work, which is exactly what a
+    run of this module used to do.
+
+    So the divergence is REPORTED, not reconciled. Reconciling it in either direction is a
+    charter G-power (catalogue-gate disposition) and belongs to ADHIKĀRIN, not to this
+    generator and not to a KĀRAKA.
+
+    Returns a one-paragraph note for stdout. Returns a plainly-stated note instead of
+    raising if the live file is missing or unreadable: this module's outputs do not depend
+    on that file, and a report generator should not fail on a file it merely observes.
     """
-    doc = json.loads(RESIDUALS_JSON.read_text(encoding="utf-8"))
-    before = set(doc)
-    doc["deferred_rule_disclosures_README"] = (
-        "RULE-KEYED DISCLOSURES, READ AND VALIDATED BY THE GUARD, AND DEMOTING NOTHING. Drafted by "
-        "KĀRAKA M0-T36 (2026-08-23) to satisfy ADHIKĀRIN ruling D-30 part 4, which amends D-24 "
-        "part 3 so that the CI blocking flip additionally requires every DEFERRED rule to carry its "
-        "disclosure entry, itemised and dated, in the discipline D-10 part 3 granted for "
-        "migration_number_legacy_duplicates.json's `disclosed_additions`. M0-T36 SHIPPED THEM INERT "
-        "and said so: finding F-T36-3 recorded that `disclosed_additions` is asset_id-keyed and read "
-        "only in x02(), and that severity was a hardcoded constant in the RULES table — so a "
-        "disclosure could be written, look correct, and change no outcome, leaving D-30 part 4 "
-        "satisfiable on paper and inert in fact. M0-T40 CLOSED THAT: "
-        "check_asset_catalogue_contract.py now loads this block BY RULE ID, validates every entry "
-        "(an incomplete disclosure raises a guard error, as x02's does), attaches it to that rule's "
-        "result, and computes the rule's `effective_severity` FROM the disclosures rather than from "
-        "a constant. FOUR THINGS THAT REMAIN TRUE, and they are the reason this is not a way to "
-        "switch a gate off. (1) A DISCLOSURE NEVER TURNS A RULE GREEN — the rule still runs, still "
-        "reports `fail`, and still lists every violation; every entry carries "
-        "`does_not_turn_the_rule_green: true` per D-12 part 4's 'never silently green'. What a "
-        "disclosure can buy is that the failure does not GATE. (2) A DISCLOSURE NEVER SILENCES A "
-        "RULE WHOLESALE — it must itemise `covers`, and the demotion holds only while every current "
-        "violation is inside that list; one violation it does not name and the rule gates again at "
-        "its declared severity. The backlog can be paid down, never silently grown. (3) A KĀRAKA "
-        "CANNOT DEMOTE A GATE BY WRITING A FILE — a demotion takes effect only when the entry names "
-        "an `authorised_by` decision id that actually exists in state/DECISIONS.jsonl under "
-        "ADHIKĀRIN's name, because catalogue-gate disposition is a charter G-power. (4) EVERY ENTRY "
-        "IN THIS BLOCK TODAY CARRIES `gating_effect: \"none\"` AND NO `authorised_by`, so NOT ONE "
-        "BLOCKING GATE IS DEMOTED: measured before and after the M0-T40 change, `--live` returns the "
-        "identical 15 BLOCKING failures. The guard now REPORTS D-30 part 4's condition mechanically "
-        "(`failing_rules_without_disclosure`, `disclosures_recorded_without_effect`) instead of "
-        "leaving it to be asserted in prose. Kept SEPARATE from `disclosed_additions` deliberately: "
-        "that block is asset_id-keyed and validated by x02(), and merging rule-keyed entries into it "
-        "would change what a live guard function iterates. Source of truth: "
-        "00_ARCHITECTURE/control/m0_deferral_register.py (DISCLOSURE_DRAFT); regenerate, do not "
-        "hand-edit.")
-    doc["deferred_rule_disclosures_count"] = len(DISCLOSURE_DRAFT)
-    doc["deferred_rule_disclosures_not_drafted"] = DISCLOSURE_NOT_DRAFTED
-    doc["deferred_rule_disclosures"] = DISCLOSURE_DRAFT
-    RESIDUALS_JSON.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
-                              encoding="utf-8")
-    added = sorted(set(doc) - before)
-    return (f"{RESIDUALS_JSON.relative_to(ROOT)}: +{len(DISCLOSURE_DRAFT)} DRAFT disclosures in "
-            f"new inert key(s) {added}; disclosed_additions and zero_consumer_dispositions "
-            f"untouched")
+    try:
+        doc = json.loads(RESIDUALS_JSON.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (f"{RESIDUALS_JSON.relative_to(ROOT)}: NOT READ ({exc.__class__.__name__}) — "
+                "divergence not computed. Nothing was written; this generator only observes "
+                "that file.")
+    live = doc.get("deferred_rule_disclosures") or {}
+    only_live = sorted(set(live) - set(DISCLOSURE_DRAFT))
+    only_draft = sorted(set(DISCLOSURE_DRAFT) - set(live))
+    differing = sorted(k for k in DISCLOSURE_DRAFT if k in live and DISCLOSURE_DRAFT[k] != live[k])
+    identical = sorted(k for k in DISCLOSURE_DRAFT if k in live and DISCLOSURE_DRAFT[k] == live[k])
+    nd_live = doc.get("deferred_rule_disclosures_not_drafted") or {}
+    nd_differ = sorted(k for k in DISCLOSURE_NOT_DRAFTED
+                       if DISCLOSURE_NOT_DRAFTED[k] != nd_live.get(k))
+    return (
+        f"{RESIDUALS_JSON.relative_to(ROOT)}: READ, NOT WRITTEN (declared scope enforced by "
+        f"_write(); see DECLARED_WRITES). live deferred_rule_disclosures={len(live)} vs "
+        f"DISCLOSURE_DRAFT (M0-T36 historical)={len(DISCLOSURE_DRAFT)}; "
+        f"only-live={only_live or 'none'}; only-draft={only_draft or 'none'}; "
+        f"differing={len(differing)} {differing or ''}; identical={len(identical)}; "
+        f"not_drafted values differing={len(nd_differ)} {nd_differ or ''}. "
+        "THE LIVE FILE IS AUTHORITATIVE (D-54 authorisations on D-57's ground, M0-T49/T51/T55, "
+        "certified V-35/V-37). This generator does not reconcile the difference in either "
+        "direction — that is a charter G-power. Reported so the staleness is visible instead "
+        "of being silently overwritten.")
+
+
+def _DELETED_write_disclosure_block__M0_T62() -> str:
+    """DELETED BY M0-T62 — kept only as this docstring, so the removal is legible in place.
+
+    It used to load the residuals JSON, add/overwrite `deferred_rule_disclosures_README`,
+    `deferred_rule_disclosures_count`, `deferred_rule_disclosures_not_drafted` and
+    `deferred_rule_disclosures`, and write the file back. It claimed to preserve every
+    other key byte-for-byte, and it did — but the four keys it owned had long since stopped
+    being its own output, so "preserving the others" was never the safety property that
+    mattered. See the module docstring for the measured damage a run would have done.
+    """
+    raise NotImplementedError(
+        "removed by M0-T62 (SQ-12 / D-44 part 4): this generator does not write "
+        "platform/scripts/governance/asset_catalogue_disclosed_residuals.json")
+
+
+# (the former body of `_write_disclosure_block()` was deleted here by M0-T62;
+#  its four `doc[...] = ...` assignments and its `RESIDUALS_JSON.write_text()`
+#  are gone, not commented out — a commented-out write is a landmine, and the
+#  point of SQ-12 is that no agent should need git to undo this again.)
 
 
 if __name__ == "__main__":
@@ -2759,9 +2912,10 @@ if __name__ == "__main__":
         history.append(entry)
     rec["_meta"]["reading_history"] = history
 
-    OUT_MD.write_text(render(), encoding="utf-8")
-    OUT_JSON.write_text(json.dumps(rec, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    note = _write_disclosure_block()
+    # Every write goes through `_write()`, which refuses any path outside DECLARED_WRITES.
+    _write(OUT_MD, render())
+    _write(OUT_JSON, json.dumps(rec, indent=1, ensure_ascii=False) + "\n")
+    note = _report_disclosure_divergence()   # READ-ONLY — writes nothing (M0-T62 / SQ-12)
     t = rec["tally"]["total"]
     print(f"wrote {OUT_MD.relative_to(ROOT)} and {OUT_JSON.relative_to(ROOT)}")
     print("tally: " + " · ".join(f"{b}={t[b]}" for b in BUCKETS))
