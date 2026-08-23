@@ -2069,12 +2069,45 @@ def tally(entries):
         t[e["bucket"]] += 1
     return t
 
+# ── the ORIGIN tally, DERIVED rather than remembered ─────────────────────────
+# `_apply_d30()` and `_apply_d3842()` each stamp, on the entry itself, the bucket it
+# carried BEFORE that wave moved it (`prior_bucket_m0t31`, `prior_bucket_v1_1`) and the
+# ruling that moved it (`reclassified_by`). That per-entry provenance is enough to
+# COMPUTE where each entry started — so §0's summary can state the movement without
+# restating a figure or a ruling list that the next ADHIKĀRIN ruling would falsify.
+# (KĀRAKA M0-T63, Standing Queue SQ-14: the sentence it replaced read "after D-30 —
+#  down from 11 in v1.0", hardcoded prose concatenated to a live f-string, which four
+#  later rulings had already made a mis-attribution. A fresher hardcoded attribution
+#  would only reset the same clock — CLAUDE.md §C item 14's precedent, and M0-T56's.)
+def origin_bucket(e):
+    """The bucket this entry carried at v1.0 (M0-T31), read from its own provenance.
+
+    `prior_bucket_m0t31` is checked first because it is the earlier of the two stamps:
+    an entry moved by both waves would carry both. An entry no wave touched carries
+    neither, and its current bucket is also its original one.
+    """
+    for k in ("prior_bucket_m0t31", "prior_bucket_v1_1"):
+        if k in e:
+            return e[k]
+    return e["bucket"]
+
+
+def origin_tally(entries):
+    t = {b: 0 for b in BUCKETS}
+    for e in entries:
+        t[origin_bucket(e)] += 1
+    return t
+
 def esc(x):
     return str(x).replace("|", "\\|").replace("\n", "<br>")
 
 def render() -> str:
     ct, rt = tally(CRITERIA), tally(RULES)
     tot = {b: ct[b] + rt[b] for b in BUCKETS}
+    oc, ort = origin_tally(CRITERIA), origin_tally(RULES)
+    orig = {b: oc[b] + ort[b] for b in BUCKETS}
+    classified_since_v1_0 = sum(1 for e in CRITERIA + RULES
+                                if origin_bucket(e) == UNEXAMINED and e["bucket"] != UNEXAMINED)
     L = []
     A = L.append
     A("---")
@@ -2141,12 +2174,26 @@ def render() -> str:
         A(f"| **{b}** | {ct[b]} | {rt[b]} | **{tot[b]}** | {mean[b]} |")
     A(f"| | **{len(CRITERIA)}** | **{len(RULES)}** | **{len(CRITERIA)+len(RULES)}** | |")
     A("")
-    A(f"**{tot[UNEXAMINED]} of {len(CRITERIA)+len(RULES)} entries remain UNEXAMINED** after "
-      "D-30 — down from 11 in v1.0. The named-field test, which v1.0 named as the largest single "
-      "lever and D-30 part 1 then adopted as a rule, has been applied: it moved five rules to "
+    A(f"**{tot[UNEXAMINED]} of {len(CRITERIA)+len(RULES)} entries remain UNEXAMINED** — down "
+      f"from {orig[UNEXAMINED]} at v1.0's first classification, {classified_since_v1_0} of those "
+      "having since been classified. **Every number in that sentence is computed at generation "
+      "time**: the current tally from the entries below, the v1.0 figure from the prior bucket "
+      "each moved entry records on itself. Neither is typed in, so neither can drift from the "
+      "classifications it describes. **And no ruling is named in it, deliberately.** Which "
+      "ruling moved which entry is recorded ON THAT ENTRY — `reclassified_by`, sitting above "
+      "the preserved v1.0/v1.1 classification it replaced — and the wave-level accounts, with "
+      "their before/after tallies, are §9 and §12. A ruling list in this summary would be "
+      "accurate only until the next ruling lands; a pointer to the entry that carries its own "
+      "provenance stays accurate. (This paragraph previously read *\u201cafter D-30 \u2014 down from "
+      "11 in v1.0\u201d*: hardcoded prose concatenated to a live count, correct when written and a "
+      "mis-attribution by the time four later rulings had moved entries it did not name. "
+      "KĀRAKA M0-T63, Standing Queue SQ-14.)")
+    A("")
+    A("D-30's named-field test — which v1.0 named as the largest single lever and D-30 part 1 "
+      "then adopted as a rule — was applied at v1.1: it moved five rules to "
       "DEFERRED-WITH-REASON and it REACHED three further entries nobody expected it to reach. "
-      "§9 is the application; §9.2 is the count reconciliation, which does not come out where the "
-      "ledger says it does.")
+      "§9 is that application and §9.2 is its count reconciliation, which does not come out "
+      "where the ledger says it does; §12 is the later wave.")
     A("")
     A("**The one fact that stops the flip even after every ruling lands** is mechanical, and "
       "v1.1 finds it is worse than v1.0 reported. v1.0: of ten DEFERRED rules none carried a "

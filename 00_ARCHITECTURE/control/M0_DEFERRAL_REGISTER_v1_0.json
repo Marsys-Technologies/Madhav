@@ -5,7 +5,7 @@
   "task": "M0-T46",
   "v1_0_task": "M0-T31",
   "v1_1_task": "M0-T36",
-  "generated": "2026-08-23T12:25:28.883609+00:00",
+  "generated": "2026-08-23T16:02:17.069273+00:00",
   "generator": "00_ARCHITECTURE/control/m0_deferral_register.py",
   "satisfies": "DECISIONS.jsonl D-24 part 3 as amended by D-30 part 2(a)+part 4, then D-39 part 1 (withdrawn) and D-40 part 1 (final)",
   "certified_by": null,
@@ -58,7 +58,8 @@
     "platform/scripts/governance/asset_source_parity_allowlist.json",
     "platform/scripts/governance/asset_catalogue_declared_cowriters.json",
     ".github/workflows/nirmana-m0-guards.yml"
-   ]
+   ],
+   "write_scope_enforced_by": "DECLARED_WRITES + _write() in this module (an undeclared write raises ScopeViolation before any bytes are written), proved by the sandboxed regression test 00_ARCHITECTURE/control/test_m0_deferral_register_scope.py — which runs this generator against a throwaway copy of the tree, byte-compares every file, and includes a MUTATION control that re-injects an undeclared write and requires the test to go red. KĀRAKA M0-T62, Standing Queue SQ-12, ADHIKĀRIN D-44 part 4."
   },
   "reason_kinds": {
    "ruling": "a line of state/DECISIONS.jsonl, cited by id and part",
@@ -134,7 +135,7 @@
    {
     "label": "reading 3 — M0-T46 (D-38/D-39/D-40/D-41/D-42 applied)",
     "task": "M0-T46",
-    "generated": "2026-08-23T12:25:28.883609+00:00",
+    "generated": "2026-08-23T16:02:17.069273+00:00",
     "version": "1.2",
     "tally": {
      "criteria": {
@@ -161,7 +162,7 @@
      "n_criteria": 12,
      "n_rules": 20
     },
-    "regenerated_count": 3
+    "regenerated_count": 4
    }
   ]
  },
