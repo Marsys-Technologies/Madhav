@@ -1,7 +1,7 @@
 ---
 artifact: P3F_FLIP_ROLLBACK_PIN
 canonical_id: P3F_FLIP_ROLLBACK_PIN
-version: 1.1
+version: 1.2
 status: PRE-POSITIONED — the flip (P3-F) has NOT executed. This document is a ready,
   syntax-verified rollback pin authored ahead of the flip per charter §4 Wave P3-4
   precondition 6 ("rollback pin committed BEFORE the flip commit"). Nothing in this
@@ -13,8 +13,22 @@ role: >
   hard-never on credential operations). Read this immediately before the flip merges,
   re-verify the pinned revision fresh (do not trust tonight's snapshot), then treat
   §3 as copy-paste.
-supersedes: none — v1.1 corrects v1.0 in place; same document.
+supersedes: none — v1.1 corrects v1.0 in place; v1.2 corrects v1.1 in place; same document.
 changelog:
+  - "1.2 (2026-08-23, cold completeness audit fix, BUILDER lane audit-fixes) — §4's
+    `MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED` table cell asserted, in the present tense,
+    that the flag was **absent** and that this 'confirms precondition 3 … has not run
+    yet — consistent with tonight's park.' That became false the same run: D-016
+    (2026-08-22T22:45–23:00Z) enabled the flag in production per native ruling §0.3, and
+    §4.1 immediately below already documents this — the flag now reads `true` on every
+    revision verified live afterward, including the one serving production. The v1.1
+    review-fix pass corrected §4.1 and §5.2 for this drift but missed this one cell in
+    §4 itself, which kept asserting the pre-drift precondition status as current fact.
+    Fixed: the cell now states the live value, that precondition 3 (limits enablement)
+    is **SATISFIED**, and points to §4.1 for the verified detail — §4's snapshot framing
+    (captured live tonight, illustrative only, re-read before the flip) is unchanged, and
+    no other content in §4/§4.1/§5 was touched. No production action taken; read-only
+    correction against the same D-016/F-N10 evidence §4.1 already cites."
   - "1.1 (2026-08-22, PARIPRASHNA-P3-P4-OVERNIGHT session, BUILDER lane p3f-pin,
     review-fix pass against a SURVIVES-WITH-FINDINGS verdict on PR #1503) — three
     blocking corrections, all independently re-verified live (read-only `gcloud`) before
@@ -337,7 +351,7 @@ at **2026-08-22T22:38:41Z** (UTC, `date -u` at the moment of the read):
 | `status.traffic` | `[{revisionName: <read fresh — see §3>, percent: 100, latestRevision: true}]` |
 | `status.url` | `https://amjis-web-qm256lasva-el.a.run.app` |
 | `MARSYS_FLAG_PARIPRASHNA_ENABLED` (live env, current revision) | `true` |
-| `MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED` (live env, current revision) | **absent** (confirms precondition 3, limits enablement, has not run yet — consistent with tonight's park) |
+| `MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED` (live env, current revision) | **absent at this table's own capture time (2026-08-22T22:38:41Z).** This is now a STALE precondition-status claim, not a live one — corrected in the v1.2 pass: limits enablement executed later the same run (D-016, 2026-08-22T22:45–23:00Z, native ruling §0.3) and the flag now reads `true` on every revision verified live afterward, including the one serving production. **Precondition 3 (limits enablement) is SATISFIED, not pending.** See §4.1 immediately below for the live-verified revision table and why this matters for a PRIMARY rollback. |
 
 **The literal revision name is deliberately not printed in this table**, per a
 review-fix pass correction: it originally sat here, bordered and copy-paste-ready,
