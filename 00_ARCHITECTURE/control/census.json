@@ -1,9 +1,9 @@
 {
  "_meta": {
   "task": "M0-T1",
-  "generated_at": "2026-08-23T04:17:06Z",
+  "generated_at": "2026-08-23T09:55:22Z",
   "generator": "00_ARCHITECTURE/control/census.py",
-  "git_head": "f2fab2846ac37e078cbc5859dc109338c04e28b4",
+  "git_head": "a9278d1ec4723f074f4610407ff19b87a129de37",
   "git_branch": "campaign/nirmana-autonomous",
   "database_access": "READ-ONLY (SELECT only; SET statement_timeout='45s'; autocommit)",
   "credential_handling": "DATABASE_URL read from platform/.env.local; never emitted",
@@ -870,8 +870,7 @@
      "bo_vargottama_dhana"
     ],
     "layers": [
-     "L2",
-     "bodha"
+     "L2"
     ],
     "with_production_writer": [
      "bo_arudha",
@@ -929,7 +928,6 @@
      "ga_sensitive_degree"
     ],
     "layers": [
-     "1",
      "L1"
     ],
     "with_production_writer": [
@@ -1044,7 +1042,7 @@
   ],
   "prefix_conformance": {
    "checked": 128,
-   "fully_conforming": 107,
+   "fully_conforming": 127,
    "unrecognised_prefix": [
     {
      "asset_id": "lel_events",
@@ -1054,116 +1052,8 @@
     }
    ],
    "layer_contradiction": [],
-   "layer_index_format": [
-    {
-     "asset_id": "bg_sign_medical",
-     "layer_index": "0",
-     "layer_index_expected": "L0",
-     "layer": "brahmagyan"
-    },
-    {
-     "asset_id": "bo_pratijna",
-     "layer_index": "2",
-     "layer_index_expected": "L2",
-     "layer": "bodha"
-    },
-    {
-     "asset_id": "ga_ayurdaya",
-     "layer_index": "1",
-     "layer_index_expected": "L1",
-     "layer": "ganita"
-    },
-    {
-     "asset_id": "ga_sensitive_degree",
-     "layer_index": "1",
-     "layer_index_expected": "L1",
-     "layer": "ganita"
-    },
-    {
-     "asset_id": "ka_avadhi",
-     "layer_index": "3",
-     "layer_index_expected": "L3",
-     "layer": "kala"
-    },
-    {
-     "asset_id": "ka_taranga",
-     "layer_index": "3",
-     "layer_index_expected": "L3",
-     "layer": "kala"
-    }
-   ],
-   "layer_index_null": [
-    {
-     "asset_id": "bg_vidhi_floors",
-     "layer": "brahmagyan",
-     "layer_index_expected": "L0"
-    },
-    {
-     "asset_id": "bg_vidhi_primitives",
-     "layer": "brahmagyan",
-     "layer_index_expected": "L0"
-    },
-    {
-     "asset_id": "bo_arudha",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_cdlm_summary",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_cgm_motifs",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_cgm_paths",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_chart_gestalt",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_laksana_rerank",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_nakshatra_semantic",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_special_lagna",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_sudarshana",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_vargottama_dhana",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "bo_yantra_mechanism",
-     "layer": "bodha",
-     "layer_index_expected": "L2"
-    },
-    {
-     "asset_id": "ga_vichara",
-     "layer": "ganita",
-     "layer_index_expected": "L1"
-    }
-   ],
+   "layer_index_format": [],
+   "layer_index_null": [],
    "prefix_distribution": {
     "bg": 40,
     "bo": 22,
@@ -1187,33 +1077,23 @@
     "RETIRED": 1
    },
    "by_layer": {
-    "0": {
-     "CURRENT": 1
-    },
-    "1": {
-     "CURRENT": 2
-    },
-    "2": {
-     "CURRENT": 1
-    },
-    "3": {
-     "CURRENT": 2
-    },
     "?": {
-     "CURRENT": 2,
-     "DRAFT": 13
+     "DRAFT": 1
     },
     "L0": {
-     "CURRENT": 37
+     "CURRENT": 38,
+     "DRAFT": 2
     },
     "L1": {
-     "CURRENT": 16
+     "CURRENT": 18,
+     "DRAFT": 1
     },
     "L2": {
-     "CURRENT": 10
+     "CURRENT": 13,
+     "DRAFT": 9
     },
     "L3": {
-     "CURRENT": 9,
+     "CURRENT": 11,
      "DRAFT": 11,
      "RETIRED": 1
     },
@@ -1227,7 +1107,7 @@
    "draft_with_serving_signal": [
     {
      "asset_id": "bg_vidhi_floors",
-     "layer_index": null,
+     "layer_index": "L0",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1236,7 +1116,7 @@
     },
     {
      "asset_id": "bg_vidhi_primitives",
-     "layer_index": null,
+     "layer_index": "L0",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1245,7 +1125,7 @@
     },
     {
      "asset_id": "bo_arudha",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1254,7 +1134,7 @@
     },
     {
      "asset_id": "bo_cdlm_summary",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1263,7 +1143,7 @@
     },
     {
      "asset_id": "bo_chart_gestalt",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1272,7 +1152,7 @@
     },
     {
      "asset_id": "bo_laksana_rerank",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1281,7 +1161,7 @@
     },
     {
      "asset_id": "bo_nakshatra_semantic",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1290,7 +1170,7 @@
     },
     {
      "asset_id": "bo_special_lagna",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1299,7 +1179,7 @@
     },
     {
      "asset_id": "bo_sudarshana",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1308,7 +1188,7 @@
     },
     {
      "asset_id": "bo_vargottama_dhana",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1317,7 +1197,7 @@
     },
     {
      "asset_id": "bo_yantra_mechanism",
-     "layer_index": null,
+     "layer_index": "L2",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1326,7 +1206,7 @@
     },
     {
      "asset_id": "ga_vichara",
-     "layer_index": null,
+     "layer_index": "L1",
      "asset_kind": "data",
      "serving_signals": [
       "is_active=true",
@@ -1759,7 +1639,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     550
+     562
     ]
    },
    "migrations": null,
@@ -1812,7 +1692,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 10,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -1837,7 +1717,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     714
+     726
     ]
    },
    "migrations": null,
@@ -1915,7 +1795,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     514
+     526
     ]
    },
    "migrations": null,
@@ -1996,7 +1876,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     373
+     385
     ]
    },
    "migrations": {
@@ -2083,7 +1963,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     305
+     317
     ]
    },
    "migrations": null,
@@ -2163,7 +2043,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     339
+     351
     ]
    },
    "migrations": {
@@ -2248,7 +2128,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     696
+     708
     ]
    },
    "migrations": {
@@ -2335,7 +2215,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     356
+     368
     ]
    },
    "migrations": null,
@@ -2413,7 +2293,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     181
+     193
     ]
    },
    "migrations": null,
@@ -2461,7 +2341,7 @@
     "scope": "global",
     "is_active": true,
     "asset_type": "service",
-    "asset_kind": "data",
+    "asset_kind": "service",
     "catalog_status": "CURRENT",
     "has_writer": false,
     "has_substeps": false,
@@ -2494,7 +2374,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     437
+     449
     ]
    },
    "migrations": null,
@@ -2547,7 +2427,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -2572,7 +2452,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     732
+     744
     ]
    },
    "migrations": null,
@@ -2625,7 +2505,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -2650,7 +2530,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     492
+     504
     ]
    },
    "migrations": null,
@@ -2728,7 +2608,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     993
+     1005
     ]
    },
    "migrations": null,
@@ -2859,7 +2739,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     869
+     881
     ]
    },
    "migrations": null,
@@ -2912,7 +2792,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -2937,7 +2817,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     892
+     904
     ]
    },
    "migrations": null,
@@ -3015,7 +2895,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     660
+     672
     ]
    },
    "migrations": {
@@ -3074,7 +2954,7 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
     "estimated_seconds": null,
     "integrity_check_sql": null,
@@ -3101,7 +2981,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     816
+     828
     ]
    },
    "migrations": null,
@@ -3179,7 +3059,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     475
+     487
     ]
    },
    "migrations": {
@@ -3264,7 +3144,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     678
+     690
     ]
    },
    "migrations": {
@@ -3350,7 +3230,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     232
+     244
     ]
    },
    "migrations": {
@@ -3405,7 +3285,7 @@
     "scope": "global",
     "is_active": true,
     "asset_type": "service",
-    "asset_kind": "data",
+    "asset_kind": "service",
     "catalog_status": "CURRENT",
     "has_writer": false,
     "has_substeps": false,
@@ -3448,7 +3328,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     390
+     402
     ]
    },
    "migrations": null,
@@ -3526,7 +3406,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     835
+     847
     ]
    },
    "migrations": null,
@@ -3604,7 +3484,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     960
+     972
     ]
    },
    "migrations": null,
@@ -3682,7 +3562,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     588
+     600
     ]
    },
    "migrations": {
@@ -3788,7 +3668,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     198
+     210
     ]
    },
    "migrations": {
@@ -3874,7 +3754,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     283
+     295
     ]
    },
    "migrations": null,
@@ -3954,7 +3834,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     266
+     278
     ]
    },
    "migrations": {
@@ -4028,7 +3908,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     916
+     928
     ]
    },
    "migrations": null,
@@ -4063,7 +3943,7 @@
    "registry": {
     "asset_id": "bg_sign_medical",
     "layer": "brahmagyan",
-    "layer_index": "0",
+    "layer_index": "L0",
     "layer_name": "Brahmagyan",
     "sort_order": 0,
     "sanskrit_name": "K\u0101lapuru\u1e63a A\u1e45ga",
@@ -4106,7 +3986,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     162
+     174
     ]
    },
    "migrations": null,
@@ -4184,7 +4064,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     797
+     809
     ]
    },
    "migrations": null,
@@ -4264,7 +4144,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     249
+     261
     ]
    },
    "migrations": null,
@@ -4342,7 +4222,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     215
+     227
     ]
    },
    "migrations": {
@@ -4427,7 +4307,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     624
+     636
     ]
    },
    "migrations": {
@@ -4517,7 +4397,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     642
+     654
     ]
    },
    "migrations": {
@@ -4609,7 +4489,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     606
+     618
     ]
    },
    "migrations": {
@@ -4698,7 +4578,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     938
+     950
     ]
    },
    "migrations": null,
@@ -4733,8 +4613,8 @@
    "registry": {
     "asset_id": "bg_vidhi_floors",
     "layer": "brahmagyan",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L0",
+    "layer_name": "Brahmagyan",
     "sort_order": 69,
     "sanskrit_name": "vidhi_marga",
     "english_name": "Vidhi Registry \u2014 Intent Floors",
@@ -4753,7 +4633,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -4778,7 +4658,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     771
+     783
     ]
    },
    "migrations": {
@@ -4823,8 +4703,8 @@
    "registry": {
     "asset_id": "bg_vidhi_primitives",
     "layer": "brahmagyan",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L0",
+    "layer_name": "Brahmagyan",
     "sort_order": 68,
     "sanskrit_name": "vidhi_pramana",
     "english_name": "Vidhi Registry \u2014 Primitives",
@@ -4841,7 +4721,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -4866,7 +4746,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     751
+     763
     ]
    },
    "migrations": {
@@ -4956,7 +4836,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     322
+     334
     ]
    },
    "migrations": null,
@@ -5016,7 +4896,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 32,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed floor 5,770 (1,411 discoveries + 4,359 anomalies) per L2 build (chart 482012f1). Per migration 326.",
     "expected_volume_formula": null,
@@ -5041,7 +4921,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1765
+     1777
     ]
    },
    "migrations": {
@@ -5087,8 +4967,8 @@
    "registry": {
     "asset_id": "bo_arudha",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 21,
     "sanskrit_name": "arudha_pada",
     "english_name": "Jaimini Arudha (Perception Layer)",
@@ -5108,7 +4988,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5133,7 +5013,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1845
+     1857
     ]
    },
    "migrations": {
@@ -5195,7 +5075,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 16,
     "integrity_check_sql": null,
     "volume_explanation": "One node per signal \u2014 exact 1:1 with Lak\u1e63a\u1e47a count; sealed at 140 per L2 build (chart 482012f1).",
     "expected_volume_formula": "ACTUAL(bo_laksana)",
@@ -5220,7 +5100,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1551
+     1563
     ]
    },
    "migrations": {
@@ -5265,8 +5145,8 @@
    "registry": {
     "asset_id": "bo_cdlm_summary",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 8,
     "sanskrit_name": "bo_cdlm_summary",
     "english_name": "CDLM Summary",
@@ -5285,7 +5165,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5310,7 +5190,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1610
+     1622
     ]
    },
    "migrations": {
@@ -5355,8 +5235,8 @@
    "registry": {
     "asset_id": "bo_cgm_motifs",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 4,
     "sanskrit_name": "bo_cgm_motifs",
     "english_name": "CGM Motifs",
@@ -5376,7 +5256,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5401,7 +5281,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1628
+     1640
     ]
    },
    "migrations": {
@@ -5447,8 +5327,8 @@
    "registry": {
     "asset_id": "bo_cgm_paths",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 5,
     "sanskrit_name": "bo_cgm_paths",
     "english_name": "CGM Paths",
@@ -5468,7 +5348,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5493,7 +5373,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1646
+     1658
     ]
    },
    "migrations": {
@@ -5539,8 +5419,8 @@
    "registry": {
     "asset_id": "bo_chart_gestalt",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 11,
     "sanskrit_name": "bo_chart_gestalt",
     "english_name": "Chart Gestalt",
@@ -5563,7 +5443,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5588,7 +5468,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1710
+     1722
     ]
    },
    "migrations": {
@@ -5655,7 +5535,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 90,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count 60 per L2 build (chart 482012f1). Per migration 326.",
     "expected_volume_formula": null,
@@ -5680,7 +5560,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1747
+     1759
     ]
    },
    "migrations": {
@@ -5749,7 +5629,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 19,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count \u2265300 (edges + paths) per L2 build (chart 482012f1). Sub-graphs, motifs, topology rows excluded per migration 326 narrowing.",
     "expected_volume_formula": "ACTUAL(bo_laksana) * EDGE_DENSITY",
@@ -5774,7 +5654,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1512
+     1524
     ]
    },
    "migrations": {
@@ -5848,9 +5728,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 193,
     "integrity_check_sql": null,
     "volume_explanation": "Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).",
     "expected_volume_formula": null,
@@ -5875,7 +5755,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1494
+     1506
     ]
    },
    "migrations": {
@@ -5922,8 +5802,8 @@
    "registry": {
     "asset_id": "bo_laksana_rerank",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 21,
     "sanskrit_name": "laksana_punaranka",
     "english_name": "Lak\u1e63a\u1e47a Re-rank (post-CGM)",
@@ -5942,7 +5822,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 398,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -5967,7 +5847,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1865
+     1877
     ]
    },
    "migrations": {
@@ -6010,8 +5890,8 @@
    "registry": {
     "asset_id": "bo_nakshatra_semantic",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 20,
     "sanskrit_name": "nakshatra_tattva",
     "english_name": "Nakshatra-Semantic Profile",
@@ -6031,7 +5911,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6056,7 +5936,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1805
+     1817
     ]
    },
    "migrations": {
@@ -6125,7 +6005,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 5,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count 1 per L2 build (chart 482012f1). DAG terminal asset \u2014 one scorecard row per chart.",
     "expected_volume_formula": null,
@@ -6150,7 +6030,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1728
+     1740
     ]
    },
    "migrations": {
@@ -6198,7 +6078,7 @@
    "registry": {
     "asset_id": "bo_pratijna",
     "layer": "bodha",
-    "layer_index": "2",
+    "layer_index": "L2",
     "layer_name": "Bodha",
     "sort_order": 18,
     "sanskrit_name": "Pratij\u00f1\u0101",
@@ -6219,7 +6099,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 16,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6244,7 +6124,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1533
+     1545
     ]
    },
    "migrations": null,
@@ -6297,9 +6177,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 757,
     "integrity_check_sql": null,
     "volume_explanation": "One embedding per signal \u2014 1:1 with Lak\u1e63a\u1e47a count; sealed at 66,738 per L2 build (chart 482012f1).",
     "expected_volume_formula": "ACTUAL(bo_laksana)",
@@ -6324,7 +6204,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1569
+     1581
     ]
    },
    "migrations": {
@@ -6396,7 +6276,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count 5 (5 UCD gestalt rows via vw_chart_digest) per L2 build (chart 482012f1).",
     "expected_volume_formula": null,
@@ -6421,7 +6301,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1689
+     1701
     ]
    },
    "migrations": {
@@ -6489,7 +6369,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 13,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count 84 (cdlm_cells + convergence + contradictions) per L2 build (chart 482012f1). Ancillary rollup tables excluded per migration 326 narrowing.",
     "expected_volume_formula": null,
@@ -6514,7 +6394,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1588
+     1600
     ]
    },
    "migrations": {
@@ -6559,8 +6439,8 @@
    "registry": {
     "asset_id": "bo_special_lagna",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 22,
     "sanskrit_name": "visesha_lagna",
     "english_name": "Special Lagna (Indu/Sree/Ghati/Hora)",
@@ -6579,7 +6459,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6604,7 +6484,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1885
+     1897
     ]
    },
    "migrations": {
@@ -6646,8 +6526,8 @@
    "registry": {
     "asset_id": "bo_sudarshana",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 19,
     "sanskrit_name": "sudarshana_chakra",
     "english_name": "Sudar\u015bana Chakra",
@@ -6666,7 +6546,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6691,7 +6571,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1785
+     1797
     ]
    },
    "migrations": {
@@ -6757,7 +6637,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 9,
     "integrity_check_sql": null,
     "volume_explanation": "Sealed count 180 (45 resonances + 135 prescriptions) per L2 build (chart 482012f1). Ancillary RM tables excluded per migration 326 narrowing.",
     "expected_volume_formula": null,
@@ -6782,7 +6662,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1664
+     1676
     ]
    },
    "migrations": {
@@ -6828,8 +6708,8 @@
    "registry": {
     "asset_id": "bo_vargottama_dhana",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 23,
     "sanskrit_name": "vargottama_dhana_aksa",
     "english_name": "Vargottama Amplification + Dhana Axis",
@@ -6849,7 +6729,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6874,7 +6754,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1905
+     1917
     ]
    },
    "migrations": {
@@ -6916,8 +6796,8 @@
    "registry": {
     "asset_id": "bo_yantra_mechanism",
     "layer": "bodha",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L2",
+    "layer_name": "Bodha",
     "sort_order": 20,
     "sanskrit_name": "yantra",
     "english_name": "Mechanism (Yantra)",
@@ -6938,7 +6818,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 13,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -6963,7 +6843,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1825
+     1837
     ]
    },
    "migrations": {
@@ -7102,8 +6982,8 @@
    "registry": {
     "asset_id": "ga_ayurdaya",
     "layer": "ganita",
-    "layer_index": "1",
-    "layer_name": "Ganita",
+    "layer_index": "L1",
+    "layer_name": "Ga\u1e47ita",
     "sort_order": 51,
     "sanskrit_name": "\u0100yurd\u0101ya",
     "english_name": "Longevity (Three Methods)",
@@ -7120,9 +7000,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 4,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -7147,7 +7027,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1189
+     1201
     ]
    },
    "migrations": null,
@@ -7204,7 +7084,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 30,
     "integrity_check_sql": null,
     "volume_explanation": "ga_condition combined: 45 D1 composite + 2,835 per-varga avastha chart_facts = 2,880 total. Measured on prod chart 482012f1 (2026-06-18). graha_kala_bala_per_varga floored (NULL fact_value_num).",
     "expected_volume_formula": null,
@@ -7229,7 +7109,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1367
+     1379
     ]
    },
    "migrations": {
@@ -7295,7 +7175,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": 2400,
+    "estimated_seconds": 564,
     "integrity_check_sql": null,
     "volume_explanation": "target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS \u2248 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130\u00d7.",
     "expected_volume_formula": "(9 + 81 + 729) * AYANAMSHAS",
@@ -7320,7 +7200,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1060
+     1072
     ]
    },
    "migrations": null,
@@ -7377,7 +7257,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": "9 grahas \u00d7 5 ayanamshas = 45 indication rows per chart.",
     "expected_volume_formula": "GRAHAS * AYANAMSHAS",
@@ -7402,7 +7282,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1431
+     1443
     ]
    },
    "migrations": {
@@ -7465,9 +7345,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 16,
     "integrity_check_sql": null,
     "volume_explanation": "357 rows per ayanamsha \u00d7 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).",
     "expected_volume_formula": "BODIES * AYANAMSHAS * FACT_CATEGORIES + CROSS_AYANAMSHA",
@@ -7492,7 +7372,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1342
+     1354
     ]
    },
    "migrations": {
@@ -7557,7 +7437,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": 60,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": "target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy \"one panchanga row per ayanamsha\" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).",
     "expected_volume_formula": "AYANAMSHAS",
@@ -7582,7 +7462,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1207
+     1219
     ]
    },
    "migrations": null,
@@ -7635,7 +7515,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": 60,
+    "estimated_seconds": 5,
     "integrity_check_sql": null,
     "volume_explanation": "10 bodies \u00d7 5 ayanamshas \u00d7 atomic fact keys per body (graha_position + graha_sign_attributes)",
     "expected_volume_formula": "GRAHAS * AYANAMSHAS * FACT_KEYS",
@@ -7660,7 +7540,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1014
+     1026
     ]
    },
    "migrations": null,
@@ -7715,7 +7595,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "0 for natal charts (horary only). Actual prashna count depends on number of prashna charts submitted.",
     "expected_volume_formula": null,
@@ -7740,7 +7620,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1450
+     1462
     ]
    },
    "migrations": {
@@ -7840,7 +7720,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": 120,
+    "estimated_seconds": 65,
     "integrity_check_sql": null,
     "volume_explanation": "target_floor = 11,019 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy \"one row per ayanamsha\" formula predates the full Sade Sati fact family (cycle / phase / phase_quarter / dhaiya / kantaka / ashtama / janma-shani periods + overlays).",
     "expected_volume_formula": "AYANAMSHAS",
@@ -7865,7 +7745,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1230
+     1242
     ]
    },
    "migrations": {
@@ -7926,9 +7806,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": 120,
+    "estimated_seconds": 246,
     "integrity_check_sql": null,
     "volume_explanation": "Derived from the reference library count \u00d7 ayanamshas; awaits dedicated per-chart table",
     "expected_volume_formula": "ACTUAL(bg_reference) * AYANAMSHAS",
@@ -7953,7 +7833,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1116
+     1128
     ]
    },
    "migrations": {
@@ -7995,8 +7875,8 @@
    "registry": {
     "asset_id": "ga_sensitive_degree",
     "layer": "ganita",
-    "layer_index": "1",
-    "layer_name": "Ganita",
+    "layer_index": "L1",
+    "layer_name": "Ga\u1e47ita",
     "sort_order": 50,
     "sanskrit_name": "Marma A\u1e43\u015ba Par\u012bk\u1e63\u0101",
     "english_name": "Sensitive-Degree Checks",
@@ -8013,9 +7893,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 23,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -8040,7 +7920,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1170
+     1182
     ]
    },
    "migrations": null,
@@ -8096,7 +7976,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": 60,
+    "estimated_seconds": 97,
     "integrity_check_sql": null,
     "volume_explanation": "Shadbala: 6 scores \u00d7 9 grahas; ashtakavarga: 8 tables \u00d7 9 grahas \u00d7 12 signs; bhava bala: 6 scores \u00d7 12 bhavas \u2014 all \u00d7 ayanamshas",
     "expected_volume_formula": "(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS",
@@ -8121,7 +8001,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1081
+     1093
     ]
    },
    "migrations": {
@@ -8187,9 +8067,9 @@
     "asset_kind": "data",
     "catalog_status": "CURRENT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": 120,
+    "estimated_seconds": 99,
     "integrity_check_sql": null,
     "volume_explanation": "GA8 T1 structural facts \u2014 floor 77,821 post-Phase-2 rebuild (2026-06-18). All 14 depth categories active: sambandha_grade(180), nakshatra_dispositor_chain(45), dispositor_tree(50), bhava_significance_link(180), karaka_bhava_concordance(150), net_argala(60), nway_configuration(5), chart_center_of_gravity(10), graha_centrality(45), chart_cluster(45), convergence_count(105), contradiction_pair(1810), dispositor_cycle(0 \u2014 no cycles), varga_provenance_meta(0 \u2014 no issues).",
     "expected_volume_formula": null,
@@ -8214,7 +8094,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1285
+     1297
     ]
    },
    "migrations": {
@@ -8285,7 +8165,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": 60,
+    "estimated_seconds": 14,
     "integrity_check_sql": null,
     "volume_explanation": "target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 \u00d7 5 ayanamshas. Hybrid storage \u2014 varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().",
     "expected_volume_formula": null,
@@ -8310,7 +8190,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1264
+     1276
     ]
    },
    "migrations": null,
@@ -8365,7 +8245,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "9 grahas \u00d7 5 ayanamshas = 45 anchor rows per chart.",
     "expected_volume_formula": "GRAHAS * AYANAMSHAS",
@@ -8390,7 +8270,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1470
+     1482
     ]
    },
    "migrations": {
@@ -8456,7 +8336,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": 600,
+    "estimated_seconds": 94,
     "integrity_check_sql": null,
     "volume_explanation": "60 vargas \u00d7 9 grahas \u00d7 ayanamsha count \u2014 structural",
     "expected_volume_formula": "VARGAS * GRAHAS * AYANAMSHAS",
@@ -8481,7 +8361,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1041
+     1053
     ]
    },
    "migrations": {
@@ -8543,7 +8423,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Up to 9 grahas \u00d7 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) \u2192 40 rows.",
     "expected_volume_formula": "GRAHAS * AYANAMSHAS",
@@ -8568,7 +8448,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1412
+     1424
     ]
    },
    "migrations": {
@@ -8641,8 +8521,8 @@
    "registry": {
     "asset_id": "ga_vichara",
     "layer": "ganita",
-    "layer_index": null,
-    "layer_name": null,
+    "layer_index": "L1",
+    "layer_name": "Ga\u1e47ita",
     "sort_order": 29,
     "sanskrit_name": "Vich\u0101ra",
     "english_name": "Ga\u1e47ita \u2014 Vich\u0101ra (judged structure)",
@@ -8664,7 +8544,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 30,
     "integrity_check_sql": null,
     "volume_explanation": "Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas",
     "expected_volume_formula": "GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)",
@@ -8689,7 +8569,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1323
+     1335
     ]
    },
    "migrations": {
@@ -8752,7 +8632,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 7,
     "integrity_check_sql": null,
     "volume_explanation": "Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga \u00d7 5 ayanamshas).",
     "expected_volume_formula": "YOGAS_IN_CATALOG * AYANAMSHAS_COUNT",
@@ -8777,7 +8657,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1392
+     1404
     ]
    },
    "migrations": {
@@ -8823,8 +8703,8 @@
    "registry": {
     "asset_id": "ka_avadhi",
     "layer": "kala",
-    "layer_index": "3",
-    "layer_name": "Kala",
+    "layer_index": "L3",
+    "layer_name": "K\u0101la",
     "sort_order": 32,
     "sanskrit_name": "Avadh\u012b",
     "english_name": "Period Dossiers",
@@ -8845,7 +8725,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 14,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -8870,7 +8750,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2161
+     2173
     ]
    },
    "migrations": null,
@@ -8929,7 +8809,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Up to 50 ranked projections per chart over a 3-year forward horizon; depends on ka_kala_darshana output",
     "expected_volume_formula": null,
@@ -8954,7 +8834,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2235
+     2247
     ]
    },
    "migrations": null,
@@ -9010,7 +8890,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": "healthy",
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": "Service asset \u2014 no stored rows; eligibility bands computed on demand from chart_dashas",
     "expected_volume_formula": null,
@@ -9035,7 +8915,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2073
+     2085
     ]
    },
    "migrations": null,
@@ -9091,7 +8971,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9116,7 +8996,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1943
+     1955
     ]
    },
    "migrations": {
@@ -9180,7 +9060,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9205,7 +9085,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1967
+     1979
     ]
    },
    "migrations": {
@@ -9270,7 +9150,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1000,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9295,7 +9175,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     1994
+     2006
     ]
    },
    "migrations": {
@@ -9371,7 +9251,7 @@
     "asset_id": "ka_gochara_v3_century_materialize",
     "layer": "kala",
     "layer_index": "L3",
-    "layer_name": "Kala",
+    "layer_name": "K\u0101la",
     "sort_order": 108,
     "sanskrit_name": "Gochara Shatabhdi Matrika (v3)",
     "english_name": "GOCHARA-UTKARSA Century Materialize (v3, decade slices)",
@@ -9395,7 +9275,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 614,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9420,7 +9300,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2022
+     2034
     ]
    },
    "migrations": null,
@@ -9470,13 +9350,13 @@
     ],
     "scope": "global",
     "is_active": true,
-    "asset_type": "data",
+    "asset_type": "service",
     "asset_kind": "service",
     "catalog_status": "DRAFT",
     "has_writer": true,
     "has_substeps": false,
     "service_health": "unhealthy",
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Service asset \u2014 no stored rows; returns computed positions on demand",
     "expected_volume_formula": null,
@@ -9501,7 +9381,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2057
+     2069
     ]
    },
    "migrations": null,
@@ -9560,7 +9440,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per mahadasha (typically 9 for a full Vimshottari cycle)",
     "expected_volume_formula": null,
@@ -9585,7 +9465,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2217
+     2229
     ]
    },
    "migrations": null,
@@ -9643,7 +9523,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One display row per convergence window (up to 300 per chart); count depends on ka_sangam output",
     "expected_volume_formula": null,
@@ -9668,7 +9548,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2199
+     2211
     ]
    },
    "migrations": null,
@@ -9726,7 +9606,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 33,
     "integrity_check_sql": null,
     "volume_explanation": "One row per signal \u00d7 ayanamsha; count grows with number of active MSR signals in kala_activation_predicates",
     "expected_volume_formula": null,
@@ -9751,7 +9631,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2107
+     2119
     ]
    },
    "migrations": null,
@@ -9809,7 +9689,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9834,7 +9714,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2298
+     2310
     ]
    },
    "migrations": null,
@@ -9897,7 +9777,7 @@
     "has_writer": true,
     "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 237,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -9922,7 +9802,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2883
+     2895
     ]
    },
    "migrations": {
@@ -9988,7 +9868,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -10013,7 +9893,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2383
+     2395
     ]
    },
    "migrations": null,
@@ -10062,13 +9942,13 @@
     ],
     "scope": "global",
     "is_active": true,
-    "asset_type": "data",
+    "asset_type": "service",
     "asset_kind": "service",
     "catalog_status": "DRAFT",
     "has_writer": true,
     "has_substeps": false,
     "service_health": "healthy",
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Service asset \u2014 no stored rows; panch\u0101\u1e45ga computed live per (date, location)",
     "expected_volume_formula": null,
@@ -10093,7 +9973,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2089
+     2101
     ]
    },
    "migrations": null,
@@ -10155,9 +10035,9 @@
     "asset_kind": "artifact",
     "catalog_status": "DRAFT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 463,
     "integrity_check_sql": null,
     "volume_explanation": "Runtime-derived from dasha + transit cluster analysis; count depends on alignment density",
     "expected_volume_formula": null,
@@ -10182,7 +10062,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2125
+     2137
     ]
    },
    "migrations": null,
@@ -10238,7 +10118,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -10263,7 +10143,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2324
+     2336
     ]
    },
    "migrations": null,
@@ -10298,8 +10178,8 @@
    "registry": {
     "asset_id": "ka_taranga",
     "layer": "kala",
-    "layer_index": "3",
-    "layer_name": "Kala",
+    "layer_index": "L3",
+    "layer_name": "K\u0101la",
     "sort_order": 33,
     "sanskrit_name": "Tara\u1e45ga",
     "english_name": "Activation Waveform",
@@ -10322,7 +10202,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 23,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -10347,7 +10227,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2269
+     2281
     ]
    },
    "migrations": null,
@@ -10403,7 +10283,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -10428,7 +10308,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2356
+     2368
     ]
    },
    "migrations": null,
@@ -10513,7 +10393,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": "healthy",
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Serve-time service \u2014 no stored rows; rankings computed on demand over kala_convergence + kala_darshana.",
     "expected_volume_formula": null,
@@ -10538,7 +10418,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2253
+     2265
     ]
    },
    "migrations": null,
@@ -10599,7 +10479,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 4,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -10624,7 +10504,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2412
+     2424
     ]
    },
    "migrations": null,
@@ -10683,7 +10563,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 14,
     "integrity_check_sql": null,
     "volume_explanation": "Runtime-derived from transit analysis over sensitive points; count depends on graha configuration",
     "expected_volume_formula": null,
@@ -10708,7 +10588,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2143
+     2155
     ]
    },
    "migrations": null,
@@ -10770,7 +10650,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 36,
     "integrity_check_sql": null,
     "volume_explanation": "One predicate per L2 signal per ayanamsha; total \u2248 66,738 for native chart",
     "expected_volume_formula": null,
@@ -10795,7 +10675,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2181
+     2193
     ]
    },
    "migrations": null,
@@ -10863,7 +10743,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2603
+     2615
     ]
    },
    "migrations": null,
@@ -10901,13 +10781,13 @@
     ],
     "scope": "per_chart",
     "is_active": true,
-    "asset_type": "data",
+    "asset_type": "service",
     "asset_kind": "service",
     "catalog_status": "DRAFT",
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One journal entry per prediction answered; accumulates with native engagement",
     "expected_volume_formula": null,
@@ -10932,7 +10812,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2833
+     2845
     ]
    },
    "migrations": null,
@@ -10992,7 +10872,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 11,
     "integrity_check_sql": null,
     "volume_explanation": "One overlay row per (origin_id \u00d7 weight_id); starts sparse, grows with evidence",
     "expected_volume_formula": null,
@@ -11017,7 +10897,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2728
+     2740
     ]
    },
    "migrations": {
@@ -11080,7 +10960,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": "One skill row per scored event class plus one chart-level aggregate; grows only as the LEL grows. A chart with no LEL correctly produces the structural-prior state with skill_state = underpowered \u2014 an honest zero, not an error.",
     "expected_volume_formula": null,
@@ -11105,7 +10985,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2933
+     2945
     ]
    },
    "migrations": null,
@@ -11165,7 +11045,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": "Accumulates as predictions are logged \u2014 not a deterministic target",
     "expected_volume_formula": null,
@@ -11190,7 +11070,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2661
+     2673
     ]
    },
    "migrations": {
@@ -11258,9 +11138,9 @@
     "asset_kind": "data",
     "catalog_status": "DRAFT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence",
     "expected_volume_formula": null,
@@ -11285,7 +11165,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2781
+     2793
     ]
    },
    "migrations": {
@@ -11350,7 +11230,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per multiplier type \u2014 small, stable catalog; grows only when new signal categories are added",
     "expected_volume_formula": null,
@@ -11375,7 +11255,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2698
+     2710
     ]
    },
    "migrations": {
@@ -11438,7 +11318,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Deterministic given the source-of-truth file. Re-runs MUST match the file count exactly; divergence is a bug.",
     "expected_volume_formula": "FILE_COUNT('01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md', 'EVT')",
@@ -11463,7 +11343,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2622
+     2634
     ]
    },
    "migrations": {
@@ -11528,7 +11408,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Fixed global catalogue of signal families + negative controls; grows only when new families are registered",
     "expected_volume_formula": null,
@@ -11553,7 +11433,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2642
+     2654
     ]
    },
    "migrations": {
@@ -11615,9 +11495,9 @@
     "asset_kind": "data",
     "catalog_status": "DRAFT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": "Accumulates as eval runs are executed \u2014 not a deterministic target",
     "expected_volume_formula": null,
@@ -11642,7 +11522,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2745
+     2757
     ]
    },
    "migrations": {
@@ -11706,9 +11586,9 @@
     "asset_kind": "data",
     "catalog_status": "DRAFT",
     "has_writer": true,
-    "has_substeps": false,
+    "has_substeps": true,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Accumulates as prediction outcomes are recorded \u2014 not a deterministic target",
     "expected_volume_formula": null,
@@ -11733,7 +11613,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2678
+     2690
     ]
    },
    "migrations": {
@@ -11798,7 +11678,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Structural baseline from classical priors; empirical cells accumulate with event outcomes",
     "expected_volume_formula": null,
@@ -11823,7 +11703,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2764
+     2776
     ]
    },
    "migrations": {
@@ -11886,7 +11766,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 2,
     "integrity_check_sql": null,
     "volume_explanation": null,
     "expected_volume_formula": null,
@@ -11911,7 +11791,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2972
+     2984
     ]
    },
    "migrations": null,
@@ -11960,13 +11840,13 @@
     ],
     "scope": "per_chart",
     "is_active": true,
-    "asset_type": "data",
+    "asset_type": "service",
     "asset_kind": "service",
     "catalog_status": "DRAFT",
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Preference table rows per user \u00d7 channel; service has no build-time data volume",
     "expected_volume_formula": null,
@@ -11991,7 +11871,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2815
+     2827
     ]
    },
    "migrations": null,
@@ -12045,7 +11925,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Accumulates with each export event \u2014 operational audit log",
     "expected_volume_formula": null,
@@ -12070,7 +11950,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2798
+     2810
     ]
    },
    "migrations": {
@@ -12139,7 +12019,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per scored muhurta candidate window in query range",
     "expected_volume_formula": null,
@@ -12164,7 +12044,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2453
+     2465
     ]
    },
    "migrations": null,
@@ -12227,7 +12107,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": "One row per predictive anchor; count depends on convergence density and multi-axis derivation",
     "expected_volume_formula": null,
@@ -12252,7 +12132,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2435
+     2447
     ]
    },
    "migrations": null,
@@ -12314,7 +12194,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "Seven rows per chart (one per domain)",
     "expected_volume_formula": null,
@@ -12339,7 +12219,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2561
+     2573
     ]
    },
    "migrations": null,
@@ -12401,7 +12281,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per L4 prediction across all ph_* prediction-emitting assets",
     "expected_volume_formula": null,
@@ -12426,7 +12306,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2543
+     2555
     ]
    },
    "migrations": null,
@@ -12485,7 +12365,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 3,
     "integrity_check_sql": null,
     "volume_explanation": "One row per remedy recommendation, sequenced by feasibility tier",
     "expected_volume_formula": null,
@@ -12510,7 +12390,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2489
+     2501
     ]
    },
    "migrations": null,
@@ -12566,7 +12446,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per (candidate offset \u00d7 ayanamsha): 37 offsets \u00d7 5 ayanamshas = 185 rows; plus one staged-best row in phala_rectification_best",
     "expected_volume_formula": null,
@@ -12591,7 +12471,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2579
+     2591
     ]
    },
    "migrations": null,
@@ -12647,7 +12527,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 5,
     "integrity_check_sql": null,
     "volume_explanation": "One row per (anchor \u00d7 target-domain \u00d7 relationship); count depends on linkage density",
     "expected_volume_formula": null,
@@ -12672,7 +12552,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2525
+     2537
     ]
    },
    "migrations": null,
@@ -12728,7 +12608,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per candidate rectification hypothesis in the search space",
     "expected_volume_formula": null,
@@ -12753,7 +12633,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2471
+     2483
     ]
    },
    "migrations": null,
@@ -12809,7 +12689,7 @@
     "has_writer": true,
     "has_substeps": false,
     "service_health": null,
-    "estimated_seconds": null,
+    "estimated_seconds": 1,
     "integrity_check_sql": null,
     "volume_explanation": "One row per rectification verdict (decisive/probable/unresolved); accumulates across runs",
     "expected_volume_formula": null,
@@ -12834,7 +12714,7 @@
    "seed": {
     "file": "platform/scripts/seed/asset_registry_seed.ts",
     "lines": [
-     2507
+     2519
     ]
    },
    "migrations": null,

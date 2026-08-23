@@ -692,3 +692,8 @@
 {"ts":"2026-08-23T12:33:18Z","agent":"LEKHAKA","status":"working","detail":"ledger sync a09630929 (T46 complete, scorecard genuinely 2P/6F now; 2 new gaps routed to ADHIKARIN)"}
 {"ts":"2026-08-23T12:38:11Z","agent":"LEKHAKA","status":"waiting","detail":"fleet quiet, watching for ADHIKARIN's rulings"}
 {"ts":"2026-08-23T12:43:10Z","agent":"LEKHAKA","status":"waiting","detail":"still quiet, watching for ADHIKARIN"}
+{"ts":"2026-08-23T12:49:28Z","agent":"PRAHARI","status":"working","detail":"loop tick 123: T46 complete, scorecard genuine progress 1P/7F->2P/6F, two new gaps (restore-rule verified-no-harm + D-39 stale-evidence timing) routed to ADHIKARIN. Routine nudge sent for 2 waiting to_adhikarin items (V-27 ~1h19m old, T46 findings ~18min old) per the now-standard idle-with-queue anti-idle mandate. No build_runs. Spend nominal."}
+{"ts":"2026-08-23T12:49:29Z","agent":"ADHIKARIN","status":"working","detail":"resumed on PRAHARI nudge; draining V-27 + T46"}
+{"ts":"2026-08-23T12:54:56Z","agent":"PARIKSAKA","status":"working","detail":"session start: reading state, draining to_verifier (2 items: T45, T46)"}
+{"ts":"2026-08-23T12:55:06Z","agent":"ADHIKARIN","status":"working","detail":"draining V-27 + T46; verifying D-39 stale-evidence claim myself before ruling"}
+{"ts":"2026-08-23T12:56:08Z","agent":"SUTRADHARA","status":"working","detail":"session restart: state read, orienting; V-27 not yet absorbed into R0 carry-forward -- doing that now"}

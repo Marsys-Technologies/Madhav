@@ -1,8 +1,8 @@
 # NIRMĀṆA M0-T1 — Six-Source Asset Census
 
-**Generated:** 2026-08-23T04:17:06Z  
+**Generated:** 2026-08-23T09:55:22Z  
 **Generator:** `00_ARCHITECTURE/control/census.py`  
-**Git:** `campaign/nirmana-autonomous` @ `f2fab2846ac37e078cbc5859dc109338c04e28b4`  
+**Git:** `campaign/nirmana-autonomous` @ `a9278d1ec4723f074f4610407ff19b87a129de37`  
 **Database access:** READ-ONLY (SELECT only; SET statement_timeout='45s'; autocommit)  
 **Status:** observations only. This document issues no verdict and certifies nothing (I16 / charter H7).
 
@@ -71,7 +71,7 @@ Consequence: the S6 column below is `·` for every asset, and that is a true mea
 | `bg_remedies` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `brahma_remedy_corpus` |
 | `bg_rules` | Y | Y | Y | Y | Y | · | 5 | L0 | CURRENT | Y | `sutravali_rules` |
 | `bg_sarvatobhadra_grid` | Y | · | Y | · | Y | · | 3 | L0 | CURRENT | Y | `bg_sarvatobhadra_grid` |
-| `bg_sign_medical` | Y | Y | Y | · | Y | · | 4 | 0 | CURRENT | Y | `bg_sign_medical` |
+| `bg_sign_medical` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `bg_sign_medical` |
 | `bg_sky_calendar` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `bg_sky_events` |
 | `bg_text_index` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `classical_text_chunks` |
 | `bg_texts` | Y | Y | Y | Y | Y | · | 5 | L0 | CURRENT | Y | `classical_text_chunks` |
@@ -79,35 +79,35 @@ Consequence: the S6 column below is `·` for every asset, and that is a true mea
 | `bg_transit_rules` | Y | Y | Y | Y | Y | · | 5 | L0 | CURRENT | Y | `bg_transit_rules` |
 | `bg_vastu_directions` | Y | Y | Y | Y | Y | · | 5 | L0 | CURRENT | Y | `bg_vastu_directions` |
 | `bg_vedha_malefic_scale` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `bg_vedha_malefic_scale` |
-| `bg_vidhi_floors` | Y | Y | Y | Y | Y | · | 5 | brahmagyan | DRAFT | Y | `vidhi_floor_items` |
-| `bg_vidhi_primitives` | Y | Y | Y | Y | Y | · | 5 | brahmagyan | DRAFT | Y | `vidhi_primitives` |
+| `bg_vidhi_floors` | Y | Y | Y | Y | Y | · | 5 | L0 | DRAFT | Y | `vidhi_floor_items` |
+| `bg_vidhi_primitives` | Y | Y | Y | Y | Y | · | 5 | L0 | DRAFT | Y | `vidhi_primitives` |
 | `bg_yogas` | Y | Y | Y | · | Y | · | 4 | L0 | CURRENT | Y | `brahma_yoga_catalog` |
 | `bo_anveshana` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_discoveries` |
-| `bo_arudha` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
+| `bo_arudha` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
 | `bo_bimba` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_cgm_nodes` |
-| `bo_cdlm_summary` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | — |
-| `bo_cgm_motifs` | Y | Y | Y | Y | Y | · | 5 | bodha | CURRENT | Y | `bodha_cgm_motifs` |
-| `bo_cgm_paths` | Y | Y | Y | Y | Y | · | 5 | bodha | CURRENT | Y | `bodha_cgm_paths` |
-| `bo_chart_gestalt` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | — |
+| `bo_cdlm_summary` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | — |
+| `bo_cgm_motifs` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_cgm_motifs` |
+| `bo_cgm_paths` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_cgm_paths` |
+| `bo_chart_gestalt` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | — |
 | `bo_drishti` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_question_lenses` |
 | `bo_karanajala` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_cgm_edges` |
 | `bo_laksana` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_msr_signals` |
-| `bo_laksana_rerank` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
-| `bo_nakshatra_semantic` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
+| `bo_laksana_rerank` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
+| `bo_nakshatra_semantic` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
 | `bo_pramana_mapa` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `synthesis_quality_scorecard` |
-| `bo_pratijna` | Y | Y | Y | · | Y | · | 4 | 2 | CURRENT | Y | `bodha_pratijna` |
+| `bo_pratijna` | Y | Y | Y | · | Y | · | 4 | L2 | CURRENT | Y | `bodha_pratijna` |
 | `bo_samskara` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_signal_embeddings` |
 | `bo_samvada` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `vw_chart_digest` |
 | `bo_sangati` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_cdlm_cells` |
-| `bo_special_lagna` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
-| `bo_sudarshana` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
+| `bo_special_lagna` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
+| `bo_sudarshana` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
 | `bo_upaya` | Y | Y | Y | Y | Y | · | 5 | L2 | CURRENT | Y | `bodha_rm_resonances` |
-| `bo_vargottama_dhana` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_msr_signals` |
-| `bo_yantra_mechanism` | Y | Y | Y | Y | Y | · | 5 | bodha | DRAFT | Y | `bodha_mechanisms` |
+| `bo_vargottama_dhana` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_msr_signals` |
+| `bo_yantra_mechanism` | Y | Y | Y | Y | Y | · | 5 | L2 | DRAFT | Y | `bodha_mechanisms` |
 | `fixture.asset_a` | · | t | · | · | · | · | 1 | — | — | — | — |
 | `fixture.crashing` | · | t | · | · | · | · | 1 | — | — | — | — |
 | `fixture.success` | · | t | · | · | · | · | 1 | — | — | — | — |
-| `ga_ayurdaya` | Y | Y | Y | · | Y | · | 4 | 1 | CURRENT | Y | `chart_facts` |
+| `ga_ayurdaya` | Y | Y | Y | · | Y | · | 4 | L1 | CURRENT | Y | `chart_facts` |
 | `ga_condition` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | `ga_condition_composite` |
 | `ga_dashas` | Y | Y | Y | · | Y | · | 4 | L1 | CURRENT | Y | `chart_dashas` |
 | `ga_medical` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | `ga_medical` |
@@ -118,7 +118,7 @@ Consequence: the S6 column below is `·` for every asset, and that is a true mea
 | `ga_pyjhora_engine` | · | · | · | Y | · | · | 1 | — | — | — | — |
 | `ga_sade_sati` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | — |
 | `ga_sensitive` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | — |
-| `ga_sensitive_degree` | Y | Y | Y | · | Y | · | 4 | 1 | CURRENT | Y | `chart_facts` |
+| `ga_sensitive_degree` | Y | Y | Y | · | Y | · | 4 | L1 | CURRENT | Y | `chart_facts` |
 | `ga_strength` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | — |
 | `ga_structural` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | — |
 | `ga_tajaka` | Y | Y | Y | · | Y | · | 4 | L1 | CURRENT | Y | `l1_tajik_varsha_year_lords` |
@@ -126,9 +126,9 @@ Consequence: the S6 column below is `·` for every asset, and that is a true mea
 | `ga_vargas` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | `chart_divisionals` |
 | `ga_vastu` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | `ga_vastu_planet_direction_map` |
 | `ga_vastu_planet_direction_map` | · | · | · | Y | · | · | 1 | — | — | — | — |
-| `ga_vichara` | Y | Y | Y | Y | Y | · | 5 | ganita | DRAFT | Y | `chart_vichara` |
+| `ga_vichara` | Y | Y | Y | Y | Y | · | 5 | L1 | DRAFT | Y | `chart_vichara` |
 | `ga_yoga` | Y | Y | Y | Y | Y | · | 5 | L1 | CURRENT | Y | `ga_yoga_firings` |
-| `ka_avadhi` | Y | Y | Y | · | Y | · | 4 | 3 | CURRENT | Y | `kala_avadhi` |
+| `ka_avadhi` | Y | Y | Y | · | Y | · | 4 | L3 | CURRENT | Y | `kala_avadhi` |
 | `ka_bhavishya_lekha` | Y | Y | Y | · | Y | · | 4 | L3 | DRAFT | Y | `kala_bhavishya` |
 | `ka_dasha_kala` | Y | Y | Y | · | Y | · | 4 | L3 | DRAFT | Y | — |
 | `ka_gochara` | Y | Y | Y | Y | Y | · | 5 | L3 | CURRENT | Y | `kala_gochara_windows` |
@@ -146,7 +146,7 @@ Consequence: the S6 column below is `·` for every asset, and that is a true mea
 | `ka_muhurta_seva` | Y | Y | Y | · | Y | · | 4 | L3 | DRAFT | Y | — |
 | `ka_sangam` | Y | Y | Y | · | Y | · | 4 | L3 | DRAFT | Y | `kala_convergence` |
 | `ka_sudarshana_varsha` | Y | Y | Y | · | Y | · | 4 | L3 | CURRENT | Y | `kala_sudarshana_varsha` |
-| `ka_taranga` | Y | Y | Y | · | Y | · | 4 | 3 | CURRENT | Y | `kala_taranga` |
+| `ka_taranga` | Y | Y | Y | · | Y | · | 4 | L3 | CURRENT | Y | `kala_taranga` |
 | `ka_tithi_pravesha` | Y | Y | Y | · | Y | · | 4 | L3 | CURRENT | Y | `kala_tithi_pravesha` |
 | `ka_transit_almanac` | · | · | · | Y | · | · | 1 | — | — | — | — |
 | `ka_tulana` | Y | Y | Y | · | Y | · | 4 | L3 | DRAFT | Y | — |
@@ -213,8 +213,8 @@ _none_
 
 **4:**
 
-- `bg_ephemeris_engine` — CURRENT, is_active=True, kind=data, target_table=None
-- `bg_panchanga` — CURRENT, is_active=True, kind=data, target_table=None
+- `bg_ephemeris_engine` — CURRENT, is_active=True, kind=service, target_table=None
+- `bg_panchanga` — CURRENT, is_active=True, kind=service, target_table=None
 - `bg_sarvatobhadra_grid` — CURRENT, is_active=True, kind=data, target_table=bg_sarvatobhadra_grid
 - `lel_events` — DRAFT, is_active=True, kind=data, target_table=None
 
@@ -357,9 +357,9 @@ These are the tables where the `(table × generation × natural-key partition)` 
 
 | target_table | n | asset_ids | layers | with writer | active | catalog_statuses |
 |---|--:|---|---|---|---|---|
-| `bodha_msr_signals` | 7 | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | L2, bodha | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | CURRENT, DRAFT |
+| `bodha_msr_signals` | 7 | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | L2 | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` | CURRENT, DRAFT |
 | `brahma_class_priors` | 2 | `bg_class_lifetime_counts`, `bg_class_priors` | L0 | `bg_class_lifetime_counts`, `bg_class_priors` | `bg_class_lifetime_counts`, `bg_class_priors` | CURRENT |
-| `chart_facts` | 5 | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | 1, L1 | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | CURRENT |
+| `chart_facts` | 5 | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | L1 | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | `ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive_degree` | CURRENT |
 | `classical_text_chunks` | 2 | `bg_text_index`, `bg_texts` | L0 | `bg_text_index`, `bg_texts` | `bg_text_index`, `bg_texts` | CURRENT |
 | `kala_gochara_windows` | 2 | `ka_gochara`, `ka_gochara_sweep` | L3 | `ka_gochara`, `ka_gochara_sweep` | `ka_gochara` | CURRENT, RETIRED |
 
@@ -378,7 +378,7 @@ These are the tables where the `(table × generation × natural-key partition)` 
 
 `bg_`→L0 · `ga_`→L1 · `bo_`→L2 · `ka_`→L3 · `ph_`→L4 · `mi_`→L5 (CLAUDE.md §N.1).
 
-- checked: **128** · fully conforming: **107**
+- checked: **128** · fully conforming: **127**
 - prefix distribution: `bg_` 40, `bo_` 22, `ga_` 19, `ka_` 23, `lel_` 1, `mi_` 14, `ph_` 9
 
 Four non-conformance classes, kept apart on purpose — a wrong layer and a missing `layer_index` are different defects and must not be totalled together.
@@ -397,39 +397,17 @@ _prefix says one layer, registry.layer or layer_index says a different one — t
 
 _none_
 
-### layer_index_format — 6
+### layer_index_format — 0
 
 _layer names the right layer but layer_index is the bare digit ('1') where the convention is 'L1' — a format inconsistency, not a wrong layer_
 
-| asset_id | layer | layer_index | layer_index_expected |
-|---|---|---|---|
-| `bg_sign_medical` | brahmagyan | 0 | L0 |
-| `bo_pratijna` | bodha | 2 | L2 |
-| `ga_ayurdaya` | ganita | 1 | L1 |
-| `ga_sensitive_degree` | ganita | 1 | L1 |
-| `ka_avadhi` | kala | 3 | L3 |
-| `ka_taranga` | kala | 3 | L3 |
+_none_
 
-### layer_index_null — 14
+### layer_index_null — 0
 
 _layer_index is NULL, so the layer cannot be cross-checked from that column at all_
 
-| asset_id | layer | layer_index_expected |
-|---|---|---|
-| `bg_vidhi_floors` | brahmagyan | L0 |
-| `bg_vidhi_primitives` | brahmagyan | L0 |
-| `bo_arudha` | bodha | L2 |
-| `bo_cdlm_summary` | bodha | L2 |
-| `bo_cgm_motifs` | bodha | L2 |
-| `bo_cgm_paths` | bodha | L2 |
-| `bo_chart_gestalt` | bodha | L2 |
-| `bo_laksana_rerank` | bodha | L2 |
-| `bo_nakshatra_semantic` | bodha | L2 |
-| `bo_special_lagna` | bodha | L2 |
-| `bo_sudarshana` | bodha | L2 |
-| `bo_vargottama_dhana` | bodha | L2 |
-| `bo_yantra_mechanism` | bodha | L2 |
-| `ga_vichara` | ganita | L1 |
+_none_
 
 ## 7 — `catalog_status` distribution, and which DRAFT assets are served
 
@@ -443,15 +421,11 @@ _layer_index is NULL, so the layer cannot be cross-checked from that column at a
 
 | layer | CURRENT | DRAFT | RETIRED | total |
 |---|--:|--:|--:|--:|
-| 0 | 1 | 0 | 0 | 1 |
-| 1 | 2 | 0 | 0 | 2 |
-| 2 | 1 | 0 | 0 | 1 |
-| 3 | 2 | 0 | 0 | 2 |
-| ? | 2 | 13 | 0 | 15 |
-| L0 | 37 | 0 | 0 | 37 |
-| L1 | 16 | 0 | 0 | 16 |
-| L2 | 10 | 0 | 0 | 10 |
-| L3 | 9 | 11 | 1 | 21 |
+| ? | 0 | 1 | 0 | 1 |
+| L0 | 38 | 2 | 0 | 40 |
+| L1 | 18 | 1 | 0 | 19 |
+| L2 | 13 | 9 | 0 | 22 |
+| L3 | 11 | 11 | 1 | 23 |
 | L4 | 0 | 9 | 0 | 9 |
 | L5 | 0 | 14 | 0 | 14 |
 
@@ -468,18 +442,18 @@ Signal breakdown (an asset can carry more than one):
 
 | asset_id | layer | kind | signals |
 |---|---|---|---|
-| `bg_vidhi_floors` | — | data | is_active=true; asset_throughput rows=1 |
-| `bg_vidhi_primitives` | — | data | is_active=true; asset_throughput rows=1 |
-| `bo_arudha` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_cdlm_summary` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_chart_gestalt` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_laksana_rerank` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_nakshatra_semantic` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_special_lagna` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_sudarshana` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_vargottama_dhana` | — | data | is_active=true; asset_throughput rows=3 |
-| `bo_yantra_mechanism` | — | data | is_active=true; asset_throughput rows=3 |
-| `ga_vichara` | — | data | is_active=true; asset_throughput rows=3 |
+| `bg_vidhi_floors` | L0 | data | is_active=true; asset_throughput rows=1 |
+| `bg_vidhi_primitives` | L0 | data | is_active=true; asset_throughput rows=1 |
+| `bo_arudha` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_cdlm_summary` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_chart_gestalt` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_laksana_rerank` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_nakshatra_semantic` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_special_lagna` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_sudarshana` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_vargottama_dhana` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `bo_yantra_mechanism` | L2 | data | is_active=true; asset_throughput rows=3 |
+| `ga_vichara` | L1 | data | is_active=true; asset_throughput rows=3 |
 | `ka_bhavishya_lekha` | L3 | artifact | is_active=true; asset_throughput rows=3 |
 | `ka_dasha_kala` | L3 | service | is_active=true; asset_throughput rows=3 |
 | `ka_graha_sancara` | L3 | service | is_active=true; asset_throughput rows=1 |
