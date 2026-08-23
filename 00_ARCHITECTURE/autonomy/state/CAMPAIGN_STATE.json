@@ -52,7 +52,7 @@
   "m_track": {
     "M0": {
       "status": "in_progress",
-      "note": "workbook + ASSET_PLANS + defect register done; six-source census + CI guard remaining"
+      "note": "workbook + ASSET_PLANS + defect register done; M0-T1 six-source census, M0-T2 contract+domain/rung migration (authored, unapplied), M0-T3 telemetry snapshot+proposal (no writes), M0-T4 mig 588/589 registration (no writes) DISPATCHED. Remaining after these: consumer map (0.7), DRAFT/zero-consumer dispositions (0.8b/0.8c), derived-field repair (0.5/0.6), CI guards blocking (0.10), baseline freeze (0.11)."
     },
     "M1": {
       "status": "not_open"
@@ -79,9 +79,46 @@
     "max_concurrent_karaka": 4,
     "max_continuation_generations": 10
   },
-  "open_threads": [],
-  "last_updated_by": "bootstrap",
-  "last_updated_ts": null,
-  "campaign_started_ts": null,
+  "open_threads": [
+    {
+      "id": "M0-T1",
+      "what": "six-source census",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T2",
+      "what": "catalogue contract + domain/rung migration authored not applied",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T3",
+      "what": "asset_throughput snapshot + repair proposal, no writes",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T4",
+      "what": "migrations 588/589 applied-state verify + registration proposal, no writes",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "Q1",
+      "what": "ADHIKARIN ruling: may the domain/rung/lifecycle migration be APPLIED under M0 (charter P5 boundary)",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "Q2",
+      "what": "ADHIKARIN ruling: may mig 588/589 registration + asset_throughput telemetry repair EXECUTE",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    }
+  ],
+  "last_updated_by": "SUTRADHARA",
+  "last_updated_ts": "2026-08-23T04:09:12Z",
+  "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }

@@ -1,0 +1,14 @@
+{"ts":"2026-08-23T04:04:22Z","agent":"ADHIKARIN","status":"working","detail":"session start; charter+plan read; assessing fleet liveness"}
+{"ts":"2026-08-23T04:04:24Z","agent":"PARIKSAKA","status":"working","detail":"session open: reading charter + plan §18/§8.3"}
+{"ts":"2026-08-23T04:04:50Z","agent":"SUTRADHARA","status":"working","detail":"session start: state read; reading plan §8/§18"}
+{"ts":"2026-08-23T04:05:05Z","agent":"PRAHARI","status":"working","detail":"loop tick 1: fleet ~13min post-kick, all 4 non-KARAKA agents heartbeated except LEKHAKA (still within 15min grace), no rung open (M0 census), mailbox empty, standing queue 7 unassigned items, spend nominal (output 78.9k/60M campaign ceiling, all-class 13.0M/15B)"}
+{"ts":"2026-08-23T04:05:53Z","agent":"LEKHAKA","status":"working","detail":"session start: charter+plan+state read; ledgers all empty, mailbox empty, fleet just spinning up"}
+{"ts":"2026-08-23T04:07:08Z","agent":"ADHIKARIN","status":"working","detail":"D-1 (heartbeat env defect) + D-2 (cost ceiling deferral) ruled; PARK-1 filed; dispatched to PRAHARI+SUTRADHARA"}
+{"ts":"2026-08-23T04:07:11Z","agent":"SUTRADHARA","status":"working","detail":"M0 decomposed; queued M0-T1..T4; dispatching 4 KARAKA"}
+{"ts":"2026-08-23T04:07:43Z","agent":"PARIKSAKA","status":"working","detail":"V-1 written: M0 completion claim FAIL (4 angles) — no Efficiency sheet, 5/13 §15 fields absent, generators have no emitter; notified conductor+authority"}
+{"ts":"2026-08-23T04:08:15Z","agent":"KARAKA-M0-T1","status":"working","detail":"read charter+prompts; starting six-source discovery"}
+{"ts":"2026-08-23T04:08:26Z","agent":"PRAHARI","status":"working","detail":"loop tick 2: processed+cleared D-1/D-2 mailbox msg (adopted no-restart-on-heartbeat-silence precedent, using tmux/heartbeat-presence as interim signal). M0-T1..T4 dispatched by SUTRADHARA ~50s ago, no KARAKA heartbeat/tmux window yet (too soon). PARIKSAKA filed V-1 (M0 completion FAIL), routed to conductor+authority correctly. No build_runs rows (matches census stage). Spend nominal: output 194.6k/60M campaign, all-class 29.1M/15B."}
+{"ts":"2026-08-23T04:08:32Z","agent":"KARAKA-M0-T2","status":"working","detail":"starting: reading charter + plan sections"}
+{"ts":"2026-08-23T04:08:56Z","agent":"KARAKA-M0-T3","status":"working","detail":"starting M0-T3: reading asset_throughput schema"}
+{"ts":"2026-08-23T04:09:11Z","agent":"KARAKA-M0-T4","status":"working","detail":"read charter+prompts+588/589; locating migrate.ts ledger"}
+{"ts":"2026-08-23T04:09:12Z","agent":"SUTRADHARA","status":"working","detail":"4 KARAKA dispatched (M0-T1..T4) at cap; 2 authority questions to ADHIKARIN; state updated"}
