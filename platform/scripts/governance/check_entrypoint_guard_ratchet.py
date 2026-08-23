@@ -61,9 +61,17 @@ Three mechanisms implement that, and each has a detector rather than a promise:
      hand-widened.
 
 Stale entries — allowlisted files that are now clean, or that no longer exist — are REPORTED
-loudly on every run and fail only under `--strict`. They are the good direction; making them
-blocking would turn a repair into a red build (D-39 part 2 again), and the honest place to
-resolve them is a `--regenerate` commit.
+loudly on every run and, AS OF RULING D-109 PART 3B, ARE FATAL UNCONDITIONALLY, not only under
+`--strict`. This UPDATES the original design here (`--strict`-only, to avoid D-39 part 2's
+"turning a repair into a red build"): D-101 already accepted exactly that tradeoff, unconditionally,
+for the DANGEROUS subset of this same condition (`stale_amnesty` / assertion iii, a currently-
+guarded allowlisted file) — no reconciliation of the two was made at the time, which is the
+"specification and implementation disagreeing without anyone noticing" pattern D-87 names. A
+findings array that can be populated (D-109's own reproduction: 71 entries) with zero effect on
+`pass` is a wiring gap worse than the tradeoff it was avoiding, so this field is brought into
+line with the precedent D-101 already set. The honest place to resolve a real stale entry
+remains a `--regenerate` commit — now REQUIRED promptly, in the same discipline `stale_amnesty`
+already requires, rather than optional local hygiene.
 
 ═══════════════════════════════════════════════════════════════════════════════════════════════
 THE DETECTOR  (D-71 part 7 — also a REQUIREMENT, not a suggestion)
@@ -139,7 +147,11 @@ WHAT THIS GUARD DOES **NOT** COVER — stated, because an unstated limit reads a
 Exit codes: 0 = pass · 1 = a NEW (non-allowlisted) violation, an allowlist that GREW beyond
 the settled baseline OR beyond the persisted FLOOR, a floor that is WIDER than any value its
 own committed history has ever held, a file the scanner could not parse, a current-allowlist
-or floor value that could not be READ, or `--strict` with any residual.
+or floor value that could not be READ, an allowlist entry naming a file that is now GUARDED
+(assertion iii / D-101) or that otherwise no longer names a live violation (D-109 part 3b,
+unconditional as of this ruling), the scanned population falling below its own non-vacuity
+floor (D-109 part 3a — UNDETERMINED, never a pass), or `--strict` with any openly-carried
+residual (D-87's deliberately-non-gating backlog).
 """
 
 from __future__ import annotations
@@ -1019,6 +1031,75 @@ def floor_monotone_check(floor_path: Path, current_files: Optional[Iterable[str]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════
+# POPULATION NON-VACUITY FLOOR (ruling D-109 part 3a) — a SANITY MINIMUM on the SCANNED
+# POPULATION, distinct from `entrypoint_guard_floor.json` (M0-T70's pay-down floor, which
+# tracks the ALLOWLIST's own committed history and must not be confused with, or merged
+# into, this one). PARĪKṢAKA's V-69/F-V69-1 found `--roots /nonexistent/path --json` returns
+# `files_with_top_level_main: 0` and `pass: true` — every assertion below silently degrades to
+# green the instant the examined population collapses, whether by a bad `--roots`, a
+# `SCAN_ROOTS` edit, or a filter regression. This floor closes that for all four assertions at
+# once, by making a too-small population UNDETERMINED and FATAL before any of them are trusted.
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+#
+# THE OPERAND, AND WHY IT IS NOT `unguarded_files`. `files_with_top_level_main` (= `len(results)`
+# = guarded + unguarded) is used. `unguarded_files` ALONE is never used as the floor operand:
+# that count is EXPECTED to shrink as Wave 2 pays it down, so a floor on it would go RED AS THE
+# GATE'S OWN PURPOSE IS ACHIEVED — punishing progress, D-39 part 2 arriving from the opposite
+# direction (D-109 part 4). Guarding a file moves it from `unguarded` to `guarded` WITHOUT
+# removing it from `files_with_top_level_main`, so that operand is STABLE under legitimate
+# pay-down and IS the correct choice — ADHIKĀRIN checked this rather than assuming it.
+#
+# THE MARGIN. `files_with_top_level_main` was measured at 94 (= 23 guarded + 71 unguarded) by
+# M0-T64/M0-T73, reconfirmed live by ADHIKĀRIN's D-109 reproduction and again by this task
+# (KARAKA-M0-T77) on 2026-08-24. The floor below is set to 80 — 14 files (~15%) BELOW that
+# measured figure, deliberately not equal to it. Its job is to catch a BROKEN SCAN (which reads
+# as 0, or near it — nowhere close to 80), not to track the live population count: 14 files of
+# headroom absorbs ordinary, legitimate one-off file deletions/renames without this constant
+# needing to be bumped every time the real count moves by a few, while remaining nowhere near
+# the all-or-nothing collapse an actual `--roots`/`SCAN_ROOTS`/filter regression produces. THIS
+# IS A SANITY MINIMUM, NOT A SYNCED BASELINE — never update it to chase the live count; only
+# revisit it (and re-justify the new margin in this comment, not just move the number) if the
+# real population undergoes a large, deliberate, one-time change such as a directory
+# reorganisation.
+MIN_FILES_WITH_TOP_LEVEL_MAIN = 80
+
+
+def population_floor_check(files_with_top_level_main: int) -> FloorResult:
+    """Non-vacuity floor on the SCANNED POPULATION (D-109 part 3a). Below-floor is
+    `determined=False` and `ok=False` — UNDETERMINED and FATAL, never a pass — the same §N.8
+    discipline every other `FloorResult` in this file already carries: an unmeasurable
+    population must never read as a clean result. See the constant's own comment above for the
+    operand choice and the margin's justification; do not substitute a different operand."""
+    if files_with_top_level_main < MIN_FILES_WITH_TOP_LEVEL_MAIN:
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="population_floor",
+            current_count=files_with_top_level_main,
+            reason=(
+                f"only {files_with_top_level_main} file(s) with a top-level main() were found "
+                f"(floor {MIN_FILES_WITH_TOP_LEVEL_MAIN}) — the population COULD NOT BE "
+                "MEASURED AT A CREDIBLE SIZE, which is NOT the same statement as 'zero "
+                "violations were found'. This is the signature of a broken --roots, a "
+                "SCAN_ROOTS edit, or a filter regression silently emptying the scanned "
+                "population (D-109 part 1/2; PARIKSAKA V-69 / F-V69-1), not evidence the tree "
+                "is clean."
+            ),
+        )
+    return FloorResult(
+        determined=True,
+        ok=True,
+        check="population_floor",
+        current_count=files_with_top_level_main,
+        reason=(
+            f"{files_with_top_level_main} file(s) with a top-level main() were found, at or "
+            f"above the {MIN_FILES_WITH_TOP_LEVEL_MAIN}-file non-vacuity floor "
+            f"(measured population today is 94; margin is intentional, see comment above)."
+        ),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════
 # STALE AMNESTY — assertion (iii): no allowlist entry may name a file that is CURRENTLY
 # GUARDED (ruling D-101, adopting PARĪKṢAKA's framing over ADHIKĀRIN's own near-miss: D-95's
 # floor does NOT close this — the floor is OUR artifact, consistent with our own list
@@ -1054,7 +1135,10 @@ def stale_amnesty_check(
 ) -> FloorResult:
     """Assertion (iii) (D-101). `allowed=None` is UNDETERMINED, never a pass — the same D-89
     anchor `floor_containment` / `floor_monotone_check` are built on: an absent operand cannot
-    make this determination.
+    make this determination. An EMPTY `results` (D-109 part 5) is likewise UNDETERMINED — see
+    below — because this function cannot tell "the whole scan found nothing" from "every
+    allowlisted file individually has no main() left", and the former must never be reported
+    with a reason string that implies the check ran and found a clean population.
 
     "Currently guarded" means the file scanned CLEAN this run: at least one guarded top-level
     `main()` occurrence, ZERO unguarded ones, and its brace-stack analysis did NOT error (a
@@ -1064,8 +1148,14 @@ def stale_amnesty_check(
     instead of the pre-existing FAIL it already causes elsewhere).
 
     Deliberately reuses `results` — the SAME `scan()` output the live population and the
-    existing `stale_allowlist_entries` (`--strict`-only) reporting already use — rather than
-    re-deriving "is this file guarded" a second time (D-94: one rule id, one implementation)."""
+    generic `stale_allowlist_entries` reporting (FATAL since D-109 part 3b) already use —
+    rather than re-deriving "is this file guarded" a second time (D-94: one rule id, one
+    implementation).
+
+    CALLED DIRECTLY, NOT ONLY THROUGH THE OUTER GATE (D-109 part 5): PARĪKṢAKA called this
+    function directly, bypassing `main()`'s own `population_floor_check`, when verifying
+    M0-T74. The empty-population guard below is therefore load-bearing on its own, not merely
+    defence-in-depth behind the outer gate's floor."""
     if allowed is None:
         return FloorResult(
             determined=False,
@@ -1075,6 +1165,28 @@ def stale_amnesty_check(
                 "the current allowlist could not be read (missing, unparsable, or no "
                 "well-formed `files` list) — an absent operand cannot make this "
                 "determination (D-89), so this is UNDETERMINED."
+            ),
+        )
+    if not results:
+        # D-109 part 5 / part (c): `determined=True` here — as this function used to return —
+        # is a FALSE STATEMENT in a machine-readable field. Its old reason string, "no allowlist
+        # entry names a file that is currently guarded", is TECHNICALLY TRUE (there are no such
+        # entries because there is nothing at all) and TOTALLY MISLEADING (§N.7 item 6: an
+        # honest null beats an invented judgement) — it reads as "the check ran and found a
+        # clean population" when the check could not run at all. An empty `results` cannot be
+        # told apart from "the whole scan found nothing" (a broken --roots/SCAN_ROOTS/filter),
+        # so this MUST be UNDETERMINED regardless of whatever the outer gate's own
+        # `population_floor_check` decides — see the docstring note on direct callers above.
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="stale_amnesty",
+            current_count=len(set(allowed)),
+            reason=(
+                "the scanned population is empty (zero files with any top-level main() were "
+                "found in `results`) — this check COULD NOT RUN, which is not the same "
+                "statement as 'it ran and found no stale entries'. An empty population is the "
+                "signature of a broken scan, not a clean one (D-109 part 5)."
             ),
         )
     currently_guarded = {
@@ -1388,9 +1500,18 @@ def run_stale_amnesty_self_test() -> Tuple[List[str], int]:
     # ── CASE 4 — A FILE ABSENT FROM `results` ENTIRELY (no main() call left at all) is NOT
     # "currently guarded" either — D-101 scopes assertion (iii) to guarded files specifically,
     # distinct from "file no longer exists"/"no main() left", which PARĪKṢAKA's baseline
-    # measured and reported as its own separate, always-zero category. ──────────────────────
+    # measured and reported as its own separate, always-zero category. `results` here carries
+    # an UNRELATED file so the population is genuinely non-empty (D-109 part 5 fixed a defect
+    # in this case's OWN original shape: it used to pass `{}`, which cannot be told apart from
+    # "the whole scan found nothing" — see CASE 6 below for that scenario, tested separately
+    # now that the two are distinguishable in the fixed detector). ──────────────────────────
     checks += 1
-    r = stale_amnesty_check(["vanished.ts"], {})
+    results = {
+        "unrelated_still_unguarded.ts": _fr(
+            "unrelated_still_unguarded.ts", unguarded=True, guarded=False
+        )
+    }
+    r = stale_amnesty_check(["vanished.ts"], results)
     if not (r.determined and r.ok):
         failures.append(
             f"STALE-AMNESTY: a file with no main() at all must not be flagged as stale "
@@ -1403,6 +1524,27 @@ def run_stale_amnesty_self_test() -> Tuple[List[str], int]:
     r = stale_amnesty_check(None, {})
     if r.determined or r.ok:
         failures.append("STALE-AMNESTY: a missing allowlist (None) must be UNDETERMINED and FATAL (D-89)")
+
+    # ── CASE 6 — D-109 part 5/(c) — B6: THE EMPTY-POPULATION CASE, CALLED DIRECTLY, BYPASSING
+    # THE OUTER GATE — exactly the call pattern PARĪKṢAKA used verifying M0-T74 (the docstring's
+    # own "called directly" note). `allowed` is a well-formed, non-None list; `results` is
+    # genuinely empty ({}). This must be UNDETERMINED (`determined=False`), never a pass, and
+    # must NOT be the old "no allowlist entry names a file that is currently guarded" reason —
+    # that reason is a false statement in a machine-readable field when nothing could be
+    # measured at all (§N.7 item 6). ─────────────────────────────────────────────────────────
+    checks += 1
+    r = stale_amnesty_check(["anything.ts"], {})
+    if r.determined or r.ok:
+        failures.append(
+            "STALE-AMNESTY: an EMPTY scanned population (results={}) must be UNDETERMINED "
+            f"and never a pass, called directly bypassing the outer gate (D-109 part 5/B6) — "
+            f"got determined={r.determined} ok={r.ok}"
+        )
+    if "currently guarded" in r.reason.lower() and "could not run" not in r.reason.lower():
+        failures.append(
+            "STALE-AMNESTY: an empty-population reason string must say the check COULD NOT "
+            f"RUN, not that it found a clean population (D-109 part 5) — got: {r.reason}"
+        )
 
     return failures, checks
 
@@ -1527,7 +1669,11 @@ def main(argv: List[str]) -> int:
     ap.add_argument(
         "--strict",
         action="store_true",
-        help="Also fail on allowlisted residuals and on stale allowlist entries.",
+        help=(
+            "Also fail on allowlisted residuals (D-87's deliberately-non-gating openly-"
+            "carried backlog). Stale allowlist entries are FATAL unconditionally as of "
+            "D-109 part 3b — no longer gated by this flag."
+        ),
     )
     ap.add_argument("--root", default=str(REPO_ROOT), help="Repo root to scan.")
     ap.add_argument("--roots", nargs="*", default=None, help="Override the scan roots.")
@@ -1576,18 +1722,30 @@ def main(argv: List[str]) -> int:
     floor_history_growth = pawl_history(FLOOR_PATH)
 
     results = scan(root, scan_roots)
+
+    # ── THE POPULATION NON-VACUITY FLOOR (D-109 part 3a) — checked FIRST, before any of the
+    # four assertions below are trusted. See `population_floor_check`'s own comment for the
+    # operand and margin justification. Below-floor is UNDETERMINED and FATAL.
+    population_floor = population_floor_check(len(results))
+
     violating = {rel: r for rel, r in results.items() if r.unguarded}
     unparsed = sorted(rel for rel, r in results.items() if r.analysis_error)
 
     new = sorted(rel for rel in violating if rel not in allowed)
     residual = sorted(rel for rel in violating if rel in allowed)
+    # `stale` — THE GENERIC "no-longer-a-violation" REPORT, BROADER than assertion (iii) below:
+    # it also catches an allowlisted file whose top-level `main()` was removed ENTIRELY (never
+    # appears in `results` at all), which `stale_amnesty_check` cannot see because that check
+    # requires an observed GUARDED occurrence specifically. FATAL as of D-109 part 3b — see the
+    # `report`/`fail` verdict-wiring legend below for the determination and its reasoning.
     stale = sorted(f for f in allowed if f not in violating)
 
     # ── ASSERTION (iii): STALE AMNESTY (ruling D-101). No allowlist entry may name a file
     # that is currently guarded. See THE STALE AMNESTY CHECK section above for why this is
-    # neither (i) nor the floor (ii) — it is a third, independent, always-gating check (not
-    # `--strict`-only like the generic `stale_allowlist_entries` reporting above, which also
-    # counts files that simply lost their `main()` call entirely, a different condition).
+    # neither (i) nor the floor (ii) — it is a third, independent, always-gating check, narrower
+    # than the generic `stale` above (requires an observed GUARDED occurrence, not merely "not
+    # currently violating") but overlapping it for the currently-guarded subset — both are FATAL
+    # since D-109 part 3b, so that overlap is redundant protection, not a conflict.
     stale_amnesty = stale_amnesty_check(current_side, results)
 
     # ── OUT-OF-SCOPE SUFFIXES, REPORTED BUT NOT GATED ───────────────────────────────────────
@@ -1613,6 +1771,81 @@ def main(argv: List[str]) -> int:
         "allowlist_count": len(allowed),
         "baseline_count": len(baseline),
         "paid_down_count": len(baseline) - len(allowed),
+        # ═══════════════════════════════════════════════════════════════════════════════════
+        # VERDICT-WIRING LEGEND (D-109 part 3b) — every findings array below is declared FATAL
+        # (drives `pass` to false when populated / when its own `ok` is false) or OBSERVATIONAL
+        # (reported, never affects `pass`), and why. This is the audit D-109 required after
+        # finding `stale_allowlist_entries` populated to 71 entries on an empty scan while
+        # `pass` stayed true — a findings array with no wiring to the verdict.
+        #
+        #   new_violations                   FATAL. Assertion (i): a NEW unguarded file outside
+        #                                     the allowlist. The ratchet's core purpose.
+        #   residual_allowlisted             OBSERVATIONAL, ALWAYS (never gated, `--strict` or
+        #                                     not). Ruling D-87: this is the OPENLY-CARRIED
+        #                                     BACKLOG the ratchet is built around; gating it
+        #                                     would make the gate permanently red by design
+        #                                     (D-39 part 2 / D-73, H3-by-attrition). Left as
+        #                                     `--strict`-only opt-in reporting for a manual,
+        #                                     stricter local check — never wired into the
+        #                                     default CI gate, and must never become FATAL.
+        #   stale_allowlist_entries          FATAL, as of D-109 part 3b (was `--strict`-only).
+        #                                     DETERMINATION (not assumed — traced the code):
+        #                                     this field is the GENERIC "no longer a violation"
+        #                                     report, a superset of assertion (iii)
+        #                                     (`stale_amnesty` below) that ALSO catches an
+        #                                     allowlisted file whose `main()` was removed
+        #                                     entirely (a case `stale_amnesty_check` cannot see
+        #                                     — it requires an observed GUARDED occurrence).
+        #                                     Leaving that superset gated only behind an opt-in
+        #                                     flag nothing in CI passes was the exact wiring gap
+        #                                     D-109 found: on the real committed tree this is 0
+        #                                     today (verified live), so making it unconditional
+        #                                     changes NOTHING there — it only fires once an
+        #                                     allowlist entry genuinely stops reflecting ground
+        #                                     truth (a pay-down landed without its companion
+        #                                     `--regenerate`, or a broken/empty scan).
+        #   hand_added_allowlist_entries     FATAL. Assertion (i)'s other half: no name may
+        #                                     enter the allowlist beyond M0-T64's static
+        #                                     baseline (D-67 part 4 — the list may only shrink).
+        #   floor.containment                FATAL. Assertion (ii), part 1 (D-95): current
+        #                                     allowlist must stay a subset of the committed
+        #                                     floor. Catches a repaired file returning.
+        #   floor.monotonicity                FATAL. Assertion (ii), part 2 (D-95, D-96): the
+        #                                     floor itself may only ever have shrunk across its
+        #                                     own committed history.
+        #   committed_history_growth_steps   OBSERVATIONAL, non-gating per D-95 §6 explicitly:
+        #                                     a growth already in history stays in history
+        #                                     (H2 forbids rewriting it), so gating on "history
+        #                                     once contained a growth" would be permanently red
+        #                                     from the next commit onward (D-39 part 2,
+        #                                     unclearable — the opposite of `floor.monotonicity`
+        #                                     above, which gates the CURRENT floor and IS
+        #                                     clearable by re-guarding the file). Diagnostic:
+        #                                     tells a reader WHEN a growth entered.
+        #   floor_history_growth_steps       OBSERVATIONAL, same rationale as
+        #                                     `committed_history_growth_steps` extended to the
+        #                                     floor file's own history (D-95 §6 names the
+        #                                     allowlist's history explicitly; this field mirrors
+        #                                     it for the floor for the identical reason — its
+        #                                     gating counterpart, `floor.monotonicity`, already
+        #                                     exists and IS fatal).
+        #   unparsed_files                    FATAL. An UNKNOWN file (brace-stack analysis
+        #                                     errored) must never read as clean (§N.8).
+        #   out_of_scope_suffix_observations  OBSERVATIONAL per D-84 (F-P): `.mts`/`.cts` files
+        #                                     are outside the `.ts$`-filtered gated population
+        #                                     by construction; extending the baseline is
+        #                                     ADHIKĀRIN's call, not this script's.
+        #   stale_amnesty                     FATAL. Assertion (iii) (D-101): no allowlist entry
+        #                                     may name a file that is CURRENTLY GUARDED — the
+        #                                     stale-amnesty hazard itself (a regressed file would
+        #                                     stay silently amnestied). `determined=False`
+        #                                     (missing allowlist, or an empty scanned population
+        #                                     per D-109 part 5) is ALSO fatal — never a pass.
+        #   population_floor                  FATAL. D-109 part 3a: the scanned population
+        #                                     itself must be at a credible size before any of
+        #                                     the above are trusted. `determined=False` below
+        #                                     the floor is FATAL, never a pass.
+        # ═══════════════════════════════════════════════════════════════════════════════════
         "new_violations": [
             {"file": rel, "lines": [o.line for o in violating[rel].unguarded]} for rel in new
         ],
@@ -1646,18 +1879,32 @@ def main(argv: List[str]) -> int:
             "stale_entries": stale_amnesty.added,
             "reason": stale_amnesty.reason,
         },
+        "population_floor": {
+            "determined": population_floor.determined,
+            "pass": population_floor.ok,
+            "floor": MIN_FILES_WITH_TOP_LEVEL_MAIN,
+            "measured": population_floor.current_count,
+            "reason": population_floor.reason,
+        },
     }
 
     # An unparsed file is UNKNOWN, not clean, and is therefore blocking. See §N.8: a detector
     # that cannot answer must not return the answer that happens to look green.
+    #
+    # NOTE ON `stale` — unconditionally FATAL (`bool(stale)`), NOT gated behind `--strict`
+    # any more. See the verdict-wiring legend above (`stale_allowlist_entries` entry) for the
+    # determination and its reasoning (D-109 part 3b). `residual` stays `--strict`-only and
+    # deliberately never joins unconditional `fail` — it is D-87's openly-carried backlog.
     fail = (
         bool(new)
         or bool(hand_added)
         or not floor_contain.ok
         or not floor_mono.ok
         or not stale_amnesty.ok
+        or not population_floor.ok
         or bool(unparsed)
-        or (args.strict and (residual or stale))
+        or bool(stale)
+        or (args.strict and residual)
     )
     report["pass"] = not fail
 
@@ -1674,6 +1921,12 @@ def main(argv: List[str]) -> int:
         f"  ratchet: {len(allowed)} allowlisted of M0-T64's {len(baseline)} baseline "
         f"({report['paid_down_count']} paid down)."
     )
+    if population_floor.determined and population_floor.ok:
+        print(
+            f"  population_floor: {population_floor.current_count} ≥ "
+            f"{MIN_FILES_WITH_TOP_LEVEL_MAIN} (D-109 part 3a) — the scan measured a credible "
+            "population."
+        )
     if floor_contain.determined and floor_contain.ok and floor_mono.determined and floor_mono.ok:
         print(
             f"  floor: allowlist ({len(current_side or [])}) \u2286 floor "
@@ -1749,6 +2002,13 @@ def main(argv: List[str]) -> int:
             for v in floor_mono.violations[:10]:
                 print(f"  ! {v['commit'][:9]} does not cover {', '.join(v['added'])}", file=sys.stderr)
 
+    if not population_floor.ok:
+        print(
+            "check_entrypoint_guard_ratchet: THE POPULATION NON-VACUITY FLOOR COULD NOT BE "
+            f"CLEARED — {population_floor.reason} FAIL.",
+            file=sys.stderr,
+        )
+
     if not stale_amnesty.ok:
         if not stale_amnesty.determined:
             print(
@@ -1800,9 +2060,18 @@ def main(argv: List[str]) -> int:
             print(f"  + {f}", file=sys.stderr)
 
     if stale:
-        print(f"  {len(stale)} allowlisted file(s) are now CLEAN — regenerate to record the pay-down:")
+        print(
+            f"check_entrypoint_guard_ratchet: {len(stale)} allowlisted file(s) are now CLEAN "
+            "(no longer an unguarded top-level main() — guarded, or the main() call is gone "
+            "entirely) but remain on the allowlist. FATAL as of D-109 part 3b: an allowlist "
+            "entry that no longer names a real violation is stale amnesty (D-101's framing) "
+            "or worse, an untracked hole in the pay-down record. Regenerate to record the "
+            "pay-down via `--regenerate` (D-67 part 4, D-96: no exemption field exists for "
+            "this). FAIL.",
+            file=sys.stderr,
+        )
         for f in stale:
-            print(f"    ✔ {f}")
+            print(f"  ✔ {f}", file=sys.stderr)
 
     if new:
         print(
