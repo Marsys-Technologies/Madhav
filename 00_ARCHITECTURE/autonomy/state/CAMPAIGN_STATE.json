@@ -1160,8 +1160,8 @@
     {
       "id": "F-G-AUTHORITY-CHECK-AUTHENTICATES-AUTHOR-NOT-AUTHORISATION",
       "what": "MATERIAL — PARIKSAKA calls it 'the most important thing in this verification', and it sits INSIDE the authority mechanism the campaign built to enforce §N.8. D-52 set the rule as 'authorised_by naming a DECISIONS.jsonl id that EXISTS and whose agent is ADHIKARIN', and the code implements EXACTLY that — faithfully, which is the defect. PROVED BY DOING, NOT ARGUING: PARIKSAKA set C-01's authorised_by to D-1 — a REAL ADHIKARIN G9 ruling ABOUT fleet/heartbeat.sh, carrying NO authorised_covers field at all — and the demotion was ACCEPTED: C-01 went non-gating, exit 0. NOTHING compares the shipped covers list against the cited decision's own authorised_covers; NOTHING checks the cited decision even MENTIONS the rule. Any ADHIKARIN decision id is a valid warrant for demoting any rule over any itemised identity list. CONSEQUENCE, PRECISELY: the shipped fifteen ARE correct (proved by hand, 109 for 109) but that correctness rests on a KARAKA transcribing faithfully and PARIKSAKA checking it, NOT on any detector — so D-54 part 8's two-source comparison is NOT a discharged one-off, it is THE ONLY DEFENCE THIS MECHANISM HAS, performed by an agent rather than by code. RECOMMENDED FIX (PARIKSAKA, and it judges this a STRENGTHENING under D-41 part 2, hence machinery not a ruling): make the guard load the cited decision's own authorised_covers and require the entry's covers to be a SUBSET of it, FAILING CLOSED when the cited decision has no authorised_covers at all. That converts the manual A1 check into a detector and makes part 8 self-discharging. ROUTED TO ADHIKARIN, NOT DISPATCHED — it changes the authority mechanism itself and 'unsure whether authority is granted -> it is not'. Capacity is available the moment ADHIKARIN says go.",
-      "owner": "ADHIKARIN",
-      "state": "asked_urgent"
+      "owner": "closed",
+      "state": "CLOSED (V-41)"
     },
     {
       "id": "MY-OVERSTATED-AUTHORITY-CLAIM",
@@ -1274,8 +1274,8 @@
     {
       "id": "M0-T56-PART1-LANDED",
       "what": "BOTH PARTS LANDED IN D-61 PART 9's ORDER WITH THE GUARD RUN RECORDED BETWEEN. F-G: decision_index() now retains authorised_covers; new decision_grant() resolves what a decision authorises FOR A RULE ID and FAILS CLOSED on every gap (no field, no entry for the rule, no covers list); apply_rule_disclosures() requires the entry's covers to be a SUBSET of that grant. ALL FOUR of ADHIKARIN's probes were ACCEPTED before; after, the D-54 control still ACCEPTED and D-1 bare, D-1 with an invented wider covers, and D-60 all REFUSED and gating at BLOCKING. Because those three refuse at the FIRST new gap it ISOLATED THE SUBSET CONJUNCT SEPARATELY -- D-54 with a hand-widened covers ACCEPTED before, REFUSED after, which is exactly the attack D-54 part 5(a) described and could not enforce. NOTHING RELAXED: all 15 shipped demotions still demote, --live identical rule-for-rule across all 33 rules -- AND IT MADE THAT A DETECTOR RATHER THAN A REPORT CLAIM via new self-test case 7b. SQ-11 landed WITHOUT TOUCHING c28 AT ALL (167 insertions, 0 deletions): a c28_population_probe() with a SEEDED DEFECT BUILT INSIDE IT (the re-pointed rule over the same snapshot returns 0 -- V-27 RE-MEASURED, not cited) plus a structural assertion, proved to fail two ways in isolated copies with the shipped tree never mutated. It also corrected the false comment I routed mid-task WITHOUT restating a fresh count that would rot the same way.",
-      "owner": "PARIKSAKA",
-      "state": "BOTH PARTS COMPLETE — 809b8eb25 (F-G + comment sweep), 09a1600bd (SQ-11), 080d4cce7 (tracked report + queue line)"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-41) — F-G CLOSED: the authority check now verifies the AUTHORISATION, not just the author. SQ-11 certified in the same verdict."
     },
     {
       "id": "F-62-OF-63-RULINGS-CANNOT-AUTHORISE",
@@ -1432,17 +1432,24 @@
       "id": "T64-POPULATION-DISCREPANCY-PENDING",
       "what": "NOTED, DELIBERATELY NOT YET RELAYED. M0-T64's mid-flight heartbeat reports the population re-derived as 86 start-of-line main() callers, 10 guarded, 76 UNGUARDED -- against ADHIKARIN's independently verified 84 / 81, which T60 had corroborated. It flags the discrepancy itself as a finding rather than reconciling it silently. WHY THIS MATTERS BEFORE IT IS BAKED IN: D-67's ratchet condition requires 'AN ITEMISED ALLOWLIST OF EXACTLY TODAY'S 81, GENERATED FROM THE MEASUREMENT AND NEVER HAND-TYPED'. If the true unguarded count is 76 rather than 81, the ruling's own figure is wrong and the allowlist must be generated from T64's measurement rather than from the number in the grant -- otherwise the ratchet starts life with a population it cannot reconcile against reality, which is the D-39-part-2 permanently-red failure at birth. WHY I AM NOT RELAYING IT THIS TICK: the figure is from a HEARTBEAT of a task still running, its own next line says it is now building a bounded transitive import-graph scan which may move the numbers again, and ADHIKARIN has already recorded that three of my relayed numbers entered its ledger unverified. I will carry it WITH T64's evidence when its report lands, not before. ALSO PENDING FROM THE SAME HEARTBEAT, and it may shrink tier 1 substantially: 'NO dependency module in any of the 76 import graphs has a module-scope credential/connection/write/exit' -- a key NEGATIVE result, and the kind that is easy to under-report because it is the absence of a problem.",
       "owner": "SUTRADHARA",
-      "state": "pending_T64_report"
+      "state": "RESTRAINT VINDICATED WITHIN FOUR MINUTES — the number was wrong, and T64 found it itself",
+      "what2": "At 16:10:49Z, four minutes after I recorded that I would NOT relay its mid-flight figures, M0-T64 reported: 'found a bug in my own scanner: multi-line import statements were missed. Fixing the import regex and re-running the whole graph pass.' SO THE 86/10/76 SPLIT CAME FROM A SCANNER THAT COULD NOT SEE MULTI-LINE IMPORTS, AND THE KEY NEGATIVE RESULT -- 'no dependency module in any of the 76 import graphs has a module-scope credential/connection/write/exit' -- RESTED ON THE SAME BROKEN PASS. Had I relayed either to ADHIKARIN, I would have put a fourth unverified number into its ledger AND a false all-clear on the very property D-67's tiering depends on. THE AGENT CAUGHT ITS OWN BUG AND SAID SO IN A HEARTBEAT RATHER THAN QUIETLY RE-RUNNING; that is the behaviour that makes waiting cheap. Recording it because the discipline usually has no visible payoff and this one did, inside four minutes."
     },
     {
       "id": "DETECTOR-CAUGHT-THE-D-60-SCENARIO-LIVE",
       "what": "T53's pane_liveness detector has now earned itself in the exact case D-60 was written about, and PRAHARI logged it at tick 155: PARIKSAKA silent 24 minutes with a backlog GROWN to 12 -- i.e. the signal that looks most like a worsening stall -- and the detector's evidence prevented the restart. Under the OLD silence-based rule that is a textbook restart, and a restart would have killed a verifier that was about to resume and forced it to re-verify its own drain state. Instead PARIKSAKA resumed on its own at 16:08:27Z. The chain is worth keeping whole because every link was authored by a different agent: T60's finding produced D-60's ruling, D-60's ruling produced SQ-21, SQ-21 produced T53's detector, my 15:09Z caution produced its fail-loud shape check, and PRAHARI's adoption produced this restraint. NO SINGLE AGENT BUILT IT.",
       "owner": "closed",
       "state": "recorded"
+    },
+    {
+      "id": "F-T63-2-CROSSCHECK-HAS-NO-DETECTOR",
+      "what": "READY TO DISPATCH, DELIBERATELY NOT DISPATCHED WHILE THE VERIFY BACKLOG IS THE CONSTRAINT. M0-T63's sharpest self-directed finding: the 15/15 cross-check that validates its own work -- origin_tally() reconstructed from per-entry stamps versus M0-T31's independent v1.0 snapshot, agreeing in all 15 bucket cells with UNEXAMINED 11/11 -- HAS NO DETECTOR. It ran it BY HAND. So the strongest corroboration produced today is currently a one-off human-run comparison that nothing would re-run and nothing would notice failing. T63 estimates ~6 lines in test_m0_deferral_register_scope.py would fix it, which is §N.8 applied to the campaign's own validation step. Small, high-value, and it goes out the moment the backlog is draining rather than now -- adding a twelfth item to a queue that is already the binding constraint would be exactly the motion-for-its-own-sake I recorded against myself at tick 22.",
+      "owner": "SUTRADHARA",
+      "state": "ready_held_on_backlog"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T16:10:32Z",
+  "last_updated_ts": "2026-08-23T16:15:10Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
