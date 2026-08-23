@@ -563,12 +563,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T33",
-      "what": "the generator's exponential DAG CTE — a live production hazard at every rung",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "F-ROOT-MISMATCH-DETECTOR",
       "what": "M0-T30 flagged for a second opinion: removing the C-23 ROOT workaround exposes NIRMANA_REPO to the guard, and rather than restore a coercion it added a root-mismatch DETECTOR that fails with both paths named. Verified on a constructed second checkout: EXIT=3 after, EXIT=0 before, because the re-point silently swallowed it. It asked for review rather than assuming",
       "owner": "PARIKSAKA",
@@ -639,10 +633,39 @@
       "what": "The NULL-fill gate is faithful to D-28 and blocks the first real seed run behind a 59-cell acknowledgement list. The KARAKA raised it and DID NOT NARROW IT, on the grounds that choosing which NULLs are 'deliberate' is the judgment D-28 reserved and ADHIKARIN's word was 'any'. It suggests a column-level allowance may be worth a ruling. I agree it was right not to decide. CONDUCTOR-VERIFIED SEPARATELY: the live NULL distribution across seed-written columns is 621 cells over 11 columns (provides_apis 126, health_probe 126, estimated_seconds 119, expected_volume_formula 108, size_sql 51, volume_explanation 44, target_floor 25, target_table 14, count_sql 6, layer_name 1, layer_index 1). I did NOT verify the per-column breakdown of the 59 TRANSITIONS and said so — that needs the seed projection joined against the live NULLs",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T33",
+      "what": "DONE 080bf0fd9 — 235s to 0.1s under a real identity proof",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "POKE-DEFECT-STRUCTURAL-FIX",
+      "what": "FOURTH occurrence of D-14 idle-unpoked, again PARIKSAKA, with the verification queue at 26 against 11 verdicts. Rather than hand-remedy a fifth time, switched channel: fleet agents are addressable via SendMessage. Told PRAHARI to poke that way and to use ListAgents' idle/busy as the liveness signal, while keeping pane-capture as the corroborating one — the pane is what tells you WHY, and its 'completed turn with text at the prompt' observation is what let D-14 name the state at all",
+      "owner": "PRAHARI",
+      "state": "channel_switched"
+    },
+    {
+      "id": "F-RECURSIVE-CTE-BLINDSPOT",
+      "what": "M0-T33's general lesson, worth more than the one query: Postgres does not estimate recursive-CTE cardinality, so the planner's cost estimate is BYTE-IDENTICAL for the exploding and the non-exploding form. No plan inspection would ever have flagged this. Candidate for the Standing Queue as a codebase-wide sweep beyond control/ — NOT dispatched, since a platform-wide sweep is not M0's scope",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:01:04Z",
+  "last_updated_ts": "2026-08-23T08:04:20Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
-  "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
+  "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
+  "fleet_addressing": {
+    "note": "Fleet agents are addressable by SESSION MESSAGE, not only by tmux keystrokes. This is the structural fix for the D-14 poke defect, which caused four stalls: SendMessage delivers into the agent's queue and drains at its next tool round — no compose box to strand text in, no C-u/settle/Enter sequence to get wrong, and no silent failure mode. ListAgents also reports idle/busy directly, which is a better liveness signal than pane-capture heuristics.",
+    "map": {
+      "ADHIKARIN": "madhav-6a (nirmana:%11)",
+      "PARIKSAKA": "madhav-04 (nirmana:%12)",
+      "PRAHARI": "madhav-54 (nirmana:%13)",
+      "LEKHAKA": "madhav-75 (nirmana:%14)",
+      "SUTRADHARA": "Nirmana autonomous campaign conductor",
+      "NOT_OURS": "madhav-23 (nirmana:%15) — the other campaign, per D-16. Do not message it either."
+    }
+  }
 }
