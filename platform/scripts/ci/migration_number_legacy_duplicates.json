@@ -4,7 +4,7 @@
   "frozen_at_commit": "5f5033a55def0b9006aec29a66946b7a57f25121",
   "frozen_by": "SAMAPTI lane B-MIGGUARD (brief v2.0 §4.4 / MIG-1)",
   "group_count": 35,
-  "disclosed_additions_count": 1,
+  "disclosed_additions_count": 2,
   "legacy_duplicate_groups": {
     "0": [
       "platform/supabase/migrations/0000_seed_legacy_applied.sql",
@@ -158,6 +158,21 @@
       "landed_at": "2026-07-30",
       "disclosed_via": "DVA RULING 70 (00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md), residual R6 in MIGRATION_AND_MERGE_PROTOCOL_v1_0.md",
       "fixed_by_samapti": false
+    },
+    "588": {
+      "status": "DISCLOSED — NOT RESOLVED. Two different files still claim the number 588 and this entry changes nothing about that. It renumbers nothing, renames nothing, reconciles nothing. It records the collision so CI reports it as a known, itemized, attributed residue instead of as an anonymous new fault. Read this as \"the collision is still there and here is who put it there\" — never as \"the collision was handled\".",
+      "files": [
+        "platform/migrations/588_remove_asset_build_protection.sql",
+        "platform/supabase/migrations/588_samiksha_digest_journal.sql"
+      ],
+      "owner": "NIRMĀṆA (platform/migrations/588_remove_asset_build_protection.sql) + PARIPRAŚNA p4-i, PR #1497 (platform/supabase/migrations/588_samiksha_digest_journal.sql) — two campaigns, one number; disclosed by NIRMĀṆA, which owns only the first file",
+      "landed_at": "2026-08-23 (date of the second claim; see collision_state — the two files do not yet coexist on one ref)",
+      "disclosed_via": "NIRMĀṆA ruling D-10 part 3, 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl (evidence: 00_ARCHITECTURE/control/MIGRATION_588_589_REGISTRATION_v1_0.md); Dvārapāla RULING 70 route",
+      "fixed_by_samapti": false,
+      "collision_state": "The two files do NOT yet coexist on any single ref, so this guard is green on each branch in isolation and this entry is dormant — expect a \"[baseline drift] disclosed group 588 is fully resolved\" advisory on any tree that lacks one of the files. That advisory means \"not visible from here\", NOT \"fixed\". The Paripraśna file merged to main 2026-08-22 (commit 54f7cbef, PR #1497); the NIRMĀṆA file was committed 2026-08-23 (commit 63bff8fc) on branch campaign/nirmana-autonomous. The collision becomes observable the moment that branch is merged into or rebased onto main. It is disclosed AHEAD of that merge deliberately: undisclosed, E2 hard-fails on whichever PR merges second, which is not the PR that owns the bug — the same failure mode this guard\u2019s header records for 467.",
+      "both_files_already_applied_to_production": "YES — and that is exactly why neither could be renumbered. platform/supabase/migrations/588_samiksha_digest_journal.sql is recorded in _migrations_applied as id 447, applied_at 2026-08-22T23:42:20Z. platform/migrations/588_remove_asset_build_protection.sql was applied by NIRMĀṆA; its ledger row is registered separately by running the tracked runner (D-10 part 4), not by any edit here.",
+      "why_not_renumbered": "D-10 part 2 refused renumbering BOTH ways, structurally rather than as a preference. Renumbering the NIRMĀṆA file: migrate.ts keys _migrations_applied on the bare FILENAME, so renaming an already-applied migration breaks the key the ledger and the drift detector depend on — CLAUDE.md §N.4, campaign prohibition H5 (never edit an applied migration). Renumbering the PARIPRAŚNA file: the same H5 objection, plus it is another campaign\u2019s artifact outside NIRMĀṆA\u2019s mandate — scope-widening, reserved power P2. With both repairs independently prohibited, disclosure is what remains, and it is the route this file\u2019s own _README and the DisclosedAddition docstring define for precisely this residue.",
+      "what_would_actually_fix_it": "Nothing inside this file, and no further edit to this entry. A real fix needs a session with authority over BOTH campaigns\u2019 migration history to renumber one file AND update its filename key in _migrations_applied in every environment where it was applied, atomically. Until then fixed_by_samapti stays false and this entry stays. Deleting the entry without doing that work does not resolve the collision — it only restores a hard CI failure with no attribution."
     }
   }
 }
