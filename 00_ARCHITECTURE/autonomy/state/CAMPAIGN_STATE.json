@@ -50,6 +50,17 @@
             "note": "per-packet dispositions from M0-T6's 23 zero-consumer packets — NO_CONSUMER_FOUND and SHADOWED readings for L0 assets route here; full packet detail in ZERO_CONSUMER_EVIDENCE_v1_0.md, cross-reference by asset_id at R0 intake"
           }
         ]
+      },
+      "freeze_precondition": {
+        "id": "R0-PRECOND-RUNNER-UNIFICATION",
+        "source": "PARIKSAKA V-27 (2026-08-23T11:30Z), accepting D-42",
+        "finding": "All 32 unearned-lit assets are R0, all CURRENT, all Class A - NO build_run_assets record of any kind. Class B (ran but never completed) is EMPTY: none failed, none was observed to run. Distribution is the finding: 6 of 40 R0 assets carry any build_run_assets record vs 87 of 88 non-R0. Per-asset flakiness would spread across layers; this is concentrated in exactly the one layer built by the other runner. That is loophole L-03 / defect D-19 verbatim - global_runner.py builds L0 with no build_runs row and no cockpit visibility. The lit states are unearned AS MEASURED BY RUN RECORDS because the runner that builds L0 does not write run records.",
+        "not_hollow": "bg_muhurta_lattice holds 164,886 rows with no run record at all. 'Unearned' here means NO WITNESS TO THE BUILD, not 'nothing was built'. A rung gate reading these as empty would be as wrong as one reading them as earned.",
+        "consequence": "Plan §8.3 item 2 ('state is earned ... never asserted') CANNOT be satisfied for 34 of R0's 40 assets by any amount of measuring the data that is there. There is no run record to inspect and none can be manufactured honestly (H6). It requires those assets to be REBUILT THROUGH A RUNNER THAT RECORDS THE RUN. L-03/D-19 runner unification is therefore a PRECONDITION OF R0's FREEZE, not a parallel workstream.",
+        "trap_confirmed": "Re-pointing c28() at build_run_assets yields 0 violations: the BLOCKING failure passes and every unearned lit survives untouched. It is the most natural-looking way to apply D-42 and it is wrong. Refused at D-42; V-27 confirms the trap is real. DO NOT ACCEPT THIS AS A FIX.",
+        "count_note": "32 vs C-28's 31 is bg_panchanga (asset_kind='service'), dropped by the DATA-kind filter - established at V-22.",
+        "absorbed_by": "SUTRADHARA 2026-08-23 session restart",
+        "status": "BINDING ON R0 INTAKE - carry into §8.6 stage 1"
       }
     },
     "R1": {
@@ -918,10 +929,16 @@
       "what": "D-39 (09:25:50Z) may have characterised the disclosure mechanism as inert using evidence that predates M0-T40's report (08:41:22Z) fixing exactly that inertness — verified read-only that check_asset_catalogue_contract.py DOES now carry a rule-id-keyed reader and computed effective_severity. Does not move D-38/39/42's classifications either way, but bears on D-40's flip condition since the two-direction fixture proving the mechanism demonstrably in effect has not been built under either reading",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "R0-PRECOND-RUNNER-UNIFICATION",
+      "what": "V-27: runner unification (L-03/D-19) is a PRECONDITION of R0's freeze, not a parallel workstream. 34 of R0's 40 assets have no build witness and §8.3 item 2 cannot be satisfied for them by measurement - they must be rebuilt through a run-recording runner. Absorbed into rungs.R0.freeze_precondition. Also records the confirmed trap: re-pointing c28() at build_run_assets returns 0 and silently passes every unearned lit.",
+      "owner": "SUTRADHARA",
+      "state": "absorbed_binding_on_R0_intake"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T12:31:51Z",
+  "last_updated_ts": "2026-08-23T12:56:59Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
