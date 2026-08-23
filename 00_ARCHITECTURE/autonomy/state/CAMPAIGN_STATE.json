@@ -151,7 +151,23 @@
   "m_track": {
     "M0": {
       "status": "in_progress",
-      "note": "IN PROGRESS. Census dimension: T1 six-source census, T2 catalogue contract + migration 590 (authored), T3 telemetry snapshot + proposal, T4 588/589 verification — ALL COMPLETE, ZERO WRITES EXECUTED, all awaiting PARIKSAKA. §19 efficiency dimension (V-1/D-8): T5 COMPLETE and committed a864672d7 — Efficiency sheet added (11 sheets), the 5 absent §15 fields now emitted 128/128 from an asset_profiles.json lookup that MISSES rather than a hardcoded constant, hotspot 64 false greens -> 0 with 128/128 honest nulls and profiled 0/128, timeout source 128-registered -> 107 registered / 21 default matching V-2's live distribution. Not yet certified. Safety: T11 migrate.ts entrypoint guard COMPLETE (1089db9b6); T15 running on the live sibling asset_registry_seed.ts. Running: T6 consumer map, T7 DRAFT reachability + DAG, T8 derived-field proposal, T15. Held by design: T12 (apply 590) and T13 (register 588/589) until T11 is CERTIFIED, not merely landed. Queued: T9 CI guards, T14 588 disclosure, T10 baseline freeze last."
+      "note": "IN PROGRESS. Census dimension: T1 six-source census, T2 catalogue contract + migration 590 (authored), T3 telemetry snapshot + proposal, T4 588/589 verification — ALL COMPLETE, ZERO WRITES EXECUTED, all awaiting PARIKSAKA. §19 efficiency dimension (V-1/D-8): T5 COMPLETE and committed a864672d7 — Efficiency sheet added (11 sheets), the 5 absent §15 fields now emitted 128/128 from an asset_profiles.json lookup that MISSES rather than a hardcoded constant, hotspot 64 false greens -> 0 with 128/128 honest nulls and profiled 0/128, timeout source 128-registered -> 107 registered / 21 default matching V-2's live distribution. Not yet certified. Safety: T11 migrate.ts entrypoint guard COMPLETE (1089db9b6); T15 running on the live sibling asset_registry_seed.ts. Running: T6 consumer map, T7 DRAFT reachability + DAG, T8 derived-field proposal, T15. Held by design: T12 (apply 590) and T13 (register 588/589) until T11 is CERTIFIED, not merely landed. Queued: T9 CI guards, T14 588 disclosure, T10 baseline freeze last.",
+      "exit_scorecard": {
+        "measured_by": "KARAKA M0-T17, commit 5f66268f1, re-runnable via control/m0_exit_scorecard.py",
+        "as_of": "2026-08-23T05:07:35Z",
+        "tally": {
+          "PASS": 0,
+          "FAIL": 6,
+          "NOT_MEASURABLE": 3,
+          "BLOCKED": 3
+        },
+        "headline": "ZERO of twelve M0 exit criteria are satisfied by a detector's output. This is the honest baseline, measured as a set for the first time. It is not a regression — the criteria were never all measured together before, and several are BLOCKED rather than failing.",
+        "blocked_reasons": {
+          "6": "charter P1 — the only offender is ka_gochara_sweep; recorded as neither PASS nor FAIL",
+          "7": "migration 590 never applied (wave halted 0/3)",
+          "11": "migration 590 never applied"
+        }
+      }
     },
     "M1": {
       "status": "not_open"
@@ -270,12 +286,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T17",
-      "what": "M0 exit-criteria scorecard — the 12 conditions measured as a SET with a detector each, re-runnable so T10 can re-measure at freeze rather than trust today",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T18",
       "what": "plan figure reconciliation — every quantitative claim in §1/§1.5/the defect register measured against live. Three have been refuted so far, each caught incidentally; this checks the rest deliberately. Instructed NOT to manufacture findings if the diagnosis is sound",
       "owner": "KARAKA",
@@ -328,10 +338,28 @@
       "what": "D-4 condition 3 pre-flight PASSED 4/4 before the halt: ka_graha_sancara R3, ka_muhurta_seva R3, mi_kula R5, mi_vistara R5, all shared — rung follows layer. Full simulation: domain chart 84 / shared 44; rung R0 40 R1 19 R2 22 R3 23 R4 9 R5 15; zero NULLs. 590's backfill is CORRECT against live data. The wave is blocked on the mechanism, not the migration",
       "owner": "SUTRADHARA",
       "state": "cleared"
+    },
+    {
+      "id": "M0-T17",
+      "what": "COMPLETE 5f66268f1 — 0 PASS / 6 FAIL / 3 NOT-MEASURABLE / 3 BLOCKED, with a re-runnable generator carrying a cross-run delta so T10 sees drift since last measurement rather than trusting a snapshot",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "C23-CONSTANT-TRAP",
+      "what": "M0-T17's first C-23 detector returned 109 violations of 123 writers because WriterBase itself defines a default plan_substeps — so 'has plan_substeps in the MRO' is a CONSTANT, not a detector. §N.8's defect arriving inside the scorecard built to catch it. Corrected to test for an OVERRIDE it returns 12, independently agreeing with M0-T8's AST census. M0-T9 is writing that guard from the same contract text right now and was warned directly",
+      "owner": "SUTRADHARA",
+      "state": "warned"
+    },
+    {
+      "id": "CONTRACT-SELF-DISAGREE",
+      "what": "ASSET_CATALOGUE_CONTRACT_v1_0.md's prose counts disagree with its own detection SQL in two rules: §6 C-04 says 10, its §8 SQL returns 11 (extra is bg_sky_calendar, target_table names a nonexistent relation); §6 C-17 says 3, SQL returns 4 (extra is ka_graha_sancara). The contract is M0's specification, so a contract that disagrees with itself propagates into every guard written from it",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:00:08Z",
+  "last_updated_ts": "2026-08-23T05:07:35Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
