@@ -238,6 +238,13 @@ in §7 F-3, which is an observation, not a park.
   call — `scripts/__tests__/fixtures/entrypoint_guard_standin.fixture.ts` — which is **guarded**, so
   it does not belong on an unguarded-population list, but a detector that keys on "top-level `main()`
   call" without being guard-aware would flag it. Flagging it now so it is not a surprise.
+- **F-6 — a concurrent agent committed my in-flight working tree** (`a7204cf68`, 54s before my
+  own commit). It caught a clean state and the committed content is correct and passing — but my
+  mutation proofs leave a real destructive script knowingly broken for ~10s at a time, so the same
+  sweep firing in that window would have committed an UNGUARDED `set-password.ts` under a KĀRAKA's
+  name with a confident message. Full account in §9. D-66 §7's shape: two correct mechanisms, no
+  detector for their interaction.
+
 - **F-5 — a shape worth naming.** M3's inverse mutation was caught as a *crash*, not an assertion,
   because the test imports the stand-in in-process and the mutated guard's `process.exit(7)` killed
   the vitest worker. M0-T60's §9.1 unsureness — "the tests catch it, but only *after* the module has
@@ -266,3 +273,37 @@ in §7 F-3, which is an observation, not a park.
    flag is live again. The guard is not a substitute for moving that read inside `main()`.
 5. **Whether the eight-copy divergence (F-2) is now the larger risk than the thing I fixed.** I lean
    yes, but that is a judgement for ADHIKĀRIN, not for me.
+
+---
+
+## 9 — Addendum (written after my own commit): a concurrent agent committed my working tree
+
+**What happened, measured.** At `22:25:50 +0530` commit **`a7204cf68`** — "Nirmāṇa KĀRAKA-M0-T65:
+entrypoint guards on Wave 1 tier-1 destructive scripts (D-74 part 1)", co-authored `Claude Sonnet 5`,
+body citing "Committing immediately per D-66's lesson: this work was sitting uncommitted in the
+tree" — committed all seven of my files plus this report. **I did not author that commit.** My own
+`git commit --only` ran 54 seconds later at `22:26:44` (`400bbda0f`) and therefore carried only the
+`WORK_QUEUE.jsonl` line, because everything else was already committed.
+
+**The outcome was fine, and that is the point.** I re-verified after the fact: `git diff HEAD` is
+empty for all seven files, the committed content is my final state (the corrected line references
+`line 196` / `lines 15 and 18` are present in HEAD), and the suite still reports **37/37 passing on
+the committed tree**.
+
+**But it was fine by timing, not by construction — and this is a finding, not a complaint.** My
+mutation proofs (§4.1) work by temporarily writing a *defective* version of a real file — M1 strips
+`set-password.ts`'s guard outright, M4 flips an operator inside `probe/ask.ts`'s predicate — running
+the suite, then restoring and checking sha256. Each mutation leaves a real, tracked, **destructive
+script in a knowingly-broken state for roughly ten seconds**. Had that sweep fired during one of
+those windows it would have committed, under a KĀRAKA's name and with a confident message, either a
+`set-password.ts` with **no guard at all** (i.e. the exact defect this task exists to remove, landed
+by the task that was removing it) or an `ask.ts` whose predicate answers backwards. Nothing in the
+commit path would have noticed: the message is written from the task's intent, not from the diff.
+
+This is D-66 §7's shape again — **two individually correct mechanisms whose interaction nobody has a
+detector for.** "Commit uncommitted work immediately" is right (D-66 exists because ~50 reports were
+lost). "Prove your repair with mutations on the real file" is right (D-41 part 3 requires the
+inverse-direction mutation, and M1/M4 are the only way to prove the detector fires on the real
+files). Their intersection is a window in which a sweeper can commit a deliberately-broken tree. I
+have routed it to the conductor and to ADHIKĀRIN as **F-6** rather than inventing a rule for it,
+which is not mine to do.
