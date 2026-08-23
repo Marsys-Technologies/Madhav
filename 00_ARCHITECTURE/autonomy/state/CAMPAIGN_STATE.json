@@ -298,12 +298,6 @@
       "state": "asked"
     },
     {
-      "id": "F-service-health",
-      "what": "3 service assets read service_health='healthy' with NO health_probe — an undetected green (H4/§N.8) found by M0-T2. Needs a rung owner or a Track-M home",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T5",
       "what": "COMPLETE a864672d7 — the §19 ledger emitter that gated every rung freeze. Uncertainties the builder named: rows/sec null on all 128 (the only available quotient mixes this chart's rows with a cross-chart median — called an inference, not a measurement); p50/p90 pooled across all charts inside a single-chart workbook",
       "owner": "PARIKSAKA",
@@ -454,12 +448,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T24",
-      "what": "D-25 part 3 sweep — find the remaining gating fields BEFORE they are tripped over. Both known instances were discovered by accident while doing something else",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T20",
       "what": "DONE 6843b3767, 12 rows repaired. Honest limits it stated itself: the snapshot's restore is AUTHORED AND READABLE but not proven by execution (a restore drill is itself a write, outside D-24(d)); and it can verify the switch is OFF but not that the probe has FIRED — no build has run since 2026-08-21",
       "owner": "PARIKSAKA",
@@ -494,10 +482,40 @@
       "what": "URGENT: the seed reverts asset_kind/asset_type (landed repair) and would revert layer_index/layer_name (not yet dispatched). Escalated with the measured column list. Editing the seed's upsert semantics decides WHICH SURFACE OWNS registry metadata — the subject of D-19 — so not mine to settle from a repair ticket. Phase 0.5a is HELD on it",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T24",
+      "what": "COMPLETE bca42d2cd — the sweep D-25 part 3 asked for. Its own first scan reported 3 has_writer divergences against PARIKSAKA's measured 0 false positives; it checked its SCANNER rather than the registry, found the module-constant @register form its regex could not match, discarded the phantom and wrote the trap into both deliverables. Third time that exact form caught an agent today",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T27",
+      "what": "re-measure the exit scorecard — it read 0/12 before the wave",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "G-03",
+      "what": "URGENT and LIVE: deriveState.ts:65 returns service_ok as the FIRST statement for anything with asset_type OR asset_kind == 'service', ahead of is_active, incomplete, error and the row check — and plan.ts:196 makes service_ok DEPENDENCY-SATISFYING, so a failing service satisfies downstream builds. CONDUCTOR-VERIFIED against production: 8 assets render service_ok; ka_graha_sancara carries service_health='unhealthy' written by its OWN self-test on 2026-08-02 and renders green anyway; three read 'healthy' with health_probe NULL; two have no health signal at all; four are not even CURRENT while the code's comment claims 'healthy when registered + CURRENT'. I VERIFIED M0-T21's repair did NOT widen this — a disagreement means one of the pair already said service and deriveState uses OR, so the set of 8 is unchanged by our work. Recommended as TRACK M (generic code across every layer, needs no asset-specific knowledge), unlike the ka_kshetra string which is about one asset. NOT queued",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "G-EXTRA-CONSUMERS",
+      "what": "M0-T24: both ruled instances have consumers the rulings do not name. has_substeps also at classifyStuckCandidate.ts:71-73, where the TypeScript reaper promotes a stuck asset to lit — same defect, different language, and D-24's repair does not reach it. has_writer also at runs/route.ts:139 and recalibrationEnqueue.ts:140 — build-plan membership, not merely the efficiency pass",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "G-INTEGRITY-GATE-OFF",
+      "what": "integrity_check_sql NULL on 128/128 AND rebuild_on_probe_fail false on 128/128 — the integrity gate is switched off at two independent columns, neither with a detector. Tier B (no code-derived truth exists), so not the D-25 shape, but it is the condition M3's integrity-gate engine will be built to read",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:03:06Z",
+  "last_updated_ts": "2026-08-23T06:05:15Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
