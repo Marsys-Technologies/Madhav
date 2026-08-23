@@ -878,10 +878,22 @@
       "state": "noted, no action needed",
       "what": "PRAHARI observed this session's ListAgents ref changed 47edb6 -> f5d814 between ticks, and confirmed via SendMessage that this is registered as a NEW session under the same name. My own HEARTBEAT.jsonl entries are continuous with no gap through the period in question, and my own conversation context is unbroken — so whatever restart occurred at the process/registration level did not cost campaign state or context from where I sit. Recorded per §18.8 (every long-lived agent restartable from CAMPAIGN_STATE + ledgers alone) as evidence the design held, not as an incident needing recovery.",
       "owner": "SUTRADHARA"
+    },
+    {
+      "id": "M0-T45",
+      "what": "DONE 3825c1981 — SQ-10 / D-41 part 4 closed. The mutation doctrine caught a hidden second pass-emission point that ALL 16 behavioural tests missed — proof the doctrine is not just process, it works on the first real use",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "BLOCKING-VS-WITNESS-JUDGMENT",
+      "what": "M0-T45 left open rather than deciding: should verify_migrations_deployed become a hard BLOCKING gate on deploy-web/deploy-mcp, or stay a parallel witness job? Per D-41's own direction test this is presumptively a STRENGTHENING move if made blocking (adds a failure mode that did not exist), so it likely does not need a ruling under the new rule — but the KARAKA correctly left it for PARIKSAKA/ADHIKARIN rather than deciding a deploy-blocking change unilaterally on its own dispatch",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T11:29:58Z",
+  "last_updated_ts": "2026-08-23T11:45:09Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
