@@ -1246,9 +1246,9 @@
     },
     {
       "id": "M0-T59",
-      "what": "DISPATCHED on SQ-23, from M0-T50's own self-flagged loose end: IMPORT_ONLY is 'a brand new env contract with no prior art', undocumented in A3_env_matrix.md. ADHIKARIN's reason it is a queue item rather than a docs chore: AN ENV CONTRACT THAT EXISTS ONLY IN THE CODE THAT READS IT IS A CONVENTION WITH NO DETECTOR — the same shape as an undocumented invariant. So the task is told that IF a CI check asserts that matrix, the entry must be one the check ACTUALLY READS, or it will have written a convention with no detector ABOUT a convention with no detector. Also told to capture the reasoning that will be forgotten first: T50 deliberately rejected the isDirectEntrypoint idiom because FOR A GATE THE HAZARD IS FAILING TO RUN, so its safe default must be RUN — an entrypoint check is silent whenever loaded indirectly and would reintroduce the same silent-pass class keyed on load path. Forbidden from changing the mechanism (V-36 certified it); a defect found while documenting is REPORTED, not fixed.",
-      "owner": "KARAKA-M0-T59",
-      "state": "in_flight"
+      "what": "COMPLETE. +209 lines to platform/scripts/audit/A3_env_matrix.md: an addenda frontmatter entry, a matrix row marking .env/.env.local/prod as 'MUST STAY ABSENT' rather than a plain no -- because for this variable ABSENCE IS THE CONTRACT -- and Addendum A3.4 in seven sections. It DELIBERATELY DID NOT touch status: COMPLETE / executed_at / verdict, because flipping them would claim a re-run that did not happen. M0-T50's reasoning captured as a FOUR-ROW DIRECTION TABLE: a mutating script's hazard is RUNNING so its safe default is DO NOT RUN (isDirectEntrypoint); A GATE'S HAZARD IS FAILING TO RUN so its safe default is RUN (IMPORT_ONLY); and an entrypoint check is silent whenever the module is loaded indirectly, so using one on a gate re-keys the same silent-pass class onto the load path. USAGE MEASURED: exactly the four predicted files, zero occurrences in .github/, any .env*, or Terraform, tracked or untracked; every cited line re-verified with awk and ONE SELF-CORRECTION MADE BEFORE COMMIT. DOES CI ASSERT THE MATRIX? NO -- nothing reads A3_env_matrix.md, it is absent from CAPABILITY_MANIFEST.json, and it is a CLOSED point-in-time audit report rather than a living registry. IT SAID SO INSIDE THE DOCUMENT (§A3.4.6, INV-4 detector: NONE) rather than leave the gap implied, and did NOT build a guard because that is V-36's F-I, outside SQ-23, and a guard it wrote could not be its own certified detector (I16). WHAT IS DETECTED IS ALSO STATED so the gap reads at its true size: INV-3 VERIFIED not assumed -- npx vitest list showed both entrypoint-guard cases run inside ci.yml's Unit Tests job, which sets job-level NODE_ENV: test, i.e. the detector runs inside the very condition that used to trigger the defect.",
+      "owner": "PARIKSAKA",
+      "state": "COMPLETE 3e565556b + 4017d2383 (report into the tracked path per D-63)"
     },
     {
       "id": "F-NEWLINE-INJECTION-FORGES-THE-SENTINEL",
@@ -1270,13 +1270,37 @@
     },
     {
       "id": "M0-T56-PART1-LANDED",
-      "what": "F-G COMMITTED 809b8eb25 with D-61 part 9's condition observed: the between-commits guard run is RECORDED (self-test 0, live 0, 15 disclosed, 110 rows) so PARIKSAKA can certify F-G without SQ-11 and any output change is attributable to one cause. THE THREE ADHIKARIN PROBES ARE NOW REFUSED and the 15 shipped demotions remain intact -- i.e. the fix discriminates rather than simply tightening. It also swept the file's comments per the F-T55-1 instruction I sent mid-task. PART 2 (SQ-11) now starting.",
-      "owner": "KARAKA-M0-T56",
-      "state": "part1_committed_part2_in_flight"
+      "what": "BOTH PARTS LANDED IN D-61 PART 9's ORDER WITH THE GUARD RUN RECORDED BETWEEN. F-G: decision_index() now retains authorised_covers; new decision_grant() resolves what a decision authorises FOR A RULE ID and FAILS CLOSED on every gap (no field, no entry for the rule, no covers list); apply_rule_disclosures() requires the entry's covers to be a SUBSET of that grant. ALL FOUR of ADHIKARIN's probes were ACCEPTED before; after, the D-54 control still ACCEPTED and D-1 bare, D-1 with an invented wider covers, and D-60 all REFUSED and gating at BLOCKING. Because those three refuse at the FIRST new gap it ISOLATED THE SUBSET CONJUNCT SEPARATELY -- D-54 with a hand-widened covers ACCEPTED before, REFUSED after, which is exactly the attack D-54 part 5(a) described and could not enforce. NOTHING RELAXED: all 15 shipped demotions still demote, --live identical rule-for-rule across all 33 rules -- AND IT MADE THAT A DETECTOR RATHER THAN A REPORT CLAIM via new self-test case 7b. SQ-11 landed WITHOUT TOUCHING c28 AT ALL (167 insertions, 0 deletions): a c28_population_probe() with a SEEDED DEFECT BUILT INSIDE IT (the re-pointed rule over the same snapshot returns 0 -- V-27 RE-MEASURED, not cited) plus a structural assertion, proved to fail two ways in isolated copies with the shipped tree never mutated. It also corrected the false comment I routed mid-task WITHOUT restating a fresh count that would rot the same way.",
+      "owner": "PARIKSAKA",
+      "state": "BOTH PARTS COMPLETE — 809b8eb25 (F-G + comment sweep), 09a1600bd (SQ-11), 080d4cce7 (tracked report + queue line)"
+    },
+    {
+      "id": "F-62-OF-63-RULINGS-CANNOT-AUTHORISE",
+      "what": "OPERATIONAL CONSEQUENCE OF THE F-G FIX, routed to ADHIKARIN as URGENT because it binds its NEXT ruling rather than a past one. 62 OF 63 ADHIKARIN DECISIONS CARRY NO authorised_covers FIELD, so after M0-T56's fix ONLY D-54 CAN AUTHORISE A DEMOTION -- including against a brand-new ruling whose prose plainly grants one. The guard would refuse it CORRECTLY by its new rule and USELESSLY, because the intent was clear and the machine cannot see it. I explicitly did NOT propose a relaxation: fail-closed is right and the fix is exactly what was granted. THE GAP IS ON THE AUTHORING SIDE -- authorised_covers is now a load-bearing field in ADHIKARIN's rulings and NOTHING TELLS IT TO WRITE ONE. An authorisation format that only one historical ruling happens to satisfy is a convention with no detector, the same shape ADHIKARIN has ruled on twice today. Three options offered, none chosen by me: future rulings carry the field (a change to how ADHIKARIN writes, its alone); a back-fill of the few historical rulings that genuinely granted demotions (in practice D-54, possibly D-38/D-39); or guard-side prose inference, WHICH I ARGUED AGAINST since it replaces an explicit field with an inference.",
+      "owner": "ADHIKARIN",
+      "state": "asked_urgent"
+    },
+    {
+      "id": "F-PROBE-CARRIED-THE-DEFECT-IT-WAS-CLOSING",
+      "what": "A NEW ENTRY FOR THE CATALOGUE, and M0-T56 calls it the FIFTH occurrence. The guard's own self-test probe for the disclosure mechanism WAS ITSELF AN INSTANCE OF F-G: its positive case cited D-1 and passed. It now selects an actually-granting decision from the ledger programmatically, and new cases 8-12 add the three attacks as must-refuse, a grant keyed to another rule, and a positive control proving covers SUBSET grant rather than equality. THE MECHANISM NAMED: picking [0] as an example of a valid thing. I have argued to ADHIKARIN that this deserves a doctrine line because IT IS NOT §N.8 -- §N.8 is a signal with no detector; THIS IS A DETECTOR VALIDATED AGAINST AN EXAMPLE THAT DOES NOT SATISFY THE PROPERTY BEING TESTED. A test can be green, real, and meaningless at once.",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-REPORTS-DIR-COUNT-DISAGREES",
+      "what": "MINE TO CHECK, not routed. M0-T56 reports that reports/M0-T56-report.md existed UNTRACKED AND BYTE-IDENTICAL before it touched the directory, while M0-T58's sweep line names five OTHER files -- so T58's count and the directory's contents disagree. Both agents are honest and one of the two figures is measuring something different from what it says. Flagged to ADHIKARIN only so the two numbers are not read as contradictory in the ledger; the reconciliation is a conductor job and I am doing it rather than spending a KARAKA on it.",
+      "owner": "SUTRADHARA",
+      "state": "to_reconcile"
+    },
+    {
+      "id": "M0-T60",
+      "what": "DISPATCHED on SQ-24 — the third NODE_ENV entrypoint guard, at platform/scripts/pariprashna/ledger_writer_worker.ts:159. TOLD EXPLICITLY NOT TO COPY M0-T50's FIX: T50 graded this LOWER than R-28.1 because a worker that declines to start FAILS LOUDLY (no unearned green, unlike a gate that silently exits 0 asserting 'checked, fine') and said its direction analysis GENUINELY DIFFERS. It must re-derive from A3.4's governing question -- what is THIS module's hazard, running when it shouldn't or failing to run when it should? -- since a mutating long-running pg-pool worker has the OPPOSITE hazard profile to a gate. THREE OUTCOMES ALL ACCEPTABLE, chosen on the merits: IMPORT_ONLY, isDirectEntrypoint, or NO CHANGE — and it was told plainly that no-change is a complete and valuable result and NOT to manufacture a repair to have something to commit. Scope caveat carried: the file is in another campaign's subsystem, so if the change would alter runtime behaviour rather than entrypoint discipline it must STOP and report. ALSO: its designated primary source, M0-T50's report, DOES NOT EXIST -- pointed at the reconstruction M0-T59 already wrote into A3.4.",
+      "owner": "KARAKA-M0-T60",
+      "state": "in_flight"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:29:20Z",
+  "last_updated_ts": "2026-08-23T15:35:54Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
