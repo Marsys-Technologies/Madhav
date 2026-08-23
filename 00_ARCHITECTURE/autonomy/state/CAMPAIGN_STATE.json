@@ -316,6 +316,20 @@
         },
         "unanticipated_by_D30": "The named-field test reaches three entries D-30 routed elsewhere (X-03, criteria 8 and 5) and settles their ownership to M0 — deferring them to a rung would be the error in the opposite direction. Left UNEXAMINED-narrowed since no mechanism exists and both need a column (P5).",
         "figure_not_itemisable": "'6 rules + 2 criteria' is not itemisable — the register disagrees with itself twice and the figure propagated into D-30's question field unchallenged, relayed by me. Third time one of my numbers entered the ledger unchecked; itemise before counting."
+      },
+      "blocking_switch_precondition": {
+        "status": "HONEST, NOT SATISFIED — and now machine-reported rather than argued",
+        "by": "KARAKA M0-T40, commit 019f5100d",
+        "machine_reported": {
+          "failing_rules_without_disclosure": [
+            "C-11",
+            "X-02",
+            "X-03",
+            "X-05"
+          ],
+          "disclosures_recorded_without_effect": "all 16"
+        },
+        "note": "Before this, D-30 part 4's condition was satisfiable ON PAPER and not in effect — the disclosure block was asset_id-keyed and read in exactly one rule's handler while severity was a hardcoded constant. The switch could have been flipped on a precondition never really met. It is now computed from the disclosures and reported as a fact."
       }
     },
     "M1": {
@@ -689,12 +703,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T40",
-      "what": "CI gates a fossil; the disclosure route is inert",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "G1-DISPOSITIONS-WAITING",
       "what": "47 DRAFT assets with complete evidence packets and ZERO promotions; 23 zero-consumer packets with ZERO dispositions. The evidence has been complete since M0-T6/T7 hours ago. These are G1 decisions and I have not queued them because deciding them is not mine",
       "owner": "ADHIKARIN",
@@ -729,10 +737,28 @@
       "what": "D-12 part 3 declines re-dispatch for the orphaned throughput rows because 'ka_gochara_sweep's @register is genuinely removed' — but KA_GOCHARA_SWEEP IS NOT ONE OF THE THREE ORPHANS. They are ka_kota_chakra, ka_vedha_gochara and mi_sankalpa, and the KARAKA verified in source that ALL THREE CARRY A LIVE @register. So part 3's premise is true of a different asset, part 3 resolves into part 4 which rules only on the ka_gochara_sweep rows, and NO RULING REACHES THE THREE ORPHANS AT ALL. That left the KARAKA with no legal move — died-state is H6 (the runs COMPLETED; the promotion died), lit is H4, stale needs a G3 nobody made — so it halted and dispatched no build. The correct outcome of an incorrect premise, and the invariant held even though the ruling had drifted. Practical consequence: re-dispatch may be AVAILABLE after all, since for these three the writer is present. RELAYED, not re-derived by me",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T40",
+      "what": "DONE 019f5100d — both gates strengthened, precondition made honest",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T42",
+      "what": "the parity guard returns a GREEN from a fossil — worse than the one just fixed",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F-T40-3-BASELINE-REGEN",
+      "what": "The shared baseline needs an operator regeneration and M0-T40 DELIBERATELY did not do it, for three reasons I am not overriding: it would erase the new staleness signal on day one, move a figure FOUR in-flight documents cite, and snapshot a registry a sibling is actively writing to. A sequencing decision rather than a technical one",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:33:21Z",
+  "last_updated_ts": "2026-08-23T08:41:59Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
