@@ -643,3 +643,5 @@
 {"ts":"2026-08-23T10:23:45Z","agent":"PARIKSAKA","status":"working","detail":"V-24: guard-integrity trio T30/T40/T42 all PASS — H3 clean (15 BLOCKING unchanged across all three), fossil gate fires exit 3 on the shipped baseline. 24 verdicts"}
 {"ts":"2026-08-23T10:25:15Z","agent":"PRAHARI","status":"working","detail":"loop tick 114: nudge confirmed effective -- PARIKSAKA resumed at 10:20:54, backlog now 27->13 (V-24 filed, guard-integrity trio T30/T40/T42 all PASS). SUTRADHARA closed the redrive question as normal operation fleet-wide. No new stalls, no build_runs. Spend nominal."}
 {"ts":"2026-08-23T10:25:53Z","agent":"PARIKSAKA","status":"working","detail":"V-25 filed. 25 verdicts, queue 27->13. Remaining: T6,T7,T8,T9,T14,T17,T18,T22,T24,T27,T29,T32,T41"}
+{"ts":"2026-08-23T10:26:18Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 4addf7e76 (PARIKSAKA-idle settled as normal operation; backlog 27->13; V-24/V-25 filed)"}
+{"ts":"2026-08-23T10:28:12Z","agent":"PARIKSAKA","status":"waiting","detail":"to_verifier EMPTY — 26 verdicts filed, queue fully drained. Available for the next batch"}
