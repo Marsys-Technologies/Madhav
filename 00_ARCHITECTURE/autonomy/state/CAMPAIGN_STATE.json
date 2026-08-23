@@ -171,20 +171,24 @@
       "status": "in_progress",
       "note": "IN PROGRESS. Census dimension: T1 six-source census, T2 catalogue contract + migration 590 (authored), T3 telemetry snapshot + proposal, T4 588/589 verification — ALL COMPLETE, ZERO WRITES EXECUTED, all awaiting PARIKSAKA. §19 efficiency dimension (V-1/D-8): T5 COMPLETE and committed a864672d7 — Efficiency sheet added (11 sheets), the 5 absent §15 fields now emitted 128/128 from an asset_profiles.json lookup that MISSES rather than a hardcoded constant, hotspot 64 false greens -> 0 with 128/128 honest nulls and profiled 0/128, timeout source 128-registered -> 107 registered / 21 default matching V-2's live distribution. Not yet certified. Safety: T11 migrate.ts entrypoint guard COMPLETE (1089db9b6); T15 running on the live sibling asset_registry_seed.ts. Running: T6 consumer map, T7 DRAFT reachability + DAG, T8 derived-field proposal, T15. Held by design: T12 (apply 590) and T13 (register 588/589) until T11 is CERTIFIED, not merely landed. Queued: T9 CI guards, T14 588 disclosure, T10 baseline freeze last.",
       "exit_scorecard": {
-        "measured_by": "KARAKA M0-T17, commit 5f66268f1, re-runnable via control/m0_exit_scorecard.py",
-        "as_of": "2026-08-23T05:07:35Z",
-        "tally": {
+        "generator": "control/m0_exit_scorecard.py — re-runnable, reading_history appended never overwritten",
+        "reading_1": {
+          "ts": "2026-08-23T05:05:59Z",
           "PASS": 0,
           "FAIL": 6,
           "NOT_MEASURABLE": 3,
           "BLOCKED": 3
         },
-        "headline": "ZERO of twelve M0 exit criteria are satisfied by a detector's output. This is the honest baseline, measured as a set for the first time. It is not a regression — the criteria were never all measured together before, and several are BLOCKED rather than failing.",
-        "blocked_reasons": {
-          "6": "charter P1 — the only offender is ka_gochara_sweep; recorded as neither PASS nor FAIL",
-          "7": "migration 590 never applied (wave halted 0/3)",
-          "11": "migration 590 never applied"
-        }
+        "reading_2": {
+          "ts": "2026-08-23T06:20Z",
+          "PASS": 1,
+          "FAIL": 7,
+          "NOT_MEASURABLE": 3,
+          "BLOCKED": 1
+        },
+        "why_FAIL_went_UP": "Criterion 7 moved BLOCKED -> FAIL(1) because migration 590 gave it a detector and the detector immediately returned 1. That is progress, not regression: not a new defect, a newly visible one. Its offender is ka_gochara_sweep (charter P1), so flagged not resolved. The KARAKA noted the FAIL-vs-BLOCKED grading is genuinely arguable and said it chose the reading that does not flatter the tally.",
+        "durability": "Criterion 11's PASS is NON-DURABLE and is reported as PASS WITH THE DURABILITY STATED rather than downgraded — mi_jivanaghatana is live scope=per_chart/domain=chart while the seed declares scope:'global'; scope is seed-overwritten and domain is not, so a re-seed moves one half of the pair and leaves the row internally inconsistent.",
+        "falsifiability": "Every rule now reading zero was re-run under a deliberate mutation. All 10 fired. No PASS here comes from a query that could not have returned non-zero."
       },
       "plan_reconciliation": {
         "measured_by": "KARAKA M0-T18, commit c4350b10d, re-runnable via control/plan_figure_reconciliation.py",
@@ -484,12 +488,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T27",
-      "what": "re-measure the exit scorecard — it read 0/12 before the wave",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "G-03",
       "what": "URGENT and LIVE: deriveState.ts:65 returns service_ok as the FIRST statement for anything with asset_type OR asset_kind == 'service', ahead of is_active, incomplete, error and the row check — and plan.ts:196 makes service_ok DEPENDENCY-SATISFYING, so a failing service satisfies downstream builds. CONDUCTOR-VERIFIED against production: 8 assets render service_ok; ka_graha_sancara carries service_health='unhealthy' written by its OWN self-test on 2026-08-02 and renders green anyway; three read 'healthy' with health_probe NULL; two have no health signal at all; four are not even CURRENT while the code's comment claims 'healthy when registered + CURRENT'. I VERIFIED M0-T21's repair did NOT widen this — a disagreement means one of the pair already said service and deriveState uses OR, so the set of 8 is unchanged by our work. Recommended as TRACK M (generic code across every layer, needs no asset-specific knowledge), unlike the ka_kshetra string which is about one asset. NOT queued",
       "owner": "ADHIKARIN",
@@ -524,10 +522,22 @@
       "what": "M0-T25 F-1's downstream effect: the Phase 0 Queue's 0.6a cell now reads '2' because the file-granular code scanner still diverges on bg_reference and bo_laksana_rerank. Three independent derivations say the registry's false is CORRECT for both — so the '2' is a defect count manufactured by a defective scanner, and a later reader would take it as two unrepaired false negatives. Being fixed by M0-T28",
       "owner": "KARAKA",
       "state": "in_progress"
+    },
+    {
+      "id": "M0-T27",
+      "what": "COMPLETE 15f7fb70f — 0->1 PASS, 6->7 FAIL, 3->1 BLOCKED, movement reported in both directions",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T29",
+      "what": "full seed-durability register across all overwritten columns — closes M0-T27's declared lower bound so the ownership ruling rests on the whole picture",
+      "owner": "KARAKA",
+      "state": "running"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:11:52Z",
+  "last_updated_ts": "2026-08-23T06:25:21Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
