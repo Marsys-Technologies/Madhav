@@ -218,6 +218,23 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
         run: npx tsx scripts/migrate.ts
 
+      # ── Consumer-side migration-drift check (Nirmāṇa M0-T45 / SQ-10, D-41 part 4) ──────────
+      # The step above carries the same unasserted-invocation shape RES-1 named in deploy.yml
+      # before M0-T44: `npx tsx scripts/migrate.ts` with no tee/grep of its own, run as a single
+      # sequential step in one job rather than a `needs:`-gated job graph. D-41 part 4 folds this
+      # exact line into SQ-10 rather than leaving it a loose observation. This job has no
+      # `needs:` skip-graph to defeat, so the hazard here is narrower than deploy.yml's — but the
+      # same independent, consumer-side count (files on this checkout vs. `_migrations_applied`
+      # rows in THIS ephemeral database) verifies the step actually left the ledger caught up,
+      # rather than trusting that a step which didn't throw must have done its job. Read-only:
+      # one SELECT, no DDL, no DML.
+      - name: Verify migrations applied against the ephemeral smoke database
+        working-directory: platform
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: npx tsx scripts/ci/verify_migrations_deployed.ts
+      # ── /Consumer-side migration-drift check ──────────────────────────────────────────────
+
       - name: dag_edge_guard — LIVE scan against the restored registry (SAMĀPTI F-02)
         # This is the guard's only automated LIVE invocation in the repo. It needs a real
         # asset_registry (depends_on / target_table / count_sql) plus information_schema,

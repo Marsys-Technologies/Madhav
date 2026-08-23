@@ -355,6 +355,77 @@ jobs:
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
   # ── /Schema barrier ─────────────────────────────────────────────────────────
 
+  # ── Consumer-side migration-drift check (Nirmāṇa M0-T45 / SQ-10, D-41 part 4) ──────────────
+  # M0-T44 made the `migrate` step above ASSERT its own completion (the MIGRATE_RUNNER_COMPLETE
+  # sentinel, grepped in that step's log). That assertion can only ever be read FROM INSIDE that
+  # step's own log — it cannot report "the migrate job never ran at all": skipped by a path
+  # filter or an `if:`, cancelled, removed from the workflow entirely, or — D-41's own words,
+  # "worst and least obvious" — a `needs:` graph in which a downstream job treats a SKIPPED
+  # `migrate` as satisfied. "A program cannot report its own non-execution."
+  #
+  # This job is the CONSUMER-SIDE witness that closes that gap: it does not trust the `migrate`
+  # job's own report of itself at all. It independently counts `.sql` files present in THIS
+  # checkout (the same commit deploy-web/deploy-mcp build from) against rows actually present in
+  # `_migrations_applied`, and fails when a file on disk has no matching ledger row.
+  #
+  # `if: always()` is load-bearing and deliberate — NOT the same as the deploy jobs' plain `if:`.
+  # Default `needs` semantics would skip THIS job too the instant `migrate` is skipped, which is
+  # exactly the failure mode being closed (a check that silently doesn't run is not a check).
+  # `needs.changes.result == 'success'` is checked explicitly instead, so a dispatch the CI gate
+  # (dispatch_gate.ts) legitimately blocked is not misreported as a migration-drift failure.
+  #
+  # Read-only against the ledger (verify_migrations_deployed.ts): exactly one SELECT against
+  # `_migrations_applied`, no DDL, no DML, nothing ever applied from here. An "either side could
+  # not be determined" state reports `not_checkable` and fails loudly — never a silent pass.
+  verify-migrations-deployed:
+    name: Verify migrations applied (consumer-side; catches a skipped/cancelled migrate job)
+    needs: [changes, migrate]
+    if: always() && needs.changes.result == 'success' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (verify_migrations_deployed.ts + pg)
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Compare migrations on disk against _migrations_applied
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — cannot verify migrations. Failing build."
+            exit 1
+          fi
+          cd platform
+          npx tsx scripts/ci/verify_migrations_deployed.ts
+  # ── /Consumer-side migration-drift check ────────────────────────────────────
+
   deploy-web:
     name: Build & Deploy Web
     # Only deploy on workflow_run (CI passed on main) or manual dispatch.
