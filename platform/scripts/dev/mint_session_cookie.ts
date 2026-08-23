@@ -41,7 +41,9 @@
 // line) to stdout. Pipe directly into curl: COOKIE=$(... ); curl -H "Cookie: __session=$COOKIE" ...
 // Exit 0 on success, non-zero on any failure (with error written to stderr).
 
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, realpathSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
@@ -111,7 +113,66 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+/**
+ * Is THIS module the process entrypoint, or was it merely imported by something else?
+ *
+ * Exported so the question has a real, directly-testable detector behind it rather than an
+ * inline expression nothing can exercise (CLAUDE.md §N.8).
+ *
+ * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
+ * execute. Both sides are normalised through `realpathSync` where possible, so a symlinked
+ * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
+ * does not make a direct run look like an import. Any failure to resolve either side answers
+ * `false`: the safe direction is "assume imported", because a wrongly-false answer makes the
+ * documented direct invocation exit having done nothing — loud, and recoverable — while a
+ * wrongly-true answer mints a real super-admin session cookie as an import side effect.
+ *
+ * MIRRORED, NOT IMPORTED, from `scripts/migrate.ts`, `scripts/seed/asset_registry_seed.ts` and
+ * `scripts/pariprashna/ledger_writer_worker.ts`, which carry the same function. Deliberately a
+ * copy: Nirmāṇa ruling D-9 standing-instructs agents not to import from `scripts/migrate.ts`,
+ * and this file must not acquire a module graph it did not have before. Behaviour is intended to
+ * stay identical to those copies; `scripts/__tests__/destructive_entrypoint_guards.test.ts`
+ * asserts the bodies agree.
+ */
+export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false
+  let modulePath: string
+  try {
+    modulePath = fileURLToPath(moduleUrl)
+  } catch {
+    return false
+  }
+  const entryPath = resolve(argv1)
+  if (modulePath === entryPath) return true
+  try {
+    return realpathSync(modulePath) === realpathSync(entryPath)
+  } catch {
+    return false
+  }
+}
+
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// THE HAZARD IS RUNNING. `main()` mints a Firebase custom token for `SUPER_ADMIN_UID`,
+// exchanges it for an ID token over the network, POSTs that to `${SERVICE_URL}/api/auth/session`
+// — which defaults to localhost but is routinely pointed at PRODUCTION — and writes the
+// resulting `__session` cookie to stdout, or to `COOKIE_OUTPUT_FILE` if set. An incidental
+// import therefore issued a live privileged-session grant and could overwrite an arbitrary path
+// named by an environment variable; its four `process.exit(1)` paths killed the importer.
+//
+// This is the `isDirectEntrypoint` contract (Nirmāṇa M0-T60 / A3.4 operator rule 5), NOT the
+// `IMPORT_ONLY !== '1'` contract the two CI gates use (M0-T50 / ruling D-49, documented at
+// `scripts/audit/A3_env_matrix.md` Addendum A3.4). A gate's hazard is FAILING to run, so its safe
+// default is RUN. This file's hazard is RUNNING, so its safe default is DO NOT RUN.
+//
+// Nirmāṇa WORK_QUEUE M0-T65, ruling D-74 part 1 (wave 1 of F-4 tier 1: the five scripts that were
+// destructive or credential-touching on incidental import). Verified WITHOUT executing this file —
+// D-74 parts 2 and 3 forbid running it — by structural assertion over this source plus behavioural
+// tests of the identical idiom on a harmless stand-in module. See
+// `scripts/__tests__/destructive_entrypoint_guards.test.ts`.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+}
