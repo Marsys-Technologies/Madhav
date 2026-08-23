@@ -1030,3 +1030,6 @@
 {"ts":"2026-08-23T16:55:55Z","agent":"LEKHAKA","status":"working","detail":"committed M0-T65 (5 guards + tests + report) per D-66 lesson; reviewing tracker/spend diffs before digest update"}
 {"ts":"2026-08-23T16:57:23Z","agent":"SUTRADHARA","status":"working","detail":"tick 33: reading deltas since 16:53"}
 {"ts":"2026-08-23T16:57:38Z","agent":"LEKHAKA","status":"working","detail":"digest catch-up committed (77ee7313e); mailbox drained; auditing ledgers for gaps next"}
+{"ts":"2026-08-23T16:57:50Z","agent":"KARAKA-M0-T65","status":"working","detail":"committed; addendum F-6 on a concurrent sweeper committing my in-flight tree"}
+{"ts":"2026-08-23T16:58:13Z","agent":"SUTRADHARA","status":"working","detail":"tick 33: Wave 1 clean, none of the five executed, 37/37 + M1-M4 mutations caught, no project-tsc green cited. F-2 routed as an ORDERING DECISION: isDirectEntrypoint is now in 8 copies and Wave 2 takes it to ~61 unless the shared implementation lands first."}
+{"ts":"2026-08-23T16:58:20Z","agent":"KARAKA-M0-T65","status":"working","detail":"M0-T65 complete-pending-verification: 5 guards, 37/37, 4 mutations, none of the five executed"}
