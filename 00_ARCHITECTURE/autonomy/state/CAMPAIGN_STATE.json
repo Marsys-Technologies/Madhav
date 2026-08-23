@@ -798,14 +798,26 @@
       "state": "running"
     },
     {
-      "id": "CURRENT-STATE-STALE",
-      "what": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md HAS NOT BEEN TOUCHED BY THIS CAMPAIGN. CLAUDE.md §F makes it the authoritative 'you are here' pointer and says in terms NOT to read current state from CLAUDE.md — §F is deliberately unmaintained so that CURRENT_STATE carries the truth. It has been stale ~6h across 40+ commits, three production writes, three applied migrations and 36 rulings. The corpus's own designated state pointer is the exact class of drift this campaign has been removing from everything else, and we corrected four stale claims in our own control artifacts while the GOVERNING one went unnoticed. Handed to LEKHAKA (§18.2 owns CURRENT_STATE/SESSION_LOG), with two cautions: write it for someone who has NOT been watching, and DO NOT overstate completion — if the refreshed §2 reads as 'M0 largely done' it reproduces the exact defect this campaign exists to remove, in the file the whole corpus reads first",
+      "id": "CURRENT-STATE-REFRESHED",
+      "what": "LEKHAKA took SQ-06 (e3608be6b): CURRENT_STATE 6.65 -> 6.66 written for the native cold, and SESSION_LOG given a dated STATUS entry rather than a fabricated session_open/session_close pair — it disclosed that this campaign does not run the single-session handshake that schema assumes rather than papering over it. Both files POINT BACK at the live sources rather than becoming a second thing that goes stale, which was the easy mistake to make. Verified by me: 7 'not closed' mentions, 0 overstatements, PARK-6 cited, no claim any rung has opened",
       "owner": "LEKHAKA",
-      "state": "assigned"
+      "state": "landed_with_one_correction"
+    },
+    {
+      "id": "CURRENT-STATE-WRONG-TALLY",
+      "what": "CONDUCTOR-VERIFIED AGAINST THE SOURCE, not relayed. CURRENT_STATE now states 'most recent reading before this entry: 2 pass / 6 fail / 3 not-measurable / 1 blocked'. THE SCORECARD SAYS 1/7/3/1: m0_exit_scorecard.json's reading_history holds 4 readings with the last three all 1/7/3/1, its top-level tally is 1/7/3/1, and the MD's own table reads PASS 0->1 and FAIL 6->7. No 2/6/3/1 reading exists anywhere. TWO REASONS THIS IS NOT AN ORDINARY TYPO: it errs in the FLATTERING direction, in the authoritative state pointer, at the exact spot I flagged as the failure mode to avoid; and it ERASES THE BEST THING THE SCORECARD SHOWS — FAIL went UP because migration 590 gave criterion 7 a detector and the detector immediately returned 1, which is a newly VISIBLE defect rather than a new one. Correction requested, with the instruction to re-read the figure from the JSON at edit time rather than from my message: the fix for unchecked numbers is not to trust a more careful colleague, it is for each surface to read its own source",
+      "owner": "LEKHAKA",
+      "state": "correction_requested"
+    },
+    {
+      "id": "ADHIKARIN-PULL-CADENCE",
+      "what": "PRAHARI found a PULL-CADENCE GAP, not a stall: ADHIKARIN's pane shows a cleanly completed turn and its own last message said 'nothing new needs you', which was true when written — but five items have since arrived in to_adhikarin/, oldest ~1h, because the mailbox is a pull channel it does not poll between turns. Closed by sending the queue through the SESSION-MESSAGE channel instead. GOING FORWARD: anything blocking goes by session message; the mailbox keeps the durable record. Same lesson as the poke defect one layer up — a channel that fails silently is worse than one that fails loudly",
+      "owner": "SUTRADHARA",
+      "state": "resolved"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:15:44Z",
+  "last_updated_ts": "2026-08-23T09:20:02Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
