@@ -135,6 +135,8 @@ FIXTURES = HERE / "asset_catalogue_fixtures"
 RESIDUALS_PATH = HERE / "asset_catalogue_disclosed_residuals.json"
 COWRITERS_PATH = HERE / "asset_catalogue_declared_cowriters.json"
 BASELINE_SNAPSHOT = HERE / "asset_catalogue_baseline_20260823.json"
+DECISIONS_PATH = REPO_ROOT / "00_ARCHITECTURE" / "autonomy" / "state" / "DECISIONS.jsonl"
+MIGRATIONS_DIR = REPO_ROOT / "platform" / "migrations"
 
 PASS = "pass"
 FAIL = "fail"
@@ -302,6 +304,330 @@ def parse_contract(path: pathlib.Path) -> dict:
 
 class GuardError(Exception):
     pass
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# SNAPSHOT FRESHNESS — M0-T40, finding F-T36-2
+# ═════════════════════════════════════════════════════════════════════════════
+# WHY `--baseline` EXISTS, ESTABLISHED BEFORE IT WAS TOUCHED.
+#
+# It is not a mistake and it is not a shortcut. GitHub Actions has no route to the
+# production database and no credential for one — see this module's header, and
+# `.github/workflows/nirmana-m0-guards.yml`, which runs `--self-test` and `--baseline`
+# and never `--live`. `--live` reads `DATABASE_URL` out of `platform/.env.local`, a
+# file that does not exist in CI. So "switch CI to `--live`" is not a fix; it is a job
+# that cannot run. `--baseline` is a deliberate accommodation to that constraint.
+#
+# WHAT WAS ACTUALLY BROKEN. The accommodation shipped without the one thing that makes
+# it honest: a freshness detector. The dated snapshot was read, its rules were run, and
+# its output was printed with no statement anywhere about how old the data was — so the
+# same report reads identically whether the snapshot was taken sixty seconds ago or
+# three months ago, and a reader (or a future blocking gate) cannot tell which. Measured
+# at 2026-08-23T08:26Z: the shipped baseline was captured at 05:09:17Z, before migration
+# 590 applied and before two certified repairs landed, and it reported C-05, C-14 and
+# C-23 as BLOCKING failures when all three pass against production. It also reported
+# five rules `not_checkable` for want of columns that production has had since 05:36Z.
+# That is a fossil being read as a verdict, which is CLAUDE.md §N.8's defect class
+# sitting inside the mechanism built to catch it.
+#
+# THE FIX, AND ITS HONEST SCOPE. Two detectors, both DB-free, both reported in every
+# mode and ENFORCED (exit 3) in snapshot/baseline mode:
+#
+#   1. AGE. `_meta.read_at` against a declared maximum (`--max-age-hours`, default
+#      DEFAULT_MAX_SNAPSHOT_AGE_HOURS). A snapshot with no parseable `read_at` is stale
+#      by definition: an age that cannot be measured is not a young age.
+#   2. SCHEMA-BEHIND. Every `ALTER TABLE asset_registry ADD COLUMN` in this repo's
+#      `platform/migrations/*.sql` names a column the catalogue is supposed to have. A
+#      snapshot missing one of those columns provably predates a migration that is
+#      sitting in the same checkout. This is a PROOF of staleness, not an estimate.
+#
+#      Its honest limit, stated rather than glossed: it reads only that one statement
+#      form in that one directory, so it is SUFFICIENT to prove staleness and NOT
+#      COMPLETE — a snapshot it calls schema-current may still be old, which is exactly
+#      what detector 1 is for. Neither detector can prove a snapshot is CURRENT; they
+#      can only prove it is not. That is why the output never says "fresh", only
+#      "no staleness detected", and why `--live` remains the only mode that is a
+#      statement about production.
+#
+# WHAT THIS DELIBERATELY DOES NOT DO: it does not make anything gate that did not gate
+# before in the CI sense (the workflow's `continue-on-error: true` is untouched, and no
+# file under `.github/` was edited by this task), and it does not weaken any rule. It
+# only stops a stale input from being reported as if it were a current one.
+DEFAULT_MAX_SNAPSHOT_AGE_HOURS = 24.0
+
+_ALTER_ADD_COLUMN_RE = re.compile(
+    r"alter\s+table\s+(?:only\s+)?(?:public\.)?asset_registry\s+"
+    r"add\s+column\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_]*)", re.I)
+
+
+def migration_declared_registry_columns() -> tuple[set[str], list[str]]:
+    """Columns this repo's migrations declare on asset_registry. (set, files)."""
+    cols: set[str] = set()
+    files: list[str] = []
+    if not MIGRATIONS_DIR.exists():
+        return cols, files
+    for p in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        flat = " ".join(p.read_text(encoding="utf-8", errors="replace").split())
+        found = {m.group(1).lower() for m in _ALTER_ADD_COLUMN_RE.finditer(flat)}
+        if found:
+            cols |= found
+            files.append(p.name)
+    return cols, files
+
+
+def snapshot_staleness(raw: dict, mode: str, max_age_hours: float,
+                       now: _dt.datetime | None = None) -> dict:
+    """Measure how old the rows the guard is about to judge actually are."""
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    meta = raw.get("_meta") or {}
+    read_at = meta.get("read_at")
+    reasons: list[str] = []
+    age_hours: float | None = None
+
+    if not read_at:
+        reasons.append("the snapshot carries no `_meta.read_at`, so its age cannot be "
+                       "measured — an age that cannot be measured is not a young age")
+    else:
+        try:
+            ts = _dt.datetime.fromisoformat(str(read_at).replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=_dt.timezone.utc)
+            age_hours = round((now - ts).total_seconds() / 3600.0, 3)
+        except ValueError:
+            reasons.append(f"`_meta.read_at` ({read_at!r}) is not an ISO-8601 timestamp, "
+                           f"so the snapshot's age cannot be measured")
+
+    age_exceeded = age_hours is not None and age_hours > max_age_hours
+    if age_exceeded:
+        reasons.append(f"the snapshot was taken {age_hours}h ago, which exceeds the "
+                       f"declared maximum of {max_age_hours}h")
+
+    declared, mig_files = migration_declared_registry_columns()
+    snap_cols = {str(c).lower() for c in (raw.get("registry_columns") or [])}
+    schema_behind = sorted(declared - snap_cols) if snap_cols else []
+    if schema_behind:
+        reasons.append(
+            f"the snapshot is missing column(s) {schema_behind} that a migration in "
+            f"THIS checkout adds to asset_registry ({', '.join(mig_files)}) — the "
+            f"snapshot provably predates a schema change that is already in the repo")
+
+    return {
+        "mode": mode,
+        "read_at": read_at,
+        "measured_at": now.isoformat(),
+        "age_hours": age_hours,
+        "max_age_hours": max_age_hours,
+        "age_exceeded": age_exceeded,
+        "migration_declared_columns": sorted(declared),
+        "migration_files_scanned": mig_files,
+        "schema_behind_columns": schema_behind,
+        "stale": bool(reasons),
+        "reasons": reasons,
+        "enforced": mode != "live",
+        "what_a_clean_result_means": (
+            "no staleness was DETECTED. That is not a claim that the snapshot is "
+            "current: neither detector can prove currency, only its absence. Only "
+            "`--live` is a statement about production."),
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PER-RULE DISCLOSURES — M0-T40, finding F-T36-3
+# ═════════════════════════════════════════════════════════════════════════════
+# THE DEFECT. `asset_catalogue_disclosed_residuals.json` grew a `deferred_rule_disclosures`
+# block (M0-T36) to satisfy ADHIKĀRIN D-30 part 4, which amends D-24 part 3 so the CI
+# blocking flip additionally requires every DEFERRED rule to carry an itemised, dated
+# disclosure. Sixteen entries were written. NOTHING READ THEM: `disclosed_additions` is
+# keyed by asset_id and read in exactly one function (`x02`), `zero_consumer_dispositions`
+# in exactly one other (`x05`), and severity was a constant typed into the RULES table.
+# A disclosure could therefore be written, look correct, and change no outcome — so
+# D-30 part 4's precondition was satisfiable on paper and inert in fact, and the switch
+# could have been flipped on a condition that was never really met.
+#
+# WHAT THIS MECHANISM DOES, AND THE THREE THINGS IT REFUSES TO DO.
+#
+#   * A disclosure NEVER turns a rule green. The rule still runs, still reports `fail`,
+#     and still lists every violation, with the disclosure attached to the result. This
+#     is D-12 part 4's "never silently green" and D-10 part 3's migration-number route,
+#     as M0-T14 implemented it. What a disclosure can buy is that the failure does not
+#     GATE — `effective_severity` becomes DISCLOSED_NON_GATING and the exit code ignores
+#     it. Visible and non-gating; never invisible.
+#   * A disclosure NEVER silences a rule wholesale. It must itemise what it covers, and
+#     the demotion applies only while EVERY current violation of that rule is inside
+#     that itemised set. One new violation the disclosure does not name and the rule
+#     gates again at its declared severity, with the uncovered rows called out. The
+#     backlog can be paid down, never silently grown — the same discipline
+#     `migration_number_legacy_duplicates.json` is held to.
+#   * A KĀRAKA CANNOT DEMOTE A GATE BY WRITING A FILE. Severity is no longer a bare
+#     constant, but nor is it a free-text field: a demotion takes effect only when the
+#     entry names a decision id that ACTUALLY EXISTS in `state/DECISIONS.jsonl` and was
+#     authored by ADHIKĀRIN, because catalogue-gate disposition is a charter G-power and
+#     an entry any agent can type is not an authority record. The honest limit of that
+#     detector, stated: it verifies such a ruling EXISTS and who authored it; it cannot
+#     verify the ruling says what the entry claims. That is a real check with a stated
+#     boundary, not a green with nothing behind it.
+#
+# CONSEQUENCE TODAY, MEASURED NOT ASSUMED: all sixteen shipped entries lack both
+# `gating_effect` and `authorised_by`, so every one of them reports `effect: "none"` and
+# NOT ONE BLOCKING GATE IS DEMOTED by this change. The disclosure precondition becomes
+# honest — the guard now reports, per rule, whether a disclosure exists and whether it
+# has any effect — rather than satisfied. Flipping the switch is ADHIKĀRIN's act and
+# remains unflipped; this task did not touch `.github/`.
+DISCLOSED_NON_GATING = "DISCLOSED_NON_GATING"
+
+# Fields every rule disclosure must carry. An incomplete disclosure is not a
+# disclosure — same posture as x02()'s check and migration_number_guard.ts error E4.
+REQUIRED_DISCLOSURE_FIELDS = ("rule", "owner", "deferred_to", "disclosed_via",
+                              "reason", "disclosed_at", "disclosed_by")
+# Additionally required the moment an entry claims a gating effect.
+REQUIRED_DEMOTION_FIELDS = ("authorised_by", "covers")
+VALID_GATING_EFFECTS = ("none", "non_gating")
+
+_RULE_DISCLOSURE_DOC: dict | None = None      # test-injection point (self-test only)
+_DECISION_INDEX: dict | None = None           # test-injection point (self-test only)
+
+
+def decision_index(force: bool = False) -> dict:
+    """{decision_id: {"agent":…, "power":…}} parsed from state/DECISIONS.jsonl."""
+    global _DECISION_INDEX
+    if _DECISION_INDEX is not None and not force:
+        return _DECISION_INDEX
+    idx: dict[str, dict] = {}
+    if DECISIONS_PATH.exists():
+        for line in DECISIONS_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(d, dict) and d.get("id"):
+                idx[str(d["id"])] = {"agent": d.get("agent"), "power": d.get("power"),
+                                     "ts": d.get("ts")}
+    _DECISION_INDEX = idx
+    return idx
+
+
+def load_rule_disclosures(doc: dict | None = None) -> dict[str, list[dict]]:
+    """Rule-keyed disclosures, validated. Raises GuardError on a malformed entry."""
+    if doc is None:
+        doc = _RULE_DISCLOSURE_DOC
+    if doc is None:
+        doc = _load_json(RESIDUALS_PATH)
+    if doc is None:
+        raise GuardError(f"residuals file unreadable: {RESIDUALS_PATH.name} — the "
+                         f"disclosure reader cannot report 'no disclosures' when it "
+                         f"could not read the file that would carry them")
+    block = doc.get("deferred_rule_disclosures") or {}
+    known = {r.id for r in ALL_RULES}
+    out: dict[str, list[dict]] = {}
+    for key, ent in sorted(block.items()):
+        if not isinstance(ent, dict):
+            raise GuardError(f"rule disclosure '{key}' is not an object")
+        missing = [f for f in REQUIRED_DISCLOSURE_FIELDS if not ent.get(f)]
+        if missing:
+            raise GuardError(
+                f"rule disclosure '{key}' is missing required field(s) {missing} — an "
+                f"incomplete disclosure is not a disclosure (mirrors x02 / "
+                f"migration_number_guard.ts error E4)")
+        rid = str(ent["rule"])
+        if rid not in known:
+            raise GuardError(
+                f"rule disclosure '{key}' names rule '{rid}', which this guard does not "
+                f"implement — a disclosure for a rule that does not exist is a typo "
+                f"wearing governance clothes")
+        eff = ent.get("gating_effect", "none")
+        if eff not in VALID_GATING_EFFECTS:
+            raise GuardError(f"rule disclosure '{key}': gating_effect must be one of "
+                             f"{VALID_GATING_EFFECTS}, got {eff!r}")
+        if eff == "non_gating":
+            lacking = [f for f in REQUIRED_DEMOTION_FIELDS if not ent.get(f)]
+            if lacking:
+                raise GuardError(
+                    f"rule disclosure '{key}' claims gating_effect='non_gating' but is "
+                    f"missing {lacking}. A demotion needs an authority record "
+                    f"(`authorised_by`: a DECISIONS.jsonl id) and an itemised `covers` "
+                    f"list; without both it would silence the rule wholesale, which is "
+                    f"charter H3")
+            if not isinstance(ent.get("covers"), list):
+                raise GuardError(f"rule disclosure '{key}': `covers` must be a list of "
+                                 f"violation identities")
+        out.setdefault(rid, []).append(dict(ent, _key=key))
+    return out
+
+
+def violation_identity(row: Any) -> str:
+    """A stable identity for one violation row, for coverage comparison."""
+    if isinstance(row, dict):
+        for k in ("asset_id", "id", "table", "target_table"):
+            if row.get(k):
+                return str(row[k])
+        return json.dumps(row, sort_keys=True, ensure_ascii=False)
+    return str(row)
+
+
+def apply_rule_disclosures(rid: str, declared_severity: str, result: dict,
+                           disclosures: dict[str, list[dict]],
+                           decisions: dict) -> dict:
+    """Compute the effective severity FROM the disclosures. Mutates `result`."""
+    entries = disclosures.get(rid) or []
+    notes: list[str] = []
+    covered: set[str] = set()
+    demoting: list[str] = []
+    effective = declared_severity
+
+    for ent in entries:
+        key = ent.get("_key", rid)
+        if ent.get("gating_effect", "none") != "non_gating":
+            notes.append(f"{key}: recorded, no gating effect claimed "
+                         f"(gating_effect absent or 'none')")
+            continue
+        auth_id = str(ent.get("authorised_by"))
+        auth = decisions.get(auth_id)
+        if auth is None:
+            notes.append(f"{key}: claims non_gating under '{auth_id}', which is NOT a "
+                         f"decision id present in {DECISIONS_PATH.name} — no effect")
+            continue
+        if auth.get("agent") != "ADHIKARIN":
+            notes.append(f"{key}: claims non_gating under '{auth_id}', authored by "
+                         f"{auth.get('agent')!r} and not ADHIKĀRIN — no effect")
+            continue
+        demoting.append(key)
+        covered |= {str(c) for c in (ent.get("covers") or [])}
+
+    ids = [violation_identity(v) for v in result.get("violations") or []]
+    uncovered = sorted({i for i in ids if i not in covered})
+
+    if result.get("status") == FAIL and demoting:
+        if uncovered:
+            notes.append(
+                f"authorised disclosure(s) {demoting} apply, but {len(uncovered)} "
+                f"violation(s) are OUTSIDE their itemised `covers` list "
+                f"{uncovered[:8]} — the rule gates at its declared severity. A "
+                f"disclosure covers what it names; a backlog may be paid down, never "
+                f"silently grown")
+        else:
+            effective = DISCLOSED_NON_GATING
+            notes.append(f"every violation is inside the itemised `covers` of "
+                         f"authorised disclosure(s) {demoting} — the failure is "
+                         f"REPORTED IN FULL and does not gate")
+
+    result["declared_severity"] = declared_severity
+    result["effective_severity"] = effective
+    result["disclosure"] = {
+        "count": len(entries),
+        "keys": [e.get("_key", rid) for e in entries],
+        "authorised_demoting": demoting,
+        "covered_violations": sorted(covered & set(ids)),
+        "uncovered_violations": uncovered if result.get("status") == FAIL else [],
+        "effect": "non_gating" if effective == DISCLOSED_NON_GATING else "none",
+        "notes": notes,
+        "never_green": ("a disclosure never changes a rule's status; the failure and "
+                        "all of its violations are reported either way"),
+    }
+    return result
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1247,6 +1573,10 @@ def read_live() -> dict:
 # Runner + reporting
 # ─────────────────────────────────────────────────────────────────────────────
 def run_rules(snap: Snapshot) -> dict:
+    # Disclosures are loaded ONCE per run and validated before any rule is judged: a
+    # malformed disclosure must stop the guard (exit 3), never be skipped past.
+    disclosures = load_rule_disclosures()
+    decisions = decision_index()
     out: dict[str, dict] = {}
     for r in ALL_RULES:
         try:
@@ -1256,7 +1586,11 @@ def run_rules(snap: Snapshot) -> dict:
         except Exception as e:                       # noqa: BLE001
             res = Result(NOT_CHECKABLE, [], f"rule raised {type(e).__name__}: {e}")
         d = res.as_dict()
+        # `severity` stays the DECLARED severity — the contract cross-check compares
+        # against it, and a disclosure must never be able to rewrite what the spec says
+        # this rule is. The disclosure's effect lands in `effective_severity`.
         d.update({"severity": r.severity, "statement": r.statement, "origin": r.origin})
+        apply_rule_disclosures(r.id, r.severity, d, disclosures, decisions)
         out[r.id] = d
     return out
 
@@ -1265,21 +1599,37 @@ def summarise(results: dict) -> dict:
     s = {"pass": 0, "fail": 0, "not_checkable": 0,
          "blocking_failures": [], "rung_failures": [],
          "residual_failures": [], "advisory_failures": [],
-         "not_checkable_rules": []}
-    for rid, r in results.items():
+         "disclosed_non_gating_failures": [],
+         "not_checkable_rules": [],
+         # D-30 part 4 is a condition about disclosures, so the guard reports on it
+         # mechanically rather than leaving it to be asserted in prose.
+         "failing_rules_with_disclosure": [],
+         "failing_rules_without_disclosure": [],
+         "disclosures_recorded_without_effect": []}
+    for rid, r in sorted(results.items()):
         s[r["status"]] += 1
+        disc = r.get("disclosure") or {}
         if r["status"] == FAIL:
             key = {BLOCKING: "blocking_failures", RUNG: "rung_failures",
-                   RESIDUAL: "residual_failures", ADVISORY: "advisory_failures"}[r["severity"]]
+                   RESIDUAL: "residual_failures", ADVISORY: "advisory_failures",
+                   DISCLOSED_NON_GATING: "disclosed_non_gating_failures",
+                   }[r.get("effective_severity", r["severity"])]
             s[key].append(rid)
+            (s["failing_rules_with_disclosure"] if disc.get("count")
+             else s["failing_rules_without_disclosure"]).append(rid)
         elif r["status"] == NOT_CHECKABLE:
             s["not_checkable_rules"].append(rid)
+        if disc.get("count") and disc.get("effect") == "none":
+            s["disclosures_recorded_without_effect"].append(rid)
     return s
 
 
-def emit_text(results: dict, summary: dict, header: str, max_rows: int) -> None:
+def emit_text(results: dict, summary: dict, header: str, max_rows: int,
+              staleness: dict | None = None) -> None:
     print(header)
     print("=" * len(header))
+    if staleness:
+        emit_staleness(staleness)
     for rid in sorted(results):
         r = results[rid]
         badge = {PASS: "PASS ", FAIL: "FAIL ", NOT_CHECKABLE: "NULL "}[r["status"]]
@@ -1294,6 +1644,13 @@ def emit_text(results: dict, summary: dict, header: str, max_rows: int) -> None:
             print(f"           not_checkable: {r['reason']}")
         if r["detail"].get("class_counts"):
             print(f"           classes: {r['detail']['class_counts']}")
+        disc = r.get("disclosure") or {}
+        if disc.get("count"):
+            print(f"           disclosure: {disc['keys']} effect={disc['effect']} "
+                  f"(declared {r.get('declared_severity')} -> effective "
+                  f"{r.get('effective_severity')})")
+            for n in disc.get("notes") or []:
+                print(f"             · {n}")
     print()
     print(f"  pass={summary['pass']}  fail={summary['fail']}  "
           f"not_checkable={summary['not_checkable']}")
@@ -1302,9 +1659,33 @@ def emit_text(results: dict, summary: dict, header: str, max_rows: int) -> None:
     print(f"  RESIDUAL failures : {summary['residual_failures'] or 'none'} "
           f"(non-gating by construction — see X-02)")
     print(f"  ADVISORY failures : {summary['advisory_failures'] or 'none'}")
+    print(f"  DISCLOSED non-gating failures : "
+          f"{summary['disclosed_non_gating_failures'] or 'none'} "
+          f"(REPORTED IN FULL above; demoted only by an ADHIKĀRIN-authorised, itemised "
+          f"disclosure that covers every one of their violations)")
     print(f"  not_checkable     : {summary['not_checkable_rules'] or 'none'}")
+    print(f"  failing rules WITHOUT a disclosure entry : "
+          f"{summary['failing_rules_without_disclosure'] or 'none'}")
+    print(f"  disclosures recorded but with NO gating effect : "
+          f"{summary['disclosures_recorded_without_effect'] or 'none'}")
     print("  NOTE: not_checkable is NOT a pass. A rule whose input column or data "
           "does not exist has produced no verdict (CLAUDE.md §N.8).")
+    print("  NOTE: a disclosure never turns a rule green. Every violation above is "
+          "reported whether disclosed or not; a disclosure can only stop a failure "
+          "from gating, and only over the rows it itemises.")
+
+
+def emit_staleness(st: dict) -> None:
+    """Print the snapshot's age. Always — a silent freshness check is not a check."""
+    verdict_word = "STALE" if st["stale"] else "no staleness detected"
+    print(f"  SNAPSHOT FRESHNESS [{verdict_word}] read_at={st['read_at']} "
+          f"age_hours={st['age_hours']} max={st['max_age_hours']} "
+          f"schema_behind={st['schema_behind_columns'] or 'none'}")
+    for r in st["reasons"]:
+        print(f"      · {r}")
+    if not st["stale"]:
+        print(f"      · {st['what_a_clean_result_means']}")
+    print()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1363,6 +1744,8 @@ def self_test(max_rows: int) -> int:
                   f"(pass={summary['pass']} fail={summary['fail']} "
                   f"not_checkable={summary['not_checkable']})")
     failures += c23_code_derivation_probe()
+    failures += rule_disclosure_probe()
+    failures += snapshot_staleness_probe()
 
     if failures:
         print(f"\nSELF-TEST FAILED: {failures} check(s) did not behave as declared.")
@@ -1465,6 +1848,225 @@ def c23_code_derivation_probe() -> int:
     return bad
 
 
+def rule_disclosure_probe() -> int:
+    """Prove the per-rule disclosure mechanism is real, and prove it CAN fail.
+
+    D-24 part 3, binding on every guard this campaign ships: an assertion is not earned
+    until something has been shown to make it go red. F-T36-3 was exactly the absence of
+    that — sixteen disclosure entries that no code read, so no observation could ever
+    have distinguished a correct disclosure from a decorative one.
+
+    Six cases. Case 2 is the mechanism working; cases 3, 4 and 5 are the three ways it
+    must REFUSE to work, and they are the reason this is not a way to silence a gate.
+
+    Returns the number of probe failures (0 = all six behaved).
+    """
+    global _RULE_DISCLOSURE_DOC
+    print("\n  Rule-disclosure probe (severity is computed from the disclosure, and a "
+          "disclosure can only demote what it names, under an authority that exists):")
+    bad = 0
+    decisions = decision_index(force=True)
+    adhikarin = sorted(k for k, v in decisions.items() if v.get("agent") == "ADHIKARIN")
+    if not adhikarin:
+        print(f"      - PROBE NOT CHECKABLE: no ADHIKĀRIN decision found in "
+              f"{DECISIONS_PATH}. The ledger ships in this repository, so a probe that "
+              f"cannot read one means a broken checkout, not an excusable skip (§N.8).")
+        return 1
+    real_decision = adhikarin[0]
+    other_agent = next((k for k, v in decisions.items()
+                        if v.get("agent") and v.get("agent") != "ADHIKARIN"), None)
+    print(f"      authority ledger: {len(decisions)} decisions, "
+          f"{len(adhikarin)} by ADHIKĀRIN; probe cites {real_decision}")
+
+    def snap(extra_c01: bool = False) -> dict:
+        assets = [
+            {"asset_id": "zz_probe_one", "layer": "ganita", "asset_kind": "data",
+             "asset_type": "data", "count_sql": None, "catalog_status": "CURRENT",
+             "is_active": True, "scope": "global", "depends_on": []},
+            {"asset_id": "ga_probe_two", "layer": "ganita", "asset_kind": "data",
+             "asset_type": "data", "count_sql": None, "catalog_status": "CURRENT",
+             "is_active": True, "scope": "global", "depends_on": []},
+        ]
+        if extra_c01:
+            assets.append({"asset_id": "qq_probe_three", "layer": "ganita",
+                           "asset_kind": "data", "asset_type": "data",
+                           "count_sql": "SELECT 1", "catalog_status": "CURRENT",
+                           "is_active": True, "scope": "global", "depends_on": []})
+        return {"assets": assets}
+
+    def disclosure(**over) -> dict:
+        ent = {"rule": "C-01", "owner": "probe", "deferred_to": "R5",
+               "disclosed_via": f"DECISIONS.jsonl {real_decision}",
+               "reason": "probe fixture", "disclosed_at": "2026-08-23",
+               "disclosed_by": "self-test probe",
+               "gating_effect": "non_gating", "authorised_by": real_decision,
+               "covers": ["zz_probe_one"]}
+        ent.update(over)
+        return {"deferred_rule_disclosures": {"C-01": ent}}
+
+    def check(label: str, doc: dict | None, raw: dict, want: dict) -> None:
+        nonlocal bad
+        saved = _RULE_DISCLOSURE_DOC
+        globals()["_RULE_DISCLOSURE_DOC"] = doc if doc is not None else {}
+        try:
+            results = run_rules(Snapshot(raw))
+            summary = summarise(results)
+        finally:
+            globals()["_RULE_DISCLOSURE_DOC"] = saved
+        c01r, c05r = results["C-01"], results["C-05"]
+        got = {
+            "c01_status": c01r["status"],
+            "c01_violations": c01r["violation_count"],
+            "c01_effective": c01r["effective_severity"],
+            "c01_gates": "C-01" in summary["blocking_failures"],
+            "c05_gates": "C-05" in summary["blocking_failures"],
+        }
+        ok = all(got[k] == v for k, v in want.items())
+        print(f"      [{'OK  ' if ok else 'BAD '}] {label}")
+        print(f"           got {got}")
+        if not ok:
+            bad += 1
+            print(f"           expected {want}")
+            print(f"           notes: {c01r['disclosure']['notes']}")
+
+    # 1 — no disclosure at all: both rules gate. The control.
+    check("no disclosure ⇒ both BLOCKING rules gate", {}, snap(),
+          {"c01_status": FAIL, "c01_violations": 1, "c01_effective": BLOCKING,
+           "c01_gates": True, "c05_gates": True})
+    # 2 — THE MECHANISM. Authorised, itemised, fully covering: C-01 still FAILS and
+    #     still reports its violation; it stops gating. C-05 is untouched — a
+    #     disclosure for one rule may not silence another.
+    check("authorised + itemised + fully covering ⇒ C-01 reported, non-gating; "
+          "C-05 STILL GATES", disclosure(), snap(),
+          {"c01_status": FAIL, "c01_violations": 1,
+           "c01_effective": DISCLOSED_NON_GATING,
+           "c01_gates": False, "c05_gates": True})
+    # 3 — NOT A WHOLESALE SILENCER. A new violation the disclosure does not itemise
+    #     brings the gate straight back at the declared severity.
+    check("a violation outside `covers` ⇒ the rule gates again at BLOCKING",
+          disclosure(), snap(extra_c01=True),
+          {"c01_status": FAIL, "c01_violations": 2, "c01_effective": BLOCKING,
+           "c01_gates": True, "c05_gates": True})
+    # 4 — THE AUTHORITY DETECTOR IS REAL. A decision id nobody ever recorded buys
+    #     nothing, however well-written the entry.
+    check("authorised_by names a decision that does not exist ⇒ no effect",
+          disclosure(authorised_by="D-NO-SUCH-RULING"), snap(),
+          {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
+           "c05_gates": True})
+    # 5 — and it checks WHO. Only ADHIKĀRIN holds the charter power; an entry citing
+    #     any other agent's line is inert.
+    # The real ledger is currently 100% ADHIKĀRIN, so the "who authored it" conjunct
+    # has no natural counter-example there. A conjunct with no counter-example is an
+    # untested conjunct, so one is INJECTED rather than skipped past (§N.8).
+    global _DECISION_INDEX
+    saved_idx = _DECISION_INDEX
+    injected = "D-PROBE-NOT-ADHIKARIN"
+    globals()["_DECISION_INDEX"] = dict(decisions,
+                                        **{injected: {"agent": "KARAKA"}})
+    try:
+        check(f"authorised_by names a real but non-ADHIKĀRIN line ({injected}, "
+              f"agent=KARAKA) ⇒ no effect",
+              disclosure(authorised_by=injected), snap(),
+              {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
+               "c05_gates": True})
+    finally:
+        globals()["_DECISION_INDEX"] = saved_idx
+    if other_agent:
+        check(f"ledger's own non-ADHIKĀRIN line ({other_agent}) ⇒ no effect",
+              disclosure(authorised_by=other_agent), snap(),
+              {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
+               "c05_gates": True})
+    # 6 — an incomplete demotion is refused loudly, not applied partially.
+    saved = _RULE_DISCLOSURE_DOC
+    globals()["_RULE_DISCLOSURE_DOC"] = disclosure(covers=None)
+    try:
+        load_rule_disclosures()
+        print("      [BAD ] gating_effect='non_gating' with no `covers` was ACCEPTED")
+        bad += 1
+    except GuardError as e:
+        print(f"      [OK  ] gating_effect='non_gating' with no `covers` ⇒ GuardError "
+              f"({str(e)[:60]}…)")
+    finally:
+        globals()["_RULE_DISCLOSURE_DOC"] = saved
+
+    # 7 — the SHIPPED file must parse and validate. If someone hand-edits it into an
+    #     invalid state, the self-test says so DB-free, before CI ever reads a snapshot.
+    try:
+        live_disc = load_rule_disclosures(_load_json(RESIDUALS_PATH))
+        eff = sorted(r for r, es in live_disc.items()
+                     if any(e.get("gating_effect") == "non_gating" for e in es))
+        print(f"      [OK  ] shipped {RESIDUALS_PATH.name}: "
+              f"{sum(len(v) for v in live_disc.values())} rule disclosure(s) over "
+              f"{len(live_disc)} rule(s) parse and validate; "
+              f"claiming a gating effect: {eff or 'none'}")
+    except GuardError as e:
+        print(f"      [BAD ] shipped {RESIDUALS_PATH.name} does not validate: {e}")
+        bad += 1
+    return bad
+
+
+def snapshot_staleness_probe() -> int:
+    """Prove the freshness detector is real, and prove it CAN fail (F-T36-2)."""
+    print("\n  Snapshot-freshness probe (the age of the data a gate judges is itself "
+          "measured, and an unmeasurable age is not a young age):")
+    bad = 0
+    declared, files = migration_declared_registry_columns()
+    if not declared:
+        print("      - PROBE NOT CHECKABLE: no `ALTER TABLE asset_registry ADD COLUMN` "
+              "found under platform/migrations/. The migrations ship in this "
+              "repository, so finding none means a broken checkout (§N.8).")
+        return 1
+    col = sorted(declared)[0]
+    now = _dt.datetime.now(_dt.timezone.utc)
+    fresh = (now - _dt.timedelta(minutes=5)).isoformat()
+    old = (now - _dt.timedelta(hours=100)).isoformat()
+    allcols = sorted(declared) + ["asset_id"]
+    print(f"      migrations declare {sorted(declared)} on asset_registry "
+          f"({', '.join(files)})")
+
+    def check(label, raw, mode, want) -> None:
+        nonlocal bad
+        st = snapshot_staleness(raw, mode, DEFAULT_MAX_SNAPSHOT_AGE_HOURS, now=now)
+        got = {k: st[k] for k in want}
+        ok = got == want
+        print(f"      [{'OK  ' if ok else 'BAD '}] {label}: {got}")
+        if not ok:
+            bad += 1
+            print(f"           expected {want}; reasons={st['reasons']}")
+
+    check("fresh snapshot, schema current ⇒ not stale",
+          {"_meta": {"read_at": fresh}, "registry_columns": allcols}, "snapshot",
+          {"stale": False, "age_exceeded": False, "schema_behind_columns": []})
+    check("100h old ⇒ stale on age",
+          {"_meta": {"read_at": old}, "registry_columns": allcols}, "snapshot",
+          {"stale": True, "age_exceeded": True})
+    check(f"fresh but missing migration-declared column `{col}` ⇒ stale on schema",
+          {"_meta": {"read_at": fresh},
+           "registry_columns": [c for c in allcols if c != col]}, "snapshot",
+          {"stale": True, "age_exceeded": False, "schema_behind_columns": [col]})
+    check("no `_meta.read_at` at all ⇒ stale (an unmeasurable age is not a young age)",
+          {"registry_columns": allcols}, "snapshot", {"stale": True})
+    check("unparseable `_meta.read_at` ⇒ stale",
+          {"_meta": {"read_at": "yesterday-ish"}, "registry_columns": allcols},
+          "snapshot", {"stale": True})
+    check("live mode is measured but never enforced on age",
+          {"_meta": {"read_at": old}, "registry_columns": allcols}, "live",
+          {"stale": True, "enforced": False})
+
+    # The shipped baseline, reported rather than asserted: this is the fossil F-T36-2
+    # named, and the self-test states its condition out loud on every CI run.
+    raw = _load_json(BASELINE_SNAPSHOT)
+    if raw is None:
+        print(f"      [BAD ] shipped baseline {BASELINE_SNAPSHOT.name} unreadable")
+        return bad + 1
+    st = snapshot_staleness(raw, "snapshot", DEFAULT_MAX_SNAPSHOT_AGE_HOURS, now=now)
+    print(f"      shipped baseline {BASELINE_SNAPSHOT.name}: stale={st['stale']} "
+          f"age_hours={st['age_hours']} schema_behind={st['schema_behind_columns']}")
+    for r in st["reasons"]:
+        print(f"          · {r}")
+    return bad
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -1483,6 +2085,13 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     ap.add_argument("--max-rows", type=int, default=8,
                     help="Violation rows printed per rule in text mode (default 8).")
+    ap.add_argument("--max-age-hours", type=float,
+                    default=DEFAULT_MAX_SNAPSHOT_AGE_HOURS,
+                    help=f"Maximum age of a --snapshot/--baseline input before the "
+                         f"guard refuses to report it as a verdict (default "
+                         f"{DEFAULT_MAX_SNAPSHOT_AGE_HOURS}h). Tightening it is always "
+                         f"allowed; loosening it does not silence the schema-behind "
+                         f"detector, which is a proof rather than a threshold.")
     args = ap.parse_args(argv)
 
     try:
@@ -1515,15 +2124,41 @@ def main(argv: list[str]) -> int:
                 print("  -", pr, file=sys.stderr)
             return 3
 
+        mode = "live" if args.live else "snapshot"
+        staleness = snapshot_staleness(raw, mode, args.max_age_hours)
+
         results = run_rules(Snapshot(raw))
         summary = summarise(results)
         if args.json:
             print(json.dumps({"_meta": raw.get("_meta"), "header": header,
+                              "staleness": staleness,
                               "summary": summary, "rules": results},
                              indent=1, ensure_ascii=False, default=str))
         else:
             emit_text(results, summary,
-                      f"Asset Catalogue Contract conformance — {header}", args.max_rows)
+                      f"Asset Catalogue Contract conformance — {header}", args.max_rows,
+                      staleness=staleness)
+
+        # THE FOSSIL GATE (F-T36-2). A stale snapshot's rule results are printed in
+        # full above — suppressing them would hide data, which is the opposite defect —
+        # but the guard refuses to EXIT as though they were a verdict about the
+        # catalogue. Exit 3 is the existing "the guard cannot be trusted to have
+        # measured what it claims" code, which is exactly this situation. `--live`
+        # measures production by definition and is never failed on age.
+        if staleness["stale"] and staleness["enforced"]:
+            print("", file=sys.stderr)
+            print("GUARD ERROR — SNAPSHOT STALE: the rules above were run over data "
+                  "that is provably not the current catalogue.", file=sys.stderr)
+            for r in staleness["reasons"]:
+                print(f"  - {r}", file=sys.stderr)
+            print("  A gate that reads a stale snapshot is not a gate: it reports "
+                  "failures that may already be repaired and would report success for "
+                  "a defect introduced since. Regenerate the snapshot from an "
+                  "environment that HAS database access — `--live --snapshot-out "
+                  f"{BASELINE_SNAPSHOT.name}` — and commit it; CI has no credential "
+                  "and cannot do this for itself.", file=sys.stderr)
+            return 3
+
         return 1 if (summary["blocking_failures"] or summary["rung_failures"]) else 0
     except GuardError as e:
         print(f"GUARD ERROR: {e}", file=sys.stderr)

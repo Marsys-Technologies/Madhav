@@ -1360,7 +1360,22 @@ DISCLOSURE_COMMON = dict(
     disclosed_at="2026-08-23",
     disclosed_by="KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
     certified_by=None,          # I16 / charter H7
-    wired_into_the_guard=False, # F-T36-3 — no code path reads this block
+    # F-T36-3 CLOSED by M0-T40: check_asset_catalogue_contract.py now reads this block
+    # by RULE ID, validates every entry, and computes each rule's `effective_severity`
+    # FROM the disclosures instead of from a constant. So these entries are read — and
+    # they still have NO gating effect, because a demotion additionally requires
+    # `gating_effect="non_gating"` plus an `authorised_by` decision id that exists in
+    # DECISIONS.jsonl under ADHIKĀRIN's name, plus an itemised `covers` list that
+    # accounts for every current violation. None of the three is present here, and a
+    # KĀRAKA may not supply the second: demoting a gate is a charter G-power.
+    wired_into_the_guard=True,
+    gating_effect="none",
+    gating_effect_reason=(
+        "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may "
+        "add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised "
+        "`covers` list, and even then the rule still reports every violation — a "
+        "disclosure makes a residual visible and non-gating, never invisible "
+        "(D-12 part 4, D-10 part 3)."),
     does_not_turn_the_rule_green=True,
 )
 
@@ -2165,24 +2180,38 @@ def _write_disclosure_block() -> str:
     doc = json.loads(RESIDUALS_JSON.read_text(encoding="utf-8"))
     before = set(doc)
     doc["deferred_rule_disclosures_README"] = (
-        "DRAFT, INERT, AND NOT READ BY ANY CODE. Drafted by KĀRAKA M0-T36 (2026-08-23) to satisfy "
-        "ADHIKĀRIN ruling D-30 part 4, which amends D-24 part 3 so that the CI blocking flip "
-        "additionally requires every DEFERRED rule to carry its disclosure entry, itemised and "
-        "dated, in the discipline D-10 part 3 granted for migration_number_legacy_duplicates.json's "
-        "`disclosed_additions`. THREE THINGS THIS BLOCK IS NOT. (1) It is not wired: "
-        "check_asset_catalogue_contract.py reads `disclosed_additions` in exactly one function, "
-        "x02(), and `zero_consumer_dispositions` in x05(); nothing reads this key, so writing it "
-        "changes no rule's status, severity or exit code. (2) It is not a severity change: severity "
-        "is a hardcoded constant in the guard's RULES table, and X-02 is non-gating because someone "
-        "typed RESIDUAL there, not because it carries a disclosure. (3) It does not turn any rule "
-        "green — every entry carries `does_not_turn_the_rule_green: true`, per D-12 part 4's "
-        "'never silently green'. It is kept SEPARATE from `disclosed_additions` deliberately: that "
-        "block is keyed by asset_id and validated by x02(), and merging rule-keyed entries into it "
-        "would change what a live guard function iterates. Making these entries honourable needs a "
-        "guard code change (a per-rule disclosure reader and a disclosure-conditioned severity), "
-        "which is a demotion of thirteen BLOCKING gates and therefore ADHIKĀRIN's call under H3 — "
-        "not a KĀRAKA's. Source of truth: 00_ARCHITECTURE/control/m0_deferral_register.py "
-        "(DISCLOSURE_DRAFT); regenerate, do not hand-edit.")
+        "RULE-KEYED DISCLOSURES, READ AND VALIDATED BY THE GUARD, AND DEMOTING NOTHING. Drafted by "
+        "KĀRAKA M0-T36 (2026-08-23) to satisfy ADHIKĀRIN ruling D-30 part 4, which amends D-24 "
+        "part 3 so that the CI blocking flip additionally requires every DEFERRED rule to carry its "
+        "disclosure entry, itemised and dated, in the discipline D-10 part 3 granted for "
+        "migration_number_legacy_duplicates.json's `disclosed_additions`. M0-T36 SHIPPED THEM INERT "
+        "and said so: finding F-T36-3 recorded that `disclosed_additions` is asset_id-keyed and read "
+        "only in x02(), and that severity was a hardcoded constant in the RULES table — so a "
+        "disclosure could be written, look correct, and change no outcome, leaving D-30 part 4 "
+        "satisfiable on paper and inert in fact. M0-T40 CLOSED THAT: "
+        "check_asset_catalogue_contract.py now loads this block BY RULE ID, validates every entry "
+        "(an incomplete disclosure raises a guard error, as x02's does), attaches it to that rule's "
+        "result, and computes the rule's `effective_severity` FROM the disclosures rather than from "
+        "a constant. FOUR THINGS THAT REMAIN TRUE, and they are the reason this is not a way to "
+        "switch a gate off. (1) A DISCLOSURE NEVER TURNS A RULE GREEN — the rule still runs, still "
+        "reports `fail`, and still lists every violation; every entry carries "
+        "`does_not_turn_the_rule_green: true` per D-12 part 4's 'never silently green'. What a "
+        "disclosure can buy is that the failure does not GATE. (2) A DISCLOSURE NEVER SILENCES A "
+        "RULE WHOLESALE — it must itemise `covers`, and the demotion holds only while every current "
+        "violation is inside that list; one violation it does not name and the rule gates again at "
+        "its declared severity. The backlog can be paid down, never silently grown. (3) A KĀRAKA "
+        "CANNOT DEMOTE A GATE BY WRITING A FILE — a demotion takes effect only when the entry names "
+        "an `authorised_by` decision id that actually exists in state/DECISIONS.jsonl under "
+        "ADHIKĀRIN's name, because catalogue-gate disposition is a charter G-power. (4) EVERY ENTRY "
+        "IN THIS BLOCK TODAY CARRIES `gating_effect: \"none\"` AND NO `authorised_by`, so NOT ONE "
+        "BLOCKING GATE IS DEMOTED: measured before and after the M0-T40 change, `--live` returns the "
+        "identical 15 BLOCKING failures. The guard now REPORTS D-30 part 4's condition mechanically "
+        "(`failing_rules_without_disclosure`, `disclosures_recorded_without_effect`) instead of "
+        "leaving it to be asserted in prose. Kept SEPARATE from `disclosed_additions` deliberately: "
+        "that block is asset_id-keyed and validated by x02(), and merging rule-keyed entries into it "
+        "would change what a live guard function iterates. Source of truth: "
+        "00_ARCHITECTURE/control/m0_deferral_register.py (DISCLOSURE_DRAFT); regenerate, do not "
+        "hand-edit.")
     doc["deferred_rule_disclosures_count"] = len(DISCLOSURE_DRAFT)
     doc["deferred_rule_disclosures_not_drafted"] = DISCLOSURE_NOT_DRAFTED
     doc["deferred_rule_disclosures"] = DISCLOSURE_DRAFT
