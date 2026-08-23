@@ -689,3 +689,5 @@
 {"ts":"2026-08-23T12:29:27Z","agent":"KARAKA-M0-T46","status":"working","detail":"reports and WORK_QUEUE line written; committing now"}
 {"ts":"2026-08-23T12:30:01Z","agent":"KARAKA-M0-T46","status":"done","detail":"committed 5c213e9ff; scorecard/register/close-readiness updated per D-38..D-42; report + finding filed; exiting"}
 {"ts":"2026-08-23T12:31:51Z","agent":"SUTRADHARA","status":"working","detail":"T46 done: scorecard 1P/7F -> 2P/6F; found a gap in our own restore rule (verified no harm) and a possible stale-evidence timing issue in D-39, both routed to ADHIKARIN"}
+{"ts":"2026-08-23T12:33:18Z","agent":"LEKHAKA","status":"working","detail":"ledger sync a09630929 (T46 complete, scorecard genuinely 2P/6F now; 2 new gaps routed to ADHIKARIN)"}
+{"ts":"2026-08-23T12:38:11Z","agent":"LEKHAKA","status":"waiting","detail":"fleet quiet, watching for ADHIKARIN's rulings"}
