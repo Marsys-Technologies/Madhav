@@ -108,3 +108,59 @@ jobs:
         # writer census by an unknown amount, and an unknown-sized gap that looks green is
         # worse than a loud failure.
         run: python platform/scripts/governance/check_asset_source_parity.py
+
+  entrypoint-guard-ratchet:
+    name: Entrypoint-guard ratchet — a NEW unguarded top-level main() fails
+    runs-on: ubuntu-latest
+    # ══════════════════════════════════════════════════════════════════════════════════════
+    # DELIBERATELY **NOT** `continue-on-error`, unlike the two jobs above, and the difference
+    # is the whole point of the ratchet.
+    #
+    # Those two are non-blocking because their criteria are legitimately non-zero today and
+    # gating on them would red the branch for defects nobody is allowed to fix — D-39 part 2's
+    # permanently-red gate, which trains every agent who sees it to ignore it.
+    #
+    # THIS job is green on the tree as of 2026-08-23 (71 known unguarded files, every one of
+    # them itemised in `entrypoint_ratchet_allowlist.json`, which was GENERATED from M0-T64's
+    # measurement and never hand-typed). It goes red only for a NEW one. That is exactly what
+    # ruling D-67 part 4 orders: "PAY-DOWN ONLY: a file leaves the list when repaired; NOTHING
+    # IS EVER ADDED. A new unguarded top-level main() fails the build."
+    #
+    # HONEST LIMIT, stated because an unstated one reads as coverage: a job failing inside this
+    # workflow blocks a MERGE only once the job is added to the repository's branch-protection
+    # required checks. That is a repository-settings change, it is not in this file, and
+    # M0-T66 did not make it. Until it is made, this job reports truthfully and gates nothing.
+    # ══════════════════════════════════════════════════════════════════════════════════════
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Ratchet — self-test (10 fixtures, both directions, all five guard idioms)
+        # Six PASS fixtures — one per guard idiom, plus one whose whole content is prose,
+        # strings and nested calls that must NOT be reported (ADHIKĀRIN's D-72 caution: a grep
+        # for a defective form cannot tell code that has the defect from prose that documents
+        # it, and that false-positive rate RISES as files get fixed).
+        #
+        # Four FAIL fixtures, including the two cases ruling D-71 part 7(d) names BY NAME: an
+        # INDENTED unguarded main() must go red, and a same-line-guarded main() must stay green.
+        # A ratchet that cannot go red on an indented reintroduction admits exactly what it was
+        # built to catch, silently and permanently.
+        #
+        # Each PASS fixture declares WHICH idiom it expects the detector to attribute, so an
+        # idiom silently dropped from the table fails here — a detector that skips a construct
+        # looks identical to one that approves it, and only the positive assertion tells them
+        # apart. Stdlib-only: no psycopg, no DB, no network.
+        run: python platform/scripts/governance/check_entrypoint_guard_ratchet.py --self-test
+
+      - name: Ratchet — repo scan against the generated allowlist
+        # Exits 1 on (a) any unguarded top-level main() that is not on the allowlist, (b) any
+        # allowlist entry that is not in M0-T64's settled 76-file baseline — so the list can
+        # only ever SHRINK, and cannot be widened by editing the file it gates on — or (c) any
+        # file whose brace structure the scanner could not resolve, which is UNKNOWN and must
+        # never be reported as clean (§N.8).
+        run: python platform/scripts/governance/check_entrypoint_guard_ratchet.py
