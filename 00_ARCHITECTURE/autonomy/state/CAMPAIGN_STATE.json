@@ -330,6 +330,17 @@
           "disclosures_recorded_without_effect": "all 16"
         },
         "note": "Before this, D-30 part 4's condition was satisfiable ON PAPER and not in effect — the disclosure block was asset_id-keyed and read in exactly one rule's handler while severity was a hardcoded constant. The switch could have been flipped on a precondition never really met. It is now computed from the disclosures and reported as a fact."
+      },
+      "critical_path": {
+        "as_of": "2026-08-23T09:15:44Z",
+        "state": "AUTHORITY-BOUND, NOT CAPACITY-BOUND",
+        "measured": {
+          "karaka_running": 0,
+          "awaiting_pariksaka_verification": 33,
+          "awaiting_adhikarin": 22
+        },
+        "detail": "Every remaining REPAIRABLE-IN-M0 item is blocked on a G1 disposition — criterion 4 (Phase 0.8b, 47 DRAFT assets), criterion 9 (Phase 0.8c, 23 zero-consumer packets) and their two rules. The deferral register's own words: 'the repair is named, the machinery is built, and the rulings have not been made.' CONDUCTOR NOTE: I let this become true without logging it, and PRAHARI detected it as silence rather than reading it in the ledger. That is the same failure I keep cataloguing in others — a state that is real and not written down. Logged at detection rather than at onset, which is late.",
+        "response": "Pulling from the Standing Queue per I17 rather than idling: SQ-04 dispatched as M0-T43; SQ-06 handed to LEKHAKA, whose domain it is under §18.2."
       }
     },
     "M1": {
@@ -779,10 +790,22 @@
       "what": "The shared baseline needs an operator regeneration, and TWO agents have now deliberately declined to do it. M0-T40 gave three reasons: it would erase the new staleness signal on day one, move a figure four in-flight documents cite, and snapshot a registry a sibling is actively writing to. M0-T42 adds a FOURTH the first could not have had: that file is now load-bearing for TWO guards, so ONE regeneration commit flips both from refusing to certifying at once",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T43",
+      "what": "SQ-04 machinery coverage — the day's machinery has authors' proofs but no regression tests",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "CURRENT-STATE-STALE",
+      "what": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md HAS NOT BEEN TOUCHED BY THIS CAMPAIGN. CLAUDE.md §F makes it the authoritative 'you are here' pointer and says in terms NOT to read current state from CLAUDE.md — §F is deliberately unmaintained so that CURRENT_STATE carries the truth. It has been stale ~6h across 40+ commits, three production writes, three applied migrations and 36 rulings. The corpus's own designated state pointer is the exact class of drift this campaign has been removing from everything else, and we corrected four stale claims in our own control artifacts while the GOVERNING one went unnoticed. Handed to LEKHAKA (§18.2 owns CURRENT_STATE/SESSION_LOG), with two cautions: write it for someone who has NOT been watching, and DO NOT overstate completion — if the refreshed §2 reads as 'M0 largely done' it reproduces the exact defect this campaign exists to remove, in the file the whole corpus reads first",
+      "owner": "LEKHAKA",
+      "state": "assigned"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:00:28Z",
+  "last_updated_ts": "2026-08-23T09:15:44Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
