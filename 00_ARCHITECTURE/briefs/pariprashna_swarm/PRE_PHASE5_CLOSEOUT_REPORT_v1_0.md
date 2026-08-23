@@ -45,6 +45,19 @@ counter that gates THE FLIP *and* the irreversible deletion was reading that. Fi
 (**DD-48**). Every green banked before that fix is of uncertain attribution, so **the honest green×7
 clock starts from #1515, not before.**
 
+**The current honest tally, re-derived from CI history directly (not carried forward from memory):
+3 of 7, zero reds since the restart.**
+
+| smoke run | `head_sha` | conclusion |
+|---|---|---|
+| `32617962733` @ 2026-08-23T04:28:33Z | `3a54918f4` | success |
+| `32618696909` @ 2026-08-23T04:46:40Z | `68cde91e4` | success |
+| `32619782448` @ 2026-08-23T05:12:32Z | `2670e61e2` | success |
+
+No smoke has run since 05:12:32Z — `main` has not advanced (no new `Deploy to Cloud Run` to trigger
+one) since the overnight tmux infrastructure (`prp-night`) was retired. **The flip clock has not
+completed and does not advance on its own; it needs four more genuine deploy-triggered greens.**
+
 ## Disposition of the audit's gap ledger
 
 | gap | state at closeout | how |
