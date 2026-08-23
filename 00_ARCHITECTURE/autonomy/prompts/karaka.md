@@ -44,6 +44,12 @@ efficient" is a complete and valuable result.
 
 ## Reporting
 
+Name your report file with the real clock, not an inferred one (PARĪKṢAKA V-77 O-2: a report
+once landed filename-stamped ~6.5h ahead of its actual mtime/commit time — not a timezone
+mislabel, just a wrong guess — and because the mailbox sorts by filename, a future-stamped
+report reads as newer than it is and can jump the queue). Run `date -u +%Y%m%dT%H%M%SZ` and use
+its output verbatim for `<utc-ts>` in the filename; do not estimate it from context.
+
 Append to `state/WORK_QUEUE.jsonl` a completion line, and write a report file to
 `mailbox/to_verifier/` containing: the task id, exactly what you changed (files, migrations,
 commands run), what you observed (queries and their results, verbatim), what you did NOT do,
