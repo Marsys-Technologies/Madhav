@@ -568,18 +568,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T30",
-      "what": "remove the workaround that outlived its cause; finish the scan_code file-granularity sweep",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "FLEET-POKE-RECURRED",
-      "what": "ADHIKARIN was found in the D-14 IDLE-UNPOKED state — a completed turn with an unsubmitted 'keep going' in its compose box, with five escalations waiting. Remedied with the one-keystroke sequence D-14 records (C-u, retype, separate Enter), addressed by PANE ID per D-16, never by window name. Never a restart. The poke mechanism defect is therefore still live somewhere in the fleet despite D-14 naming it",
-      "owner": "PRAHARI",
-      "state": "recurred"
-    },
-    {
       "id": "M0-T26",
       "what": "DONE dc4499f9d",
       "owner": "PARIKSAKA",
@@ -620,10 +608,40 @@
       "what": "the one ruling that reclassifies 6 rules and 2 criteria at once",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T30",
+      "what": "COMPLETE bdf47d0c8",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T33",
+      "what": "the generator's exponential DAG CTE — a live production hazard at every rung",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "VERIFIER-IS-CRITICAL-PATH",
+      "what": "7 verdicts filed against ~22 items awaiting verification. M0 CANNOT CLOSE without PARIKSAKA's evidence (I16). It is the campaign's bottleneck, and three of the stalls costing it time were the poke defect rather than the agent",
+      "owner": "SUTRADHARA",
+      "state": "monitoring"
+    },
+    {
+      "id": "FLEET-POKE-THIRD",
+      "what": "THIRD occurrence of D-14 idle-unpoked: PARIKSAKA ~05:00Z, ADHIKARIN ~06:50Z, PARIKSAKA again ~07:30Z. All three submitted by hand, by pane ID per D-16. D-14 named this defect over an hour ago, so the poke PATH itself was never changed. Sent PRAHARI the exact working sequence, the reason the obvious C-m repair fails, and an offer to take poking over entirely rather than keep remedying it by hand",
+      "owner": "PRAHARI",
+      "state": "escalated_third_time"
+    },
+    {
+      "id": "F-ROOT-MISMATCH-DETECTOR",
+      "what": "M0-T30 flagged for a second opinion: removing the C-23 ROOT workaround exposes NIRMANA_REPO to the guard, and rather than restore a coercion it added a root-mismatch DETECTOR that fails with both paths named. Verified on a constructed second checkout: EXIT=3 after, EXIT=0 before, because the re-point silently swallowed it. It asked for review rather than assuming",
+      "owner": "PARIKSAKA",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T07:19:52Z",
+  "last_updated_ts": "2026-08-23T07:38:12Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
