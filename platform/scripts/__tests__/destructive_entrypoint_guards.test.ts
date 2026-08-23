@@ -276,6 +276,33 @@ const WAVE1_FIVE = [
   'scripts/set-password.ts',
 ].map((rel) => rel.split('/').join(path.sep))
 
+/**
+ * ── FORMER_COPY_HOLDERS, READ FROM THE SIBLING SUITE'S OWN SOURCE TEXT (D-124 item 5) ─────────
+ *
+ * `shared_entrypoint_module.test.ts` freezes its own FORMER_COPY_HOLDERS record at exactly 8 —
+ * the same source commit WAVE1_FIVE above cites, narrowed to the 5 this suite repaired. D-124
+ * item 5: two independently hand-enumerated frozen lists could silently diverge unless one
+ * asserts the subset relation. Importing the sibling file (it is a `.test.ts`, not a module with
+ * exports) would re-register its describe/it blocks inside THIS file's run, so this reads its
+ * source text the same way TRIAGE and predicateBody above already read other files, rather than
+ * a second hand-typed copy (D-94 §8).
+ */
+const SIBLING_REL = path.join('scripts', '__tests__', 'shared_entrypoint_module.test.ts')
+
+function readFormerCopyHolders(): string[] {
+  const src = read(SIBLING_REL)
+  const marker = 'const FORMER_COPY_HOLDERS = ['
+  const start = src.indexOf(marker)
+  if (start === -1) throw new Error(`FORMER_COPY_HOLDERS not found in ${SIBLING_REL}`)
+  const open = start + marker.length - 1
+  const close = src.indexOf(']', open)
+  return [...src.slice(open + 1, close).matchAll(/'([^']+)'/g)].map((m) =>
+    m[1].split('/').join(path.sep),
+  )
+}
+
+const FORMER_COPY_HOLDERS = readFormerCopyHolders()
+
 describe('M0-T65 §1a — the five destructive scripts preserve their public surface (D-108/D-122)', () => {
   it('the record is frozen at exactly 5 and every named file is a current TARGET', () => {
     // This is a RECORD, not a scan: it must never grow, and a shrink (or a file falling out of
@@ -285,6 +312,9 @@ describe('M0-T65 §1a — the five destructive scripts preserve their public sur
     for (const rel of WAVE1_FIVE) {
       expect(fs.existsSync(path.join(PLATFORM_DIR, rel))).toBe(true)
       expect(TARGETS).toContain(rel)
+      // D-124 item 5: WAVE1_FIVE ⊆ FORMER_COPY_HOLDERS, so the two frozen records cannot drift
+      // apart unnoticed.
+      expect(FORMER_COPY_HOLDERS).toContain(rel)
     }
   })
 
