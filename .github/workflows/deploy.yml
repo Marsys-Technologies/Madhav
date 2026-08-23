@@ -348,7 +348,7 @@ jobs:
           fi
           cd platform
           npx tsx scripts/migrate.ts 2>&1 | tee /tmp/migrate.log
-          if ! grep -q 'MIGRATE_RUNNER_COMPLETE' /tmp/migrate.log; then
+          if ! grep -q '^\[migrate\] MIGRATE_RUNNER_COMPLETE' /tmp/migrate.log; then
             echo "::error::migrate.ts exited 0 but never printed its MIGRATE_RUNNER_COMPLETE completion line — the migrator did not run to completion. Refusing to let the deploy proceed against a schema whose state is unknown."
             exit 1
           fi
