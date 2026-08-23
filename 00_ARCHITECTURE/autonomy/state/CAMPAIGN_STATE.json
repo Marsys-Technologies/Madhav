@@ -197,6 +197,14 @@
         },
         "headline": "THE DIAGNOSIS IS SUBSTANTIALLY SOUND — 86% reproduce against live production, including ALL 23 of §1.2's census/state figures and ALL 28 code citations in the L-01..L-12 register (every file:line lands on the code it claims). The three-for-three failure rate that motivated this task DOES NOT extrapolate, and saying so is the point: the task was told not to manufacture findings.",
         "pattern": "The failures CLUSTER. 12 of 13 refutations are counts of code artefacts or catalogue metadata; NOT ONE is a live throughput or row-count measurement. Figures obtained by querying the database are right; figures obtained by counting things in the codebase, or by sampling, are what broke. Six of thirteen come from a detector whose predicate did not match its own sentence — §N.8, turned on the campaign's own plan."
+      },
+      "first_production_write": {
+        "ts": "2026-08-23T05:33:15Z..05:36:13Z",
+        "by": "KARAKA M0-T12B",
+        "authority": "D-20 Option A",
+        "result": "ALL THREE RUNS EXECUTED CLEANLY. Ledger 447 -> 448 -> 449 -> 450, +1 per run and never +2, so the 'exactly one new row' after-check functioned as a real detector rather than failing by construction — which is precisely what Option A was chosen to restore.",
+        "conductor_sanity_check": "I re-queried production myself (this is a conductor's sanity read, NOT certification — I16 leaves that to PARIKSAKA): 450 ledger rows with all three filenames present at the stated times; the four new columns present and nullable; domain and rung NULL on 0 of 128; D-4's four discriminating assets reading shared/R3, shared/R3, shared/R5, shared/R5; and the charter-P1 gochara v1 corpus intact at 38287.",
+        "notable": "The KARAKA made NO COMMIT and said so plainly — all three .sql files were already tracked, and it declined to create an empty commit to manufacture a record of its own work."
       }
     },
     "M1": {
@@ -376,32 +384,38 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T12+T13",
-      "what": "RE-DISPATCHED under D-20 Option A, ascending, one --target per run",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T22",
       "what": "has_writer derived from code — closes a gate BYPASS at R0's first freeze, where two genuinely-built assets would have been exempted from the efficiency pass entirely",
       "owner": "KARAKA",
       "state": "running"
     },
     {
-      "id": "M0-T20/T21",
-      "what": "registry repairs (has_substeps; kind values-then-authoritative) — AUTHORIZED by D-24 and held on SEQUENCING not authority: 590's ALTER TABLE takes an ACCESS EXCLUSIVE lock on asset_registry and a concurrent UPDATE would contend with it. Dispatch when the wave lands",
-      "owner": "SUTRADHARA",
-      "state": "queued_blocked"
-    },
-    {
       "id": "F-ARGV-DRYRUN",
       "what": "M0-T19's F-1: SIX sibling scripts spell dry-run as an ARGV flag (--dry-run) — migrate.ts:691, cleanup_orphaned_firebase_users.ts:16, observatory/smoke_test.ts:53, three bootstrap scripts, icr_pr_gate.ts:175. Typed at the seeder, --dry-run is silently ignored and the live upsert proceeds. So the hazard D-17 closed is only half closed: it returns by the spelling the codebase ITSELF taught the operator. The KARAKA declined to widen D-17 on its own and recommends ADHIKARIN extend it. I agree and have not queued it",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T12+T13",
+      "what": "DONE — all three applied, ledger +1 per run, corpus intact, D-4 detector PASS 4/4 both pre-flight and against the actual applied rows. Two honest uncertainties recorded: each migration's effect and its ledger row are not atomic with each other (pre-existing runner behaviour, didn't bite), and run 2 witnesses THIS execution of 589, not the earlier inferred one — DROP IF EXISTS is silent either way",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T20",
+      "what": "has_substeps repair — dispatched now that the ALTER TABLE lock released",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T21",
+      "what": "0.6b kind repair — held one more beat so only ONE agent writes asset_registry at a time; dispatches when T20 lands",
+      "owner": "SUTRADHARA",
+      "state": "queued_blocked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:31:40Z",
+  "last_updated_ts": "2026-08-23T05:41:14Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
