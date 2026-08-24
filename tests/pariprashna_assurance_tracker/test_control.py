@@ -106,8 +106,23 @@ class ControlPlaneTests(unittest.TestCase):
     def test_each_phase_has_a_scoped_execution_lead(self):
         p1 = self.emit("lead-p1", "work_started", {"session_id": "p1-takeover", "assignment": "takeover reconciliation"}, "P1")
         self.assertTrue(p1["accepted"])
+        self.store.record_presence("lead-p1", "p1-takeover", "P1", "ACTIVE")
         phase = next(phase for phase in self.store.projection()["canonical"]["phases"] if phase["id"] == "P1")
         self.assertEqual(phase["responsible_session"], "p1-takeover")
+        liveness = self.store.projection()["liveness"]
+        self.assertEqual([(dependency["from"], dependency["to"]) for dependency in liveness["dependency_warnings"]], [("P0", "P1")]); self.assertEqual(liveness["overall_health"], "ATTENTION_REQUIRED"); self.assertIn("UNRESOLVED ACTIVE DEPENDENCY", liveness["warning"])
+        with self.assertRaises(RejectedEvent) as missing_evidence:
+            self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1", evidence=[])
+        self.assertEqual(missing_evidence.exception.code, "EVIDENCE_REQUIRED")
+        with self.assertRaises(RejectedEvent) as malformed_dependency:
+            self.emit("integrator", "dependency_resolved", {"from": [], "to": "P1"}, "P1")
+        self.assertEqual(malformed_dependency.exception.code, "DEPENDENCY_SCHEMA")
+        self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
+        dependency = next(dependency for dependency in self.store.projection()["canonical"]["dependencies"] if (dependency["from"], dependency["to"]) == ("P0", "P1"))
+        self.assertEqual(dependency["status"], "RESOLVED"); self.assertEqual(self.store.projection()["liveness"]["dependency_warnings"], [])
+        with self.assertRaises(RejectedEvent) as duplicate_dependency:
+            self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
+        self.assertEqual(duplicate_dependency.exception.code, "DEPENDENCY_ALREADY_RESOLVED")
         with self.assertRaises(RejectedEvent) as wrong_phase:
             self.emit("lead-p0", "work_started", {"session_id": "wrong-phase"}, "P1")
         self.assertEqual(wrong_phase.exception.code, "STREAM_FORBIDDEN")
@@ -348,7 +363,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("triage-frozen remediations verified", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("triage-frozen remediations verified", html); self.assertIn("dependency_warnings", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

@@ -30,6 +30,12 @@ Every `work_started` event carries a globally unique non-empty `session_id`. Its
 actor with that exact role and eligibility for the event stream. An unregistered participant is
 allowed only when explicitly declared as a `SPECIALIST`; it cannot assert a known role.
 
+`dependency_resolved` is an evidence-bearing integrator event for one defined phase edge. Each
+edge is resolved once, is replayed into the canonical dependency projection, and is shown with
+its evidence. If a downstream phase is active while its predecessor edge remains unresolved,
+the tracker elevates the target phase and overall campaign to `ATTENTION_REQUIRED` and shows a
+non-green warning; it cannot be a silent ordering exception.
+
 After all discovered findings for a P3 stream have a surrogate triage, the surrogate may
 freeze exactly one `remediation_plan`. The plan names each triaged finding once, including an
 explicit empty plan when there is no remediation work. Implementations outside that plan are

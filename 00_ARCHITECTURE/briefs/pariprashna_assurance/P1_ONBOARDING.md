@@ -22,3 +22,6 @@ percentages. A stream lead supplies only its own stream sequence; verification a
 require the independent verifier then integrator. After every stream finding is triaged, the
 surrogate must record one frozen `remediation_plan` (including `[]` where none is required)
 before remediation work can earn credit.
+After independently reconciling the P0 takeover evidence, the integrator records the
+evidence-bearing `dependency_resolved` edge from `P0` to `P1`; do not begin a green P1
+operational claim while that dependency remains pending.

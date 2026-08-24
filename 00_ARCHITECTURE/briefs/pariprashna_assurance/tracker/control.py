@@ -216,7 +216,7 @@ class EventStore:
         if stream_id is not None and not isinstance(stream_id, str):
             raise RejectedEvent("SCHEMA", "stream_id must be string or null")
         evidence = request.get("evidence", [])
-        if request["event_type"] in COMPLETION_EVENTS and not evidence:
+        if request["event_type"] in COMPLETION_EVENTS | {"dependency_resolved"} and not evidence:
             raise RejectedEvent("EVIDENCE_REQUIRED", f"{request['event_type']} requires primary evidence")
         if any(not isinstance(e, dict) or not e.get("uri") or not e.get("kind") for e in evidence):
             raise RejectedEvent("EVIDENCE_SCHEMA", "each evidence item requires kind and uri")
@@ -405,6 +405,14 @@ class EventStore:
             implemented = any(json.loads(row["payload_json"]).get("remediation_id") == remediation_id and json.loads(row["payload_json"]).get("finding_id") == finding_id and row["stream_id"] == stream_id for row in con.execute("SELECT stream_id,payload_json FROM events WHERE event_type='remediation_implemented'"))
             if not implemented:
                 raise RejectedEvent("REMEDIATION_VERIFICATION_REFERENCE", "remediation verification requires the matching implemented remediation")
+        if typ == "dependency_resolved":
+            if not isinstance(payload.get("from"), str) or not payload["from"].strip() or not isinstance(payload.get("to"), str) or not payload["to"].strip():
+                raise RejectedEvent("DEPENDENCY_SCHEMA", "dependency resolution must name non-empty source and destination phases")
+            dependency = (payload["from"], payload["to"])
+            if dependency not in {(item["from"], item["to"]) for item in self.definition()["dependencies"]}:
+                raise RejectedEvent("DEPENDENCY_SCHEMA", "dependency resolution must name a defined dependency edge")
+            if any((json.loads(row["payload_json"]).get("from"), json.loads(row["payload_json"]).get("to")) == dependency for row in con.execute("SELECT payload_json FROM events WHERE event_type='dependency_resolved'")):
+                raise RejectedEvent("DEPENDENCY_ALREADY_RESOLVED", "a dependency edge may be resolved once")
         if typ == "verification_accepted":
             finder = payload.get("finder_actor_id")
             fixer = payload.get("fixer_actor_id")
@@ -609,6 +617,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     phases = {p["id"]: {**copy.deepcopy(p), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "responsible_session": None} for p in definition["phases"]}
     streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "remediation_plan": None, "execution_session": None} for s in definition["streams"]}
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
+    dependencies = {(dependency["from"], dependency["to"]): {**copy.deepcopy(dependency), "status": "PENDING", "evidence": [], "resolved_by": None, "resolved_at": None} for dependency in definition["dependencies"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; scope_changes: list[dict[str, Any]] = []
     bootstrapped = False; demonstration = False
     for event in events:
@@ -661,6 +670,8 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
                 streams[scenario["stream_id"]]["scope_scenario_ids"].append(scenario["id"])
             after_total = sum(item["campaign_points"] for item in items.values())
             scope_changes.append({"event_id": event["event_id"], "reason": payload["reason"], "added_work_items": [x["id"] for x in additions], "added_scenarios": [x["id"] for x in payload.get("added_scenarios", [])], "evidence": evidence, "at": event["occurred_at"], "completion_before_pct": round(100 * before_earned / before_total, 2) if before_total else 0, "completion_after_pct": round(100 * before_earned / after_total, 2) if after_total else 0})
+        elif typ == "dependency_resolved":
+            dependencies[(payload["from"], payload["to"])].update({"status": "RESOLVED", "evidence": evidence, "resolved_by": event["actor_id"], "resolved_at": event["occurred_at"]})
         elif typ in {"decision_recorded", "remediation_approved", "improvement_parked"}:
             decisions.append({"event_id": event["event_id"], "label": "SURROGATE DECISION — not native acceptance", "decision": payload.get("decision") or payload.get("reason") or typ, "kind": typ, "requires_a3": bool(payload.get("requires_a3")), "evidence": evidence})
         elif typ == "gate_closed":
@@ -720,7 +731,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         phases["P3"]["lifecycle"] = "PAUSED"
     elif "FAILED" in stream_states:
         phases["P3"]["lifecycle"] = "FAILED"
-    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": definition["dependencies"], "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
+    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": list(dependencies.values()), "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
 
 
 def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[str, Any]], as_of: str, integrity_ok: bool) -> dict[str, Any]:
@@ -752,11 +763,15 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
     if integrity_ok:
         p3 = [stream_health[sid] for sid, _ in STREAMS]
         phase_health["P3"] = "STALE" if "STALE" in p3 else ("ATTENTION_REQUIRED" if "ATTENTION_REQUIRED" in p3 else ("HEALTHY" if "HEALTHY" in p3 else "UNKNOWN"))
-    has_attention = "ATTENTION_REQUIRED" in stream_health.values()
     owners_by_stream: dict[str, set[str]] = {}
     for cell in cells:
         if cell.get("stream_id"): owners_by_stream.setdefault(cell["stream_id"], set()).add(cell["actor_id"])
     ownership_conflicts = sorted(stream_id for stream_id, owners in owners_by_stream.items() if len(owners) > 1)
-    campaign = {"active_cells": len(cells), "healthy_cells": sum(cell["health"] == "HEALTHY" for cell in cells), "stale_cells": sum(cell["health"] == "STALE" for cell in cells), "verifier_backlog": sum(remediation["status"] == "AWAITING_VERIFICATION" for remediation in canonical_projection["remediations"]), "surrogate_decision_backlog": sum(finding["status"] == "OPEN" for finding in canonical_projection["findings"]), "a3_decisions": sum(decision.get("requires_a3", False) for decision in canonical_projection["decisions"]), "ownership_conflicts": ownership_conflicts, "ceiling_risks": sum(cell["remaining_ceiling_seconds"] == 0 for cell in cells if cell["remaining_ceiling_seconds"] is not None)}
-    warning = None if integrity_ok and not stale_streams else ("INTEGRITY DEGRADED — do not treat any state as green" if not integrity_ok else "STALE RUNNING PRESENCE — do not treat stream as healthy")
-    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}
+    phase_lifecycles = {phase["id"]: phase["lifecycle"] for phase in canonical_projection["phases"]}
+    dependency_warnings = [dependency for dependency in canonical_projection["dependencies"] if dependency["status"] != "RESOLVED" and phase_lifecycles.get(dependency["to"]) in {"RUNNING", "IN_VERIFICATION", "BLOCKED", "PAUSED", "FAILED"}]
+    for dependency in dependency_warnings:
+        phase_health[dependency["to"]] = "ATTENTION_REQUIRED"
+    has_attention = "ATTENTION_REQUIRED" in stream_health.values() or bool(dependency_warnings)
+    campaign = {"active_cells": len(cells), "healthy_cells": sum(cell["health"] == "HEALTHY" for cell in cells), "stale_cells": sum(cell["health"] == "STALE" for cell in cells), "verifier_backlog": sum(remediation["status"] == "AWAITING_VERIFICATION" for remediation in canonical_projection["remediations"]), "surrogate_decision_backlog": sum(finding["status"] == "OPEN" for finding in canonical_projection["findings"]), "a3_decisions": sum(decision.get("requires_a3", False) for decision in canonical_projection["decisions"]), "ownership_conflicts": ownership_conflicts, "ceiling_risks": sum(cell["remaining_ceiling_seconds"] == 0 for cell in cells if cell["remaining_ceiling_seconds"] is not None), "dependency_warnings": len(dependency_warnings)}
+    warning = "INTEGRITY DEGRADED — do not treat any state as green" if not integrity_ok else ("STALE RUNNING PRESENCE — do not treat stream as healthy" if stale_streams else ("UNRESOLVED ACTIVE DEPENDENCY — do not treat campaign state as green" if dependency_warnings else None))
+    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "dependency_warnings": dependency_warnings, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}

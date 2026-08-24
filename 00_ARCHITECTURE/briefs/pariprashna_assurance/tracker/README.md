@@ -69,6 +69,11 @@ valid when no remediation is required). Each entry maps one triaged finding to o
 Only those entries may be implemented, each must be independently verified, and the remediation
 work item cannot earn credit until the complete frozen plan is verified.
 
+An integrator records a defined phase prerequisite through evidence-bearing
+`dependency_resolved` with `from` and `to`. The dependency panel preserves its resolved status
+and evidence. An active downstream phase with a pending predecessor is an explicit campaign
+attention condition, not a green dashboard state.
+
 Run it with:
 
 ```sh

@@ -14,6 +14,7 @@ date: 2026-08-24
 | Cross-stream actor | Actor role and permitted-stream check before append | authorization rejection test |
 | Forged swarm identity or role | Known-role roster entries resolve to a registered actor with exact role and stream eligibility; unregistered entries are `SPECIALIST` only | `test_participant_roster_is_registered_and_stream_eligible` |
 | Unbounded or untriaged remediation work earns stage credit | Surrogate freezes one plan after every finding is triaged; implementations must match it and credit waits for independent verification | `test_remediation_plan_is_frozen_after_triage` |
+| Active downstream phase hides an unresolved prerequisite | Integrator resolves each defined dependency with evidence; unresolved active edges force phase/campaign attention and a visible warning | `test_each_phase_has_a_scoped_execution_lead` |
 | Self-verification | Finder/fixer identity is compared with verifier before closure credit | self-verification rejection test |
 | History rewrite | SQLite triggers reject event update/delete; corrections are new events | append-only/correction test |
 | Invalid lifecycle or authority | Versioned schema and transition/role validation retain rejected requests | invalid-transition test |

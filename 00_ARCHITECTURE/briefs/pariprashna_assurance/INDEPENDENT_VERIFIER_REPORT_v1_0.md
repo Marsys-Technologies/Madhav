@@ -38,6 +38,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | A leader could display an unverified actor as a native, verifier, integrator, or stream lead | Fixed: known roles must resolve to a registered actor with the exact role and stream eligibility; unregistered participants are explicitly limited to `SPECIALIST` | `test_participant_roster_is_registered_and_stream_eligible` |
 | Remediation credit had no frozen post-triage contract | Fixed: the surrogate freezes one plan only after every finding is triaged; unplanned work and incomplete plan verification cannot earn remediation credit | `test_remediation_plan_is_frozen_after_triage` |
 | P1–P7 work could not be assigned to a phase-scoped local execution lead | Fixed: each phase has its own scoped local lead identity, while stream-lead boundaries remain isolated | `test_each_phase_has_a_scoped_execution_lead` |
+| An active dependent phase could remain green without an evidenced prerequisite resolution | Fixed: resolution must name a defined edge and primary evidence; malformed/repeated submissions are retained rejections, while an unresolved active edge forces non-green campaign and target-phase attention | `test_each_phase_has_a_scoped_execution_lead` |
 
 ## Residual limits
 
