@@ -24,10 +24,10 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 9 | Paused is not falsely stale | `test_running_presence_stales_but_paused_does_not` |
 | 10 | Bad integrity never presents green | `test_integrity_degraded_never_appears_green` |
 | 11 | Projector restart recovery | `test_projector_recovery_and_corruption_detection` |
-| 12 | Corruption detected by replay | `test_projector_recovery_and_corruption_detection` |
+| 12 | Corruption detected by replay and visibly degraded | `test_projector_recovery_and_corruption_detection`; `test_periodic_replay_monitor_publishes_integrity_degradation` |
 | 13 | Evidence-weighted credit | `test_evidence_progress_and_no_heartbeat_credit` |
 | 14 | No credit for heartbeat/message/commit-like claim | `test_evidence_progress_and_no_heartbeat_credit` |
-| 15 | Controlled scope denominator | `test_scope_change_is_only_denominator_expansion_and_explains_drop` |
+| 15 | Controlled scope denominator with visible reduction explanation | `test_scope_change_is_only_denominator_expansion_and_explains_drop` |
 | 16 | Evidence/verifier-linked gates | `test_gate_closure_requires_evidence_and_integrator` |
 | 17 | Retained, visible rejections | `test_invalid_and_out_of_order_are_rejected_and_retained`; `/api/rejected` |
 | 18 | Real-time update | `test_sse_update_and_dashboard_accessibility_contract` performs authenticated POST to SSE receipt and checks sub-second local delivery |
@@ -37,6 +37,12 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 22 | Immutable reconciled snapshot | `test_snapshot_export_reconciles` |
 | 23 | External adapter fails safely | `test_external_adapter_failure_is_visible_not_canonical` |
 | 24 | Honest P0 bootstrap | `setUp` bootstrap plus `test_gate_closure_requires_evidence_and_integrator` proves bootstrap alone cannot close CG-0 |
+
+The stream-charter denominator is additionally proven by
+`test_scenario_denominator_is_frozen`; `test_execution_session_projection_exposes_governance_fields`
+proves the projection exposes the complete execution-session operational surface.
+`test_failed_stream_cannot_receive_packet_closure_credit` proves terminal stream failure
+cannot be overwritten by a result packet.
 
 The seeded campaign definition in `control.py` includes P0–P7 with weights
 5/8/17/45/10/7/5/3 and six equal P3 streams. It starts without historical credit. The

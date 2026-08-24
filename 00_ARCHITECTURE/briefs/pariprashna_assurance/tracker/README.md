@@ -38,6 +38,14 @@ ledger-linked work-item verification, phase/gate prerequisites, append-only corr
 snapshot reconciliation, external adapter degradation, lifecycle fixtures, end-to-end SSE
 delivery and latency, and dashboard accessibility source contracts.
 
+For a P3 stream, its first `work_started` event must include a positive
+`planned_scenarios` integer. Scenario execution is separately recorded by unique
+`scenario_id`; it earns no progress itself, but all chartered and scope-approved scenarios
+must be present before regression credit can be accepted. Closure credit is earned only by
+an accepted result packet, never a direct work-item event. The dashboard exposes the frozen
+denominator, execution-session ownership/configuration, evidence timestamps, scope-change
+reduction explanations, and retained rejection records.
+
 Run it with:
 
 ```sh

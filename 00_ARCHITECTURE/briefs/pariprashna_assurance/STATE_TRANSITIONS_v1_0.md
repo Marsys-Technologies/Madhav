@@ -24,6 +24,17 @@ Corrections never mutate a prior event. `correction_recorded` and
 Only an approved scope-change may add denominator work items; the projector displays the
 resulting reduction and its evidence reference.
 
+For every P3 stream, its initial `work_started` event freezes a positive
+`planned_scenarios` denominator. A scope-change may add explicitly named scenarios only
+through `added_scenarios`; those increase the approved denominator and must each be
+executed. Each `scenario_executed` event names one unique scenario and is rejected if it
+duplicates a prior scenario or exceeds that denominator. Regression credit is rejected
+until every chartered and scope-approved scenario is executed. The closure work item is
+never directly accepted: only `result_packet_accepted` earns it, after every other stream
+work item, every approved scenario, and an independent closure recommendation are present.
+`result_packet_accepted` is rejected for a `FAILED` stream; terminal failure remains visible
+until a separately governed recovery path is authorized.
+
 Each `work_item_accepted` must name a durable `verification_accepted` or
 `regression_accepted` event from an independent verifier. That verifier event must name the
 same work item plus distinct finder/fixer identities. A gate closure must name a separate,
@@ -32,7 +43,7 @@ corresponding phase is accepted, the predecessor gate is closed, and (for CG-3) 
 stream result packets are accepted. These predicates are evaluated in the append
 transaction, not trusted from a dashboard field.
 
-A result packet is valid only after every work item in its stream is accepted and an
+A result packet is valid only after every non-closure work item in its stream is accepted and an
 independent verifier has recommended stream closure. Native acceptance is valid only after
 complete P6 evidence and CG-5. Scope additions must be new, positive work items no greater
 than the full campaign denominator; a failed stream cannot receive further completion credit.

@@ -36,6 +36,25 @@ class EventBus:
             for q in list(self._queues): q.put(payload)
 
 
+class ReplayMonitor(threading.Thread):
+    """Periodically prove that the materialized projection still matches the append-only log."""
+    def __init__(self, store: EventStore, bus: EventBus, interval_seconds: float):
+        super().__init__(name="pariprashna-replay-monitor", daemon=True)
+        self.store, self.bus, self.interval_seconds = store, bus, interval_seconds
+        self._stop_event = threading.Event()
+        self._last_status: bool | None = None
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def run(self) -> None:
+        while not self._stop_event.wait(self.interval_seconds):
+            result = self.store.verify_replay()
+            if result["ok"] != self._last_status:
+                self._last_status = result["ok"]
+                self.bus.publish(self.store.projection())
+
+
 def adapter_health() -> dict:
     """Safe current-scope adapter: no credentials, no mutation, and no cache-as-freshness."""
     return {"github": {"health": "UNKNOWN", "reason": "not configured for local CG-0 runtime"}, "ci": {"health": "UNKNOWN", "reason": "not configured for local CG-0 runtime"}, "canonical_state_unchanged": True}
@@ -113,12 +132,19 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", default=8787, type=int); args = p.parse_args()
+    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", default=8787, type=int); p.add_argument("--verify-interval", default=60.0, type=float); args = p.parse_args()
     if args.host not in {"127.0.0.1", "::1", "localhost"}:
         raise SystemExit("CG-0 tracker is deliberately loopback-only; non-local deployment requires A3")
+    if args.verify_interval <= 0:
+        raise SystemExit("--verify-interval must be positive")
     store = EventStore(args.runtime); store.rebuild(); bus = EventBus(); dashboard = Path(__file__).with_name("dashboard.html")
     httpd = ThreadingHTTPServer((args.host, args.port), handler_factory(store, bus, dashboard))
-    print(f"http://{args.host}:{args.port}", flush=True); httpd.serve_forever()
+    monitor = ReplayMonitor(store, bus, args.verify_interval); monitor.start()
+    print(f"http://{args.host}:{args.port}", flush=True)
+    try:
+        httpd.serve_forever()
+    finally:
+        monitor.stop(); monitor.join(timeout=max(1, args.verify_interval + 1)); httpd.server_close()
 
 
 if __name__ == "__main__": main()

@@ -25,6 +25,11 @@ the same token. Dashboard reads are deliberately unauthenticated only on the loo
 service. Production authentication, host exposure, backup policy, token issuance, and
 release remain A3 decisions.
 
+While running, the service performs a full replay/hash comparison every 60 seconds by
+default. The interval is configurable only to a positive duration with
+`--verify-interval`; a mismatch publishes an integrity-degraded projection to connected
+dashboards. This check is in addition to replay after accepted durable events.
+
 ## Recovery
 
 1. Stop the process; do not edit `events`.

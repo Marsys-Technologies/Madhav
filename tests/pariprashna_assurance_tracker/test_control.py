@@ -10,7 +10,7 @@ from pathlib import Path
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, fold, programme_definition, presence_overlay  # noqa: E402
-from server import EventBus, handler_factory, adapter_health  # noqa: E402
+from server import EventBus, ReplayMonitor, handler_factory, adapter_health  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -28,7 +28,7 @@ class ControlPlaneTests(unittest.TestCase):
         return self.store.submit({"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{time.time_ns()}", "event_type": typ, "payload": payload or {}, "stream_id": stream, "expected_stream_seq": self.store.next_stream_seq(stream) if stream and seq is None else seq, "evidence": evidence})
 
     def accepted_s1_item(self):
-        self.emit("lead-s1", "work_started", {"session_id": "s1", "assignment": "baseline", "branch": "b", "worktree": "w", "baseline_sha": "a", "current_sha": "a", "verifier": "verifier"}, "S1")
+        self.emit("lead-s1", "work_started", {"session_id": "s1", "assignment": "baseline", "branch": "b", "worktree": "w", "baseline_sha": "a", "current_sha": "a", "verifier": "verifier", "model": "test-model", "reasoning_config": "test", "planned_scenarios": 12}, "S1")
         verify = self.emit("verifier", "verification_accepted", {"verification_id": "v1", "work_item_id": "S1:charter", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
         self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:charter", "verification_event_id": verify["event"]["event_id"]}, "S1")
 
@@ -38,7 +38,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(before, self.store.projection()["canonical_hash"])
 
     def test_duplicate_idempotency_returns_original(self):
-        request = {"actor_id": "lead-s1", "idempotency_key": "same", "event_type": "work_started", "payload": {"session_id": "same"}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}
+        request = {"actor_id": "lead-s1", "idempotency_key": "same", "event_type": "work_started", "payload": {"session_id": "same", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}
         first = self.store.submit(request); second = self.store.submit(request)
         self.assertFalse(first["idempotent"]); self.assertTrue(second["idempotent"]); self.assertEqual(len(self.store.events()), 2)
 
@@ -55,12 +55,13 @@ class ControlPlaneTests(unittest.TestCase):
     def test_invalid_and_out_of_order_are_rejected_and_retained(self):
         with self.assertRaises(RejectedEvent) as invalid: self.emit("lead-s1", "work_item_accepted", {"work_item_id": "S1:charter"}, "S1")
         self.assertEqual(invalid.exception.code, "ROLE_FORBIDDEN")
-        with self.assertRaises(RejectedEvent) as conflict: self.emit("lead-s1", "work_started", {"session_id": "bad"}, "S1", seq=99)
+        with self.assertRaises(RejectedEvent) as conflict: self.emit("lead-s1", "work_started", {"session_id": "bad", "planned_scenarios": 1}, "S1", seq=99)
         self.assertEqual(conflict.exception.code, "SEQUENCE_CONFLICT"); self.assertGreaterEqual(len(self.store.rejected()), 2)
         with self.assertRaises(RejectedEvent) as transition: self.emit("lead-s1", "paused", {}, "S1")
         self.assertEqual(transition.exception.code, "INVALID_TRANSITION")
 
     def test_concurrent_stream_writers_retry_without_loss(self):
+        self.emit("lead-s1", "work_started", {"session_id": "concurrent", "planned_scenarios": 12}, "S1")
         failures = []; accepted = []
         def write(i):
             for _ in range(100):
@@ -70,7 +71,7 @@ class ControlPlaneTests(unittest.TestCase):
                     if exc.code != "SEQUENCE_CONFLICT": failures.append(exc); return
         threads = [threading.Thread(target=write, args=(i,)) for i in range(12)]
         [t.start() for t in threads]; [t.join() for t in threads]
-        self.assertFalse(failures); self.assertEqual(len(accepted), 12); self.assertEqual(self.store.next_stream_seq("S1"), 12); self.assertTrue(self.store.verify_replay()["ok"])
+        self.assertFalse(failures); self.assertEqual(len(accepted), 12); self.assertEqual(self.store.next_stream_seq("S1"), 13); self.assertTrue(self.store.verify_replay()["ok"])
 
     def test_stream_writer_cannot_write_another_stream(self):
         with self.assertRaises(RejectedEvent) as ctx: self.emit("lead-s1", "work_started", {"session_id": "no"}, "S2")
@@ -89,7 +90,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "ROLE_FORBIDDEN")
 
     def test_running_presence_stales_but_paused_does_not(self):
-        self.emit("lead-s1", "work_started", {"session_id": "live"}, "S1")
+        self.emit("lead-s1", "work_started", {"session_id": "live", "planned_scenarios": 1}, "S1")
         old = "2020-01-01T00:00:00Z"; self.store.record_presence("lead-s1", "live", "S1", "ACTIVE", observed_at=old)
         self.assertEqual(self.store.projection(as_of="2026-01-01T00:00:00Z")["display"]["streams"][0]["health"], "STALE")
         self.emit("lead-s1", "paused", {}, "S1"); p = self.store.projection(as_of="2026-01-01T00:00:00Z")
@@ -104,7 +105,18 @@ class ControlPlaneTests(unittest.TestCase):
         with self.store.connection() as con: con.execute("DELETE FROM projection_state")
         self.assertTrue(self.store.projection()["integrity"]["ok"])
         with self.store.connection() as con: con.execute("UPDATE projection_state SET canonical_json='{}'")
-        self.assertFalse(self.store.verify_replay()["ok"]); self.store.rebuild(); self.assertTrue(self.store.verify_replay()["ok"])
+        self.assertFalse(self.store.verify_replay()["ok"])
+        degraded = self.store.projection(); self.assertEqual(degraded["display"]["streams"][0]["health"], "INTEGRITY_DEGRADED")
+        self.store.rebuild(); self.assertTrue(self.store.verify_replay()["ok"])
+
+    def test_periodic_replay_monitor_publishes_integrity_degradation(self):
+        with self.store.connection() as con: con.execute("UPDATE projection_state SET canonical_json='{}'")
+        bus = EventBus(); received = bus.subscribe(); monitor = ReplayMonitor(self.store, bus, 0.01); monitor.start()
+        try:
+            update = json.loads(received.get(timeout=1)); self.assertFalse(update["integrity"]["ok"])
+            self.assertTrue(all(stream["health"] == "INTEGRITY_DEGRADED" for stream in update["display"]["streams"]))
+        finally:
+            monitor.stop(); monitor.join(timeout=1); bus.unsubscribe(received)
 
     def test_evidence_progress_and_no_heartbeat_credit(self):
         initial = self.store.projection()["canonical"]["completion"]["completion_pct"]; self.accepted_s1_item()
@@ -112,10 +124,62 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent): self.emit("lead-s1", "heartbeat", {}, "S1", evidence=[])
         with self.assertRaises(RejectedEvent): self.emit("lead-s1", "scenario_executed", {"progress": 99}, "S1")
 
+    def test_scenario_denominator_is_frozen(self):
+        self.emit("lead-s1", "work_started", {"session_id": "scenario-contract", "planned_scenarios": 1}, "S1")
+        self.assertTrue(self.emit("lead-s1", "scenario_executed", {"scenario_id": "happy-path"}, "S1")["accepted"])
+        with self.assertRaises(RejectedEvent) as duplicate: self.emit("lead-s1", "scenario_executed", {"scenario_id": "happy-path"}, "S1")
+        self.assertEqual(duplicate.exception.code, "DUPLICATE_SCENARIO")
+        with self.assertRaises(RejectedEvent) as excess: self.emit("lead-s1", "scenario_executed", {"scenario_id": "second-path"}, "S1")
+        self.assertEqual(excess.exception.code, "SCENARIO_DENOMINATOR_EXCEEDED")
+
+    def test_regression_requires_scenarios_and_completed_session_is_not_stale(self):
+        self.emit("lead-s1", "work_started", {"session_id": "full-stream", "planned_scenarios": 1}, "S1")
+        def accept(stage):
+            verification = self.emit("verifier", "verification_accepted", {"verification_id": f"verify-{stage}", "work_item_id": f"S1:{stage}", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
+            return self.emit("integrator", "work_item_accepted", {"work_item_id": f"S1:{stage}", "verification_event_id": verification["event"]["event_id"]}, "S1")
+        for stage in ("charter", "baseline", "triage", "remediation", "verification"): accept(stage)
+        with self.assertRaises(RejectedEvent) as incomplete: accept("regression")
+        self.assertEqual(incomplete.exception.code, "REGRESSION_INCOMPLETE")
+        self.emit("lead-s1", "scenario_executed", {"scenario_id": "all-chartered-work"}, "S1")
+        self.emit("integrator", "scope_change_approved", {"reason": "approved extra regression scenario", "added_work_items": [{"id": "S1:scope-regression", "phase_id": "P3", "stream_id": "S1", "title": "scope regression", "campaign_points": 1}], "added_scenarios": [{"id": "scope-regression-scenario", "stream_id": "S1"}]}, "P3")
+        with self.assertRaises(RejectedEvent) as scoped_incomplete: accept("regression")
+        self.assertEqual(scoped_incomplete.exception.code, "REGRESSION_INCOMPLETE")
+        self.emit("lead-s1", "scenario_executed", {"scenario_id": "scope-regression-scenario"}, "S1")
+        accept("regression")
+        with self.assertRaises(RejectedEvent) as direct_closure: accept("closure")
+        self.assertEqual(direct_closure.exception.code, "RESULT_PACKET_REQUIRED")
+        scope_verification = self.emit("verifier", "verification_accepted", {"verification_id": "verify-scope-regression", "work_item_id": "S1:scope-regression", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
+        self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:scope-regression", "verification_event_id": scope_verification["event"]["event_id"]}, "S1")
+        self.emit("verifier", "stream_closure_recommended", {"finder_actor_id": "lead-s1"}, "S1")
+        self.emit("integrator", "result_packet_accepted", {"stream_id": "S1"}, "S1")
+        projection = self.store.projection(); stream = next(s for s in projection["display"]["streams"] if s["id"] == "S1")
+        cell = next(cell for cell in projection["liveness"]["cells"] if cell["stream_id"] == "S1")
+        self.assertEqual(stream["scenarios"], {"planned": 2, "executed": 2}); self.assertEqual(stream["lifecycle"], "COMPLETE"); self.assertEqual(cell["health"], "UNKNOWN")
+
+    def test_failed_stream_cannot_receive_packet_closure_credit(self):
+        self.emit("lead-s1", "work_started", {"session_id": "failed-before-packet", "planned_scenarios": 1}, "S1")
+        self.emit("lead-s1", "scenario_executed", {"scenario_id": "required"}, "S1")
+        for stage in ("charter", "baseline", "triage", "remediation", "verification", "regression"):
+            verification = self.emit("verifier", "verification_accepted", {"verification_id": f"failed-{stage}", "work_item_id": f"S1:{stage}", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
+            self.emit("integrator", "work_item_accepted", {"work_item_id": f"S1:{stage}", "verification_event_id": verification["event"]["event_id"]}, "S1")
+        self.emit("lead-s1", "failed", {"reason": "adversarial terminal failure"}, "S1")
+        with self.assertRaises(RejectedEvent) as packet: self.emit("integrator", "result_packet_accepted", {"stream_id": "S1"}, "S1")
+        self.assertEqual(packet.exception.code, "FAILED_STREAM")
+        stream = next(stream for stream in self.store.projection()["canonical"]["streams"] if stream["id"] == "S1")
+        self.assertEqual(stream["lifecycle"], "FAILED"); self.assertFalse(next(item for item in self.store.projection()["canonical"]["work_items"] if item["id"] == "S1:closure")["accepted"])
+
+    def test_execution_session_projection_exposes_governance_fields(self):
+        self.accepted_s1_item(); projection = self.store.projection()
+        stream = next(s for s in projection["canonical"]["streams"] if s["id"] == "S1")
+        self.assertEqual(stream["scenarios"], {"planned": 12, "executed": 0}); self.assertEqual(stream["lifecycle_stage"]["id"], "baseline")
+        self.assertEqual(stream["execution_session"]["model"], "test-model"); self.assertEqual(stream["execution_session"]["reasoning_config"], "test")
+        cell = projection["liveness"]["cells"][0]
+        self.assertEqual(cell["conversation_id"], "s1"); self.assertIn("elapsed_seconds", cell); self.assertIn("last_presence_at", cell)
+
     def test_scope_change_is_only_denominator_expansion_and_explains_drop(self):
-        before = self.store.projection()["canonical"]["completion"]["planned_campaign_points"]
+        self.accepted_s1_item(); before = self.store.projection()["canonical"]["completion"]["planned_campaign_points"]
         self.emit("integrator", "scope_change_approved", {"reason": "approved new regression scenario", "added_work_items": [{"id": "S1:extra", "phase_id": "P3", "stream_id": "S1", "title": "extra", "campaign_points": 1}]}, "P3")
-        after = self.store.projection()["canonical"]; self.assertGreater(after["completion"]["planned_campaign_points"], before); self.assertEqual(after["scope_changes"][0]["reason"], "approved new regression scenario")
+        after = self.store.projection()["canonical"]; self.assertGreater(after["completion"]["planned_campaign_points"], before); self.assertEqual(after["scope_changes"][0]["reason"], "approved new regression scenario"); self.assertGreater(after["scope_changes"][0]["completion_before_pct"], after["scope_changes"][0]["completion_after_pct"])
         verification = self.emit("verifier", "verification_accepted", {"verification_id": "extra-verification", "work_item_id": "S1:extra", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
         self.assertTrue(self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:extra", "verification_event_id": verification["event"]["event_id"]}, "S1")["accepted"])
         with self.assertRaises(RejectedEvent) as duplicate: self.emit("integrator", "scope_change_approved", {"reason": "duplicate", "added_work_items": [{"id": "S1:extra", "phase_id": "P3", "title": "duplicate", "campaign_points": 1}]}, "P3")
@@ -137,7 +201,10 @@ class ControlPlaneTests(unittest.TestCase):
     def test_append_only_and_corrections(self):
         with self.store.connection() as con:
             with self.assertRaises(Exception): con.execute("DELETE FROM events")
-        self.assertTrue(self.emit("lead-s1", "correction_recorded", {"corrects": "a", "reason": "new evidence"}, "S1", evidence=[])["accepted"])
+        bootstrap_id = self.store.events()[0]["event_id"]
+        self.assertTrue(self.emit("lead-s1", "correction_recorded", {"corrects_event_id": bootstrap_id, "reason": "new evidence"}, "S1", evidence=[])["accepted"])
+        with self.assertRaises(RejectedEvent) as missing: self.emit("lead-s1", "correction_recorded", {"corrects_event_id": "missing", "reason": "bad reference"}, "S1", evidence=[])
+        self.assertEqual(missing.exception.code, "CORRECTION_REFERENCE_REQUIRED")
 
     def test_snapshot_export_reconciles(self):
         path = Path(self.tmp.name) / "snap.json"; receipt = self.store.export_snapshot(path)
@@ -150,7 +217,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_every_lifecycle_and_health_has_a_fixture_surface(self):
         self.assertEqual({"NOT_STARTED", "READY", "RUNNING", "BLOCKED", "PAUSED", "IN_VERIFICATION", "COMPLETE", "FAILED"}, __import__("control").LIFECYCLES)
         self.assertEqual({"HEALTHY", "ATTENTION_REQUIRED", "STALE", "INTEGRITY_DEGRADED", "UNKNOWN"}, __import__("control").HEALTH)
-        self.emit("lead-s1", "work_started", {"session_id": "lifecycle-fixture"}, "S1")
+        self.emit("lead-s1", "work_started", {"session_id": "lifecycle-fixture", "planned_scenarios": 1}, "S1")
         self.emit("lead-s1", "verification_started", {}, "S1"); self.assertEqual(next(s for s in self.store.projection()["canonical"]["streams"] if s["id"] == "S1")["lifecycle"], "IN_VERIFICATION")
         self.emit("lead-s1", "failed", {}, "S1"); self.assertEqual(next(s for s in self.store.projection()["canonical"]["streams"] if s["id"] == "S1")["lifecycle"], "FAILED")
 
@@ -158,7 +225,7 @@ class ControlPlaneTests(unittest.TestCase):
         bus = EventBus(); httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_factory(self.store, bus, TRACKER / "dashboard.html")); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
         try:
             conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); conn.request("GET", "/events"); response = conn.getresponse(); self.assertEqual(response.status, 200); self.assertIn(b"event: projection", response.fp.readline()); response.fp.readline(); response.fp.readline()
-            payload = json.dumps({"idempotency_key": "sse-live-update", "event_type": "work_started", "payload": {"session_id": "sse-session"}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}).encode()
+            payload = json.dumps({"idempotency_key": "sse-live-update", "event_type": "work_started", "payload": {"session_id": "sse-session", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}).encode()
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2)

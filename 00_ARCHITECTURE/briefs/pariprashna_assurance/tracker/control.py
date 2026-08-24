@@ -33,6 +33,8 @@ PHASES = [("P0", "Campaign Control and Live Tracker", 5), ("P1", "Previous-Campa
 STAGES = [("charter", "Charter, ownership and preflight", 10), ("baseline", "Frozen-baseline investigation", 25), ("triage", "Finding freeze and triage", 10), ("remediation", "Approved remediation", 25), ("verification", "Independent verification", 20), ("regression", "Complete stream regression", 7), ("closure", "Closure packet accepted", 3)]
 STREAMS = [("S1", "Navigation, Shell and History"), ("S2", "Conversation and Reading Experience"), ("S3", "Answer Quality and Epistemic Trust"), ("S4", "Pipeline Correctness and Door Parity"), ("S5", "Security, Privacy and Data Integrity"), ("S6", "Performance, Resilience and Observability")]
 GATES = [("CG-0", "Control Plane Ready"), ("CG-1", "Takeover Reconciled"), ("CG-2", "Safe to Test"), ("CG-3", "Stream Complete"), ("CG-4", "Integrated Assurance"), ("CG-5", "Operationally Proven"), ("CG-6", "Native Accepted"), ("CG-7", "Release Closed")]
+STAGE_NAMES = {stage_id: stage_name for stage_id, stage_name, _ in STAGES}
+STREAM_IDS = {stream_id for stream_id, _ in STREAMS}
 
 
 class RejectedEvent(ValueError):
@@ -265,6 +267,23 @@ class EventStore:
                 current = state_events.get(row["event_type"], current)
             if current not in states[typ]:
                 raise RejectedEvent("INVALID_TRANSITION", f"{typ} is not allowed from {current}")
+        if typ == "work_started" and stream_id in STREAM_IDS:
+            planned = payload.get("planned_scenarios")
+            if not isinstance(planned, int) or isinstance(planned, bool) or planned <= 0:
+                raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "a stream charter must freeze a positive planned_scenarios denominator")
+            stage = payload.get("lifecycle_stage", "charter")
+            if stage not in STAGE_NAMES:
+                raise RejectedEvent("STAGE_SCHEMA", "lifecycle_stage must be a defined stream stage")
+        if typ == "scenario_executed":
+            if stream_id not in STREAM_IDS or not isinstance(payload.get("scenario_id"), str) or not payload["scenario_id"].strip():
+                raise RejectedEvent("SCENARIO_SCHEMA", "scenario execution requires a known stream and non-empty scenario_id")
+            planned, scoped_ids, previous = self._scenario_contract(con, stream_id)
+            if not isinstance(planned, int):
+                raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "scenario execution requires a chartered planned_scenarios denominator")
+            if payload["scenario_id"] in previous:
+                raise RejectedEvent("DUPLICATE_SCENARIO", "a scenario can be executed only once per stream")
+            if len(previous) >= planned + len(scoped_ids):
+                raise RejectedEvent("SCENARIO_DENOMINATOR_EXCEEDED", "executed scenarios cannot exceed the frozen denominator")
         if typ == "work_item_accepted":
             item = payload.get("work_item_id")
             known_items = {w["id"] for w in self.definition()["work_items"]}
@@ -286,6 +305,20 @@ class EventStore:
                 stream = next(s for s in current["streams"] if s["id"] == item_stream)
                 if stream["lifecycle"] == "FAILED":
                     raise RejectedEvent("INVALID_TRANSITION", "failed stream cannot receive completion credit")
+                stage_ids = [stage_id for stage_id, _, _ in STAGES]
+                expected_id = next((stage_id for stage_id in stage_ids if item == f"{item_stream}:{stage_id}"), None)
+                if expected_id:
+                    prior = stage_ids[:stage_ids.index(expected_id)]
+                    accepted = {work_item["id"] for work_item in current["work_items"] if work_item["accepted"]}
+                    if any(f"{item_stream}:{stage_id}" not in accepted for stage_id in prior):
+                        raise RejectedEvent("WORK_ITEM_ORDER", "stream lifecycle work items must be accepted in order")
+                    if expected_id == "closure":
+                        raise RejectedEvent("RESULT_PACKET_REQUIRED", "closure credit is issued only by result_packet_accepted")
+                    if expected_id == "regression":
+                        scenarios = stream["scenarios"]
+                        required_scope_ids = set(stream["scope_scenario_ids"])
+                        if scenarios["planned"] is None or scenarios["executed"] != scenarios["planned"] or not required_scope_ids.issubset(set(stream["scenario_ids"])):
+                            raise RejectedEvent("REGRESSION_INCOMPLETE", "regression credit requires every chartered and scope-approved scenario to be executed")
         if typ == "verification_accepted":
             finder = payload.get("finder_actor_id")
             fixer = payload.get("fixer_actor_id")
@@ -321,8 +354,14 @@ class EventStore:
                 raise RejectedEvent("RESULT_PACKET_SCHEMA", "result packet needs a known stream_id")
             current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
             stream = next(s for s in current["streams"] if s["id"] == packet_stream)
-            if stream["completion_pct"] != 100:
-                raise RejectedEvent("RESULT_PACKET_PREREQUISITE", "result packet requires all stream work items accepted")
+            if stream["lifecycle"] == "FAILED":
+                raise RejectedEvent("FAILED_STREAM", "a failed stream cannot receive result-packet closure credit")
+            pending = [item["id"] for item in current["work_items"] if item.get("stream_id") == packet_stream and item["id"] != f"{packet_stream}:closure" and not item["accepted"]]
+            if pending:
+                raise RejectedEvent("RESULT_PACKET_PREREQUISITE", f"result packet requires every non-closure stream work item accepted: {pending}")
+            scenarios = stream["scenarios"]
+            if scenarios["planned"] is None or scenarios["executed"] != scenarios["planned"] or not set(stream["scope_scenario_ids"]).issubset(set(stream["scenario_ids"])):
+                raise RejectedEvent("RESULT_PACKET_PREREQUISITE", "result packet requires every chartered and scope-approved scenario to be executed")
             closure = con.execute("SELECT 1 FROM events WHERE stream_id=? AND event_type='stream_closure_recommended' AND actor_role='INDEPENDENT_VERIFIER'", (packet_stream,)).fetchone()
             if not closure:
                 raise RejectedEvent("RESULT_PACKET_PREREQUISITE", "result packet requires an independent stream closure recommendation")
@@ -334,16 +373,48 @@ class EventStore:
                 raise RejectedEvent("GATE_PREREQUISITE", "native acceptance requires complete P6 evidence and closed CG-5")
         if typ == "scope_change_approved":
             additions = payload.get("added_work_items")
-            if not isinstance(additions, list) or not additions or not payload.get("reason"):
+            scenarios = payload.get("added_scenarios", [])
+            if not isinstance(additions, list) or not additions or not isinstance(scenarios, list) or not payload.get("reason"):
                 raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "approved scope change needs reason and added_work_items")
+            if any(not isinstance(item, dict) for item in additions):
+                raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "each added work item must be an object")
             known_ids = {w["id"] for w in self.definition()["work_items"]}
             for row in con.execute("SELECT payload_json FROM events WHERE event_type='scope_change_approved'"):
                 known_ids.update(x["id"] for x in json.loads(row["payload_json"])["added_work_items"])
+            declared_scenarios = {(scenario.get("id"), scenario.get("stream_id")) for scenario in scenarios if isinstance(scenario, dict)}
             for item in additions:
                 if not all(k in item for k in ("id", "phase_id", "title", "campaign_points")):
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "each added work item needs id, phase_id, title, campaign_points")
-                if item["id"] in known_ids or item["id"] in {x["id"] for x in additions if x is not item} or item["phase_id"] not in {p[0] for p in PHASES} or not isinstance(item["campaign_points"], (int, float)) or isinstance(item["campaign_points"], bool) or not 0 < item["campaign_points"] <= 100:
+                if item["id"] in known_ids or item["id"] in {x["id"] for x in additions if x is not item} or item["phase_id"] not in {p[0] for p in PHASES} or item.get("stream_id") not in {None, *STREAM_IDS} or not isinstance(item["campaign_points"], (int, float)) or isinstance(item["campaign_points"], bool) or not 0 < item["campaign_points"] <= 100:
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "scope changes may only add new positive work items in known phases")
+                if item.get("kind") == "scenario" and (item.get("scenario_id"), item.get("stream_id")) not in declared_scenarios:
+                    raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "a scenario work item must reference a matching explicitly added scenario")
+            known_scenarios = set()
+            for row in con.execute("SELECT payload_json FROM events WHERE event_type='scope_change_approved'"):
+                known_scenarios.update(scenario["id"] for scenario in json.loads(row["payload_json"]).get("added_scenarios", []))
+            new_scenario_ids: set[str] = set()
+            for scenario in scenarios:
+                if not isinstance(scenario, dict) or not isinstance(scenario.get("id"), str) or not scenario["id"].strip() or scenario.get("stream_id") not in STREAM_IDS or scenario["id"] in known_scenarios or scenario["id"] in new_scenario_ids:
+                    raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "each added scenario needs a globally unique id and known stream_id")
+                _, _, executed = self._scenario_contract(con, scenario["stream_id"])
+                if scenario["id"] in executed:
+                    raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "a scope-approved scenario cannot already have been executed")
+                new_scenario_ids.add(scenario["id"])
+        if typ == "correction_recorded":
+            corrected = payload.get("corrects_event_id")
+            exists = con.execute("SELECT 1 FROM events WHERE event_id=?", (corrected,)).fetchone()
+            if not corrected or not exists or not payload.get("reason"):
+                raise RejectedEvent("CORRECTION_REFERENCE_REQUIRED", "corrections must name an existing event and a reason")
+
+    @staticmethod
+    def _scenario_contract(con: sqlite3.Connection, stream_id: str) -> tuple[int | None, list[str], list[str]]:
+        started = con.execute("SELECT payload_json FROM events WHERE stream_id=? AND event_type='work_started' ORDER BY ledger_seq LIMIT 1", (stream_id,)).fetchone()
+        planned = json.loads(started["payload_json"]).get("planned_scenarios") if started else None
+        scoped_ids: list[str] = []
+        for row in con.execute("SELECT payload_json FROM events WHERE event_type='scope_change_approved' ORDER BY ledger_seq"):
+            scoped_ids.extend(scenario["id"] for scenario in json.loads(row["payload_json"]).get("added_scenarios", []) if scenario.get("stream_id") == stream_id)
+        executed = [json.loads(row["payload_json"]).get("scenario_id") for row in con.execute("SELECT payload_json FROM events WHERE stream_id=? AND event_type='scenario_executed'", (stream_id,))]
+        return planned, scoped_ids, executed
 
     @staticmethod
     def _row_event(row: sqlite3.Row) -> dict[str, Any]:
@@ -398,8 +469,16 @@ class EventStore:
         if not state:
             self.rebuild(as_of)
             return self.projection(as_of)
-        canonical_projection = json.loads(state["canonical_json"])
+        try:
+            canonical_projection = json.loads(state["canonical_json"])
+        except json.JSONDecodeError:
+            canonical_projection = {}
         integrity = self.verify_replay()
+        # A corrupt materialization must still produce a safe, inspectable response rather
+        # than a 500. Reconstruct only the display shape from the durable log; integrity
+        # remains false and the overlay forces every affected surface out of green.
+        if not isinstance(canonical_projection, dict) or not {"phases", "streams", "execution_sessions"}.issubset(canonical_projection):
+            canonical_projection = fold(self.definition(), self.events(), state["as_of"])
         overlay = presence_overlay(canonical_projection, [dict(r) for r in rows], as_of or now_iso(), integrity["ok"])
         display = copy.deepcopy(canonical_projection)
         for stream in display["streams"]: stream["health"] = overlay["stream_health"].get(stream["id"], "UNKNOWN")
@@ -424,7 +503,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     """Pure durable state projection. Presence is intentionally not an input."""
     items = {item["id"]: {**copy.deepcopy(item), "accepted": False, "evidence": [], "accepted_by": None} for item in definition["work_items"]}
     phases = {p["id"]: {**copy.deepcopy(p), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "responsible_session": None} for p in definition["phases"]}
-    streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None} for s in definition["streams"]}
+    streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "execution_session": None} for s in definition["streams"]}
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; scope_changes: list[dict[str, Any]] = []
     bootstrapped = False
@@ -436,16 +515,20 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         elif typ == "work_started":
             sid = payload.get("session_id")
             if sid:
-                sessions[sid] = {"id": sid, "stream_id": event.get("stream_id"), "owner": event["actor_id"], "verifier": payload.get("verifier"), "branch": payload.get("branch"), "worktree": payload.get("worktree"), "baseline_sha": payload.get("baseline_sha"), "current_sha": payload.get("current_sha"), "pr": payload.get("pr"), "ci": payload.get("ci"), "deployed_revision": payload.get("deployed_revision"), "lifecycle": "RUNNING", "last_evidence": evidence, "last_evidence_at": event["occurred_at"], "assignment": payload.get("assignment"), "ceiling": payload.get("ceiling")}
-            if event.get("stream_id") in streams: streams[event["stream_id"]]["lifecycle"] = "RUNNING"
-            elif phase_id in phases: phases[phase_id]["lifecycle"] = "RUNNING"
+                sessions[sid] = {"id": sid, "conversation_id": payload.get("conversation_id", sid), "conversation_uri": payload.get("conversation_uri"), "stream_id": event.get("stream_id"), "owner": event["actor_id"], "verifier": payload.get("verifier"), "model": payload.get("model"), "reasoning_config": payload.get("reasoning_config"), "branch": payload.get("branch"), "worktree": payload.get("worktree"), "baseline_sha": payload.get("baseline_sha"), "current_sha": payload.get("current_sha"), "pr": payload.get("pr"), "ci": payload.get("ci"), "deployed_revision": payload.get("deployed_revision"), "lifecycle_stage": payload.get("lifecycle_stage", "charter"), "planned_scenarios": payload.get("planned_scenarios"), "lifecycle": "RUNNING", "started_at": event["occurred_at"], "last_evidence": evidence, "last_evidence_at": event["occurred_at"], "last_meaningful_action": payload.get("assignment"), "assignment": payload.get("assignment"), "next_checkpoint": payload.get("next_checkpoint"), "ceiling": payload.get("ceiling"), "cost": payload.get("cost")}
+            if event.get("stream_id") in streams: streams[event["stream_id"]]["lifecycle"] = "RUNNING"; streams[event["stream_id"]]["next_checkpoint"] = payload.get("next_checkpoint")
+            elif phase_id in phases: phases[phase_id]["lifecycle"] = "RUNNING"; phases[phase_id]["responsible_session"] = sid
         elif typ in {"paused", "blocked", "resumed", "verification_started", "failed"}:
             target = streams.get(event.get("stream_id")) or phases.get(phase_id)
             states = {"paused": "PAUSED", "blocked": "BLOCKED", "resumed": "RUNNING", "verification_started": "IN_VERIFICATION", "failed": "FAILED"}
             if target: target["lifecycle"] = states[typ]; target["last_evidence_at"] = event["occurred_at"]
+            if target and typ == "blocked": target["blocker_reason"] = payload.get("reason", "No blocker reason recorded")
+            if target and typ == "resumed": target["blocker_reason"] = None
             for session in sessions.values():
                 if session.get("stream_id") == event.get("stream_id"):
-                    session["lifecycle"] = states[typ]
+                    session["lifecycle"] = states[typ]; session["last_meaningful_action"] = payload.get("assignment") or typ; session["last_evidence"] = evidence; session["last_evidence_at"] = event["occurred_at"]
+        elif typ == "scenario_executed" and event.get("stream_id") in streams:
+            streams[event["stream_id"]]["scenario_ids"].append(payload["scenario_id"])
         elif typ == "finding_discovered":
             fid = payload.get("finding_id");
             if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"]}
@@ -463,18 +546,27 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
             wid = payload["work_item_id"]
             if wid in items: items[wid].update({"accepted": True, "evidence": evidence, "accepted_by": event["actor_id"], "accepted_at": event["occurred_at"]})
         elif typ == "scope_change_approved":
+            before_total = sum(item["campaign_points"] for item in items.values())
+            before_earned = sum(item["campaign_points"] for item in items.values() if item["accepted"])
             additions = payload["added_work_items"]
             for item in additions:
                 if item["id"] not in items: items[item["id"]] = {**item, "accepted": False, "evidence": [], "accepted_by": None, "kind": item.get("kind", "scope_change")}
-            scope_changes.append({"event_id": event["event_id"], "reason": payload["reason"], "added_work_items": [x["id"] for x in additions], "evidence": evidence, "at": event["occurred_at"]})
-        elif typ == "decision_recorded":
-            decisions.append({"event_id": event["event_id"], "label": "SURROGATE DECISION — not native acceptance", "decision": payload.get("decision"), "evidence": evidence})
+            for scenario in payload.get("added_scenarios", []):
+                streams[scenario["stream_id"]]["scope_scenario_ids"].append(scenario["id"])
+            after_total = sum(item["campaign_points"] for item in items.values())
+            scope_changes.append({"event_id": event["event_id"], "reason": payload["reason"], "added_work_items": [x["id"] for x in additions], "added_scenarios": [x["id"] for x in payload.get("added_scenarios", [])], "evidence": evidence, "at": event["occurred_at"], "completion_before_pct": round(100 * before_earned / before_total, 2) if before_total else 0, "completion_after_pct": round(100 * before_earned / after_total, 2) if after_total else 0})
+        elif typ in {"decision_recorded", "remediation_approved", "improvement_parked"}:
+            decisions.append({"event_id": event["event_id"], "label": "SURROGATE DECISION — not native acceptance", "decision": payload.get("decision") or payload.get("reason") or typ, "kind": typ, "requires_a3": bool(payload.get("requires_a3")), "evidence": evidence})
         elif typ == "gate_closed":
             gate = payload["gate_id"]; gates[gate].update({"status": "CLOSED", "evidence": evidence, "closed_by": event["actor_id"]})
         elif typ == "native_acceptance":
             gates["CG-6"].update({"status": "CLOSED", "evidence": evidence, "closed_by": event["actor_id"]})
-        if phase_id in phases and evidence:
-            phases[phase_id]["last_evidence_at"] = event["occurred_at"]
+        elif typ == "result_packet_accepted":
+            closure_id = f"{payload['stream_id']}:closure"
+            if streams[payload["stream_id"]]["lifecycle"] != "FAILED":
+                items[closure_id].update({"accepted": True, "evidence": evidence, "accepted_by": event["actor_id"], "accepted_at": event["occurred_at"]})
+        if phase_id in phases and evidence: phases[phase_id]["last_evidence_at"] = event["occurred_at"]
+        if event.get("stream_id") in streams and evidence: streams[event["stream_id"]]["last_evidence_at"] = event["occurred_at"]
     total = sum(item["campaign_points"] for item in items.values())
     earned = sum(item["campaign_points"] for item in items.values() if item["accepted"])
     ordered_phase_ids = [p["id"] for p in definition["phases"]]
@@ -491,9 +583,20 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     for sid, stream in streams.items():
         stream_items = [i for i in items.values() if i.get("stream_id") == sid]
         stream["completion_pct"] = round(100 * sum(i["campaign_points"] for i in stream_items if i["accepted"]) / sum(i["campaign_points"] for i in stream_items), 2)
-        if stream_items and all(i["accepted"] for i in stream_items): stream["lifecycle"] = "COMPLETE"
-        stream["scenarios"] = {"planned": len(stream_items), "executed": sum(i["accepted"] for i in stream_items)}
+        if stream_items and all(i["accepted"] for i in stream_items) and stream["lifecycle"] != "FAILED": stream["lifecycle"] = "COMPLETE"
+        stream_sessions = [session for session in sessions.values() if session.get("stream_id") == sid]
+        stream_sessions.sort(key=lambda session: session.get("started_at") or "", reverse=True)
+        stream["execution_session"] = stream_sessions[0] if stream_sessions else None
+        planned_scenarios = stream["execution_session"].get("planned_scenarios") if stream["execution_session"] else None
+        stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(stream["scenario_ids"])}
+        next_stage = next((stage_id for stage_id, _, _ in STAGES if not items[f"{sid}:{stage_id}"]["accepted"]), "closure")
+        stream["lifecycle_stage"] = {"id": next_stage, "name": STAGE_NAMES[next_stage]}
+        if stream["execution_session"]:
+            stream["execution_session"]["lifecycle_stage"] = next_stage
+            if stream["lifecycle"] == "COMPLETE": stream["execution_session"]["lifecycle"] = "COMPLETE"
         stream["findings"] = [f for f in findings.values() if f["stream_id"] == sid]
+        stream["findings_by_severity"] = {severity: sum(f["severity"] == severity for f in stream["findings"]) for severity in sorted({f["severity"] for f in stream["findings"]})}
+        stream["blockers"] = [{"reason": stream["blocker_reason"]}] if stream["blocker_reason"] else []
         stream["fixed_awaiting_verification"] = sum(r["stream_id"] == sid and r["status"] == "AWAITING_VERIFICATION" for r in remediations.values())
         stream["independently_closed"] = sum(r["stream_id"] == sid and r["status"] == "VERIFIED" for r in remediations.values())
     stream_states = {s["lifecycle"] for s in streams.values()}
@@ -523,7 +626,12 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
         elif lifecycle in {"PAUSED", "BLOCKED", "FAILED"}: health = "ATTENTION_REQUIRED"
         else: health = "UNKNOWN"
         if health == "STALE" and session.get("stream_id"): stale_streams.add(session["stream_id"])
-        cells.append({"session_id": session["id"], "stream_id": session.get("stream_id"), "actor_id": session["owner"], "state": presence["state"] if presence else "MISSING", "presence_age_seconds": round(age, 1) if age is not None else None, "health": health, "last_meaningful_action": session.get("assignment"), "next_autonomous_action": session.get("assignment"), "branch": session.get("branch"), "pr": session.get("pr"), "ci": session.get("ci"), "ceiling": session.get("ceiling")})
+        started = parse_time(session.get("started_at"))
+        elapsed = max(0, now - started) if started is not None else None
+        ceiling = session.get("ceiling")
+        remaining = max(0, ceiling - elapsed) if isinstance(ceiling, (int, float)) and not isinstance(ceiling, bool) and elapsed is not None else None
+        stream = next((item for item in canonical_projection["streams"] if item["id"] == session.get("stream_id")), None)
+        cells.append({"session_id": session["id"], "conversation_id": session.get("conversation_id"), "conversation_uri": session.get("conversation_uri"), "stream_id": session.get("stream_id"), "actor_id": session["owner"], "verifier": session.get("verifier"), "model": session.get("model"), "reasoning_config": session.get("reasoning_config"), "work_item": stream.get("lifecycle_stage", {}).get("id") if stream else session.get("lifecycle_stage"), "state": presence["state"] if presence else "MISSING", "last_presence_at": presence["observed_at"] if presence else None, "presence_age_seconds": round(age, 1) if age is not None else None, "health": health, "last_meaningful_action": session.get("last_meaningful_action"), "next_autonomous_action": session.get("assignment"), "branch": session.get("branch"), "current_sha": session.get("current_sha"), "pr": session.get("pr"), "ci": session.get("ci"), "deployed_revision": session.get("deployed_revision"), "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None, "cost": session.get("cost"), "ceiling": ceiling, "remaining_ceiling_seconds": round(remaining, 1) if remaining is not None else None})
     stream_health = {}
     for stream in canonical_projection["streams"]:
         sid, lifecycle = stream["id"], stream["lifecycle"]
@@ -537,5 +645,10 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
         p3 = [stream_health[sid] for sid, _ in STREAMS]
         phase_health["P3"] = "STALE" if "STALE" in p3 else ("ATTENTION_REQUIRED" if "ATTENTION_REQUIRED" in p3 else ("HEALTHY" if "HEALTHY" in p3 else "UNKNOWN"))
     has_attention = "ATTENTION_REQUIRED" in stream_health.values()
+    owners_by_stream: dict[str, set[str]] = {}
+    for cell in cells:
+        if cell.get("stream_id"): owners_by_stream.setdefault(cell["stream_id"], set()).add(cell["actor_id"])
+    ownership_conflicts = sorted(stream_id for stream_id, owners in owners_by_stream.items() if len(owners) > 1)
+    campaign = {"active_cells": len(cells), "healthy_cells": sum(cell["health"] == "HEALTHY" for cell in cells), "stale_cells": sum(cell["health"] == "STALE" for cell in cells), "verifier_backlog": sum(remediation["status"] == "AWAITING_VERIFICATION" for remediation in canonical_projection["remediations"]), "surrogate_decision_backlog": sum(finding["status"] == "OPEN" for finding in canonical_projection["findings"]), "a3_decisions": sum(decision.get("requires_a3", False) for decision in canonical_projection["decisions"]), "ownership_conflicts": ownership_conflicts, "ceiling_risks": sum(cell["remaining_ceiling_seconds"] == 0 for cell in cells if cell["remaining_ceiling_seconds"] is not None)}
     warning = None if integrity_ok and not stale_streams else ("INTEGRITY DEGRADED — do not treat any state as green" if not integrity_ok else "STALE RUNNING PRESENCE — do not treat stream as healthy")
-    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}
+    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}
