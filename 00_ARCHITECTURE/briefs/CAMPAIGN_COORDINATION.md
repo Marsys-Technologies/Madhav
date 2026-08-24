@@ -113,7 +113,7 @@ this is RELEASED or expired.*
 | 575 | PARIPRAŚNA | 575_pariprashna_chart_subject_consent.sql (G1-B, chart_subject_consent + 4 related tables) | CLAIMED — pariprashna/p1, PR not yet opened. Renumbered from a 574 collision with G1-D (both lanes independently claimed 574 from a stale "570+" reading here — renumber-on-collision applied per this table's own rule) |
 | 576–587 | (various) | applied to main since this table was last updated (verified live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` at claim time, tip `07ed2433f`) | HISTORICAL |
 | 588 | PARIPRAŚNA | 588_samiksha_digest_journal.sql (P4-I, digest-journal DB table — additive, expand-only) | CLAIMED — pariprashna/p4-i, PR not yet opened |
-| 590 | NIRMANA_ELEVATION_TRACKER | 590_nirmana_elevation_campaign_evidence.sql (add versioned campaign definitions and append-only evidence events) | CLAIMED — elevation tracker v1; read-only projection; PR pending |
+| 592 | NIRMANA_ELEVATION_TRACKER | 592_nirmana_elevation_campaign_evidence.sql (add versioned campaign definitions and append-only evidence events) | CLAIMED — elevation tracker v1; read-only projection; PR pending. Corrected from 590 after fresh full-ref audit found paused Nirmāṇa branch already owns 589–591. |
 | 589+ | — | next free; claim here before use — **the "next free" number drifts fast under concurrent campaigns; re-verify live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` before trusting this table** | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
