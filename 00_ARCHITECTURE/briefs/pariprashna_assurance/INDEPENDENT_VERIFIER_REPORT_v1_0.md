@@ -18,7 +18,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 
 - `control.py`, `server.py`, `dashboard.html`, the event schema, operations artifacts, and
   browser smoke script.
-- 25/25 `tests/pariprashna_assurance_tracker/test_control.py` tests.
+- 26/26 `tests/pariprashna_assurance_tracker/test_control.py` tests.
 - Desktop plus 390 px rendered browser smoke; live Chrome review found no console errors and
   reported 100 for accessibility, best practices, SEO, and agentic browsing.
 
@@ -31,6 +31,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | Closure work-item credit could precede the result packet | Fixed: only `result_packet_accepted` credits closure | `test_regression_requires_scenarios_and_completed_session_is_not_stale` |
 | Scope-added scenario did not expand/enforce the scenario contract | Fixed: validated `added_scenarios` expand the denominator and are required before regression/packet | Same adversarial test |
 | Failed stream could receive a result packet and be projected complete | Fixed: packet rejected with `FAILED_STREAM`; fold preserves terminal failure | `test_failed_stream_cannot_receive_packet_closure_credit` |
+| A stream lead could invoke recovery or claim another session's freshness | Fixed: rebuild is integrator-only; a durable, globally unique session must belong to the caller; the server assigns the observation time | `test_rebuild_and_presence_are_privilege_bound` |
 
 ## Residual limits
 

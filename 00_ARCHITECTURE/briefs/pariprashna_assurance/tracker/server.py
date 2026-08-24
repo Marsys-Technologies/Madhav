@@ -80,7 +80,7 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
 
         def _body(self) -> dict:
             size = int(self.headers.get("Content-Length", "0"))
-            if size > 1024 * 1024: raise RejectedEvent("REQUEST_TOO_LARGE", "request exceeds 1 MiB")
+            if size < 0 or size > 1024 * 1024: raise RejectedEvent("REQUEST_TOO_LARGE", "request exceeds 1 MiB")
             return json.loads(self.rfile.read(size) or b"{}")
 
         def _actor(self) -> str | None:
@@ -122,8 +122,10 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
                 if path == "/api/events":
                     result = store.submit(body); bus.publish(store.projection()); self._json(201, result); return
                 if path == "/api/presence":
-                    store.record_presence(actor, body["session_id"], body.get("stream_id"), body["state"], body.get("detail", ""), body.get("observed_at")); bus.publish(store.projection()); self._json(201, {"accepted": True}); return
+                    if "observed_at" in body: raise RejectedEvent("PRESENCE_TIMESTAMP_FORBIDDEN", "the API assigns presence observation time")
+                    store.record_presence(actor, body["session_id"], body.get("stream_id"), body["state"], body.get("detail", "")); bus.publish(store.projection()); self._json(201, {"accepted": True}); return
                 if path == "/api/rebuild":
+                    if store.actor_role(actor) != "PROGRAMME_INTEGRATOR": raise RejectedEvent("ROLE_FORBIDDEN", "only the programme integrator may rebuild the projection")
                     store.rebuild(); bus.publish(store.projection()); self._json(200, {"accepted": True, "integrity": store.verify_replay()}); return
                 self._json(404, {"error": "not found"})
             except RejectedEvent as exc: self._json(409, {"accepted": False, "code": exc.code, "error": str(exc)})

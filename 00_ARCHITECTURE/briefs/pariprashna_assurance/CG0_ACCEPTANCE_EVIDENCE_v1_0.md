@@ -37,6 +37,10 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 22 | Immutable reconciled snapshot | `test_snapshot_export_reconciles` |
 | 23 | External adapter fails safely | `test_external_adapter_failure_is_visible_not_canonical` |
 | 24 | Honest P0 bootstrap | `setUp` bootstrap plus `test_gate_closure_requires_evidence_and_integrator` proves bootstrap alone cannot close CG-0 |
+| 25 | Privileged recovery and owner-bound, server-timestamped presence | `test_rebuild_and_presence_are_privilege_bound` |
+
+The same privilege test also proves that a session identifier cannot be reused across streams,
+so a presence record has an unambiguous durable owner.
 
 The stream-charter denominator is additionally proven by
 `test_scenario_denominator_is_frozen`; `test_execution_session_projection_exposes_governance_fields`

@@ -77,6 +77,27 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as ctx: self.emit("lead-s1", "work_started", {"session_id": "no"}, "S2")
         self.assertEqual(ctx.exception.code, "STREAM_FORBIDDEN")
 
+    def test_rebuild_and_presence_are_privilege_bound(self):
+        self.emit("lead-s1", "work_started", {"session_id": "owned-session", "planned_scenarios": 1}, "S1")
+        with self.assertRaises(RejectedEvent) as duplicate_session: self.emit("lead-s2", "work_started", {"session_id": "owned-session", "planned_scenarios": 1}, "S2")
+        self.assertEqual(duplicate_session.exception.code, "SESSION_ID_CONFLICT")
+        with self.assertRaises(RejectedEvent) as impersonation: self.store.record_presence("integrator", "owned-session", "S1", "ACTIVE")
+        self.assertEqual(impersonation.exception.code, "PRESENCE_FORBIDDEN")
+        with self.assertRaises(RejectedEvent) as unknown: self.store.record_presence("lead-s1", "unknown-session", "S1", "ACTIVE")
+        self.assertEqual(unknown.exception.code, "UNKNOWN_SESSION")
+        bus = EventBus(); httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_factory(self.store, bus, TRACKER / "dashboard.html")); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
+        def post(path, body, token):
+            conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2)
+            conn.request("POST", path, body=json.dumps(body), headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+            response = conn.getresponse(); payload = json.loads(response.read()); status = response.status; conn.close(); return status, payload
+        try:
+            status, body = post("/api/rebuild", {}, self.tokens["lead-s1"]); self.assertEqual(status, 409); self.assertEqual(body["code"], "ROLE_FORBIDDEN")
+            status, body = post("/api/rebuild", {}, self.tokens["integrator"]); self.assertEqual(status, 200); self.assertTrue(body["integrity"]["ok"])
+            status, body = post("/api/presence", {"session_id": "owned-session", "stream_id": "S1", "state": "ACTIVE", "observed_at": "2020-01-01T00:00:00Z"}, self.tokens["lead-s1"]); self.assertEqual(status, 409); self.assertEqual(body["code"], "PRESENCE_TIMESTAMP_FORBIDDEN")
+            status, body = post("/api/presence", {"session_id": "owned-session", "stream_id": "S1", "state": "ACTIVE"}, self.tokens["lead-s1"]); self.assertEqual(status, 201); self.assertTrue(body["accepted"])
+        finally:
+            httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
+
     def test_finder_or_fixer_cannot_self_verify(self):
         with self.assertRaises(RejectedEvent) as ctx: self.emit("lead-s1", "verification_accepted", {"finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
         self.assertEqual(ctx.exception.code, "ROLE_FORBIDDEN")
@@ -228,7 +249,7 @@ class ControlPlaneTests(unittest.TestCase):
             payload = json.dumps({"idempotency_key": "sse-live-update", "event_type": "work_started", "payload": {"session_id": "sse-session", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}).encode()
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
-        finally: httpd.shutdown(); thread.join(timeout=2)
+        finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
         html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 

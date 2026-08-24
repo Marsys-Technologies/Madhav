@@ -169,6 +169,11 @@ class EventStore:
             row = con.execute("SELECT actor_id FROM actors WHERE token_hash=?", (token_hash,)).fetchone()
         return row[0] if row else None
 
+    def actor_role(self, actor_id: str) -> str | None:
+        with self.connection() as con:
+            row = con.execute("SELECT role FROM actors WHERE actor_id=?", (actor_id,)).fetchone()
+        return row[0] if row else None
+
     def next_stream_seq(self, stream_id: str) -> int:
         with self.connection() as con:
             row = con.execute("SELECT current_seq FROM stream_sequences WHERE stream_id=?", (stream_id,)).fetchone()
@@ -268,6 +273,12 @@ class EventStore:
             if current not in states[typ]:
                 raise RejectedEvent("INVALID_TRANSITION", f"{typ} is not allowed from {current}")
         if typ == "work_started" and stream_id in STREAM_IDS:
+            session_id = payload.get("session_id")
+            if not isinstance(session_id, str) or not session_id.strip():
+                raise RejectedEvent("SESSION_ID_REQUIRED", "a stream work_started event requires a non-empty session_id")
+            for row in con.execute("SELECT payload_json FROM events WHERE event_type='work_started'"):
+                if json.loads(row["payload_json"]).get("session_id") == session_id:
+                    raise RejectedEvent("SESSION_ID_CONFLICT", "session_id is already owned by an existing execution session")
             planned = payload.get("planned_scenarios")
             if not isinstance(planned, int) or isinstance(planned, bool) or planned <= 0:
                 raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "a stream charter must freeze a positive planned_scenarios denominator")
@@ -430,6 +441,16 @@ class EventStore:
             actor = con.execute("SELECT streams_json FROM actors WHERE actor_id=?", (actor_id,)).fetchone()
             if not actor or (stream_id and stream_id not in json.loads(actor[0])):
                 raise RejectedEvent("STREAM_FORBIDDEN", "presence actor does not own stream")
+            session = None
+            for row in con.execute("SELECT actor_id,stream_id,payload_json FROM events WHERE event_type='work_started' ORDER BY ledger_seq"):
+                payload = json.loads(row["payload_json"])
+                if payload.get("session_id") == session_id:
+                    session = {"owner": row["actor_id"], "stream_id": row["stream_id"]}
+                    break
+            if not session:
+                raise RejectedEvent("UNKNOWN_SESSION", "presence requires a durable work_started session")
+            if session["owner"] != actor_id or session["stream_id"] != stream_id:
+                raise RejectedEvent("PRESENCE_FORBIDDEN", "only the session owner may update its matching presence")
             con.execute("INSERT INTO presences(session_id,actor_id,stream_id,state,observed_at,detail) VALUES(?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET actor_id=excluded.actor_id,stream_id=excluded.stream_id,state=excluded.state,observed_at=excluded.observed_at,detail=excluded.detail", (session_id, actor_id, stream_id, state, observed_at or now_iso(), detail))
 
     def rebuild(self, as_of: str | None = None) -> dict[str, Any]:
