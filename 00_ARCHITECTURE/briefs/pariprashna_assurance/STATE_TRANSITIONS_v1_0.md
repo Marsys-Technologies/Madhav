@@ -1,0 +1,38 @@
+---
+artifact: PARIPRASHNA_ASSURANCE_STATE_TRANSITIONS
+version: 1.0
+status: CURRENT
+date: 2026-08-24
+---
+
+# State-transition specification
+
+Durable events use schema `pariprashna-assurance-event@1`. Every stream event carries an
+idempotency key and the caller’s expected stream sequence. The server assigns the next
+monotonic sequence only inside its append transaction.
+
+`NOT_STARTED → READY → RUNNING → IN_VERIFICATION → COMPLETE` is the normal path.
+`RUNNING` may move to `BLOCKED` or `PAUSED`; `PAUSED` may resume to `RUNNING`.
+`FAILED` is terminal until an explicit corrective work item is accepted. No event accepts a
+percentage. Completion credit is issued only by `work_item_accepted`, with evidence, after
+independent verification. A stream-close recommendation is not closure; an integrator must
+accept the result packet. CG-6 accepts only a native-acceptance event, never a surrogate
+decision.
+
+Corrections never mutate a prior event. `correction_recorded` and
+`scope_change_approved` reference the prior event/work item and explain the correction.
+Only an approved scope-change may add denominator work items; the projector displays the
+resulting reduction and its evidence reference.
+
+Each `work_item_accepted` must name a durable `verification_accepted` or
+`regression_accepted` event from an independent verifier. That verifier event must name the
+same work item plus distinct finder/fixer identities. A gate closure must name a separate,
+durable verifier event for that exact gate; it is also rejected until every work item in the
+corresponding phase is accepted, the predecessor gate is closed, and (for CG-3) all six
+stream result packets are accepted. These predicates are evaluated in the append
+transaction, not trusted from a dashboard field.
+
+A result packet is valid only after every work item in its stream is accepted and an
+independent verifier has recommended stream closure. Native acceptance is valid only after
+complete P6 evidence and CG-5. Scope additions must be new, positive work items no greater
+than the full campaign denominator; a failed stream cannot receive further completion credit.
