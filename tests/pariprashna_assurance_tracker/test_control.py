@@ -12,9 +12,9 @@ from pathlib import Path
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from control import EventStore, RejectedEvent, canonical, fold, programme_definition, presence_overlay  # noqa: E402
+from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import SERVICE_LABEL, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import RELEASE_FILES, SERVICE_LABEL, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -129,6 +129,22 @@ class ControlPlaneTests(unittest.TestCase):
         request = {"actor_id": "lead-s1", "idempotency_key": "same", "event_type": "work_started", "payload": {"session_id": "same", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}
         first = self.store.submit(request); second = self.store.submit(request)
         self.assertFalse(first["idempotent"]); self.assertTrue(second["idempotent"]); self.assertEqual(len(self.store.events()), 2)
+
+        conflicting = {**request, "payload": {"session_id": "different", "planned_scenarios": 1}}
+        with self.assertRaises(RejectedEvent) as reuse:
+            self.store.submit(conflicting)
+        self.assertEqual(reuse.exception.code, "IDEMPOTENCY_CONFLICT")
+        with self.assertRaises(RejectedEvent) as unauthenticated:
+            self.store.submit({**request, "actor_id": "unknown-actor"})
+        self.assertEqual(unauthenticated.exception.code, "UNAUTHENTICATED")
+        separate_actor = {**request, "actor_id": "lead-s2", "payload": {"session_id": "actor-scoped", "planned_scenarios": 1}, "stream_id": "S2"}
+        self.assertFalse(self.store.submit(separate_actor)["idempotent"])
+
+    def test_event_timestamp_is_server_assigned(self):
+        request = {"actor_id": "lead-s1", "idempotency_key": "client-time", "event_type": "work_started", "payload": {"session_id": "client-time", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE, "occurred_at": "2000-01-01T00:00:00Z"}
+        with self.assertRaises(RejectedEvent) as timestamp:
+            self.store.submit(request)
+        self.assertEqual(timestamp.exception.code, "OCCURRED_AT_FORBIDDEN")
 
     def test_runtime_credentials_are_random_private_and_not_reprovisioned(self):
         self.assertIsNone(self.store.authenticate("local-integrator")); self.assertEqual(self.store.authenticate(self.tokens["integrator"]), "integrator")
@@ -483,7 +499,65 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_snapshot_export_reconciles(self):
         path = Path(self.tmp.name) / "snap.json"; receipt = self.store.export_snapshot(path)
-        snapshot = json.loads(path.read_text()); self.assertEqual(receipt["event_log_hash"], snapshot["event_log_hash"]); self.assertFalse(path.stat().st_mode & 0o222)
+        snapshot = json.loads(path.read_text()); self.assertEqual(receipt["event_log_hash"], snapshot["event_log_hash"]); self.assertEqual(path.stat().st_mode & 0o777, 0o400)
+        self.assertEqual(snapshot["event_log_hash"], digest(snapshot["events"]))
+
+    def test_snapshot_export_remains_reconcilable_under_concurrent_writes(self):
+        self.emit("lead-s1", "work_started", {"session_id": "concurrent-snapshot", "planned_scenarios": 30}, "S1")
+        failures = []
+        def writer():
+            for index in range(20):
+                try:
+                    self.emit("lead-s1", "scenario_executed", {"scenario_id": f"concurrent-snapshot-{index}"}, "S1", key=f"concurrent-snapshot-{index}")
+                except Exception as exc:  # pragma: no cover - asserted below
+                    failures.append(exc)
+        thread = threading.Thread(target=writer); thread.start()
+        with tempfile.TemporaryDirectory() as root:
+            for index in range(6):
+                snapshot_path = Path(root) / f"snapshot-{index}.json"
+                self.store.export_snapshot(snapshot_path)
+                snapshot = json.loads(snapshot_path.read_text())
+                recovery = EventStore(Path(root) / f"recovery-{index}")
+                restored = recovery.restore_snapshot(snapshot_path)
+                self.assertEqual(restored["event_log_hash"], snapshot["event_log_hash"])
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive()); self.assertFalse(failures)
+
+    def test_unstarted_campaign_liveness_is_unknown(self):
+        projection = self.store.projection()
+        self.assertTrue(all(health == "UNKNOWN" for health in projection["liveness"]["stream_health"].values()))
+        self.assertEqual(projection["liveness"]["overall_health"], "UNKNOWN")
+
+    def test_hostile_host_cannot_read_loopback_endpoints(self):
+        bus = EventBus(); httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_factory(self.store, bus, TRACKER / "dashboard.html")); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
+        def get(path, host):
+            conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2)
+            conn.request("GET", path, headers={"Host": host}); response = conn.getresponse(); body = response.read(); status = response.status; conn.close(); return status, body
+        try:
+            self.assertEqual(get("/", "evil.example")[0], 403)
+            self.assertEqual(get("/api/projection", "evil.example")[0], 403)
+            self.assertEqual(get("/", f"127.0.0.1:{httpd.server_port}")[0], 200)
+        finally:
+            httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
+
+    def test_release_attestation_rejects_mutable_or_symlinked_tree(self):
+        source_sha = "a" * 40
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "release"; release.mkdir()
+            for name in RELEASE_FILES:
+                (release / name).write_text(f"fixture:{name}\n")
+            manifest = attest_release(release, source_sha)
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o444)
+            assert_release_attestation(release, source_sha)
+            os.chmod(release, 0o755)
+            with self.assertRaises(ValueError) as mutable:
+                assert_release_attestation(release, source_sha)
+            self.assertIn("mutable", str(mutable.exception))
+            os.chmod(release, 0o555)
+            link = Path(root) / "release-link"; link.symlink_to(release, target_is_directory=True)
+            with self.assertRaises(ValueError) as symlink:
+                assert_release_attestation(link, source_sha)
+            self.assertIn("symlink", str(symlink.exception))
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()

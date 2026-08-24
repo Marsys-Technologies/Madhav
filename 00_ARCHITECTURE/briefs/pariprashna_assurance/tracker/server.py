@@ -11,7 +11,7 @@ import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 from control import EventStore, RejectedEvent
 
@@ -126,8 +126,22 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
         def _local_only(self) -> bool:
             return self.client_address[0] in {"127.0.0.1", "::1"}
 
+        def _approved_loopback_origin(self) -> bool:
+            """Reject hostile Host headers so loopback reads cannot serve a rebound origin."""
+            if not self._local_only():
+                return False
+            hosts = self.headers.get_all("Host", [])
+            if len(hosts) != 1:
+                return False
+            try:
+                parsed = urlsplit("//" + hosts[0].strip())
+                port = parsed.port
+            except ValueError:
+                return False
+            return not parsed.username and not parsed.password and parsed.hostname in {"127.0.0.1", "::1", "localhost"} and port in {None, self.server.server_port}
+
         def do_GET(self) -> None:
-            if not self._local_only(): self._json(403, {"error": "CG-0 runtime is loopback-only"}); return
+            if not self._approved_loopback_origin(): self._json(403, {"error": "CG-0 runtime is loopback-origin-only"}); return
             path = urlparse(self.path).path
             if path == "/":
                 data = dashboard.read_bytes(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data); return
@@ -152,7 +166,7 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
             self._json(404, {"error": "not found"})
 
         def do_POST(self) -> None:
-            if not self._local_only(): self._json(403, {"error": "CG-0 runtime is loopback-only"}); return
+            if not self._approved_loopback_origin(): self._json(403, {"error": "CG-0 runtime is loopback-origin-only"}); return
             path = urlparse(self.path).path; actor = self._actor()
             if not actor: self._json(401, {"error": "bearer token required"}); return
             try:

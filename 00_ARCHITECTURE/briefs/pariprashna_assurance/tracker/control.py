@@ -55,6 +55,14 @@ def digest(value: Any) -> str:
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
+def request_fingerprint(request: dict[str, Any]) -> str:
+    """Bind idempotency to the actor's complete, server-timestamp-free intent."""
+    return digest({key: request.get(key) for key in (
+        "actor_id", "idempotency_key", "event_type", "payload", "stream_id",
+        "expected_stream_seq", "evidence",
+    )})
+
+
 def parse_time(value: str | None) -> float | None:
     if not value:
         return None
@@ -129,11 +137,13 @@ class EventStore:
             con.executescript("""
                 CREATE TABLE IF NOT EXISTS events (
                   ledger_seq INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL UNIQUE,
-                  schema_version TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE,
+                  schema_version TEXT NOT NULL, idempotency_key TEXT NOT NULL,
+                  request_fingerprint TEXT NOT NULL,
                   stream_id TEXT, stream_seq INTEGER, actor_id TEXT NOT NULL, actor_role TEXT NOT NULL,
                   event_type TEXT NOT NULL, payload_json TEXT NOT NULL, evidence_json TEXT NOT NULL,
                   occurred_at TEXT NOT NULL, prev_hash TEXT NOT NULL, event_hash TEXT NOT NULL UNIQUE
                 );
+                CREATE UNIQUE INDEX IF NOT EXISTS events_actor_idempotency_key ON events(actor_id, idempotency_key);
                 CREATE UNIQUE INDEX IF NOT EXISTS events_stream_seq ON events(stream_id, stream_seq) WHERE stream_id IS NOT NULL;
                 CREATE TRIGGER IF NOT EXISTS events_no_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
                 CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
@@ -253,12 +263,10 @@ class EventStore:
             raise RejectedEvent("EVIDENCE_REQUIRED", f"{request['event_type']} requires primary evidence")
         if any(not isinstance(e, dict) or not e.get("uri") or not e.get("kind") for e in evidence):
             raise RejectedEvent("EVIDENCE_SCHEMA", "each evidence item requires kind and uri")
+        if "occurred_at" in request:
+            raise RejectedEvent("OCCURRED_AT_FORBIDDEN", "the server assigns event occurrence time")
         with self._lock, self.connection() as con:
             con.execute("BEGIN IMMEDIATE")
-            existing = con.execute("SELECT * FROM events WHERE idempotency_key=?", (request["idempotency_key"],)).fetchone()
-            if existing:
-                con.execute("COMMIT")
-                return {"accepted": True, "idempotent": True, "event": self._row_event(existing)}
             actor = con.execute("SELECT * FROM actors WHERE actor_id=?", (request["actor_id"],)).fetchone()
             if not actor:
                 con.execute("ROLLBACK")
@@ -272,6 +280,17 @@ class EventStore:
             if stream_id and stream_id not in streams:
                 con.execute("ROLLBACK")
                 raise RejectedEvent("STREAM_FORBIDDEN", f"{request['actor_id']} does not own {stream_id}")
+            fingerprint = request_fingerprint(request)
+            existing = con.execute(
+                "SELECT * FROM events WHERE actor_id=? AND idempotency_key=?",
+                (request["actor_id"], request["idempotency_key"]),
+            ).fetchone()
+            if existing:
+                if existing["request_fingerprint"] != fingerprint:
+                    con.execute("ROLLBACK")
+                    raise RejectedEvent("IDEMPOTENCY_CONFLICT", "idempotency key was already used for a different request")
+                con.execute("COMMIT")
+                return {"accepted": True, "idempotent": True, "event": self._row_event(existing)}
             self._validate_transition(con, request, role)
             stream_seq = None
             if stream_id:
@@ -283,10 +302,10 @@ class EventStore:
                 stream_seq = current + 1
                 con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=excluded.current_seq", (stream_id, stream_seq))
             previous = con.execute("SELECT last_hash FROM ledger_meta WHERE id=1").fetchone()[0]
-            occurred_at = request.get("occurred_at") or now_iso()
-            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": request["payload"], "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
+            occurred_at = now_iso()
+            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "request_fingerprint": fingerprint, "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": request["payload"], "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
             event_hash = digest(body)
-            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], stream_id, stream_seq, body["actor_id"], role, event_type, canonical(request["payload"]), canonical(evidence), occurred_at, previous, event_hash))
+            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], fingerprint, stream_id, stream_seq, body["actor_id"], role, event_type, canonical(request["payload"]), canonical(evidence), occurred_at, previous, event_hash))
             con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (event_hash,))
             row = con.execute("SELECT * FROM events WHERE event_id=?", (body["event_id"],)).fetchone()
             con.execute("COMMIT")
@@ -570,7 +589,7 @@ class EventStore:
 
     @staticmethod
     def _event_body(event: dict[str, Any]) -> dict[str, Any]:
-        return {key: event[key] for key in ("schema_version", "event_id", "idempotency_key", "stream_id", "stream_seq", "actor_id", "actor_role", "event_type", "payload", "evidence", "occurred_at", "prev_hash")}
+        return {key: event[key] for key in ("schema_version", "event_id", "idempotency_key", "request_fingerprint", "stream_id", "stream_seq", "actor_id", "actor_role", "event_type", "payload", "evidence", "occurred_at", "prev_hash")}
 
     def _verify_event_chain(self, con: sqlite3.Connection) -> tuple[bool, str, str]:
         meta = con.execute("SELECT last_hash,definition_json FROM ledger_meta WHERE id=1").fetchone()
@@ -680,16 +699,65 @@ class EventStore:
         return {"schema_version": "campaign-projection@1", "canonical": canonical_projection, "display": display, "canonical_hash": state["projection_hash"], "projection_as_of": state["as_of"], "integrity": integrity, "projector_health": health, "monitor_health": monitor, "liveness": overlay, "rejected_events": self.rejected()}
 
     def export_snapshot(self, path: str | Path) -> dict[str, Any]:
-        result = self.verify_replay()
-        if not result["ok"]:
-            raise RejectedEvent("INTEGRITY_DEGRADED", "cannot export a snapshot with failed replay")
-        snapshot = {"schema_version": "immutable-snapshot@1", "exported_at": now_iso(), "projection": self.projection(), "events": self.events(), "event_log_hash": digest(self.events()), "ledger_root_hash": result["event_log_hash"]}
+        # The durable event log, ledger root, and materialized projection must come from
+        # one SQLite read snapshot.  Holding the process lock also prevents an in-process
+        # writer from slipping an event between any two exported fields.
+        with self._lock, self.connection() as con:
+            con.execute("BEGIN")
+            try:
+                state = con.execute("SELECT * FROM projection_state WHERE id=1").fetchone()
+                chain_ok, chain_reason, chain_hash = self._verify_event_chain(con)
+                events = [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")]
+                definition = json.loads(con.execute("SELECT definition_json FROM ledger_meta WHERE id=1").fetchone()[0])
+                if not state or not chain_ok:
+                    raise RejectedEvent("INTEGRITY_DEGRADED", chain_reason if not chain_ok else "cannot export without a projection")
+                try:
+                    materialized = json.loads(state["canonical_json"])
+                except json.JSONDecodeError as exc:
+                    raise RejectedEvent("INTEGRITY_DEGRADED", "materialized projection is invalid") from exc
+                replay = fold(definition, events, state["as_of"])
+                replay_hash = digest(replay)
+                if state["event_count"] != len(events) or replay_hash != state["projection_hash"] or digest(materialized) != state["projection_hash"]:
+                    raise RejectedEvent("INTEGRITY_DEGRADED", "snapshot sources do not reconcile")
+                projection = {
+                    "schema_version": "campaign-projection@1",
+                    "canonical": materialized,
+                    "canonical_hash": state["projection_hash"],
+                    "projection_as_of": state["as_of"],
+                }
+                snapshot = {"schema_version": "immutable-snapshot@1", "exported_at": now_iso(), "projection": projection, "events": events, "event_log_hash": digest(events), "ledger_root_hash": chain_hash}
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(canonical(snapshot) + "\n", encoding="utf-8")
-        os.replace(tmp, target)
-        os.chmod(target, 0o444)
+        tmp = target.parent / f".{target.name}.{uuid.uuid4().hex}.tmp"
+        descriptor = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as snapshot_file:
+                descriptor = -1
+                snapshot_file.write(canonical(snapshot) + "\n")
+                snapshot_file.flush()
+                os.fsync(snapshot_file.fileno())
+            os.replace(tmp, target)
+            os.chmod(target, 0o400)
+            target_descriptor = os.open(target, os.O_RDONLY)
+            try:
+                os.fsync(target_descriptor)
+            finally:
+                os.close(target_descriptor)
+            directory_descriptor = os.open(target.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_descriptor)
+            finally:
+                os.close(directory_descriptor)
+        except Exception:
+            if descriptor >= 0:
+                os.close(descriptor)
+            tmp.unlink(missing_ok=True)
+            raise
         return {"path": str(target), "snapshot_hash": digest(snapshot), "event_log_hash": snapshot["event_log_hash"]}
 
     def restore_snapshot(self, path: str | Path) -> dict[str, Any]:
@@ -723,7 +791,10 @@ class EventStore:
                 con.execute("ROLLBACK")
                 raise RejectedEvent("SNAPSHOT_INTEGRITY", "snapshot ledger root hash is invalid")
             for event in events:
-                con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (event["event_id"], event["schema_version"], event["idempotency_key"], event["stream_id"], event["stream_seq"], event["actor_id"], event["actor_role"], event["event_type"], canonical(event["payload"]), canonical(event["evidence"]), event["occurred_at"], event["prev_hash"], event["event_hash"]))
+                if not isinstance(event.get("request_fingerprint"), str):
+                    con.execute("ROLLBACK")
+                    raise RejectedEvent("SNAPSHOT_INTEGRITY", "snapshot event is missing its idempotency fingerprint")
+                con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (event["event_id"], event["schema_version"], event["idempotency_key"], event["request_fingerprint"], event["stream_id"], event["stream_seq"], event["actor_id"], event["actor_role"], event["event_type"], canonical(event["payload"]), canonical(event["evidence"]), event["occurred_at"], event["prev_hash"], event["event_hash"]))
                 if event["stream_id"]:
                     con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=MAX(current_seq,excluded.current_seq)", (event["stream_id"], event["stream_seq"]))
             con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (previous,))
@@ -901,6 +972,7 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
     for dependency in dependency_warnings:
         phase_health[dependency["to"]] = "ATTENTION_REQUIRED"
     has_attention = "ATTENTION_REQUIRED" in stream_health.values() or any(cell["health"] == "ATTENTION_REQUIRED" for cell in cells) or bool(dependency_warnings)
+    all_unknown = not cells and all(health == "UNKNOWN" for health in stream_health.values()) and all(health == "UNKNOWN" for health in phase_health.values())
     campaign = {"active_cells": len(cells), "healthy_cells": sum(cell["health"] == "HEALTHY" for cell in cells), "stale_cells": sum(cell["health"] == "STALE" for cell in cells), "verifier_backlog": sum(remediation["status"] == "AWAITING_VERIFICATION" for remediation in canonical_projection["remediations"]), "surrogate_decision_backlog": sum(finding["status"] == "OPEN" for finding in canonical_projection["findings"]), "a3_decisions": sum(decision.get("requires_a3", False) for decision in canonical_projection["decisions"]), "ownership_conflicts": ownership_conflicts, "ceiling_risks": sum(cell["remaining_ceiling_seconds"] == 0 for cell in cells if cell["remaining_ceiling_seconds"] is not None), "dependency_warnings": len(dependency_warnings)}
     warning = "INTEGRITY DEGRADED — do not treat any state as green" if not integrity_ok else ("STALE RUNNING PRESENCE — do not treat stream as healthy" if stale_streams else ("UNRESOLVED ACTIVE DEPENDENCY — do not treat campaign state as green" if dependency_warnings else None))
-    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "dependency_warnings": dependency_warnings, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}
+    return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "dependency_warnings": dependency_warnings, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else ("UNKNOWN" if all_unknown else "HEALTHY")))}
