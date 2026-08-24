@@ -18,7 +18,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 
 - `control.py`, `server.py`, `dashboard.html`, the event schema, operations artifacts, and
   browser smoke script.
-- 31/31 `tests/pariprashna_assurance_tracker/test_control.py` tests.
+- 33/33 `tests/pariprashna_assurance_tracker/test_control.py` tests.
 - Desktop plus 390 px rendered browser smoke; live Chrome review found no console errors and
   reported 100 for accessibility, best practices, SEO, and agentic browsing.
 
@@ -39,6 +39,8 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | Remediation credit had no frozen post-triage contract | Fixed: the surrogate freezes one plan only after every finding is triaged; unplanned work and incomplete plan verification cannot earn remediation credit | `test_remediation_plan_is_frozen_after_triage` |
 | P1–P7 work could not be assigned to a phase-scoped local execution lead | Fixed: each phase has its own scoped local lead identity, while stream-lead boundaries remain isolated | `test_each_phase_has_a_scoped_execution_lead` |
 | An active dependent phase could remain green without an evidenced prerequisite resolution | Fixed: resolution must name a defined edge and primary evidence; malformed/repeated submissions are retained rejections, while an unresolved active edge forces non-green campaign and target-phase attention | `test_each_phase_has_a_scoped_execution_lead` |
+| Phase-only sessions and event envelopes could hide stale/incorrectly routed state | Fixed: non-P3 phase sessions contribute to phase/campaign health; work-item, gate, packet, dependency, and native events must use their declared target | `test_each_phase_has_a_scoped_execution_lead`; `test_control_events_are_bound_to_their_declared_target` |
+| Concurrent credential issuers could overwrite a valid local token set | Fixed: exclusive file reservation admits one issuer and preserves its token set; other callers receive `CREDENTIALS_EXIST` | `test_concurrent_credential_provisioning_has_one_winner` |
 
 ## Residual limits
 

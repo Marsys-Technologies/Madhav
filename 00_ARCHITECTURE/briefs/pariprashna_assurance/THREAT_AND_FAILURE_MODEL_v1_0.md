@@ -15,6 +15,8 @@ date: 2026-08-24
 | Forged swarm identity or role | Known-role roster entries resolve to a registered actor with exact role and stream eligibility; unregistered entries are `SPECIALIST` only | `test_participant_roster_is_registered_and_stream_eligible` |
 | Unbounded or untriaged remediation work earns stage credit | Surrogate freezes one plan after every finding is triaged; implementations must match it and credit waits for independent verification | `test_remediation_plan_is_frozen_after_triage` |
 | Active downstream phase hides an unresolved prerequisite | Integrator resolves each defined dependency with evidence; unresolved active edges force phase/campaign attention and a visible warning | `test_each_phase_has_a_scoped_execution_lead` |
+| Phase-only session or cross-target control event looks healthy/earns credit | Phase sessions feed phase/campaign health; control events and linked verifier evidence bind to their declared phase or stream | phase-lead and target-binding tests |
+| Concurrent credential provisioning overwrites an issued token set | Exclusive creation of the mode-0600 credential file permits one issuer only | concurrent credential-provisioning test |
 | Self-verification | Finder/fixer identity is compared with verifier before closure credit | self-verification rejection test |
 | History rewrite | SQLite triggers reject event update/delete; corrections are new events | append-only/correction test |
 | Invalid lifecycle or authority | Versioned schema and transition/role validation retain rejected requests | invalid-transition test |

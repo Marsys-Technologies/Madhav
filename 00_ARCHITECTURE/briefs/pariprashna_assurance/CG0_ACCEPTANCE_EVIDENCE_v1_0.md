@@ -42,6 +42,9 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 27 | Remediation denominator freezes only after triage and cannot earn credit outside its contract | `test_remediation_plan_is_frozen_after_triage` |
 | 28 | Every campaign phase can be assigned to its own phase-scoped execution lead | `test_each_phase_has_a_scoped_execution_lead` |
 | 29 | Dependency resolution is evidence-bearing, replayed, and a live unresolved edge cannot appear green | `test_each_phase_has_a_scoped_execution_lead` |
+| 30 | Phase-only paused/stale sessions cannot leave the phase or campaign green | `test_each_phase_has_a_scoped_execution_lead` |
+| 31 | Work-item, gate, result-packet, dependency, and native events are bound to their declared target | `test_control_events_are_bound_to_their_declared_target` |
+| 32 | Concurrent local credential issuers yield one valid token set without overwrite | `test_concurrent_credential_provisioning_has_one_winner` |
 
 The same privilege test also proves that a session identifier cannot be reused across streams,
 so a presence record has an unambiguous durable owner.

@@ -48,6 +48,20 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as ctx: self.store.provision_local_credentials()
         self.assertEqual(ctx.exception.code, "CREDENTIALS_EXIST")
 
+    def test_concurrent_credential_provisioning_has_one_winner(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            first, second = EventStore(runtime), EventStore(runtime)
+            barrier = threading.Barrier(3); outcomes = []
+            def provision(store):
+                barrier.wait()
+                try: outcomes.append(("accepted", store.provision_local_credentials()))
+                except RejectedEvent as exc: outcomes.append(("rejected", exc.code))
+            workers = [threading.Thread(target=provision, args=(store,)) for store in (first, second)]
+            [worker.start() for worker in workers]; barrier.wait(); [worker.join() for worker in workers]
+            self.assertEqual([result[0] for result in outcomes].count("accepted"), 1); self.assertEqual([result[1] for result in outcomes if result[0] == "rejected"], ["CREDENTIALS_EXIST"])
+            credentials = json.loads(Path(next(result[1]["path"] for result in outcomes if result[0] == "accepted")).read_text())
+            self.assertEqual(first.authenticate(credentials["tokens"]["integrator"]), "integrator")
+
     def test_demo_seed_requires_an_empty_runtime(self):
         with tempfile.TemporaryDirectory() as root:
             runtime = Path(root) / "demo"
@@ -123,9 +137,29 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as duplicate_dependency:
             self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
         self.assertEqual(duplicate_dependency.exception.code, "DEPENDENCY_ALREADY_RESOLVED")
+        self.emit("lead-p1", "paused", {"reason": "phase control-plane fixture"}, "P1")
+        paused = self.store.projection()
+        self.assertEqual(next(phase for phase in paused["display"]["phases"] if phase["id"] == "P1")["health"], "ATTENTION_REQUIRED"); self.assertEqual(paused["liveness"]["overall_health"], "ATTENTION_REQUIRED")
         with self.assertRaises(RejectedEvent) as wrong_phase:
             self.emit("lead-p0", "work_started", {"session_id": "wrong-phase"}, "P1")
         self.assertEqual(wrong_phase.exception.code, "STREAM_FORBIDDEN")
+
+    def test_control_events_are_bound_to_their_declared_target(self):
+        self.emit("lead-s1", "work_started", {"session_id": "target-fixture", "planned_scenarios": 1}, "S1")
+        misplaced_verification = self.emit("verifier", "verification_accepted", {"verification_id": "misplaced-item", "work_item_id": "S1:charter", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S2")
+        with self.assertRaises(RejectedEvent) as wrong_item_target:
+            self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:charter", "verification_event_id": misplaced_verification["event"]["event_id"]}, "S2")
+        self.assertEqual(wrong_item_target.exception.code, "WORK_ITEM_TARGET")
+        gate_verification = self.emit("verifier", "verification_accepted", {"verification_id": "misplaced-gate", "gate_id": "CG-0", "finder_actor_id": "lead-p0", "fixer_actor_id": "lead-p0"}, "P1")
+        with self.assertRaises(RejectedEvent) as wrong_gate_target:
+            self.emit("integrator", "gate_closed", {"gate_id": "CG-0", "verification_event_id": gate_verification["event"]["event_id"]}, "P1")
+        self.assertEqual(wrong_gate_target.exception.code, "GATE_TARGET")
+        with self.assertRaises(RejectedEvent) as wrong_packet_target:
+            self.emit("integrator", "result_packet_accepted", {"stream_id": "S1"}, "S2")
+        self.assertEqual(wrong_packet_target.exception.code, "RESULT_PACKET_TARGET")
+        with self.assertRaises(RejectedEvent) as wrong_native_target:
+            self.emit("native", "native_acceptance", {}, "P5")
+        self.assertEqual(wrong_native_target.exception.code, "NATIVE_TARGET")
 
     def test_concurrent_stream_writers_retry_without_loss(self):
         self.emit("lead-s1", "work_started", {"session_id": "concurrent", "planned_scenarios": 12}, "S1")

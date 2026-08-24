@@ -143,20 +143,27 @@ class EventStore:
     def provision_local_credentials(self) -> dict[str, Any]:
         """Create once-per-runtime credentials for local CG-0 proof; never commit them."""
         target = self.runtime_dir / "local-credentials.json"
-        if target.exists():
-            raise RejectedEvent("CREDENTIALS_EXIST", f"credentials already exist at {target}; do not overwrite them")
+        try:
+            descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            raise RejectedEvent("CREDENTIALS_EXIST", f"credentials already exist at {target}; do not overwrite them") from None
         credentials: dict[str, str] = {}
-        with self._lock, self.connection() as con:
-            con.execute("BEGIN IMMEDIATE")
-            for row in con.execute("SELECT actor_id FROM actors ORDER BY actor_id"):
-                token = secrets.token_urlsafe(32)
-                credentials[row["actor_id"]] = token
-                con.execute("UPDATE actors SET token_hash=? WHERE actor_id=?", (hashlib.sha256(token.encode()).hexdigest(), row["actor_id"]))
-            con.execute("COMMIT")
-        tmp = target.with_suffix(".tmp")
-        tmp.write_text(canonical({"schema_version": "local-credentials@1", "created_at": now_iso(), "tokens": credentials}) + "\n", encoding="utf-8")
-        os.chmod(tmp, 0o600)
-        os.replace(tmp, target)
+        try:
+            with self._lock, self.connection() as con:
+                con.execute("BEGIN IMMEDIATE")
+                for row in con.execute("SELECT actor_id FROM actors ORDER BY actor_id"):
+                    token = secrets.token_urlsafe(32)
+                    credentials[row["actor_id"]] = token
+                    con.execute("UPDATE actors SET token_hash=? WHERE actor_id=?", (hashlib.sha256(token.encode()).hexdigest(), row["actor_id"]))
+                con.execute("COMMIT")
+            with os.fdopen(descriptor, "w", encoding="utf-8") as credential_file:
+                descriptor = -1
+                credential_file.write(canonical({"schema_version": "local-credentials@1", "created_at": now_iso(), "tokens": credentials}) + "\n")
+                credential_file.flush(); os.fsync(credential_file.fileno())
+        except Exception:
+            if descriptor >= 0: os.close(descriptor)
+            target.unlink(missing_ok=True)
+            raise
         return {"path": str(target), "actors": sorted(credentials)}
 
     def definition(self) -> dict[str, Any]:
@@ -315,18 +322,20 @@ class EventStore:
         if typ == "work_item_accepted":
             item = payload.get("work_item_id")
             known_items = {w["id"] for w in self.definition()["work_items"]}
+            scoped_items = {w["id"]: w for w in self.definition()["work_items"]}
             for row in con.execute("SELECT payload_json FROM events WHERE event_type='scope_change_approved' ORDER BY ledger_seq"):
-                known_items.update(x["id"] for x in json.loads(row["payload_json"])["added_work_items"])
+                additions = json.loads(row["payload_json"])["added_work_items"]
+                known_items.update(x["id"] for x in additions); scoped_items.update({x["id"]: x for x in additions})
             if item not in known_items:
                 raise RejectedEvent("UNKNOWN_WORK_ITEM", "work item is not in the accepted denominator")
+            item_target = scoped_items[item].get("stream_id") or scoped_items[item]["phase_id"]
+            if stream_id != item_target:
+                raise RejectedEvent("WORK_ITEM_TARGET", "work-item acceptance must be written to its declared stream or phase")
             verification_id = payload.get("verification_event_id")
-            verification = con.execute("SELECT event_type,actor_role,payload_json FROM events WHERE event_id=?", (verification_id,)).fetchone()
+            verification = con.execute("SELECT event_type,actor_role,stream_id,payload_json FROM events WHERE event_id=?", (verification_id,)).fetchone()
             verification_payload = json.loads(verification["payload_json"]) if verification else {}
-            if not verification or verification["event_type"] not in {"verification_accepted", "regression_accepted"} or verification["actor_role"] != "INDEPENDENT_VERIFIER" or verification_payload.get("work_item_id") != item or not verification_payload.get("finder_actor_id") or not verification_payload.get("fixer_actor_id"):
+            if not verification or verification["event_type"] not in {"verification_accepted", "regression_accepted"} or verification["actor_role"] != "INDEPENDENT_VERIFIER" or verification["stream_id"] != item_target or verification_payload.get("work_item_id") != item or not verification_payload.get("finder_actor_id") or not verification_payload.get("fixer_actor_id"):
                 raise RejectedEvent("VERIFICATION_REQUIRED", "work item acceptance needs its linked independent verification event")
-            scoped_items = {w["id"]: w for w in self.definition()["work_items"]}
-            for row in con.execute("SELECT payload_json FROM events WHERE event_type='scope_change_approved'"):
-                scoped_items.update({x["id"]: x for x in json.loads(row["payload_json"])["added_work_items"]})
             item_stream = scoped_items[item].get("stream_id")
             if item_stream:
                 current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
@@ -411,6 +420,8 @@ class EventStore:
             dependency = (payload["from"], payload["to"])
             if dependency not in {(item["from"], item["to"]) for item in self.definition()["dependencies"]}:
                 raise RejectedEvent("DEPENDENCY_SCHEMA", "dependency resolution must name a defined dependency edge")
+            if stream_id != payload["to"]:
+                raise RejectedEvent("DEPENDENCY_TARGET", "dependency resolution must be written to its downstream phase")
             if any((json.loads(row["payload_json"]).get("from"), json.loads(row["payload_json"]).get("to")) == dependency for row in con.execute("SELECT payload_json FROM events WHERE event_type='dependency_resolved'")):
                 raise RejectedEvent("DEPENDENCY_ALREADY_RESOLVED", "a dependency edge may be resolved once")
         if typ == "verification_accepted":
@@ -426,11 +437,13 @@ class EventStore:
                 raise RejectedEvent("UNKNOWN_GATE", "unknown gate")
             if gate == "CG-6":
                 raise RejectedEvent("NATIVE_REQUIRED", "CG-6 requires native_acceptance, not a gate closure")
-            verification = con.execute("SELECT event_type,actor_role,payload_json FROM events WHERE event_id=?", (payload.get("verification_event_id"),)).fetchone()
-            verification_payload = json.loads(verification["payload_json"]) if verification else {}
-            if not verification or verification["event_type"] not in {"verification_accepted", "regression_accepted"} or verification["actor_role"] != "INDEPENDENT_VERIFIER" or verification_payload.get("gate_id") != gate or not verification_payload.get("finder_actor_id") or not verification_payload.get("fixer_actor_id"):
-                raise RejectedEvent("VERIFICATION_REQUIRED", "gate closure needs its linked independent gate verification")
             required_phase = f"P{gate[-1]}"
+            if stream_id != required_phase:
+                raise RejectedEvent("GATE_TARGET", "gate closure must be written to its corresponding phase")
+            verification = con.execute("SELECT event_type,actor_role,stream_id,payload_json FROM events WHERE event_id=?", (payload.get("verification_event_id"),)).fetchone()
+            verification_payload = json.loads(verification["payload_json"]) if verification else {}
+            if not verification or verification["event_type"] not in {"verification_accepted", "regression_accepted"} or verification["actor_role"] != "INDEPENDENT_VERIFIER" or verification["stream_id"] != required_phase or verification_payload.get("gate_id") != gate or not verification_payload.get("finder_actor_id") or not verification_payload.get("fixer_actor_id"):
+                raise RejectedEvent("VERIFICATION_REQUIRED", "gate closure needs its linked independent gate verification")
             current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
             phase = next(p for p in current["phases"] if p["id"] == required_phase)
             if phase["completion_pct"] != 100:
@@ -446,6 +459,8 @@ class EventStore:
             packet_stream = payload.get("stream_id")
             if packet_stream not in {sid for sid, _ in STREAMS}:
                 raise RejectedEvent("RESULT_PACKET_SCHEMA", "result packet needs a known stream_id")
+            if stream_id != packet_stream:
+                raise RejectedEvent("RESULT_PACKET_TARGET", "result packet acceptance must be written to its packet stream")
             current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
             stream = next(s for s in current["streams"] if s["id"] == packet_stream)
             if stream["lifecycle"] == "FAILED":
@@ -460,6 +475,8 @@ class EventStore:
             if not closure:
                 raise RejectedEvent("RESULT_PACKET_PREREQUISITE", "result packet requires an independent stream closure recommendation")
         if typ == "native_acceptance":
+            if stream_id != "P6":
+                raise RejectedEvent("NATIVE_TARGET", "native acceptance must be written to P6")
             current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
             p6 = next(p for p in current["phases"] if p["id"] == "P6")
             cg5 = next(g for g in current["gates"] if g["id"] == "CG-5")
@@ -763,6 +780,13 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
     if integrity_ok:
         p3 = [stream_health[sid] for sid, _ in STREAMS]
         phase_health["P3"] = "STALE" if "STALE" in p3 else ("ATTENTION_REQUIRED" if "ATTENTION_REQUIRED" in p3 else ("HEALTHY" if "HEALTHY" in p3 else "UNKNOWN"))
+        for phase in canonical_projection["phases"]:
+            phase_id = phase["id"]
+            if phase_id == "P3":
+                continue
+            related = [cell["health"] for cell in cells if cell["stream_id"] == phase_id]
+            if related:
+                phase_health[phase_id] = "STALE" if "STALE" in related else ("ATTENTION_REQUIRED" if "ATTENTION_REQUIRED" in related else ("HEALTHY" if all(health == "HEALTHY" for health in related) else "UNKNOWN"))
     owners_by_stream: dict[str, set[str]] = {}
     for cell in cells:
         if cell.get("stream_id"): owners_by_stream.setdefault(cell["stream_id"], set()).add(cell["actor_id"])
@@ -771,7 +795,7 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
     dependency_warnings = [dependency for dependency in canonical_projection["dependencies"] if dependency["status"] != "RESOLVED" and phase_lifecycles.get(dependency["to"]) in {"RUNNING", "IN_VERIFICATION", "BLOCKED", "PAUSED", "FAILED"}]
     for dependency in dependency_warnings:
         phase_health[dependency["to"]] = "ATTENTION_REQUIRED"
-    has_attention = "ATTENTION_REQUIRED" in stream_health.values() or bool(dependency_warnings)
+    has_attention = "ATTENTION_REQUIRED" in stream_health.values() or any(cell["health"] == "ATTENTION_REQUIRED" for cell in cells) or bool(dependency_warnings)
     campaign = {"active_cells": len(cells), "healthy_cells": sum(cell["health"] == "HEALTHY" for cell in cells), "stale_cells": sum(cell["health"] == "STALE" for cell in cells), "verifier_backlog": sum(remediation["status"] == "AWAITING_VERIFICATION" for remediation in canonical_projection["remediations"]), "surrogate_decision_backlog": sum(finding["status"] == "OPEN" for finding in canonical_projection["findings"]), "a3_decisions": sum(decision.get("requires_a3", False) for decision in canonical_projection["decisions"]), "ownership_conflicts": ownership_conflicts, "ceiling_risks": sum(cell["remaining_ceiling_seconds"] == 0 for cell in cells if cell["remaining_ceiling_seconds"] is not None), "dependency_warnings": len(dependency_warnings)}
     warning = "INTEGRITY DEGRADED — do not treat any state as green" if not integrity_ok else ("STALE RUNNING PRESENCE — do not treat stream as healthy" if stale_streams else ("UNRESOLVED ACTIVE DEPENDENCY — do not treat campaign state as green" if dependency_warnings else None))
     return {"as_of": as_of, "presence_is_ephemeral": True, "cells": cells, "campaign": campaign, "dependency_warnings": dependency_warnings, "stale_stream_ids": sorted(stale_streams), "stream_health": stream_health, "phase_health": phase_health, "warning": warning, "overall_health": "INTEGRITY_DEGRADED" if not integrity_ok else ("STALE" if stale_streams else ("ATTENTION_REQUIRED" if has_attention else "HEALTHY"))}

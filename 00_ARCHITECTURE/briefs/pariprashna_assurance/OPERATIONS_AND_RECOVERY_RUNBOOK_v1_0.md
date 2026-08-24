@@ -32,7 +32,8 @@ python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/cli.py --runtime "$
 python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py --runtime "$TRACKER_RUNTIME"
 ```
 
-The server binds `127.0.0.1:8787` by default. `provision-credentials` creates random,
+The server binds `127.0.0.1:8787` by default. `provision-credentials` exclusively reserves the
+mode-0600 credential file before issuing random,
 per-runtime actor tokens in a mode-0600 runtime file and refuses to overwrite it. The CLI
 requires the matching provisioned token for bootstrap or event emission; HTTP writes require
 the same token. Dashboard reads are deliberately unauthenticated only on the loopback proof

@@ -36,6 +36,12 @@ its evidence. If a downstream phase is active while its predecessor edge remains
 the tracker elevates the target phase and overall campaign to `ATTENTION_REQUIRED` and shows a
 non-green warning; it cannot be a silent ordering exception.
 
+Every control event is written to the target it governs: a work-item acceptance and its verifier
+event share the work item's declared stream or phase; a gate and its verifier event share the
+corresponding phase; a result packet shares its stream; a dependency resolution shares its
+downstream phase; and native acceptance is written to P6. A mismatched target is rejected before
+it can earn credit or close a gate.
+
 After all discovered findings for a P3 stream have a surrogate triage, the surrogate may
 freeze exactly one `remediation_plan`. The plan names each triaged finding once, including an
 explicit empty plan when there is no remediation work. Implementations outside that plan are
