@@ -10,17 +10,19 @@ from control import EventStore, RejectedEvent
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--p0b-only", action="store_true")
+    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--p0b-only", action="store_true"); p.add_argument("--p1-enabled", action="store_true")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("provision-credentials")
+    sub.add_parser("provision-p1-credentials")
     event = sub.add_parser("emit"); event.add_argument("--actor", required=True); event.add_argument("--token", required=True); event.add_argument("--key", required=True); event.add_argument("--type", required=True); event.add_argument("--payload", required=True); event.add_argument("--evidence", default="[]"); event.add_argument("--stream"); event.add_argument("--expected-seq", type=int)
     init = sub.add_parser("init"); init.add_argument("--token", required=True)
     sub.add_parser("projection"); sub.add_parser("verify")
     snap = sub.add_parser("snapshot"); snap.add_argument("--path", required=True)
     restore = sub.add_parser("restore"); restore.add_argument("--path", required=True)
-    args = p.parse_args(); store = EventStore(args.runtime, p0b_only=args.p0b_only)
+    args = p.parse_args(); store = EventStore(args.runtime, p0b_only=args.p0b_only, p1_enabled=args.p1_enabled)
     try:
         if args.command == "provision-credentials": result = store.provision_local_credentials()
+        elif args.command == "provision-p1-credentials": result = store.provision_p1_credentials()
         elif args.command == "init":
             integrator = "integrator-p0b" if args.p0b_only else "integrator"
             if store.authenticate(args.token) != integrator: raise RejectedEvent("UNAUTHENTICATED", "init requires the provisioned integrator token")

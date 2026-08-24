@@ -11,13 +11,13 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -212,6 +212,46 @@ class ControlPlaneTests(unittest.TestCase):
                 store.submit({"actor_id": "lead-p0b", "idempotency_key": "p1-start", "event_type": "work_started", "payload": {"session_id": "p1-start"}, "stream_id": "P1", "expected_stream_seq": 1, "evidence": EVIDENCE})
             self.assertEqual(p1_start.exception.code, "STREAM_FORBIDDEN")
 
+    def test_p1_identity_enablement_is_explicit_phase_scoped_and_cannot_open_p2(self):
+        """A P0B campaign can unlock only separate P1 identities after its handoff."""
+        with tempfile.TemporaryDirectory() as runtime:
+            p0b = EventStore(runtime, p0b_only=True)
+            p0b_credentials = p0b.provision_local_credentials()
+            p0b_tokens = json.loads(Path(p0b_credentials["path"]).read_text())["tokens"]
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "pariprashna-experience-assurance-v3"}, "evidence": EVIDENCE})
+
+            # The approved enablement must be explicit and cannot skip the P0 handoff.
+            enabled = EventStore(runtime, p0b_only=True, p1_enabled=True)
+            with self.assertRaises(RejectedEvent) as premature_credentials:
+                enabled.provision_p1_credentials()
+            self.assertEqual(premature_credentials.exception.code, "P1_DEPENDENCY_UNRESOLVED")
+            with self.assertRaises(RejectedEvent) as premature_start:
+                enabled.submit({"actor_id": "lead-p1", "idempotency_key": "premature-p1", "event_type": "work_started", "payload": {"session_id": "premature-p1"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            self.assertEqual(premature_start.exception.code, "P1_DEPENDENCY_UNRESOLVED")
+
+            item_verification = p0b.submit({"actor_id": "verifier-p0b", "idempotency_key": "p0-item-verification", "event_type": "verification_accepted", "payload": {"verification_id": "p0-item", "work_item_id": "P0:completion", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0-item-acceptance", "event_type": "work_item_accepted", "payload": {"work_item_id": "P0:completion", "verification_event_id": item_verification["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            gate_verification = p0b.submit({"actor_id": "verifier-p0b", "idempotency_key": "cg0-verification", "event_type": "verification_accepted", "payload": {"verification_id": "cg0", "gate_id": "CG-0", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 2, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "cg0-closure", "event_type": "gate_closed", "payload": {"gate_id": "CG-0", "verification_event_id": gate_verification["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 3, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0-p1-handoff", "event_type": "dependency_resolved", "payload": {"from": "P0", "to": "P1"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+
+            p1_credentials = enabled.provision_p1_credentials()
+            p1_tokens = json.loads(Path(p1_credentials["path"]).read_text())["tokens"]
+            self.assertEqual(set(p1_tokens), {"lead-p1", "surrogate-p1", "verifier-p1", "integrator-p1"})
+            self.assertEqual(len(set(p1_tokens.values())), 4)
+            self.assertEqual(set(p0b_tokens.values()) & set(p1_tokens.values()), set())
+
+            # Existing P0B credentials stay P0-only while each new identity is P1-only.
+            self.assertEqual(enabled.authenticate(p0b_tokens["lead-p0b"]), "lead-p0b")
+            with self.assertRaises(RejectedEvent) as p0b_attempt:
+                enabled.submit({"actor_id": "lead-p0b", "idempotency_key": "p0b-p1", "event_type": "work_started", "payload": {"session_id": "p0b-p1"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            self.assertEqual(p0b_attempt.exception.code, "STREAM_FORBIDDEN")
+
+            self.assertTrue(enabled.submit({"actor_id": "lead-p1", "idempotency_key": "p1-start", "event_type": "work_started", "payload": {"session_id": "p1-start", "assignment": "takeover", "branch": "p1", "worktree": "isolated", "baseline_sha": "baseline", "current_sha": "baseline", "model": "test-model", "reasoning_config": "test"}, "stream_id": "P1", "expected_stream_seq": 1, "evidence": EVIDENCE})["accepted"])
+            with self.assertRaises(RejectedEvent) as p2_attempt:
+                enabled.submit({"actor_id": "lead-p1", "idempotency_key": "p1-p2", "event_type": "work_started", "payload": {"session_id": "p1-p2"}, "stream_id": "P2", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            self.assertEqual(p2_attempt.exception.code, "STREAM_FORBIDDEN")
+
     def test_runtime_and_database_permissions_are_private(self):
         with tempfile.TemporaryDirectory() as runtime:
             os.chmod(runtime, 0o755)
@@ -231,6 +271,8 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertIn("127.0.0.1", plist)
             self.assertIn("--p0b-only", plist)
             self.assertIn(str(runtime), plist)
+            self.assertNotIn("--p1-enabled", plist)
+            self.assertIn("--p1-enabled", build_launchd_plist(Path("/immutable/release"), runtime, p1_enabled=True).decode())
 
     def test_service_logs_are_private_before_launchd_starts(self):
         with tempfile.TemporaryDirectory() as runtime:
@@ -309,20 +351,23 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertEqual(missing_session.exception.code, "SESSION_ID_REQUIRED")
 
     def test_each_phase_has_a_scoped_execution_lead(self):
+        with self.assertRaises(RejectedEvent) as premature:
+            self.emit("lead-p1", "work_started", {"session_id": "p1-takeover", "assignment": "takeover reconciliation"}, "P1")
+        self.assertEqual(premature.exception.code, "P1_DEPENDENCY_UNRESOLVED")
+        self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
         p1 = self.emit("lead-p1", "work_started", {"session_id": "p1-takeover", "assignment": "takeover reconciliation"}, "P1")
         self.assertTrue(p1["accepted"])
         self.store.record_presence("lead-p1", "p1-takeover", "P1", "ACTIVE")
         phase = next(phase for phase in self.store.projection()["canonical"]["phases"] if phase["id"] == "P1")
         self.assertEqual(phase["responsible_session"], "p1-takeover")
         liveness = self.store.projection()["liveness"]
-        self.assertEqual([(dependency["from"], dependency["to"]) for dependency in liveness["dependency_warnings"]], [("P0", "P1")]); self.assertEqual(liveness["overall_health"], "ATTENTION_REQUIRED"); self.assertIn("UNRESOLVED ACTIVE DEPENDENCY", liveness["warning"])
+        self.assertEqual(liveness["dependency_warnings"], [])
         with self.assertRaises(RejectedEvent) as missing_evidence:
             self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1", evidence=[])
         self.assertEqual(missing_evidence.exception.code, "EVIDENCE_REQUIRED")
         with self.assertRaises(RejectedEvent) as malformed_dependency:
             self.emit("integrator", "dependency_resolved", {"from": [], "to": "P1"}, "P1")
         self.assertEqual(malformed_dependency.exception.code, "DEPENDENCY_SCHEMA")
-        self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
         dependency = next(dependency for dependency in self.store.projection()["canonical"]["dependencies"] if (dependency["from"], dependency["to"]) == ("P0", "P1"))
         self.assertEqual(dependency["status"], "RESOLVED"); self.assertEqual(self.store.projection()["liveness"]["dependency_warnings"], [])
         with self.assertRaises(RejectedEvent) as duplicate_dependency:
@@ -715,6 +760,13 @@ class ControlPlaneTests(unittest.TestCase):
             canonical_release = assert_release_attestation(release, source_sha)
             plist = plistlib.loads(build_launchd_plist(canonical_release, Path("/private/runtime")))
             self.assertEqual(plist["ProgramArguments"][1], str(release.resolve() / "server.py"))
+            runtime = Path(root) / "runtime"
+            upgrade_plist = Path(root) / "control.plist"
+            upgrade_plist.write_bytes(build_launchd_plist(canonical_release, runtime))
+            self.assertEqual(_assert_upgradeable_p0b_service(upgrade_plist, runtime, 8787), (canonical_release, source_sha))
+            upgrade_plist.write_bytes(build_launchd_plist(canonical_release, runtime, p1_enabled=True))
+            with self.assertRaises(ValueError):
+                _assert_upgradeable_p0b_service(upgrade_plist, runtime, 8787)
             os.chmod(release, 0o755)
             manifest_body = json.loads(manifest.read_text()); manifest_body["origin_remote"] = "file:///attacker/Madhav.git"
             os.chmod(manifest, 0o600); manifest.write_text(json.dumps(manifest_body)); os.chmod(manifest, 0o444); os.chmod(release, 0o555)
@@ -730,6 +782,54 @@ class ControlPlaneTests(unittest.TestCase):
             with self.assertRaises(ValueError) as symlink:
                 assert_release_attestation(link, source_sha)
             self.assertIn("symlink", str(symlink.exception))
+
+    def test_upgrade_p1_replaces_only_after_preflight_and_rolls_back_on_post_switch_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; release = root_path / "release"
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True)
+            original_plist = build_launchd_plist(release, runtime); plist_path.write_bytes(original_plist)
+            p0_store = MagicMock(); p0_store.verify_replay.return_value = {"ok": True}; p0_store.export_snapshot.return_value = {"path": str(root_path / "pre.json")}
+            p0_connection = MagicMock(); p0_connection.__enter__.return_value = object(); p0_store.connection.return_value = p0_connection
+            p1_store = MagicMock(); p1_store.verify_replay.return_value = {"ok": False}
+            stores = MagicMock(side_effect=[p0_store, p1_store]); stores._p0_to_p1_dependency_resolved.return_value = True
+            commands = []; bootstrapped_arguments = []
+            def launchctl(command, **kwargs):
+                commands.append(command)
+                if command[1] == "bootstrap":
+                    bootstrapped_arguments.append(plistlib.loads(Path(command[-1]).read_bytes())["ProgramArguments"])
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "a" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p0b_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(ValueError, "P1-enabled service replay integrity"):
+                    upgrade_p1(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            self.assertEqual(plist_path.read_bytes(), original_plist)
+            bootstrap_commands = [command for command in commands if command[1] == "bootstrap"]
+            self.assertEqual(len(bootstrap_commands), 2)
+            self.assertIn("--p1-enabled", bootstrapped_arguments[0])
+            self.assertEqual(bootstrap_commands[-1][-1], str(plist_path))
+
+    def test_upgrade_p1_fails_fatally_when_rollback_cannot_restore_p0b(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; release = root_path / "release"
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True); plist_path.write_bytes(b"approved-p0b-plist")
+            p0_store = MagicMock(); p0_store.verify_replay.return_value = {"ok": True}; p0_store.export_snapshot.return_value = {"path": str(root_path / "pre.json")}
+            p0_connection = MagicMock(); p0_connection.__enter__.return_value = object(); p0_store.connection.return_value = p0_connection
+            p1_store = MagicMock(); p1_store.verify_replay.return_value = {"ok": False}
+            stores = MagicMock(side_effect=[p0_store, p1_store]); stores._p0_to_p1_dependency_resolved.return_value = True
+            bootstrap_count = 0
+            def launchctl(command, **kwargs):
+                nonlocal bootstrap_count
+                if command[1] == "bootstrap":
+                    bootstrap_count += 1
+                    if bootstrap_count == 2:
+                        raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "b" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p0b_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(RuntimeError, "P0B rollback failed; preserved plist backup"):
+                    upgrade_p1(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()
