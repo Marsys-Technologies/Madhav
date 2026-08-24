@@ -24,7 +24,8 @@ the A3 runtime/deployment authority described below.
   mutations. See `ADR_P0_TRACKER_ARCHITECTURE_v1_0.md`.
 - Branch: `codex/pariprashna-assurance-p0-tracker`, based on verified `origin/main`
   `84c3c9035`.
-- Material implementation commits: `44be7ea94`, `05494360b`, `e0a453a94`, `f5a2349b3`.
+- Material implementation commits: `44be7ea94`, `05494360b`, `e0a453a94`, `f5a2349b3`,
+  `640dd2010`, and `ad3ee9a8a`.
 - Dashboard: serve only through the loopback control plane at `http://127.0.0.1:8787`; opening
   `dashboard.html` as `file://` intentionally shows only recovery instructions.
 
@@ -43,6 +44,8 @@ the A3 runtime/deployment authority described below.
 Approve a runtime directory and service identity; select host exposure/authentication;
 authorize token issuance/rotation and backup retention; and authorize the governed deployment
 and production-gate decision. No such deployment, credential, or production mutation was made.
+The options and exact approvals are recorded in
+`A3_PRODUCTION_OPERATION_DECISION_PACKET_v1_0.md`.
 
 ## P1 onboarding
 
