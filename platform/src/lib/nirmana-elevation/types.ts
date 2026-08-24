@@ -47,7 +47,7 @@ export const NirmanaElevationSnapshotSchema = z.object({
     wave_index: z.number().int().nullable(),
     producer_id: z.string().nullable(),
     covered_asset_ids: z.array(z.string()),
-    execution_obligation: z.enum(['build', 'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'unresolved']),
+    execution_obligation: z.enum(['build', 'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition', 'unresolved']),
     lifecycle_state: z.string(),
     readiness_state: z.string(),
     current_run_state: z.string().nullable(),
