@@ -45,6 +45,13 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
     class Handler(BaseHTTPRequestHandler):
         server_version = "PariprashnaAssuranceTracker/1"
 
+        def handle(self) -> None:
+            try:
+                super().handle()
+            except ConnectionResetError:
+                # Browser/SSE clients may leave before sending a complete request.
+                return
+
         def log_message(self, *_args):
             return
 

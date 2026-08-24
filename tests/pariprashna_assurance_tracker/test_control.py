@@ -162,7 +162,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2)
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)
