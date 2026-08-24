@@ -181,100 +181,21 @@ KNOWN_POSITIVE_POOL = frozenset(
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 # BLANKING — comment / string / regex-literal bodies replaced by spaces, offsets preserved.
 #
-# Adapted from `check_entrypoint_guard_ratchet.py`'s `blank_noncode` (same file this script is
-# modelled on structurally per the M0-T85 task). Reused rather than re-derived, per CLAUDE.md
-# §N.7 / D-94's "one rule id, one implementation" — that scanner's first draft desynchronised on
-# a regex literal containing quote characters and silently blanked the rest of a file; copying
-# the FIXED version avoids reintroducing a bug this campaign already paid to find.
+# IMPORTED from `check_entrypoint_guard_ratchet.py` (same directory), not copied. M0-T85's
+# original hand-copy had already diverged textually from its source at birth (6688 vs 6766
+# chars — stripped comments, including the note on why `${...}` interpolations are deliberately
+# not re-entered), with no live behavioral bug found — but a parser copy sitting underneath two
+# guards, one of them blocking, is exactly the risk ADHIKĀRIN D-127 closed: "when you find
+# yourself preserving someone else's implementation because re-deriving it would be risky, that
+# is the signal to IMPORT it, not to copy it" (CLAUDE.md §N.7 / D-94 §8's "one rule id, one
+# implementation"). Both files are stdlib-only Python in this same directory, per the same
+# same-directory sibling-import convention `drift_detector.py` / `schema_validator.py` /
+# `check_asset_source_parity.py` already use in this folder.
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 
-_REGEX_PRECEDERS = set("(,=:[!&|?{};+-*%~^<>") | {""}
-_REGEX_PRECEDING_WORDS = ("return", "typeof", "case", "in", "of", "delete", "void", "instanceof")
-
-
-def blank_noncode(src: str) -> str:
-    """Return `src` with comment, string and regex-literal bodies replaced by spaces. Length and
-    newline positions are preserved exactly, so every offset computed on the result is a valid
-    offset into the ORIGINAL `src` — which matters here specifically, because property (b)'s
-    credential-filename check must read the ORIGINAL string content near a call site even though
-    the brace/call-site scan itself runs on the blanked text."""
-    out = list(src)
-    i, n = 0, len(src)
-    prev = ""
-
-    def preceding_word(pos: int) -> str:
-        j = pos
-        while j > 0 and src[j - 1].isspace():
-            j -= 1
-        end = j
-        while j > 0 and (src[j - 1].isalnum() or src[j - 1] in "_$"):
-            j -= 1
-        return src[j:end]
-
-    while i < n:
-        c = src[i]
-        if c == "/" and i + 1 < n and src[i + 1] == "/":
-            j = src.find("\n", i)
-            j = n if j == -1 else j
-            for k in range(i, j):
-                out[k] = " "
-            i = j
-        elif c == "/" and i + 1 < n and src[i + 1] == "*":
-            j = src.find("*/", i + 2)
-            j = n if j == -1 else j + 2
-            for k in range(i, j):
-                if src[k] != "\n":
-                    out[k] = " "
-            i = j
-        elif c == "/" and (
-            prev in _REGEX_PRECEDERS or preceding_word(i) in _REGEX_PRECEDING_WORDS
-        ):
-            j = i + 1
-            in_class = False
-            closed = False
-            while j < n and src[j] != "\n":
-                ch = src[j]
-                if ch == "\\":
-                    j += 2
-                    continue
-                if ch == "[":
-                    in_class = True
-                elif ch == "]":
-                    in_class = False
-                elif ch == "/" and not in_class:
-                    closed = True
-                    break
-                j += 1
-            if not closed:
-                prev = c
-                i += 1
-                continue
-            for k in range(i + 1, j):
-                out[k] = " "
-            prev = "/"
-            i = j + 1
-        elif c in "'\"`":
-            quote = c
-            j = i + 1
-            while j < n:
-                if src[j] == "\\":
-                    j += 2
-                    continue
-                if src[j] == quote:
-                    break
-                if quote != "`" and src[j] == "\n":
-                    break
-                j += 1
-            for k in range(i + 1, min(j, n)):
-                if src[k] != "\n":
-                    out[k] = " "
-            prev = quote
-            i = min(j, n) + 1
-        else:
-            if not c.isspace():
-                prev = c
-            i += 1
-    return "".join(out)
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+from check_entrypoint_guard_ratchet import blank_noncode  # noqa: E402,PLC0415
 
 
 #: Block headers whose body does NOT execute at module load — reused verbatim from
