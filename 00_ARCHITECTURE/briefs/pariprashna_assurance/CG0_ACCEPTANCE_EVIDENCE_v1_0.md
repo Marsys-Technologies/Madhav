@@ -45,7 +45,8 @@ so a presence record has an unambiguous durable owner.
 
 The stream-charter denominator is additionally proven by
 `test_scenario_denominator_is_frozen`; `test_execution_session_projection_exposes_governance_fields`
-proves the projection exposes the complete execution-session operational surface.
+proves the projection preserves the complete execution-session operational surface, including
+recorded cost where supplied; the swarm view otherwise says `Cost not reported`.
 `test_failed_stream_cannot_receive_packet_closure_credit` proves terminal stream failure
 cannot be overwritten by a result packet.
 

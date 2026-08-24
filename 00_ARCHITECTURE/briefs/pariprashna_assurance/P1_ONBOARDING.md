@@ -14,6 +14,7 @@ real stream lead/verifier/integrator identity through the approved deployment pr
 replace the local-proof credential issuer before any non-loopback deployment. Retrieve only
 the owning actor's runtime token (for example, `jq -r '.tokens.lead-p0'
 "$TRACKER_RUNTIME/local-credentials.json"`) and record a P1 `work_started` event with
-branch, worktree, baseline SHA, assignment, ceiling, and evidence links. Do not submit
+branch, worktree, baseline SHA, model/reasoning configuration, assignment, ceiling, any
+recorded cost, and evidence links. Do not submit
 percentages. A stream lead supplies only its own stream sequence; verification and completion
 require the independent verifier then integrator.

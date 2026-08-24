@@ -34,6 +34,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | A stream lead could invoke recovery or claim another session's freshness | Fixed: rebuild is integrator-only; a durable, globally unique session must belong to the caller; the server assigns the observation time | `test_rebuild_and_presence_are_privilege_bound` |
 | Operator could mistake a static dashboard for the live service or seed fixtures into campaign state | Fixed: `--demo` serves a full loopback dashboard from a new empty runtime only; direct files explain this path | `test_demo_seed_requires_an_empty_runtime`; rendered browser smoke |
 | Synthetic fixture state could look like campaign evidence | Fixed: immutable bootstrap provenance derives the runtime mode; the dashboard visibly labels demos without hiding stale/integrity warnings | demo/campaign runtime-mode tests; rendered browser smoke |
+| Swarm cost could be silently omitted or misrepresented | Fixed: dashboard displays the persisted value verbatim or says that it is not reported; cost has no progress or health effect | execution-session projection test; rendered browser smoke |
 
 ## Residual limits
 

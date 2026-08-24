@@ -28,7 +28,7 @@ class ControlPlaneTests(unittest.TestCase):
         return self.store.submit({"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{time.time_ns()}", "event_type": typ, "payload": payload or {}, "stream_id": stream, "expected_stream_seq": self.store.next_stream_seq(stream) if stream and seq is None else seq, "evidence": evidence})
 
     def accepted_s1_item(self):
-        self.emit("lead-s1", "work_started", {"session_id": "s1", "assignment": "baseline", "branch": "b", "worktree": "w", "baseline_sha": "a", "current_sha": "a", "verifier": "verifier", "model": "test-model", "reasoning_config": "test", "planned_scenarios": 12}, "S1")
+        self.emit("lead-s1", "work_started", {"session_id": "s1", "assignment": "baseline", "branch": "b", "worktree": "w", "baseline_sha": "a", "current_sha": "a", "verifier": "verifier", "model": "test-model", "reasoning_config": "test", "cost": {"amount": 125000, "currency": "INR", "basis": "approved ceiling"}, "planned_scenarios": 12}, "S1")
         verify = self.emit("verifier", "verification_accepted", {"verification_id": "v1", "work_item_id": "S1:charter", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
         self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:charter", "verification_event_id": verify["event"]["event_id"]}, "S1")
 
@@ -215,7 +215,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(stream["scenarios"], {"planned": 12, "executed": 0}); self.assertEqual(stream["lifecycle_stage"]["id"], "baseline")
         self.assertEqual(stream["execution_session"]["model"], "test-model"); self.assertEqual(stream["execution_session"]["reasoning_config"], "test")
         cell = projection["liveness"]["cells"][0]
-        self.assertEqual(cell["conversation_id"], "s1"); self.assertIn("elapsed_seconds", cell); self.assertIn("last_presence_at", cell)
+        self.assertEqual(cell["conversation_id"], "s1"); self.assertIn("elapsed_seconds", cell); self.assertIn("last_presence_at", cell); self.assertEqual(cell["cost"], {"amount": 125000, "currency": "INR", "basis": "approved ceiling"})
 
     def test_scope_change_is_only_denominator_expansion_and_explains_drop(self):
         self.accepted_s1_item(); before = self.store.projection()["canonical"]["completion"]["planned_campaign_points"]
@@ -270,7 +270,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)
