@@ -101,7 +101,7 @@ path, an unconfirmed FileVault host, an existing launchd label/plist, or an occu
 port; it never replaces another service.
 
 ```sh
-python3 service.py --attest-release --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA"
+python3 service.py --attest-release --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA" --source-repo "$SOURCE_REPO"
 python3 service.py --install --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA"
 ```
 

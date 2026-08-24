@@ -1,8 +1,10 @@
 import http.client
 import json
 import os
+import plistlib
 import queue
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
@@ -502,26 +504,45 @@ class ControlPlaneTests(unittest.TestCase):
         snapshot = json.loads(path.read_text()); self.assertEqual(receipt["event_log_hash"], snapshot["event_log_hash"]); self.assertEqual(path.stat().st_mode & 0o777, 0o400)
         self.assertEqual(snapshot["event_log_hash"], digest(snapshot["events"]))
 
+    def test_snapshot_export_never_overwrites_or_replaces_runtime_files(self):
+        existing = Path(self.tmp.name) / "existing.snapshot.json"; existing.write_text("original\n")
+        with self.assertRaises(RejectedEvent) as collision:
+            self.store.export_snapshot(existing)
+        self.assertEqual(collision.exception.code, "SNAPSHOT_TARGET_EXISTS")
+        self.assertEqual(existing.read_text(), "original\n")
+        with self.assertRaises(RejectedEvent) as protected:
+            self.store.export_snapshot(self.store.db_path)
+        self.assertEqual(protected.exception.code, "SNAPSHOT_PATH_FORBIDDEN")
+        self.assertTrue(self.store.verify_replay()["ok"])
+
     def test_snapshot_export_remains_reconcilable_under_concurrent_writes(self):
         self.emit("lead-s1", "work_started", {"session_id": "concurrent-snapshot", "planned_scenarios": 30}, "S1")
         failures = []
+        peer = EventStore(self.tmp.name)
         def writer():
             for index in range(20):
                 try:
-                    self.emit("lead-s1", "scenario_executed", {"scenario_id": f"concurrent-snapshot-{index}"}, "S1", key=f"concurrent-snapshot-{index}")
+                    peer.submit({"actor_id": "lead-s1", "idempotency_key": f"concurrent-snapshot-{index}", "event_type": "scenario_executed", "payload": {"scenario_id": f"concurrent-snapshot-{index}"}, "stream_id": "S1", "expected_stream_seq": peer.next_stream_seq("S1"), "evidence": EVIDENCE})
                 except Exception as exc:  # pragma: no cover - asserted below
                     failures.append(exc)
         thread = threading.Thread(target=writer); thread.start()
+        successful_exports = 0
         with tempfile.TemporaryDirectory() as root:
-            for index in range(6):
+            for index in range(12):
                 snapshot_path = Path(root) / f"snapshot-{index}.json"
-                self.store.export_snapshot(snapshot_path)
+                try:
+                    self.store.export_snapshot(snapshot_path)
+                except RejectedEvent as exc:
+                    self.assertEqual(exc.code, "INTEGRITY_DEGRADED")
+                    continue
                 snapshot = json.loads(snapshot_path.read_text())
                 recovery = EventStore(Path(root) / f"recovery-{index}")
                 restored = recovery.restore_snapshot(snapshot_path)
                 self.assertEqual(restored["event_log_hash"], snapshot["event_log_hash"])
+                self.assertTrue(recovery.verify_replay()["ok"])
+                successful_exports += 1
         thread.join(timeout=5)
-        self.assertFalse(thread.is_alive()); self.assertFalse(failures)
+        self.assertFalse(thread.is_alive()); self.assertFalse(failures); self.assertGreater(successful_exports, 0)
 
     def test_unstarted_campaign_liveness_is_unknown(self):
         projection = self.store.projection()
@@ -540,15 +561,60 @@ class ControlPlaneTests(unittest.TestCase):
         finally:
             httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
 
-    def test_release_attestation_rejects_mutable_or_symlinked_tree(self):
-        source_sha = "a" * 40
+    @staticmethod
+    def _git(repo: Path, *args: str) -> str:
+        result = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+
+    def _approved_release_fixture(self, root: Path) -> tuple[Path, Path, str]:
+        source = root / "source"; source.mkdir()
+        self._git(source, "init", "-b", "main")
+        self._git(source, "config", "user.email", "test@example.invalid")
+        self._git(source, "config", "user.name", "Tracker Test")
+        tracker = source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"; tracker.mkdir(parents=True)
+        for name in RELEASE_FILES:
+            (tracker / name).write_text(f"approved:{name}\n")
+        self._git(source, "add", "00_ARCHITECTURE")
+        self._git(source, "commit", "-m", "approved tracker release")
+        source_sha = self._git(source, "rev-parse", "HEAD")
+        remote = root / "origin.git"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True, text=True)
+        self._git(source, "remote", "add", "origin", str(remote))
+        self._git(source, "push", "-u", "origin", "main")
+        self._git(source, "fetch", "origin", "main")
+        release_parent = root / "release-parent"; release_parent.mkdir()
+        release = release_parent / "release"; release.mkdir()
+        for name in RELEASE_FILES:
+            (release / name).write_bytes((tracker / name).read_bytes())
+        return source, release, source_sha
+
+    def test_release_attestation_requires_approved_merged_source_and_immutable_tree(self):
         with tempfile.TemporaryDirectory() as root:
-            release = Path(root) / "release"; release.mkdir()
-            for name in RELEASE_FILES:
-                (release / name).write_text(f"fixture:{name}\n")
-            manifest = attest_release(release, source_sha)
+            source, release, source_sha = self._approved_release_fixture(Path(root))
+            (release / "server.py").write_text("arbitrary fixture content\n")
+            with self.assertRaises(ValueError) as arbitrary:
+                attest_release(release, source_sha, source)
+            self.assertIn("does not match", str(arbitrary.exception))
+            (release / "server.py").write_bytes((source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py").read_bytes())
+            with self.assertRaises(ValueError) as missing_sha:
+                attest_release(release, "a" * 40, source)
+            self.assertIn("not a valid object", str(missing_sha.exception).lower())
+            (source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/README.md").write_text("unmerged source\n")
+            self._git(source, "add", "00_ARCHITECTURE")
+            self._git(source, "commit", "-m", "unmerged source")
+            unmerged_sha = self._git(source, "rev-parse", "HEAD")
+            with self.assertRaises(ValueError) as unmerged:
+                attest_release(release, unmerged_sha, source)
+            self.assertIn("not an immutable commit", str(unmerged.exception))
+            intermediate = Path(root) / "linked-parent"; intermediate.symlink_to(release.parent, target_is_directory=True)
+            with self.assertRaises(ValueError) as symlink_component:
+                attest_release(intermediate / "release", source_sha, source)
+            self.assertIn("symlinked component", str(symlink_component.exception))
+            manifest = attest_release(release, source_sha, source)
             self.assertEqual(manifest.stat().st_mode & 0o777, 0o444)
-            assert_release_attestation(release, source_sha)
+            canonical_release = assert_release_attestation(release, source_sha)
+            plist = plistlib.loads(build_launchd_plist(canonical_release, Path("/private/runtime")))
+            self.assertEqual(plist["ProgramArguments"][1], str(release.resolve() / "server.py"))
             os.chmod(release, 0o755)
             with self.assertRaises(ValueError) as mutable:
                 assert_release_attestation(release, source_sha)

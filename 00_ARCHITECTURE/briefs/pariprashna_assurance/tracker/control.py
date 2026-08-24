@@ -732,8 +732,19 @@ class EventStore:
                 raise
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
+        protected_runtime_files = {
+            self.db_path.resolve(),
+            (self.runtime_dir / "control-plane.sqlite3-wal").resolve(),
+            (self.runtime_dir / "control-plane.sqlite3-shm").resolve(),
+            (self.runtime_dir / "local-credentials.json").resolve(),
+        }
+        if target.resolve(strict=False) in protected_runtime_files:
+            raise RejectedEvent("SNAPSHOT_PATH_FORBIDDEN", "snapshot path cannot replace a protected runtime file")
+        if target.exists() or target.is_symlink():
+            raise RejectedEvent("SNAPSHOT_TARGET_EXISTS", "snapshot target already exists; immutable snapshots are never overwritten")
         tmp = target.parent / f".{target.name}.{uuid.uuid4().hex}.tmp"
         descriptor = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        published = False
         try:
             os.fchmod(descriptor, 0o600)
             with os.fdopen(descriptor, "w", encoding="utf-8") as snapshot_file:
@@ -741,7 +752,10 @@ class EventStore:
                 snapshot_file.write(canonical(snapshot) + "\n")
                 snapshot_file.flush()
                 os.fsync(snapshot_file.fileno())
-            os.replace(tmp, target)
+            # link(2) is an atomic create-only publish: a competing target wins and this
+            # export fails closed instead of replacing its immutable snapshot.
+            os.link(tmp, target)
+            published = True
             os.chmod(target, 0o400)
             target_descriptor = os.open(target, os.O_RDONLY)
             try:
@@ -753,10 +767,15 @@ class EventStore:
                 os.fsync(directory_descriptor)
             finally:
                 os.close(directory_descriptor)
+            tmp.unlink()
         except Exception:
             if descriptor >= 0:
                 os.close(descriptor)
             tmp.unlink(missing_ok=True)
+            if not published:
+                # The existing target, if any, belongs to the competing writer and is never
+                # removed by this exporter.
+                pass
             raise
         return {"path": str(target), "snapshot_hash": digest(snapshot), "event_log_hash": snapshot["event_log_hash"]}
 
