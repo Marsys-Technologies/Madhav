@@ -11,13 +11,13 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -782,6 +782,54 @@ class ControlPlaneTests(unittest.TestCase):
             with self.assertRaises(ValueError) as symlink:
                 assert_release_attestation(link, source_sha)
             self.assertIn("symlink", str(symlink.exception))
+
+    def test_upgrade_p1_replaces_only_after_preflight_and_rolls_back_on_post_switch_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; release = root_path / "release"
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True)
+            original_plist = build_launchd_plist(release, runtime); plist_path.write_bytes(original_plist)
+            p0_store = MagicMock(); p0_store.verify_replay.return_value = {"ok": True}; p0_store.export_snapshot.return_value = {"path": str(root_path / "pre.json")}
+            p0_connection = MagicMock(); p0_connection.__enter__.return_value = object(); p0_store.connection.return_value = p0_connection
+            p1_store = MagicMock(); p1_store.verify_replay.return_value = {"ok": False}
+            stores = MagicMock(side_effect=[p0_store, p1_store]); stores._p0_to_p1_dependency_resolved.return_value = True
+            commands = []; bootstrapped_arguments = []
+            def launchctl(command, **kwargs):
+                commands.append(command)
+                if command[1] == "bootstrap":
+                    bootstrapped_arguments.append(plistlib.loads(Path(command[-1]).read_bytes())["ProgramArguments"])
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "a" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p0b_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(ValueError, "P1-enabled service replay integrity"):
+                    upgrade_p1(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            self.assertEqual(plist_path.read_bytes(), original_plist)
+            bootstrap_commands = [command for command in commands if command[1] == "bootstrap"]
+            self.assertEqual(len(bootstrap_commands), 2)
+            self.assertIn("--p1-enabled", bootstrapped_arguments[0])
+            self.assertEqual(bootstrap_commands[-1][-1], str(plist_path))
+
+    def test_upgrade_p1_fails_fatally_when_rollback_cannot_restore_p0b(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; release = root_path / "release"
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True); plist_path.write_bytes(b"approved-p0b-plist")
+            p0_store = MagicMock(); p0_store.verify_replay.return_value = {"ok": True}; p0_store.export_snapshot.return_value = {"path": str(root_path / "pre.json")}
+            p0_connection = MagicMock(); p0_connection.__enter__.return_value = object(); p0_store.connection.return_value = p0_connection
+            p1_store = MagicMock(); p1_store.verify_replay.return_value = {"ok": False}
+            stores = MagicMock(side_effect=[p0_store, p1_store]); stores._p0_to_p1_dependency_resolved.return_value = True
+            bootstrap_count = 0
+            def launchctl(command, **kwargs):
+                nonlocal bootstrap_count
+                if command[1] == "bootstrap":
+                    bootstrap_count += 1
+                    if bootstrap_count == 2:
+                        raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "b" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p0b_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(RuntimeError, "P0B rollback failed; preserved plist backup"):
+                    upgrade_p1(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()
