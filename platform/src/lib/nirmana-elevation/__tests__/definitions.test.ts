@@ -12,6 +12,7 @@ import {
 } from '../definitions'
 
 const manifest = {
+  chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
   assets: [{ asset_id: 'bg_prashna_rules', layer: 'L0', execution_obligation: 'build' }],
 }
 
@@ -22,8 +23,13 @@ describe('Nirmana elevation definition repository', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
   })
 
+  it('requires the frozen manifest to pin its campaign chart', () => {
+    expect(() => canonicalManifestDigest({ assets: manifest.assets })).toThrow(/chart_id/i)
+  })
+
   it('gives JSONB-equivalent manifests the same digest regardless of object-key order', () => {
     const reordered = {
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       assets: [{ execution_obligation: 'build', layer: 'L0', asset_id: 'bg_prashna_rules' }],
     }
     expect(canonicalManifestDigest(reordered)).toBe(canonicalManifestDigest(manifest))
@@ -31,13 +37,16 @@ describe('Nirmana elevation definition repository', () => {
 
   it('accepts every formal non-build execution obligation in a frozen denominator', () => {
     const nonBuildManifest = {
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       assets: [
-        'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition',
-      ].map((execution_obligation, index) => ({
-        asset_id: `bg_non_build_${index}`,
-        layer: 'L0',
-        execution_obligation,
-      })),
+        { asset_id: 'bg_non_build_producer', layer: 'L0', execution_obligation: 'build' },
+        ...['probe', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition'].map((execution_obligation, index) => ({
+          asset_id: `bg_non_build_${index}`,
+          layer: 'L0',
+          execution_obligation,
+        })),
+        { asset_id: 'bg_non_build_covered', layer: 'L0', execution_obligation: 'producer_covered', producer_id: 'bg_non_build_producer' },
+      ],
     }
 
     expect(() => canonicalManifestDigest(nonBuildManifest)).not.toThrow()

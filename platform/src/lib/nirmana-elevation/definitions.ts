@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { query } from '@/lib/db/client'
 
 export const NirmanaElevationManifestSchema = z.object({
+  chart_id: z.string().uuid(),
   assets: z.array(z.object({
     asset_id: z.string(),
     layer: z.string(),

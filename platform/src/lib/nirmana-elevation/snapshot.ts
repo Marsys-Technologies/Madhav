@@ -13,7 +13,7 @@ type SourceId = keyof NirmanaElevationRawSources
 export interface NirmanaElevationRawSources {
   asset_registry: Array<{ asset_id: string; english_name: string | null; layer: string; sort_order: number; has_writer: boolean | null; asset_type: string | null; asset_kind: string | null; is_active: boolean; depends_on: string[] | null }>
   asset_throughput: Array<{ asset_id: string; state: string; last_built_at: string | null }>
-  build_runs: Array<{ id: string; state: string; current_asset_id: string | null; created_at: string; started_at: string | null }>
+  build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
   build_substep_progress: Array<{ asset_id: string; committed: string | number; last_progress_at: string | null }>
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
@@ -49,7 +49,7 @@ async function loadSource<K extends SourceId>(sourceId: K, sql: string): Promise
 export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevationRawSources> {
   const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, sort_order, has_writer, asset_type, asset_kind, is_active, COALESCE(depends_on, '{}') AS depends_on FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, last_built_at DESC NULLS LAST`)
-  const runs = await loadSource('build_runs', `SELECT id, state, current_asset_id, created_at, started_at FROM build_runs ORDER BY created_at DESC`)
+  const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.asset_id`)
   const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
@@ -65,19 +65,26 @@ function asIso(value: string | null | undefined): string | null {
   return value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : null
 }
 
-function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryIds: Set<string>): ManifestAsset[] | null {
+function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryIds: Set<string>): NirmanaElevationManifest | null {
   if (!definition || definition.definition_status !== 'frozen') return null
   const parsed = parseNirmanaElevationManifest(definition.manifest)
   if (!parsed) return null
   if (canonicalManifestDigest(parsed) !== definition.manifest_sha256) return null
   const ids = parsed.assets.map((asset) => asset.asset_id)
   if (new Set(ids).size !== ids.length || ids.some((id) => !registryIds.has(id))) return null
-  return parsed.assets
+  const assetsById = new Map(parsed.assets.map((asset) => [asset.asset_id, asset]))
+  if (parsed.assets.some((asset) => asset.execution_obligation === 'producer_covered'
+    && (!asset.producer_id || assetsById.get(asset.producer_id)?.execution_obligation !== 'build'))) return null
+  return parsed
 }
 
 function runTimestamp(run: NirmanaElevationRawSources['build_runs'][number]): number {
   const timestamp = Date.parse(run.created_at) || Date.parse(run.started_at ?? '')
   return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+function activeRunPriority(run: NirmanaElevationRawSources['build_runs'][number]): number {
+  return run.state === 'running' ? 2 : run.state === 'paused' ? 1 : 0
 }
 
 /** Current-run state is selected from active runs only, newest run first. */
@@ -92,6 +99,8 @@ function currentRunAssetsById(raw: NirmanaElevationRawSources): Map<string, Nirm
     .sort((left, right) => {
       const leftRun = activeRunsById.get(left.run_id)!
       const rightRun = activeRunsById.get(right.run_id)!
+      const stateDifference = activeRunPriority(rightRun) - activeRunPriority(leftRun)
+      if (stateDifference !== 0) return stateDifference
       const timestampDifference = runTimestamp(rightRun) - runTimestamp(leftRun)
       if (timestampDifference !== 0) return timestampDifference
       const runDifference = right.run_id.localeCompare(left.run_id)
@@ -113,7 +122,8 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const generated_at = new Date(generatedAt).toISOString()
   const definition = raw.campaign_definitions[0]
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
-  const manifestAssets = validManifest(definition, new Set(registryById.keys()))
+  const manifest = validManifest(definition, new Set(registryById.keys()))
+  const manifestAssets = manifest?.assets ?? null
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
   const throughputById = new Map(raw.asset_throughput.map((entry) => [entry.asset_id, entry]))
   const runAssetById = currentRunAssetsById(raw)
@@ -125,7 +135,9 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     types.add(event.event_type)
     eventTypesByAsset.set(event.entity_id, types)
   }
-  const completedRunIds = new Set(raw.build_runs.filter((run) => run.state === 'completed').map((run) => run.id))
+  const completedRunIds = new Set(raw.build_runs
+    .filter((run) => run.state === 'completed' && run.chart_id === manifest?.chart_id)
+    .map((run) => run.id))
   const completedRunAssets = new Set(
     raw.build_run_assets
       .filter((asset) => asset.state === 'complete' && completedRunIds.has(asset.run_id))
@@ -161,7 +173,9 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     manifestAssets
       ?.filter((asset) => asset.execution_obligation === 'producer_covered' && Boolean(asset.producer_id))
       .filter((asset) => {
-        const acceptedProducerRuns = acceptedBuildRunIdsByAsset.get(asset.producer_id!)
+        const acceptedProducerRuns = acceptedBuildAssetIds.has(asset.producer_id!)
+          ? acceptedBuildRunIdsByAsset.get(asset.producer_id!)
+          : undefined
         return Boolean(acceptedProducerRuns)
           && campaignEvents.some((event) => event.entity_id === asset.asset_id
             && event.event_type === 'producer_covered'
@@ -234,7 +248,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
 
   const active_runs = raw.build_runs
     .filter((run) => ['planned', 'running', 'paused'].includes(run.state))
-    .sort((left, right) => runTimestamp(right) - runTimestamp(left) || right.id.localeCompare(left.id))
+    .sort((left, right) => activeRunPriority(right) - activeRunPriority(left) || runTimestamp(right) - runTimestamp(left) || right.id.localeCompare(left.id))
     .map((run) => {
     const runAssets = raw.build_run_assets.filter((asset) => asset.run_id === run.id)
     const active_asset_ids = runAssets.filter((asset) => asset.state === 'building').map((asset) => asset.asset_id)
