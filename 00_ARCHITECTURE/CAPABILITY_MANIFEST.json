@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-21T05:30:00Z",
+  "generated_at": "2026-08-25T00:00:00Z",
   "generator_version": "1.0",
-  "entry_count": 128,
+  "entry_count": 130,
   "fingerprint": "4ae7534d3b0faf48e7b028f48cc856846c7d84b5523ae350a2b2dccac929339c",
   "entries": [
     {
@@ -1829,6 +1829,34 @@
       "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
       "native_id": "project",
       "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_PLAN",
+      "path": "00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v6_0.md",
+      "version": "6.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_AUTONOMY_CHARTER",
+      "path": "00_ARCHITECTURE/autonomy/CHARTER_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
     }
   ]
 }
