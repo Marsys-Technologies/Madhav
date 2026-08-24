@@ -29,6 +29,20 @@ describe('Nirmana elevation definition repository', () => {
     expect(canonicalManifestDigest(reordered)).toBe(canonicalManifestDigest(manifest))
   })
 
+  it('accepts every formal non-build execution obligation in a frozen denominator', () => {
+    const nonBuildManifest = {
+      assets: [
+        'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition',
+      ].map((execution_obligation, index) => ({
+        asset_id: `bg_non_build_${index}`,
+        layer: 'L0',
+        execution_obligation,
+      })),
+    }
+
+    expect(() => canonicalManifestDigest(nonBuildManifest)).not.toThrow()
+  })
+
   it('rejects a mismatched digest before attempting an insert or freeze', async () => {
     await expect(createNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation',

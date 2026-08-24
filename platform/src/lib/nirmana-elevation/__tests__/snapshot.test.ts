@@ -154,6 +154,111 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('frozen')
   })
 
+  it('requires a build asset accepted-rebuild receipt to name the completed build run exactly', () => {
+    const lifecycleEvents = [
+      'asset_analysis_accepted',
+      'optimization_verdict_accepted',
+      'accepted_rebuild_observed',
+      'integrity_verified',
+      'asset_frozen',
+    ].map((event_type) => ({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 'v1',
+      event_type,
+      entity_type: 'asset',
+      entity_id: 'bg_prashna_rules',
+      layer: 'L0',
+      evidence_payload: {},
+      source_kind: 'campaign_evidence',
+      source_ref: event_type === 'accepted_rebuild_observed' ? 'build_run:run-not-complete' : `event:${event_type}`,
+      observed_at: observedAt,
+      recorded_at: observedAt,
+    }))
+    const manifest = { assets: [{ asset_id: 'bg_prashna_rules', layer: 'L0', execution_obligation: 'build' }] }
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: lifecycleEvents,
+      build_runs: [{ id: 'run-complete', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'run-complete', asset_id: 'bg_prashna_rules', position: 1, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress.accepted_rebuilds).toBe(0)
+    expect(snapshot.progress.assets_frozen).toBe(0)
+  })
+
+  it('accepts formal non-build dispositions and producer-covered evidence without a rebuild of the logical asset', () => {
+    const assetIds = ['bg_source', 'bg_producer', 'bg_covered']
+    const manifest = {
+      assets: [
+        { asset_id: 'bg_source', layer: 'L0', execution_obligation: 'source_acceptance' },
+        { asset_id: 'bg_producer', layer: 'L0', execution_obligation: 'build' },
+        { asset_id: 'bg_covered', layer: 'L0', execution_obligation: 'producer_covered', producer_id: 'bg_producer' },
+      ],
+    }
+    const lifecycleEvents = assetIds.flatMap((asset_id) => [
+      'asset_analysis_accepted',
+      'optimization_verdict_accepted',
+      'integrity_verified',
+      'asset_frozen',
+    ].map((event_type) => ({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: asset_id,
+      layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}:${asset_id}`,
+      observed_at: observedAt, recorded_at: observedAt,
+    }))).concat([
+      {
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'source_accepted', entity_type: 'asset', entity_id: 'bg_source',
+        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'source:canonical', observed_at: observedAt, recorded_at: observedAt,
+      },
+      {
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_producer',
+        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'build_run:producer-run', observed_at: observedAt, recorded_at: observedAt,
+      },
+      {
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'producer_covered', entity_type: 'asset', entity_id: 'bg_covered',
+        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'build_run:producer-run', observed_at: observedAt, recorded_at: observedAt,
+      },
+    ])
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: assetIds.map((asset_id, sort_order) => ({
+        asset_id, english_name: asset_id, layer: 'brahmagyan', sort_order, has_writer: true, asset_type: 'data', asset_kind: 'data', is_active: true, depends_on: [],
+      })),
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: lifecycleEvents,
+      build_runs: [{ id: 'producer-run', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'producer-run', asset_id: 'bg_producer', position: 1, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ assets_frozen: 3, accepted_rebuilds: 1 })
+    expect(snapshot.layers[0]).toMatchObject({ rebuilt_or_dispositioned: 3, frozen: 3 })
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_source')?.lifecycle_state).toBe('frozen')
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_covered')?.lifecycle_state).toBe('frozen')
+  })
+
+  it('uses the latest active run for an asset rather than a historical run row that happens to arrive later', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      build_runs: [
+        { id: 'run-current', state: 'running', current_asset_id: 'bg_prashna_rules', created_at: '2026-08-25T10:00:00.000Z', started_at: '2026-08-25T10:00:00.000Z' },
+        { id: 'run-historical', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt },
+      ],
+      build_run_assets: [
+        { run_id: 'run-current', asset_id: 'bg_prashna_rules', position: 1, state: 'building', started_at: '2026-08-25T10:00:00.000Z', ended_at: null, error: null },
+        { run_id: 'run-historical', asset_id: 'bg_prashna_rules', position: 1, state: 'error', started_at: observedAt, ended_at: observedAt, error: 'obsolete failure' },
+      ],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
+      current_run_state: 'building',
+      blocker: null,
+      progress_mode: 'indeterminate',
+    })
+  })
+
   it('withholds a claimed frozen denominator whose canonical manifest digest does not verify', () => {
     const snapshot = projectNirmanaElevationSnapshot(sources({
       campaign_definitions: [{
