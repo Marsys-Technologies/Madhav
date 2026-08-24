@@ -38,6 +38,8 @@ python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py --runtime
 Open `http://127.0.0.1:8787`. The demo is intentionally non-authoritative. Generated runtime
 state belongs outside this repository and must not be manually edited.
 
+For an Option-B P0B runtime, use `--p0b-only` for every `cli.py` command; it provisions only
+`lead-p0b`, `surrogate-p0b`, `verifier-p0b`, and `integrator-p0b`, each scoped only to P0.
 For a non-demo local runtime, first run `cli.py --runtime "$TRACKER_RUNTIME"
 provision-credentials`. It creates a random, mode-0600 credential file for that runtime.
 `init` and `emit` require the matching actor token; there are no default bearer tokens.

@@ -17,7 +17,7 @@ TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assura
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -155,6 +155,29 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as ctx: self.store.provision_local_credentials()
         self.assertEqual(ctx.exception.code, "CREDENTIALS_EXIST")
 
+    def test_p0b_operators_have_distinct_role_scoped_credentials(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            store = EventStore(runtime, p0b_only=True)
+            tokens = json.loads(Path(store.provision_local_credentials()["path"]).read_text())["tokens"]
+            expected = {
+                "lead-p0b": "STREAM_LEAD",
+                "surrogate-p0b": "NATIVE_SURROGATE",
+                "verifier-p0b": "INDEPENDENT_VERIFIER",
+                "integrator-p0b": "PROGRAMME_INTEGRATOR",
+            }
+            self.assertEqual(set(tokens), set(expected))
+            for actor_id, role in expected.items():
+                self.assertEqual(store.actor_role(actor_id), role)
+                self.assertEqual(store.authenticate(tokens[actor_id]), actor_id)
+                with store.connection() as con:
+                    row = con.execute("SELECT streams_json FROM actors WHERE actor_id=?", (actor_id,)).fetchone()
+                self.assertEqual(json.loads(row["streams_json"]), ["P0"])
+            self.assertEqual(len(set(tokens.values())), len(tokens))
+            store.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0b-bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "pariprashna-experience-assurance-v3"}, "evidence": EVIDENCE})
+            with self.assertRaises(RejectedEvent) as p1_start:
+                store.submit({"actor_id": "lead-p0b", "idempotency_key": "p1-forbidden", "event_type": "work_started", "payload": {"session_id": "p1-forbidden"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            self.assertEqual(p1_start.exception.code, "STREAM_FORBIDDEN")
+
     def test_runtime_and_database_permissions_are_private(self):
         with tempfile.TemporaryDirectory() as runtime:
             os.chmod(runtime, 0o755)
@@ -172,7 +195,15 @@ class ControlPlaneTests(unittest.TestCase):
             plist = build_launchd_plist(Path("/immutable/release"), runtime).decode()
             self.assertIn(SERVICE_LABEL, plist)
             self.assertIn("127.0.0.1", plist)
+            self.assertIn("--p0b-only", plist)
             self.assertIn(str(runtime), plist)
+
+    def test_service_logs_are_private_before_launchd_starts(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            runtime_path = Path(runtime)
+            _secure_service_logs(runtime_path)
+            for name in ("service.log", "service.error.log"):
+                self.assertEqual((runtime_path / name).stat().st_mode & 0o777, 0o600)
 
     def test_concurrent_credential_provisioning_has_one_winner(self):
         with tempfile.TemporaryDirectory() as runtime:
