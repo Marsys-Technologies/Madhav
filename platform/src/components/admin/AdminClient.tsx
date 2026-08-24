@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PendingRequestsTable } from './PendingRequestsTable'
 import { UsersTable } from './UsersTable'
@@ -57,12 +58,22 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl font-medium tracking-wide text-brand-gold-cream">
-          Administration
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage users, chart access, and platform activity.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-3xl font-medium tracking-wide text-brand-gold-cream">
+              Administration
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage users, chart access, and platform activity.
+            </p>
+          </div>
+          <Link
+            href="/admin/nirmana-elevation"
+            className="rounded-md border border-[rgba(var(--brand-gold-rgb),0.35)] px-3 py-2 text-xs font-medium tracking-wide text-brand-gold transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.10)] focus:outline-none focus:ring-2 focus:ring-brand-gold/50"
+          >
+            Nirmāṇa Elevation Tracker
+          </Link>
+        </div>
       </div>
 
       {/* Tab bar */}
