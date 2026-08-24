@@ -1,5 +1,8 @@
 import http.client
 import json
+import os
+import queue
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -9,8 +12,9 @@ from pathlib import Path
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from control import EventStore, RejectedEvent, fold, programme_definition, presence_overlay  # noqa: E402
+from control import EventStore, RejectedEvent, canonical, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
+from service import SERVICE_LABEL, build_launchd_plist, runtime_preflight  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -37,6 +41,90 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue(self.store.verify_replay()["ok"]); self.store.rebuild(self.store.projection()["projection_as_of"])
         self.assertEqual(before, self.store.projection()["canonical_hash"])
 
+    def test_replay_detects_tampered_event_chain_before_rebuild(self):
+        with self.store.connection() as con:
+            con.execute("DROP TRIGGER events_no_update")
+            con.execute("UPDATE events SET event_hash='tampered' WHERE ledger_seq=1")
+        result = self.store.verify_replay()
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "event hash mismatch")
+
+    def test_replay_rejects_tampered_programme_definition_before_rebuild(self):
+        definition = self.store.definition(); definition["phases"][0]["campaign_weight"] = 999
+        with self.store.connection() as con:
+            con.execute("UPDATE ledger_meta SET definition_json=? WHERE id=1", (canonical(definition),))
+        result = self.store.verify_replay()
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "programme definition mismatch")
+        with self.assertRaises(RejectedEvent) as rebuild:
+            self.store.rebuild()
+        self.assertEqual(rebuild.exception.code, "LEDGER_INTEGRITY")
+        with self.assertRaises(RejectedEvent) as startup:
+            EventStore(self.tmp.name)
+        self.assertEqual(startup.exception.code, "DEFINITION_INTEGRITY")
+
+    def test_snapshot_restores_to_a_separate_empty_runtime_with_matching_hash(self):
+        self.accepted_s1_item()
+        with tempfile.TemporaryDirectory() as root:
+            snapshot_path = Path(root) / "source.snapshot.json"
+            source = self.store.export_snapshot(snapshot_path)
+            recovery = EventStore(Path(root) / "recovery-runtime")
+            restored = recovery.restore_snapshot(snapshot_path)
+            self.assertEqual(restored["canonical_hash"], self.store.projection()["canonical_hash"])
+            self.assertEqual(restored["event_log_hash"], source["event_log_hash"])
+            with self.assertRaises(RejectedEvent) as non_empty:
+                recovery.restore_snapshot(snapshot_path)
+            self.assertEqual(non_empty.exception.code, "RECOVERY_RUNTIME_NOT_EMPTY")
+
+    def test_malformed_snapshot_projection_leaves_recovery_runtime_empty(self):
+        with tempfile.TemporaryDirectory() as root:
+            snapshot_path = Path(root) / "malformed.snapshot.json"
+            self.store.export_snapshot(snapshot_path)
+            snapshot = json.loads(snapshot_path.read_text()); snapshot["projection"] = {}
+            os.chmod(snapshot_path, 0o600); snapshot_path.write_text(canonical(snapshot)); os.chmod(snapshot_path, 0o444)
+            recovery = EventStore(Path(root) / "recovery-runtime")
+            with self.assertRaises(RejectedEvent) as invalid:
+                recovery.restore_snapshot(snapshot_path)
+            self.assertEqual(invalid.exception.code, "SNAPSHOT_INVALID")
+            self.assertEqual(recovery.events(), [])
+            with recovery.connection() as con:
+                self.assertIsNone(con.execute("SELECT 1 FROM projection_state WHERE id=1").fetchone())
+
+    def test_monitor_failure_publishes_unknown_and_removes_green_state(self):
+        bus = EventBus(); updates = bus.subscribe(); original = self.store.verify_replay
+        self.store.verify_replay = lambda: (_ for _ in ()).throw(RuntimeError("injected monitor fault"))
+        monitor = ReplayMonitor(self.store, bus, 0.01); monitor.start()
+        try:
+            update = json.loads(updates.get(timeout=1))
+            self.assertEqual(update["service_health"], "UNKNOWN")
+        finally:
+            monitor.stop(); monitor.join(timeout=1); bus.unsubscribe(updates); self.store.verify_replay = original
+        projection = self.store.projection()
+        self.assertEqual(projection["monitor_health"]["status"], "UNKNOWN")
+        self.assertTrue(all(stream["health"] == "INTEGRITY_DEGRADED" for stream in projection["display"]["streams"]))
+
+    def test_monitor_persistence_failure_still_publishes_unknown(self):
+        bus = EventBus(); updates = bus.subscribe(); original = self.store.record_monitor_status
+        self.store.record_monitor_status = lambda *_args: (_ for _ in ()).throw(sqlite3.OperationalError("injected persistence fault"))
+        monitor = ReplayMonitor(self.store, bus, 0.01); monitor.start()
+        try:
+            update = json.loads(updates.get(timeout=1))
+            self.assertEqual(update["service_health"], "UNKNOWN")
+            self.assertTrue(bus.service_unavailable())
+        finally:
+            monitor.stop(); monitor.join(timeout=1); bus.unsubscribe(updates); self.store.record_monitor_status = original
+
+    def test_service_unavailable_sentinel_replaces_projection_response(self):
+        bus = EventBus(); bus.mark_service_unavailable()
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_factory(self.store, bus, TRACKER / "dashboard.html")); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); conn.request("GET", "/api/projection")
+            response = conn.getresponse(); payload = json.loads(response.read()); conn.close()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["service_health"], "UNKNOWN")
+        finally:
+            httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
+
     def test_duplicate_idempotency_returns_original(self):
         request = {"actor_id": "lead-s1", "idempotency_key": "same", "event_type": "work_started", "payload": {"session_id": "same", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE}
         first = self.store.submit(request); second = self.store.submit(request)
@@ -47,6 +135,25 @@ class ControlPlaneTests(unittest.TestCase):
         credential_file = Path(self.tmp.name) / "local-credentials.json"; self.assertFalse(credential_file.stat().st_mode & 0o077)
         with self.assertRaises(RejectedEvent) as ctx: self.store.provision_local_credentials()
         self.assertEqual(ctx.exception.code, "CREDENTIALS_EXIST")
+
+    def test_runtime_and_database_permissions_are_private(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            os.chmod(runtime, 0o755)
+            store = EventStore(runtime)
+            self.assertEqual(Path(runtime).stat().st_mode & 0o777, 0o700)
+            self.assertEqual(store.db_path.stat().st_mode & 0o777, 0o600)
+
+    def test_launchd_preflight_requires_private_approved_runtime_and_filevault(self):
+        with tempfile.TemporaryDirectory() as root:
+            runtime = Path(root) / "approved-runtime"
+            runtime_preflight(runtime, runtime, "FileVault is On.")
+            self.assertEqual(runtime.stat().st_mode & 0o777, 0o700)
+            with self.assertRaises(ValueError): runtime_preflight(runtime, runtime.parent / "wrong-runtime", "FileVault is On.")
+            with self.assertRaises(ValueError): runtime_preflight(runtime, runtime, "FileVault is Off.")
+            plist = build_launchd_plist(Path("/immutable/release"), runtime).decode()
+            self.assertIn(SERVICE_LABEL, plist)
+            self.assertIn("127.0.0.1", plist)
+            self.assertIn(str(runtime), plist)
 
     def test_concurrent_credential_provisioning_has_one_winner(self):
         with tempfile.TemporaryDirectory() as runtime:
@@ -397,7 +504,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("triage-frozen remediations verified", html); self.assertIn("dependency_warnings", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("service_health==='UNKNOWN'", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("triage-frozen remediations verified", html); self.assertIn("dependency_warnings", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

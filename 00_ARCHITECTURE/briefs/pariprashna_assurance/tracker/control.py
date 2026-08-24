@@ -88,10 +88,28 @@ def contains_progress(value: Any) -> bool:
 class EventStore:
     def __init__(self, runtime_dir: str | Path):
         self.runtime_dir = Path(runtime_dir)
-        self.runtime_dir.mkdir(parents=True, exist_ok=True)
+        self.runtime_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
+        self._secure_runtime_path(self.runtime_dir, 0o700)
         self.db_path = self.runtime_dir / "control-plane.sqlite3"
         self._lock = threading.RLock()
         self.init()
+
+    @staticmethod
+    def _secure_runtime_path(path: Path, mode: int) -> None:
+        status = path.stat()
+        if status.st_uid != os.getuid():
+            raise RejectedEvent("RUNTIME_OWNER", f"{path} is not owned by the current account")
+        os.chmod(path, mode)
+
+    def _secure_runtime_files(self) -> None:
+        self._secure_runtime_path(self.runtime_dir, 0o700)
+        for path in (self.db_path, self.runtime_dir / "control-plane.sqlite3-wal", self.runtime_dir / "control-plane.sqlite3-shm"):
+            try:
+                if path.exists():
+                    self._secure_runtime_path(path, 0o600)
+            except FileNotFoundError:
+                # SQLite may remove its transient WAL/SHM files between exists() and chmod().
+                continue
 
     @contextlib.contextmanager
     def connection(self) -> Iterator[sqlite3.Connection]:
@@ -104,6 +122,7 @@ class EventStore:
             yield con
         finally:
             con.close()
+            self._secure_runtime_files()
 
     def init(self) -> None:
         with self.connection() as con:
@@ -127,11 +146,18 @@ class EventStore:
                 CREATE TABLE IF NOT EXISTS presences (session_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, stream_id TEXT, state TEXT NOT NULL, observed_at TEXT NOT NULL, detail TEXT);
                 CREATE TABLE IF NOT EXISTS projection_state (id INTEGER PRIMARY KEY CHECK (id=1), canonical_json TEXT NOT NULL, projection_hash TEXT NOT NULL, as_of TEXT NOT NULL, event_count INTEGER NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projector_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT, lag_events INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS monitor_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT);
             """)
-            if not con.execute("SELECT 1 FROM ledger_meta WHERE id=1").fetchone():
-                con.execute("INSERT INTO ledger_meta(id,last_hash,definition_json) VALUES(1,?,?)", ("0" * 64, canonical(programme_definition())))
+            definition = canonical(programme_definition())
+            stored_definition = con.execute("SELECT definition_json FROM ledger_meta WHERE id=1").fetchone()
+            if not stored_definition:
+                con.execute("INSERT INTO ledger_meta(id,last_hash,definition_json) VALUES(1,?,?)", ("0" * 64, definition))
+            elif stored_definition["definition_json"] != definition:
+                raise RejectedEvent("DEFINITION_INTEGRITY", "programme definition does not match this immutable source release")
             if not con.execute("SELECT 1 FROM projector_health WHERE id=1").fetchone():
                 con.execute("INSERT INTO projector_health(id,status,lag_events) VALUES(1,'UNKNOWN',0)")
+            if not con.execute("SELECT 1 FROM monitor_health WHERE id=1").fetchone():
+                con.execute("INSERT INTO monitor_health(id,status) VALUES(1,'UNKNOWN')")
             self._seed_actors(con)
 
     def _seed_actors(self, con: sqlite3.Connection) -> None:
@@ -542,6 +568,27 @@ class EventStore:
         result["evidence"] = json.loads(result.pop("evidence_json"))
         return result
 
+    @staticmethod
+    def _event_body(event: dict[str, Any]) -> dict[str, Any]:
+        return {key: event[key] for key in ("schema_version", "event_id", "idempotency_key", "stream_id", "stream_seq", "actor_id", "actor_role", "event_type", "payload", "evidence", "occurred_at", "prev_hash")}
+
+    def _verify_event_chain(self, con: sqlite3.Connection) -> tuple[bool, str, str]:
+        meta = con.execute("SELECT last_hash,definition_json FROM ledger_meta WHERE id=1").fetchone()
+        if not meta or meta["definition_json"] != canonical(programme_definition()):
+            return False, "programme definition mismatch", "0" * 64
+        previous = "0" * 64
+        for row in con.execute("SELECT * FROM events ORDER BY ledger_seq"):
+            event = self._row_event(row)
+            if event["prev_hash"] != previous:
+                return False, "event previous hash mismatch", previous
+            current = digest(self._event_body(event))
+            if event["event_hash"] != current:
+                return False, "event hash mismatch", previous
+            previous = current
+        if meta["last_hash"] != previous:
+            return False, "ledger root hash mismatch", previous
+        return True, "ok", previous
+
     def record_presence(self, actor_id: str, session_id: str, stream_id: str | None, state: str, detail: str = "", observed_at: str | None = None) -> None:
         if state not in {"ACTIVE", "WAITING", "PAUSED", "COMPLETED"}:
             raise RejectedEvent("PRESENCE_SCHEMA", "invalid presence state")
@@ -565,6 +612,11 @@ class EventStore:
         as_of = as_of or now_iso()
         with self._lock, self.connection() as con:
             con.execute("BEGIN IMMEDIATE")
+            chain_ok, chain_reason, _ = self._verify_event_chain(con)
+            if not chain_ok:
+                con.execute("UPDATE projector_health SET status='INTEGRITY_DEGRADED',last_error=?,lag_events=1 WHERE id=1", (chain_reason,))
+                con.execute("COMMIT")
+                raise RejectedEvent("LEDGER_INTEGRITY", chain_reason)
             definition = json.loads(con.execute("SELECT definition_json FROM ledger_meta WHERE id=1").fetchone()[0])
             events = [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")]
             projection = fold(definition, events, as_of)
@@ -577,8 +629,13 @@ class EventStore:
     def verify_replay(self) -> dict[str, Any]:
         with self.connection() as con:
             state = con.execute("SELECT * FROM projection_state WHERE id=1").fetchone()
+            chain_ok, chain_reason, chain_hash = self._verify_event_chain(con)
         if not state:
             return {"ok": False, "reason": "no projection"}
+        if not chain_ok:
+            with self.connection() as con:
+                con.execute("UPDATE projector_health SET status=?,last_error=?,lag_events=? WHERE id=1", ("INTEGRITY_DEGRADED", chain_reason, 1))
+            return {"ok": False, "reason": chain_reason, "event_log_hash": chain_hash, "as_of": state["as_of"]}
         replay = fold(self.definition(), self.events(), state["as_of"])
         actual = digest(replay)
         try:
@@ -588,12 +645,19 @@ class EventStore:
         ok = actual == state["projection_hash"] and materialized_hash == state["projection_hash"]
         with self.connection() as con:
             con.execute("UPDATE projector_health SET status=?,last_error=?,lag_events=? WHERE id=1", ("HEALTHY" if ok else "INTEGRITY_DEGRADED", None if ok else "full replay hash mismatch", 0 if ok else 1))
-        return {"ok": ok, "expected_hash": state["projection_hash"], "actual_hash": actual, "materialized_hash": materialized_hash, "as_of": state["as_of"]}
+        return {"ok": ok, "reason": "ok" if ok else "full replay hash mismatch", "expected_hash": state["projection_hash"], "actual_hash": actual, "materialized_hash": materialized_hash, "event_log_hash": chain_hash, "as_of": state["as_of"]}
+
+    def record_monitor_status(self, status: str, error: str | None = None) -> None:
+        if status not in {"HEALTHY", "INTEGRITY_DEGRADED", "UNKNOWN"}:
+            raise ValueError("invalid monitor status")
+        with self.connection() as con:
+            con.execute("UPDATE monitor_health SET status=?,last_error=?,last_success_at=? WHERE id=1", (status, error, now_iso() if status == "HEALTHY" else None))
 
     def projection(self, as_of: str | None = None) -> dict[str, Any]:
         with self.connection() as con:
             state = con.execute("SELECT * FROM projection_state WHERE id=1").fetchone()
             health = dict(con.execute("SELECT * FROM projector_health WHERE id=1").fetchone())
+            monitor = dict(con.execute("SELECT * FROM monitor_health WHERE id=1").fetchone())
             rows = con.execute("SELECT * FROM presences").fetchall()
         if not state:
             self.rebuild(as_of)
@@ -608,17 +672,18 @@ class EventStore:
         # remains false and the overlay forces every affected surface out of green.
         if not isinstance(canonical_projection, dict) or not {"phases", "streams", "execution_sessions"}.issubset(canonical_projection):
             canonical_projection = fold(self.definition(), self.events(), state["as_of"])
-        overlay = presence_overlay(canonical_projection, [dict(r) for r in rows], as_of or now_iso(), integrity["ok"])
+        monitor_safe = monitor["status"] == "HEALTHY" or monitor["last_error"] is None
+        overlay = presence_overlay(canonical_projection, [dict(r) for r in rows], as_of or now_iso(), integrity["ok"] and monitor_safe)
         display = copy.deepcopy(canonical_projection)
         for stream in display["streams"]: stream["health"] = overlay["stream_health"].get(stream["id"], "UNKNOWN")
         for phase in display["phases"]: phase["health"] = overlay["phase_health"].get(phase["id"], "UNKNOWN")
-        return {"schema_version": "campaign-projection@1", "canonical": canonical_projection, "display": display, "canonical_hash": state["projection_hash"], "projection_as_of": state["as_of"], "integrity": integrity, "projector_health": health, "liveness": overlay, "rejected_events": self.rejected()}
+        return {"schema_version": "campaign-projection@1", "canonical": canonical_projection, "display": display, "canonical_hash": state["projection_hash"], "projection_as_of": state["as_of"], "integrity": integrity, "projector_health": health, "monitor_health": monitor, "liveness": overlay, "rejected_events": self.rejected()}
 
     def export_snapshot(self, path: str | Path) -> dict[str, Any]:
         result = self.verify_replay()
         if not result["ok"]:
             raise RejectedEvent("INTEGRITY_DEGRADED", "cannot export a snapshot with failed replay")
-        snapshot = {"schema_version": "immutable-snapshot@1", "exported_at": now_iso(), "projection": self.projection(), "events": self.events(), "event_log_hash": digest(self.events())}
+        snapshot = {"schema_version": "immutable-snapshot@1", "exported_at": now_iso(), "projection": self.projection(), "events": self.events(), "event_log_hash": digest(self.events()), "ledger_root_hash": result["event_log_hash"]}
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(target.suffix + ".tmp")
@@ -626,6 +691,46 @@ class EventStore:
         os.replace(tmp, target)
         os.chmod(target, 0o444)
         return {"path": str(target), "snapshot_hash": digest(snapshot), "event_log_hash": snapshot["event_log_hash"]}
+
+    def restore_snapshot(self, path: str | Path) -> dict[str, Any]:
+        """Restore a validated snapshot only into an initialized but otherwise empty runtime."""
+        try:
+            snapshot = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RejectedEvent("SNAPSHOT_INVALID", f"snapshot cannot be read: {exc}") from exc
+        events = snapshot.get("events")
+        if snapshot.get("schema_version") != "immutable-snapshot@1" or not isinstance(events, list) or snapshot.get("event_log_hash") != digest(events):
+            raise RejectedEvent("SNAPSHOT_INVALID", "snapshot schema or event-log hash is invalid")
+        source_projection = snapshot.get("projection")
+        if not isinstance(source_projection, dict) or not isinstance(source_projection.get("projection_as_of"), str) or not isinstance(source_projection.get("canonical"), dict) or not isinstance(source_projection.get("canonical_hash"), str):
+            raise RejectedEvent("SNAPSHOT_INVALID", "snapshot projection envelope is invalid")
+        restored_projection = fold(programme_definition(), events, source_projection["projection_as_of"])
+        restored_hash = digest(restored_projection)
+        if source_projection["canonical"] != restored_projection or source_projection["canonical_hash"] != restored_hash:
+            raise RejectedEvent("SNAPSHOT_RECONCILIATION", "snapshot projection does not reconcile with its event log")
+        with self._lock, self.connection() as con:
+            con.execute("BEGIN IMMEDIATE")
+            if con.execute("SELECT COUNT(*) FROM events").fetchone()[0] or con.execute("SELECT COUNT(*) FROM rejected_events").fetchone()[0] or con.execute("SELECT 1 FROM projection_state WHERE id=1").fetchone():
+                con.execute("ROLLBACK")
+                raise RejectedEvent("RECOVERY_RUNTIME_NOT_EMPTY", "restore requires a separate empty recovery runtime")
+            previous = "0" * 64
+            for event in events:
+                if not isinstance(event, dict) or event.get("prev_hash") != previous or event.get("event_hash") != digest(self._event_body(event)):
+                    con.execute("ROLLBACK")
+                    raise RejectedEvent("SNAPSHOT_INTEGRITY", "snapshot event chain is invalid")
+                previous = event["event_hash"]
+            if snapshot.get("ledger_root_hash") != previous:
+                con.execute("ROLLBACK")
+                raise RejectedEvent("SNAPSHOT_INTEGRITY", "snapshot ledger root hash is invalid")
+            for event in events:
+                con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (event["event_id"], event["schema_version"], event["idempotency_key"], event["stream_id"], event["stream_seq"], event["actor_id"], event["actor_role"], event["event_type"], canonical(event["payload"]), canonical(event["evidence"]), event["occurred_at"], event["prev_hash"], event["event_hash"]))
+                if event["stream_id"]:
+                    con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=MAX(current_seq,excluded.current_seq)", (event["stream_id"], event["stream_seq"]))
+            con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (previous,))
+            con.execute("INSERT INTO projection_state(id,canonical_json,projection_hash,as_of,event_count,updated_at) VALUES(1,?,?,?,?,?)", (canonical(restored_projection), restored_hash, source_projection["projection_as_of"], len(events), now_iso()))
+            con.execute("UPDATE projector_health SET status='HEALTHY',last_error=NULL,last_success_at=?,lag_events=0 WHERE id=1", (now_iso(),))
+            con.execute("COMMIT")
+        return {"canonical_hash": restored_hash, "event_log_hash": snapshot["event_log_hash"], "restored_at": now_iso()}
 
 
 def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -> dict[str, Any]:

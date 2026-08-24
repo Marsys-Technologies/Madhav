@@ -17,6 +17,7 @@ def main() -> None:
     init = sub.add_parser("init"); init.add_argument("--token", required=True)
     sub.add_parser("projection"); sub.add_parser("verify")
     snap = sub.add_parser("snapshot"); snap.add_argument("--path", required=True)
+    restore = sub.add_parser("restore"); restore.add_argument("--path", required=True)
     args = p.parse_args(); store = EventStore(args.runtime)
     try:
         if args.command == "provision-credentials": result = store.provision_local_credentials()
@@ -28,7 +29,8 @@ def main() -> None:
             result = store.submit({"actor_id": args.actor, "idempotency_key": args.key, "event_type": args.type, "payload": json.loads(args.payload), "evidence": json.loads(args.evidence), "stream_id": args.stream, "expected_stream_seq": args.expected_seq})
         elif args.command == "projection": result = store.projection()
         elif args.command == "verify": result = store.verify_replay()
-        else: result = store.export_snapshot(args.path)
+        elif args.command == "snapshot": result = store.export_snapshot(args.path)
+        else: result = store.restore_snapshot(args.path)
         print(json.dumps(result, indent=2, sort_keys=True))
     except RejectedEvent as exc:
         print(json.dumps({"accepted": False, "code": exc.code, "error": str(exc)})); raise SystemExit(2)

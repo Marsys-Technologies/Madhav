@@ -29,6 +29,7 @@ class EventBus:
     def __init__(self) -> None:
         self._queues: list[queue.Queue[str]] = []
         self._lock = threading.Lock()
+        self._service_unavailable = False
 
     def subscribe(self) -> queue.Queue[str]:
         q: queue.Queue[str] = queue.Queue()
@@ -44,6 +45,19 @@ class EventBus:
         with self._lock:
             for q in list(self._queues): q.put(payload)
 
+    def mark_service_unavailable(self) -> None:
+        with self._lock:
+            self._service_unavailable = True
+        self.publish({"service_health": "UNKNOWN", "reason": "replay monitor failure"})
+
+    def clear_service_unavailable(self) -> None:
+        with self._lock:
+            self._service_unavailable = False
+
+    def service_unavailable(self) -> bool:
+        with self._lock:
+            return self._service_unavailable
+
 
 class ReplayMonitor(threading.Thread):
     """Periodically prove that the materialized projection still matches the append-only log."""
@@ -57,11 +71,24 @@ class ReplayMonitor(threading.Thread):
         self._stop_event.set()
 
     def run(self) -> None:
-        while not self._stop_event.wait(self.interval_seconds):
-            result = self.store.verify_replay()
-            if result["ok"] != self._last_status:
-                self._last_status = result["ok"]
-                self.bus.publish(self.store.projection())
+        while not self._stop_event.is_set():
+            try:
+                result = self.store.verify_replay()
+                status = "HEALTHY" if result["ok"] else "INTEGRITY_DEGRADED"
+                self.store.record_monitor_status(status, None if result["ok"] else result.get("reason"))
+                self.bus.clear_service_unavailable()
+                if result["ok"] != self._last_status:
+                    self._last_status = result["ok"]
+                    self.bus.publish(self.store.projection())
+            except Exception as exc:
+                self._last_status = False
+                self.bus.mark_service_unavailable()
+                try:
+                    self.store.record_monitor_status("UNKNOWN", f"replay monitor failure: {type(exc).__name__}")
+                except Exception:
+                    pass
+            if self._stop_event.wait(self.interval_seconds):
+                return
 
 
 def adapter_health() -> dict:
@@ -104,7 +131,8 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
             path = urlparse(self.path).path
             if path == "/":
                 data = dashboard.read_bytes(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data); return
-            if path == "/api/projection": self._json(200, store.projection()); return
+            if path == "/api/projection":
+                self._json(200, {"service_health": "UNKNOWN", "reason": "replay monitor failure"} if bus.service_unavailable() else store.projection()); return
             if path == "/api/integrity": self._json(200, store.verify_replay()); return
             if path == "/api/rejected": self._json(200, {"rejected_events": store.rejected()}); return
             if path == "/api/adapters": self._json(200, adapter_health()); return
@@ -112,7 +140,8 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
                 self.send_response(200); self.send_header("Content-Type", "text/event-stream"); self.send_header("Cache-Control", "no-cache"); self.send_header("Connection", "keep-alive"); self.end_headers()
                 q = bus.subscribe()
                 try:
-                    self.wfile.write(("event: projection\ndata: " + json.dumps(store.projection(), separators=(",", ":")) + "\n\n").encode()); self.wfile.flush()
+                    initial = {"service_health": "UNKNOWN", "reason": "replay monitor failure"} if bus.service_unavailable() else store.projection()
+                    self.wfile.write(("event: projection\ndata: " + json.dumps(initial, separators=(",", ":")) + "\n\n").encode()); self.wfile.flush()
                     while True:
                         try: data = q.get(timeout=15); event = "projection"
                         except queue.Empty: data = json.dumps({"at": time.time()}); event = "ping"

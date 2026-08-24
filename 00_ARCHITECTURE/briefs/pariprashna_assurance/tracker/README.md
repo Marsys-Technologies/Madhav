@@ -90,3 +90,22 @@ delivery and latency are separately asserted by the HTTP-to-SSE integration test
 The service rejects non-loopback binds and non-local peers. Authentication and authorization
 for a networked or multi-user deployment are intentionally an A3 prerequisite; do not expose
 this CG-0 local proof service beyond its host.
+
+## Approved Option B installation (only after protected merge)
+
+Install only from a release directory exported from the merged immutable SHA; never invoke the
+service from a scratch worktree. The release directory must contain a `.source-sha` file whose
+single value is that merge SHA. The installer refuses a different runtime path, an unconfirmed
+FileVault host, an existing launchd label/plist, or an occupied loopback port; it never replaces
+another service.
+
+```sh
+python3 service.py --install --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA"
+```
+
+This creates the collision-checked user service
+`com.marsys.pariprashna-assurance-control`, bound to `127.0.0.1:8787`, using the approved
+`/Users/Dev/.pariprashna-assurance-control` runtime. The runtime and its SQLite files are
+enforced at 0700 and 0600 respectively. Create snapshots with `cli.py snapshot`, and restore
+only into a distinct empty recovery runtime with `cli.py restore`; neither operation accepts
+historical tracker-v2 data.
