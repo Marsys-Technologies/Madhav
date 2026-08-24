@@ -11,6 +11,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -134,6 +135,28 @@ def _provenance_git_output(source_repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _isolated_git_env() -> dict[str, str]:
+    """Remove caller-supplied Git/config/proxy/TLS state from network provenance."""
+    environment = {key: value for key, value in os.environ.items() if not (
+        key.startswith("GIT_CONFIG_") or key.startswith("GIT_SSL_") or key.startswith("GIT_HTTP_")
+        or key in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_OBJECT_DIRECTORY", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "CURL_CA_BUNDLE", "SSL_CERT_FILE", "SSL_CERT_DIR"}
+        or key.lower() in {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}
+    )}
+    environment.update({"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0"})
+    return environment
+
+
+def _isolated_git_run(repo: Path, *args: str, text: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo), *_PROVENANCE_GIT_CONFIG, *args], check=False, capture_output=True, text=text, env=_isolated_git_env())
+
+
+def _isolated_git_output(repo: Path, *args: str) -> str:
+    result = _isolated_git_run(repo, *args)
+    if result.returncode:
+        raise ValueError(result.stderr.strip() or f"isolated provenance git {' '.join(args)} failed")
+    return result.stdout.strip()
+
+
 def _canonical_madhav_origin(origin_remote: str) -> str:
     """Return the single persisted origin spelling only for approved GitHub remotes."""
     normalized = origin_remote.strip().rstrip("/")
@@ -144,31 +167,44 @@ def _canonical_madhav_origin(origin_remote: str) -> str:
     return CANONICAL_MADHAV_ORIGIN
 
 
-def _fresh_origin_main(source_repo: Path) -> str:
-    """Require an online origin lookup and fetch before trusting origin/main."""
+def _verified_release_source(source_repo: Path, source_sha: str, release_files: list[Path]) -> str:
+    """Verify main and the exported tree inside a new config-isolated bare repository."""
     _reject_git_transport_overrides(source_repo)
-    listing = _provenance_git_output(source_repo, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main").splitlines()
-    if len(listing) != 1:
-        raise ValueError("source repository did not return exactly one authenticated origin/main tip")
-    remote_main = listing[0].split("\t", 1)[0]
-    if len(remote_main) not in {40, 64} or any(char not in "0123456789abcdef" for char in remote_main.lower()):
-        raise ValueError("source repository returned an invalid origin/main object ID")
-    fetched = subprocess.run(["git", "-C", str(source_repo), *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"], check=False, capture_output=True, text=True)
-    if fetched.returncode:
-        raise ValueError(fetched.stderr.strip() or "could not fetch authenticated origin/main")
-    origin_main = _git_output(source_repo, "rev-parse", "--verify", "origin/main^{commit}")
-    if origin_main != remote_main:
-        raise ValueError("fetched origin/main does not match the freshly authenticated remote tip")
-    return origin_main
+    with tempfile.TemporaryDirectory(prefix="pariprashna-provenance-") as temporary:
+        bare = Path(temporary) / "verified.git"
+        initialized = subprocess.run(["git", "init", "--bare", str(bare)], check=False, capture_output=True, text=True, env=_isolated_git_env())
+        if initialized.returncode:
+            raise ValueError(initialized.stderr.strip() or "could not create isolated provenance repository")
+        listing = _isolated_git_output(bare, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main").splitlines()
+        if len(listing) != 1:
+            raise ValueError("source repository did not return exactly one authenticated origin/main tip")
+        remote_main = listing[0].split("\t", 1)[0]
+        if len(remote_main) not in {40, 64} or any(char not in "0123456789abcdef" for char in remote_main.lower()):
+            raise ValueError("source repository returned an invalid origin/main object ID")
+        fetched = _isolated_git_run(bare, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/heads/verified-origin-main")
+        if fetched.returncode:
+            raise ValueError(fetched.stderr.strip() or "could not fetch authenticated origin/main")
+        origin_main = _isolated_git_output(bare, "rev-parse", "--verify", "refs/heads/verified-origin-main^{commit}")
+        if origin_main != remote_main:
+            raise ValueError("fetched origin/main does not match the freshly authenticated remote tip")
+        try:
+            _isolated_git_output(bare, "cat-file", "-e", f"{source_sha}^{{commit}}")
+        except ValueError as exc:
+            raise ValueError("source SHA is not an immutable commit already merged into origin/main") from exc
+        ancestor = _isolated_git_run(bare, "merge-base", "--is-ancestor", source_sha, "refs/heads/verified-origin-main")
+        if ancestor.returncode:
+            raise ValueError("source SHA is not an immutable commit already merged into origin/main")
+        for path in release_files:
+            result = _isolated_git_run(bare, "show", f"{source_sha}:{SOURCE_TRACKER_PATH}/{path.name}", text=False)
+            if result.returncode or result.stdout != path.read_bytes():
+                raise ValueError(f"release artifact does not match the approved merged source: {path.name}")
+        return origin_main
 
 
-def _assert_approved_merge_source(source_repo: Path, source_sha: str) -> tuple[str, str]:
+def _assert_approved_merge_source(source_repo: Path, source_sha: str, release_files: list[Path]) -> tuple[str, str]:
     source_repo = Path(source_repo).resolve(strict=True)
     origin_remote = _canonical_madhav_origin(_git_output(source_repo, "config", "--get", "remote.origin.url"))
-    _git_output(source_repo, "cat-file", "-e", f"{source_sha}^{{commit}}")
-    origin_main = _fresh_origin_main(source_repo)
-    if subprocess.run(["git", "-C", str(source_repo), "merge-base", "--is-ancestor", source_sha, "origin/main"], check=False).returncode:
-        raise ValueError("source SHA is not an immutable commit already merged into origin/main")
+    origin_main = _verified_release_source(source_repo, source_sha, release_files)
     return origin_main, origin_remote
 
 
@@ -177,11 +213,7 @@ def attest_release(release_dir: Path, source_sha: str, source_repo: Path) -> Pat
     if len(source_sha) not in {40, 64} or any(char not in "0123456789abcdef" for char in source_sha.lower()):
         raise ValueError("source SHA must be a 40- or 64-character hexadecimal immutable revision")
     release_dir, source_files = _release_tree(release_dir, include_metadata=False, require_read_only=False)
-    origin_main, origin_remote = _assert_approved_merge_source(source_repo, source_sha)
-    for path in source_files:
-        result = subprocess.run(["git", "-C", str(Path(source_repo).resolve()), "show", f"{source_sha}:{SOURCE_TRACKER_PATH}/{path.name}"], check=False, capture_output=True)
-        if result.returncode or result.stdout != path.read_bytes():
-            raise ValueError(f"release artifact does not match the approved merged source: {path.name}")
+    origin_main, origin_remote = _assert_approved_merge_source(source_repo, source_sha, source_files)
     files = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in source_files}
     manifest = {"schema_version": RELEASE_SCHEMA, "source_sha": source_sha, "origin_main": origin_main, "origin_remote": origin_remote, "release_path": str(release_dir), "files": files}
     for name, value in ((".source-sha", source_sha + "\n"), (".release-manifest.json", json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n")):

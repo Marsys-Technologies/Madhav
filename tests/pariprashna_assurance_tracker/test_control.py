@@ -596,10 +596,11 @@ class ControlPlaneTests(unittest.TestCase):
             real_run = subprocess.run
             canonical_source = str(source.resolve())
             def fresh_remote(command, *args, **kwargs):
-                if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main"]:
+                if "ls-remote" in command and CANONICAL_MADHAV_ORIGIN in command:
                     return subprocess.CompletedProcess(command, 0, f"{source_sha}\trefs/heads/main\n", "")
-                if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"]:
-                    return subprocess.CompletedProcess(command, 0, "", "")
+                if "fetch" in command and CANONICAL_MADHAV_ORIGIN in command:
+                    bare = command[command.index("-C") + 1]
+                    return real_run(["git", "-C", bare, "fetch", "--quiet", str(local_remote), "refs/heads/main:refs/heads/verified-origin-main"], check=False, capture_output=True, text=True)
                 return real_run(command, *args, **kwargs)
             self._git(source, "remote", "set-url", "origin", str(local_remote))
             with self.assertRaises(ValueError) as untrusted_origin:
@@ -611,6 +612,8 @@ class ControlPlaneTests(unittest.TestCase):
                 attest_release(release, source_sha, source)
             self.assertIn("forbidden Git URL rewrite", str(rewritten_origin.exception))
             self._git(source, "config", "--unset-all", f"url.{local_remote}.insteadOf")
+            self._git(source, "config", f"http.{CANONICAL_MADHAV_ORIGIN}.proxy", "http://127.0.0.1:9")
+            self._git(source, "config", f"http.{CANONICAL_MADHAV_ORIGIN}.sslVerify", "false")
             (release / "server.py").write_text("arbitrary fixture content\n")
             with patch("service.subprocess.run", side_effect=fresh_remote):
                 with self.assertRaises(ValueError) as arbitrary:
@@ -618,10 +621,11 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertIn("does not match", str(arbitrary.exception))
                 (release / "server.py").write_bytes((source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py").read_bytes())
                 def stale_remote(command, *args, **kwargs):
-                    if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main"]:
+                    if "ls-remote" in command and CANONICAL_MADHAV_ORIGIN in command:
                         return subprocess.CompletedProcess(command, 0, f"{'b' * 40}\trefs/heads/main\n", "")
-                    if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"]:
-                        return subprocess.CompletedProcess(command, 0, "", "")
+                    if "fetch" in command and CANONICAL_MADHAV_ORIGIN in command:
+                        bare = command[command.index("-C") + 1]
+                        return real_run(["git", "-C", bare, "fetch", "--quiet", str(local_remote), "refs/heads/main:refs/heads/verified-origin-main"], check=False, capture_output=True, text=True)
                     return real_run(command, *args, **kwargs)
                 with patch("service.subprocess.run", side_effect=stale_remote):
                     with self.assertRaises(ValueError) as stale_tip:
@@ -629,7 +633,7 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertIn("does not match the freshly authenticated", str(stale_tip.exception))
                 with self.assertRaises(ValueError) as missing_sha:
                     attest_release(release, "a" * 40, source)
-                self.assertIn("not a valid object", str(missing_sha.exception).lower())
+                self.assertIn("not an immutable commit", str(missing_sha.exception))
                 (source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/README.md").write_text("unmerged source\n")
                 self._git(source, "add", "00_ARCHITECTURE")
                 self._git(source, "commit", "-m", "unmerged source")
