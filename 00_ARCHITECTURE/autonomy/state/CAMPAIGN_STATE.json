@@ -2067,8 +2067,9 @@
       "state": "reconciled_routed_for_mechanism_ruling"
     }
   ],
-  "last_updated_by": "SUTRADHARA [session:eb4320db]",
-  "last_updated_ts": "2026-08-23T21:20:30Z",
+  "last_updated_by": "SUTRADHARA [session:920ca6b4]",
+  "last_updated_ts": "2026-08-24T01:12:17Z",
+  "last_updated_ts_note": "D-129 found this field 4h stale, naming the dead session (eb4320db) that D-118 killed, even though the file's CONTENT had been changed minutes earlier to open R0 -- a reader would have concluded the dead session opened the rung. Corrected via date -u per D-128's binding rule. Going forward this field is updated in the SAME write as any substantive content change, not left to drift.",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
