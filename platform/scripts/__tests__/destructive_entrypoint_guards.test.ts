@@ -94,7 +94,7 @@ function read(rel: string): string {
  * The filter is what keeps this a pay-down list rather than a permanently-red one (D-39 part 2):
  * an unrepaired tier-1 file carries no guard, so it is not yet asserted about; the instant Wave 2
  * guards it, it enters this set and every assertion below applies to it with no edit here. The
- * set can therefore only GROW, and `COVERAGE_FLOOR` makes a shrink fail.
+ * set can therefore only GROW, and `TIER1_GUARD_COMPLETENESS_COUNT` makes a shrink fail.
  */
 const TRIAGE = JSON.parse(
   fs.readFileSync(
@@ -114,14 +114,37 @@ const carriesGuard = (rel: string): boolean => read(rel).includes(GUARD_LINE)
 const TARGETS = TIER1.filter((rel) => fs.existsSync(path.join(PLATFORM_DIR, rel)) && carriesGuard(rel))
 
 /**
- * Coverage may be paid UP, never down. 5 was M0-T65's wave 1; Wave 2 has now landed (M0-T78
- * dispatch, ratified D-122) and TARGETS measures 58 — the floor is raised to match, per the
- * floors-aspirational discipline (CLAUDE.md §N.4): a floor is the measured achieved count, never
- * an invented number. A derivation that silently returned [] (or regressed below 58) would make
- * every assertion below vacuous or short a repaired file, which is the failure mode this
- * constant exists to catch.
+ * ── NOT A FLOOR — A COMPLETENESS ASSERTION (ADHIKĀRIN D-126 item 3 / O-1, task M0-T86) ─────────
+ *
+ * This constant used to be named `COVERAGE_FLOOR` and read 5, then 58 (M0-T83). But
+ * `TARGETS` is filtered FROM `TIER1` (`TARGETS = TIER1.filter(existsSync && carriesGuard)`),
+ * so `TARGETS.length` can never exceed `TIER1.length`, which `TIER1.length === 58` asserts is
+ * fixed at the M0-T64 triage snapshot's tier-1 population (see the `TIER1.length).toBe(58)`
+ * assertion below). Given that ceiling, "TARGETS.length >= 58" and "TARGETS.length === 58" are
+ * the same check — the moment the constant equals the whole population it has stopped being a
+ * lower bound (D-109 §4's floor semantics: "asserts non-vacuity, not currency... must never
+ * become a second baseline that has to be maintained") and become an equality wearing a floor's
+ * name. D-126 item 3 ruled this must be named for what it actually is.
+ *
+ * WHAT IT ACTUALLY ASSERTS: every one of the 58 files the M0-T64 triage snapshot identified as
+ * tier-1 currently exists AND carries the guard — i.e. Wave 1 + Wave 2's guard sweep is, as of
+ * this constant's value, COMPLETE over the frozen triage population. It is not catching a
+ * broken derivation returning too few results out of an unbounded population (that is what a
+ * real floor is for); it is asserting a specific, checkable completion fact about a fixed set.
+ *
+ * CLEARING PATH FOR A LEGITIMATE FUTURE DELETION: if a tier-1 file is deliberately retired and
+ * removed from the repo, `TARGETS` will correctly drop it (via `existsSync`) and this assertion
+ * will go red FOR DOING SOMETHING CORRECT unless this constant is updated in the same change —
+ * that is the exact "punishes progress" failure D-39 part 2 and D-126 item 3 named. The author
+ * making that deletion must explicitly lower `TIER1_GUARD_COMPLETENESS_COUNT` by the number of
+ * files removed, with a one-line reason (which file, why), in the same commit — never let CI
+ * "fix itself" by silently tolerating a shrink. This is the same discipline as
+ * `entrypoint_ratchet_allowlist.json`'s own floor, which is only ever moved via its
+ * `--regenerate` flag, never by hand or by widening a tolerance to make a check pass; the
+ * mechanism here is a hand-edited constant with a stated reason rather than a regenerate script,
+ * which is proportionate for a single integer with one call site.
  */
-const COVERAGE_FLOOR = 58
+const TIER1_GUARD_COMPLETENESS_COUNT = 58
 
 /**
  * THE one shared implementation (M0-T66, ruling D-67 part 3). Until M0-T66 this constant named
@@ -235,7 +258,10 @@ describe('M0-T65 §1 — structural: every guarded tier-1 destructive script car
     // would simply not exist — a green suite asserting nothing, which is the exact shape
     // §N.8 calls an unearned signal.
     expect(TIER1.length).toBe(58) // M0-T64's measured tier-1 population
-    expect(TARGETS.length).toBeGreaterThanOrEqual(COVERAGE_FLOOR)
+    // Completeness, not a floor: TARGETS is a subset of TIER1 by construction, so this can
+    // never silently pass on a shrunk-but-still-"sufficient" count — see the constant's own
+    // comment above for why >= and === coincide here and why that is the point, not a defect.
+    expect(TARGETS.length).toBeGreaterThanOrEqual(TIER1_GUARD_COMPLETENESS_COUNT)
     // Every guarded tier-1 file is covered: coverage is 100% of guarded files by construction,
     // not a list somebody remembered to extend.
     expect(TIER1.filter((rel) => fs.existsSync(path.join(PLATFORM_DIR, rel)) && carriesGuard(rel)))
