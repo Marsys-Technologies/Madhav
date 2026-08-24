@@ -51,10 +51,23 @@ def runtime_preflight(runtime: Path, approved_runtime: Path, filevault_status: s
     os.chmod(runtime, 0o700)
 
 
+def _secure_service_logs(runtime: Path) -> None:
+    """Create launchd log targets privately before the service can write to them."""
+    for name in ("service.log", "service.error.log"):
+        descriptor = os.open(runtime / name, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+        try:
+            status = os.fstat(descriptor)
+            if not stat.S_ISREG(status.st_mode) or status.st_uid != os.getuid():
+                raise ValueError(f"service log must be a current-user regular file: {name}")
+            os.fchmod(descriptor, 0o600)
+        finally:
+            os.close(descriptor)
+
+
 def build_launchd_plist(release_dir: Path, runtime: Path, port: int = 8787) -> bytes:
     return plistlib.dumps({
         "Label": SERVICE_LABEL,
-        "ProgramArguments": [sys.executable, str(release_dir / "server.py"), "--runtime", str(runtime), "--host", "127.0.0.1", "--port", str(port)],
+        "ProgramArguments": [sys.executable, str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--host", "127.0.0.1", "--port", str(port)],
         "RunAtLoad": True,
         "KeepAlive": {"SuccessfulExit": False},
         "ProcessType": "Background",
@@ -262,6 +275,7 @@ def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787)
         raise ValueError("launchd installation is supported only on macOS")
     release_dir = assert_release_attestation(release_dir, source_sha)
     runtime_preflight(runtime, APPROVED_RUNTIME, _filevault_status())
+    _secure_service_logs(runtime)
     plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
     _assert_unclaimed(SERVICE_LABEL, port, plist_path)
     plist_path.parent.mkdir(parents=True, exist_ok=True)

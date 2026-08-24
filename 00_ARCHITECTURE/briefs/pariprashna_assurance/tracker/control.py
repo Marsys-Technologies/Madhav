@@ -72,7 +72,7 @@ def parse_time(value: str | None) -> float | None:
         return None
 
 
-def programme_definition() -> dict[str, Any]:
+def programme_definition(p0b_only: bool = False) -> dict[str, Any]:
     phases = [{"id": pid, "name": name, "campaign_weight": weight, "entry_gate": f"CG-{index - 1}" if index else None, "exit_gate": f"CG-{index}"} for index, (pid, name, weight) in enumerate(PHASES)]
     work_items: list[dict[str, Any]] = []
     for phase in phases:
@@ -82,7 +82,7 @@ def programme_definition() -> dict[str, Any]:
                     work_items.append({"id": f"{sid}:{stage_id}", "phase_id": "P3", "stream_id": sid, "title": stage_name, "campaign_points": 7.5 * weight / 100, "kind": "stream_lifecycle"})
         else:
             work_items.append({"id": f"{phase['id']}:completion", "phase_id": phase["id"], "stream_id": None, "title": f"{phase['name']} completion evidence", "campaign_points": float(phase["campaign_weight"]), "kind": "phase_completion"})
-    return {"schema_version": "campaign-definition@1", "campaign": {"id": "pariprashna-experience-assurance-v3", "name": "Paripraśna Experience Assurance Programme v3.0"}, "phases": phases, "streams": [{"id": sid, "name": name, "phase_id": "P3", "campaign_weight": 7.5} for sid, name in STREAMS], "gates": [{"id": gid, "name": name} for gid, name in GATES], "dependencies": [{"from": "P0", "to": "P1"}, {"from": "P1", "to": "P2"}, {"from": "P2", "to": "P3"}, {"from": "P3", "to": "P4"}, {"from": "P4", "to": "P5"}, {"from": "P5", "to": "P6"}, {"from": "P6", "to": "P7"}], "work_items": work_items}
+    return {"schema_version": "campaign-definition@1", "operator_mode": "P0B_ONLY" if p0b_only else "GENERAL", "campaign": {"id": "pariprashna-experience-assurance-v3", "name": "Paripraśna Experience Assurance Programme v3.0"}, "phases": phases, "streams": [{"id": sid, "name": name, "phase_id": "P3", "campaign_weight": 7.5} for sid, name in STREAMS], "gates": [{"id": gid, "name": name} for gid, name in GATES], "dependencies": [{"from": "P0", "to": "P1"}, {"from": "P1", "to": "P2"}, {"from": "P2", "to": "P3"}, {"from": "P3", "to": "P4"}, {"from": "P4", "to": "P5"}, {"from": "P5", "to": "P6"}, {"from": "P6", "to": "P7"}], "work_items": work_items}
 
 
 def contains_progress(value: Any) -> bool:
@@ -94,8 +94,9 @@ def contains_progress(value: Any) -> bool:
 
 
 class EventStore:
-    def __init__(self, runtime_dir: str | Path):
+    def __init__(self, runtime_dir: str | Path, *, p0b_only: bool = False):
         self.runtime_dir = Path(runtime_dir)
+        self.p0b_only = p0b_only
         self.runtime_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
         self._secure_runtime_path(self.runtime_dir, 0o700)
         self.db_path = self.runtime_dir / "control-plane.sqlite3"
@@ -158,7 +159,7 @@ class EventStore:
                 CREATE TABLE IF NOT EXISTS projector_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT, lag_events INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS monitor_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT);
             """)
-            definition = canonical(programme_definition())
+            definition = canonical(programme_definition(self.p0b_only))
             stored_definition = con.execute("SELECT definition_json FROM ledger_meta WHERE id=1").fetchone()
             if not stored_definition:
                 con.execute("INSERT INTO ledger_meta(id,last_hash,definition_json) VALUES(1,?,?)", ("0" * 64, definition))
@@ -171,6 +172,11 @@ class EventStore:
             self._seed_actors(con)
 
     def _seed_actors(self, con: sqlite3.Connection) -> None:
+        if self.p0b_only:
+            rows = (("lead-p0b", "STREAM_LEAD", ["P0"]), ("surrogate-p0b", "NATIVE_SURROGATE", ["P0"]), ("verifier-p0b", "INDEPENDENT_VERIFIER", ["P0"]), ("integrator-p0b", "PROGRAMME_INTEGRATOR", ["P0"]))
+            for actor_id, role, streams in rows:
+                con.execute("INSERT OR IGNORE INTO actors(actor_id,role,streams_json,token_hash) VALUES(?,?,?,?)", (actor_id, role, canonical(streams), secrets.token_hex(32)))
+            return
         all_streams = [sid for sid, _ in STREAMS] + ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"]
         rows = *[(f"lead-{phase_id.lower()}", "STREAM_LEAD", [phase_id]) for phase_id, _, _ in PHASES], *[(f"lead-{sid.lower()}", "STREAM_LEAD", [sid]) for sid, _ in STREAMS], ("surrogate", "NATIVE_SURROGATE", all_streams), ("verifier", "INDEPENDENT_VERIFIER", all_streams), ("integrator", "PROGRAMME_INTEGRATOR", all_streams), ("native", "NATIVE", all_streams)
         for actor_id, role, streams in rows:
@@ -593,7 +599,7 @@ class EventStore:
 
     def _verify_event_chain(self, con: sqlite3.Connection) -> tuple[bool, str, str]:
         meta = con.execute("SELECT last_hash,definition_json FROM ledger_meta WHERE id=1").fetchone()
-        if not meta or meta["definition_json"] != canonical(programme_definition()):
+        if not meta or meta["definition_json"] != canonical(programme_definition(self.p0b_only)):
             return False, "programme definition mismatch", "0" * 64
         previous = "0" * 64
         for row in con.execute("SELECT * FROM events ORDER BY ledger_seq"):
@@ -791,7 +797,7 @@ class EventStore:
         source_projection = snapshot.get("projection")
         if not isinstance(source_projection, dict) or not isinstance(source_projection.get("projection_as_of"), str) or not isinstance(source_projection.get("canonical"), dict) or not isinstance(source_projection.get("canonical_hash"), str):
             raise RejectedEvent("SNAPSHOT_INVALID", "snapshot projection envelope is invalid")
-        restored_projection = fold(programme_definition(), events, source_projection["projection_as_of"])
+        restored_projection = fold(programme_definition(self.p0b_only), events, source_projection["projection_as_of"])
         restored_hash = digest(restored_projection)
         if source_projection["canonical"] != restored_projection or source_projection["canonical_hash"] != restored_hash:
             raise RejectedEvent("SNAPSHOT_RECONCILIATION", "snapshot projection does not reconcile with its event log")
