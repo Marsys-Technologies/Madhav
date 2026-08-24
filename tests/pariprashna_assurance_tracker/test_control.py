@@ -103,6 +103,15 @@ class ControlPlaneTests(unittest.TestCase):
                 submit({"planned_scenarios": 1}, "missing-session")
             self.assertEqual(missing_session.exception.code, "SESSION_ID_REQUIRED")
 
+    def test_each_phase_has_a_scoped_execution_lead(self):
+        p1 = self.emit("lead-p1", "work_started", {"session_id": "p1-takeover", "assignment": "takeover reconciliation"}, "P1")
+        self.assertTrue(p1["accepted"])
+        phase = next(phase for phase in self.store.projection()["canonical"]["phases"] if phase["id"] == "P1")
+        self.assertEqual(phase["responsible_session"], "p1-takeover")
+        with self.assertRaises(RejectedEvent) as wrong_phase:
+            self.emit("lead-p0", "work_started", {"session_id": "wrong-phase"}, "P1")
+        self.assertEqual(wrong_phase.exception.code, "STREAM_FORBIDDEN")
+
     def test_concurrent_stream_writers_retry_without_loss(self):
         self.emit("lead-s1", "work_started", {"session_id": "concurrent", "planned_scenarios": 12}, "S1")
         failures = []; accepted = []

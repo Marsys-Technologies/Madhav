@@ -10,9 +10,9 @@ python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/cli.py --runtime "$
 ```
 
 Before recording P1 work, verify replay is `ok: true`, inspect rejected events, enroll a
-real stream lead/verifier/integrator identity through the approved deployment process, and
+real phase lead/verifier/integrator identity through the approved deployment process, and
 replace the local-proof credential issuer before any non-loopback deployment. Retrieve only
-the owning actor's runtime token (for example, `jq -r '.tokens.lead-p0'
+the owning actor's runtime token (for example, `jq -r '.tokens.lead-p1'
 "$TRACKER_RUNTIME/local-credentials.json"`) and record a P1 `work_started` event with
 branch, worktree, baseline SHA, model/reasoning configuration, assignment, ceiling, any
 recorded cost, an optional validated `participants` roster (registered known roles must match

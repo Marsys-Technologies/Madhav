@@ -136,7 +136,7 @@ class EventStore:
 
     def _seed_actors(self, con: sqlite3.Connection) -> None:
         all_streams = [sid for sid, _ in STREAMS] + ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"]
-        rows = [("lead-p0", "STREAM_LEAD", ["P0"]), *[(f"lead-{sid.lower()}", "STREAM_LEAD", [sid]) for sid, _ in STREAMS], ("surrogate", "NATIVE_SURROGATE", all_streams), ("verifier", "INDEPENDENT_VERIFIER", all_streams), ("integrator", "PROGRAMME_INTEGRATOR", all_streams), ("native", "NATIVE", all_streams)]
+        rows = *[(f"lead-{phase_id.lower()}", "STREAM_LEAD", [phase_id]) for phase_id, _, _ in PHASES], *[(f"lead-{sid.lower()}", "STREAM_LEAD", [sid]) for sid, _ in STREAMS], ("surrogate", "NATIVE_SURROGATE", all_streams), ("verifier", "INDEPENDENT_VERIFIER", all_streams), ("integrator", "PROGRAMME_INTEGRATOR", all_streams), ("native", "NATIVE", all_streams)
         for actor_id, role, streams in rows:
             con.execute("INSERT OR IGNORE INTO actors(actor_id,role,streams_json,token_hash) VALUES(?,?,?,?)", (actor_id, role, canonical(streams), secrets.token_hex(32)))
 

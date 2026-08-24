@@ -40,6 +40,7 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 25 | Privileged recovery and owner-bound, server-timestamped presence | `test_rebuild_and_presence_are_privilege_bound` |
 | 26 | One-command demo startup cannot contaminate a populated runtime or look like campaign evidence | `test_demo_seed_requires_an_empty_runtime`; `browser_smoke.sh` serves the fixture through `server.py --demo` and asserts the visible synthetic-warning label |
 | 27 | Remediation denominator freezes only after triage and cannot earn credit outside its contract | `test_remediation_plan_is_frozen_after_triage` |
+| 28 | Every campaign phase can be assigned to its own phase-scoped execution lead | `test_each_phase_has_a_scoped_execution_lead` |
 
 The same privilege test also proves that a session identifier cannot be reused across streams,
 so a presence record has an unambiguous durable owner.

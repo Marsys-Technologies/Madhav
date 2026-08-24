@@ -41,6 +41,9 @@ state belongs outside this repository and must not be manually edited.
 For a non-demo local runtime, first run `cli.py --runtime "$TRACKER_RUNTIME"
 provision-credentials`. It creates a random, mode-0600 credential file for that runtime.
 `init` and `emit` require the matching actor token; there are no default bearer tokens.
+The local-proof runtime includes separately scoped `lead-p0` through `lead-p7` identities and
+one lead for each P3 stream; a production runtime must enroll corresponding approved identities
+through its A3-governed issuer.
 
 ## Acceptance evidence
 
