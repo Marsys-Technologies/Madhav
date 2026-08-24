@@ -11,11 +11,11 @@ const LAYERS = [
 type SourceId = keyof NirmanaElevationRawSources
 
 export interface NirmanaElevationRawSources {
-  asset_registry: Array<{ asset_id: string; english_name: string | null; layer: string; sort_order: number; has_writer: boolean | null; asset_type: string | null; asset_kind: string | null; is_active: boolean; depends_on: string[] | null }>
-  asset_throughput: Array<{ asset_id: string; state: string; last_built_at: string | null }>
+  asset_registry: Array<{ asset_id: string; english_name: string | null; layer: string; scope: string; sort_order: number; has_writer: boolean | null; asset_type: string | null; asset_kind: string | null; is_active: boolean; depends_on: string[] | null }>
+  asset_throughput: Array<{ asset_id: string; chart_id: string | null; state: string; last_built_at: string | null }>
   build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
-  build_substep_progress: Array<{ asset_id: string; committed: string | number; last_progress_at: string | null }>
+  build_substep_progress: Array<{ chart_id: string; asset_id: string; committed: string | number; last_progress_at: string | null }>
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
   campaign_events: Array<{ campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>
 }
@@ -47,11 +47,11 @@ async function loadSource<K extends SourceId>(sourceId: K, sql: string): Promise
 
 /** Only primary build tables plus tracker-owned evidence tables feed this projection. */
 export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevationRawSources> {
-  const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, sort_order, has_writer, asset_type, asset_kind, is_active, COALESCE(depends_on, '{}') AS depends_on FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order, asset_id`)
-  const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, last_built_at DESC NULLS LAST`)
+  const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, scope, sort_order, has_writer, asset_type, asset_kind, is_active, COALESCE(depends_on, '{}') AS depends_on FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order, asset_id`)
+  const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
   const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
-  const substeps = await loadSource('build_substep_progress', `SELECT bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.asset_id`)
+  const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
   const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
   const events = await loadSource('campaign_events', `SELECT campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC`)
   return { ...registry, ...throughput, ...runs, ...runAssets, ...substeps, ...definitions, ...events }
@@ -88,10 +88,10 @@ function activeRunPriority(run: NirmanaElevationRawSources['build_runs'][number]
 }
 
 /** Current-run state is selected from active runs only, newest run first. */
-function currentRunAssetsById(raw: NirmanaElevationRawSources): Map<string, NirmanaElevationRawSources['build_run_assets'][number]> {
+function currentRunAssetsById(raw: NirmanaElevationRawSources, chartId: string | null | undefined): Map<string, NirmanaElevationRawSources['build_run_assets'][number]> {
   const activeRunsById = new Map(
     raw.build_runs
-      .filter((run) => ['planned', 'running', 'paused'].includes(run.state))
+      .filter((run) => chartId !== undefined && run.chart_id === chartId && ['planned', 'running', 'paused'].includes(run.state))
       .map((run) => [run.id, run]),
   )
   const ordered = raw.build_run_assets
@@ -114,6 +114,20 @@ function currentRunAssetsById(raw: NirmanaElevationRawSources): Map<string, Nirm
   return byAsset
 }
 
+function runtimeThroughputById(raw: NirmanaElevationRawSources, registryById: Map<string, NirmanaElevationRawSources['asset_registry'][number]>, chartId: string | null | undefined): Map<string, NirmanaElevationRawSources['asset_throughput'][number]> {
+  const rows = raw.asset_throughput
+    .filter((entry) => {
+      const scope = registryById.get(entry.asset_id)?.scope
+      return scope === 'global' ? entry.chart_id === null : chartId !== undefined && entry.chart_id === chartId
+    })
+    .sort((left, right) => (Date.parse(right.last_built_at ?? '') || 0) - (Date.parse(left.last_built_at ?? '') || 0))
+  const byAsset = new Map<string, NirmanaElevationRawSources['asset_throughput'][number]>()
+  for (const entry of rows) {
+    if (!byAsset.has(entry.asset_id)) byAsset.set(entry.asset_id, entry)
+  }
+  return byAsset
+}
+
 function buildRunId(sourceRef: string): string | null {
   return sourceRef.startsWith('build_run:') ? sourceRef.slice('build_run:'.length) : null
 }
@@ -125,9 +139,11 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const manifest = validManifest(definition, new Set(registryById.keys()))
   const manifestAssets = manifest?.assets ?? null
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
-  const throughputById = new Map(raw.asset_throughput.map((entry) => [entry.asset_id, entry]))
-  const runAssetById = currentRunAssetsById(raw)
-  const substepsById = new Map(raw.build_substep_progress.map((entry) => [entry.asset_id, entry]))
+  const throughputById = runtimeThroughputById(raw, registryById, manifest?.chart_id)
+  const runAssetById = currentRunAssetsById(raw, manifest?.chart_id)
+  const substepsById = new Map(raw.build_substep_progress
+    .filter((entry) => manifest?.chart_id !== undefined && entry.chart_id === manifest.chart_id)
+    .map((entry) => [entry.asset_id, entry]))
   const campaignEvents = definition ? raw.campaign_events.filter((event) => event.definition_revision === definition.definition_revision) : []
   const eventTypesByAsset = new Map<string, Set<string>>()
   for (const event of campaignEvents) {
@@ -247,7 +263,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   })
 
   const active_runs = raw.build_runs
-    .filter((run) => ['planned', 'running', 'paused'].includes(run.state))
+    .filter((run) => manifest?.chart_id !== undefined && run.chart_id === manifest.chart_id && ['planned', 'running', 'paused'].includes(run.state))
     .sort((left, right) => activeRunPriority(right) - activeRunPriority(left) || runTimestamp(right) - runTimestamp(left) || right.id.localeCompare(left.id))
     .map((run) => {
     const runAssets = raw.build_run_assets.filter((asset) => asset.run_id === run.id)
@@ -262,7 +278,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     ...(definitionIsFrozen ? [] : ['Campaign denominator is reconciling; totals and percentages are withheld.']),
     'Release reconciliation is not yet connected to an authoritative deployment source.',
   ]
-  const semantic = { campaign: definition ? { campaign_id: definition.campaign_id, definition_revision: definition.definition_revision, definition_status: definition.definition_status } : { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling' }, raw, assets, layers, active_runs }
+  const semantic = { campaign: definition ? { campaign_id: definition.campaign_id, definition_revision: definition.definition_revision, definition_status: definition.definition_status } : { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling' }, assets, layers, active_runs }
   const generation = digest(semantic)
   return NirmanaElevationSnapshotSchema.parse({
     schema_version: '1.0', generation, generated_at,
