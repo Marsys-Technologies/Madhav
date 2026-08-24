@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pariprashna-assurance-event@1",
+  "title": "Pariprashna assurance event",
+  "type": "object",
+  "required": ["actor_id", "idempotency_key", "event_type", "payload"],
+  "properties": {
+    "actor_id": {"type": "string", "minLength": 1},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "stream_id": {"type": ["string", "null"]},
+    "expected_stream_seq": {"type": ["integer", "null"], "minimum": 0},
+    "event_type": {"type": "string"},
+    "payload": {"type": "object", "not": {"required": ["progress"]}},
+    "evidence": {"type": "array", "items": {"type": "object", "required": ["kind", "uri"], "properties": {"kind": {"type": "string"}, "uri": {"type": "string", "minLength": 1}}}}
+  },
+  "additionalProperties": false
+}

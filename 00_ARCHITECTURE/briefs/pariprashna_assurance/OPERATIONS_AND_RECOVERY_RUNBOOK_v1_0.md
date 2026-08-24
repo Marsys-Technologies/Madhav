@@ -1,0 +1,60 @@
+---
+artifact: PARIPRASHNA_ASSURANCE_OPERATIONS_AND_RECOVERY_RUNBOOK
+version: 1.0
+status: CURRENT
+date: 2026-08-24
+---
+
+# Operations and recovery runbook
+
+Use an approved runtime path outside the repository; no generated database, snapshot, or
+dashboard state is committed. For a local proof:
+
+### Disposable dashboard demonstration
+
+From `00_ARCHITECTURE/briefs/pariprashna_assurance/tracker`, run:
+
+```sh
+python3 server.py --demo --runtime "$(mktemp -d /private/tmp/pariprashna-assurance-demo-XXXXXX)"
+```
+
+Then open `http://127.0.0.1:8787`. `--demo` only accepts a newly empty directory and must
+never be pointed at a campaign runtime. It seeds synthetic fixture state and is not campaign
+evidence.
+
+### Controlled local proof
+
+```sh
+TRACKER_RUNTIME=/private/tmp/pariprashna-assurance-demo
+python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/cli.py --runtime "$TRACKER_RUNTIME" provision-credentials
+TRACKER_INTEGRATOR_TOKEN=$(jq -r '.tokens.integrator' "$TRACKER_RUNTIME/local-credentials.json")
+python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/cli.py --runtime "$TRACKER_RUNTIME" init --token "$TRACKER_INTEGRATOR_TOKEN"
+python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py --runtime "$TRACKER_RUNTIME"
+```
+
+The server binds `127.0.0.1:8787` by default. `provision-credentials` exclusively reserves the
+mode-0600 credential file before issuing random,
+per-runtime actor tokens in a mode-0600 runtime file and refuses to overwrite it. The CLI
+requires the matching provisioned token for bootstrap or event emission; HTTP writes require
+the same token. Dashboard reads are deliberately unauthenticated only on the loopback proof
+service. Production authentication, host exposure, backup policy, token issuance, and
+release remain A3 decisions.
+
+While running, the service performs a full replay/hash comparison every 60 seconds by
+default. The interval is configurable only to a positive duration with
+`--verify-interval`; a mismatch publishes an integrity-degraded projection to connected
+dashboards. This check is in addition to replay after accepted durable events.
+
+## Recovery
+
+1. Stop the process; do not edit `events`.
+2. Run `cli.py --runtime "$TRACKER_RUNTIME" verify`.
+3. If the materialized projection is missing or mismatched, call `POST /api/rebuild` with
+   an authorized integrator token, or restart the service; it replays the event log.
+4. If replay fails, preserve the database read-only, export a filesystem copy, and open an
+   integrity incident. Do not delete or rewrite rows.
+5. Export an immutable snapshot only after a successful replay:
+   `cli.py --runtime "$TRACKER_RUNTIME" snapshot --path /approved/path/snapshot.json`.
+
+The rejected-event queue is an audit surface, not an error log to clear. Corrections are
+new events referencing the original evidence.

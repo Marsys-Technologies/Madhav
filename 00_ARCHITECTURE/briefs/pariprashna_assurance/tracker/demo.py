@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Seed a disposable demonstration runtime; never use this for campaign evidence."""
+from __future__ import annotations
+import argparse
+from control import EventStore
+
+E = [{"kind": "demo-fixture", "uri": "fixture://pariprashna-assurance/demo"}]
+
+def submit(store, actor, typ, payload, stream=None, key=""):
+    return store.submit({"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{stream}-{store.next_stream_seq(stream) if stream else 0}", "event_type": typ, "payload": payload, "stream_id": stream, "expected_stream_seq": store.next_stream_seq(stream) if stream else None, "evidence": E})
+
+def accept_item(store, stream, item, number):
+    lead = f"lead-{stream.lower()}" if stream.startswith("S") else "lead-p0"
+    v = submit(store, "verifier", "verification_accepted", {"verification_id": f"demo-v-{item}", "work_item_id": item, "finder_actor_id": lead, "fixer_actor_id": lead}, stream, f"v-{item}")
+    submit(store, "integrator", "work_item_accepted", {"work_item_id": item, "verification_event_id": v["event"]["event_id"]}, stream, f"a-{item}")
+
+def seed(runtime):
+    store = EventStore(runtime)
+    submit(store, "integrator", "campaign_bootstrapped", {"campaign_id": "demo"}, key="bootstrap")
+    v = submit(store, "verifier", "verification_accepted", {"verification_id": "p0-v", "work_item_id": "P0:completion", "finder_actor_id": "lead-p0", "fixer_actor_id": "lead-p0"}, "P0", "p0-v")
+    submit(store, "integrator", "work_item_accepted", {"work_item_id": "P0:completion", "verification_event_id": v["event"]["event_id"]}, "P0", "p0-a")
+    submit(store, "lead-s1", "work_started", {"session_id": "demo-running", "assignment": "S1 baseline", "planned_scenarios": 3, "model": "demo", "reasoning_config": "fixture"}, "S1", "running")
+    store.record_presence("lead-s1", "demo-running", "S1", "ACTIVE")
+    submit(store, "lead-s2", "work_started", {"session_id": "demo-blocked", "assignment": "S2 investigation", "planned_scenarios": 2}, "S2", "blocked-start")
+    submit(store, "lead-s2", "blocked", {"reason": "fixture blocker"}, "S2", "blocked")
+    submit(store, "lead-s3", "work_started", {"session_id": "demo-paused", "assignment": "S3 investigation", "planned_scenarios": 2}, "S3", "paused-start")
+    submit(store, "lead-s3", "paused", {"reason": "fixture pause"}, "S3", "paused")
+    submit(store, "lead-s4", "work_started", {"session_id": "demo-verifying", "assignment": "S4 verification", "planned_scenarios": 2}, "S4", "verify-start")
+    submit(store, "lead-s4", "verification_started", {}, "S4", "verify")
+    submit(store, "lead-s5", "work_started", {"session_id": "demo-failed", "assignment": "S5 test", "planned_scenarios": 2}, "S5", "failed-start")
+    submit(store, "lead-s5", "failed", {"reason": "fixture failure"}, "S5", "failed")
+    submit(store, "lead-s6", "work_started", {"session_id": "demo-complete", "assignment": "S6 closed-loop regression", "planned_scenarios": 2}, "S6", "complete-start")
+    submit(store, "lead-s6", "scenario_executed", {"scenario_id": "demo-s6-1"}, "S6", "complete-scenario-1")
+    submit(store, "lead-s6", "scenario_executed", {"scenario_id": "demo-s6-2"}, "S6", "complete-scenario-2")
+    submit(store, "surrogate", "remediation_approved", {"remediation_plan": []}, "S6", "complete-remediation-plan")
+    for n, stage in enumerate(("charter", "baseline", "triage", "remediation", "verification", "regression")):
+        accept_item(store, "S6", f"S6:{stage}", n)
+    submit(store, "verifier", "stream_closure_recommended", {"finder_actor_id": "lead-s6"}, "S6", "complete-recommendation")
+    submit(store, "integrator", "result_packet_accepted", {"stream_id": "S6"}, "S6", "complete-packet")
+    return store.projection()
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); a = p.parse_args(); print(seed(a.runtime)["canonical_hash"])
