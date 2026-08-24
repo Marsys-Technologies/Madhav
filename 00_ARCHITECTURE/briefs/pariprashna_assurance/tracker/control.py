@@ -527,12 +527,12 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "execution_session": None} for s in definition["streams"]}
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; scope_changes: list[dict[str, Any]] = []
-    bootstrapped = False
+    bootstrapped = False; demonstration = False
     for event in events:
         typ, payload, evidence = event["event_type"], event["payload"], event["evidence"]
         phase_id = payload.get("phase_id") or ("P3" if event.get("stream_id") in streams else event.get("stream_id"))
         if typ == "campaign_bootstrapped":
-            bootstrapped = True; phases["P0"]["lifecycle"] = "RUNNING"
+            bootstrapped = True; demonstration = payload.get("campaign_id") == "demo"; phases["P0"]["lifecycle"] = "RUNNING"
         elif typ == "work_started":
             sid = payload.get("session_id")
             if sid:
@@ -633,7 +633,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         phases["P3"]["lifecycle"] = "PAUSED"
     elif "FAILED" in stream_states:
         phases["P3"]["lifecycle"] = "FAILED"
-    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": definition["dependencies"], "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
+    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": definition["dependencies"], "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
 
 
 def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[str, Any]], as_of: str, integrity_ok: bool) -> dict[str, Any]:

@@ -31,11 +31,11 @@ the A3 runtime/deployment authority described below.
 
 ## Verification
 
-- 27 automated unit/integration/adversarial proofs, including replay/hash, idempotency,
+- 28 automated unit/integration/adversarial proofs, including replay/hash, idempotency,
   concurrent writers, authorization, independent-verifier controls, stale/paused distinction,
   projector corruption/recovery, periodic replay monitoring, scenario/closure rules,
   scope-change explanations, snapshot reconciliation, SSE latency, and privileged rebuild/
-  presence ownership controls, plus protected disposable-demo startup.
+  presence ownership controls, plus protected and visibly labelled disposable-demo startup.
 - Desktop and 390 px rendered browser smoke passed.
 - Independent verdict: `INDEPENDENT_VERIFIER_REPORT_v1_0.md` — PASS for local CG-0 proof.
 

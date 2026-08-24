@@ -54,6 +54,7 @@ class ControlPlaneTests(unittest.TestCase):
             seed_empty_demo_runtime(runtime)
             projection = EventStore(runtime).projection()
             self.assertTrue(projection["canonical"]["bootstrapped"])
+            self.assertEqual(projection["canonical"]["runtime_mode"], "DEMONSTRATION")
             self.assertTrue(any(stream["lifecycle"] == "COMPLETE" for stream in projection["display"]["streams"]))
             with self.assertRaises(ValueError): seed_empty_demo_runtime(runtime)
             non_directory = Path(root) / "not-a-runtime"; non_directory.write_text("preserve me")
@@ -63,6 +64,13 @@ class ControlPlaneTests(unittest.TestCase):
     def test_bootstrap_has_no_fabricated_historical_credit(self):
         canonical = self.store.projection()["canonical"]
         self.assertTrue(canonical["bootstrapped"]); self.assertEqual(canonical["completion"]["earned_campaign_points"], 0); self.assertTrue(all(g["status"] == "OPEN" for g in canonical["gates"]))
+
+    def test_non_demo_bootstrap_projects_campaign_runtime(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            store = EventStore(runtime)
+            store.submit({"actor_id": "integrator", "idempotency_key": "campaign-bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "pariprashna-experience-assurance-v3"}, "evidence": EVIDENCE})
+            self.assertEqual(store.projection()["canonical"]["runtime_mode"], "CAMPAIGN")
+            self.assertTrue(store.verify_replay()["ok"])
 
     def test_invalid_and_out_of_order_are_rejected_and_retained(self):
         with self.assertRaises(RejectedEvent) as invalid: self.emit("lead-s1", "work_item_accepted", {"work_item_id": "S1:charter"}, "S1")
@@ -262,7 +270,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

@@ -27,6 +27,7 @@ PID=$!
 until curl -fsS "http://127.0.0.1:$PORT/api/projection" >/dev/null; do sleep 0.1; done
 "$CHROME" --headless=new --disable-gpu --no-first-run --dump-dom "http://127.0.0.1:$PORT/" >"$DOM" 2>/dev/null
 rg -q 'Campaign overview' "$DOM"
+rg -q 'SYNTHETIC DEMONSTRATION' "$DOM"
 rg -q 'Tracker Integrity and Audit' "$DOM"
 rg -q 'chartered scenarios executed' "$DOM"
 rg -q 'Campaign swarm posture' "$DOM"

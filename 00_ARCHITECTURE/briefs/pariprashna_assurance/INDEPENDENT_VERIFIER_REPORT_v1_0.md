@@ -18,7 +18,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 
 - `control.py`, `server.py`, `dashboard.html`, the event schema, operations artifacts, and
   browser smoke script.
-- 27/27 `tests/pariprashna_assurance_tracker/test_control.py` tests.
+- 28/28 `tests/pariprashna_assurance_tracker/test_control.py` tests.
 - Desktop plus 390 px rendered browser smoke; live Chrome review found no console errors and
   reported 100 for accessibility, best practices, SEO, and agentic browsing.
 
@@ -33,6 +33,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | Failed stream could receive a result packet and be projected complete | Fixed: packet rejected with `FAILED_STREAM`; fold preserves terminal failure | `test_failed_stream_cannot_receive_packet_closure_credit` |
 | A stream lead could invoke recovery or claim another session's freshness | Fixed: rebuild is integrator-only; a durable, globally unique session must belong to the caller; the server assigns the observation time | `test_rebuild_and_presence_are_privilege_bound` |
 | Operator could mistake a static dashboard for the live service or seed fixtures into campaign state | Fixed: `--demo` serves a full loopback dashboard from a new empty runtime only; direct files explain this path | `test_demo_seed_requires_an_empty_runtime`; rendered browser smoke |
+| Synthetic fixture state could look like campaign evidence | Fixed: immutable bootstrap provenance derives the runtime mode; the dashboard visibly labels demos without hiding stale/integrity warnings | demo/campaign runtime-mode tests; rendered browser smoke |
 
 ## Residual limits
 

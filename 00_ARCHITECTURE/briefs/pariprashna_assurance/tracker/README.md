@@ -24,7 +24,8 @@ python3 server.py --demo --runtime "$(mktemp -d /private/tmp/pariprashna-assuran
 ```
 
 It refuses a non-empty runtime directory, so fixture data cannot be mixed with campaign state.
-Open `http://127.0.0.1:8787`; never open `dashboard.html` directly.
+The served dashboard is labelled `SYNTHETIC DEMO` and warns that fixture data is not campaign
+evidence. Open `http://127.0.0.1:8787`; never open `dashboard.html` directly.
 
 ### Controlled local runtime
 
