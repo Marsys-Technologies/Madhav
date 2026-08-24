@@ -26,6 +26,16 @@ _MADHAV_ORIGIN_ALIASES = frozenset({
     "ssh://git@github.com/Marsys-Technologies/Madhav",
     "git@github.com:Marsys-Technologies/Madhav",
 })
+_PROVENANCE_GIT_CONFIG = (
+    "-c", "protocol.file.allow=never",
+    "-c", "protocol.ext.allow=never",
+    "-c", "protocol.git.allow=never",
+    "-c", "protocol.ssh.allow=never",
+    "-c", "protocol.https.allow=always",
+    "-c", "http.sslVerify=true",
+    "-c", "http.proxy=",
+    "-c", "http.extraHeader=",
+)
 
 
 def runtime_preflight(runtime: Path, approved_runtime: Path, filevault_status: str) -> None:
@@ -108,6 +118,22 @@ def _git_output(source_repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _reject_git_transport_overrides(source_repo: Path) -> None:
+    """Do not let a release checkout rewrite the canonical GitHub transport."""
+    rewrites = subprocess.run(["git", "-C", str(source_repo), "config", "--show-origin", "--get-regexp", r"^url\..*\.insteadOf$"], check=False, capture_output=True, text=True)
+    if rewrites.returncode not in {0, 1}:
+        raise ValueError(rewrites.stderr.strip() or "could not inspect Git transport configuration")
+    if rewrites.stdout.strip():
+        raise ValueError("source repository config contains forbidden Git URL rewrite rules")
+
+
+def _provenance_git_output(source_repo: Path, *args: str) -> str:
+    result = subprocess.run(["git", "-C", str(source_repo), *_PROVENANCE_GIT_CONFIG, *args], check=False, capture_output=True, text=True)
+    if result.returncode:
+        raise ValueError(result.stderr.strip() or f"provenance git {' '.join(args)} failed")
+    return result.stdout.strip()
+
+
 def _canonical_madhav_origin(origin_remote: str) -> str:
     """Return the single persisted origin spelling only for approved GitHub remotes."""
     normalized = origin_remote.strip().rstrip("/")
@@ -120,13 +146,14 @@ def _canonical_madhav_origin(origin_remote: str) -> str:
 
 def _fresh_origin_main(source_repo: Path) -> str:
     """Require an online origin lookup and fetch before trusting origin/main."""
-    listing = _git_output(source_repo, "ls-remote", "--exit-code", "origin", "refs/heads/main").splitlines()
+    _reject_git_transport_overrides(source_repo)
+    listing = _provenance_git_output(source_repo, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main").splitlines()
     if len(listing) != 1:
         raise ValueError("source repository did not return exactly one authenticated origin/main tip")
     remote_main = listing[0].split("\t", 1)[0]
     if len(remote_main) not in {40, 64} or any(char not in "0123456789abcdef" for char in remote_main.lower()):
         raise ValueError("source repository returned an invalid origin/main object ID")
-    fetched = subprocess.run(["git", "-C", str(source_repo), "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"], check=False, capture_output=True, text=True)
+    fetched = subprocess.run(["git", "-C", str(source_repo), *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"], check=False, capture_output=True, text=True)
     if fetched.returncode:
         raise ValueError(fetched.stderr.strip() or "could not fetch authenticated origin/main")
     origin_main = _git_output(source_repo, "rev-parse", "--verify", "origin/main^{commit}")

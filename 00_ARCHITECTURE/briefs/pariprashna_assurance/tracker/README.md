@@ -97,10 +97,11 @@ Install only from a release directory exported from the merged immutable SHA; ne
 service from a scratch worktree. First create the manifest/tree attestation from that export; it
 hashes the exact tracker tree, records the merge SHA, and makes the release directory read-only.
 The attestor requires the canonical `Marsys-Technologies/Madhav` GitHub origin, a freshly
-authenticated and fetched `origin/main` tip, and an exported tree byte-identical to that merged
-commit. The installer rejects symlinks, mutable files, a missing/different manifest, a different
-runtime path, an unconfirmed FileVault host, an existing launchd label/plist, or an occupied
-loopback port; it never replaces another service.
+authenticated and fetched `origin/main` tip, with Git URL rewrites and non-HTTPS transports
+rejected, and an exported tree byte-identical to that merged commit. The installer rejects
+symlinks, mutable files, a missing/different manifest, a different runtime path, an unconfirmed
+FileVault host, an existing launchd label/plist, or an occupied loopback port; it never replaces
+another service.
 
 ```sh
 python3 service.py --attest-release --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA" --source-repo "$SOURCE_REPO"

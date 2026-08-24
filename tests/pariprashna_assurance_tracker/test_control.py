@@ -17,7 +17,7 @@ TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assura
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -596,9 +596,9 @@ class ControlPlaneTests(unittest.TestCase):
             real_run = subprocess.run
             canonical_source = str(source.resolve())
             def fresh_remote(command, *args, **kwargs):
-                if command == ["git", "-C", canonical_source, "ls-remote", "--exit-code", "origin", "refs/heads/main"]:
+                if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main"]:
                     return subprocess.CompletedProcess(command, 0, f"{source_sha}\trefs/heads/main\n", "")
-                if command == ["git", "-C", canonical_source, "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"]:
+                if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"]:
                     return subprocess.CompletedProcess(command, 0, "", "")
                 return real_run(command, *args, **kwargs)
             self._git(source, "remote", "set-url", "origin", str(local_remote))
@@ -606,6 +606,11 @@ class ControlPlaneTests(unittest.TestCase):
                 attest_release(release, source_sha, source)
             self.assertIn("canonical Marsys-Technologies/Madhav", str(untrusted_origin.exception))
             self._git(source, "remote", "set-url", "origin", CANONICAL_MADHAV_ORIGIN)
+            self._git(source, "config", f"url.{local_remote}.insteadOf", CANONICAL_MADHAV_ORIGIN)
+            with self.assertRaises(ValueError) as rewritten_origin:
+                attest_release(release, source_sha, source)
+            self.assertIn("forbidden Git URL rewrite", str(rewritten_origin.exception))
+            self._git(source, "config", "--unset-all", f"url.{local_remote}.insteadOf")
             (release / "server.py").write_text("arbitrary fixture content\n")
             with patch("service.subprocess.run", side_effect=fresh_remote):
                 with self.assertRaises(ValueError) as arbitrary:
@@ -613,9 +618,9 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertIn("does not match", str(arbitrary.exception))
                 (release / "server.py").write_bytes((source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py").read_bytes())
                 def stale_remote(command, *args, **kwargs):
-                    if command == ["git", "-C", canonical_source, "ls-remote", "--exit-code", "origin", "refs/heads/main"]:
+                    if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "ls-remote", "--exit-code", CANONICAL_MADHAV_ORIGIN, "refs/heads/main"]:
                         return subprocess.CompletedProcess(command, 0, f"{'b' * 40}\trefs/heads/main\n", "")
-                    if command == ["git", "-C", canonical_source, "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"]:
+                    if command == ["git", "-C", canonical_source, *_PROVENANCE_GIT_CONFIG, "fetch", "--quiet", CANONICAL_MADHAV_ORIGIN, "refs/heads/main:refs/remotes/origin/main"]:
                         return subprocess.CompletedProcess(command, 0, "", "")
                     return real_run(command, *args, **kwargs)
                 with patch("service.subprocess.run", side_effect=stale_remote):
