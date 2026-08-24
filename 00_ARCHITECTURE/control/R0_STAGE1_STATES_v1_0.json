@@ -1,0 +1,606 @@
+{
+  "artifact": "R0_STAGE1_STATES",
+  "version": "1.0",
+  "rung": "R0",
+  "stage": "8.6 stage 1 (Intake), pass 2 of 2 -- states + telemetry",
+  "measured_at": "2026-08-24T01:01:33.616945+00:00",
+  "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
+  "headline": {
+    "total_R0_assets": 40,
+    "unearned_lit_count": 32,
+    "no_witness_at_all_count": 34,
+    "inactive_in_registry_count": 0
+  },
+  "unearned_lit": [
+    "bg_class_lifetime_counts",
+    "bg_cohort",
+    "bg_compendium_index",
+    "bg_concordance",
+    "bg_dasha_systems",
+    "bg_dignity_reference",
+    "bg_doshas",
+    "bg_ephemeris",
+    "bg_gochara_arcs",
+    "bg_kota_chakra_rings",
+    "bg_medical_mappings",
+    "bg_muhurta_lattice",
+    "bg_nakshatra",
+    "bg_nakshatra_medical",
+    "bg_ontology",
+    "bg_panchanga",
+    "bg_parihara_rules",
+    "bg_phaladeepika_latta",
+    "bg_prashna_rules",
+    "bg_reference",
+    "bg_remedies",
+    "bg_rules",
+    "bg_sarvatobhadra_grid",
+    "bg_sign_medical",
+    "bg_sky_calendar",
+    "bg_text_index",
+    "bg_texts",
+    "bg_transit_engine",
+    "bg_transit_rules",
+    "bg_vastu_directions",
+    "bg_vedha_malefic_scale",
+    "bg_yogas"
+  ],
+  "no_witness_at_all": [
+    "bg_class_lifetime_counts",
+    "bg_cohort",
+    "bg_compendium_index",
+    "bg_concordance",
+    "bg_dasha_systems",
+    "bg_dignity_reference",
+    "bg_doshas",
+    "bg_ephemeris",
+    "bg_ephemeris_engine",
+    "bg_gochara_arcs",
+    "bg_gochara_citation_resolution",
+    "bg_kota_chakra_rings",
+    "bg_medical_mappings",
+    "bg_muhurta_lattice",
+    "bg_nakshatra",
+    "bg_nakshatra_medical",
+    "bg_ontology",
+    "bg_panchanga",
+    "bg_parihara_rules",
+    "bg_phaladeepika_latta",
+    "bg_prashna_rules",
+    "bg_reference",
+    "bg_remedies",
+    "bg_rules",
+    "bg_sarvatobhadra_grid",
+    "bg_sign_medical",
+    "bg_sky_calendar",
+    "bg_text_index",
+    "bg_texts",
+    "bg_transit_engine",
+    "bg_transit_rules",
+    "bg_vastu_directions",
+    "bg_vedha_malefic_scale",
+    "bg_yogas"
+  ],
+  "inactive_in_registry": [],
+  "per_asset": {
+    "bg_class_lifetime_counts": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_class_priors": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 1,
+      "completed_runs": 1,
+      "last_completed_at": "2026-07-04 21:47:59.745163+00:00"
+    },
+    "bg_cohort": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_compendium_index": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_concordance": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_dasha_systems": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_dignity_reference": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_doshas": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_ephemeris": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_ephemeris_engine": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "error"
+      ],
+      "has_lit": false,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_formula_constants": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 1,
+      "completed_runs": 1,
+      "last_completed_at": "2026-07-04 21:47:59.713876+00:00"
+    },
+    "bg_ghatana": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 1,
+      "completed_runs": 1,
+      "last_completed_at": "2026-07-04 21:47:59.703349+00:00"
+    },
+    "bg_gochara_arcs": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_gochara_citation_resolution": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [],
+      "has_lit": false,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_kota_chakra_rings": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_kp_sublord_division": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 1,
+      "completed_runs": 1,
+      "last_completed_at": "2026-08-05 11:37:12.836546+00:00"
+    },
+    "bg_medical_mappings": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_muhurta_lattice": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_nakshatra": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_nakshatra_medical": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_ontology": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_panchanga": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_parihara_rules": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_phaladeepika_latta": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_prashna_rules": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_reference": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_remedies": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_rules": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_sarvatobhadra_grid": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_sign_medical": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_sky_calendar": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_text_index": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_texts": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_transit_engine": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_transit_rules": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_vastu_directions": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_vedha_malefic_scale": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    },
+    "bg_vidhi_floors": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 5,
+      "completed_runs": 5,
+      "last_completed_at": "2026-07-17 01:19:33.007824+00:00"
+    },
+    "bg_vidhi_primitives": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": false,
+      "total_runs": 5,
+      "completed_runs": 5,
+      "last_completed_at": "2026-07-17 01:19:31.141638+00:00"
+    },
+    "bg_yogas": {
+      "is_active": true,
+      "rung": "R0",
+      "domain": "shared",
+      "throughput_states": [
+        "lit"
+      ],
+      "has_lit": true,
+      "has_zero_completed_runs": true,
+      "total_runs": 0,
+      "completed_runs": 0,
+      "last_completed_at": null
+    }
+  },
+  "cross_reference_note": "R0-FP-1 (D-43/V-27) named 34 of R0's 40 assets as unwitnessed (no build_run_assets record at all) and 32 as unearned-lit (lit with zero completed runs), measured 2026-08-23T12:58Z. This is a FRESH re-measurement ~18h later -- compare the counts above against those historical figures before assuming they are unchanged."
+}
