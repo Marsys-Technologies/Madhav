@@ -7,12 +7,15 @@ import hashlib
 import json
 import os
 import plistlib
+import secrets
 import socket
 import stat
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from control import EventStore
 
 
 SERVICE_LABEL = "com.marsys.pariprashna-assurance-control"
@@ -64,10 +67,14 @@ def _secure_service_logs(runtime: Path) -> None:
             os.close(descriptor)
 
 
-def build_launchd_plist(release_dir: Path, runtime: Path, port: int = 8787) -> bytes:
+def build_launchd_plist(release_dir: Path, runtime: Path, port: int = 8787, *, p1_enabled: bool = False) -> bytes:
+    arguments = [sys.executable, str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only"]
+    if p1_enabled:
+        arguments.append("--p1-enabled")
+    arguments.extend(("--host", "127.0.0.1", "--port", str(port)))
     return plistlib.dumps({
         "Label": SERVICE_LABEL,
-        "ProgramArguments": [sys.executable, str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--host", "127.0.0.1", "--port", str(port)],
+        "ProgramArguments": arguments,
         "RunAtLoad": True,
         "KeepAlive": {"SuccessfulExit": False},
         "ProcessType": "Background",
@@ -270,7 +277,94 @@ def _assert_unclaimed(label: str, port: int, plist_path: Path) -> None:
             raise ValueError(f"refusing to install: 127.0.0.1:{port} is already in use") from exc
 
 
-def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787) -> Path:
+def _assert_upgradeable_p0b_service(plist_path: Path, runtime: Path, port: int) -> tuple[Path, str]:
+    """Refuse every service except the exact deployed P0B-only control plane."""
+    try:
+        plist = plistlib.loads(plist_path.read_bytes())
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing control-plane plist is unreadable") from exc
+    arguments = plist.get("ProgramArguments") if isinstance(plist, dict) else None
+    if plist.get("Label") != SERVICE_LABEL or not isinstance(arguments, list):
+        raise ValueError("existing launchd job is not the approved control-plane service")
+    if len(arguments) != 9 or not isinstance(arguments[1], str):
+        raise ValueError("existing launchd job is not the exact P0B-only service eligible for P1 enablement")
+    old_release = Path(arguments[1]).parent
+    try:
+        old_sha = (old_release / ".source-sha").read_text(encoding="utf-8").strip()
+        assert_release_attestation(old_release, old_sha)
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing P0B release lacks a valid immutable attestation") from exc
+    expected = [arguments[0], str(old_release / "server.py"), "--runtime", str(runtime), "--p0b-only", "--host", "127.0.0.1", "--port", str(port)]
+    if arguments != expected:
+        raise ValueError("existing launchd job is not the exact P0B-only service eligible for P1 enablement")
+    return old_release, old_sha
+
+
+def _write_private_file(path: Path, content: bytes) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(descriptor, content)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _replace_private_file(path: Path, content: bytes) -> None:
+    temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+    _write_private_file(temporary, content)
+    os.replace(temporary, path)
+    os.chmod(path, 0o600)
+
+
+def upgrade_p1(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: Path, post_snapshot: Path, port: int = 8787) -> dict[str, str]:
+    """Atomically replace only the approved P0B service with an attested P1-enabled release."""
+    if sys.platform != "darwin":
+        raise ValueError("launchd P1 enablement is supported only on macOS")
+    release_dir = assert_release_attestation(release_dir, source_sha)
+    runtime_preflight(runtime, APPROVED_RUNTIME, _filevault_status())
+    plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+    _assert_upgradeable_p0b_service(plist_path, runtime, port)
+    domain = f"gui/{os.getuid()}"
+    if subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True).returncode != 0:
+        raise ValueError("the approved P0B service is not loaded; refusing an unproven replacement")
+    store = EventStore(runtime, p0b_only=True)
+    if not store.verify_replay()["ok"]:
+        raise ValueError("P0B replay integrity is not clean; refusing P1 enablement")
+    with store.connection() as con:
+        if not EventStore._p0_to_p1_dependency_resolved(con):
+            raise ValueError("P0-to-P1 dependency is unresolved; refusing P1 enablement")
+    pre = store.export_snapshot(pre_snapshot)
+    previous_plist = plist_path.read_bytes()
+    backup_plist = plist_path.with_name(f"{plist_path.name}.p0b-backup-{source_sha[:12]}")
+    _write_private_file(backup_plist, previous_plist)
+    replacement = build_launchd_plist(release_dir, runtime, port, p1_enabled=True)
+    temporary_plist = plist_path.with_name(f".{plist_path.name}.{source_sha[:12]}.p1.tmp")
+    _write_private_file(temporary_plist, replacement)
+    switched = False
+    try:
+        subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=True)
+        os.replace(temporary_plist, plist_path)
+        subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        switched = True
+        enabled = EventStore(runtime, p0b_only=True, p1_enabled=True)
+        if not enabled.verify_replay()["ok"]:
+            raise ValueError("P1-enabled service replay integrity is not clean")
+        enabled.provision_p1_credentials()
+        post = enabled.export_snapshot(post_snapshot)
+        return {"pre_snapshot": pre["path"], "post_snapshot": post["path"], "backup_plist": str(backup_plist)}
+    except Exception as activation_error:
+        temporary_plist.unlink(missing_ok=True)
+        try:
+            if switched:
+                subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=True)
+            _replace_private_file(plist_path, previous_plist)
+            subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        except Exception as rollback_error:
+            raise RuntimeError(f"P1 enablement failed and P0B rollback failed; preserved plist backup: {backup_plist}") from rollback_error
+        raise activation_error
+
+
+def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787, *, p1_enabled: bool = False) -> Path:
     if sys.platform != "darwin":
         raise ValueError("launchd installation is supported only on macOS")
     release_dir = assert_release_attestation(release_dir, source_sha)
@@ -279,7 +373,7 @@ def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787)
     plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
     _assert_unclaimed(SERVICE_LABEL, port, plist_path)
     plist_path.parent.mkdir(parents=True, exist_ok=True)
-    plist_path.write_bytes(build_launchd_plist(release_dir, runtime, port))
+    plist_path.write_bytes(build_launchd_plist(release_dir, runtime, port, p1_enabled=p1_enabled))
     os.chmod(plist_path, 0o600)
     try:
         subprocess.run(["/bin/launchctl", "bootstrap", f"gui/{os.getuid()}", str(plist_path)], check=True)
@@ -293,22 +387,31 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--install", action="store_true")
     parser.add_argument("--attest-release", action="store_true")
+    parser.add_argument("--upgrade-p1", action="store_true")
+    parser.add_argument("--p1-enabled", action="store_true")
     parser.add_argument("--release-dir", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument("--source-repo", type=Path)
     parser.add_argument("--runtime", type=Path, default=APPROVED_RUNTIME)
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--pre-snapshot", type=Path)
+    parser.add_argument("--post-snapshot", type=Path)
     args = parser.parse_args()
-    if args.attest_release and args.install:
-        raise SystemExit("choose exactly one of --attest-release or --install")
+    if sum((args.attest_release, args.install, args.upgrade_p1)) != 1:
+        raise SystemExit("choose exactly one of --attest-release, --install, or --upgrade-p1")
     if args.attest_release:
         if args.source_repo is None:
             raise SystemExit("--attest-release requires --source-repo at the repository with origin/main evidence")
         print(attest_release(args.release_dir, args.source_sha, args.source_repo))
         return
-    if not args.install:
-        raise SystemExit("pass --attest-release after exporting a merged SHA, then --install")
-    print(install(args.release_dir, args.runtime, args.source_sha, args.port))
+    if args.install:
+        print(install(args.release_dir, args.runtime, args.source_sha, args.port, p1_enabled=args.p1_enabled))
+        return
+    if args.pre_snapshot is None or args.post_snapshot is None:
+        raise SystemExit("--upgrade-p1 requires distinct --pre-snapshot and --post-snapshot paths")
+    if args.pre_snapshot == args.post_snapshot:
+        raise SystemExit("--upgrade-p1 snapshot paths must be distinct")
+    print(json.dumps(upgrade_p1(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
 
 
 if __name__ == "__main__":
