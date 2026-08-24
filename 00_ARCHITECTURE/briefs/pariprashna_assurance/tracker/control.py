@@ -637,9 +637,21 @@ class EventStore:
                 new_scenario_ids.add(scenario["id"])
         if typ == "correction_recorded":
             corrected = payload.get("corrects_event_id")
-            exists = con.execute("SELECT 1 FROM events WHERE event_id=?", (corrected,)).fetchone()
-            if not corrected or not exists or not payload.get("reason"):
+            target = con.execute("SELECT event_type,actor_id,stream_id,payload_json FROM events WHERE event_id=?", (corrected,)).fetchone()
+            if not corrected or not target or not payload.get("reason"):
                 raise RejectedEvent("CORRECTION_REFERENCE_REQUIRED", "corrections must name an existing event and a reason")
+            if "ceiling" in payload:
+                original = json.loads(target["payload_json"])
+                if target["event_type"] != "work_started" or target["actor_id"] != request["actor_id"] or target["stream_id"] != stream_id:
+                    raise RejectedEvent("CORRECTION_TARGET", "a session ceiling correction may target only this actor's work-start in this stream")
+                if original.get("ceiling") is not None:
+                    raise RejectedEvent("CORRECTION_ALREADY_SET", "a session ceiling may be corrected only when its work-start ceiling was unset")
+                if con.execute("SELECT 1 FROM events WHERE event_type='correction_recorded' AND json_extract(payload_json, '$.corrects_event_id')=?", (corrected,)).fetchone():
+                    raise RejectedEvent("CORRECTION_ALREADY_RECORDED", "a session ceiling may be corrected only once")
+                if not request.get("evidence"):
+                    raise RejectedEvent("EVIDENCE_REQUIRED", "a session ceiling correction requires authority evidence")
+                if not isinstance(payload["ceiling"], (int, float)) or isinstance(payload["ceiling"], bool) or payload["ceiling"] <= 0:
+                    raise RejectedEvent("CORRECTION_SCHEMA", "a corrected session ceiling must be a positive number of seconds")
 
     @staticmethod
     def _scenario_contract(con: sqlite3.Connection, stream_id: str) -> tuple[int | None, list[str], list[str]]:
@@ -909,7 +921,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "remediation_plan": None, "execution_session": None} for s in definition["streams"]}
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     dependencies = {(dependency["from"], dependency["to"]): {**copy.deepcopy(dependency), "status": "PENDING", "evidence": [], "resolved_by": None, "resolved_at": None} for dependency in definition["dependencies"]}
-    findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; scope_changes: list[dict[str, Any]] = []
+    findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; started_sessions: dict[str, str] = {}; scope_changes: list[dict[str, Any]] = []
     bootstrapped = False; demonstration = False
     for event in events:
         typ, payload, evidence = event["event_type"], event["payload"], event["evidence"]
@@ -920,6 +932,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
             sid = payload.get("session_id")
             if sid:
                 sessions[sid] = {"id": sid, "conversation_id": payload.get("conversation_id", sid), "conversation_uri": payload.get("conversation_uri"), "stream_id": event.get("stream_id"), "owner": event["actor_id"], "verifier": payload.get("verifier"), "participants": payload.get("participants", []), "model": payload.get("model"), "reasoning_config": payload.get("reasoning_config"), "branch": payload.get("branch"), "worktree": payload.get("worktree"), "baseline_sha": payload.get("baseline_sha"), "current_sha": payload.get("current_sha"), "pr": payload.get("pr"), "ci": payload.get("ci"), "deployed_revision": payload.get("deployed_revision"), "lifecycle_stage": payload.get("lifecycle_stage", "charter"), "planned_scenarios": payload.get("planned_scenarios"), "lifecycle": "RUNNING", "started_at": event["occurred_at"], "last_evidence": evidence, "last_evidence_at": event["occurred_at"], "last_meaningful_action": payload.get("assignment"), "assignment": payload.get("assignment"), "next_checkpoint": payload.get("next_checkpoint"), "ceiling": payload.get("ceiling"), "cost": payload.get("cost")}
+                started_sessions[event["event_id"]] = sid
             if event.get("stream_id") in streams: streams[event["stream_id"]]["lifecycle"] = "RUNNING"; streams[event["stream_id"]]["next_checkpoint"] = payload.get("next_checkpoint")
             elif phase_id in phases: phases[phase_id]["lifecycle"] = "RUNNING"; phases[phase_id]["responsible_session"] = sid
         elif typ in {"paused", "blocked", "resumed", "verification_started", "failed"}:
@@ -933,6 +946,13 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
                     session["lifecycle"] = states[typ]; session["last_meaningful_action"] = payload.get("assignment") or typ; session["last_evidence"] = evidence; session["last_evidence_at"] = event["occurred_at"]
         elif typ == "scenario_executed" and event.get("stream_id") in streams:
             streams[event["stream_id"]]["scenario_ids"].append(payload["scenario_id"])
+        elif typ == "correction_recorded":
+            session_id = started_sessions.get(payload.get("corrects_event_id"))
+            ceiling = payload.get("ceiling")
+            if session_id and isinstance(ceiling, (int, float)) and not isinstance(ceiling, bool) and ceiling > 0:
+                sessions[session_id]["ceiling"] = ceiling
+                sessions[session_id]["last_evidence"] = evidence
+                sessions[session_id]["last_evidence_at"] = event["occurred_at"]
         elif typ == "finding_discovered":
             fid = payload.get("finding_id");
             if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"]}
