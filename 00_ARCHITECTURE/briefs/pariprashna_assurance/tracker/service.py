@@ -20,6 +20,12 @@ RELEASE_SCHEMA = "pariprashna-assurance-release@1"
 RELEASE_FILES = ("EVENT_SCHEMA_v1_0.json", "README.md", "cli.py", "control.py", "dashboard.html", "demo.py", "server.py", "service.py")
 RELEASE_METADATA = {".source-sha", ".release-manifest.json"}
 SOURCE_TRACKER_PATH = "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
+CANONICAL_MADHAV_ORIGIN = "https://github.com/Marsys-Technologies/Madhav.git"
+_MADHAV_ORIGIN_ALIASES = frozenset({
+    "https://github.com/Marsys-Technologies/Madhav",
+    "ssh://git@github.com/Marsys-Technologies/Madhav",
+    "git@github.com:Marsys-Technologies/Madhav",
+})
 
 
 def runtime_preflight(runtime: Path, approved_runtime: Path, filevault_status: str) -> None:
@@ -102,15 +108,40 @@ def _git_output(source_repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _canonical_madhav_origin(origin_remote: str) -> str:
+    """Return the single persisted origin spelling only for approved GitHub remotes."""
+    normalized = origin_remote.strip().rstrip("/")
+    if normalized.endswith(".git"):
+        normalized = normalized[:-4]
+    if normalized not in _MADHAV_ORIGIN_ALIASES:
+        raise ValueError("source repository origin must be the canonical Marsys-Technologies/Madhav GitHub remote")
+    return CANONICAL_MADHAV_ORIGIN
+
+
+def _fresh_origin_main(source_repo: Path) -> str:
+    """Require an online origin lookup and fetch before trusting origin/main."""
+    listing = _git_output(source_repo, "ls-remote", "--exit-code", "origin", "refs/heads/main").splitlines()
+    if len(listing) != 1:
+        raise ValueError("source repository did not return exactly one authenticated origin/main tip")
+    remote_main = listing[0].split("\t", 1)[0]
+    if len(remote_main) not in {40, 64} or any(char not in "0123456789abcdef" for char in remote_main.lower()):
+        raise ValueError("source repository returned an invalid origin/main object ID")
+    fetched = subprocess.run(["git", "-C", str(source_repo), "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"], check=False, capture_output=True, text=True)
+    if fetched.returncode:
+        raise ValueError(fetched.stderr.strip() or "could not fetch authenticated origin/main")
+    origin_main = _git_output(source_repo, "rev-parse", "--verify", "origin/main^{commit}")
+    if origin_main != remote_main:
+        raise ValueError("fetched origin/main does not match the freshly authenticated remote tip")
+    return origin_main
+
+
 def _assert_approved_merge_source(source_repo: Path, source_sha: str) -> tuple[str, str]:
     source_repo = Path(source_repo).resolve(strict=True)
+    origin_remote = _canonical_madhav_origin(_git_output(source_repo, "config", "--get", "remote.origin.url"))
     _git_output(source_repo, "cat-file", "-e", f"{source_sha}^{{commit}}")
-    origin_main = _git_output(source_repo, "rev-parse", "--verify", "origin/main^{commit}")
+    origin_main = _fresh_origin_main(source_repo)
     if subprocess.run(["git", "-C", str(source_repo), "merge-base", "--is-ancestor", source_sha, "origin/main"], check=False).returncode:
         raise ValueError("source SHA is not an immutable commit already merged into origin/main")
-    origin_remote = _git_output(source_repo, "config", "--get", "remote.origin.url")
-    if not origin_remote:
-        raise ValueError("source repository has no origin remote for merge-policy evidence")
     return origin_main, origin_remote
 
 
@@ -149,7 +180,7 @@ def assert_release_attestation(release_dir: Path, source_sha: str) -> Path:
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError("release manifest is unreadable") from exc
     expected_hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files if path.name in RELEASE_FILES}
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != RELEASE_SCHEMA or manifest.get("source_sha") != source_sha or manifest.get("release_path") != str(release_dir) or not isinstance(manifest.get("origin_main"), str) or not isinstance(manifest.get("origin_remote"), str) or manifest.get("files") != expected_hashes:
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != RELEASE_SCHEMA or manifest.get("source_sha") != source_sha or manifest.get("release_path") != str(release_dir) or not isinstance(manifest.get("origin_main"), str) or manifest.get("origin_remote") != CANONICAL_MADHAV_ORIGIN or manifest.get("files") != expected_hashes:
         raise ValueError("release manifest does not attest to this immutable source tree")
     return release_dir
 

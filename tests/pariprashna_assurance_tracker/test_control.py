@@ -11,12 +11,13 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import RELEASE_FILES, SERVICE_LABEL, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -566,7 +567,7 @@ class ControlPlaneTests(unittest.TestCase):
         result = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
         return result.stdout.strip()
 
-    def _approved_release_fixture(self, root: Path) -> tuple[Path, Path, str]:
+    def _approved_release_fixture(self, root: Path) -> tuple[Path, Path, str, Path]:
         source = root / "source"; source.mkdir()
         self._git(source, "init", "-b", "main")
         self._git(source, "config", "user.email", "test@example.invalid")
@@ -582,39 +583,70 @@ class ControlPlaneTests(unittest.TestCase):
         self._git(source, "remote", "add", "origin", str(remote))
         self._git(source, "push", "-u", "origin", "main")
         self._git(source, "fetch", "origin", "main")
+        self._git(source, "remote", "set-url", "origin", CANONICAL_MADHAV_ORIGIN)
         release_parent = root / "release-parent"; release_parent.mkdir()
         release = release_parent / "release"; release.mkdir()
         for name in RELEASE_FILES:
             (release / name).write_bytes((tracker / name).read_bytes())
-        return source, release, source_sha
+        return source, release, source_sha, remote
 
     def test_release_attestation_requires_approved_merged_source_and_immutable_tree(self):
         with tempfile.TemporaryDirectory() as root:
-            source, release, source_sha = self._approved_release_fixture(Path(root))
-            (release / "server.py").write_text("arbitrary fixture content\n")
-            with self.assertRaises(ValueError) as arbitrary:
+            source, release, source_sha, local_remote = self._approved_release_fixture(Path(root))
+            real_run = subprocess.run
+            canonical_source = str(source.resolve())
+            def fresh_remote(command, *args, **kwargs):
+                if command == ["git", "-C", canonical_source, "ls-remote", "--exit-code", "origin", "refs/heads/main"]:
+                    return subprocess.CompletedProcess(command, 0, f"{source_sha}\trefs/heads/main\n", "")
+                if command == ["git", "-C", canonical_source, "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"]:
+                    return subprocess.CompletedProcess(command, 0, "", "")
+                return real_run(command, *args, **kwargs)
+            self._git(source, "remote", "set-url", "origin", str(local_remote))
+            with self.assertRaises(ValueError) as untrusted_origin:
                 attest_release(release, source_sha, source)
-            self.assertIn("does not match", str(arbitrary.exception))
-            (release / "server.py").write_bytes((source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py").read_bytes())
-            with self.assertRaises(ValueError) as missing_sha:
-                attest_release(release, "a" * 40, source)
-            self.assertIn("not a valid object", str(missing_sha.exception).lower())
-            (source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/README.md").write_text("unmerged source\n")
-            self._git(source, "add", "00_ARCHITECTURE")
-            self._git(source, "commit", "-m", "unmerged source")
-            unmerged_sha = self._git(source, "rev-parse", "HEAD")
-            with self.assertRaises(ValueError) as unmerged:
-                attest_release(release, unmerged_sha, source)
-            self.assertIn("not an immutable commit", str(unmerged.exception))
-            intermediate = Path(root) / "linked-parent"; intermediate.symlink_to(release.parent, target_is_directory=True)
-            with self.assertRaises(ValueError) as symlink_component:
-                attest_release(intermediate / "release", source_sha, source)
-            self.assertIn("symlinked component", str(symlink_component.exception))
-            manifest = attest_release(release, source_sha, source)
+            self.assertIn("canonical Marsys-Technologies/Madhav", str(untrusted_origin.exception))
+            self._git(source, "remote", "set-url", "origin", CANONICAL_MADHAV_ORIGIN)
+            (release / "server.py").write_text("arbitrary fixture content\n")
+            with patch("service.subprocess.run", side_effect=fresh_remote):
+                with self.assertRaises(ValueError) as arbitrary:
+                    attest_release(release, source_sha, source)
+                self.assertIn("does not match", str(arbitrary.exception))
+                (release / "server.py").write_bytes((source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py").read_bytes())
+                def stale_remote(command, *args, **kwargs):
+                    if command == ["git", "-C", canonical_source, "ls-remote", "--exit-code", "origin", "refs/heads/main"]:
+                        return subprocess.CompletedProcess(command, 0, f"{'b' * 40}\trefs/heads/main\n", "")
+                    if command == ["git", "-C", canonical_source, "fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main"]:
+                        return subprocess.CompletedProcess(command, 0, "", "")
+                    return real_run(command, *args, **kwargs)
+                with patch("service.subprocess.run", side_effect=stale_remote):
+                    with self.assertRaises(ValueError) as stale_tip:
+                        attest_release(release, source_sha, source)
+                self.assertIn("does not match the freshly authenticated", str(stale_tip.exception))
+                with self.assertRaises(ValueError) as missing_sha:
+                    attest_release(release, "a" * 40, source)
+                self.assertIn("not a valid object", str(missing_sha.exception).lower())
+                (source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/README.md").write_text("unmerged source\n")
+                self._git(source, "add", "00_ARCHITECTURE")
+                self._git(source, "commit", "-m", "unmerged source")
+                unmerged_sha = self._git(source, "rev-parse", "HEAD")
+                with self.assertRaises(ValueError) as unmerged:
+                    attest_release(release, unmerged_sha, source)
+                self.assertIn("not an immutable commit", str(unmerged.exception))
+                intermediate = Path(root) / "linked-parent"; intermediate.symlink_to(release.parent, target_is_directory=True)
+                with self.assertRaises(ValueError) as symlink_component:
+                    attest_release(intermediate / "release", source_sha, source)
+                self.assertIn("symlinked component", str(symlink_component.exception))
+                manifest = attest_release(release, source_sha, source)
             self.assertEqual(manifest.stat().st_mode & 0o777, 0o444)
             canonical_release = assert_release_attestation(release, source_sha)
             plist = plistlib.loads(build_launchd_plist(canonical_release, Path("/private/runtime")))
             self.assertEqual(plist["ProgramArguments"][1], str(release.resolve() / "server.py"))
+            os.chmod(release, 0o755)
+            manifest_body = json.loads(manifest.read_text()); manifest_body["origin_remote"] = "file:///attacker/Madhav.git"
+            os.chmod(manifest, 0o600); manifest.write_text(json.dumps(manifest_body)); os.chmod(manifest, 0o444); os.chmod(release, 0o555)
+            with self.assertRaises(ValueError) as forged_origin:
+                assert_release_attestation(release, source_sha)
+            self.assertIn("does not attest", str(forged_origin.exception))
             os.chmod(release, 0o755)
             with self.assertRaises(ValueError) as mutable:
                 assert_release_attestation(release, source_sha)
