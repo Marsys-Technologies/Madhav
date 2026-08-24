@@ -15,6 +15,8 @@ replace the local-proof credential issuer before any non-loopback deployment. Re
 the owning actor's runtime token (for example, `jq -r '.tokens.lead-p0'
 "$TRACKER_RUNTIME/local-credentials.json"`) and record a P1 `work_started` event with
 branch, worktree, baseline SHA, model/reasoning configuration, assignment, ceiling, any
-recorded cost, and evidence links. Do not submit
+recorded cost, an optional validated `participants` roster (registered known roles must match
+their exact role and stream eligibility; unregistered contributors are explicitly
+`SPECIALIST`, with role/state/assignment/model/reasoning configuration), and evidence links. Do not submit
 percentages. A stream lead supplies only its own stream sequence; verification and completion
 require the independent verifier then integrator.

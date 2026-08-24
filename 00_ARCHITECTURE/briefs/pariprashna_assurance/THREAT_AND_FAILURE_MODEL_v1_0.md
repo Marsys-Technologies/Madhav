@@ -12,6 +12,7 @@ date: 2026-08-24
 | Duplicate delivery | Unique idempotency key returns the original accepted event | idempotency test |
 | Lost concurrent update | `BEGIN IMMEDIATE` plus expected stream sequence | concurrent retry test |
 | Cross-stream actor | Actor role and permitted-stream check before append | authorization rejection test |
+| Forged swarm identity or role | Known-role roster entries resolve to a registered actor with exact role and stream eligibility; unregistered entries are `SPECIALIST` only | `test_participant_roster_is_registered_and_stream_eligible` |
 | Self-verification | Finder/fixer identity is compared with verifier before closure credit | self-verification rejection test |
 | History rewrite | SQLite triggers reject event update/delete; corrections are new events | append-only/correction test |
 | Invalid lifecycle or authority | Versioned schema and transition/role validation retain rejected requests | invalid-transition test |

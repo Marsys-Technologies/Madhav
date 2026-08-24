@@ -272,19 +272,36 @@ class EventStore:
                 current = state_events.get(row["event_type"], current)
             if current not in states[typ]:
                 raise RejectedEvent("INVALID_TRANSITION", f"{typ} is not allowed from {current}")
-        if typ == "work_started" and stream_id in STREAM_IDS:
+        if typ == "work_started":
             session_id = payload.get("session_id")
             if not isinstance(session_id, str) or not session_id.strip():
-                raise RejectedEvent("SESSION_ID_REQUIRED", "a stream work_started event requires a non-empty session_id")
+                raise RejectedEvent("SESSION_ID_REQUIRED", "a work_started event requires a non-empty session_id")
             for row in con.execute("SELECT payload_json FROM events WHERE event_type='work_started'"):
                 if json.loads(row["payload_json"]).get("session_id") == session_id:
                     raise RejectedEvent("SESSION_ID_CONFLICT", "session_id is already owned by an existing execution session")
-            planned = payload.get("planned_scenarios")
-            if not isinstance(planned, int) or isinstance(planned, bool) or planned <= 0:
-                raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "a stream charter must freeze a positive planned_scenarios denominator")
-            stage = payload.get("lifecycle_stage", "charter")
-            if stage not in STAGE_NAMES:
-                raise RejectedEvent("STAGE_SCHEMA", "lifecycle_stage must be a defined stream stage")
+            participants = payload.get("participants", [])
+            if not isinstance(participants, list):
+                raise RejectedEvent("PARTICIPANT_ROSTER_INVALID", "participants must be a list when supplied")
+            participant_ids: set[str] = set()
+            for participant in participants:
+                if not isinstance(participant, dict) or not isinstance(participant.get("actor_id"), str) or not participant["actor_id"].strip():
+                    raise RejectedEvent("PARTICIPANT_ROSTER_INVALID", "each participant requires a non-empty actor_id")
+                if participant["actor_id"] in participant_ids or participant.get("role") not in ROLES | {"SPECIALIST"} or participant.get("state") not in {"ACTIVE", "WAITING", "PAUSED", "COMPLETED"}:
+                    raise RejectedEvent("PARTICIPANT_ROSTER_INVALID", "participant actor, role, and state must be valid and unique")
+                if participant["role"] != "SPECIALIST":
+                    registered = con.execute("SELECT role,streams_json FROM actors WHERE actor_id=?", (participant["actor_id"],)).fetchone()
+                    if not registered or registered["role"] != participant["role"]:
+                        raise RejectedEvent("PARTICIPANT_ROSTER_UNVERIFIED", "known-role participants must match a registered actor and role")
+                    if stream_id and stream_id not in json.loads(registered["streams_json"]):
+                        raise RejectedEvent("PARTICIPANT_ROSTER_UNVERIFIED", "known-role participants must be eligible for the execution stream")
+                participant_ids.add(participant["actor_id"])
+            if stream_id in STREAM_IDS:
+                planned = payload.get("planned_scenarios")
+                if not isinstance(planned, int) or isinstance(planned, bool) or planned <= 0:
+                    raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "a stream charter must freeze a positive planned_scenarios denominator")
+                stage = payload.get("lifecycle_stage", "charter")
+                if stage not in STAGE_NAMES:
+                    raise RejectedEvent("STAGE_SCHEMA", "lifecycle_stage must be a defined stream stage")
         if typ == "scenario_executed":
             if stream_id not in STREAM_IDS or not isinstance(payload.get("scenario_id"), str) or not payload["scenario_id"].strip():
                 raise RejectedEvent("SCENARIO_SCHEMA", "scenario execution requires a known stream and non-empty scenario_id")
@@ -536,7 +553,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         elif typ == "work_started":
             sid = payload.get("session_id")
             if sid:
-                sessions[sid] = {"id": sid, "conversation_id": payload.get("conversation_id", sid), "conversation_uri": payload.get("conversation_uri"), "stream_id": event.get("stream_id"), "owner": event["actor_id"], "verifier": payload.get("verifier"), "model": payload.get("model"), "reasoning_config": payload.get("reasoning_config"), "branch": payload.get("branch"), "worktree": payload.get("worktree"), "baseline_sha": payload.get("baseline_sha"), "current_sha": payload.get("current_sha"), "pr": payload.get("pr"), "ci": payload.get("ci"), "deployed_revision": payload.get("deployed_revision"), "lifecycle_stage": payload.get("lifecycle_stage", "charter"), "planned_scenarios": payload.get("planned_scenarios"), "lifecycle": "RUNNING", "started_at": event["occurred_at"], "last_evidence": evidence, "last_evidence_at": event["occurred_at"], "last_meaningful_action": payload.get("assignment"), "assignment": payload.get("assignment"), "next_checkpoint": payload.get("next_checkpoint"), "ceiling": payload.get("ceiling"), "cost": payload.get("cost")}
+                sessions[sid] = {"id": sid, "conversation_id": payload.get("conversation_id", sid), "conversation_uri": payload.get("conversation_uri"), "stream_id": event.get("stream_id"), "owner": event["actor_id"], "verifier": payload.get("verifier"), "participants": payload.get("participants", []), "model": payload.get("model"), "reasoning_config": payload.get("reasoning_config"), "branch": payload.get("branch"), "worktree": payload.get("worktree"), "baseline_sha": payload.get("baseline_sha"), "current_sha": payload.get("current_sha"), "pr": payload.get("pr"), "ci": payload.get("ci"), "deployed_revision": payload.get("deployed_revision"), "lifecycle_stage": payload.get("lifecycle_stage", "charter"), "planned_scenarios": payload.get("planned_scenarios"), "lifecycle": "RUNNING", "started_at": event["occurred_at"], "last_evidence": evidence, "last_evidence_at": event["occurred_at"], "last_meaningful_action": payload.get("assignment"), "assignment": payload.get("assignment"), "next_checkpoint": payload.get("next_checkpoint"), "ceiling": payload.get("ceiling"), "cost": payload.get("cost")}
             if event.get("stream_id") in streams: streams[event["stream_id"]]["lifecycle"] = "RUNNING"; streams[event["stream_id"]]["next_checkpoint"] = payload.get("next_checkpoint")
             elif phase_id in phases: phases[phase_id]["lifecycle"] = "RUNNING"; phases[phase_id]["responsible_session"] = sid
         elif typ in {"paused", "blocked", "resumed", "verification_started", "failed"}:
@@ -652,7 +669,7 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
         ceiling = session.get("ceiling")
         remaining = max(0, ceiling - elapsed) if isinstance(ceiling, (int, float)) and not isinstance(ceiling, bool) and elapsed is not None else None
         stream = next((item for item in canonical_projection["streams"] if item["id"] == session.get("stream_id")), None)
-        cells.append({"session_id": session["id"], "conversation_id": session.get("conversation_id"), "conversation_uri": session.get("conversation_uri"), "stream_id": session.get("stream_id"), "actor_id": session["owner"], "verifier": session.get("verifier"), "model": session.get("model"), "reasoning_config": session.get("reasoning_config"), "work_item": stream.get("lifecycle_stage", {}).get("id") if stream else session.get("lifecycle_stage"), "state": presence["state"] if presence else "MISSING", "last_presence_at": presence["observed_at"] if presence else None, "presence_age_seconds": round(age, 1) if age is not None else None, "health": health, "last_meaningful_action": session.get("last_meaningful_action"), "next_autonomous_action": session.get("assignment"), "branch": session.get("branch"), "current_sha": session.get("current_sha"), "pr": session.get("pr"), "ci": session.get("ci"), "deployed_revision": session.get("deployed_revision"), "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None, "cost": session.get("cost"), "ceiling": ceiling, "remaining_ceiling_seconds": round(remaining, 1) if remaining is not None else None})
+        cells.append({"session_id": session["id"], "conversation_id": session.get("conversation_id"), "conversation_uri": session.get("conversation_uri"), "stream_id": session.get("stream_id"), "actor_id": session["owner"], "verifier": session.get("verifier"), "participants": session.get("participants", []), "model": session.get("model"), "reasoning_config": session.get("reasoning_config"), "work_item": stream.get("lifecycle_stage", {}).get("id") if stream else session.get("lifecycle_stage"), "state": presence["state"] if presence else "MISSING", "last_presence_at": presence["observed_at"] if presence else None, "presence_age_seconds": round(age, 1) if age is not None else None, "health": health, "last_meaningful_action": session.get("last_meaningful_action"), "next_autonomous_action": session.get("assignment"), "branch": session.get("branch"), "current_sha": session.get("current_sha"), "pr": session.get("pr"), "ci": session.get("ci"), "deployed_revision": session.get("deployed_revision"), "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None, "cost": session.get("cost"), "ceiling": ceiling, "remaining_ceiling_seconds": round(remaining, 1) if remaining is not None else None})
     stream_health = {}
     for stream in canonical_projection["streams"]:
         sid, lifecycle = stream["id"], stream["lifecycle"]

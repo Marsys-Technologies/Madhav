@@ -18,7 +18,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 
 - `control.py`, `server.py`, `dashboard.html`, the event schema, operations artifacts, and
   browser smoke script.
-- 28/28 `tests/pariprashna_assurance_tracker/test_control.py` tests.
+- 29/29 `tests/pariprashna_assurance_tracker/test_control.py` tests.
 - Desktop plus 390 px rendered browser smoke; live Chrome review found no console errors and
   reported 100 for accessibility, best practices, SEO, and agentic browsing.
 
@@ -35,6 +35,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | Operator could mistake a static dashboard for the live service or seed fixtures into campaign state | Fixed: `--demo` serves a full loopback dashboard from a new empty runtime only; direct files explain this path | `test_demo_seed_requires_an_empty_runtime`; rendered browser smoke |
 | Synthetic fixture state could look like campaign evidence | Fixed: immutable bootstrap provenance derives the runtime mode; the dashboard visibly labels demos without hiding stale/integrity warnings | demo/campaign runtime-mode tests; rendered browser smoke |
 | Swarm cost could be silently omitted or misrepresented | Fixed: dashboard displays the persisted value verbatim or says that it is not reported; cost has no progress or health effect | execution-session projection test; rendered browser smoke |
+| A leader could display an unverified actor as a native, verifier, integrator, or stream lead | Fixed: known roles must resolve to a registered actor with the exact role and stream eligibility; unregistered participants are explicitly limited to `SPECIALIST` | `test_participant_roster_is_registered_and_stream_eligible` |
 
 ## Residual limits
 

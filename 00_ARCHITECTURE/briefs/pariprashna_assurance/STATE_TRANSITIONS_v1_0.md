@@ -24,6 +24,12 @@ Corrections never mutate a prior event. `correction_recorded` and
 Only an approved scope-change may add denominator work items; the projector displays the
 resulting reduction and its evidence reference.
 
+Every `work_started` event carries a globally unique non-empty `session_id`. Its optional
+`participants` roster has unique actor identifiers and a declared role/state. A known role
+(`STREAM_LEAD`, native, surrogate, verifier, or integrator) must resolve to the registered
+actor with that exact role and eligibility for the event stream. An unregistered participant is
+allowed only when explicitly declared as a `SPECIALIST`; it cannot assert a known role.
+
 For every P3 stream, its initial `work_started` event freezes a positive
 `planned_scenarios` denominator. A scope-change may add explicitly named scenarios only
 through `added_scenarios`; those increase the approved denominator and must each be
