@@ -37234,3 +37234,43 @@ writes a proper close-shaped entry for that boundary, following the same disclos
 as this one — an honest `not_captured`/schema-gap note rather than a fabricated handshake, for
 whichever fields a continuously-running fleet genuinely cannot attest to a single-session
 schema.
+
+## NIRMANA-LEKHAKA-20260824T004500Z — status entry, R0 OPENED, still not a close
+
+*Same continuously-running-fleet caveat as the prior entry: no session_open/session_close pair,
+filed as the closest honest equivalent this log's schema allows for a genuine state transition —
+the campaign's first rung opening — rather than let it pass unrecorded in this file specifically.*
+
+**What changed since the prior entry (2026-08-23T09:15Z):** Track M's entrypoint-guard repair
+thread closed in full — Wave 1 (5 destructive-on-import scripts) and Wave 2 (the remaining 53
+tier-1 files) both landed, certified, and survived two full find→rule→fix→verify branch-red
+cycles (V-68 and V-81) with the same rigor both times. A real fleet-coordination incident
+(F-DUPE: a restart briefly forked the conductor into two live sessions) was found, self-corrected
+by the duplicate before anyone else had to act, and closed with a durable mechanism
+(session-stamped identity, a corrected liveness test that distinguishes mailbox-reentry agents
+from cron-driven ones). The native intervened directly three times: `D-NATIVE-02` (a
+measurement-grounded throughput directive — scope lock, a state-read diet, model tiering, and a
+standing instrumentation requirement on this digest), `D-NATIVE-03` ("keep working," delivered as
+stranded text and only recognized as the native's afterward), and `D-NATIVE-04` ("open R0 now"),
+accepting ADHIKĀRIN's own `PARK-10` recommendation after the fleet's own item-9 escalation showed
+output-tokens-per-completed-task worsening 58% despite real throughput gains, and a token-ceiling
+runway concern (~27h remaining, zero rungs open, Track M alone having spent more than one rung's
+ceiling). **R0 (Brahmagyan, L0, the shared chart-independent substrate) is now open** — the
+campaign's first real repair rung after the entire session's work was machinery and governance.
+Stage-1 intake ran clean (40/40 `bg_*` assets measured, 0 count errors) and is committed to
+`R0_STAGE1_INTAKE_v1_0.json`. Separately, a systemic ledger defect was found and fixed at its
+root this window (`D-128`): several recent `DECISIONS.jsonl`/`WORK_QUEUE.jsonl` timestamps carried
+hand-typed local time mislabeled `Z`, running up to six hours ahead of true UTC — the exact class
+D-78 had already ruled against for mailbox filenames, recurring inside the case-law ledger itself.
+Fixed with one binding rule (every `ts` clock-read in UTC; no ledger line may carry a future
+timestamp) rather than a one-off correction.
+
+**Full account, continuously updated:** `00_ARCHITECTURE/autonomy/state/DIGEST-2026-08-23.md` (the
+single UTC-dated digest file for the whole session so far — the campaign's clock has not yet
+crossed a UTC day boundary). Live machine state: `CAMPAIGN_STATE.json`, `state/DECISIONS.jsonl`,
+`state/VERDICTS.jsonl`, `state/PARKED.jsonl`, `state/WORK_QUEUE.jsonl`.
+
+### Next entry objective
+
+When R0 closes (freezes per §8.3), or the campaign reaches its next natural pause, LEKHAKA writes
+the next status entry in the same honest, non-fabricated form.
