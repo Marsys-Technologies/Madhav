@@ -40,6 +40,9 @@ state belongs outside this repository and must not be manually edited.
 
 For an Option-B P0B runtime, use `--p0b-only` for every `cli.py` command; it provisions only
 `lead-p0b`, `surrogate-p0b`, `verifier-p0b`, and `integrator-p0b`, each scoped only to P0.
+After CG-0 is closed, the sole downstream exception is an evidence-bearing
+`dependency_resolved` event from P0 to P1 recorded by `integrator-p0b` as the runtime-backed
+onboarding receipt. Every other P1 event remains forbidden, so the receipt does not start P1.
 For a non-demo local runtime, first run `cli.py --runtime "$TRACKER_RUNTIME"
 provision-credentials`. It creates a random, mode-0600 credential file for that runtime.
 `init` and `emit` require the matching actor token; there are no default bearer tokens.

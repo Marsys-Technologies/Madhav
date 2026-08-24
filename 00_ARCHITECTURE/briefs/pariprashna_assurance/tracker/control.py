@@ -283,7 +283,15 @@ class EventStore:
                 con.execute("ROLLBACK")
                 raise RejectedEvent("ROLE_FORBIDDEN", f"{role} cannot emit {event_type}")
             streams = json.loads(actor["streams_json"])
-            if stream_id and stream_id not in streams:
+            p0b_onboarding_handoff = (
+                self.p0b_only
+                and request["actor_id"] == "integrator-p0b"
+                and event_type == "dependency_resolved"
+                and stream_id == "P1"
+                and request["payload"].get("from") == "P0"
+                and request["payload"].get("to") == "P1"
+            )
+            if stream_id and stream_id not in streams and not p0b_onboarding_handoff:
                 con.execute("ROLLBACK")
                 raise RejectedEvent("STREAM_FORBIDDEN", f"{request['actor_id']} does not own {stream_id}")
             fingerprint = request_fingerprint(request)
@@ -475,6 +483,10 @@ class EventStore:
                 raise RejectedEvent("DEPENDENCY_TARGET", "dependency resolution must be written to its downstream phase")
             if any((json.loads(row["payload_json"]).get("from"), json.loads(row["payload_json"]).get("to")) == dependency for row in con.execute("SELECT payload_json FROM events WHERE event_type='dependency_resolved'")):
                 raise RejectedEvent("DEPENDENCY_ALREADY_RESOLVED", "a dependency edge may be resolved once")
+            if self.p0b_only and dependency == ("P0", "P1"):
+                current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
+                if not any(gate["id"] == "CG-0" and gate["status"] == "CLOSED" for gate in current["gates"]):
+                    raise RejectedEvent("P0B_HANDOFF_PREREQUISITE", "P0-to-P1 onboarding requires closed CG-0")
         if typ == "verification_accepted":
             finder = payload.get("finder_actor_id")
             fixer = payload.get("fixer_actor_id")

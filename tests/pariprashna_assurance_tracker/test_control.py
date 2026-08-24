@@ -178,6 +178,40 @@ class ControlPlaneTests(unittest.TestCase):
                 store.submit({"actor_id": "lead-p0b", "idempotency_key": "p1-forbidden", "event_type": "work_started", "payload": {"session_id": "p1-forbidden"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
             self.assertEqual(p1_start.exception.code, "STREAM_FORBIDDEN")
 
+    def test_p0b_integrator_can_only_record_post_cg0_p0_to_p1_handoff(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            store = EventStore(runtime, p0b_only=True)
+            store.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0b-bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "pariprashna-experience-assurance-v3"}, "evidence": EVIDENCE})
+            handoff = {"actor_id": "integrator-p0b", "idempotency_key": "p0-p1-handoff", "event_type": "dependency_resolved", "payload": {"from": "P0", "to": "P1"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE}
+            with self.assertRaises(RejectedEvent) as premature:
+                store.submit(handoff)
+            self.assertEqual(premature.exception.code, "P0B_HANDOFF_PREREQUISITE")
+
+            item_verification = store.submit({"actor_id": "verifier-p0b", "idempotency_key": "p0-item-verification", "event_type": "verification_accepted", "payload": {"verification_id": "p0-item", "work_item_id": "P0:completion", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            store.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0-item-acceptance", "event_type": "work_item_accepted", "payload": {"work_item_id": "P0:completion", "verification_event_id": item_verification["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            gate_verification = store.submit({"actor_id": "verifier-p0b", "idempotency_key": "cg0-verification", "event_type": "verification_accepted", "payload": {"verification_id": "cg0", "gate_id": "CG-0", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 2, "evidence": EVIDENCE})
+            store.submit({"actor_id": "integrator-p0b", "idempotency_key": "cg0-closure", "event_type": "gate_closed", "payload": {"gate_id": "CG-0", "verification_event_id": gate_verification["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 3, "evidence": EVIDENCE})
+
+            self.assertTrue(store.submit(handoff)["accepted"])
+            dependency = next(item for item in store.projection()["canonical"]["dependencies"] if item["from"] == "P0" and item["to"] == "P1")
+            self.assertEqual(dependency["status"], "RESOLVED")
+            self.assertTrue(store.verify_replay()["ok"])
+            with tempfile.TemporaryDirectory() as recovery_root:
+                snapshot_path = Path(recovery_root) / "p0b-handoff.snapshot.json"
+                source = store.export_snapshot(snapshot_path)
+                recovery = EventStore(Path(recovery_root) / "recovery", p0b_only=True)
+                restored = recovery.restore_snapshot(snapshot_path)
+                self.assertEqual(restored["event_log_hash"], source["event_log_hash"])
+                self.assertTrue(recovery.verify_replay()["ok"])
+                recovered_dependency = next(item for item in recovery.projection()["canonical"]["dependencies"] if item["from"] == "P0" and item["to"] == "P1")
+                self.assertEqual(recovered_dependency["status"], "RESOLVED")
+            with self.assertRaises(RejectedEvent) as unrelated_p1:
+                store.submit({"actor_id": "integrator-p0b", "idempotency_key": "unrelated-p1", "event_type": "integration_baseline_advanced", "payload": {}, "stream_id": "P1", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            self.assertEqual(unrelated_p1.exception.code, "STREAM_FORBIDDEN")
+            with self.assertRaises(RejectedEvent) as p1_start:
+                store.submit({"actor_id": "lead-p0b", "idempotency_key": "p1-start", "event_type": "work_started", "payload": {"session_id": "p1-start"}, "stream_id": "P1", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            self.assertEqual(p1_start.exception.code, "STREAM_FORBIDDEN")
+
     def test_runtime_and_database_permissions_are_private(self):
         with tempfile.TemporaryDirectory() as runtime:
             os.chmod(runtime, 0o755)
