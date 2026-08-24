@@ -21,8 +21,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 test -x "$CHROME"
-python3 "$TRACKER/demo.py" --runtime "$RUNTIME" >/dev/null
-python3 "$TRACKER/server.py" --runtime "$RUNTIME" --port "$PORT" >/dev/null 2>&1 &
+python3 "$TRACKER/server.py" --demo --runtime "$RUNTIME" --port "$PORT" >/dev/null 2>&1 &
 PID=$!
 
 until curl -fsS "http://127.0.0.1:$PORT/api/projection" >/dev/null; do sleep 0.1; done

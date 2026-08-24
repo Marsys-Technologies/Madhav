@@ -10,6 +10,20 @@ date: 2026-08-24
 Use an approved runtime path outside the repository; no generated database, snapshot, or
 dashboard state is committed. For a local proof:
 
+### Disposable dashboard demonstration
+
+From `00_ARCHITECTURE/briefs/pariprashna_assurance/tracker`, run:
+
+```sh
+python3 server.py --demo --runtime "$(mktemp -d /private/tmp/pariprashna-assurance-demo-XXXXXX)"
+```
+
+Then open `http://127.0.0.1:8787`. `--demo` only accepts a newly empty directory and must
+never be pointed at a campaign runtime. It seeds synthetic fixture state and is not campaign
+evidence.
+
+### Controlled local proof
+
 ```sh
 TRACKER_RUNTIME=/private/tmp/pariprashna-assurance-demo
 python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/cli.py --runtime "$TRACKER_RUNTIME" provision-credentials

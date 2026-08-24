@@ -18,6 +18,7 @@ date: 2026-08-24
 | Stale-green dashboard | Presence is separate; a RUNNING session ages to STALE; PAUSED does not | stale/paused tests |
 | Projector crash or corruption | Full replay reconstructs stored hash; rebuild replaces projection | recovery/corruption tests |
 | Unauthorized rebuild or presence impersonation | Only a programme integrator can invoke the rebuild API; a presence update must match an existing session owner and receives its timestamp server-side | `test_rebuild_and_presence_are_privilege_bound` |
+| Demonstration data contaminates campaign runtime | `--demo` only seeds a new empty runtime and refuses every existing/non-directory target | `test_demo_seed_requires_an_empty_runtime`; browser smoke |
 | External adapter outage | Adapter health becomes UNKNOWN without altering canonical event state | adapter-degradation test |
 | Dashboard client disconnected | SSE reconnects and browser computes a visible stale/unknown banner | SSE and dashboard tests |
 

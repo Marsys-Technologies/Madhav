@@ -16,6 +16,15 @@ from urllib.parse import urlparse
 from control import EventStore, RejectedEvent
 
 
+def seed_empty_demo_runtime(runtime: str | Path) -> None:
+    """Seed a fresh disposable runtime only; never blend demo data with campaign state."""
+    path = Path(runtime)
+    if path.exists() and (not path.is_dir() or any(path.iterdir())):
+        raise ValueError("--demo requires a new empty runtime directory; it will not reuse campaign data")
+    from demo import seed
+    seed(path)
+
+
 class EventBus:
     def __init__(self) -> None:
         self._queues: list[queue.Queue[str]] = []
@@ -134,11 +143,14 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", default=8787, type=int); p.add_argument("--verify-interval", default=60.0, type=float); args = p.parse_args()
+    p = argparse.ArgumentParser(); p.add_argument("--runtime", required=True); p.add_argument("--demo", action="store_true", help="seed a new empty disposable demo runtime before serving"); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", default=8787, type=int); p.add_argument("--verify-interval", default=60.0, type=float); args = p.parse_args()
     if args.host not in {"127.0.0.1", "::1", "localhost"}:
         raise SystemExit("CG-0 tracker is deliberately loopback-only; non-local deployment requires A3")
     if args.verify_interval <= 0:
         raise SystemExit("--verify-interval must be positive")
+    if args.demo:
+        try: seed_empty_demo_runtime(args.runtime)
+        except ValueError as exc: raise SystemExit(str(exc))
     store = EventStore(args.runtime); store.rebuild(); bus = EventBus(); dashboard = Path(__file__).with_name("dashboard.html")
     httpd = ThreadingHTTPServer((args.host, args.port), handler_factory(store, bus, dashboard))
     monitor = ReplayMonitor(store, bus, args.verify_interval); monitor.start()

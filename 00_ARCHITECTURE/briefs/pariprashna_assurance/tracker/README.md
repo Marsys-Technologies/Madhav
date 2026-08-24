@@ -15,6 +15,19 @@ append-only source of campaign state; the dashboard is always a derived projecti
 
 ## Local operation
 
+### One-command disposable demonstration
+
+From this directory, run:
+
+```sh
+python3 server.py --demo --runtime "$(mktemp -d /private/tmp/pariprashna-assurance-demo-XXXXXX)"
+```
+
+It refuses a non-empty runtime directory, so fixture data cannot be mixed with campaign state.
+Open `http://127.0.0.1:8787`; never open `dashboard.html` directly.
+
+### Controlled local runtime
+
 ```sh
 TRACKER_RUNTIME=/private/tmp/pariprashna-assurance-demo
 python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/demo.py --runtime "$TRACKER_RUNTIME"

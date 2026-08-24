@@ -10,7 +10,7 @@ from pathlib import Path
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, fold, programme_definition, presence_overlay  # noqa: E402
-from server import EventBus, ReplayMonitor, handler_factory, adapter_health  # noqa: E402
+from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -47,6 +47,18 @@ class ControlPlaneTests(unittest.TestCase):
         credential_file = Path(self.tmp.name) / "local-credentials.json"; self.assertFalse(credential_file.stat().st_mode & 0o077)
         with self.assertRaises(RejectedEvent) as ctx: self.store.provision_local_credentials()
         self.assertEqual(ctx.exception.code, "CREDENTIALS_EXIST")
+
+    def test_demo_seed_requires_an_empty_runtime(self):
+        with tempfile.TemporaryDirectory() as root:
+            runtime = Path(root) / "demo"
+            seed_empty_demo_runtime(runtime)
+            projection = EventStore(runtime).projection()
+            self.assertTrue(projection["canonical"]["bootstrapped"])
+            self.assertTrue(any(stream["lifecycle"] == "COMPLETE" for stream in projection["display"]["streams"]))
+            with self.assertRaises(ValueError): seed_empty_demo_runtime(runtime)
+            non_directory = Path(root) / "not-a-runtime"; non_directory.write_text("preserve me")
+            with self.assertRaises(ValueError): seed_empty_demo_runtime(non_directory)
+            self.assertEqual(non_directory.read_text(), "preserve me")
 
     def test_bootstrap_has_no_fabricated_historical_credit(self):
         canonical = self.store.projection()["canonical"]
