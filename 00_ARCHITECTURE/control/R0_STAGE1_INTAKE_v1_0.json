@@ -1,0 +1,118 @@
+{
+  "artifact": "R0_STAGE1_INTAKE",
+  "version": "1.0",
+  "status": "LIVE-MEASUREMENT-PARTIAL",
+  "rung": "R0",
+  "stage": "8.6 stage 1 (Intake)",
+  "authority": "D-NATIVE-04 (native: 'Open R0 now'), PARK-10 (ADHIKARIN recommendation)",
+  "generator": "python3 00_ARCHITECTURE/control/measure_assets.py (unscoped -- measures all 128, filtered here to the 40 bg_* R0 assets)",
+  "measured_at": "2026-08-24T00:43:24.327389Z",
+  "completeness_note": "Covers rows/floors/integrity-presence only (from measure_assets.py). Section 8.6 stage 1 also asks for STATES (asset_throughput) and TELEMETRY (run history) -- NOT YET INCLUDED, queued as the next KARAKA pass.",
+  "headline": {
+    "total_R0_assets": 40,
+    "count_errors": 0,
+    "no_target_floor": 5,
+    "no_integrity_check_sql": 40,
+    "below_floor": 4,
+    "zero_or_null_rows": 3
+  },
+  "no_target_floor": [
+    "bg_class_priors",
+    "bg_ephemeris_engine",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_panchanga"
+  ],
+  "no_integrity_check_sql": [
+    "bg_class_lifetime_counts",
+    "bg_class_priors",
+    "bg_cohort",
+    "bg_compendium_index",
+    "bg_concordance",
+    "bg_dasha_systems",
+    "bg_dignity_reference",
+    "bg_doshas",
+    "bg_ephemeris",
+    "bg_ephemeris_engine",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_gochara_arcs",
+    "bg_gochara_citation_resolution",
+    "bg_kota_chakra_rings",
+    "bg_kp_sublord_division",
+    "bg_medical_mappings",
+    "bg_muhurta_lattice",
+    "bg_nakshatra",
+    "bg_nakshatra_medical",
+    "bg_ontology",
+    "bg_panchanga",
+    "bg_parihara_rules",
+    "bg_phaladeepika_latta",
+    "bg_prashna_rules",
+    "bg_reference",
+    "bg_remedies",
+    "bg_rules",
+    "bg_sarvatobhadra_grid",
+    "bg_sign_medical",
+    "bg_sky_calendar",
+    "bg_text_index",
+    "bg_texts",
+    "bg_transit_engine",
+    "bg_transit_rules",
+    "bg_vastu_directions",
+    "bg_vedha_malefic_scale",
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bg_yogas"
+  ],
+  "below_floor": [
+    {
+      "asset_id": "bg_concordance",
+      "rows": 720,
+      "floor": 800
+    },
+    {
+      "asset_id": "bg_reference",
+      "rows": 1242,
+      "floor": 1485
+    },
+    {
+      "asset_id": "bg_sky_calendar",
+      "rows": 31059,
+      "floor": 31064
+    },
+    {
+      "asset_id": "bg_text_index",
+      "rows": 361,
+      "floor": 400
+    }
+  ],
+  "zero_or_null_rows": [
+    {
+      "asset_id": "bg_ephemeris_engine",
+      "rows": null,
+      "note": "known service probe, null rows expected"
+    },
+    {
+      "asset_id": "bg_panchanga",
+      "rows": null,
+      "note": "known service probe, null rows expected"
+    },
+    {
+      "asset_id": "bg_sarvatobhadra_grid",
+      "rows": 0,
+      "note": "NEEDS DISPOSITION -- carried from M0-T18 claim C12 (bg_sarvatobhadra_grid: 'by design', NO writer, NO explanation, CURRENT)"
+    }
+  ],
+  "known_carried_findings_this_confirms_or_updates": [
+    "bg_cohort: expected_volume_formula='COHORT_SIZE' still present (row shows target_floor=10000, actual_rows_native=10000 -- AT floor, seeder-blocking defect status unchanged, not yet repaired, R0-FP-1 constraint separate from this)",
+    "bg_sky_calendar: 31059/31064, 5 short of floor -- the phantom target_table finding (bg_sky_events vs bg_sky_calendar) from M0-T6 is a SEPARATE registry-metadata defect, not reflected in this row-count view",
+    "bg_sarvatobhadra_grid: confirmed 0 rows live, matching M0-T18 claim C12"
+  ],
+  "next_stage1_work": [
+    "Measure asset_throughput states for all 40 (lit/service_ok/dormant/error/etc)",
+    "Cross-reference against the 32-asset unearned-lit finding (D-42/D-94/X-06) for the R0 subset specifically",
+    "Pull telemetry/build_run_assets history for the 34 unwitnessed R0 assets (R0-FP-1's own subject)",
+    "THEN stage 2 (Conform): author integrity_check_sql for all 40 (currently 0/40), set floors to achieved per I7, derive has_substeps, declare partitions/consumers"
+  ]
+}
