@@ -30,6 +30,13 @@ Every `work_started` event carries a globally unique non-empty `session_id`. Its
 actor with that exact role and eligibility for the event stream. An unregistered participant is
 allowed only when explicitly declared as a `SPECIALIST`; it cannot assert a known role.
 
+After all discovered findings for a P3 stream have a surrogate triage, the surrogate may
+freeze exactly one `remediation_plan`. The plan names each triaged finding once, including an
+explicit empty plan when there is no remediation work. Implementations outside that plan are
+rejected, every planned remediation needs independent verification, and remediation-stage
+credit is rejected until that durable contract is complete. The plan is never expanded by a
+later ordinary event; a material expansion requires its own governed scope path.
+
 For every P3 stream, its initial `work_started` event freezes a positive
 `planned_scenarios` denominator. A scope-change may add explicitly named scenarios only
 through `added_scenarios`; those increase the approved denominator and must each be

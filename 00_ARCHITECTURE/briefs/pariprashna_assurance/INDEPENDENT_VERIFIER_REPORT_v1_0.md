@@ -18,7 +18,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 
 - `control.py`, `server.py`, `dashboard.html`, the event schema, operations artifacts, and
   browser smoke script.
-- 29/29 `tests/pariprashna_assurance_tracker/test_control.py` tests.
+- 30/30 `tests/pariprashna_assurance_tracker/test_control.py` tests.
 - Desktop plus 390 px rendered browser smoke; live Chrome review found no console errors and
   reported 100 for accessibility, best practices, SEO, and agentic browsing.
 
@@ -36,6 +36,7 @@ deployment approval, or authorization to close CG-0 in a production runtime.
 | Synthetic fixture state could look like campaign evidence | Fixed: immutable bootstrap provenance derives the runtime mode; the dashboard visibly labels demos without hiding stale/integrity warnings | demo/campaign runtime-mode tests; rendered browser smoke |
 | Swarm cost could be silently omitted or misrepresented | Fixed: dashboard displays the persisted value verbatim or says that it is not reported; cost has no progress or health effect | execution-session projection test; rendered browser smoke |
 | A leader could display an unverified actor as a native, verifier, integrator, or stream lead | Fixed: known roles must resolve to a registered actor with the exact role and stream eligibility; unregistered participants are explicitly limited to `SPECIALIST` | `test_participant_roster_is_registered_and_stream_eligible` |
+| Remediation credit had no frozen post-triage contract | Fixed: the surrogate freezes one plan only after every finding is triaged; unplanned work and incomplete plan verification cannot earn remediation credit | `test_remediation_plan_is_frozen_after_triage` |
 
 ## Residual limits
 

@@ -32,6 +32,7 @@ def seed(runtime):
     submit(store, "lead-s6", "work_started", {"session_id": "demo-complete", "assignment": "S6 closed-loop regression", "planned_scenarios": 2}, "S6", "complete-start")
     submit(store, "lead-s6", "scenario_executed", {"scenario_id": "demo-s6-1"}, "S6", "complete-scenario-1")
     submit(store, "lead-s6", "scenario_executed", {"scenario_id": "demo-s6-2"}, "S6", "complete-scenario-2")
+    submit(store, "surrogate", "remediation_approved", {"remediation_plan": []}, "S6", "complete-remediation-plan")
     for n, stage in enumerate(("charter", "baseline", "triage", "remediation", "verification", "regression")):
         accept_item(store, "S6", f"S6:{stage}", n)
     submit(store, "verifier", "stream_closure_recommended", {"finder_actor_id": "lead-s6"}, "S6", "complete-recommendation")

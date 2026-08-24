@@ -19,4 +19,6 @@ recorded cost, an optional validated `participants` roster (registered known rol
 their exact role and stream eligibility; unregistered contributors are explicitly
 `SPECIALIST`, with role/state/assignment/model/reasoning configuration), and evidence links. Do not submit
 percentages. A stream lead supplies only its own stream sequence; verification and completion
-require the independent verifier then integrator.
+require the independent verifier then integrator. After every stream finding is triaged, the
+surrogate must record one frozen `remediation_plan` (including `[]` where none is required)
+before remediation work can earn credit.

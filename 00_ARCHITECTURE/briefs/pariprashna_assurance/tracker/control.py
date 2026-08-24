@@ -347,6 +347,64 @@ class EventStore:
                         required_scope_ids = set(stream["scope_scenario_ids"])
                         if scenarios["planned"] is None or scenarios["executed"] != scenarios["planned"] or not required_scope_ids.issubset(set(stream["scenario_ids"])):
                             raise RejectedEvent("REGRESSION_INCOMPLETE", "regression credit requires every chartered and scope-approved scenario to be executed")
+                    if expected_id == "remediation":
+                        plan = self._remediation_contract(con, item_stream)
+                        if plan is None:
+                            raise RejectedEvent("REMEDIATION_PLAN_REQUIRED", "remediation credit requires a triage-frozen remediation plan")
+                        current_remediations = {remediation["id"]: remediation for remediation in current["remediations"]}
+                        incomplete = [entry["id"] for entry in plan if current_remediations.get(entry["id"], {}).get("status") != "VERIFIED"]
+                        if incomplete:
+                            raise RejectedEvent("REMEDIATION_INCOMPLETE", f"remediation credit requires independently verified planned remediations: {incomplete}")
+        if typ == "finding_triaged":
+            finding_id = payload.get("finding_id")
+            discovered = any(json.loads(row["payload_json"]).get("finding_id") == finding_id and row["stream_id"] == stream_id for row in con.execute("SELECT stream_id,payload_json FROM events WHERE event_type='finding_discovered'"))
+            if not discovered:
+                raise RejectedEvent("FINDING_REFERENCE_REQUIRED", "triage must reference a discovered finding in the same stream")
+        if typ == "finding_discovered":
+            finding_id = payload.get("finding_id")
+            if stream_id not in STREAM_IDS or not isinstance(finding_id, str) or not finding_id.strip() or payload.get("severity") not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
+                raise RejectedEvent("FINDING_SCHEMA", "a finding needs a known stream, unique non-empty id, and declared severity")
+            if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
+                raise RejectedEvent("FINDING_ID_CONFLICT", "a finding identifier may be discovered once")
+            if self._remediation_contract(con, stream_id) is not None:
+                raise RejectedEvent("FINDING_FREEZE", "a new finding after the frozen remediation plan requires a separately governed scope path")
+        if typ == "remediation_approved" and "remediation_plan" in payload:
+            plan = payload["remediation_plan"]
+            if stream_id not in STREAM_IDS or not isinstance(plan, list):
+                raise RejectedEvent("REMEDIATION_PLAN_SCHEMA", "a remediation plan must be an array for a known stream")
+            if self._remediation_contract(con, stream_id) is not None:
+                raise RejectedEvent("REMEDIATION_PLAN_LOCKED", "a stream remediation plan is frozen after triage")
+            current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
+            stream_findings = {finding["id"]: finding for finding in current["findings"] if finding["stream_id"] == stream_id}
+            if any(finding["status"] != "TRIAGED" for finding in stream_findings.values()):
+                raise RejectedEvent("TRIAGE_INCOMPLETE", "every discovered stream finding must be triaged before freezing remediation work")
+            plan_ids: set[str] = set()
+            planned_findings: set[str] = set()
+            for entry in plan:
+                if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip() or not isinstance(entry.get("finding_id"), str) or entry["finding_id"] not in stream_findings or entry["id"] in plan_ids or entry["finding_id"] in planned_findings:
+                    raise RejectedEvent("REMEDIATION_PLAN_SCHEMA", "each plan entry needs unique id and a unique triaged finding from this stream")
+                plan_ids.add(entry["id"]); planned_findings.add(entry["finding_id"])
+            if set(stream_findings) != planned_findings:
+                raise RejectedEvent("REMEDIATION_PLAN_SCHEMA", "the frozen remediation plan must account for every triaged stream finding")
+        if typ == "remediation_implemented":
+            plan = self._remediation_contract(con, stream_id or "")
+            remediation_id = payload.get("remediation_id")
+            finding_id = payload.get("finding_id")
+            matched = next((entry for entry in plan or [] if entry["id"] == remediation_id and entry["finding_id"] == finding_id), None)
+            if not matched:
+                raise RejectedEvent("REMEDIATION_CONTRACT", "implemented remediation must be a planned remediation for its finding")
+            if any(json.loads(row["payload_json"]).get("remediation_id") == remediation_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='remediation_implemented'")):
+                raise RejectedEvent("REMEDIATION_CONTRACT", "a planned remediation may be implemented once")
+        if typ in {"verification_accepted", "verification_rejected"} and payload.get("remediation_id") is not None:
+            plan = self._remediation_contract(con, stream_id or "")
+            remediation_id = payload.get("remediation_id")
+            finding_id = payload.get("finding_id")
+            matched = next((entry for entry in plan or [] if entry["id"] == remediation_id and entry["finding_id"] == finding_id), None)
+            if not matched:
+                raise RejectedEvent("REMEDIATION_VERIFICATION_REFERENCE", "remediation verification must name the planned remediation and its finding in the same stream")
+            implemented = any(json.loads(row["payload_json"]).get("remediation_id") == remediation_id and json.loads(row["payload_json"]).get("finding_id") == finding_id and row["stream_id"] == stream_id for row in con.execute("SELECT stream_id,payload_json FROM events WHERE event_type='remediation_implemented'"))
+            if not implemented:
+                raise RejectedEvent("REMEDIATION_VERIFICATION_REFERENCE", "remediation verification requires the matching implemented remediation")
         if typ == "verification_accepted":
             finder = payload.get("finder_actor_id")
             fixer = payload.get("fixer_actor_id")
@@ -445,6 +503,14 @@ class EventStore:
         return planned, scoped_ids, executed
 
     @staticmethod
+    def _remediation_contract(con: sqlite3.Connection, stream_id: str) -> list[dict[str, Any]] | None:
+        for row in con.execute("SELECT payload_json FROM events WHERE stream_id=? AND event_type='remediation_approved' ORDER BY ledger_seq", (stream_id,)):
+            payload = json.loads(row["payload_json"])
+            if "remediation_plan" in payload:
+                return payload["remediation_plan"]
+        return None
+
+    @staticmethod
     def _row_event(row: sqlite3.Row) -> dict[str, Any]:
         result = dict(row)
         result["payload"] = json.loads(result.pop("payload_json"))
@@ -541,7 +607,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     """Pure durable state projection. Presence is intentionally not an input."""
     items = {item["id"]: {**copy.deepcopy(item), "accepted": False, "evidence": [], "accepted_by": None} for item in definition["work_items"]}
     phases = {p["id"]: {**copy.deepcopy(p), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "responsible_session": None} for p in definition["phases"]}
-    streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "execution_session": None} for s in definition["streams"]}
+    streams = {s["id"]: {**copy.deepcopy(s), "lifecycle": "NOT_STARTED", "health": "UNKNOWN", "last_evidence_at": None, "next_checkpoint": None, "blocker_reason": None, "scenario_ids": [], "scope_scenario_ids": [], "remediation_plan": None, "execution_session": None} for s in definition["streams"]}
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; scope_changes: list[dict[str, Any]] = []
     bootstrapped = False; demonstration = False
@@ -576,6 +642,8 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         elif typ == "remediation_implemented":
             rid = payload.get("remediation_id")
             if rid: remediations[rid] = {"id": rid, "finding_id": payload.get("finding_id"), "stream_id": event.get("stream_id"), "status": "AWAITING_VERIFICATION", "fixer": event["actor_id"], "evidence": evidence}
+        elif typ == "remediation_approved" and "remediation_plan" in payload and event.get("stream_id") in streams:
+            streams[event["stream_id"]]["remediation_plan"] = copy.deepcopy(payload["remediation_plan"])
         elif typ in {"verification_accepted", "verification_rejected"}:
             vid = payload.get("verification_id", event["event_id"]); verifications[vid] = {"id": vid, "status": "ACCEPTED" if typ == "verification_accepted" else "REJECTED", "verifier": event["actor_id"], "finding_id": payload.get("finding_id"), "remediation_id": payload.get("remediation_id"), "evidence": evidence}
             rid = payload.get("remediation_id")
@@ -637,6 +705,8 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         stream["blockers"] = [{"reason": stream["blocker_reason"]}] if stream["blocker_reason"] else []
         stream["fixed_awaiting_verification"] = sum(r["stream_id"] == sid and r["status"] == "AWAITING_VERIFICATION" for r in remediations.values())
         stream["independently_closed"] = sum(r["stream_id"] == sid and r["status"] == "VERIFIED" for r in remediations.values())
+        planned_remediations = stream["remediation_plan"]
+        stream["remediations"] = {"planned": len(planned_remediations) if planned_remediations is not None else None, "implemented": sum(r["stream_id"] == sid for r in remediations.values()), "verified": stream["independently_closed"]}
     stream_states = {s["lifecycle"] for s in streams.values()}
     if stream_states == {"COMPLETE"}:
         phases["P3"]["lifecycle"] = "COMPLETE"

@@ -60,6 +60,12 @@ an accepted result packet, never a direct work-item event. The dashboard exposes
 denominator, execution-session ownership/configuration, evidence timestamps, scope-change
 reduction explanations, and retained rejection records.
 
+After all discovered findings in a stream are triaged, the surrogate emits one
+`remediation_approved` event containing its `remediation_plan` (an explicit empty list is
+valid when no remediation is required). Each entry maps one triaged finding to one remediation.
+Only those entries may be implemented, each must be independently verified, and the remediation
+work item cannot earn credit until the complete frozen plan is verified.
+
 Run it with:
 
 ```sh

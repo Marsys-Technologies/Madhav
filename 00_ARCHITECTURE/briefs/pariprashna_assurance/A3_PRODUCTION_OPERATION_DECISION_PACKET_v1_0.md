@@ -23,7 +23,7 @@ does not accept CG-0, approve a release, or authorize any campaign progress.
   unauthenticated because the CG-0 proof is host-local.
 - Per-runtime local tokens exist only for proof. They are not a production issuer, identity
   model, or rotation mechanism.
-- The proof has 27 automated unit/integration/adversarial checks, a rendered desktop/mobile
+- The proof has 30 automated unit/integration/adversarial checks, a rendered desktop/mobile
   smoke check, replay/hash reconciliation, and an independent verifier PASS.
 
 ## Operating-model options

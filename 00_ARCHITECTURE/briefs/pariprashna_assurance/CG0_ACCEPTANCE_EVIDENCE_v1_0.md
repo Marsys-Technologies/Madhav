@@ -39,6 +39,7 @@ deployment, native acceptance, historical campaign progress, or any subsequent g
 | 24 | Honest P0 bootstrap | `setUp` bootstrap plus `test_gate_closure_requires_evidence_and_integrator` proves bootstrap alone cannot close CG-0 |
 | 25 | Privileged recovery and owner-bound, server-timestamped presence | `test_rebuild_and_presence_are_privilege_bound` |
 | 26 | One-command demo startup cannot contaminate a populated runtime or look like campaign evidence | `test_demo_seed_requires_an_empty_runtime`; `browser_smoke.sh` serves the fixture through `server.py --demo` and asserts the visible synthetic-warning label |
+| 27 | Remediation denominator freezes only after triage and cannot earn credit outside its contract | `test_remediation_plan_is_frozen_after_triage` |
 
 The same privilege test also proves that a session identifier cannot be reused across streams,
 so a presence record has an unambiguous durable owner.
@@ -50,6 +51,9 @@ recorded cost and a validated surrogate/specialist roster where supplied; the sw
 otherwise says `Cost not reported` and `No participant roster reported`.
 `test_failed_stream_cannot_receive_packet_closure_credit` proves terminal stream failure
 cannot be overwritten by a result packet.
+`test_remediation_plan_is_frozen_after_triage` proves that a remediation plan cannot be frozen
+before every finding is triaged, cannot be altered after freezing, and cannot accept an
+unplanned implementation or remediation-stage credit without a plan.
 
 The seeded campaign definition in `control.py` includes P0–P7 with weights
 5/8/17/45/10/7/5/3 and six equal P3 streams. It starts without historical credit. The

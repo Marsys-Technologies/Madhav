@@ -196,8 +196,53 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as excess: self.emit("lead-s1", "scenario_executed", {"scenario_id": "second-path"}, "S1")
         self.assertEqual(excess.exception.code, "SCENARIO_DENOMINATOR_EXCEEDED")
 
+    def test_remediation_plan_is_frozen_after_triage(self):
+        self.emit("lead-s1", "work_started", {"session_id": "remediation-contract", "planned_scenarios": 1}, "S1")
+        self.emit("lead-s1", "finding_discovered", {"finding_id": "finding-1", "severity": "HIGH", "root_cause_group": "contract"}, "S1")
+        with self.assertRaises(RejectedEvent) as duplicate_finding:
+            self.emit("lead-s1", "finding_discovered", {"finding_id": "finding-1", "severity": "HIGH"}, "S1")
+        self.assertEqual(duplicate_finding.exception.code, "FINDING_ID_CONFLICT")
+        with self.assertRaises(RejectedEvent) as untriaged:
+            self.emit("surrogate", "remediation_approved", {"remediation_plan": [{"id": "fix-1", "finding_id": "finding-1"}]}, "S1")
+        self.assertEqual(untriaged.exception.code, "TRIAGE_INCOMPLETE")
+        self.emit("surrogate", "finding_triaged", {"finding_id": "finding-1", "severity": "HIGH"}, "S1")
+        self.emit("surrogate", "remediation_approved", {"remediation_plan": [{"id": "fix-1", "finding_id": "finding-1"}]}, "S1")
+        with self.assertRaises(RejectedEvent) as unplanned:
+            self.emit("lead-s1", "remediation_implemented", {"remediation_id": "fix-2", "finding_id": "finding-1"}, "S1")
+        self.assertEqual(unplanned.exception.code, "REMEDIATION_CONTRACT")
+        self.emit("lead-s1", "remediation_implemented", {"remediation_id": "fix-1", "finding_id": "finding-1"}, "S1")
+        with self.assertRaises(RejectedEvent) as missing_finding:
+            self.emit("verifier", "verification_accepted", {"verification_id": "fix-1-missing", "remediation_id": "fix-1", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
+        self.assertEqual(missing_finding.exception.code, "REMEDIATION_VERIFICATION_REFERENCE")
+        with self.assertRaises(RejectedEvent) as wrong_stream:
+            self.emit("verifier", "verification_accepted", {"verification_id": "fix-1-wrong-stream", "remediation_id": "fix-1", "finding_id": "finding-1", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S2")
+        self.assertEqual(wrong_stream.exception.code, "REMEDIATION_VERIFICATION_REFERENCE")
+        verification = self.emit("verifier", "verification_accepted", {"verification_id": "fix-1-verified", "remediation_id": "fix-1", "finding_id": "finding-1", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
+        self.assertTrue(verification["accepted"])
+        stream = next(stream for stream in self.store.projection()["canonical"]["streams"] if stream["id"] == "S1")
+        self.assertEqual(stream["remediations"], {"planned": 1, "implemented": 1, "verified": 1})
+        with self.assertRaises(RejectedEvent) as refreeze:
+            self.emit("surrogate", "remediation_approved", {"remediation_plan": [{"id": "fix-1", "finding_id": "finding-1"}]}, "S1")
+        self.assertEqual(refreeze.exception.code, "REMEDIATION_PLAN_LOCKED")
+        with self.assertRaises(RejectedEvent) as late_finding:
+            self.emit("lead-s1", "finding_discovered", {"finding_id": "finding-2", "severity": "LOW"}, "S1")
+        self.assertEqual(late_finding.exception.code, "FINDING_FREEZE")
+
+        with tempfile.TemporaryDirectory() as runtime:
+            store = EventStore(runtime)
+            store.submit({"actor_id": "integrator", "idempotency_key": "bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "demo"}, "evidence": EVIDENCE})
+            store.submit({"actor_id": "lead-s1", "idempotency_key": "start", "event_type": "work_started", "payload": {"session_id": "no-remediation-plan", "planned_scenarios": 1}, "stream_id": "S1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            for stage in ("charter", "baseline", "triage"):
+                verification = store.submit({"actor_id": "verifier", "idempotency_key": f"verify-{stage}", "event_type": "verification_accepted", "payload": {"verification_id": stage, "work_item_id": f"S1:{stage}", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "stream_id": "S1", "expected_stream_seq": store.next_stream_seq("S1"), "evidence": EVIDENCE})
+                store.submit({"actor_id": "integrator", "idempotency_key": f"accept-{stage}", "event_type": "work_item_accepted", "payload": {"work_item_id": f"S1:{stage}", "verification_event_id": verification["event"]["event_id"]}, "stream_id": "S1", "expected_stream_seq": store.next_stream_seq("S1"), "evidence": EVIDENCE})
+            verification = store.submit({"actor_id": "verifier", "idempotency_key": "verify-remediation", "event_type": "verification_accepted", "payload": {"verification_id": "remediation", "work_item_id": "S1:remediation", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "stream_id": "S1", "expected_stream_seq": store.next_stream_seq("S1"), "evidence": EVIDENCE})
+            with self.assertRaises(RejectedEvent) as missing_plan:
+                store.submit({"actor_id": "integrator", "idempotency_key": "accept-remediation", "event_type": "work_item_accepted", "payload": {"work_item_id": "S1:remediation", "verification_event_id": verification["event"]["event_id"]}, "stream_id": "S1", "expected_stream_seq": store.next_stream_seq("S1"), "evidence": EVIDENCE})
+            self.assertEqual(missing_plan.exception.code, "REMEDIATION_PLAN_REQUIRED")
+
     def test_regression_requires_scenarios_and_completed_session_is_not_stale(self):
         self.emit("lead-s1", "work_started", {"session_id": "full-stream", "planned_scenarios": 1}, "S1")
+        self.emit("surrogate", "remediation_approved", {"remediation_plan": []}, "S1")
         def accept(stage):
             verification = self.emit("verifier", "verification_accepted", {"verification_id": f"verify-{stage}", "work_item_id": f"S1:{stage}", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
             return self.emit("integrator", "work_item_accepted", {"work_item_id": f"S1:{stage}", "verification_event_id": verification["event"]["event_id"]}, "S1")
@@ -222,6 +267,7 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_failed_stream_cannot_receive_packet_closure_credit(self):
         self.emit("lead-s1", "work_started", {"session_id": "failed-before-packet", "planned_scenarios": 1}, "S1")
+        self.emit("surrogate", "remediation_approved", {"remediation_plan": []}, "S1")
         self.emit("lead-s1", "scenario_executed", {"scenario_id": "required"}, "S1")
         for stage in ("charter", "baseline", "triage", "remediation", "verification", "regression"):
             verification = self.emit("verifier", "verification_accepted", {"verification_id": f"failed-{stage}", "work_item_id": f"S1:{stage}", "finder_actor_id": "lead-s1", "fixer_actor_id": "lead-s1"}, "S1")
@@ -293,7 +339,7 @@ class ControlPlaneTests(unittest.TestCase):
             writer = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); started = time.monotonic(); writer.request("POST", "/api/events", body=payload, headers={"Authorization": f"Bearer {self.tokens['lead-s1']}", "Content-Type": "application/json"}); self.assertEqual(writer.getresponse().status, 201)
             self.assertIn(b"event: projection", response.fp.readline()); self.assertLess(time.monotonic() - started, 1.0); writer.close(); conn.close()
         finally: httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
-        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
+        html = (TRACKER / "dashboard.html").read_text(); self.assertIn("EventSource", html); self.assertIn("@media", html); self.assertIn("aria-label", html); self.assertIn("Tracker Integrity and Audit", html); self.assertIn("blockedStreams", html); self.assertIn("location.protocol==='file:'", html); self.assertIn("start the local control plane", html); self.assertIn("SYNTHETIC DEMONSTRATION", html); self.assertIn("Cost not reported", html); self.assertIn("No participant roster reported", html); self.assertIn("triage-frozen remediations verified", html); self.assertIn("safeUri", html); self.assertIn("dashboardMarkup", html)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)
