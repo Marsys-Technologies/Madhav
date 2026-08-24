@@ -44,6 +44,27 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue(self.store.verify_replay()["ok"]); self.store.rebuild(self.store.projection()["projection_as_of"])
         self.assertEqual(before, self.store.projection()["canonical_hash"])
 
+    def test_append_only_correction_sets_a_missing_session_ceiling(self):
+        self.accepted_s1_item()
+        started = next(event for event in self.store.events() if event["event_type"] == "work_started")
+        self.emit("lead-s1", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "work-start receipt omitted the operational duration ceiling", "ceiling": 14400}, "S1")
+        session = next(item for item in self.store.projection()["canonical"]["execution_sessions"] if item["id"] == "s1")
+        self.assertEqual(session["ceiling"], 14400)
+        with self.assertRaises(RejectedEvent) as duplicate:
+            self.emit("lead-s1", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "attempted overwrite", "ceiling": 7200}, "S1")
+        self.assertEqual(duplicate.exception.code, "CORRECTION_ALREADY_RECORDED")
+
+    def test_session_ceiling_correction_requires_owned_receipt_and_evidence(self):
+        self.accepted_s1_item()
+        started = next(event for event in self.store.events() if event["event_type"] == "work_started")
+        bootstrap = next(event for event in self.store.events() if event["event_type"] == "campaign_bootstrapped")
+        with self.assertRaises(RejectedEvent) as foreign:
+            self.emit("lead-s1", "correction_recorded", {"corrects_event_id": bootstrap["event_id"], "reason": "wrong target", "ceiling": 14400}, "S1")
+        self.assertEqual(foreign.exception.code, "CORRECTION_TARGET")
+        with self.assertRaises(RejectedEvent) as no_evidence:
+            self.emit("lead-s1", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "missing authority evidence", "ceiling": 14400}, "S1", evidence=[])
+        self.assertEqual(no_evidence.exception.code, "EVIDENCE_REQUIRED")
+
     def test_replay_detects_tampered_event_chain_before_rebuild(self):
         with self.store.connection() as con:
             con.execute("DROP TRIGGER events_no_update")
