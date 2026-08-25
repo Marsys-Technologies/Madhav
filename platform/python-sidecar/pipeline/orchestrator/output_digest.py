@@ -99,26 +99,27 @@ def _component_statement(component: dict[str, Any]) -> str:
     for column in value_columns:
         pairs.extend([f"'{column}'", f"source.{_quoted(column)}"])
     row_json = f"jsonb_build_object({', '.join(pairs)})::text"
-    key_projection = ", ".join(
-        f"to_jsonb(source.{_quoted(column)})::text COLLATE \"C\" AS {_quoted(f'__key_{index}')}"
-        for index, column in enumerate(key_columns)
-    )
-    order = ", ".join(
-        f"digest_source.{_quoted(f'__key_{index}')} NULLS FIRST"
-        for index in range(len(key_columns))
-    )
-    # PostgreSQL does not expose a SELECT-list alias inside an ORDER BY
-    # expression such as `row_json COLLATE "C"`. Materialize the aliases in an
-    # inner query first. Key values are normalized to JSON text so ordering is
-    # deterministic across database locales and works for non-text key types.
-    # `row_json` then provides a deterministic tie-breaker if a reviewed key is
-    # accidentally non-unique. The fixed public schema forbids caller-supplied
-    # table paths or SQL expressions.
+    order = ", ".join(f"source.{_quoted(column)}" for column in key_columns)
+    # Reviewed keys are backed by unique indexes and NULL is rejected before
+    # scanning. Ordering by the native columns lets PostgreSQL use those indexes
+    # for large relations instead of sorting a JSON projection of every row.
     return (
-        "SELECT digest_source.row_json "
-        f"FROM (SELECT {row_json} AS row_json, {key_projection} "
-        f"FROM public.{_quoted(relation)} AS source) AS digest_source "
-        f"ORDER BY {order}, digest_source.row_json COLLATE \"C\""
+        f"SELECT {row_json} AS row_json "
+        f"FROM public.{_quoted(relation)} AS source "
+        f"ORDER BY {order}"
+    )
+
+
+def _component_key_preflight(component: dict[str, Any]) -> str:
+    relation = _identifier(component.get("relation"), field="relation")
+    key_columns = _columns(component, "key_columns")
+    null_predicate = " OR ".join(
+        f"source.{_quoted(column)} IS NULL" for column in key_columns
+    )
+    return (
+        "SELECT 1 AS invalid_key "
+        f"FROM public.{_quoted(relation)} AS source "
+        f"WHERE {null_predicate} LIMIT 1"
     )
 
 
@@ -151,6 +152,9 @@ def compute_output_digest(cur, *, asset_id: str) -> tuple[str | None, str | None
         name = _identifier(component.get("name"), field="component name")
         digest.update(name.encode("ascii"))
         digest.update(b"\\0")
+        cur.execute(_component_key_preflight(component))
+        if cur.fetchone():
+            raise ValueError(f"output digest component {name} has a NULL reviewed key")
         row_count = 0
         with _streaming_cursor(cur) as stream:
             stream.execute(_component_statement(component))

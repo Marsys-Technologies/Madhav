@@ -17,16 +17,20 @@ from pipeline.orchestrator.provenance import canonical_digest
 
 
 class _Cursor:
-    def __init__(self, row=None, batches=()):
+    def __init__(self, row=None, batches=(), null_key=False):
         self.row = row
         self.batches = list(batches)
+        self.null_key = null_key
         self.executed = []
+        self._next_row = row
 
     def execute(self, statement, params=None):
         self.executed.append((statement, params))
+        self._next_row = ({"invalid_key": 1} if self.null_key else None) \
+            if "SELECT 1 AS invalid_key" in statement else self.row
 
     def fetchone(self):
-        return self.row
+        return self._next_row
 
     def fetchmany(self, size):
         return self.batches.pop(0) if self.batches else []
@@ -81,13 +85,11 @@ def test_digest_streams_ordered_canonical_rows_and_never_fetches_all():
     assert "public" in cursor.executed[-1][0]
 
 
-def test_component_statement_materializes_aliases_before_collated_ordering():
+def test_component_statement_orders_by_reviewed_natural_keys_without_a_json_sort():
     statement = _component_statement(SPEC["components"][0])
-    assert "FROM (SELECT" in statement
-    assert 'AS "__key_0"' in statement
-    assert "AS digest_source" in statement
-    assert 'digest_source.row_json COLLATE "C"' in statement
-    assert 'to_jsonb(source."rule_id")::text COLLATE "C"' in statement
+    assert 'ORDER BY source."rule_id"' in statement
+    assert 'to_jsonb(source."rule_id")' not in statement
+    assert "row_json COLLATE" not in statement
 
 
 def test_digest_uses_a_named_server_cursor_instead_of_client_buffering():
@@ -101,10 +103,24 @@ def test_digest_uses_a_named_server_cursor_instead_of_client_buffering():
 
     assert digest is not None
     assert spec_sha == canonical_digest(SPEC)
-    assert len(spec_cursor.executed) == 1  # spec lookup only
+    assert len(spec_cursor.executed) == 2  # spec lookup + key-null preflight
     assert len(stream.executed) == 1
     assert spec_cursor.connection.cursor_calls[0]["name"].startswith("nirmana_digest_")
     assert spec_cursor.connection.cursor_calls[0]["row_factory"] is not None
+
+
+def test_digest_fails_closed_before_scanning_rows_when_a_reviewed_key_is_null():
+    cursor = _Cursor(
+        row={"spec": SPEC, "spec_sha256": canonical_digest(SPEC)},
+        null_key=True,
+    )
+    try:
+        compute_output_digest(cursor, asset_id="bg_rules")
+    except ValueError as exc:
+        assert "NULL" in str(exc)
+    else:
+        raise AssertionError("NULL digest key was accepted")
+    assert len(cursor.executed) == 2
 
 
 def test_invalid_spec_identifier_fails_closed_before_querying_a_relation():
