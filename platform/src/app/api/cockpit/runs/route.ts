@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
 import { resolveBuildPlan, computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
@@ -25,6 +26,46 @@ interface RegistryEntryWithScope extends RegistryEntry {
 }
 
 const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
+
+type FrozenManifestAsset = {
+  asset_id: string
+  scope: string
+  depends_on: string[]
+}
+
+type FrozenRunManifest = {
+  version: 'nirmana-run-manifest/v1'
+  chart_id: string
+  scope: BuildScope
+  scope_target: string | null
+  action: BuildAction
+  waves: string[][]
+  assets: FrozenManifestAsset[]
+}
+
+/**
+ * Serializes values identically in the dispatcher and the Python runner: object
+ * keys are lexical, while arrays retain the execution order they were given.
+ * Manifest values are IDs/enums only, so the shared ASCII JSON representation is
+ * deliberate and avoids a JSONB key-order dependency at read time.
+ */
+function canonicalManifestJson(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) return input.map(normalize)
+    if (input !== null && typeof input === 'object') {
+      const record = input as Record<string, unknown>
+      return Object.fromEntries(Object.keys(record).sort().map(key => [key, normalize(record[key])]))
+    }
+    return input
+  }
+  const serialized = JSON.stringify(normalize(value))
+  if (serialized === undefined) throw new TypeError('Frozen manifest must be JSON-serializable')
+  return serialized
+}
+
+function manifestDigest(manifest: FrozenRunManifest): string {
+  return createHash('sha256').update(canonicalManifestJson(manifest), 'utf8').digest('hex')
+}
 
 export async function POST(req: NextRequest) {
   const user = await requireUser()
@@ -202,6 +243,35 @@ export async function POST(req: NextRequest) {
     }, { status: 422 })
   }
 
+  // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
+  // operational metadata, so the runner must never re-plan a queued run from it.
+  const registryByAssetId = new Map(planRegistry.map(entry => [entry.asset_id, entry]))
+  const manifestAssets: FrozenManifestAsset[] = []
+  for (const assetId of plan) {
+    const entry = registryByAssetId.get(assetId)
+    if (!entry) {
+      return NextResponse.json({
+        error: `Planner selected asset without an active writer: ${assetId}`,
+        code: 'INVALID_BUILD_PLAN',
+      }, { status: 422 })
+    }
+    manifestAssets.push({
+      asset_id: entry.asset_id,
+      scope: entry.scope,
+      depends_on: [...(entry.depends_on ?? [])],
+    })
+  }
+  const frozenManifest: FrozenRunManifest = {
+    version: 'nirmana-run-manifest/v1',
+    chart_id,
+    scope,
+    scope_target,
+    action,
+    waves: buildPlan.plan_waves.map(wave => [...wave]),
+    assets: manifestAssets,
+  }
+  const frozenManifestDigest = manifestDigest(frozenManifest)
+
   // Gate 3: L1/L0 precondition gate — must run against current DB state BEFORE any clear.
   // If plan includes bo_* assets, verify upstream (L1 Gaṇita + L0 remedy corpus) is ready.
   if (plan.some((id: string) => id.startsWith('bo_'))) {
@@ -360,9 +430,10 @@ export async function POST(req: NextRequest) {
 
       // Insert build_run within the same transaction
       const runRes = await client.query<{ id: string }>(
-        `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
-         VALUES ($1, $2, $3, $4, 'planned', $5, $6) RETURNING id`,
-        [chart_id, scope, scope_target, action, JSON.stringify(plan), user.uid]
+        `INSERT INTO build_runs
+           (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
+         VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8) RETURNING id`,
+        [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
       )
       runId = runRes.rows[0].id
 
@@ -421,10 +492,11 @@ export async function POST(req: NextRequest) {
 
   // ── Standard build path (no clear_before) ───────────────────────────────────
   const runResult = await query<{ id: string }>(
-    `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
-     VALUES ($1, $2, $3, $4, 'planned', $5, $6)
+    `INSERT INTO build_runs
+       (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
+     VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8)
      RETURNING id`,
-    [chart_id, scope, scope_target, action, JSON.stringify(plan), user.uid]
+    [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
   )
   const runId = runResult.rows[0].id
 

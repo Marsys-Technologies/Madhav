@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { invokeRunJob } from '@/lib/build/jobInvoker'
 
 export const maxDuration = 8
 
@@ -22,9 +23,12 @@ export async function POST(
   const { id } = await params
 
   try {
+    // Claim first. The Cloud Run invocation is intentionally outside the SQL
+    // statement, but only the request that atomically moved paused -> planned may
+    // dispatch it. The runner itself owns planned -> running after its lock.
     const result = await query<{ id: string }>(
       `UPDATE build_runs
-       SET state = 'running', pause_requested_at = NULL
+       SET state = 'planned', pause_requested_at = NULL
        WHERE id=$1 AND state = 'paused'
        RETURNING id`,
       [id]
@@ -32,6 +36,26 @@ export async function POST(
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Run not found or not in paused state' }, { status: 404 })
+    }
+
+    try {
+      await invokeRunJob(id)
+    } catch (err) {
+      const detail = (err as Error).message
+      // Do not strand a paused run as planned when the dispatch did not happen.
+      // The state predicate prevents an unusually fast runner from being moved
+      // backwards after it has already claimed the work.
+      await query(
+        `UPDATE build_runs
+         SET state = 'paused', pause_requested_at = NOW(), last_error = $1
+         WHERE id=$2 AND state = 'planned' AND started_at IS NULL`,
+        [detail, id]
+      )
+      console.error('[cockpit/runs/resume] job dispatch failed:', detail)
+      return NextResponse.json(
+        { error: 'Failed to dispatch resumed build job', detail, run_id: id, code: 'JOB_DISPATCH_FAILED' },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json({ data: { run_id: id, resumed: true } })

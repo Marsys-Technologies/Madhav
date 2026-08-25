@@ -140,6 +140,32 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     // Per-chart L1+ assets are included as usual
     expect(body.data.plan).toContain('ga_positions')
   })
+
+  it('persists the ordered waves and registry dependency snapshot with the run', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    expect(insert).toBeDefined()
+    const params = insert![1] as unknown[]
+    expect(JSON.parse(params[5] as string)).toEqual({
+      version: 'nirmana-run-manifest/v1',
+      chart_id: 'c1',
+      scope: 'global',
+      scope_target: null,
+      action: 'build',
+      waves: [['ga_positions'], ['ga_strength']],
+      assets: [
+        { asset_id: 'ga_positions', scope: 'per_chart', depends_on: [] },
+        { asset_id: 'ga_strength', scope: 'per_chart', depends_on: ['ga_positions'] },
+      ],
+    })
+    expect(params[6]).toMatch(/^[a-f0-9]{64}$/)
+  })
 })
 
 // ─── 3. scope='asset' + global asset → rejected for everyone ─────────────────

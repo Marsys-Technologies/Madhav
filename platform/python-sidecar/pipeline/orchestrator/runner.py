@@ -6,13 +6,16 @@ Core execution loop: load a build_run, acquire lock, walk per-asset plan.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import signal
 import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
-from typing import Optional
+from dataclasses import dataclass
+from typing import Any, Optional
 
 import psycopg
 
@@ -183,11 +186,101 @@ def _check_writer_registry_gaps(cur) -> list[str]:
 
 def load_run(cur, run_id: str) -> Optional[dict]:
     cur.execute(
-        """SELECT id, chart_id, scope, scope_target, action, plan, state
+        """SELECT id, chart_id, scope, scope_target, action, plan, state,
+                  plan_manifest, plan_manifest_digest
            FROM build_runs WHERE id = %s""",
         (run_id,),
     )
     return cur.fetchone()
+
+
+@dataclass(frozen=True)
+class FrozenRunManifest:
+    """The exact DAG accepted by the dispatch API for one build_run."""
+
+    plan: list[str]
+    asset_scopes: dict[str, str]
+    asset_deps: dict[str, list[str]]
+
+
+def _canonical_manifest_digest(manifest: object) -> str:
+    """Match route.ts: recursively key-sort objects and preserve array order."""
+    encoded = json.dumps(manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
+    """
+    Verify the dispatch-time manifest before any writer can run.
+
+    `asset_registry` is mutable configuration. Its current values must not be
+    allowed to re-order, add dependencies to, or change the scope of an accepted
+    run; all scheduling inputs are therefore restored from this digest-protected
+    manifest instead of reloaded from the registry.
+    """
+    manifest = run.get("plan_manifest")
+    digest = run.get("plan_manifest_digest")
+    if not isinstance(manifest, dict) or not isinstance(digest, str):
+        raise ValueError("missing frozen run manifest or digest")
+    if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+        raise ValueError("invalid frozen run manifest digest")
+    actual_digest = _canonical_manifest_digest(manifest)
+    if actual_digest != digest:
+        raise ValueError("frozen run manifest digest mismatch")
+
+    required = ("version", "chart_id", "scope", "scope_target", "action", "waves", "assets")
+    if any(key not in manifest for key in required):
+        raise ValueError("frozen run manifest is incomplete")
+    if manifest["version"] != "nirmana-run-manifest/v1":
+        raise ValueError("unsupported frozen run manifest version")
+    for field in ("chart_id", "scope", "scope_target", "action"):
+        if manifest[field] != run.get(field):
+            raise ValueError(f"frozen run manifest {field} does not match build_run")
+
+    plan = run.get("plan")
+    waves = manifest["waves"]
+    assets = manifest["assets"]
+    if not isinstance(plan, list) or not all(isinstance(asset_id, str) for asset_id in plan):
+        raise ValueError("build_run plan is invalid")
+    if not isinstance(waves, list) or not all(isinstance(wave, list) for wave in waves):
+        raise ValueError("frozen run manifest waves are invalid")
+    flattened = [asset_id for wave in waves for asset_id in wave]
+    if flattened != plan or len(set(plan)) != len(plan):
+        raise ValueError("frozen run manifest waves do not exactly match build_run plan")
+    if not isinstance(assets, list) or len(assets) != len(plan):
+        raise ValueError("frozen run manifest assets do not exactly match build_run plan")
+
+    asset_scopes: dict[str, str] = {}
+    asset_deps: dict[str, list[str]] = {}
+    for expected_id, asset in zip(plan, assets):
+        if not isinstance(asset, dict) or asset.get("asset_id") != expected_id:
+            raise ValueError("frozen run manifest asset order does not match build_run plan")
+        scope = asset.get("scope")
+        deps = asset.get("depends_on")
+        if not isinstance(scope, str) or not isinstance(deps, list) or not all(isinstance(dep, str) for dep in deps):
+            raise ValueError(f"frozen run manifest asset {expected_id} is invalid")
+        if len(set(deps)) != len(deps):
+            raise ValueError(f"frozen run manifest asset {expected_id} has duplicate dependencies")
+        asset_scopes[expected_id] = scope
+        asset_deps[expected_id] = list(deps)
+
+    return FrozenRunManifest(plan=list(plan), asset_scopes=asset_scopes, asset_deps=asset_deps)
+
+
+def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> None:
+    """Fail closed if mutable registry config changed after dispatch, before work starts."""
+    cur.execute(
+        """SELECT asset_id, scope, COALESCE(depends_on, '{}') AS depends_on
+           FROM asset_registry WHERE asset_id = ANY(%s)""",
+        (frozen.plan,),
+    )
+    rows = {row["asset_id"]: row for row in cur.fetchall()}
+    for asset_id in frozen.plan:
+        row = rows.get(asset_id)
+        if row is None:
+            raise ValueError(f"frozen run manifest asset {asset_id} is no longer registered")
+        if row["scope"] != frozen.asset_scopes[asset_id] or list(row["depends_on"] or []) != frozen.asset_deps[asset_id]:
+            raise ValueError(f"asset_registry changed after dispatch for frozen asset {asset_id}")
 
 
 def mark_run_state(
@@ -783,6 +876,34 @@ def execute_run(run_id: str) -> None:
     conn.autocommit = False
     cur = conn.cursor()
 
+    run = load_run(cur, run_id)
+    if run is None:
+        logger.error("[orchestrator] build_run %s not found", run_id)
+        conn.close()
+        sys.exit(2)
+
+    chart_id: str = run["chart_id"]
+    action: str = run["action"]
+    try:
+        frozen = validate_frozen_run_manifest(run)
+        _verify_registry_still_matches_manifest(cur, frozen)
+    except ValueError as exc:
+        # A legacy, tampered, or registry-mutated run is unsafe to execute. Mark
+        # it terminal rather than falling back to mutable planning inputs.
+        message = f"frozen manifest validation failed: {exc}"
+        logger.error("[orchestrator] run %s %s", run_id, message)
+        cur.execute(
+            "UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=%s WHERE id=%s",
+            (message[:2000], run_id),
+        )
+        conn.commit()
+        conn.close()
+        sys.exit(1)
+
+    plan = frozen.plan
+    _asset_scopes = frozen.asset_scopes
+    _asset_deps = frozen.asset_deps
+
     # ── Writer-gap pre-flight ─────────────────────────────────────────────────
     # Check for @register()'d writers that lack has_writer=true in asset_registry.
     # They are silently excluded from every build plan by the plan resolver query
@@ -820,36 +941,6 @@ def execute_run(run_id: str) -> None:
         )
         conn.close()
         sys.exit(3)
-
-    run = load_run(cur, run_id)
-    if run is None:
-        logger.error("[orchestrator] build_run %s not found", run_id)
-        conn.close()
-        sys.exit(2)
-
-    chart_id: str = run["chart_id"]
-    action: str = run["action"]
-    plan: list[str] = run["plan"]
-
-    # Preload asset scopes so global assets (scope='global') are always dispatched with
-    # chart_id=None — they are singletons independent of any chart.  Passing a non-None
-    # chart_id to run_asset() for a global asset creates a spurious chart-scoped
-    # asset_throughput row that shadows the correct global row in the stats query.
-    cur.execute(
-        "SELECT asset_id, scope, COALESCE(depends_on, '{}') AS depends_on "
-        "FROM asset_registry WHERE asset_id = ANY(%s)",
-        (plan,),
-    )
-    _registry_rows = cur.fetchall()
-    _asset_scopes: dict[str, str] = {r["asset_id"]: r["scope"] for r in _registry_rows}
-    # Upstream-success gate (native-approved 2026-06-27): map each asset to its declared
-    # dependencies so a downstream asset is NOT run when an upstream it depends on errored or
-    # was itself blocked. Without this the runner walks the plan in DAG ORDER but never GATES
-    # on success — a single writer failure silently cascades "empty but complete" rows through
-    # the whole downstream chain (the ka_yojaka → Kāla/Phala/Mīmāṃsā incident).
-    _asset_deps: dict[str, list[str]] = {
-        r["asset_id"]: list(r["depends_on"] or []) for r in _registry_rows
-    }
 
     if not acquire_chart_lock(cur, chart_id):
         logger.warning("[orchestrator] chart %s locked by another run — deferring", chart_id)
