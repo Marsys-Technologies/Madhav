@@ -17,7 +17,7 @@ TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assura
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _p1_release_upgrade_lock, _prove_loopback_p1_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -885,7 +885,7 @@ class ControlPlaneTests(unittest.TestCase):
                     bootstrapped_arguments.append(plistlib.loads(Path(command[-1]).read_bytes())["ProgramArguments"])
                 return subprocess.CompletedProcess(command, 0, "", "")
             source_sha = "b" * 40
-            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service._prove_loopback_p1_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
                 with self.assertRaisesRegex(ValueError, "post snapshot failure"):
                     upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
             self.assertEqual(plist_path.read_bytes(), original_plist)
@@ -905,7 +905,7 @@ class ControlPlaneTests(unittest.TestCase):
             connection = MagicMock(); connection.__enter__.return_value = object(); store.connection.return_value = connection
             stores = MagicMock(return_value=store); stores._p0_to_p1_dependency_resolved.return_value = True
             source_sha = "d" * 40
-            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "", "")):
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service._prove_loopback_p1_service"), patch("service.EventStore", stores), patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "", "")):
                 result = upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
             self.assertEqual(result["previous_source_sha"], "a" * 40)
             self.assertEqual(result["pre_snapshot"], str(root_path / "pre.json"))
@@ -913,6 +913,26 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertIn("--p1-enabled", plistlib.loads(plist_path.read_bytes())["ProgramArguments"])
             stores.assert_called_once_with(runtime, p0b_only=True, p1_enabled=True)
             store.provision_p1_credentials.assert_not_called()
+
+    def test_upgrade_p1_release_rolls_back_when_the_candidate_loopback_service_is_not_proven(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; runtime.mkdir(); release = root_path / "release"; old_release = root_path / "old-release"
+            (runtime / "p1-credentials.json").write_text("private-but-unread\n"); os.chmod(runtime / "p1-credentials.json", 0o600)
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"; plist_path.parent.mkdir(parents=True)
+            original_plist = build_launchd_plist(old_release, runtime, p1_enabled=True); plist_path.write_bytes(original_plist)
+            store = MagicMock(); store.verify_replay.return_value = {"ok": True}; store.export_snapshot.return_value = {"path": str(root_path / "pre.json")}
+            connection = MagicMock(); connection.__enter__.return_value = object(); store.connection.return_value = connection
+            stores = MagicMock(return_value=store); stores._p0_to_p1_dependency_resolved.return_value = True
+            commands = []
+            def launchctl(command, **kwargs):
+                commands.append(command); return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "f" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service._prove_loopback_p1_service", side_effect=[ValueError("candidate loopback unavailable"), None]), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(ValueError, "candidate loopback unavailable"):
+                    upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            self.assertEqual(plist_path.read_bytes(), original_plist)
+            self.assertEqual(len([command for command in commands if command[1] == "bootstrap"]), 2)
+            self.assertEqual(store.verify_replay.call_count, 1)
 
     def test_upgrade_p1_release_fails_fatally_when_p1_rollback_cannot_restore_service(self):
         with tempfile.TemporaryDirectory() as root:
@@ -931,7 +951,7 @@ class ControlPlaneTests(unittest.TestCase):
                         raise subprocess.CalledProcessError(1, command)
                 return subprocess.CompletedProcess(command, 0, "", "")
             source_sha = "e" * 40
-            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service._prove_loopback_p1_service", side_effect=[None, ValueError("rollback loopback unavailable")]), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
                 with self.assertRaisesRegex(RuntimeError, "P1 release upgrade failed and P1 rollback failed; preserved plist backup"):
                     upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
 
@@ -944,6 +964,30 @@ class ControlPlaneTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "P1 credentials are not a private regular file"):
                     upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
             launchctl.assert_not_called()
+
+    def test_p1_release_loopback_proof_requires_healthy_endpoint_and_expected_launchd_identity(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "candidate"; runtime = Path(root) / "runtime"
+            output = f"program arguments = {{ {release / 'server.py'} --runtime {runtime} --p0b-only --p1-enabled --host 127.0.0.1 --port 8787 }}"
+            response = MagicMock(); response.status = 200; response.read.return_value = b'{"ok":true}'
+            connection = MagicMock(); connection.getresponse.return_value = response
+            with patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, output, "")), patch("service.http.client.HTTPConnection", return_value=connection):
+                _prove_loopback_p1_service(release, runtime, 8787, "gui/504", attempts=1, retry_seconds=0)
+            connection.request.assert_called_once_with("GET", "/api/integrity", headers={"Host": "127.0.0.1:8787"})
+            with patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "program arguments = { /wrong/server.py }", "")), patch("service.http.client.HTTPConnection") as http_connection:
+                with self.assertRaisesRegex(ValueError, "release identity"):
+                    _prove_loopback_p1_service(release, runtime, 8787, "gui/504", attempts=1, retry_seconds=0)
+            http_connection.assert_not_called()
+
+    def test_upgrade_p1_release_rejects_a_concurrent_lifecycle_lock_before_preflight(self):
+        with tempfile.TemporaryDirectory() as root:
+            runtime = Path(root) / "runtime"; runtime.mkdir(); release = Path(root) / "release"
+            with _p1_release_upgrade_lock(runtime):
+                with patch("service.sys.platform", "darwin"), patch("service.assert_release_attestation") as attestation:
+                    with self.assertRaisesRegex(ValueError, "lifecycle lock is already held"):
+                        upgrade_p1_release(release, runtime, "f" * 40, Path(root) / "pre.json", Path(root) / "post.json")
+            attestation.assert_not_called()
+            self.assertFalse((runtime / ".p1-release-upgrade.lock").exists())
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()

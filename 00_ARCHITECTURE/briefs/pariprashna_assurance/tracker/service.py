@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
+import http.client
 import json
 import os
 import plistlib
@@ -13,6 +15,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from control import EventStore
@@ -334,6 +337,65 @@ def _assert_private_p1_credentials(runtime: Path) -> None:
         raise ValueError("P1 credentials are not a private regular file")
 
 
+@contextlib.contextmanager
+def _p1_release_upgrade_lock(runtime: Path):
+    """Take a private, non-blocking lifecycle lock before any P1 release-upgrade preflight."""
+    lock_path = runtime / ".p1-release-upgrade.lock"
+    try:
+        descriptor = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    except FileExistsError as exc:
+        raise ValueError("P1 release upgrade lifecycle lock is already held; refusing concurrent or reentrant upgrade") from exc
+    except OSError as exc:
+        raise ValueError("P1 release upgrade lifecycle lock cannot be created in the approved runtime") from exc
+    try:
+        os.fchmod(descriptor, 0o600)
+        os.write(descriptor, f"pid={os.getpid()}\n".encode())
+        os.fsync(descriptor)
+        yield
+    finally:
+        os.close(descriptor)
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _prove_loopback_p1_service(release_dir: Path, runtime: Path, port: int, domain: str, *, attempts: int = 10, retry_seconds: float = 0.25) -> None:
+    """Prove a launchd-bound P1 service answers healthy on loopback from the expected release tree."""
+    if attempts < 1 or retry_seconds < 0:
+        raise ValueError("loopback service proof requires at least one non-negative bounded attempt")
+    expected_arguments = (str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port))
+    last_error = "service did not answer"
+    for attempt in range(attempts):
+        job = subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True, text=True)
+        if job.returncode != 0:
+            last_error = "launchd job is not loaded"
+        elif not all(argument in job.stdout for argument in expected_arguments):
+            raise ValueError("P1 loopback service release identity does not match the expected attested release")
+        else:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+            try:
+                connection.request("GET", "/api/integrity", headers={"Host": f"127.0.0.1:{port}"})
+                response = connection.getresponse()
+                body = response.read(1024 * 1024 + 1)
+                if len(body) > 1024 * 1024:
+                    last_error = "integrity response exceeds the bounded proof size"
+                elif response.status != 200:
+                    last_error = f"integrity endpoint returned HTTP {response.status}"
+                else:
+                    payload = json.loads(body)
+                    if isinstance(payload, dict) and payload.get("ok") is True:
+                        return
+                    last_error = "integrity endpoint did not report a healthy replay"
+            except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
+                last_error = f"loopback integrity request failed: {type(exc).__name__}"
+            finally:
+                connection.close()
+        if attempt + 1 < attempts:
+            time.sleep(retry_seconds)
+    raise ValueError(f"P1 loopback service health proof failed: {last_error}")
+
+
 def _write_private_file(path: Path, content: bytes) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -402,6 +464,12 @@ def upgrade_p1_release(release_dir: Path, runtime: Path, source_sha: str, pre_sn
     """Atomically advance only an attested P1-enabled service to a new attested P1 release."""
     if sys.platform != "darwin":
         raise ValueError("launchd P1 release upgrades are supported only on macOS")
+    with _p1_release_upgrade_lock(runtime):
+        return _upgrade_p1_release_locked(release_dir, runtime, source_sha, pre_snapshot, post_snapshot, port)
+
+
+def _upgrade_p1_release_locked(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: Path, post_snapshot: Path, port: int) -> dict[str, str]:
+    """Perform the P1-only swap while the lifecycle lock is held by ``upgrade_p1_release``."""
     release_dir = assert_release_attestation(release_dir, source_sha)
     runtime_preflight(runtime, APPROVED_RUNTIME, _filevault_status())
     plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
@@ -431,6 +499,7 @@ def upgrade_p1_release(release_dir: Path, runtime: Path, source_sha: str, pre_sn
         os.replace(temporary_plist, plist_path)
         candidate_bootstrap_attempted = True
         subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        _prove_loopback_p1_service(release_dir, runtime, port, domain)
         if not store.verify_replay()["ok"]:
             raise ValueError("P1-enabled release replay integrity is not clean")
         post = store.export_snapshot(post_snapshot)
@@ -443,6 +512,7 @@ def upgrade_p1_release(release_dir: Path, runtime: Path, source_sha: str, pre_sn
                 subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=False, capture_output=True)
             _replace_private_file(plist_path, previous_plist)
             subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+            _prove_loopback_p1_service(old_release, runtime, port, domain)
         except Exception as rollback_error:
             raise RuntimeError(f"P1 release upgrade failed and P1 rollback failed; preserved plist backup: {backup_plist}") from rollback_error
         raise activation_error
