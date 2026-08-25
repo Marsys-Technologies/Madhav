@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+import uuid
 
 import pytest
 
@@ -9,6 +10,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
 from pipeline.orchestrator.runner import (
     _canonical_manifest_digest,
+    _terminalize_preflight_failure,
     _verify_registry_still_matches_manifest,
     validate_frozen_run_manifest,
 )
@@ -49,6 +51,41 @@ def test_valid_manifest_restores_the_persisted_dag_not_the_live_registry():
     assert frozen.asset_partitions == {"ga_positions": "chart_id", "ga_strength": "chart_id"}
     assert frozen.asset_has_cowriters == {"ga_positions": False, "ga_strength": True}
     assert frozen.expected_code_digests["ga_positions"].startswith("7c19f23c")
+
+
+def test_valid_manifest_accepts_psycopg_uuid_chart_id():
+    """Production returns UUID columns as uuid.UUID while JSONB stores strings."""
+    run = _run()
+    chart_id = str(uuid.uuid4())
+    run["chart_id"] = uuid.UUID(chart_id)
+    run["plan_manifest"]["chart_id"] = chart_id
+    run["plan_manifest_digest"] = _canonical_manifest_digest(run["plan_manifest"])
+
+    frozen = validate_frozen_run_manifest(run)
+
+    assert frozen.plan == ["ga_positions", "ga_strength"]
+
+
+def test_preflight_failure_terminalizes_run_and_queued_assets_atomically():
+    class Cursor:
+        sql = ""
+        params = ()
+
+        def execute(self, sql, params):
+            self.sql = " ".join(sql.split())
+            self.params = params
+
+    cur = Cursor()
+
+    _terminalize_preflight_failure(cur, run_id="run-1", message="unsafe manifest")
+
+    assert "WITH failed_run AS" in cur.sql
+    assert "UPDATE build_runs" in cur.sql
+    assert "state='failed'" in cur.sql
+    assert "UPDATE build_run_assets" in cur.sql
+    assert "state='aborted'" in cur.sql
+    assert "state='queued'" in cur.sql
+    assert cur.params == ("unsafe manifest", "run-1", "unsafe manifest")
 
 
 def test_tampered_manifest_is_rejected_before_any_writer_can_run():
