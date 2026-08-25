@@ -260,13 +260,25 @@ def test_restored_census_rows_keep_their_honest_dispositions():
         assert "lattice family not materialized" in note
 
     assert by_name[("muhurta_lagna", "rising_sign_span")][0] == "computed"
-    assert by_name[("muhurta_lagna", "lagna_lord_strength")][0] == "computed"
+    assert by_name[("muhurta_lagna", "lagna_lord_strength")][0] == "not_computed"
     assert by_name[("muhurta_lagna", "lagna_shuddhi_rules")][0] == "not_in_corpus"
     assert by_name[("rite_specific", "activity_rule_id_join")][0] == "computed"
     assert by_name[("rite_specific", "activity_rule_pareto_axis_in_frozen_engine")][0] == "not_computed"
     vishti = by_name[("parihara_scope", "vishti_conditional_undertaking_exception")]
     assert vishti[0] == "not_computed"
     assert "brihat_samhita_pg0768_c01" in vishti[2]
+
+
+def test_materialized_census_does_not_claim_unimplemented_lagna_lord_strength():
+    row = next(
+        row for row in build_census_rows("test-build")
+        if row["factor_family"] == "muhurta_lagna"
+        and row["factor_name"] == "lagna_lord_strength"
+    )
+
+    assert row["disposition"] == "not_computed"
+    assert "no authority-backed query-time join" in row["citation_or_gap_note"]
+    assert "honest_empty" in row["evidence_pointer"]
 
 
 # ── Offline: writer registration + dry_run ────────────────────────────────────

@@ -51,8 +51,8 @@ math is reimplemented here, exactly the `bg_sky_calendar` precedent):
 
   5. HORĀ — 24 planetary hours over sunrise→next sunrise.
   6. VĀRA — the weekday prevailing for that Hindu day.
-  7. NAKṢATRA — the nakṣatra prevailing at sunrise.
-  8. TITHI — the tithi prevailing at sunrise.
+  7. NAKṢATRA — true nakṣatra atoms clipped to the Hindu-day span.
+  8. TITHI — true tithi atoms clipped to the Hindu-day span.
   9. LAGNA — rising-sign spans at the same reference location, carrying facts
      for query-time strength evaluation but no duplicated dignity judgment.
 
@@ -619,38 +619,59 @@ def compute_day_factors(day: date) -> list[_Row]:
         corpus_status=corpus_status,
     ))
 
-    citation, corpus_status = NAKSHATRA_CITATION
-    rows.append(_Row(
-        factor_family="nakshatra",
-        factor_key=_slug(nakshatra.name),
-        start_utc=sunrise_utc,
-        end_utc=next_sunrise_utc,
-        detail={
-            "factor_id": nakshatra.id,
-            "name": nakshatra.name,
-            "anga_true_end_utc": nakshatra.end_utc.isoformat(),
-            "span_convention": "hindu_day_sunrise_to_next_sunrise_anga_at_sunrise",
-        },
-        source_citation=citation,
-        corpus_status=corpus_status,
-    ))
+    def anga_at(family: str, instant_utc: datetime):
+        jd = swe.julday(
+            instant_utc.year, instant_utc.month, instant_utc.day,
+            instant_utc.hour + instant_utc.minute / 60.0
+            + (instant_utc.second + instant_utc.microsecond / 1_000_000) / 3600.0,
+        )
+        instant_planets = compute_all_grahas(jd)
+        instant_sun = next(p.longitude_sidereal for p in instant_planets if p.name == "Sun")
+        instant_moon = next(p.longitude_sidereal for p in instant_planets if p.name == "Moon")
+        if family == "tithi":
+            return compute_tithi(instant_sun, instant_moon, instant_utc)
+        return compute_nakshatra(instant_moon, instant_utc)
 
-    citation, corpus_status = TITHI_CITATION
-    rows.append(_Row(
-        factor_family="tithi",
-        factor_key=_slug(tithi.name),
-        start_utc=sunrise_utc,
-        end_utc=next_sunrise_utc,
-        detail={
-            "factor_id": tithi.id,
-            "name": tithi.name,
-            "paksha": "shukla" if tithi.id <= 15 else "krishna",
-            "anga_true_end_utc": tithi.end_utc.isoformat(),
-            "span_convention": "hindu_day_sunrise_to_next_sunrise_anga_at_sunrise",
-        },
-        source_citation=citation,
-        corpus_status=corpus_status,
-    ))
+    for family, initial_anga, family_citation in (
+        ("nakshatra", nakshatra, NAKSHATRA_CITATION),
+        ("tithi", tithi, TITHI_CITATION),
+    ):
+        current = initial_anga
+        atom_start = sunrise_utc
+        citation, corpus_status = family_citation
+        while atom_start < next_sunrise_utc:
+            atom_end = min(current.end_utc, next_sunrise_utc)
+            if atom_end <= atom_start:
+                raise RuntimeError(
+                    f"{family} boundary did not advance: {atom_start.isoformat()} -> "
+                    f"{atom_end.isoformat()}"
+                )
+            detail = {
+                "factor_id": current.id,
+                "name": current.name,
+                "anga_true_end_utc": current.end_utc.isoformat(),
+                "span_convention": "true_anga_interval_clipped_to_hindu_day",
+            }
+            if family == "tithi":
+                detail["paksha"] = "shukla" if current.id <= 15 else "krishna"
+            rows.append(_Row(
+                factor_family=family,
+                factor_key=_slug(current.name),
+                start_utc=atom_start,
+                end_utc=atom_end,
+                detail=detail,
+                source_citation=citation,
+                corpus_status=corpus_status,
+            ))
+            if atom_end >= next_sunrise_utc:
+                break
+            successor = anga_at(family, atom_end + timedelta(seconds=2))
+            if successor.id == current.id:
+                raise RuntimeError(
+                    f"{family} boundary at {atom_end.isoformat()} did not yield a successor"
+                )
+            current = successor
+            atom_start = atom_end
 
     # ── Family 9: lagna spans ────────────────────────────────────────────────
     citation, corpus_status = LAGNA_CITATION

@@ -479,11 +479,11 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "bisection over panchang_engine.lagna.compute_lagna, not by assuming equal "
      "two-hour signs. Rows carry sign/lord/graha facts and no duplicated judgment.",
      "bg_muhurta_lattice (factor_family=lagna; from panchang_engine/lagna.py:compute_lagna)", None),
-    ("muhurta_lagna", "lagna_lord_strength", "computed",
-     "Evaluated at query time from lattice facts against bg_dignity_reference "
-     "and BPHS Ch.26 drishti constants. The lattice's strength_verdict remains "
-     "NULL so it cannot drift from those authorities (§N.5).",
-     "bg_dignity_reference + brahma_constants special_aspect_*; query-time join in platform-mcp/src/lib/kala_ritual_resonance.ts", None),
+    ("muhurta_lagna", "lagna_lord_strength", "not_computed",
+     "Lattice rows carry sign/lord/graha facts, but no authority-backed query-time join "
+     "currently computes lagna-lord dignity or drishti strength. The stored "
+     "strength_verdict remains NULL and this capability stays explicitly unavailable.",
+     "platform-mcp/src/tools/kala_views/elect.ts:muhurta_lagna_strength honest_empty", None),
     ("muhurta_lagna", "lagna_shuddhi_rules", "not_in_corpus",
      "Systematic muhurta-lagna doctrine and lagna-suddhi rules are not held at "
      "usable verse grain. Muhurta Chintamani remains the named ingestion work "

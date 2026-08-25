@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 import psycopg
@@ -449,23 +449,46 @@ def test_hora_family_tiles_the_hindu_day_with_24_rows():
         assert earlier.end_utc == later.start_utc
 
 
-@pytest.mark.parametrize(
-    "family,id_range",
-    [
-        ("vara", range(1, 8)),
-        ("nakshatra", range(1, 28)),
-        ("tithi", range(1, 31)),
-    ],
-)
-def test_daily_anga_family_emits_one_canonical_factor_id(family, id_range):
+def test_vara_emits_one_hindu_day_factor_id():
     rows = compute_day_factors(date(2026, 8, 15))
-    matches = [row for row in rows if row.factor_family == family]
+    matches = [row for row in rows if row.factor_family == "vara"]
 
     assert len(matches) == 1
-    assert matches[0].detail["factor_id"] in id_range
-    assert matches[0].detail["span_convention"].startswith(
-        "hindu_day_sunrise_to_next_sunrise"
+    assert matches[0].detail["factor_id"] == 7
+    assert matches[0].detail["span_convention"] == "hindu_day_sunrise_to_next_sunrise"
+
+
+@pytest.mark.parametrize(
+    "family,expected_keys,true_boundary",
+    [
+        (
+            "tithi",
+            ["shukla_tritiya", "shukla_chaturthi"],
+            datetime(2026, 8, 15, 11, 59, 24, tzinfo=timezone.utc),
+        ),
+        (
+            "nakshatra",
+            ["uttara_phalguni", "hasta"],
+            datetime(2026, 8, 15, 21, 55, 45, tzinfo=timezone.utc),
+        ),
+    ],
+)
+def test_anga_atoms_split_at_true_boundary_and_tile_hindu_day(
+    family, expected_keys, true_boundary,
+):
+    """A boundary inside the day must end one atom and start its successor."""
+    rows = sorted(
+        (row for row in compute_day_factors(date(2026, 8, 15)) if row.factor_family == family),
+        key=lambda row: row.start_utc,
     )
+
+    assert [row.factor_key for row in rows] == expected_keys
+    assert abs((rows[0].end_utc - true_boundary).total_seconds()) <= 2
+    assert rows[1].start_utc == rows[0].end_utc
+    assert rows[0].detail["anga_true_end_utc"] == rows[0].end_utc.isoformat()
+    assert rows[0].detail["span_convention"] == "true_anga_interval_clipped_to_hindu_day"
+    assert rows[1].detail["span_convention"] == "true_anga_interval_clipped_to_hindu_day"
+    assert rows[1].end_utc == datetime(2026, 8, 15, 23, 56, 32, tzinfo=timezone.utc)
 
 
 def test_daily_anga_ids_join_real_activity_rules():
