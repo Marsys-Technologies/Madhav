@@ -73,7 +73,7 @@ def _run_with_writer(monkeypatch, writer_cls, chart_id) -> FakeCursor:
     monkeypatch.setattr(ar, 'get_writer', lambda aid: writer_cls)
     monkeypatch.setattr(ar, 'fetch_birth_params', lambda conn, cid: {'chart_id': cid})
     monkeypatch.setattr(ar, 'compute_upstream_hash', lambda cur, aid, cid: 'hash-upstream')
-    monkeypatch.setattr(ar, 'get_writer_git_hash', lambda aid: 'hash-writer')
+    monkeypatch.setattr(ar, 'get_writer_source_hash', lambda aid: 'hash-writer')
     monkeypatch.setattr(ar, 'compute_downstream_closure', lambda cur, aid: [])
 
     conn = FakeConn()
@@ -113,3 +113,27 @@ def test_zero_rows_global_scope_writes_lit(monkeypatch):
     assert _state_written(cur) == 'lit', (
         "Expected state='lit' for global (chart_id=None) 0-row writer, got: %r" % _state_written(cur)
     )
+
+
+def test_unavailable_provenance_blocks_writer_before_output_mutation(monkeypatch):
+    """A source-hash failure is an execution error before a writer can write output."""
+    called: list[bool] = []
+    errors: list[str] = []
+
+    class _Writer(WriterBase):
+        asset_id = '_test_provenance'
+
+        def run(self, ctx):
+            called.append(True)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=1, rows_updated=0)
+
+    monkeypatch.setattr(ar, 'discover_all', lambda: None)
+    monkeypatch.setattr(ar, 'get_writer', lambda aid: _Writer)
+    monkeypatch.setattr(ar, 'fetch_birth_params', lambda conn, cid: {'chart_id': cid})
+    monkeypatch.setattr(ar, 'compute_upstream_hash', lambda cur, aid, cid: 'hash-upstream')
+    monkeypatch.setattr(ar, 'get_writer_source_hash', lambda aid: (_ for _ in ()).throw(RuntimeError('source unavailable')))
+    monkeypatch.setattr(ar, 'mark_asset_error', lambda conn, cur, run, chart, asset, error: errors.append(error))
+
+    assert ar._run_data_writer(FakeConn(), FakeCursor(), 'run-1', 'chart-abc', _Writer.asset_id) is False
+    assert called == []
+    assert errors == ['provenance: source unavailable']

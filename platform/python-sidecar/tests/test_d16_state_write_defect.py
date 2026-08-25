@@ -130,7 +130,7 @@ def _patch_common(monkeypatch, writer_cls, events: list | None = None):
     monkeypatch.setattr(ar, "get_writer", lambda aid: writer_cls)
     monkeypatch.setattr(ar, "fetch_birth_params", lambda conn, cid: {"chart_id": cid})
     monkeypatch.setattr(ar, "compute_upstream_hash", lambda cur, aid, cid: "hash-upstream")
-    monkeypatch.setattr(ar, "get_writer_git_hash", lambda aid: "hash-writer")
+    monkeypatch.setattr(ar, "get_writer_source_hash", lambda aid: "hash-writer")
     monkeypatch.setattr(ar, "compute_downstream_closure", lambda cur, aid: [])
 
 

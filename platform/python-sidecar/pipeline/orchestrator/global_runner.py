@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+from .asset_runner import compute_upstream_hash, get_writer_source_hash
 from .db import connect
 from .writers import discover_all, get_writer, ContextSpec
 
@@ -32,15 +33,23 @@ logger = logging.getLogger(__name__)
 _GLOBAL_BUILD_LOCK = 0x676c6f62  # hashtext('global') approximate; use pg function
 
 
-def _upsert_asset_throughput_global(conn, asset_id: str, state: str, error: Optional[str] = None) -> None:
+def _upsert_asset_throughput_global(
+    conn,
+    asset_id: str,
+    state: str,
+    error: Optional[str] = None,
+    upstream_hash: Optional[str] = None,
+    writer_hash: Optional[str] = None,
+) -> None:
     """
     Upsert asset_throughput for a global (chart_id IS NULL) asset.
     Uses the partial-index unique constraint: UNIQUE (asset_id) WHERE chart_id IS NULL.
     """
     with conn.cursor() as cur:
-        if error is not None:
+        if error is not None or upstream_hash is None or writer_hash is None:
             cur.execute(
-                """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+                """INSERT INTO asset_throughput
+                       (asset_id, chart_id, state, last_error, last_built_at)
                    VALUES (%s, NULL, %s, %s, NOW())
                    ON CONFLICT (asset_id) WHERE chart_id IS NULL
                    DO UPDATE SET state = EXCLUDED.state,
@@ -50,12 +59,17 @@ def _upsert_asset_throughput_global(conn, asset_id: str, state: str, error: Opti
             )
         else:
             cur.execute(
-                """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
-                   VALUES (%s, NULL, %s, NOW())
+                """INSERT INTO asset_throughput
+                       (asset_id, chart_id, state, last_error, last_built_at,
+                        built_against_upstream_hash, built_against_writer_hash)
+                   VALUES (%s, NULL, %s, NULL, NOW(), %s, %s)
                    ON CONFLICT (asset_id) WHERE chart_id IS NULL
                    DO UPDATE SET state = EXCLUDED.state,
+                                 last_error = NULL,
+                                 built_against_upstream_hash = EXCLUDED.built_against_upstream_hash,
+                                 built_against_writer_hash = EXCLUDED.built_against_writer_hash,
                                  last_built_at = NOW()""",
-                (asset_id, state),
+                (asset_id, state, upstream_hash, writer_hash),
             )
     conn.commit()
 
@@ -166,6 +180,11 @@ def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
     with conn.cursor() as cur:
         cur.execute("SAVEPOINT writer_sp")
     try:
+        # Global assets have no chart row. Capture the global dependency receipts
+        # and exact writer source before a writer can mutate its output.
+        with conn.cursor() as cur:
+            upstream_hash = compute_upstream_hash(cur, asset_id, None)
+        writer_hash = get_writer_source_hash(asset_id)
         ctx = ContextSpec(
             asset_id=asset_id,
             build_id=run_id,
@@ -177,7 +196,9 @@ def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
         # later writer. The SAVEPOINT is implicitly released on commit.
         conn.commit()
         # L-11: update asset_throughput to 'lit' after successful commit
-        _upsert_asset_throughput_global(conn, asset_id, "lit")
+        _upsert_asset_throughput_global(
+            conn, asset_id, "lit", upstream_hash=upstream_hash, writer_hash=writer_hash,
+        )
         logger.info("[global_build] OK: asset_id=%s rows_inserted=%d", asset_id, result.rows_inserted)
         return "ok"
     except Exception as exc:

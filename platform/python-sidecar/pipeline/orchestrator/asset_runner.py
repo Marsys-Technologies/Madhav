@@ -7,12 +7,15 @@ downstream stale marking.
 """
 from __future__ import annotations
 
+import ast
 import hashlib
+import json
 import logging
 import os
-import subprocess
 import threading
 import traceback
+from datetime import datetime, timezone
+from pathlib import Path
 
 import psycopg
 
@@ -111,13 +114,57 @@ def compute_downstream_closure(cur, asset_id: str) -> list[str]:
 
 # ── Hash helpers ──────────────────────────────────────────────────────────────
 
-def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
+_UPSTREAM_HASH_VERSION = "nirmana-upstream-v1"
+_WRITER_HASH_VERSION = b"nirmana-writer-source-v1\\0"
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_SIDECAR_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _canonical_timestamp(value: object) -> str | None:
+    """Return a timezone-stable timestamp representation for a provenance digest."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return str(value)
+
+
+def canonical_upstream_hash(
+    asset_id: str,
+    chart_id: str | None,
+    upstreams: list[dict[str, object]],
+) -> str:
+    """Hash the exact, sorted upstream build receipts used by one asset execution."""
+    payload = {
+        "version": _UPSTREAM_HASH_VERSION,
+        "asset_id": asset_id,
+        "chart_id": chart_id,
+        "upstreams": [
+            {"asset_id": str(row["asset_id"]), "last_built_at": _canonical_timestamp(row.get("last_built_at"))}
+            for row in sorted(upstreams, key=lambda row: str(row["asset_id"]))
+        ],
+    }
+    encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def compute_upstream_hash(cur, asset_id: str, chart_id: str | None) -> str:
+    """Return a reproducible digest of this execution's actual scoped upstream receipts."""
     cur.execute(
         """
         SELECT ar.asset_id, t.last_built_at
         FROM asset_registry ar
-        LEFT JOIN asset_throughput t
-          ON t.asset_id = ar.asset_id AND t.chart_id IS NOT DISTINCT FROM %s
+        LEFT JOIN LATERAL (
+            SELECT at.last_built_at
+            FROM asset_throughput at
+            WHERE at.asset_id = ar.asset_id
+              AND (CASE WHEN ar.scope = 'global' THEN at.chart_id IS NULL
+                        ELSE at.chart_id = %s END)
+            ORDER BY at.last_built_at DESC NULLS LAST
+            LIMIT 1
+        ) t ON true
         WHERE ar.asset_id = ANY(
             SELECT unnest(depends_on) FROM asset_registry WHERE asset_id = %s
         )
@@ -125,8 +172,7 @@ def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
         """,
         (chart_id, asset_id),
     )
-    payload = "|".join(f"{r['asset_id']}:{r['last_built_at']}" for r in cur.fetchall())
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+    return canonical_upstream_hash(asset_id, chart_id, cur.fetchall())
 
 
 def _writer_source_paths(asset_id: str) -> list[str]:
@@ -140,6 +186,9 @@ def _writer_source_paths(asset_id: str) -> list[str]:
          (GA adapters set this to their ga_writers/ module);
       2. else the registered class's own module file (inspect.getfile);
       3. else fall back to the legacy convention.
+
+    `_writer_source_files` extends these roots through local Python imports, so
+    delegated implementation files are part of the provenance receipt too.
     """
     import inspect
 
@@ -157,16 +206,112 @@ def _writer_source_paths(asset_id: str) -> list[str]:
     return [f"platform/python-sidecar/pipeline/orchestrator/writers/{asset_id.replace('.', '/')}.py"]
 
 
-def get_writer_git_hash(asset_id: str) -> str:
-    paths = _writer_source_paths(asset_id)
+def _local_module_path(module: str) -> Path | None:
+    """Resolve an in-repo sidecar module without importing or executing it."""
+    if not module:
+        return None
+    relative = Path(*module.split("."))
+    module_file = _SIDECAR_ROOT / relative.with_suffix(".py")
+    package_init = _SIDECAR_ROOT / relative / "__init__.py"
+    if module_file.is_file():
+        return module_file
+    if package_init.is_file():
+        return package_init
+    return None
+
+
+def _module_name_for_path(path: Path) -> str | None:
     try:
-        result = subprocess.run(
-            ["git", "log", "-1", "--format=%H", "--", *paths],
-            capture_output=True, text=True, timeout=2,
-        )
-        return result.stdout.strip()[:16] if result.returncode == 0 else "unknown"
-    except Exception:
-        return "unknown"
+        relative = path.resolve().relative_to(_SIDECAR_ROOT)
+    except ValueError:
+        return None
+    if relative.suffix != ".py":
+        return None
+    parts = list(relative.with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts) or None
+
+
+def _local_import_files(path: Path) -> list[Path]:
+    """Statically resolve direct local Python imports from one implementation file."""
+    module_name = _module_name_for_path(path)
+    if module_name is None:
+        return []
+    package = module_name if path.name == "__init__.py" else module_name.rpartition(".")[0]
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return []
+
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                package_parts = package.split(".") if package else []
+                base_parts = package_parts[:len(package_parts) - node.level + 1]
+                if not base_parts:
+                    continue
+                base = ".".join(base_parts)
+                target = f"{base}.{node.module}" if node.module else base
+            else:
+                target = node.module or ""
+            if target:
+                imports.add(target)
+                imports.update(f"{target}.{alias.name}" for alias in node.names)
+
+    return [resolved for module in sorted(imports) if (resolved := _local_module_path(module)) is not None]
+
+
+def _writer_source_files(paths: list[str]) -> list[tuple[str, bytes]]:
+    """Load declared source plus its local implementation closure deterministically."""
+    files: list[Path] = []
+    for raw_path in paths:
+        source_path = Path(raw_path)
+        resolved = source_path if source_path.is_absolute() else _REPO_ROOT / source_path
+        if resolved.is_file():
+            files.append(resolved)
+        elif resolved.is_dir():
+            files.extend(path for path in resolved.rglob("*.py") if path.is_file() and "tests" not in path.parts)
+        else:
+            raise RuntimeError(f"writer source path is unavailable: {raw_path}")
+
+    seen: set[Path] = set()
+    pending = sorted(files, key=lambda item: item.as_posix())
+    resolved_files: list[Path] = []
+    while pending:
+        path = pending.pop(0)
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        resolved_files.append(resolved)
+        pending.extend(_local_import_files(resolved))
+
+    out: list[tuple[str, bytes]] = []
+    for resolved in sorted(resolved_files, key=lambda item: item.as_posix()):
+        try:
+            rel = resolved.relative_to(_REPO_ROOT).as_posix()
+        except ValueError:
+            rel = resolved.as_posix()
+        out.append((rel, resolved.read_bytes()))
+    if not out:
+        raise RuntimeError("writer has no declared source files")
+    return out
+
+
+def get_writer_source_hash(asset_id: str) -> str:
+    """Return a content hash of the concrete writer source used by an execution."""
+    digest = hashlib.sha256(_WRITER_HASH_VERSION)
+    for path, content in _writer_source_files(_writer_source_paths(asset_id)):
+        encoded_path = path.encode("utf-8")
+        digest.update(len(encoded_path).to_bytes(8, "big"))
+        digest.update(encoded_path)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
 
 
 # ── Data-presence probe (D-1.6 state-write defect fix) ───────────────────────
@@ -558,6 +703,15 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
         asset_id=asset_id, build_id=run_id, db_conn=conn,
         config={'chart_id': chart_id, 'birth_params': birth_params},
     )
+    # Capture provenance before a writer can mutate its own output. An unavailable
+    # source or receipt is a failed execution, never a successful run with an
+    # "unknown" provenance marker that would mask later invalidation.
+    try:
+        upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
+        writer_hash = get_writer_source_hash(asset_id)
+    except Exception as exc:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
+        return False
     try:
         rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)
     except Exception as exc:
@@ -574,9 +728,6 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
     # — safe to retry". Global assets (chart_id is None) are service singletons and
     # always get 'lit' regardless of rows_written.
-    upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
-    writer_hash = get_writer_git_hash(asset_id)
-
     # Determine whether 0 rows is correct completion for this asset.
     # target_floor=0 in asset_registry is the explicit declaration that a writer
     # may correctly produce 0 rows (e.g. ga_prashna on natal charts — the writer
