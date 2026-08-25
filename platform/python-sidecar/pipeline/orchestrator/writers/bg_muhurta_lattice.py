@@ -937,7 +937,44 @@ class BgMuhurtaLatticeWriter(WriterBase):
                %(ayanamsha_key)s, %(sampling_method)s, %(source_citation)s,
                %(corpus_status)s, %(build_id)s, NOW())
             ON CONFLICT (factor_family, factor_key, start_utc)
-            DO NOTHING
+            DO UPDATE SET
+              end_utc = EXCLUDED.end_utc,
+              detail = EXCLUDED.detail,
+              reference_lat = EXCLUDED.reference_lat,
+              reference_lon = EXCLUDED.reference_lon,
+              reference_tz_offset_minutes = EXCLUDED.reference_tz_offset_minutes,
+              reference_location_key = EXCLUDED.reference_location_key,
+              ayanamsha_key = EXCLUDED.ayanamsha_key,
+              sampling_method = EXCLUDED.sampling_method,
+              source_citation = EXCLUDED.source_citation,
+              corpus_status = EXCLUDED.corpus_status,
+              build_id = EXCLUDED.build_id,
+              computed_at = NOW()
+            WHERE (
+              bg_muhurta_lattice.end_utc,
+              bg_muhurta_lattice.detail,
+              bg_muhurta_lattice.reference_lat,
+              bg_muhurta_lattice.reference_lon,
+              bg_muhurta_lattice.reference_tz_offset_minutes,
+              bg_muhurta_lattice.reference_location_key,
+              bg_muhurta_lattice.ayanamsha_key,
+              bg_muhurta_lattice.sampling_method,
+              bg_muhurta_lattice.source_citation,
+              bg_muhurta_lattice.corpus_status,
+              bg_muhurta_lattice.build_id
+            ) IS DISTINCT FROM (
+              EXCLUDED.end_utc,
+              EXCLUDED.detail,
+              EXCLUDED.reference_lat,
+              EXCLUDED.reference_lon,
+              EXCLUDED.reference_tz_offset_minutes,
+              EXCLUDED.reference_location_key,
+              EXCLUDED.ayanamsha_key,
+              EXCLUDED.sampling_method,
+              EXCLUDED.source_citation,
+              EXCLUDED.corpus_status,
+              EXCLUDED.build_id
+            )
             """,
             batch,
         )

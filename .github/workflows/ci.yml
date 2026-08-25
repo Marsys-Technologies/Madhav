@@ -311,6 +311,20 @@ jobs:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
 
+      - name: Nirmāṇa L0 — provision the Muhūrta rebuild test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_muhurta_test;"
+
+      - name: Nirmāṇa L0 — legacy aṅga conflict repair against real Postgres
+        env:
+          NIRMANA_MUHURTA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_muhurta_test
+          PYTHONPATH: python-sidecar
+        run: |
+          python3 -m pip install --disable-pip-version-check pytest 'psycopg[binary]>=3.2'
+          python3 -m pytest -q python-sidecar/pipeline/orchestrator/writers/tests/test_bg_muhurta_lattice_rebuild_db.py
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
