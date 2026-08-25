@@ -379,7 +379,8 @@ def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path
     for attempt in range(attempts):
         job = subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True, text=True)
         pid_match = re.search(r"^\s*pid = (\d+)\s*$", job.stdout, flags=re.MULTILINE) if job.returncode == 0 else None
-        if pid_match is None:
+        running_match = re.search(r"^\s*state = running\s*$", job.stdout, flags=re.MULTILINE) if job.returncode == 0 else None
+        if pid_match is None or running_match is None:
             last_error = "launchd did not report a running P1 process"
         else:
             pid = pid_match.group(1)

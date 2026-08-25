@@ -1034,6 +1034,14 @@ class ControlPlaneTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "health proof failed"):
                     _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=False, attempts=1, retry_seconds=0)
             http_connection.assert_not_called()
+            def exited_job(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = exited\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=exited_job), patch("service.http.client.HTTPConnection") as http_connection:
+                with self.assertRaisesRegex(ValueError, "health proof failed"):
+                    _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=False, attempts=1, retry_seconds=0)
+            http_connection.assert_not_called()
 
     def test_p1_release_legacy_rollback_proof_uses_exact_process_listener_and_integrity(self):
         with tempfile.TemporaryDirectory() as root:
