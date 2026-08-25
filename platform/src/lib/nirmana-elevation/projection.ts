@@ -144,6 +144,43 @@ function stageIndex(stage: NirmanaStageId | null): number {
   return stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(stage)
 }
 
+export function canonicalizeCampaignStageTransitions<TEvent extends CampaignEvent>(events: TEvent[]): {
+  transitions: Array<AcceptedCampaignStageTransition<TEvent>>
+  contradictions: string[]
+  invalidEventCount: number
+} {
+  const parsed = events.flatMap((event) => {
+    const transition = parseCampaignStageTransition(event)
+    return transition === null ? [] : [transition]
+  }).sort((left, right) => compareEvents(left.event, right.event))
+  const byEdge = new Map<string, {
+    transition: AcceptedCampaignStageTransition<TEvent>
+    prerequisiteDigests: Set<string>
+  }>()
+
+  for (const transition of parsed) {
+    const edgeKey = `${transition.from ?? 'null'}\0${transition.to}`
+    const edge = byEdge.get(edgeKey)
+    if (edge) {
+      edge.prerequisiteDigests.add(transition.prerequisitesSha256)
+    } else {
+      byEdge.set(edgeKey, {
+        transition,
+        prerequisiteDigests: new Set([transition.prerequisitesSha256]),
+      })
+    }
+  }
+
+  const contradictions = [...byEdge.values()]
+    .filter(({ prerequisiteDigests }) => prerequisiteDigests.size > 1)
+    .map(({ transition }) => `Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prerequisite digests differ.`)
+  return {
+    transitions: [...byEdge.values()].map(({ transition }) => transition),
+    contradictions,
+    invalidEventCount: events.length - parsed.length,
+  }
+}
+
 function laneReceipt(event: CampaignEvent): boolean {
   return event.event_type === 'foundation_lane_accepted'
     && event.entity_type === 'foundation_lane'
@@ -162,25 +199,23 @@ export function projectCampaignStages(input: {
   layers: Array<{ layer_id: NirmanaLayerId; state: string; assets_total: number | null; frozen: number }>
 }): { current_stage: NirmanaStageId | null; stages: NirmanaCampaignStage[]; contradictions: string[] } {
   const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
-  const transitions = events.map(parseCampaignStageTransition)
-    .filter((value): value is AcceptedCampaignStageTransition => value !== null)
-    .sort((left, right) => compareEvents(left.event, right.event))
+  const canonical = canonicalizeCampaignStageTransitions(
+    events.filter((event) => event.event_type === 'stage_transition_accepted'),
+  )
+  const transitions = canonical.transitions
   const currentTransition = transitions.at(-1)
   const current_stage = currentTransition?.to ?? null
   const currentIndex = current_stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(current_stage)
-  const contradictions: string[] = []
+  const contradictions = [...canonical.contradictions]
   let previous: AcceptedCampaignStageTransition | null = null
 
   for (const transition of transitions) {
     const fromIndex = stageIndex(transition.from)
     const toIndex = stageIndex(transition.to)
-    const isDuplicate = previous?.from === transition.from && previous.to === transition.to
     if (toIndex !== fromIndex + 1) {
       contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: stages must advance exactly once in canonical order.`)
-    } else if (previous && !isDuplicate && transition.from !== previous.to) {
+    } else if (previous && transition.from !== previous.to) {
       contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prior accepted stage was ${previous.to}.`)
-    } else if (isDuplicate && previous?.prerequisitesSha256 !== transition.prerequisitesSha256) {
-      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prerequisite digests differ.`)
     }
     previous = transition
   }

@@ -92,42 +92,45 @@ function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Part
 }
 
 describe('projectCampaignStages', () => {
-  it('treats a same-digest bootstrap receipt replay as idempotent stage evidence', () => {
+  it('treats a delayed same-digest bootstrap receipt replay as idempotent stage evidence', () => {
     const bootstrap = transition(null, 'BOOTSTRAP', '2026-08-26T09:00:00.000Z')
+    const advance = transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:00:01.000Z')
     const replay = {
       ...bootstrap,
-      observed_at: '2026-08-26T09:00:01.000Z',
-      recorded_at: '2026-08-26T09:00:01.000Z',
+      observed_at: '2026-08-26T09:00:02.000Z',
+      recorded_at: '2026-08-26T09:00:02.000Z',
     }
 
     const result = projectStages({
       definitionStatus: 'reconciling',
-      events: [bootstrap, replay],
+      events: [bootstrap, advance, replay],
       layers: emptyLayers,
     })
 
-    expect(result.current_stage).toBe('BOOTSTRAP')
-    expect(result.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'active' })
+    expect(result.current_stage).toBe('T0_CENSUS')
+    expect(result.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'completed' })
+    expect(result.stages[1]).toMatchObject({ stage_id: 'T0_CENSUS', state: 'active' })
     expect(result.contradictions).toEqual([])
   })
 
-  it('blocks bootstrap receipt replays whose prerequisite digests conflict', () => {
+  it('blocks delayed bootstrap receipt replays whose prerequisite digests conflict', () => {
     const bootstrap = transition(null, 'BOOTSTRAP', '2026-08-26T09:00:00.000Z')
+    const advance = transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:00:01.000Z')
     const conflict = {
       ...bootstrap,
       evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'b'.repeat(64) },
-      observed_at: '2026-08-26T09:00:01.000Z',
-      recorded_at: '2026-08-26T09:00:01.000Z',
+      observed_at: '2026-08-26T09:00:02.000Z',
+      recorded_at: '2026-08-26T09:00:02.000Z',
     }
 
     const result = projectStages({
       definitionStatus: 'reconciling',
-      events: [bootstrap, conflict],
+      events: [bootstrap, advance, conflict],
       layers: emptyLayers,
     })
 
-    expect(result.current_stage).toBe('BOOTSTRAP')
-    expect(result.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'blocked' })
+    expect(result.current_stage).toBe('T0_CENSUS')
+    expect(result.stages[1]).toMatchObject({ stage_id: 'T0_CENSUS', state: 'blocked' })
     expect(result.contradictions).toEqual([
       'Contradictory stage transition null -> BOOTSTRAP: prerequisite digests differ.',
     ])

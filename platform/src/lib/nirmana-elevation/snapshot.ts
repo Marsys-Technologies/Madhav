@@ -10,8 +10,8 @@ import {
   type NirmanaRegistryContractRow,
 } from './definitions'
 import {
+  canonicalizeCampaignStageTransitions,
   deriveEligibleNextAssetIds,
-  parseCampaignStageTransition,
   projectAssetMilestones,
   projectCampaignStages,
 } from './projection'
@@ -207,32 +207,24 @@ function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_event
   contradictions: string[]
 } {
   const candidates = events.filter((event) => event.event_type === 'stage_transition_accepted')
-  const transitions = candidates
-    .flatMap((event) => {
-      const transition = parseCampaignStageTransition(event)
-      return transition === null ? [] : [transition]
-    })
-    .sort((left, right) => timestamp(left.event.recorded_at) - timestamp(right.event.recorded_at)
-      || timestamp(left.event.observed_at) - timestamp(right.event.observed_at)
-      || left.event.source_ref.localeCompare(right.event.source_ref))
-  const contradictions: string[] = candidates.length === transitions.length ? []
-    : ['One or more campaign-stage receipts have invalid entity, layer, ordering, or payload semantics.']
+  const canonical = canonicalizeCampaignStageTransitions(candidates)
+  const transitions = canonical.transitions
+  const contradictions: string[] = [
+    ...(canonical.invalidEventCount === 0 ? []
+      : ['One or more campaign-stage receipts have invalid entity, layer, ordering, or payload semantics.']),
+    ...canonical.contradictions,
+  ]
   const enteredAt = new Map<NirmanaStageId, string | null>()
   const exitedAt = new Map<NirmanaStageId, string | null>()
-  const acceptedEdges = new Set<string>()
   let currentStage: NirmanaStageId | null = null
   let nextIndex = 0
   for (const transition of transitions) {
-    const edgeKey = `${transition.from ?? 'null'}->${transition.to}`
-    if (acceptedEdges.has(edgeKey)) continue
-
     const expectedTo = NIRMANA_STAGE_IDS[nextIndex]
     const expectedFrom = nextIndex === 0 ? null : NIRMANA_STAGE_IDS[nextIndex - 1]
     if (transition.from === expectedFrom && transition.to === expectedTo) {
       currentStage = transition.to
       enteredAt.set(transition.to, asIso(transition.event.observed_at))
       if (transition.from !== null) exitedAt.set(transition.from, asIso(transition.event.observed_at))
-      acceptedEdges.add(edgeKey)
       nextIndex += 1
       continue
     }
