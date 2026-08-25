@@ -19,3 +19,20 @@ def acquire_chart_lock(cur, chart_id: str) -> bool:
 
 def release_chart_lock(cur, chart_id: str) -> None:
     cur.execute("SELECT pg_advisory_unlock(hashtext(%s))", (str(chart_id),))
+
+
+_GLOBAL_ASSETS_LOCK_KEY = "nirmana-global-assets"
+
+
+def acquire_global_assets_lock(cur) -> bool:
+    """Exclude concurrent writers to chart-independent global assets."""
+    cur.execute(
+        "SELECT pg_try_advisory_lock(hashtext(%s)) AS got",
+        (_GLOBAL_ASSETS_LOCK_KEY,),
+    )
+    row = cur.fetchone()
+    return bool(row["got"])
+
+
+def release_global_assets_lock(cur) -> None:
+    cur.execute("SELECT pg_advisory_unlock(hashtext(%s))", (_GLOBAL_ASSETS_LOCK_KEY,))

@@ -110,6 +110,7 @@ def _install(monkeypatch, state, fail_assets):
     monkeypatch.setattr(runner, "release_chart_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
     monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
+    monkeypatch.setattr(runner, "claim_planned_run", lambda *a, **k: True)
     monkeypatch.setattr(runner, "mark_run_state", lambda *a, **k: None)
     monkeypatch.setattr(runner, "emit_event", lambda *a, **k: None)
     # Manifest integrity itself has dedicated tests. These scheduler tests use

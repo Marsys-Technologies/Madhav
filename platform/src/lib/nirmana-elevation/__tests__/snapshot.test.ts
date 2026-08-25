@@ -266,6 +266,33 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('frozen')
   })
 
+  it('never credits an F0 machinery canary as an accepted campaign rebuild', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'accepted_rebuild_observed',
+        entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0', evidence_payload: {},
+        source_kind: 'campaign_evidence', source_ref: 'build_run:f0-canary-run',
+        observed_at: observedAt, recorded_at: observedAt,
+      }],
+      build_runs: [{
+        id: 'f0-canary-run', chart_id: canonicalChartId, state: 'completed', current_asset_id: null,
+        created_at: observedAt, started_at: observedAt, triggered_by: 'nirmana-f0-machinery-canary',
+      }],
+      build_run_assets: [{
+        run_id: 'f0-canary-run', asset_id: 'bg_prashna_rules', position: 1, state: 'complete',
+        started_at: observedAt, ended_at: observedAt, error: null,
+      }],
+    } as Partial<NirmanaElevationRawSources>), { generatedAt: observedAt })
+
+    expect(snapshot.progress.accepted_rebuilds).toBe(0)
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('catalogued')
+  })
+
   it('does not let an uncorroborated frozen event turn primary evidence into elevation progress', () => {
     const snapshot = projectNirmanaElevationSnapshot(
       sources({

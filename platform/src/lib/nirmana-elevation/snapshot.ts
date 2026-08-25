@@ -20,7 +20,7 @@ type SourceId = keyof NirmanaElevationRawSources
 export interface NirmanaElevationRawSources {
   asset_registry: Array<NirmanaRegistryContractRow & { english_name: string | null; asset_type: string | null }>
   asset_throughput: Array<{ asset_id: string; chart_id: string | null; state: string; last_built_at: string | null }>
-  build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null }>
+  build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null; triggered_by?: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
   build_substep_progress: Array<{ chart_id: string; asset_id: string; committed: string | number; last_progress_at: string | null }>
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
@@ -58,7 +58,7 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
     superseded_by, data_disposition, dead_flag
     FROM asset_registry ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
-  const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at FROM build_runs ORDER BY created_at DESC`)
+  const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
   const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
@@ -190,7 +190,9 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     eventTypesByAsset.set(event.entity_id, types)
   }
   const completedRunIds = new Set(raw.build_runs
-    .filter((run) => run.state === 'completed' && run.chart_id === manifest?.chart_id)
+    .filter((run) => run.state === 'completed'
+      && run.chart_id === manifest?.chart_id
+      && run.triggered_by !== 'nirmana-f0-machinery-canary')
     .map((run) => run.id))
   const completedRunAssets = new Set(
     raw.build_run_assets
