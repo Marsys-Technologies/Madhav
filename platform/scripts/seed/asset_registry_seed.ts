@@ -198,15 +198,15 @@ export const ASSETS: AssetDef[] = [
     layer: 'brahmagyan', sort_order: 2,
     sanskrit_name: 'Sāraṇī',
     english_name: 'Reference Library',
-    english_description: 'The holy grail of L0 — structured properties of every classical Jyotish concept across 15 specialized typed tables.',
+    english_description: 'Structured properties owned by bg_reference across 11 current typed tables; yoga, dosha, and dasha reference rows belong to their dedicated assets.',
     storage_type: 'postgres_table',
-    target_table: 'reference_nakshatras',
-    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
-    size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
-    target_floor: 1485,  // set after prod measurement 2026-06-18 (§N.4)
+    target_table: 'reference_planets',
+    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) AS count',
+    size_sql: "SELECT pg_total_relation_size('reference_planets')",
+    target_floor: 1242,  // achieved 11-table owned-output count; migration 371 ownership boundary
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Sum of 15 reference_* tables (per design §3.2). Each table is normalized + typed; ontology resolves names, reference holds properties.',
+    volume_explanation: '1,242 achieved rows across the 11 tables owned by bg_reference, as measured in the BA full-asset audit after migration 371 removed cross-asset double-counting. reference_yogas, reference_doshas, and reference_dasha_systems are owned by their dedicated assets; deprecated reference_nakshatras is excluded.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -254,10 +254,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'classical_text_chunks',
     count_sql: 'SELECT count(DISTINCT topic_tag) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
-    target_floor: 400,
+    // Migration 196 raised the achieved floor from 327 to 361 after the Nadi
+    // expansion; migration 231 ratified 361 again after a production census.
+    // Restoring the old aspirational 400 here would overwrite the measured
+    // contract.
+    target_floor: 361,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Distinct topic_tag count from embedded chunks. Floor 400 = topic-vocabulary coverage target; not scaled with chunk count (vocabulary size is independent of corpus depth). Per design §2.2.',
+    volume_explanation: '361 distinct topic_tag values is the achieved deterministic-classifier coverage ratified by migrations 196 and 231. Raise this floor only with an evidence-backed classifier or corpus expansion; never fabricate assignments to meet the former aspirational 400.',
     depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -310,10 +314,12 @@ export const ASSETS: AssetDef[] = [
     target_table: 'classical_attributions',
     count_sql: 'SELECT count(*) FROM classical_attributions',
     size_sql: "SELECT pg_total_relation_size('classical_attributions')",
-    target_floor: 800,
+    // Migration 231 ratified the achieved 720-row corpus after direct
+    // production measurement. Keep replay aligned with that durable contract.
+    target_floor: 720,
     expected_volume_formula: 'ACTUAL(bg_rules) * CONCORDANCE_DENSITY',
     expected_volume_inputs: null,
-    volume_explanation: '800 = topic×school concordance rows. Cross-product metric: cardinality is topic_count × school_count, not chunk-proportional. Chunk-pointer index per (topic, school); synthesis at L1+ query-time.',
+    volume_explanation: '720 achieved topic×school concordance rows, measured in production and ratified by migration 231. Cross-product metric: cardinality is topic_count × school_count, not chunk-proportional. Raise the floor only after a verified corpus expansion.',
     depends_on: ['bg_rules'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
