@@ -14,6 +14,10 @@ import {
   recordNirmanaElevationEvidence,
   supersedeNirmanaElevationDefinition,
 } from '@/lib/nirmana-elevation/definitions'
+import {
+  NirmanaLabelCatalogueInputSchema,
+  recordNirmanaElevationLabelCatalogue,
+} from '@/lib/nirmana-elevation/labels'
 
 const campaignId = z.literal('nirmana-elevation')
 const revision = z.string().regex(/^[A-Za-z0-9._-]{1,128}$/)
@@ -102,14 +106,20 @@ const supersede = z.object({
   new_manifest: NirmanaElevationManifestSchema,
   new_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 })
+const labelCatalogue = NirmanaLabelCatalogueInputSchema
+  .omit({ recorded_by: true })
+  .extend({ command: z.literal('record_label_catalogue') })
 
-const command = z.discriminatedUnion('command', [definition, freeze, supersede, receipt])
+const command = z.union([definition, freeze, supersede, labelCatalogue, receipt])
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin()
-  if (auth instanceof NextResponse) return auth
+  if (auth instanceof NextResponse) {
+    auth.headers.set('Cache-Control', 'no-store')
+    return auth
+  }
 
   let body: unknown
   try {
@@ -159,6 +169,20 @@ export async function POST(request: Request) {
         outcome,
       })
       return NextResponse.json({ outcome }, { status: outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    if (parsed.data.command === 'record_label_catalogue') {
+      const { command: _command, ...catalogue } = parsed.data
+      const outcome = await recordNirmanaElevationLabelCatalogue({ ...catalogue, recorded_by: auth.user.uid })
+      await writeAuditLog(auth.user.uid, 'nirmana_label_catalogue_recorded', null, {
+        campaign_id: parsed.data.campaign_id,
+        definition_revision: parsed.data.definition_revision,
+        catalogue_revision: parsed.data.catalogue_revision,
+        catalogue_sha256: parsed.data.catalogue_sha256,
+        asset_count: parsed.data.labels.length,
+        outcome,
+      })
+      return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
     }
 
     const outcome = await recordNirmanaElevationEvidence({ ...parsed.data, recorded_by: auth.user.uid })

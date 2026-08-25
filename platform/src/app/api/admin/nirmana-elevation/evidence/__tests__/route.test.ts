@@ -17,12 +17,18 @@ const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
 const auditMock = vi.fn()
 vi.mock('@/lib/admin/audit', () => ({ writeAuditLog: (...args: unknown[]) => auditMock(...args) }))
+const labelCatalogueRecorderMock = vi.fn()
+vi.mock('@/lib/nirmana-elevation/labels', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/nirmana-elevation/labels')>(),
+  recordNirmanaElevationLabelCatalogue: (...args: unknown[]) => labelCatalogueRecorderMock(...args),
+}))
 
 import {
   canonicalManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
   canonicalRegistryContractDigest,
 } from '@/lib/nirmana-elevation/definitions'
+import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
 
 const registry_contract = {
   sort_order: 1, scope: 'global' as const, asset_kind: 'data' as const, catalog_status: 'CURRENT' as const,
@@ -75,6 +81,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     transactionReleaseMock.mockReset()
     authMock.mockReset()
     auditMock.mockReset().mockResolvedValue(undefined)
+    labelCatalogueRecorderMock.mockReset()
   })
 
   it('refuses an unauthenticated write before parsing or recording a receipt', async () => {
@@ -82,6 +89,44 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const { POST } = await import('../route')
     const response = await POST(request({ command: 'record_evidence' }))
     expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('records a governed label catalogue with a server-derived actor and compact audit metadata', async () => {
+    superAdmin()
+    labelCatalogueRecorderMock.mockResolvedValue('created')
+    const labels = [{
+      asset_id: 'ka_smriti', sanskrit_name: 'Kala Smriti', english_name: 'Per-varsha digest',
+      description: 'Produces a year-by-year digest of annual chart features.', legacy_aliases: [],
+      source_ref: 'PARIKSHA/ASSET_REGISTRY.md#kala-smriti',
+    }]
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_label_catalogue', campaign_id: 'nirmana-elevation', definition_revision: 'r1',
+      catalogue_revision: 'labels-v1', labels, catalogue_sha256: canonicalLabelCatalogueDigest(labels),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(labelCatalogueRecorderMock).toHaveBeenCalledWith({
+      campaign_id: 'nirmana-elevation', definition_revision: 'r1', catalogue_revision: 'labels-v1', labels,
+      catalogue_sha256: canonicalLabelCatalogueDigest(labels), recorded_by: 'admin-1',
+    })
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_label_catalogue_recorded', null, {
+      campaign_id: 'nirmana-elevation', definition_revision: 'r1', catalogue_revision: 'labels-v1',
+      catalogue_sha256: canonicalLabelCatalogueDigest(labels), asset_count: 1, outcome: 'created',
+    })
+  })
+
+  it('does not record a label catalogue for a non-super-admin request', async () => {
+    authMock.mockResolvedValue(NextResponse.json({ error: 'forbidden' }, { status: 403 }))
+    const { POST } = await import('../route')
+    const response = await POST(request({ command: 'record_label_catalogue' }))
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(labelCatalogueRecorderMock).not.toHaveBeenCalled()
     expect(queryMock).not.toHaveBeenCalled()
   })
 
