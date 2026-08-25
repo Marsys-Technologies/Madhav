@@ -90,8 +90,8 @@ def _select_frozen_build_assets(
 ) -> list[dict[str, Any]]:
     if chart_id != DEFAULT_CHART_ID:
         raise ValueError("campaign dispatch is restricted to the approved chart")
-    if definition_revision != DEFAULT_DEFINITION_REVISION:
-        raise ValueError("campaign dispatch is restricted to the frozen definition revision")
+    if not definition_revision.strip():
+        raise ValueError("campaign definition revision is required")
     if layer not in LAYERS:
         raise ValueError(f"unsupported campaign layer: {layer}")
     if wave_index < 0:

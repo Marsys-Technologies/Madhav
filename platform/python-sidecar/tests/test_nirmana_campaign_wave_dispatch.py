@@ -158,7 +158,7 @@ def test_builds_exact_build_obligation_wave_in_frozen_manifest_order() -> None:
     ("mutation", "message"),
     [
         ("wrong_chart", "approved chart"),
-        ("wrong_revision", "frozen definition revision"),
+        ("missing_revision", "definition revision"),
         ("bad_definition_digest", "definition manifest digest"),
         ("registry_drift", "live registry contract"),
         ("missing_candidate", "live registry row"),
@@ -182,8 +182,8 @@ def test_refuses_identity_definition_registry_or_code_drift(mutation: str, messa
     }
     if mutation == "wrong_chart":
         kwargs["chart_id"] = "11111111-1111-4111-8111-111111111111"
-    elif mutation == "wrong_revision":
-        kwargs["definition_revision"] = "t0-other"
+    elif mutation == "missing_revision":
+        kwargs["definition_revision"] = ""
     elif mutation == "bad_definition_digest":
         kwargs["definition_manifest_digest"] = "0" * 64
     elif mutation == "registry_drift":
@@ -258,6 +258,27 @@ def test_binds_snapshot_reference_into_previewed_runner_manifest() -> None:
         "snapshot_ref": "cloudsql-backup:nirmana-l0-wave0-20260825",
     }
     assert digest == _digest(manifest)
+
+
+def test_accepts_an_exact_future_frozen_revision_without_a_code_release() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    selected = [definition["assets"][0], definition["assets"][1]]
+
+    manifest, _, _ = module.build_campaign_wave_manifest(
+        chart_id=CHART_ID,
+        definition_revision="t0-2026-08-25-corrected-dag",
+        definition_manifest=definition,
+        definition_manifest_digest=_digest(definition),
+        layer="L0",
+        wave_index=0,
+        candidates=[_candidate(asset) for asset in selected],
+        writer_digests={"bg_reference": "a" * 64, "bg_formula_constants": "b" * 64},
+        snapshot_ref="cloudsql-backup:backup-1",
+    )
+
+    assert manifest["campaign_control"]["definition_revision"] == "t0-2026-08-25-corrected-dag"
 
 
 @pytest.mark.parametrize(
