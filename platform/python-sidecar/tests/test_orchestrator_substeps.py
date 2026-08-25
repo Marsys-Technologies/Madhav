@@ -149,6 +149,20 @@ def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
     assert subs[1]['substep_label'] == 'system 1'
 
 
+def test_integrity_gated_driver_defers_every_substep_commit(monkeypatch):
+    """A final detector failure must be able to roll back every substep."""
+    monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: None)
+
+    conn, cur = FakeConn(), FakeCursor()
+    ins, upd = asset_runner._drive_substeps(
+        conn, cur, 'run-1', 'chart-C', 'ga_heavy', _Heavy3(), _ctx(conn),
+        defer_commits=True,
+    )
+
+    assert (ins, upd) == (30, 0)
+    assert conn.commits == 0
+
+
 def test_driver_resume_skips_completed(monkeypatch):
     events: list[dict] = []
     monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))

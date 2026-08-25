@@ -237,10 +237,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_ontology',
     count_sql: 'SELECT count(*) FROM brahma_ontology',
     size_sql: "SELECT pg_total_relation_size('brahma_ontology')",
-    target_floor: 623,  // set after prod measurement 2026-06-18 (§N.4)
+    target_floor: 737,  // achieved production corpus; migration 606
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Static vocabulary — count established at seed; used by resolve_entity retrieval tool',
+    volume_explanation: '737 achieved ontology rows in the authoritative production corpus; closed classical sets are enforced by integrity SQL while extensible classes may grow.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
