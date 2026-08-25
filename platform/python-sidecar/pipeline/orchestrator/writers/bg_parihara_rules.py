@@ -232,19 +232,35 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
     # ── Pāñcāṅgika ──
     ("panchangika", "tithi", "computed",
      "panchang_engine.angas.compute_tithi (real bisection search over Sun/Moon "
-     "sidereal longitude). Source: Muhurta Chintamani §1; Brihat Samhita §2.",
-     "panchang_engine/angas.py:compute_tithi", None),
+     "sidereal longitude). Source: Muhurta Chintamani §1; Brihat Samhita §2. "
+     "MATERIALIZED by W4 ruling R-1: detail.factor_id is the same canonical id "
+     "used by bg_muhurta_activity_rules, with no hand-written map (B.10).",
+     "bg_muhurta_lattice (factor_family=tithi; detail.factor_id from panchang_engine/angas.py:compute_tithi)", None),
     ("panchangika", "vara", "computed",
-     "panchang_engine.angas.compute_vara. Source: Vishnu Smriti; Muhurta Chintamani §1.",
-     "panchang_engine/angas.py:compute_vara", None),
+     "panchang_engine.angas.compute_vara. Source: Vishnu Smriti; Muhurta Chintamani §1. "
+     "MATERIALIZED by W4 ruling R-1 with the canonical VARA_NAMES id used by "
+     "bg_muhurta_activity_rules (B.10).",
+     "bg_muhurta_lattice (factor_family=vara; detail.factor_id from panchang_engine/angas.py:compute_vara)", None),
     ("panchangika", "nakshatra", "computed",
-     "panchang_engine.angas.compute_nakshatra. Source: Muhurta Chintamani §4; Brihat Samhita §2.",
-     "panchang_engine/angas.py:compute_nakshatra", None),
+     "panchang_engine.angas.compute_nakshatra. Source: Muhurta Chintamani §4; "
+     "Brihat Samhita §2. MATERIALIZED by W4 ruling R-1 with the canonical id "
+     "used by bg_muhurta_activity_rules (B.10).",
+     "bg_muhurta_lattice (factor_family=nakshatra; detail.factor_id from panchang_engine/angas.py:compute_nakshatra)", None),
     ("panchangika", "nakshatra_tara_bala", "not_computed",
      "Chart-personal by construction (needs the native's own janma-nakshatra) — "
      "out of THIS global lane's scope per brief §2. Computed per-chart via "
      "panchang_engine.tara_bala.compute_tara_bala_score; not duplicated here.",
      "panchang_engine/tara_bala.py (chart-bound; see also w1-flags PR #892)", None),
+    ("panchangika", "nityayoga_lattice_family", "not_computed",
+     "lattice family not materialized. The 27-fold nitya-yoga is computed by "
+     "panchang_engine.angas.compute_yoga, but no standalone searchable lattice "
+     "family exists; Mode-2 must drop and report that constraint.",
+     "panchang_engine/angas.py:compute_yoga (computed, not emitted to bg_muhurta_lattice)", None),
+    ("panchangika", "karana_lattice_family", "not_computed",
+     "lattice family not materialized. The karana pair is computed and "
+     "Vishti/Bhadra is searchable as combination_yoga/bhadra, but the remaining "
+     "karanas have no standalone lattice family.",
+     "panchang_engine/angas.py:compute_karana_pair (computed; only vishti/bhadra is emitted as combination_yoga/bhadra)", None),
     ("panchangika", "nityayoga", "computed",
      "panchang_engine.angas.compute_yoga (27-fold nitya-yoga). Source: Muhurta Chintamani §4; Brihat Samhita §2.",
      "panchang_engine/angas.py:compute_yoga", None),
@@ -369,8 +385,10 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
 
     # ── Day-part ──
     ("day_part", "hora_lord", "computed",
-     "panchang_engine.timings.compute_hora. Source: Vishnu Smriti; Hora Sara (Prithuyashas).",
-     "panchang_engine/timings.py:compute_hora", None),
+     "panchang_engine.timings.compute_hora. Source: Vishnu Smriti; Hora Sara "
+     "(Prithuyashas). MATERIALIZED by W4 ruling R-1 as 24 searchable rows per "
+     "sunrise-to-next-sunrise cycle.",
+     "bg_muhurta_lattice (factor_family=hora; from panchang_engine/timings.py:compute_hora)", None),
     ("day_part", "abhijit", "computed",
      "Muhurta Chintamani §5 (excluded Wednesdays).",
      "bg_muhurta_lattice (factor_family=kalam, factor_key=abhijit)", None),
@@ -454,6 +472,44 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "in shastra_tables.py — disclosed honestly as an uncited convention, not "
      "upgraded to a specific citation.",
      "panchang_engine/shastra_tables.py:DISHA_SHUL_TABLE (uncited in source)", None),
+
+    # ── Muhūrta-lagna (registry item 7) ──
+    ("muhurta_lagna", "rising_sign_span", "computed",
+     "The rising-sign spans at the fixed reference location are found by real "
+     "bisection over panchang_engine.lagna.compute_lagna, not by assuming equal "
+     "two-hour signs. Rows carry sign/lord/graha facts and no duplicated judgment.",
+     "bg_muhurta_lattice (factor_family=lagna; from panchang_engine/lagna.py:compute_lagna)", None),
+    ("muhurta_lagna", "lagna_lord_strength", "computed",
+     "Evaluated at query time from lattice facts against bg_dignity_reference "
+     "and BPHS Ch.26 drishti constants. The lattice's strength_verdict remains "
+     "NULL so it cannot drift from those authorities (§N.5).",
+     "bg_dignity_reference + brahma_constants special_aspect_*; query-time join in platform-mcp/src/lib/kala_ritual_resonance.ts", None),
+    ("muhurta_lagna", "lagna_shuddhi_rules", "not_in_corpus",
+     "Systematic muhurta-lagna doctrine and lagna-suddhi rules are not held at "
+     "usable verse grain. Muhurta Chintamani remains the named ingestion work "
+     "item; no doctrine is invented meanwhile.",
+     "classical_text_chunks (text_id='muhurta_chintamani'; systematic lagna-suddhi rule table unavailable)", None),
+
+    # ── Rite-specific activity-rule join (registry item 6) ──
+    ("rite_specific", "activity_rule_id_join", "computed",
+     "bg_muhurta_activity_rules and the vara/nakshatra/tithi lattice rows use "
+     "the same panchang_engine integer ids, making the join deterministic. If "
+     "those ids are ever hand-mapped, this returns to not_computed (B.10).",
+     "bg_muhurta_activity_rules.factor_id <-> bg_muhurta_lattice.detail->>'factor_id'; consumed by platform-mcp/src/lib/kala_ritual_resonance.ts", None),
+    ("rite_specific", "activity_rule_pareto_axis_in_frozen_engine", "not_computed",
+     "The data-layer id join is live, but the rite_specific_resonance Pareto "
+     "axis remains excluded in the FROZEN kala_lattice_query.ts engine. This is "
+     "an explicit partial, not a completion claim.",
+     "platform-mcp/src/lib/kala_lattice_query.ts:EXCLUDED_AXES (FROZEN; no injection mechanism)", None),
+
+    # ── Parihāra scope ──
+    ("parihara_scope", "vishti_conditional_undertaking_exception", "not_computed",
+     "Brihat Samhita Adh. C sl.3-4 states: 'Nothing done in Vishti leads to "
+     "beneficial results, but attacking enemies; administering poison and such "
+     "other things do succeed.' The exception is undertaking-conditional, while "
+     "bg_parihara_rules has no activity-class qualifier; encoding it would "
+     "incorrectly cancel Bhadra unconditionally.",
+     "classical_text_chunks (chunk_id='brihat_samhita_pg0768_c01', Adh. C sl.3-4, translated, low_confidence_flag=false); schema lacks activity-class qualifier", "vedic:parashari"),
 
     # ── Degree-sensitive ──
     ("degree_sensitive", "mrityu_bhaga", "not_in_corpus",

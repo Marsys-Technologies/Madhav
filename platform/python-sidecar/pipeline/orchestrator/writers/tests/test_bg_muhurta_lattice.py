@@ -189,15 +189,17 @@ def test_compute_day_factors_is_deterministic():
            [(r.factor_family, r.factor_key, r.start_utc, r.end_utc) for r in b]
 
 
-def test_compute_day_factors_covers_all_four_families():
-    """A real day must yield at least the two always-present families
-    (agnivasa: exactly 1/day; kalam: several/day) and, over a sampled week,
-    every one of the four documented families must appear at least once."""
+def test_compute_day_factors_covers_all_nine_families():
+    """A sampled week must expose every searchable family promised by
+    migration 530 and the W4 R-1 construction contract."""
     families_seen: set[str] = set()
     for offset in range(7):
         rows = compute_day_factors(date(2026, 8, 1 + offset))
         families_seen.update(r.factor_family for r in rows)
-    assert families_seen == {"agnivasa", "combination_yoga", "kalam", "ghati_muhurta"}
+    assert families_seen == {
+        "agnivasa", "combination_yoga", "kalam", "ghati_muhurta",
+        "hora", "vara", "nakshatra", "tithi", "lagna",
+    }
 
 
 def test_compute_day_factors_agnivasa_two_rows_per_day():
@@ -370,12 +372,146 @@ def test_writer_dry_run_no_db_needed():
     assert result.notes == "dry_run"
 
 
+def test_writer_propagates_computation_failure(monkeypatch):
+    """A failed detector must fail the substep, never return success-shaped data."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    monkeypatch.setattr(lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2)))
+
+    def fail_compute(_day):
+        raise ValueError("computation exploded")
+
+    monkeypatch.setattr(lattice, "compute_day_factors", fail_compute)
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+
+    with pytest.raises(RuntimeError, match="computation exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_missing_swisseph(monkeypatch):
+    """A missing required engine is a failed build, not a skipped success."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fail_swisseph(name, *args, **kwargs):
+        if name == "swisseph":
+            raise ImportError("swisseph unavailable")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fail_swisseph)
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+
+    with pytest.raises(RuntimeError, match="swisseph unavailable"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_insert_failure(monkeypatch):
+    """A failed write must fail the substep so the orchestrator can roll it back."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    class BrokenConnection:
+        def cursor(self):
+            raise ValueError("insert exploded")
+
+    monkeypatch.setattr(lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2)))
+    monkeypatch.setattr(lattice, "compute_day_factors", lambda _day: [])
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=BrokenConnection(),
+    )
+
+    with pytest.raises(RuntimeError, match="insert exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
 def test_reference_location_matches_bhubaneswar_panchang_convention():
     """The reference (lat, lon, tz_offset) must match panchang.py's own
     FORENSIC-matching 'bhubaneswar' fallback triple, not a different value."""
     assert REFERENCE_LAT == 20.27
     assert REFERENCE_LON == 85.84
     assert REFERENCE_TZ_OFFSET_MINUTES == 330
+
+
+def test_hora_family_tiles_the_hindu_day_with_24_rows():
+    rows = compute_day_factors(date(2026, 8, 15))
+    horas = sorted(
+        (row for row in rows if row.factor_family == "hora"),
+        key=lambda row: row.start_utc,
+    )
+
+    assert len(horas) == 24
+    assert [row.detail["hora_index"] for row in horas] == list(range(1, 25))
+    for earlier, later in zip(horas, horas[1:]):
+        assert earlier.end_utc == later.start_utc
+
+
+@pytest.mark.parametrize(
+    "family,id_range",
+    [
+        ("vara", range(1, 8)),
+        ("nakshatra", range(1, 28)),
+        ("tithi", range(1, 31)),
+    ],
+)
+def test_daily_anga_family_emits_one_canonical_factor_id(family, id_range):
+    rows = compute_day_factors(date(2026, 8, 15))
+    matches = [row for row in rows if row.factor_family == family]
+
+    assert len(matches) == 1
+    assert matches[0].detail["factor_id"] in id_range
+    assert matches[0].detail["span_convention"].startswith(
+        "hindu_day_sunrise_to_next_sunrise"
+    )
+
+
+def test_daily_anga_ids_join_real_activity_rules():
+    from pipeline.orchestrator.writers.bg_parihara_rules import build_activity_rule_rows
+
+    lattice_ids = {
+        row.factor_family: row.detail["factor_id"]
+        for row in compute_day_factors(date(2026, 8, 15))
+        if row.factor_family in {"tithi", "nakshatra", "vara"}
+    }
+    hits = [
+        row for row in build_activity_rule_rows("test-build")
+        if row["factor_type"] in lattice_ids
+        and row["factor_id"] == lattice_ids[row["factor_type"]]
+    ]
+
+    assert set(lattice_ids) == {"tithi", "nakshatra", "vara"}
+    assert hits
+
+
+def test_lagna_spans_tile_the_hindu_day_and_carry_facts_not_verdicts():
+    from panchang_engine.timings import compute_sunrise_sunset
+
+    day = date(2026, 8, 15)
+    sunrise, _ = compute_sunrise_sunset(
+        day, REFERENCE_LAT, REFERENCE_LON, REFERENCE_TZ_OFFSET_MINUTES,
+    )
+    next_sunrise, _ = compute_sunrise_sunset(
+        date(2026, 8, 16), REFERENCE_LAT, REFERENCE_LON,
+        REFERENCE_TZ_OFFSET_MINUTES,
+    )
+    rows = sorted(
+        (row for row in compute_day_factors(day) if row.factor_family == "lagna"),
+        key=lambda row: row.start_utc,
+    )
+
+    assert 12 <= len(rows) <= 14
+    assert rows[0].start_utc == sunrise
+    assert rows[-1].end_utc == next_sunrise
+    for earlier, later in zip(rows, rows[1:]):
+        assert earlier.end_utc == later.start_utc
+        assert later.detail["sign_id"] == earlier.detail["sign_id"] % 12 + 1
+    for row in rows:
+        assert row.detail["lord_sign_id"] == row.detail["graha_sign_ids"][row.detail["lord"]]
+        assert row.detail["strength_verdict"] is None
+        assert row.detail["strength_verdict_note"]
 
 
 # ── Live tests (require DATABASE_URL; skipped otherwise) ─────────────────────
@@ -408,11 +544,14 @@ def test_bg_muhurta_lattice_no_null_citations(db_conn):
     assert n == 0, f"bg_muhurta_lattice has {n} rows with NULL source_citation"
 
 
-def test_bg_muhurta_lattice_all_four_families_present_after_full_build(db_conn):
+def test_bg_muhurta_lattice_all_nine_families_present_after_full_build(db_conn):
     cur = db_conn.cursor()
     cur.execute("SELECT DISTINCT factor_family FROM bg_muhurta_lattice")
     families = {r["factor_family"] for r in cur.fetchall()}
-    assert families == {"agnivasa", "combination_yoga", "kalam", "ghati_muhurta"}
+    assert families == {
+        "agnivasa", "combination_yoga", "kalam", "ghati_muhurta",
+        "hora", "vara", "nakshatra", "tithi", "lagna",
+    }
 
 
 def test_bg_muhurta_lattice_writer_idempotent(db_conn):

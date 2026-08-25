@@ -210,6 +210,65 @@ def test_build_census_rows_row_count_matches_constant():
     assert len(rows) == len(CENSUS_ROWS)
 
 
+def test_census_restores_all_59_reproducible_contract_rows():
+    """Migration 530's live census is reproducible from source, including the
+    eight W4 rows accidentally dropped by e81fc2958."""
+    required = {
+        ("panchangika", "nityayoga_lattice_family"),
+        ("panchangika", "karana_lattice_family"),
+        ("muhurta_lagna", "rising_sign_span"),
+        ("muhurta_lagna", "lagna_lord_strength"),
+        ("muhurta_lagna", "lagna_shuddhi_rules"),
+        ("rite_specific", "activity_rule_id_join"),
+        ("rite_specific", "activity_rule_pareto_axis_in_frozen_engine"),
+        ("parihara_scope", "vishti_conditional_undertaking_exception"),
+    }
+    actual = {(family, name) for family, name, *_ in CENSUS_ROWS}
+
+    assert len(CENSUS_ROWS) == 59
+    assert required <= actual
+
+
+def test_materialized_w4_families_point_to_searchable_lattice_rows():
+    by_name = {
+        (family, name): (disposition, pointer)
+        for family, name, disposition, _note, pointer, _tag in CENSUS_ROWS
+    }
+    expected = {
+        ("panchangika", "tithi"): "factor_family=tithi",
+        ("panchangika", "vara"): "factor_family=vara",
+        ("panchangika", "nakshatra"): "factor_family=nakshatra",
+        ("day_part", "hora_lord"): "factor_family=hora",
+    }
+
+    for key, family_marker in expected.items():
+        disposition, pointer = by_name[key]
+        assert disposition == "computed"
+        assert pointer.startswith("bg_muhurta_lattice")
+        assert family_marker in pointer
+
+
+def test_restored_census_rows_keep_their_honest_dispositions():
+    by_name = {
+        (family, name): (disposition, note, pointer)
+        for family, name, disposition, note, pointer, _tag in CENSUS_ROWS
+    }
+
+    for name in ("nityayoga_lattice_family", "karana_lattice_family"):
+        disposition, note, _ = by_name[("panchangika", name)]
+        assert disposition == "not_computed"
+        assert "lattice family not materialized" in note
+
+    assert by_name[("muhurta_lagna", "rising_sign_span")][0] == "computed"
+    assert by_name[("muhurta_lagna", "lagna_lord_strength")][0] == "computed"
+    assert by_name[("muhurta_lagna", "lagna_shuddhi_rules")][0] == "not_in_corpus"
+    assert by_name[("rite_specific", "activity_rule_id_join")][0] == "computed"
+    assert by_name[("rite_specific", "activity_rule_pareto_axis_in_frozen_engine")][0] == "not_computed"
+    vishti = by_name[("parihara_scope", "vishti_conditional_undertaking_exception")]
+    assert vishti[0] == "not_computed"
+    assert "brihat_samhita_pg0768_c01" in vishti[2]
+
+
 # ── Offline: writer registration + dry_run ────────────────────────────────────
 
 def test_writer_registered():
