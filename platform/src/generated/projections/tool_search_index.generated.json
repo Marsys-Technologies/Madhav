@@ -2060,8 +2060,8 @@
       "family": "flat_fact",
       "tool_role": "leaf",
       "short_label": "Query Formula Constants",
-      "one_line": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
-      "description": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
+      "one_line": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
+      "description": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
       "keywords": [
         "assets",
         "bounds",

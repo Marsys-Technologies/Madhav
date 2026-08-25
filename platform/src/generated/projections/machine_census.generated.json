@@ -1020,7 +1020,7 @@
         "mcp_full"
       ],
       "short_label": "Query Formula Constants",
-      "one_line": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
+      "one_line": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
       "read_only": true,
       "destructive": false,
       "open_world": false,

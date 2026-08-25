@@ -470,7 +470,7 @@
       "layer": "L0",
       "name": "query_formula_constants",
       "short_label": "Query Formula Constants",
-      "one_line": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
+      "one_line": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",

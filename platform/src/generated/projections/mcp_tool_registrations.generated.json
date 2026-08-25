@@ -3766,7 +3766,7 @@
     },
     {
       "tool_name": "query_formula_constants",
-      "description": "Query the formula-constants registry (brahma_formula_constants, 18 rows). Each row: constant_id, value_jsonb, class (classical|native_judgment|engineering| conflation_bug), consumer_assets[] (which layer assets read this constant), citation_or_ratification, calibratable flag, bounds, version. Filter by constant_id or class. Global reference — no chart_id needed. CLASSICAL rows are cite-and-encode (never tuned); NATIVE_JUDGMENT rows are ratified and L5-calibratable within bounds; CONFLATION_BUG rows are documented defects, not live formulas.",
+      "description": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows). Each row: constant_id, value_jsonb, class (classical|native_judgment|engineering| conflation_bug), consumer_assets[] (which layer assets read this constant), citation_or_ratification, calibratable flag, bounds, version. Filter by constant_id or class. Global reference — no chart_id needed. CLASSICAL rows are cite-and-encode (never tuned); NATIVE_JUDGMENT rows are ratified and L5-calibratable within bounds; CONFLATION_BUG rows are documented defects, not live formulas.",
       "input_schema": {
         "type": "object",
         "properties": {
