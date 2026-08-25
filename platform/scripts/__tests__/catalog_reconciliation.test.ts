@@ -68,6 +68,32 @@ describe('asset_registry_seed — catalog reconciliation', () => {
     expect(assetIds.has('ga_pyjhora_engine')).toBe(false)
   })
 
+  it('preserves ratified achieved floors for exhausted L0 corpus assets', () => {
+    const textIndex = ASSETS.find((asset) => asset.asset_id === 'bg_text_index')
+    const concordance = ASSETS.find((asset) => asset.asset_id === 'bg_concordance')
+
+    expect(textIndex?.target_floor).toBe(361)
+    expect(textIndex?.volume_explanation).toContain('achieved')
+
+    expect(concordance?.target_floor).toBe(720)
+    expect(concordance?.volume_explanation).toContain('achieved')
+  })
+
+  it('measures only the 11 tables owned by bg_reference', () => {
+    const reference = ASSETS.find((asset) => asset.asset_id === 'bg_reference')
+
+    expect(reference).toMatchObject({
+      target_table: 'reference_planets',
+      size_sql: "SELECT pg_total_relation_size('reference_planets')",
+      target_floor: 1242,
+    })
+    expect(reference?.count_sql).not.toContain('reference_yogas')
+    expect(reference?.count_sql).not.toContain('reference_doshas')
+    expect(reference?.count_sql).not.toContain('reference_dasha_systems')
+    expect(reference?.count_sql).not.toContain('reference_nakshatras')
+    expect(reference?.volume_explanation).toContain('11 tables owned by bg_reference')
+  })
+
   // ṢAḌ-DARŚANA Lane K / Gate W3K close: `ga_sensitive`'s count_sql carries a
   // `fact_category LIKE 'kp_%'` wildcard (predating W3K) meant to catch the two
   // categories it actually emits (`kp_ruling_planets_natal`, `kp_cuspal_significators`
