@@ -6,6 +6,32 @@
 -- ontology output is filtered to the owning entity class. The compendium's
 -- chapter and topic projections are separate scopes so generated index_id and
 -- timestamp columns never make an identical rebuild hash differently.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM brahma_compendium_index
+     WHERE (chapter_num IS NULL) = (topic_id IS NULL)
+  ) THEN
+    RAISE EXCEPTION 'Invalid brahma_compendium_index digest scope: exactly one of chapter_num and topic_id must be NULL';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'brahma_compendium_index_digest_scope_xor'
+       AND conrelid = 'public.brahma_compendium_index'::regclass
+  ) THEN
+    ALTER TABLE brahma_compendium_index
+      ADD CONSTRAINT brahma_compendium_index_digest_scope_xor
+      CHECK ((chapter_num IS NULL) <> (topic_id IS NULL)) NOT VALID;
+  END IF;
+END
+$$;
+
+ALTER TABLE brahma_compendium_index
+  VALIDATE CONSTRAINT brahma_compendium_index_digest_scope_xor;
+
 INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
 VALUES
 ('bg_compendium_index','f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806','{"components":[{"key_columns":["text_id","chapter_num"],"name":"compendium_by_chapter","relation":"brahma_compendium_index","value_columns":["text_id","chapter_num","chapter_title_en","chapter_title_sa","topic_id","verse_start","verse_end","chunk_ids","summary_text","significance","classical_significance_score"],"where_is_null":["topic_id"]},{"key_columns":["text_id","topic_id"],"name":"compendium_by_topic","relation":"brahma_compendium_index","value_columns":["text_id","chapter_num","chapter_title_en","chapter_title_sa","topic_id","verse_start","verse_end","chunk_ids","summary_text","significance","classical_significance_score"],"where_is_null":["chapter_num"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),

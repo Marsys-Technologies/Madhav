@@ -337,3 +337,12 @@ def test_migration_601_completes_every_frozen_l0_build_digest_spec():
             if component["relation"] == "brahma_ontology"
         )
         assert ontology["where_equals"] == {"entity_class": entity_class}
+
+
+def test_compendium_digest_scopes_have_a_durable_exclusive_exhaustive_guard():
+    migration = (
+        pathlib.Path(__file__).resolve().parents[4]
+        / "supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql"
+    ).read_text()
+    assert "CHECK ((chapter_num IS NULL) <> (topic_id IS NULL))" in migration
+    assert "Invalid brahma_compendium_index digest scope" in migration
