@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto'
 import { query } from '@/lib/db/client'
-import { canonicalManifestDigest, parseNirmanaElevationManifest, type NirmanaElevationManifest } from './definitions'
+import {
+  assertManifestMatchesRegistry,
+  canonicalManifestDigest,
+  parseFreezableNirmanaElevationManifest,
+  type NirmanaElevationManifest,
+  type NirmanaRegistryContractRow,
+} from './definitions'
 import type { NirmanaReleaseStatus } from './release'
 import { NirmanaElevationSnapshotSchema, type NirmanaElevationSnapshot } from './types'
 
@@ -12,7 +18,7 @@ const LAYERS = [
 type SourceId = keyof NirmanaElevationRawSources
 
 export interface NirmanaElevationRawSources {
-  asset_registry: Array<{ asset_id: string; english_name: string | null; layer: string; scope: string; sort_order: number; has_writer: boolean | null; asset_type: string | null; asset_kind: string | null; is_active: boolean; depends_on: string[] | null }>
+  asset_registry: Array<NirmanaRegistryContractRow & { english_name: string | null; asset_type: string | null }>
   asset_throughput: Array<{ asset_id: string; chart_id: string | null; state: string; last_built_at: string | null }>
   build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
@@ -20,8 +26,6 @@ export interface NirmanaElevationRawSources {
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
   campaign_events: Array<{ campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>
 }
-
-type ManifestAsset = NirmanaElevationManifest['assets'][number]
 
 const NON_BUILD_DISPOSITION_EVENT_TYPES = {
   probe: 'probe_accepted',
@@ -48,7 +52,11 @@ async function loadSource<K extends SourceId>(sourceId: K, sql: string): Promise
 
 /** Only primary build tables plus tracker-owned evidence tables feed this projection. */
 export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevationRawSources> {
-  const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, scope, sort_order, has_writer, asset_type, asset_kind, is_active, COALESCE(depends_on, '{}') AS depends_on FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order, asset_id`)
+  const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, scope, sort_order, has_writer,
+    asset_type, asset_kind, catalog_status, is_active, COALESCE(depends_on, '{}') AS depends_on,
+    target_table, count_sql, integrity_check_sql, health_probe, natural_key_partition,
+    superseded_by, data_disposition, dead_flag
+    FROM asset_registry ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
   const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
@@ -68,15 +76,14 @@ function asIso(value: string | null | undefined): string | null {
 
 function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryById: Map<string, NirmanaElevationRawSources['asset_registry'][number]>): NirmanaElevationManifest | null {
   if (!definition || definition.definition_status !== 'frozen') return null
-  const parsed = parseNirmanaElevationManifest(definition.manifest)
+  const parsed = parseFreezableNirmanaElevationManifest(definition.manifest)
   if (!parsed) return null
   if (canonicalManifestDigest(parsed) !== definition.manifest_sha256) return null
-  const ids = parsed.assets.map((asset) => asset.asset_id)
-  if (new Set(ids).size !== ids.length || ids.some((id) => !registryById.has(id))) return null
-  const assetsById = new Map(parsed.assets.map((asset) => [asset.asset_id, asset]))
-  if (parsed.assets.some((asset) => asset.execution_obligation === 'build' && registryById.get(asset.asset_id)?.has_writer !== true)) return null
-  if (parsed.assets.some((asset) => asset.execution_obligation === 'producer_covered'
-    && (!asset.producer_id || assetsById.get(asset.producer_id)?.execution_obligation !== 'build'))) return null
+  try {
+    assertManifestMatchesRegistry(parsed, [...registryById.values()])
+  } catch {
+    return null
+  }
   return parsed
 }
 
