@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixtureV2 } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
 import type {
@@ -215,5 +216,53 @@ describe('NirmanaElevationTracker', () => {
 
     fireEvent.click(within(drawer).getByRole('button', { name: /close audit drawer/i }))
     expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument()
+  })
+
+  it('opens the global audit by keyboard, contains Tab focus, and restores focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<NirmanaElevationTrackerView snapshot={snapshotV2()} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
+    const trigger = screen.getByRole('button', { name: /audit evidence.*reliable/i })
+
+    trigger.focus()
+    await user.keyboard('{Enter}')
+
+    const drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
+    await waitFor(() => expect(drawer).toContainElement(document.activeElement as HTMLElement))
+    for (let index = 0; index < 4; index += 1) {
+      await user.tab()
+      await waitFor(() => expect(drawer).toContainElement(document.activeElement as HTMLElement))
+    }
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
+  })
+
+  it('clears an asset audit filter on close and globally reopens all campaign evidence', async () => {
+    const user = userEvent.setup()
+    const snapshot = snapshotV2()
+    snapshot.assets[1].evidence_refs = ['unrelated:ka_smriti']
+    render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
+    const assetTrigger = screen.getByRole('button', { name: /audit details for bg_prashna_rules/i })
+
+    assetTrigger.focus()
+    await user.keyboard('{Enter}')
+    let drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
+    expect(within(drawer).getByText('build_run:run-l0-wave-2')).toBeVisible()
+    expect(within(drawer).queryByText('unrelated:ka_smriti')).not.toBeInTheDocument()
+
+    const close = within(drawer).getByRole('button', { name: /close audit drawer/i })
+    close.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument())
+    expect(assetTrigger).toHaveFocus()
+
+    const globalTrigger = screen.getByRole('button', { name: /audit evidence.*3 references.*reliable/i })
+    globalTrigger.focus()
+    await user.keyboard('{Enter}')
+    drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
+    expect(within(drawer).getByText('build_run:run-l0-wave-2')).toBeVisible()
+    expect(within(drawer).getByText('unrelated:ka_smriti')).toBeVisible()
+    expect(within(drawer).getByText('build_run:medical-mappings')).toBeVisible()
   })
 })

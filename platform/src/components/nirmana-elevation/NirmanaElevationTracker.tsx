@@ -49,9 +49,24 @@ function failureMessage(snapshot: NirmanaElevationSnapshot): string {
 function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
   const [auditAssetId, setAuditAssetId] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState(false)
+  const auditOpener = useRef<HTMLElement | null>(null)
+
+  const rememberAuditOpener = () => {
+    auditOpener.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  }
+
   const openAudit = (assetId: string) => {
+    rememberAuditOpener()
     setAuditAssetId(assetId)
     setAuditOpen(true)
+  }
+
+  const onAuditOpenChange = (open: boolean) => {
+    if (open) rememberAuditOpener()
+    setAuditAssetId(null)
+    setAuditOpen(open)
   }
 
   return <main className="space-y-4">
@@ -60,7 +75,13 @@ function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevatio
       <CampaignSpine snapshot={snapshot} onOpenAudit={openAudit} />
       <NowNextRail snapshot={snapshot} />
     </div>
-    <AuditDrawer snapshot={snapshot} assetId={auditAssetId} open={auditOpen} onOpenChange={setAuditOpen} />
+    <AuditDrawer
+      snapshot={snapshot}
+      assetId={auditAssetId}
+      open={auditOpen}
+      onOpenChange={onAuditOpenChange}
+      finalFocus={auditOpener}
+    />
   </main>
 }
 
