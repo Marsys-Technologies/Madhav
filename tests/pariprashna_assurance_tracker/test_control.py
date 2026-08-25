@@ -17,7 +17,7 @@ TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assura
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -851,6 +851,99 @@ class ControlPlaneTests(unittest.TestCase):
             with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p0b_service"), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
                 with self.assertRaisesRegex(RuntimeError, "P0B rollback failed; preserved plist backup"):
                     upgrade_p1(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+
+    def test_p1_release_upgrade_requires_the_exact_attested_p1_enabled_service(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; old_release = root_path / "old-release"
+            old_release.mkdir(); (old_release / ".source-sha").write_text("a" * 40)
+            plist_path = root_path / "control.plist"
+            with patch("service.assert_release_attestation", return_value=old_release):
+                plist_path.write_bytes(build_launchd_plist(old_release, runtime, p1_enabled=True))
+                self.assertEqual(_assert_upgradeable_p1_service(plist_path, runtime, 8787), (old_release, "a" * 40))
+                plist_path.write_bytes(build_launchd_plist(old_release, runtime))
+                with self.assertRaisesRegex(ValueError, "exact P1-enabled"):
+                    _assert_upgradeable_p1_service(plist_path, runtime, 8787)
+                plist_path.write_bytes(plistlib.dumps({"Label": SERVICE_LABEL, "ProgramArguments": [sys.executable, str(old_release / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--p2-enabled", "--host", "127.0.0.1", "--port", "8787"]}))
+                with self.assertRaisesRegex(ValueError, "exact P1-enabled"):
+                    _assert_upgradeable_p1_service(plist_path, runtime, 8787)
+
+    def test_upgrade_p1_release_preserves_p1_credentials_and_rolls_back_on_post_switch_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; runtime.mkdir()
+            release = root_path / "release"; old_release = root_path / "old-release"
+            (runtime / "p1-credentials.json").write_text("private-but-unread\n"); os.chmod(runtime / "p1-credentials.json", 0o600)
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True)
+            original_plist = build_launchd_plist(old_release, runtime, p1_enabled=True); plist_path.write_bytes(original_plist)
+            store = MagicMock(); store.verify_replay.return_value = {"ok": True}; store.export_snapshot.side_effect = [{"path": str(root_path / "pre.json")}, ValueError("post snapshot failure")]
+            connection = MagicMock(); connection.__enter__.return_value = object(); store.connection.return_value = connection
+            stores = MagicMock(return_value=store); stores._p0_to_p1_dependency_resolved.return_value = True
+            commands = []; bootstrapped_arguments = []
+            def launchctl(command, **kwargs):
+                commands.append(command)
+                if command[1] == "bootstrap":
+                    bootstrapped_arguments.append(plistlib.loads(Path(command[-1]).read_bytes())["ProgramArguments"])
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "b" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(ValueError, "post snapshot failure"):
+                    upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            self.assertEqual(plist_path.read_bytes(), original_plist)
+            self.assertEqual(len([command for command in commands if command[1] == "bootstrap"]), 2)
+            self.assertIn("--p1-enabled", bootstrapped_arguments[0])
+            self.assertIn("--p1-enabled", bootstrapped_arguments[1])
+            store.provision_p1_credentials.assert_not_called()
+
+    def test_upgrade_p1_release_advances_only_to_an_attested_p1_enabled_candidate(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; runtime.mkdir()
+            release = root_path / "release"; old_release = root_path / "old-release"
+            (runtime / "p1-credentials.json").write_text("private-but-unread\n"); os.chmod(runtime / "p1-credentials.json", 0o600)
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+            plist_path.parent.mkdir(parents=True); plist_path.write_bytes(build_launchd_plist(old_release, runtime, p1_enabled=True))
+            store = MagicMock(); store.verify_replay.return_value = {"ok": True}; store.export_snapshot.side_effect = [{"path": str(root_path / "pre.json")}, {"path": str(root_path / "post.json")}]
+            connection = MagicMock(); connection.__enter__.return_value = object(); store.connection.return_value = connection
+            stores = MagicMock(return_value=store); stores._p0_to_p1_dependency_resolved.return_value = True
+            source_sha = "d" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "", "")):
+                result = upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            self.assertEqual(result["previous_source_sha"], "a" * 40)
+            self.assertEqual(result["pre_snapshot"], str(root_path / "pre.json"))
+            self.assertEqual(result["post_snapshot"], str(root_path / "post.json"))
+            self.assertIn("--p1-enabled", plistlib.loads(plist_path.read_bytes())["ProgramArguments"])
+            stores.assert_called_once_with(runtime, p0b_only=True, p1_enabled=True)
+            store.provision_p1_credentials.assert_not_called()
+
+    def test_upgrade_p1_release_fails_fatally_when_p1_rollback_cannot_restore_service(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; runtime.mkdir(); release = root_path / "release"; old_release = root_path / "old-release"
+            (runtime / "p1-credentials.json").write_text("private-but-unread\n"); os.chmod(runtime / "p1-credentials.json", 0o600)
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"; plist_path.parent.mkdir(parents=True); plist_path.write_bytes(build_launchd_plist(old_release, runtime, p1_enabled=True))
+            store = MagicMock(); store.verify_replay.return_value = {"ok": True}; store.export_snapshot.side_effect = [{"path": str(root_path / "pre.json")}, ValueError("post snapshot failure")]
+            connection = MagicMock(); connection.__enter__.return_value = object(); store.connection.return_value = connection
+            stores = MagicMock(return_value=store); stores._p0_to_p1_dependency_resolved.return_value = True
+            bootstrap_count = 0
+            def launchctl(command, **kwargs):
+                nonlocal bootstrap_count
+                if command[1] == "bootstrap":
+                    bootstrap_count += 1
+                    if bootstrap_count == 2:
+                        raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0, "", "")
+            source_sha = "e" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(old_release, "a" * 40)), patch("service.EventStore", stores), patch("service.subprocess.run", side_effect=launchctl):
+                with self.assertRaisesRegex(RuntimeError, "P1 release upgrade failed and P1 rollback failed; preserved plist backup"):
+                    upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+
+    def test_upgrade_p1_release_refuses_missing_private_p1_credentials_before_switching(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); runtime = root_path / "runtime"; runtime.mkdir(); release = root_path / "release"
+            plist_path = root_path / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"; plist_path.parent.mkdir(parents=True); plist_path.write_bytes(b"old-p1-plist")
+            source_sha = "c" * 40
+            with patch("service.sys.platform", "darwin"), patch("service.Path.home", return_value=root_path), patch("service.assert_release_attestation", return_value=release), patch("service.runtime_preflight"), patch("service._filevault_status", return_value="FileVault is On."), patch("service._assert_upgradeable_p1_service", return_value=(root_path / "old-release", "a" * 40)), patch("service.subprocess.run") as launchctl:
+                with self.assertRaisesRegex(ValueError, "P1 credentials are not a private regular file"):
+                    upgrade_p1_release(release, runtime, source_sha, root_path / "pre.json", root_path / "post.json")
+            launchctl.assert_not_called()
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()
