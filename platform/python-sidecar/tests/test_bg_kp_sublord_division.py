@@ -30,6 +30,7 @@ import pytest
 from brahmagyan.l0_kp_sublord_division import (
     NAKSHATRA_COUNT, NAK_SPAN_DEG, PLANET_CYCLE, RASHI_SPAN_DEG, TABLE_VERSION,
     VIMSHOTTARI_YEARS, build_divisions, build_sub_segments, lookup_division,
+    seed_kp_sublord_division,
 )
 
 
@@ -153,6 +154,17 @@ def test_l0_constants_have_not_drifted_from_the_l1_consumer():
 
     assert l1.VIMSHOTTARI_YEARS == VIMSHOTTARI_YEARS
     assert l1.PLANET_CYCLE == PLANET_CYCLE
+
+
+def test_seed_halts_when_reference_cross_check_is_unverified(monkeypatch):
+    """A missing/incomplete L0 nakshatra authority is UNKNOWN, never acceptable."""
+    monkeypatch.setattr(
+        "brahmagyan.l0_kp_sublord_division.verify_star_lords_against_reference",
+        lambda _conn: {"checked": 0, "mismatches": [], "status": "unverified"},
+    )
+
+    with pytest.raises(RuntimeError, match="two_pass_verified"):
+        seed_kp_sublord_division(object(), dry_run=True)
 
 
 @pytest.mark.parametrize("step_deg", [0.01])
