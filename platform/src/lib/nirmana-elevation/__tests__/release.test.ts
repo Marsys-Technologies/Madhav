@@ -84,12 +84,16 @@ describe('loadNirmanaReleaseStatus', () => {
   })
 
   it('uses a valid commit label from the exact serving revision', async () => {
+    const cloudRunClient = cloudRun({ revisionLabels: { 'commit-sha': 'd'.repeat(40) } })
     const result = await loadNirmanaReleaseStatus({
       now: observedAt,
       fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
-      cloudRunClient: cloudRun({ revisionLabels: { 'commit-sha': 'd'.repeat(40) } }) as never,
+      cloudRunClient: cloudRunClient as never,
     })
 
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb',
+    })
     expect(result.release).toMatchObject({ deployed_sha: 'd'.repeat(40), production_in_sync: true })
     expect(result.sources).toEqual(expect.arrayContaining([
       expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'fresh', error: null }),
