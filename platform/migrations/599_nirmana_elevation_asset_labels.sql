@@ -41,8 +41,8 @@ $$;
 DROP TRIGGER IF EXISTS nirmana_elevation_asset_labels_append_only
   ON nirmana_elevation_asset_labels;
 CREATE TRIGGER nirmana_elevation_asset_labels_append_only
-  BEFORE UPDATE OR DELETE ON nirmana_elevation_asset_labels
-  FOR EACH ROW EXECUTE FUNCTION nirmana_elevation_prevent_label_mutation();
+  BEFORE UPDATE OR DELETE OR TRUNCATE ON nirmana_elevation_asset_labels
+  FOR EACH STATEMENT EXECUTE FUNCTION nirmana_elevation_prevent_label_mutation();
 
 COMMENT ON TABLE nirmana_elevation_asset_labels IS
   'Append-only, definition-scoped canonical Sanskrit, English, description, and verified legacy labels for the Nirmana elevation projection.';

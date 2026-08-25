@@ -11,7 +11,7 @@ describe('migration 599: Nirmana elevation asset labels', () => {
     expect(sql).toContain('REFERENCES nirmana_elevation_campaign_definitions')
     expect(sql).toContain('CHECK (label_digest ~')
     expect(sql).toContain("jsonb_typeof(legacy_aliases) = 'array'")
-    expect(sql).toContain('BEFORE UPDATE OR DELETE ON nirmana_elevation_asset_labels')
+    expect(sql).toContain('BEFORE UPDATE OR DELETE OR TRUNCATE ON nirmana_elevation_asset_labels')
     expect(sql).toContain('nirmana_elevation_asset_labels is append-only')
   })
 })
