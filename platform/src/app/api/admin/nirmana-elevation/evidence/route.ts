@@ -6,6 +6,7 @@ import {
   createNirmanaElevationDefinition,
   NirmanaElevationDefinitionConflictError,
   NirmanaElevationEvidenceConflictError,
+  NirmanaElevationEvidenceValidationError,
   NirmanaElevationManifestSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
@@ -52,6 +53,21 @@ const receipt = z.object({
     }).strict().safeParse(value.evidence_payload)
     if (!payload.success) {
       context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires only output_digest and output_digest_spec_sha256 SHA-256 fields.' })
+    }
+  }
+  if (value.event_type === 'asset_analysis_accepted') {
+    const payload = z.object({
+      registry_fingerprint_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      analysis_digest: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict().safeParse(value.evidence_payload)
+    if (!payload.success) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'asset_analysis_accepted requires only registry_fingerprint_sha256 and analysis_digest SHA-256 fields.' })
+    }
+    if (value.source_kind !== 'git_commit' || !/^git:[0-9a-f]{40}$/.test(value.source_ref)) {
+      context.addIssue({ code: 'custom', path: ['source_ref'], message: 'asset_analysis_accepted requires source_kind=git_commit and an exact git:<40-hex> source reference.' })
+    }
+    if (value.layer === null) {
+      context.addIssue({ code: 'custom', path: ['layer'], message: 'asset_analysis_accepted requires the asset layer.' })
     }
   }
 })
@@ -122,7 +138,9 @@ export async function POST(request: Request) {
     })
     return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
-    if (error instanceof NirmanaElevationDefinitionConflictError || error instanceof NirmanaElevationEvidenceConflictError) {
+    if (error instanceof NirmanaElevationDefinitionConflictError
+      || error instanceof NirmanaElevationEvidenceConflictError
+      || error instanceof NirmanaElevationEvidenceValidationError) {
       return NextResponse.json({ error: error.message }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
     }
     console.error('[api/admin/nirmana-elevation/evidence] write failed', error)

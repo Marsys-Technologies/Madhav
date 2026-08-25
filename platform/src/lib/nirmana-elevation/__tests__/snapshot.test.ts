@@ -701,10 +701,95 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.assets.map((asset) => asset.asset_id)).toContain('ka_gochara_sweep')
   })
 
-  it('fails closed when the current registry drifts from a frozen asset fingerprint', () => {
+  it('keeps the frozen denominator while blocking unaccepted per-asset registry-contract drift', () => {
     const manifest = defaultManifest()
     const snapshot = projectNirmanaElevationSnapshot(sources({
       asset_registry: [registryAsset({ count_sql: 'SELECT count(*) FROM drifted_table' })],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
+    expect(snapshot.assets[0]).toMatchObject({
+      lifecycle_state: 'blocked',
+      blocker: expect.stringContaining('registry contract changed after the frozen T0 definition'),
+    })
+    expect(snapshot.assets[0].evidence_refs).toEqual(expect.arrayContaining([
+      `registry:t0:${manifest.assets[0].registry_fingerprint_sha256}`,
+      expect.stringMatching(/^registry:live:[a-f0-9]{64}$/),
+    ]))
+    expect(snapshot.assets[0].evidence_refs.find((reference) => reference.startsWith('registry:live:')))
+      .not.toBe(`registry:live:${manifest.assets[0].registry_fingerprint_sha256}`)
+    expect(snapshot.data_quality.gaps).toContain('1 asset registry contract has changed without a matching accepted analysis fingerprint.')
+    expect(snapshot.data_quality.contradictions).toEqual(['bg_prashna_rules'])
+  })
+
+  it('accepts governed contract evolution only when asset analysis pins the current registry fingerprint', () => {
+    const manifest = defaultManifest()
+    const driftedRegistry = [registryAsset({ count_sql: 'SELECT count(*) FROM evolved_table' })]
+    const currentFingerprint = canonicalRegistryContractDigest({
+      asset_id: 'bg_prashna_rules',
+      layer: 'L0',
+      depends_on: [],
+      registry_contract: {
+        ...manifest.assets[0].registry_contract,
+        count_sql: 'SELECT count(*) FROM evolved_table',
+      },
+    })
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: driftedRegistry,
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_analysis_accepted',
+        entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+        evidence_payload: { registry_fingerprint_sha256: currentFingerprint, analysis_digest: 'a'.repeat(64) },
+        source_kind: 'git_commit', source_ref: `git:${'b'.repeat(40)}`,
+        observed_at: observedAt, recorded_at: observedAt,
+      }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
+    expect(snapshot.assets[0]).toMatchObject({ lifecycle_state: 'catalogued', blocker: null })
+    expect(snapshot.assets[0].evidence_refs).toEqual(expect.arrayContaining([
+      `registry:live:${currentFingerprint}`,
+      `registry:accepted:${currentFingerprint}`,
+      `analysis:sha256:${'a'.repeat(64)}`,
+    ]))
+    expect(snapshot.data_quality.gaps).not.toContain(expect.stringContaining('registry contract has changed'))
+    expect(snapshot.data_quality.contradictions).toEqual([])
+  })
+
+  it('does not let a stale analysis receipt accept a later registry-contract mutation', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: [registryAsset({ count_sql: 'SELECT count(*) FROM later_mutation' })],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_analysis_accepted',
+        entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+        evidence_payload: { registry_fingerprint_sha256: 'c'.repeat(64), analysis_digest: 'a'.repeat(64) },
+        source_kind: 'git_commit', source_ref: `git:${'b'.repeat(40)}`,
+        observed_at: observedAt, recorded_at: observedAt,
+      }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
+    expect(snapshot.assets[0]).toMatchObject({ lifecycle_state: 'blocked' })
+    expect(snapshot.data_quality.contradictions).toEqual(['bg_prashna_rules'])
+  })
+
+  it('still fails closed when the current registry changes the frozen asset/DAG identity', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: [registryAsset({ layer: 'ganita' })],
       campaign_definitions: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
         manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
