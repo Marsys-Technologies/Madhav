@@ -71,3 +71,14 @@ def test_global_asset_lock_uses_one_shared_session_key() -> None:
             ("nirmana-global-assets",),
         ),
     ]
+
+
+def test_concurrency_cap_does_not_count_the_retrying_run_itself() -> None:
+    """Catches a crashed running attempt blocking its own Cloud Run retry."""
+    cur = Cursor([{"active": 5}])
+
+    assert runner.count_other_running_runs(cur, "run-1") == 5
+    assert cur.calls == [(
+        "SELECT count(*) AS active FROM build_runs WHERE state='running' AND id<>%s",
+        ("run-1",),
+    )]

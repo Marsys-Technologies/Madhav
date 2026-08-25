@@ -392,6 +392,15 @@ def claim_runnable_run(conn: psycopg.Connection, cur, run_id: str) -> bool:
     return claimed
 
 
+def count_other_running_runs(cur, run_id: str) -> int:
+    """Apply the fleet cap without making a crashed run block its own retry."""
+    cur.execute(
+        "SELECT count(*) AS active FROM build_runs WHERE state='running' AND id<>%s",
+        (run_id,),
+    )
+    return int(cur.fetchone()["active"])
+
+
 def check_signals(cur, run_id: str) -> Optional[str]:
     cur.execute(
         "SELECT pause_requested_at, stop_requested_at FROM build_runs WHERE id = %s",
@@ -1029,8 +1038,7 @@ def execute_run(run_id: str) -> None:
                 logger.warning(msg, len(_gaps), _gaps)
 
     # Concurrency cap: defer if too many runs are already active.
-    cur.execute("SELECT count(*) AS active FROM build_runs WHERE state = 'running'")
-    active_count = cur.fetchone()["active"]
+    active_count = count_other_running_runs(cur, run_id)
     if active_count >= _MAX_CONCURRENT_RUNS:
         logger.warning(
             "[orchestrator] max concurrent runs (%d) reached (%d active) — deferring run %s",
