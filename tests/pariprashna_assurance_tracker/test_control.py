@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
-from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime  # noqa: E402
+from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime, service_identity  # noqa: E402
 from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _p1_release_upgrade_lock, _prove_loopback_p1_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
 from http.server import ThreadingHTTPServer
 
@@ -967,17 +967,87 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_p1_release_loopback_proof_requires_healthy_endpoint_and_expected_launchd_identity(self):
         with tempfile.TemporaryDirectory() as root:
-            release = Path(root) / "candidate"; runtime = Path(root) / "runtime"
-            output = f"program arguments = {{ {release / 'server.py'} --runtime {runtime} --p0b-only --p1-enabled --host 127.0.0.1 --port 8787 }}"
+            release = Path(root) / "candidate"; runtime = Path(root) / "runtime"; source_sha = "a" * 40
+            arguments = [sys.executable, str(release.resolve() / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", "8787"]
+            response = MagicMock(); response.status = 200; response.read.return_value = json.dumps({"ok": True, "source_sha": source_sha, "release_dir": str(release.resolve()), "p0b_only": True, "p1_enabled": True, "replay_ok": True}).encode()
+            connection = MagicMock(); connection.getresponse.return_value = response
+            def system(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=system), patch("service.http.client.HTTPConnection", return_value=connection):
+                _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
+            self.assertEqual(connection.request.call_count, 2)
+
+    def test_p1_service_identity_binds_the_attested_release_sha_modes_and_replay(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "release"; release.mkdir(); (release / ".source-sha").write_text("a" * 40)
+            store = MagicMock(); store.p0b_only = True; store.p1_enabled = True; store.verify_replay.return_value = {"ok": True}
+            with patch("server.assert_release_attestation", return_value=release):
+                identity = service_identity(store, release)
+            self.assertEqual(identity, {"ok": True, "source_sha": "a" * 40, "release_dir": str(release.resolve()), "p0b_only": True, "p1_enabled": True, "replay_ok": True})
+            store.verify_replay.return_value = {"ok": False}
+            with patch("server.assert_release_attestation", return_value=release):
+                self.assertFalse(service_identity(store, release)["ok"])
+
+    def test_service_identity_endpoint_is_loopback_read_only(self):
+        bus = EventBus(); httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_factory(self.store, bus, TRACKER / "dashboard.html")); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", httpd.server_port, timeout=2); connection.request("GET", "/api/service-identity")
+            response = connection.getresponse(); identity = json.loads(response.read())
+            self.assertEqual(response.status, 200); self.assertEqual(identity["p0b_only"], False); self.assertEqual(identity["p1_enabled"], False); self.assertIn("release_dir", identity)
+            connection.close()
+        finally:
+            httpd.shutdown(); thread.join(timeout=2); httpd.server_close()
+
+    def test_p1_release_loopback_proof_rejects_identity_payload_mismatch(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "candidate"; runtime = Path(root) / "runtime"; source_sha = "b" * 40
+            arguments = [sys.executable, str(release.resolve() / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", "8787"]
+            response = MagicMock(); response.status = 200; response.read.return_value = json.dumps({"ok": True, "source_sha": "c" * 40, "release_dir": str(release.resolve()), "p0b_only": True, "p1_enabled": True, "replay_ok": True}).encode()
+            connection = MagicMock(); connection.getresponse.return_value = response
+            def system(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=system), patch("service.http.client.HTTPConnection", return_value=connection):
+                with self.assertRaisesRegex(ValueError, "health proof failed"):
+                    _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
+
+    def test_p1_release_loopback_proof_rejects_extra_arguments_and_unrelated_listener(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "candidate"; runtime = Path(root) / "runtime"; source_sha = "d" * 40
+            arguments = [sys.executable, str(release.resolve() / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", "8787"]
+            def extra_arguments(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments + ["--p2-enabled"]) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=extra_arguments), patch("service.http.client.HTTPConnection") as http_connection:
+                with self.assertRaisesRegex(ValueError, "health proof failed"):
+                    _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=False, attempts=1, retry_seconds=0)
+            http_connection.assert_not_called()
+            def unrelated_listener(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:9797 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=unrelated_listener), patch("service.http.client.HTTPConnection") as http_connection:
+                with self.assertRaisesRegex(ValueError, "health proof failed"):
+                    _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=False, attempts=1, retry_seconds=0)
+            http_connection.assert_not_called()
+
+    def test_p1_release_legacy_rollback_proof_uses_exact_process_listener_and_integrity(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / "old-release"; runtime = Path(root) / "runtime"; source_sha = "e" * 40
+            arguments = [sys.executable, str(release.resolve() / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", "8787"]
+            def system(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
             response = MagicMock(); response.status = 200; response.read.return_value = b'{"ok":true}'
             connection = MagicMock(); connection.getresponse.return_value = response
-            with patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, output, "")), patch("service.http.client.HTTPConnection", return_value=connection):
-                _prove_loopback_p1_service(release, runtime, 8787, "gui/504", attempts=1, retry_seconds=0)
+            with patch("service.subprocess.run", side_effect=system), patch("service.http.client.HTTPConnection", return_value=connection):
+                _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=False, attempts=1, retry_seconds=0)
             connection.request.assert_called_once_with("GET", "/api/integrity", headers={"Host": "127.0.0.1:8787"})
-            with patch("service.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "program arguments = { /wrong/server.py }", "")), patch("service.http.client.HTTPConnection") as http_connection:
-                with self.assertRaisesRegex(ValueError, "release identity"):
-                    _prove_loopback_p1_service(release, runtime, 8787, "gui/504", attempts=1, retry_seconds=0)
-            http_connection.assert_not_called()
 
     def test_upgrade_p1_release_rejects_a_concurrent_lifecycle_lock_before_preflight(self):
         with tempfile.TemporaryDirectory() as root:
@@ -987,7 +1057,21 @@ class ControlPlaneTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "lifecycle lock is already held"):
                         upgrade_p1_release(release, runtime, "f" * 40, Path(root) / "pre.json", Path(root) / "post.json")
             attestation.assert_not_called()
-            self.assertFalse((runtime / ".p1-release-upgrade.lock").exists())
+            self.assertTrue((runtime / ".p1-release-upgrade.lock").is_file())
+            self.assertEqual((runtime / ".p1-release-upgrade.lock").stat().st_mode & 0o777, 0o600)
+
+    def test_p1_release_lifecycle_lock_is_nonblocking_persistent_and_stale_safe(self):
+        with tempfile.TemporaryDirectory() as root:
+            runtime = Path(root) / "runtime"; runtime.mkdir(); lock_path = runtime / ".p1-release-upgrade.lock"
+            lock_path.write_text("stale prior holder\n"); os.chmod(lock_path, 0o600)
+            with _p1_release_upgrade_lock(runtime):
+                with self.assertRaisesRegex(ValueError, "lifecycle lock is already held"):
+                    with _p1_release_upgrade_lock(runtime):
+                        pass
+            self.assertTrue(lock_path.is_file())
+            self.assertEqual(lock_path.stat().st_mode & 0o777, 0o600)
+            with _p1_release_upgrade_lock(runtime):
+                pass
 
     def test_external_adapter_failure_is_visible_not_canonical(self):
         before = self.store.projection()["canonical_hash"]; adapter = adapter_health()

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fcntl
 import hashlib
 import http.client
 import json
 import os
 import plistlib
+import re
 import secrets
+import shlex
 import socket
 import stat
 import subprocess
@@ -339,58 +342,92 @@ def _assert_private_p1_credentials(runtime: Path) -> None:
 
 @contextlib.contextmanager
 def _p1_release_upgrade_lock(runtime: Path):
-    """Take a private, non-blocking lifecycle lock before any P1 release-upgrade preflight."""
+    """Hold a persistent private kernel lock before any P1 release-upgrade preflight."""
     lock_path = runtime / ".p1-release-upgrade.lock"
     try:
-        descriptor = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    except FileExistsError as exc:
-        raise ValueError("P1 release upgrade lifecycle lock is already held; refusing concurrent or reentrant upgrade") from exc
+        prior = lock_path.lstat()
+    except FileNotFoundError:
+        prior = None
+    if prior is not None and (stat.S_ISLNK(prior.st_mode) or not stat.S_ISREG(prior.st_mode) or prior.st_uid != os.getuid() or prior.st_mode & 0o777 != 0o600):
+        raise ValueError("P1 release upgrade lifecycle lock is not a private regular 0600 file")
+    try:
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
     except OSError as exc:
         raise ValueError("P1 release upgrade lifecycle lock cannot be created in the approved runtime") from exc
     try:
-        os.fchmod(descriptor, 0o600)
-        os.write(descriptor, f"pid={os.getpid()}\n".encode())
-        os.fsync(descriptor)
+        status = os.fstat(descriptor)
+        if not stat.S_ISREG(status.st_mode) or status.st_uid != os.getuid() or status.st_mode & 0o777 != 0o600:
+            raise ValueError("P1 release upgrade lifecycle lock is not a private regular 0600 file")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("P1 release upgrade lifecycle lock is already held; refusing concurrent or reentrant upgrade") from exc
         yield
     finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
         os.close(descriptor)
-        try:
-            lock_path.unlink()
-        except FileNotFoundError:
-            pass
 
 
-def _prove_loopback_p1_service(release_dir: Path, runtime: Path, port: int, domain: str, *, attempts: int = 10, retry_seconds: float = 0.25) -> None:
-    """Prove a launchd-bound P1 service answers healthy on loopback from the expected release tree."""
+def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path, port: int, domain: str, expected_arguments: list[str], *, require_service_identity: bool, attempts: int = 10, retry_seconds: float = 0.25) -> None:
+    """Prove the expected P1 process owns the loopback listener; candidates additionally self-attest."""
     if attempts < 1 or retry_seconds < 0:
         raise ValueError("loopback service proof requires at least one non-negative bounded attempt")
-    expected_arguments = (str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port))
+    release_dir = release_dir.resolve()
+    if len(expected_arguments) != 10 or expected_arguments != [expected_arguments[0], str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port)]:
+        raise ValueError("loopback service proof requires the exact P1-enabled launchd argument vector")
     last_error = "service did not answer"
     for attempt in range(attempts):
         job = subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True, text=True)
-        if job.returncode != 0:
-            last_error = "launchd job is not loaded"
-        elif not all(argument in job.stdout for argument in expected_arguments):
-            raise ValueError("P1 loopback service release identity does not match the expected attested release")
+        pid_match = re.search(r"^\s*pid = (\d+)\s*$", job.stdout, flags=re.MULTILINE) if job.returncode == 0 else None
+        if pid_match is None:
+            last_error = "launchd did not report a running P1 process"
         else:
-            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+            pid = pid_match.group(1)
+            process = subprocess.run(["/bin/ps", "-ww", "-p", pid, "-o", "command="], check=False, capture_output=True, text=True)
+            listener = subprocess.run(["/usr/sbin/lsof", "-nP", "-a", "-p", pid, f"-iTCP:{port}", "-sTCP:LISTEN"], check=False, capture_output=True, text=True)
             try:
-                connection.request("GET", "/api/integrity", headers={"Host": f"127.0.0.1:{port}"})
-                response = connection.getresponse()
-                body = response.read(1024 * 1024 + 1)
-                if len(body) > 1024 * 1024:
-                    last_error = "integrity response exceeds the bounded proof size"
-                elif response.status != 200:
-                    last_error = f"integrity endpoint returned HTTP {response.status}"
-                else:
-                    payload = json.loads(body)
-                    if isinstance(payload, dict) and payload.get("ok") is True:
-                        return
-                    last_error = "integrity endpoint did not report a healthy replay"
-            except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
-                last_error = f"loopback integrity request failed: {type(exc).__name__}"
-            finally:
-                connection.close()
+                actual_arguments = shlex.split(process.stdout.strip())
+            except ValueError:
+                actual_arguments = []
+            if process.returncode != 0 or actual_arguments != expected_arguments:
+                last_error = "loaded P1 process arguments do not exactly match the expected release"
+            elif listener.returncode != 0 or f"127.0.0.1:{port}" not in listener.stdout or "LISTEN" not in listener.stdout:
+                last_error = "expected P1 process does not own the loopback listener"
+            else:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+                try:
+                    connection.request("GET", "/api/integrity", headers={"Host": f"127.0.0.1:{port}"})
+                    response = connection.getresponse()
+                    body = response.read(1024 * 1024 + 1)
+                    if len(body) > 1024 * 1024:
+                        last_error = "integrity response exceeds the bounded proof size"
+                    elif response.status != 200:
+                        last_error = f"integrity endpoint returned HTTP {response.status}"
+                    else:
+                        integrity = json.loads(body)
+                        if not isinstance(integrity, dict) or integrity.get("ok") is not True:
+                            last_error = "integrity endpoint did not report a healthy replay"
+                        elif not require_service_identity:
+                            return
+                        else:
+                            connection.request("GET", "/api/service-identity", headers={"Host": f"127.0.0.1:{port}"})
+                            identity_response = connection.getresponse()
+                            identity_body = identity_response.read(1024 * 1024 + 1)
+                            if len(identity_body) > 1024 * 1024:
+                                last_error = "service-identity response exceeds the bounded proof size"
+                            elif identity_response.status != 200:
+                                last_error = f"service-identity endpoint returned HTTP {identity_response.status}"
+                            else:
+                                payload = json.loads(identity_body)
+                                expected_identity = {"ok": True, "source_sha": source_sha, "release_dir": str(release_dir), "p0b_only": True, "p1_enabled": True, "replay_ok": True}
+                                if not isinstance(payload, dict) or any(payload.get(key) != value for key, value in expected_identity.items()):
+                                    last_error = "service-identity endpoint did not bind the expected healthy P1 release"
+                                else:
+                                    return
+                except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
+                    last_error = f"loopback service proof request failed: {type(exc).__name__}"
+                finally:
+                    connection.close()
         if attempt + 1 < attempts:
             time.sleep(retry_seconds)
     raise ValueError(f"P1 loopback service health proof failed: {last_error}")
@@ -499,7 +536,7 @@ def _upgrade_p1_release_locked(release_dir: Path, runtime: Path, source_sha: str
         os.replace(temporary_plist, plist_path)
         candidate_bootstrap_attempted = True
         subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
-        _prove_loopback_p1_service(release_dir, runtime, port, domain)
+        _prove_loopback_p1_service(release_dir, source_sha, runtime, port, domain, plistlib.loads(replacement)["ProgramArguments"], require_service_identity=True)
         if not store.verify_replay()["ok"]:
             raise ValueError("P1-enabled release replay integrity is not clean")
         post = store.export_snapshot(post_snapshot)
@@ -512,7 +549,7 @@ def _upgrade_p1_release_locked(release_dir: Path, runtime: Path, source_sha: str
                 subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=False, capture_output=True)
             _replace_private_file(plist_path, previous_plist)
             subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
-            _prove_loopback_p1_service(old_release, runtime, port, domain)
+            _prove_loopback_p1_service(old_release, old_sha, runtime, port, domain, plistlib.loads(previous_plist)["ProgramArguments"], require_service_identity=False)
         except Exception as rollback_error:
             raise RuntimeError(f"P1 release upgrade failed and P1 rollback failed; preserved plist backup: {backup_plist}") from rollback_error
         raise activation_error
