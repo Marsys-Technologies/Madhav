@@ -94,12 +94,10 @@ function acceptedAt(event: CampaignEvent | undefined): string | null {
   return event && validIso(event.observed_at) ? new Date(event.observed_at).toISOString() : null
 }
 
-/** Projection inputs are one accepted definition cohort; mixed rows never combine across revisions. */
-function oneDefinitionCohort(events: CampaignEvent[]): CampaignEvent[] {
-  const first = events.find((event) => event.campaign_id.length > 0 && event.definition_revision.length > 0)
-  if (!first) return []
-  return events.filter((event) => event.campaign_id === first.campaign_id
-    && event.definition_revision === first.definition_revision
+/** Selects only the caller-pinned active definition; array order can never choose authority. */
+function definitionCohort(events: CampaignEvent[], campaignId: string, definitionRevision: string): CampaignEvent[] {
+  return events.filter((event) => event.campaign_id === campaignId
+    && event.definition_revision === definitionRevision
     && validIso(event.observed_at)
     && validIso(event.recorded_at))
 }
@@ -145,11 +143,13 @@ function laneReceipt(event: CampaignEvent): boolean {
 }
 
 export function projectCampaignStages(input: {
+  campaignId: string
+  definitionRevision: string
   definitionStatus: 'reconciling' | 'frozen' | 'superseded'
   events: CampaignEvent[]
   layers: Array<{ layer_id: NirmanaLayerId; state: string; assets_total: number | null; frozen: number }>
 }): { current_stage: NirmanaStageId | null; stages: NirmanaCampaignStage[]; contradictions: string[] } {
-  const events = oneDefinitionCohort(input.events)
+  const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
   const transitions = events.map(stageTransition).filter((value): value is StageTransition => value !== null)
     .sort((left, right) => compareEvents(left.event, right.event))
   const currentTransition = transitions.at(-1)
@@ -290,12 +290,14 @@ function latestAssetEvent(events: CampaignEvent[], asset: ManifestAsset, eventTy
 }
 
 export function projectAssetMilestones(input: {
+  campaignId: string
+  definitionRevision: string
   asset: ManifestAsset
   events: CampaignEvent[]
   activeRunState: string | null
   producerAsset: ManifestAsset | null
 }): AssetMilestoneProjection {
-  const events = oneDefinitionCohort(input.events)
+  const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
   const obligation = input.asset.execution_obligation ?? 'unresolved'
   let validProducer: ManifestAsset | null = null
   if (obligation === 'producer_covered'
@@ -411,10 +413,13 @@ export function deriveEligibleNextAssetIds(input: {
     && !input.blockedAssetIds.has(asset.asset_id)
     && (input.frozenAssetIds.has(asset.asset_id) || validlyInherited(asset))
 
-  const lowerLayersComplete = input.manifestAssets
+  const lowerLayersActuallyFrozen = input.manifestAssets
     .filter((asset) => LAYER_IDS.indexOf(asset.layer) < currentLayerRank)
-    .every(satisfied)
-  if (!lowerLayersComplete) return []
+    .every((asset) => asset.execution_obligation !== undefined
+      && asset.execution_obligation !== 'unresolved'
+      && !input.blockedAssetIds.has(asset.asset_id)
+      && input.frozenAssetIds.has(asset.asset_id))
+  if (!lowerLayersActuallyFrozen) return []
 
   const layerAssets = input.manifestAssets.filter((asset) => asset.layer === input.currentLayer)
   if (layerAssets.some((asset) => asset.wave_index === undefined)) return []

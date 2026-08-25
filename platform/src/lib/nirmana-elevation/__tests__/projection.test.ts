@@ -10,6 +10,15 @@ import {
 type ManifestAsset = NirmanaElevationManifest['assets'][number]
 
 const observedAt = '2026-08-26T09:00:00.000Z'
+const activeDefinition = { campaignId: 'nirmana-elevation', definitionRevision: 'v2' } as const
+
+function projectStages(input: Omit<Parameters<typeof projectCampaignStages>[0], 'campaignId' | 'definitionRevision'>) {
+  return projectCampaignStages({ ...activeDefinition, ...input })
+}
+
+function projectMilestones(input: Omit<Parameters<typeof projectAssetMilestones>[0], 'campaignId' | 'definitionRevision'>) {
+  return projectAssetMilestones({ ...activeDefinition, ...input })
+}
 
 function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
   return {
@@ -84,7 +93,7 @@ function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Part
 
 describe('projectCampaignStages', () => {
   it('uses the latest accepted stage transition instead of guessing from incomplete stages', () => {
-    const result = projectCampaignStages({
+    const result = projectStages({
       definitionStatus: 'reconciling',
       events: [
         transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:01:00.000Z'),
@@ -99,7 +108,7 @@ describe('projectCampaignStages', () => {
   })
 
   it('leaves current_stage unknown when no valid stage-transition evidence exists', () => {
-    const result = projectCampaignStages({
+    const result = projectStages({
       definitionStatus: 'frozen',
       events: [event({ event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L0', evidence_payload: {} })],
       layers: emptyLayers,
@@ -109,8 +118,25 @@ describe('projectCampaignStages', () => {
     expect(result.stages.some(({ state }) => state === 'active')).toBe(false)
   })
 
+  it('ignores a stale-first definition cohort when selecting the active stage', () => {
+    const stale = {
+      ...transition('L0', 'L1', '2026-08-26T09:02:00.000Z'),
+      definition_revision: 'v1',
+    }
+    const active = transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:01:00.000Z')
+
+    const result = projectStages({
+      definitionStatus: 'reconciling',
+      events: [stale, active],
+      layers: emptyLayers,
+    })
+
+    expect(result.current_stage).toBe('T0_CENSUS')
+    expect(result.contradictions).toEqual([])
+  })
+
   it('does not mark F0 complete from a frozen denominator alone', () => {
-    const result = projectCampaignStages({ definitionStatus: 'frozen', events: [], layers: emptyLayers })
+    const result = projectStages({ definitionStatus: 'frozen', events: [], layers: emptyLayers })
     const foundation = result.stages.find(({ stage_id }) => stage_id === 'F0_FOUNDATION')
 
     expect(foundation).toMatchObject({ state: 'unknown', earned: 0, required: 5 })
@@ -118,12 +144,12 @@ describe('projectCampaignStages', () => {
   })
 
   it('projects all five F0 lanes from foundation-lane receipts and leaves missing lanes unknown', () => {
-    const complete = projectCampaignStages({
+    const complete = projectStages({
       definitionStatus: 'frozen',
       events: ['A', 'B', 'C', 'D', 'E'].map((laneId) => foundationLane(laneId)),
       layers: emptyLayers,
     })
-    const incomplete = projectCampaignStages({
+    const incomplete = projectStages({
       definitionStatus: 'frozen',
       events: ['A', 'B', 'C', 'D'].map((laneId) => foundationLane(laneId)),
       layers: emptyLayers,
@@ -144,14 +170,14 @@ describe('projectCampaignStages', () => {
       transition('F0_FOUNDATION', 'L0', '2026-08-26T09:10:00.000Z'),
       transition('L0', 'L1', '2026-08-26T09:11:00.000Z'),
     ]
-    const completed = projectCampaignStages({
+    const completed = projectStages({
       definitionStatus: 'frozen',
       events,
       layers: emptyLayers.map((layer) => layer.layer_id === 'L0'
         ? { ...layer, frozen: 2 }
         : layer.layer_id === 'L1' ? { ...layer, frozen: 1 } : layer),
     })
-    const priorIncomplete = projectCampaignStages({
+    const priorIncomplete = projectStages({
       definitionStatus: 'frozen',
       events,
       layers: emptyLayers.map((layer) => layer.layer_id === 'L0'
@@ -168,7 +194,7 @@ describe('projectCampaignStages', () => {
   })
 
   it('turns contradictory transitions into a blocked stage and a contradiction', () => {
-    const result = projectCampaignStages({
+    const result = projectStages({
       definitionStatus: 'frozen',
       events: [
         transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:01:00.000Z'),
@@ -193,7 +219,7 @@ describe('projectAssetMilestones', () => {
     ])
     events[1].evidence_payload = { change_required: true }
 
-    const result = projectAssetMilestones({ asset, events, activeRunState: null, producerAsset: null })
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
     expect(result.milestones.map(({ state }) => state)).toEqual(Array(6).fill('earned'))
     expect(result).toMatchObject({ milestones_earned: 6, milestones_required: 6, current_action: null, next_action: null })
@@ -206,7 +232,7 @@ describe('projectAssetMilestones', () => {
     ])
     events[1].evidence_payload = { change_required: false }
 
-    const result = projectAssetMilestones({ asset, events, activeRunState: null, producerAsset: null })
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
     expect(result.milestones[2]).toMatchObject({ milestone_id: 'built_or_dispositioned', state: 'not_applicable', event_type: null, accepted_at: null })
     expect(result).toMatchObject({ milestones_earned: 5, milestones_required: 5 })
@@ -218,8 +244,8 @@ describe('projectAssetMilestones', () => {
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'probe_accepted', 'integrity_verified', 'asset_frozen',
     ])
 
-    const unchanged = projectAssetMilestones({ asset, events: baseEvents, activeRunState: null, producerAsset: null })
-    const changed = projectAssetMilestones({
+    const unchanged = projectMilestones({ asset, events: baseEvents, activeRunState: null, producerAsset: null })
+    const changed = projectMilestones({
       asset,
       events: [...baseEvents, ...assetEvents(asset, ['implementation_accepted'], { recorded_at: '2026-08-26T11:00:00.000Z', observed_at: '2026-08-26T11:00:00.000Z' })],
       activeRunState: null,
@@ -243,7 +269,7 @@ describe('projectAssetMilestones', () => {
       'asset_analysis_accepted', 'optimization_verdict_accepted', dispositionEvent, 'integrity_verified', 'asset_frozen',
     ])
 
-    const result = projectAssetMilestones({ asset, events, activeRunState: null, producerAsset: null })
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
     expect(result.milestones[2]).toMatchObject({ state: 'earned', event_type: dispositionEvent })
     expect(result.milestones[3].state).toBe('not_applicable')
@@ -265,10 +291,10 @@ describe('projectAssetMilestones', () => {
       observed_at: '2026-08-26T11:01:00.000Z', recorded_at: '2026-08-26T11:01:00.000Z',
     })
 
-    const withoutProducer = projectAssetMilestones({
+    const withoutProducer = projectMilestones({
       asset: covered, events: [...coveredEvents, independentCoveredBuild], activeRunState: null, producerAsset: producer,
     })
-    const inherited = projectAssetMilestones({
+    const inherited = projectMilestones({
       asset: covered, events: [...coveredEvents, independentCoveredBuild, producerBuild], activeRunState: null, producerAsset: producer,
     })
 
@@ -278,7 +304,7 @@ describe('projectAssetMilestones', () => {
   })
 
   it('withholds determinate progress for an unresolved obligation', () => {
-    const result = projectAssetMilestones({
+    const result = projectMilestones({
       asset: manifestAsset({ execution_obligation: 'unresolved' }),
       events: assetEvents(manifestAsset(), ['asset_analysis_accepted', 'asset_frozen']),
       activeRunState: 'building',
@@ -291,14 +317,14 @@ describe('projectAssetMilestones', () => {
     expect(result.next_action).toBeNull()
   })
 
-  it('does not combine a present event from another definition revision', () => {
+  it('does not let stale-first events from another definition revision earn milestones', () => {
     const asset = manifestAsset()
     const events = [
-      ...assetEvents(asset, ['asset_analysis_accepted']),
       ...assetEvents(asset, ['optimization_verdict_accepted', 'implementation_accepted', 'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen'], { definition_revision: 'v1' }),
+      ...assetEvents(asset, ['asset_analysis_accepted']),
     ]
 
-    const result = projectAssetMilestones({ asset, events, activeRunState: null, producerAsset: null })
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
     expect(result.milestones.map(({ state }) => state)).toEqual(['earned', 'current', 'pending', 'pending', 'pending', 'pending'])
     expect(result.milestones_earned).toBe(1)
@@ -375,5 +401,24 @@ describe('deriveEligibleNextAssetIds', () => {
 
     expect(deriveEligibleNextAssetIds({ ...input, frozenAssetIds: new Set([l0a.asset_id]) })).toEqual([])
     expect(deriveEligibleNextAssetIds({ ...input, frozenAssetIds: new Set([l0a.asset_id, l0b.asset_id]) })).toEqual([l1.asset_id])
+  })
+
+  it('does not treat producer inheritance as the covered asset freeze required to unlock L1', () => {
+    const producer = manifestAsset({ asset_id: 'bg_producer', covered_asset_ids: ['bg_covered'] })
+    const covered = manifestAsset({
+      asset_id: 'bg_covered',
+      execution_obligation: 'producer_covered',
+      producer_id: producer.asset_id,
+      depends_on: [producer.asset_id],
+    })
+    const l1 = manifestAsset({ asset_id: 'ga_alpha', layer: 'L1', depends_on: [producer.asset_id] })
+
+    expect(deriveEligibleNextAssetIds({
+      manifestAssets: [producer, covered, l1],
+      frozenAssetIds: new Set([producer.asset_id]),
+      blockedAssetIds: new Set(),
+      currentLayer: 'L1',
+      currentWave: 0,
+    })).toEqual([])
   })
 })
