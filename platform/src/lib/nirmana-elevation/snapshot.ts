@@ -182,7 +182,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
         const eventType = asset.execution_obligation && asset.execution_obligation !== 'producer_covered'
           ? NON_BUILD_DISPOSITION_EVENT_TYPES[asset.execution_obligation as keyof typeof NON_BUILD_DISPOSITION_EVENT_TYPES]
           : null
-        return eventType !== undefined && eventTypesByAsset.get(asset.asset_id)?.has(eventType)
+        return eventType !== null && eventTypesByAsset.get(asset.asset_id)?.has(eventType)
       })
       .map((asset) => asset.asset_id) ?? [],
   )
