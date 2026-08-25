@@ -311,6 +311,17 @@ jobs:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
 
+      - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_t0_dag_test;"
+
+      - name: Nirmāṇa T0 — migration 599 source and acyclicity guards against real Postgres
+        env:
+          NIRMANA_T0_DAG_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_t0_dag_test
+        run: npx vitest run tests/integration/nirmana_t0_l0_hidden_dependencies.db.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/

@@ -845,7 +845,9 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Live-verified 2026-07-30: 60 parihara-graph condition rows (queried directly against REAL production brahma_dosha_catalog: 26 doshas carry a real, non-placeholder citation, flattening to 60 individual cancellation-condition rows) + 329 activity-rule rows (exact — sum of tithi/nakshatra/vara entries across panchang_engine\'s 8 EVENT_TABLES) + 50 census rows (exact — len(CENSUS_ROWS), updated from 37 by the Opus corpus-citation review\'s dangling-pointer fix) = 439.',
-    depends_on: [],
+    // The writer reads both authorities directly: brahma_dosha_catalog supplies
+    // cancellation conditions and classical_texts supplies citation metadata.
+    depends_on: ['bg_doshas', 'bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -902,7 +904,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'NAKSHATRAS * VIMSHOTTARI_LORDS + RASHI_BOUNDARY_SPLITS',
     expected_volume_inputs: null,
     volume_explanation: '27 nakshatras × 9 Vimshottari subs = 243 sub segments; 6 of the 12 rashi boundaries fall strictly inside a sub segment and split it (the other 6 coincide with a nakshatra start or exactly with a sub boundary) → 243 + 6 = 249.',
-    depends_on: [],
+    // The mandatory two-pass detector reads reference_nakshatra before writing.
+    depends_on: ['bg_nakshatra'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -983,12 +986,8 @@ export const ASSETS: AssetDef[] = [
     // joins the same rows. Per-chart cost reduces to "join + score".
     //
     // Global L0, super-admin-triggered ONLY — never auto-pulled into a
-    // per-chart build (brief §2.5.2). depends_on: [] deliberately — the
-    // ephemeris rows it reads belong to bg_ephemeris, but this asset is not a
-    // build-order dependent of it in the Nirmāṇa sense any more than any other
-    // L0 reader is; the edge is added only if the DAG needs it at W2G cutover,
-    // and adding it speculatively would make a super-admin trigger drag an
-    // 825k-row rebuild behind it.
+    // per-chart build (brief §2.5.2). Its writer reads ephemeris_daily, so the
+    // frozen build DAG must place it after the bg_ephemeris authority.
     asset_id: 'bg_gochara_arcs',
     layer: 'brahmagyan', sort_order: 77,
     catalog_status: 'CURRENT',
@@ -1003,7 +1002,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: "34,553 arcs across the nine DAILY_BODIES over 1900-01-01 → 2150-12-31 (91,676 knots each, ayanamsha_id='tropical'). Per body: Saturn 503 · Jupiter 494 · Rahu 13,544 · Ketu 13,553 · Mars 376 · Sun 252 · Mercury 1,894 · Venus 580 · Moon 3,357. PROVENANCE, stated exactly: this is a REAL derivation run by the arc builder against production ephemeris_daily read-only on 2026-08-05 (whole-epoch build measured twice, 36.8s and 48.0s wall clock), NOT a post-INSERT DB count and NOT an estimate — the writer had not yet run in production when this row landed. Re-verify with count_sql after the first super-admin L0 build. The two node bodies dominate because ephemeris_daily stores the TRUE node (l0_ephemeris swe_id=11 = SE_TRUE_NODE, despite that line's '# Mean North Node' comment), which genuinely oscillates — measured retrograde stretches of median 0.71° over ~9.9 days interleaved with direct excursions of median 0.043°. Splitting there is required for monotonicity; whether such an excursion carries classical significance is a grammar question, frozen at v1.",
-    depends_on: [],
+    depends_on: ['bg_ephemeris'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
