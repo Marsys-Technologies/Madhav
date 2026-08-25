@@ -16,7 +16,8 @@ Sources:
   SS   = Saravali by Kalyana Varma
   UK   = Uttara Kalamrita by Kalidasa
 
-Volume: 9 engine rows + ~55 rule rows + 27 moorti rows.
+Volume: 9 engine rows + 68 writer-owned rule rows + 7 retained migration-owned
+double-transit rule rows + 27 moorti rows.
 
 Gate: Transit/Gochara Subsystem Gate-1
 """

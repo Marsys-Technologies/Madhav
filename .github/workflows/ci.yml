@@ -461,6 +461,17 @@ jobs:
           NIRMANA_L0_VASTU_MEDICAL_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_vastu_medical_integrity_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_vastu_medical_integrity_contract.test.ts --reporter=verbose
 
+      - name: Nirmāṇa L0 — provision the migration 613 transit integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_transit_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 613 transit producer contracts against real Postgres
+        env:
+          NIRMANA_L0_TRANSIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_transit_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_transit_integrity_contract.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
