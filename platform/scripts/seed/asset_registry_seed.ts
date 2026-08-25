@@ -99,7 +99,7 @@ function parseFormula(
   const hasFileCount = fileCountMatches.length > 0
 
   // Strip ACTUAL() and FILE_COUNT() calls for pure arithmetic check
-  let stripped = formula
+  const stripped = formula
     .replace(/ACTUAL\([^)]+\)/g, '1')
     .replace(/FILE_COUNT\([^)]+\)/g, '1')
 
@@ -130,7 +130,6 @@ function parseFormula(
     if (!/^[\d\s\+\-\*\/\(\)\.]+$/.test(evalStr)) {
       throw new Error('Unsafe eval string')
     }
-    // eslint-disable-next-line no-new-func
     evalResult = Function(`"use strict"; return (${evalStr})`)() as number
   } catch {
     throw new Error(`Formula eval failed: "${formula}" → "${evalStr}"`)
@@ -801,9 +800,9 @@ export const ASSETS: AssetDef[] = [
     english_name: 'Sky-Event Calendar',
     english_description: "Chart-independent global sky-event diary: sign ingresses (9 grahas), planetary stations (5 classical planets), solar/lunar eclipse timing, and Jupiter-Saturn double-transit conjunction geometry, over a rolling 1900 -> today+10y horizon. Returns and per-chart/natal joins are out of scope — ka_kshetra's job. ṢAḌ-DARŚANA campaign item 3.",
     storage_type: 'postgres_table',
-    target_table: 'bg_sky_events',
-    count_sql: 'SELECT COUNT(*) FROM bg_sky_events',
-    size_sql: "SELECT pg_total_relation_size('bg_sky_events')",
+    target_table: 'bg_sky_calendar',
+    count_sql: 'SELECT COUNT(*) FROM bg_sky_calendar',
+    size_sql: "SELECT pg_total_relation_size('bg_sky_calendar')",
     target_floor: 31064,
     expected_volume_formula: null,
     expected_volume_inputs: null,
@@ -2040,7 +2039,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ka_moorti_nirnaya    — kala_moorti_nirnaya (W2.2 moorti modifier)
     // ka_kota_chakra       — kala_kota_chakra (W2.5 kota-chakra ring modifier)
     // ka_tithi_pravesha    — kala_tithi_pravesha (W2.7b annual tone)
-    // bg_sky_calendar      — bg_sky_events (W2.6 real eclipses)
+    // bg_sky_calendar      — bg_sky_calendar (W2.6 real eclipses)
     depends_on: [
       'ka_gochara_resonance',
       'ka_vedha_gochara',

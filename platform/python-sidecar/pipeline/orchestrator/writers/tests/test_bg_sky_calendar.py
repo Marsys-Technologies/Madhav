@@ -233,6 +233,21 @@ def test_writer_dry_run_no_db_needed():
     assert result.notes == "dry_run"
 
 
+def test_flush_batch_targets_the_post_migration_canonical_table():
+    class RecordingCursor:
+        rowcount = 1
+        sql = ""
+
+        def executemany(self, sql, _batch):
+            self.sql = sql
+
+    cursor = RecordingCursor()
+    written = BgSkyCalendarWriter._flush_batch(cursor, [{}])
+    assert written == 1
+    assert "INSERT INTO bg_sky_calendar" in cursor.sql
+    assert "INSERT INTO bg_sky_events" not in cursor.sql
+
+
 # ── Live tests (require DATABASE_URL; skipped otherwise) ─────────────────────
 
 @pytest.fixture(scope="module")
@@ -257,7 +272,7 @@ def test_bg_sky_calendar_writer_runs(db_conn):
 
 def test_bg_sky_calendar_event_types_present(db_conn):
     cur = db_conn.cursor()
-    cur.execute("SELECT DISTINCT event_type FROM bg_sky_events")
+    cur.execute("SELECT DISTINCT event_type FROM bg_sky_calendar")
     types = {r["event_type"] for r in cur.fetchall()}
     # ingress must be present (dense, guaranteed over any multi-decade horizon).
     assert "ingress" in types
@@ -265,17 +280,17 @@ def test_bg_sky_calendar_event_types_present(db_conn):
 
 def test_bg_sky_calendar_no_null_citations(db_conn):
     cur = db_conn.cursor()
-    cur.execute("SELECT count(*) AS n FROM bg_sky_events WHERE source_citation IS NULL")
+    cur.execute("SELECT count(*) AS n FROM bg_sky_calendar WHERE source_citation IS NULL")
     n = cur.fetchone()["n"]
-    assert n == 0, f"bg_sky_events has {n} rows with NULL source_citation"
+    assert n == 0, f"bg_sky_calendar has {n} rows with NULL source_citation"
 
 
 def test_bg_sky_calendar_writer_idempotent(db_conn):
-    """Running the writer twice leaves bg_sky_events row count identical
+    """Running the writer twice leaves bg_sky_calendar row count identical
     (same horizon -> same 'today' within the same test run -> same
     computed forward edge -> ON CONFLICT DO NOTHING dedupes every row)."""
     cur = db_conn.cursor()
-    cur.execute("SELECT count(*) AS n FROM bg_sky_events")
+    cur.execute("SELECT count(*) AS n FROM bg_sky_calendar")
     count_before = cur.fetchone()["n"]
 
     writer = BgSkyCalendarWriter()
@@ -283,7 +298,7 @@ def test_bg_sky_calendar_writer_idempotent(db_conn):
     result = writer.run(ctx)
     db_conn.commit()
 
-    cur.execute("SELECT count(*) AS n FROM bg_sky_events")
+    cur.execute("SELECT count(*) AS n FROM bg_sky_calendar")
     count_after = cur.fetchone()["n"]
 
     assert count_before == count_after, f"Idempotency broken: {count_before} -> {count_after}"

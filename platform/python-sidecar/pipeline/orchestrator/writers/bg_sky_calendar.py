@@ -1,6 +1,6 @@
 """
 pipeline/orchestrator/writers/bg_sky_calendar.py
-L0 Brahmagyan chart-independent sky-event diary writer — seeds bg_sky_events.
+L0 Brahmagyan chart-independent sky-event diary writer — seeds bg_sky_calendar.
 
 ṢAḌ-DARŚANA campaign, registry item 3 ("Sky-event calendar: ingresses, stations,
 eclipse-to-natal, returns, Guru-Śani double-transit"). SHAD_DARSHANA_BRIEF_v2_0.md
@@ -504,7 +504,7 @@ def scan_double_transits(swe: Any, start_jd: float, end_jd: float) -> list[_Row]
 @register("bg_sky_calendar")
 class BgSkyCalendarWriter(WriterBase):
     """
-    Seeds bg_sky_events — a chart-independent global sky-event diary (ingresses,
+    Seeds bg_sky_calendar — a chart-independent global sky-event diary (ingresses,
     stations, eclipses, double-transit geometry). See module docstring for the
     full methodology, horizon reasoning, and scope boundaries (no returns, no
     per-chart joins -- those are `ka_kshetra`'s job).
@@ -643,7 +643,7 @@ class BgSkyCalendarWriter(WriterBase):
     def _flush_batch(cur: Any, batch: list[dict[str, Any]]) -> int:
         cur.executemany(
             """
-            INSERT INTO bg_sky_events
+            INSERT INTO bg_sky_calendar
               (event_type, primary_body, secondary_body, event_jd,
                event_datetime_utc, sign, nakshatra, longitude_deg, speed_dps,
                detail, ayanamsha_key, sampling_method, source_citation,
