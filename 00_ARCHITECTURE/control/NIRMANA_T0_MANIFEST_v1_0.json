@@ -63,7 +63,7 @@
         "catalog_status": "CURRENT",
         "is_active": true,
         "has_writer": true,
-        "target_table": "reference_nakshatras",
+        "target_table": "reference_planets",
         "count_sql": "SELECT\n  (SELECT count(*) FROM reference_planets) +\n  (SELECT count(*) FROM reference_signs) +\n  (SELECT count(*) FROM reference_aspects) +\n  (SELECT count(*) FROM reference_vargas) +\n  (SELECT count(*) FROM reference_houses) +\n  (SELECT count(*) FROM reference_strength_systems) +\n  (SELECT count(*) FROM reference_karakas) +\n  (SELECT count(*) FROM reference_upagrahas) +\n  (SELECT count(*) FROM reference_constants) +\n  (SELECT count(*) FROM reference_topic_tags) +\n  (SELECT count(*) FROM reference_glossary) AS count",
         "integrity_check_sql": null,
         "health_probe": null,
@@ -72,7 +72,7 @@
         "data_disposition": null,
         "dead_flag": null
       },
-      "registry_fingerprint_sha256": "91f1e57e4a004a13abcb18476c521e1778f1d518e0f3e17d4b52f4177ba21b1c"
+      "registry_fingerprint_sha256": "926301c1b1aeb4490ab291011b992325f2e352e716f3666fb9ace8f2eea82553"
     },
     {
       "asset_id": "bg_texts",

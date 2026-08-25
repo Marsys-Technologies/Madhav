@@ -110,7 +110,7 @@ describe('Nirmana elevation definition repository', () => {
 
   it('validates the full 128-asset T0 manifest, exact DAG waves, and registry fingerprints', async () => {
     expect(reconciledT0Manifest.assets).toHaveLength(128)
-    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('4b0f67982f1c87192b452a42e0cdc71975b8d21e6d16c13c5e8a1b9515a17a9c')
+    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('ef81829b177c3226197cd0cb93b8a2c91f21e64ae4d6b0da85448157d880e42d')
 
     const exactAssets = new Map(reconciledT0Manifest.assets.map((asset: typeof manifestAsset) => [asset.asset_id, asset]))
     expect(exactAssets.get('bg_gochara_arcs')).toMatchObject({ wave_index: 1, depends_on: ['bg_ephemeris'] })
