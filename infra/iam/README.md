@@ -8,7 +8,7 @@ Four least-privilege runtime SAs, one per Cloud Run service / build pipeline:
 
 | Service account                          | Role on                                                                   | Justification                                  |
 |------------------------------------------|---------------------------------------------------------------------------|------------------------------------------------|
-| `amjis-web-runtime`                      | Cloud SQL client, Secret Manager accessor, Cloud Run invoker on `amjis-mcp` + `amjis-sidecar`, Vertex AI user, GCS object viewer on chart-documents | The web frontend; calls MCP + sidecar + DB.    |
+| `amjis-web-runtime`                      | Cloud SQL client, Secret Manager accessor, Cloud Run invoker on `amjis-mcp` + `amjis-sidecar`, Cloud Run viewer on `amjis-web`, Vertex AI user, GCS object viewer on chart-documents | The web frontend; calls MCP + sidecar + DB and observes its own immutable release provenance. |
 | `amjis-sidecar-runtime`                  | Cloud SQL client, Secret Manager accessor                                 | Python sidecar; no MCP or Vertex calls.        |
 | `amjis-mcp-runtime`                      | Cloud SQL client, Secret Manager accessor, Cloud Run invoker on `amjis-web`, GCS object viewer | MCP server; calls platform routes + reads corpus. |
 | `amjis-builder-runtime`                  | Artifact Registry writer, Cloud Run admin on the 3 services above        | The deploy pipeline (used by WIF in GH Actions). |
