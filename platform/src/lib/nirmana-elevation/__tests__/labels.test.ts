@@ -106,6 +106,29 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
+  it('rejects a same-digest revision receipt with a different asset count before either insert', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: digest, asset_count: 2 } }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM nirmana_elevation_campaign_events'), [
+      'nirmana-elevation', 'r1', 'asset-label-catalogue:labels-v1',
+    ])
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
   it('rolls back labels absent from the frozen definition manifest', async () => {
     const digest = canonicalLabelCatalogueDigest(input.labels)
     clientQuery
