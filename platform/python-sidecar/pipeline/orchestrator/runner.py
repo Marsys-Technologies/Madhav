@@ -36,7 +36,7 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
 
     def _adjust_thread_count(self) -> None:  # type: ignore[override]
         import threading, weakref
-        from concurrent.futures.thread import _worker
+        from concurrent.futures.thread import _threads_queues, _worker
         if self._idle_semaphore.acquire(timeout=0):  # type: ignore[attr-defined]
             return
         def weakref_cb(_, q=self._work_queue):  # type: ignore[attr-defined]
@@ -44,25 +44,38 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
         num_threads = len(self._threads)  # type: ignore[attr-defined]
         if num_threads < self._max_workers:  # type: ignore[attr-defined]
             thread_name = '%s_%d' % (self._thread_name_prefix or self, num_threads)  # type: ignore[attr-defined]
+            executor_ref = weakref.ref(self, weakref_cb)
+            if sys.version_info >= (3, 14):
+                # CPython 3.14 replaced (work_queue, initializer, initargs) with
+                # a worker context object. Keep the daemon behaviour while
+                # matching the stdlib executor's exact calling convention.
+                worker_args = (
+                    executor_ref,
+                    self._create_worker_context(),  # type: ignore[attr-defined]
+                    self._work_queue,  # type: ignore[attr-defined]
+                )
+            else:
+                worker_args = (
+                    executor_ref,
+                    self._work_queue,  # type: ignore[attr-defined]
+                    self._initializer,  # type: ignore[attr-defined]
+                    self._initargs,  # type: ignore[attr-defined]
+                )
             t = threading.Thread(
-                name=thread_name,
-                target=_worker,
-                args=(weakref.ref(self, weakref_cb), self._work_queue,  # type: ignore[attr-defined]
-                      self._initializer, self._initargs),  # type: ignore[attr-defined]
+                name=thread_name, target=_worker, args=worker_args,
                 daemon=True,  # KEY: daemon so hung writers don't block process exit
             )
             t.start()
             self._threads.add(t)  # type: ignore[attr-defined]
+            _threads_queues[t] = self._work_queue  # type: ignore[attr-defined]
 
 
 import sys as _sys
 import warnings as _warnings
-if _sys.version_info >= (3, 12):
+if _sys.version_info >= (3, 15):
     _warnings.warn(
-        "_DaemonThreadPoolExecutor._adjust_thread_count was written against CPython "
-        "3.11 private internals (_idle_semaphore, _work_queue, _threads, etc.). "
-        "This Python version has not been audited — re-audit before running in "
-        "production with a 3.12+ base image.",
+        "_DaemonThreadPoolExecutor uses CPython private internals and has only "
+        "been audited through Python 3.14; re-audit before production use.",
         stacklevel=1,
     )
 
@@ -201,6 +214,9 @@ class FrozenRunManifest:
     plan: list[str]
     asset_scopes: dict[str, str]
     asset_deps: dict[str, list[str]]
+    asset_partitions: dict[str, str | None]
+    asset_has_cowriters: dict[str, bool]
+    expected_code_digests: dict[str, str]
 
 
 def _canonical_manifest_digest(manifest: object) -> str:
@@ -252,26 +268,56 @@ def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
 
     asset_scopes: dict[str, str] = {}
     asset_deps: dict[str, list[str]] = {}
+    asset_partitions: dict[str, str | None] = {}
+    asset_has_cowriters: dict[str, bool] = {}
+    expected_code_digests: dict[str, str] = {}
     for expected_id, asset in zip(plan, assets):
         if not isinstance(asset, dict) or asset.get("asset_id") != expected_id:
             raise ValueError("frozen run manifest asset order does not match build_run plan")
         scope = asset.get("scope")
         deps = asset.get("depends_on")
-        if not isinstance(scope, str) or not isinstance(deps, list) or not all(isinstance(dep, str) for dep in deps):
+        partition = asset.get("natural_key_partition")
+        has_cowriters = asset.get("has_cowriters")
+        expected_code_digest = asset.get("expected_code_digest")
+        if (
+            not isinstance(scope, str)
+            or not isinstance(deps, list)
+            or not all(isinstance(dep, str) for dep in deps)
+            or (partition is not None and not isinstance(partition, str))
+            or not isinstance(has_cowriters, bool)
+            or not isinstance(expected_code_digest, str)
+            or len(expected_code_digest) != 64
+            or any(c not in "0123456789abcdef" for c in expected_code_digest)
+        ):
             raise ValueError(f"frozen run manifest asset {expected_id} is invalid")
         if len(set(deps)) != len(deps):
             raise ValueError(f"frozen run manifest asset {expected_id} has duplicate dependencies")
         asset_scopes[expected_id] = scope
         asset_deps[expected_id] = list(deps)
+        asset_partitions[expected_id] = partition
+        asset_has_cowriters[expected_id] = has_cowriters
+        expected_code_digests[expected_id] = expected_code_digest
 
-    return FrozenRunManifest(plan=list(plan), asset_scopes=asset_scopes, asset_deps=asset_deps)
+    return FrozenRunManifest(
+        plan=list(plan), asset_scopes=asset_scopes, asset_deps=asset_deps,
+        asset_partitions=asset_partitions, asset_has_cowriters=asset_has_cowriters,
+        expected_code_digests=expected_code_digests,
+    )
 
 
 def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> None:
     """Fail closed if mutable registry config changed after dispatch, before work starts."""
     cur.execute(
-        """SELECT asset_id, scope, COALESCE(depends_on, '{}') AS depends_on
-           FROM asset_registry WHERE asset_id = ANY(%s)""",
+        """SELECT ar.asset_id, ar.scope, COALESCE(ar.depends_on, '{}') AS depends_on,
+                  ar.natural_key_partition,
+                  EXISTS (
+                    SELECT 1 FROM asset_registry peer
+                     WHERE peer.target_table = ar.target_table
+                       AND ar.target_table IS NOT NULL
+                       AND peer.asset_id <> ar.asset_id
+                       AND peer.is_active = true AND peer.has_writer = true
+                  ) AS has_cowriters
+           FROM asset_registry ar WHERE ar.asset_id = ANY(%s)""",
         (frozen.plan,),
     )
     rows = {row["asset_id"]: row for row in cur.fetchall()}
@@ -279,8 +325,32 @@ def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> N
         row = rows.get(asset_id)
         if row is None:
             raise ValueError(f"frozen run manifest asset {asset_id} is no longer registered")
-        if row["scope"] != frozen.asset_scopes[asset_id] or list(row["depends_on"] or []) != frozen.asset_deps[asset_id]:
+        if (
+            row["scope"] != frozen.asset_scopes[asset_id]
+            or list(row["depends_on"] or []) != frozen.asset_deps[asset_id]
+            or row.get("natural_key_partition") != frozen.asset_partitions[asset_id]
+            or bool(row.get("has_cowriters")) != frozen.asset_has_cowriters[asset_id]
+        ):
             raise ValueError(f"asset_registry changed after dispatch for frozen asset {asset_id}")
+
+
+def _verify_sidecar_code_matches_manifest(frozen: FrozenRunManifest) -> None:
+    """Reject web/job image skew before any asset state or output is mutated."""
+    from .asset_runner import get_probe_source_hash, get_writer_source_hash
+    from .writers import get_writer
+
+    probe_digest: str | None = None
+    for asset_id in frozen.plan:
+        if get_writer(asset_id) is not None:
+            actual = get_writer_source_hash(asset_id)
+        else:
+            if probe_digest is None:
+                probe_digest = get_probe_source_hash()
+            actual = probe_digest
+        if actual != frozen.expected_code_digests[asset_id]:
+            raise ValueError(
+                f"sidecar code digest does not match dispatch manifest for asset {asset_id}"
+            )
 
 
 def mark_run_state(
@@ -619,7 +689,12 @@ def _schedule_parallel(
         wconn.autocommit = False
         try:
             wcur = wconn.cursor()
-            run_asset(wconn, wcur, run_id, eff(asset_id), asset_id, pos_of[asset_id])
+            run_asset(
+                wconn, wcur, run_id, eff(asset_id), asset_id, pos_of[asset_id],
+                declared_deps=deps_of[asset_id],
+                natural_key_partition=frozen.asset_partitions[asset_id],
+                has_cowriters=frozen.asset_has_cowriters[asset_id],
+            )
             wcur.execute(
                 "SELECT state FROM build_run_assets WHERE run_id = %s AND asset_id = %s",
                 (run_id, asset_id),
@@ -887,6 +962,7 @@ def execute_run(run_id: str) -> None:
     try:
         frozen = validate_frozen_run_manifest(run)
         _verify_registry_still_matches_manifest(cur, frozen)
+        _verify_sidecar_code_matches_manifest(frozen)
     except ValueError as exc:
         # A legacy, tampered, or registry-mutated run is unsafe to execute. Mark
         # it terminal rather than falling back to mutable planning inputs.

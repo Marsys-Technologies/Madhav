@@ -49,12 +49,27 @@ describe('POST /api/cockpit/runs/[id]/resume', () => {
   })
 
   it('rejects a competing resume attempt without invoking another job', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ state: 'running', has_manifest: true }] })
 
     const { POST } = await import('../route')
     const res = await POST(request, context)
 
     expect(res.status).toBe(404)
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('rejects a legacy paused run that has no immutable manifest', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ state: 'paused', has_manifest: false }] })
+
+    const { POST } = await import('../route')
+    const res = await POST(request, context)
+
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe('LEGACY_RUN_MANIFEST_MISSING')
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 })

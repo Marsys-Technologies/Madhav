@@ -94,6 +94,10 @@ def build_receipt(
         # It is an explicit blocker until the config representation is defined.
         config_digest = None
         reasons.append("config_digest_unavailable")
+    normalised_upstream = _normalise(upstream_receipts)
+    if not isinstance(normalised_upstream, list):
+        normalised_upstream = []
+        reasons.append("upstream_receipts_unavailable")
     return Receipt(
         asset_id=asset_id,
         chart_id=chart_id,
@@ -103,7 +107,7 @@ def build_receipt(
         upstream_digest=upstream_digest,
         partition_digest=partition_digest,
         output_digest=output_digest,
-        upstream_receipts=upstream_receipts,
+        upstream_receipts=normalised_upstream,
         unknown_reasons=tuple(sorted(set(reasons))),
     )
 
@@ -116,6 +120,8 @@ def classify_receipt(stored: Receipt | None, current: Receipt | None) -> tuple[F
         return "unknown", list(stored.unknown_reasons)
     if current.receipt_state == "unknown":
         return "unknown", list(current.unknown_reasons)
+    if stored.receipt_version != current.receipt_version:
+        return "stale", ["receipt_version_changed"]
     changed = [
         name for name in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest")
         if getattr(stored, name) != getattr(current, name)
@@ -129,7 +135,8 @@ def _registry_partition(cur, asset_id: str) -> tuple[str | None, bool]:
         SELECT ar.natural_key_partition,
                EXISTS (
                  SELECT 1 FROM asset_registry peer
-                  WHERE peer.target_table IS NOT DISTINCT FROM ar.target_table
+                 WHERE peer.target_table IS NOT DISTINCT FROM ar.target_table
+                    AND ar.target_table IS NOT NULL
                     AND peer.asset_id <> ar.asset_id
                     AND peer.is_active = true
                     AND peer.has_writer = true
@@ -248,9 +255,12 @@ def capture_and_persist_receipt(
     upstream_digest: str | None,
     upstream_receipts: list[dict[str, Any]],
     output_digest: str | None = None,
+    partition_declaration: str | None = None,
+    has_cowriters: bool | None = None,
 ) -> tuple[FreshnessState, list[str]]:
     """Construct and persist the sidecar's receipt without committing the caller txn."""
-    partition_declaration, has_cowriters = _registry_partition(cur, asset_id)
+    if has_cowriters is None:
+        partition_declaration, has_cowriters = _registry_partition(cur, asset_id)
     receipt = build_receipt(
         asset_id=asset_id, chart_id=chart_id, code_digest=code_digest, config=config,
         upstream_digest=upstream_digest, upstream_receipts=upstream_receipts,

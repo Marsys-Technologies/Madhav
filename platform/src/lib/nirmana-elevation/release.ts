@@ -32,6 +32,9 @@ export interface NirmanaReleaseStatus {
 
 type FetchFn = typeof fetch
 type CloudRunClient = Pick<ServicesClient, 'getService'> & Pick<RevisionsClient, 'getRevision'>
+type CloudRunServiceObservation = {
+  trafficStatuses?: Array<{ percent?: number | null; revision?: string | null }> | null
+}
 
 let servicesClient: ServicesClient | null = null
 let revisionsClient: RevisionsClient | null = null
@@ -75,6 +78,43 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message.slice(0, 240) : 'unknown release-source failure'
 }
 
+async function loadGithubMainSha(fetchFn: FetchFn): Promise<string> {
+  const apiResponse = await bounded(fetchFn(`https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/main`, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'madhav-nirmana-elevation' },
+    cache: 'no-store',
+  }))
+  if (apiResponse.ok) {
+    const body = await bounded(apiResponse.json() as Promise<{ sha?: unknown }>)
+    if (typeof body.sha === 'string' && /^[a-f0-9]{40}$/i.test(body.sha)) return body.sha
+    throw new Error('GitHub main response has no valid commit SHA')
+  }
+
+  // GitHub's unauthenticated REST quota is shared by the Cloud Run egress IP
+  // and can be exhausted independently of repository availability.  The
+  // commits feed is an independent, GitHub-hosted observation of the same ref.
+  const feedResponse = await bounded(fetchFn(`https://github.com/${GITHUB_REPOSITORY}/commits/main.atom`, {
+    headers: { Accept: 'application/atom+xml', 'User-Agent': 'madhav-nirmana-elevation' },
+    cache: 'no-store',
+  }))
+  if (!feedResponse.ok) {
+    throw new Error(`GitHub main returned HTTP ${apiResponse.status}; commits feed returned HTTP ${feedResponse.status}`)
+  }
+  const feed = await bounded(feedResponse.text())
+  const firstEntry = feed.match(/<entry>[\s\S]*?<\/entry>/i)?.[0]
+  const sha = firstEntry?.match(/<id>\s*tag:github\.com,\d+:Grit::Commit\/([a-f0-9]{40})\s*<\/id>/i)?.[1]
+  if (!sha) throw new Error('GitHub commits feed has no valid main commit SHA')
+  return sha
+}
+
+function realizedServingRevision(service: CloudRunServiceObservation): string {
+  const active = (service.trafficStatuses ?? []).filter((target) => (target.percent ?? 0) > 0)
+  const revision = active.length === 1 ? active[0]?.revision : null
+  if (!revision) throw new Error('Cloud Run service has no single realized serving revision')
+  return revision.includes('/')
+    ? revision
+    : `projects/${PROJECT}/locations/${REGION}/revisions/${revision}`
+}
+
 export async function loadNirmanaReleaseStatus({
   now = new Date(),
   fetchFn = fetch,
@@ -93,27 +133,18 @@ export async function loadNirmanaReleaseStatus({
   const [github, cloudRun] = await Promise.all([
     (async (): Promise<NirmanaReleaseSource> => {
       try {
-        const response = await bounded(fetchFn(`https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/main`, {
-          headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'madhav-nirmana-elevation' },
-          cache: 'no-store',
-        }))
-        if (!response.ok) throw new Error(`GitHub main returned HTTP ${response.status}`)
-        const body = await bounded(response.json() as Promise<{ sha?: unknown }>)
-        if (typeof body.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(body.sha)) throw new Error('GitHub main response has no valid commit SHA')
-        main_sha = body.sha
-        return { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at, age_seconds: 0, error: null }
+        main_sha = await loadGithubMainSha(fetchFn)
+        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'fresh', observed_at, age_seconds: 0, error: null }
       } catch (error) {
         gaps.push('Authoritative GitHub main revision is unavailable; release sync is withheld.')
-        return { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'unavailable', observed_at, age_seconds: null, error: message(error) }
+        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'unavailable', observed_at, age_seconds: null, error: message(error) }
       }
     })(),
     (async (): Promise<NirmanaReleaseSource> => {
       try {
         const name = `projects/${PROJECT}/locations/${REGION}/services/${SERVICE}`
         const [service] = await bounded(cloudRunClient.getService({ name }))
-        const active = (service.traffic ?? []).filter((target) => (target.percent ?? 0) > 0)
-        const servingRevision = active.length === 1 ? active[0]?.revision : null
-        if (!servingRevision) throw new Error('Cloud Run service has no single serving revision')
+        const servingRevision = realizedServingRevision(service)
         deployed_revision = servingRevision.split('/').at(-1) ?? null
         if (!deployed_revision) throw new Error('Cloud Run serving revision name is invalid')
         try {

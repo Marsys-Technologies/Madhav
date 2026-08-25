@@ -7,6 +7,7 @@ import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -23,6 +24,29 @@ interface RegistryEntryWithScope extends RegistryEntry {
   scope: string
   target_table: string | null
   count_sql: string | null
+  natural_key_partition: string | null
+  asset_kind: 'data' | 'artifact' | 'service'
+}
+
+interface FreshnessRow {
+  asset_id: string
+  state: 'fresh' | 'stale' | 'unknown'
+  reasons: string[]
+  code_digest: string | null
+}
+
+const EXPECTED_WRITER_DIGESTS = writerDigestInventory.writers as Record<string, string>
+
+function expectedCodeDigest(entry: RegistryEntryWithScope | undefined): string | null {
+  if (!entry) return null
+  const writerDigest = EXPECTED_WRITER_DIGESTS[entry.asset_id]
+  if (writerDigest) return writerDigest
+  return entry.asset_kind === 'service' ? writerDigestInventory.probe_digest : null
+}
+
+function isActiveRunConflict(error: unknown): boolean {
+  const pg = error as { code?: string; constraint?: string }
+  return pg?.code === '23505' && pg?.constraint === 'build_runs_one_active_per_chart_idx'
 }
 
 const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
@@ -31,6 +55,9 @@ type FrozenManifestAsset = {
   asset_id: string
   scope: string
   depends_on: string[]
+  natural_key_partition: string | null
+  has_cowriters: boolean
+  expected_code_digest: string
 }
 
 type FrozenRunManifest = {
@@ -173,10 +200,10 @@ export async function POST(req: NextRequest) {
   // Resolve the plan — filter registry by allowedScopes so non-super-admin plans
   // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
   // Also fetch target_table + count_sql for clear-before execution.
-  const [registryResult, throughputResult, protectedResult] = await Promise.all([
+  const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
     query<RegistryEntryWithScope>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-              scope, target_table, count_sql
+              scope, target_table, count_sql, natural_key_partition, asset_kind
        FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
@@ -196,6 +223,18 @@ export async function POST(req: NextRequest) {
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
       [chart_id]
     ),
+    query<FreshnessRow>(
+      `SELECT DISTINCT ON (asset_id)
+              af.asset_id, af.freshness_state AS state, af.reasons, apr.code_digest
+         FROM asset_freshness af
+         LEFT JOIN asset_provenance_receipts apr
+           ON apr.asset_id = af.asset_id
+          AND apr.scope_key = af.scope_key
+          AND apr.partition_key = af.partition_key
+        WHERE af.chart_id=$1 OR af.chart_id IS NULL
+        ORDER BY af.asset_id, (af.chart_id = $1) DESC NULLS LAST, af.observed_at DESC`,
+      [chart_id]
+    ),
   ])
 
   const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
@@ -211,7 +250,21 @@ export async function POST(req: NextRequest) {
     : allowedRegistry
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput, protectedAssetIds })
+  const allRegistryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
+  const freshness = new Map(freshnessResult.rows.map(r => {
+    const expected = expectedCodeDigest(allRegistryByAssetId.get(r.asset_id))
+    const recordedReasons = Array.isArray(r.reasons) ? r.reasons : []
+    if (expected === null) {
+      return [r.asset_id, { state: 'unknown' as const, reasons: [...recordedReasons, 'expected_code_digest_missing'] }]
+    }
+    if (r.code_digest !== expected) {
+      return [r.asset_id, { state: 'stale' as const, reasons: [...recordedReasons, 'code_digest_changed'] }]
+    }
+    return [r.asset_id, { state: r.state, reasons: recordedReasons }]
+  }))
+  const buildPlan = resolveBuildPlan({
+    scope, scope_target, action, registry: planRegistry, throughput, freshness, protectedAssetIds,
+  })
   const plan = buildPlan.plan_waves.flat()
 
   // Gate 4: Pre-flight gate (built into resolveBuildPlan).
@@ -246,6 +299,12 @@ export async function POST(req: NextRequest) {
   // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
   // operational metadata, so the runner must never re-plan a queued run from it.
   const registryByAssetId = new Map(planRegistry.map(entry => [entry.asset_id, entry]))
+  const writerCountByTarget = new Map<string, number>()
+  for (const entry of registryResult.rows) {
+    if (entry.target_table) {
+      writerCountByTarget.set(entry.target_table, (writerCountByTarget.get(entry.target_table) ?? 0) + 1)
+    }
+  }
   const manifestAssets: FrozenManifestAsset[] = []
   for (const assetId of plan) {
     const entry = registryByAssetId.get(assetId)
@@ -255,10 +314,20 @@ export async function POST(req: NextRequest) {
         code: 'INVALID_BUILD_PLAN',
       }, { status: 422 })
     }
+    const expectedDigest = expectedCodeDigest(entry)
+    if (!expectedDigest) {
+      return NextResponse.json({
+        error: `No sidecar-owned writer digest is available for planned asset: ${assetId}`,
+        code: 'CODE_DIGEST_UNAVAILABLE',
+      }, { status: 422 })
+    }
     manifestAssets.push({
       asset_id: entry.asset_id,
       scope: entry.scope,
       depends_on: [...(entry.depends_on ?? [])],
+      natural_key_partition: entry.natural_key_partition ?? null,
+      has_cowriters: Boolean(entry.target_table && (writerCountByTarget.get(entry.target_table) ?? 0) > 1),
+      expected_code_digest: expectedDigest,
     })
   }
   const frozenManifest: FrozenRunManifest = {
@@ -451,6 +520,12 @@ export async function POST(req: NextRequest) {
       await client.query('COMMIT')
     } catch (outerErr) {
       await client.query('ROLLBACK').catch(() => null)
+      if (isActiveRunConflict(outerErr)) {
+        return NextResponse.json(
+          { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE' },
+          { status: 409 },
+        )
+      }
       console.error('[api/cockpit/runs] clear-before transaction failed:', outerErr)
       return NextResponse.json({
         error: 'Clear-before-build transaction failed; rolled back.',
@@ -491,25 +566,43 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Standard build path (no clear_before) ───────────────────────────────────
-  const runResult = await query<{ id: string }>(
-    `INSERT INTO build_runs
-       (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
-     VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8)
-     RETURNING id`,
-    [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
-  )
-  const runId = runResult.rows[0].id
+  const pool = await getPool()
+  const client = await pool.connect()
+  let runId: string
+  try {
+    await client.query('BEGIN')
+    const runResult = await client.query<{ id: string }>(
+      `INSERT INTO build_runs
+         (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
+       VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8)
+       RETURNING id`,
+      [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
+    )
+    runId = runResult.rows[0].id
 
-  // Create build_run_assets — single multi-row INSERT instead of N parallel queries
-  const placeholders = plan.map((_, i) =>
-    `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
-  ).join(', ')
-  const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
-  await query(
-    `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}
-     ON CONFLICT (run_id, asset_id) DO NOTHING`,
-    flatParams
-  )
+    // Persist the run and its receipts atomically: a planned run never exists
+    // without the exact per-asset rows the runner and tracker require.
+    const placeholders = plan.map((_, i) =>
+      `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
+    ).join(', ')
+    const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
+    await client.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}`,
+      flatParams
+    )
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => null)
+    if (isActiveRunConflict(error)) {
+      return NextResponse.json(
+        { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE' },
+        { status: 409 },
+      )
+    }
+    throw error
+  } finally {
+    client.release()
+  }
 
   // Fetch the currently deployed job image tag (best-effort; null if GCP unreachable)
   const jobImageTag = await getJobImageTag().catch(() => null)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import pathlib
 import sys
 
@@ -15,6 +16,7 @@ from pipeline.orchestrator.provenance import (
     persist_successful_receipt,
     reconcile_receipt,
 )
+from pipeline.orchestrator.provenance_inventory import DEFAULT_OUTPUT, build_inventory
 
 
 def _receipt(**overrides):
@@ -40,11 +42,21 @@ def test_config_digest_is_stable_across_mapping_order():
     assert canonical_digest({"b": 2, "a": 1}) == canonical_digest({"a": 1, "b": 2})
 
 
+def test_checked_in_writer_digest_inventory_matches_sidecar_sources():
+    assert json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8")) == build_inventory()
+
+
 def test_each_receipt_dimension_is_classified_independently():
     stored = _receipt()
     for field in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest"):
         current = replace(stored, **{field: f"changed-{field}"})
         assert classify_receipt(stored, current) == ("stale", [f"{field}_changed"])
+
+
+def test_receipt_contract_version_change_is_never_fresh():
+    stored = _receipt()
+    current = replace(stored, receipt_version="nirmana-provenance-receipt-v2")
+    assert classify_receipt(stored, current) == ("stale", ["receipt_version_changed"])
 
 
 def test_partition_omission_is_unknown_only_for_shared_output():

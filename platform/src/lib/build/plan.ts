@@ -213,6 +213,7 @@ export function preflight(
   freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>,
 ): BlockerEntry[] {
   const regMap = new Map(registry.map(r => [r.asset_id, r]))
+  const candidateSet = new Set(candidates)
   const blockerMap = new Map<AssetId, BlockerEntry>()
 
   function collectDepsToCheck(
@@ -226,6 +227,9 @@ export function preflight(
     if (!entry) return
 
     for (const dep of entry.depends_on) {
+      // Dependencies dispatched in this same immutable plan are ordered by the
+      // DAG and must not be mistaken for missing out-of-plan prerequisites.
+      if (candidateSet.has(dep)) continue
       const depLayer = regMap.get(dep)?.layer
       const isIntraLayer = scope === 'layer' && scope_target != null && depLayer === scope_target
 
@@ -359,7 +363,10 @@ export function resolveBuildPlan({
   // update and cascade: no pre-flight, use existing behavior, return new shape
   if (action === 'update') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
-    const stale = scopeAssets.filter(id => throughput.get(id)?.state === 'stale')
+    const stale = scopeAssets.filter(id =>
+      throughput.get(id)?.state === 'stale' ||
+      (freshness !== undefined && freshness.get(id)?.state !== 'fresh')
+    )
     const dormant = scopeAssets.filter(id => {
       const t = throughput.get(id)
       return !t || t.state === 'dormant'
@@ -379,7 +386,10 @@ export function resolveBuildPlan({
 
   if (action === 'cascade') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
-    const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
+    const stale = registry.filter(r =>
+      throughput.get(r.asset_id)?.state === 'stale' ||
+      (freshness !== undefined && freshness.get(r.asset_id)?.state !== 'fresh')
+    ).map(r => r.asset_id)
     const rawCandidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
     const sorted = topoSort(candidates, registry)
@@ -398,6 +408,7 @@ export function resolveBuildPlan({
   if (action === 'build') {
     rawCandidates = scopeAssets.filter(id => {
       const t = throughput.get(id)
+      const receiptNeedsBuild = freshness !== undefined && freshness.get(id)?.state !== 'fresh'
       // 'incomplete' (migration 474) means "ran, some data present, substep plan
       // work still remains" — it is by definition NOT finished, so `build` must
       // pick it up. Omitting it made an 'incomplete' asset unreachable by the
@@ -407,7 +418,7 @@ export function resolveBuildPlan({
       // Ruling 10), which is the first path to write 'incomplete' from the
       // TypeScript side; also repairs the same latent strand for the Python
       // path's 'incomplete' (asset_runner.py:677), which predates this change.
-      return !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
+      return receiptNeedsBuild || !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
     })
   } else {
     // rebuild: all assets in scope (no transitive downstream expansion)

@@ -44,4 +44,26 @@ describe('resolveBuildPlan — sidecar freshness projection', () => {
     expect(result.status).toBe('ok')
     expect(result.plan_waves).toEqual([['ga_output']])
   })
+
+  it('rebuilds a lit in-scope asset when its receipt is missing', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset', scope_target: 'ga_output', action: 'build', registry,
+      throughput: throughput([{ asset_id: 'ga_output', state: 'lit' }]),
+      freshness: new Map(),
+    })
+    expect(result.status).toBe('blocked')
+    expect(result.blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_input', dep_state: 'unknown' }),
+    ]))
+  })
+
+  it('rebuilds a lit root asset when its receipt is stale', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset', scope_target: 'bg_input', action: 'build', registry,
+      throughput: throughput([{ asset_id: 'bg_input', state: 'lit' }]),
+      freshness: new Map([['bg_input', { state: 'stale' as const, reasons: ['code_digest_changed'] }]]),
+    })
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves).toEqual([['bg_input']])
+  })
 })

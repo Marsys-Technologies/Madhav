@@ -30,11 +30,24 @@ export async function POST(
       `UPDATE build_runs
        SET state = 'planned', pause_requested_at = NULL
        WHERE id=$1 AND state = 'paused'
+         AND plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL
        RETURNING id`,
       [id]
     )
 
     if (result.rows.length === 0) {
+      const { rows } = await query<{ state: string; has_manifest: boolean }>(
+        `SELECT state,
+                (plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL) AS has_manifest
+           FROM build_runs WHERE id=$1`,
+        [id]
+      )
+      if (rows[0]?.state === 'paused' && !rows[0].has_manifest) {
+        return NextResponse.json({
+          error: 'This paused run predates immutable manifests and cannot be resumed safely',
+          code: 'LEGACY_RUN_MANIFEST_MISSING',
+        }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Run not found or not in paused state' }, { status: 404 })
     }
 
@@ -48,7 +61,7 @@ export async function POST(
       await query(
         `UPDATE build_runs
          SET state = 'paused', pause_requested_at = NOW(), last_error = $1
-         WHERE id=$2 AND state = 'planned' AND started_at IS NULL`,
+         WHERE id=$2 AND state = 'planned'`,
         [detail, id]
       )
       console.error('[cockpit/runs/resume] job dispatch failed:', detail)

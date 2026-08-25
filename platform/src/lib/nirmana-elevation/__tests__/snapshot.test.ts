@@ -167,7 +167,7 @@ describe('projectNirmanaElevationSnapshot', () => {
   })
 
   it('derives the campaign layer and wave from the selected canonical active run', () => {
-    const manifest = manifestFor(defaultRegistry, [{ asset_id: 'bg_prashna_rules', wave_index: 4, execution_obligation: 'build' }])
+    const manifest = manifestFor(defaultRegistry, [{ asset_id: 'bg_prashna_rules', wave_index: 0, execution_obligation: 'build' }])
     const snapshot = projectNirmanaElevationSnapshot(sources({
       campaign_definitions: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
@@ -177,7 +177,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       build_run_assets: [{ run_id: 'run-current', asset_id: 'bg_prashna_rules', position: 1, state: 'building', started_at: observedAt, ended_at: null, error: null }],
     }), { generatedAt: observedAt })
 
-    expect(snapshot.campaign).toMatchObject({ current_layer: 'L0', current_wave: 4 })
+    expect(snapshot.campaign).toMatchObject({ current_layer: 'L0', current_wave: 0 })
     expect(snapshot.layers[0]?.state).toBe('open')
   })
 

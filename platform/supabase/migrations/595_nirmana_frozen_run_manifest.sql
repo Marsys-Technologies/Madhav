@@ -23,6 +23,14 @@ ALTER TABLE build_runs
     plan_manifest_digest IS NULL OR plan_manifest_digest ~ '^[0-9a-f]{64}$'
   );
 
+-- The API's advisory active-run read is not a concurrency boundary: two
+-- requests can both observe no row before either inserts.  Make the invariant
+-- durable in PostgreSQL so only one queued/running/paused run can exist per
+-- chart, regardless of API instance count.
+CREATE UNIQUE INDEX IF NOT EXISTS build_runs_one_active_per_chart_idx
+  ON build_runs (chart_id)
+  WHERE state IN ('planned', 'running', 'paused');
+
 CREATE OR REPLACE FUNCTION reject_build_run_manifest_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -48,6 +56,6 @@ FOR EACH ROW
 EXECUTE FUNCTION reject_build_run_manifest_mutation();
 
 COMMENT ON COLUMN build_runs.plan_manifest IS
-  'Nirmana F0 dispatch-time immutable DAG manifest: ordered waves plus each planned asset scope and dependencies.';
+  'Nirmana F0 dispatch-time immutable DAG manifest: ordered waves plus each planned asset scope, dependencies, partition declaration, co-writer status, and expected sidecar code digest.';
 COMMENT ON COLUMN build_runs.plan_manifest_digest IS
   'SHA-256 of the recursively key-sorted canonical JSON plan_manifest; verified by the Python runner before execution.';

@@ -1026,7 +1026,11 @@ jobs:
         run: |
           pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           cd platform/python-sidecar
-          pytest tests/ bodha_writers/__tests__ \
+          # Nirmana F0: this checked-in artefact is the web planner's source of
+          # sidecar-owned writer hashes. Any Python writer change must regenerate
+          # it; otherwise old receipts could survive a code deployment as fresh.
+          python -m pipeline.orchestrator.provenance_inventory --check
+          pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
