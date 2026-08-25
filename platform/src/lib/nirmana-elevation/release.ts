@@ -71,6 +71,7 @@ export async function loadNirmanaReleaseStatus({
 } = {}): Promise<NirmanaReleaseStatus> {
   const observed_at = now.toISOString()
   let main_sha: string | null = null
+  let deployed_sha: string | null = null
   let deployed_revision: string | null = null
   const gaps: string[] = []
 
@@ -100,6 +101,11 @@ export async function loadNirmanaReleaseStatus({
         if (!servingRevision) throw new Error('Cloud Run service has no single serving revision')
         deployed_revision = servingRevision.split('/').at(-1) ?? null
         if (!deployed_revision) throw new Error('Cloud Run serving revision name is invalid')
+        const latestReadyRevision = service.latestReadyRevision?.split('/').at(-1) ?? null
+        const commitSha = service.template?.labels?.['commit-sha']
+        if (latestReadyRevision === deployed_revision && typeof commitSha === 'string' && /^[a-f0-9]{40}$/i.test(commitSha)) {
+          deployed_sha = commitSha
+        }
         return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at, age_seconds: 0, error: null }
       } catch (error) {
         gaps.push('Authoritative Cloud Run serving revision is unavailable; release sync is withheld.')
@@ -108,18 +114,24 @@ export async function loadNirmanaReleaseStatus({
     })(),
   ])
 
-  gaps.push('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
+  if (!deployed_sha) gaps.push('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
   const artifact: NirmanaReleaseSource = {
     source_id: 'artifact_registry_commit',
     provenance: 'Serving revision immutable commit provenance',
-    state: 'unknown',
+    state: deployed_sha ? 'fresh' : 'unknown',
     observed_at,
-    age_seconds: null,
-    error: 'No immutable deployment commit SHA is present on the serving revision.',
+    age_seconds: deployed_sha ? 0 : null,
+    error: deployed_sha ? null : 'No immutable deployment commit SHA is present on the serving revision.',
   }
 
   return {
-    release: { main_sha, deployed_sha: null, deployed_revision, production_in_sync: null, observed_at },
+    release: {
+      main_sha,
+      deployed_sha,
+      deployed_revision,
+      production_in_sync: main_sha && deployed_sha ? main_sha === deployed_sha : null,
+      observed_at,
+    },
     sources: [github, cloudRun, artifact],
     gaps,
   }

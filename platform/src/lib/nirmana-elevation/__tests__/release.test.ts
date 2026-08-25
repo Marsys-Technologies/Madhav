@@ -6,8 +6,16 @@ import { loadNirmanaReleaseStatus } from '../release'
 
 const observedAt = new Date('2026-08-25T09:00:00.000Z')
 
-function cloudRun(traffic: Array<{ percent?: number; revision?: string }> = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }]) {
-  return { getService: vi.fn().mockResolvedValue([{ traffic }]) }
+function cloudRun({
+  traffic = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }],
+  latestReadyRevision = 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb',
+  labels,
+}: {
+  traffic?: Array<{ percent?: number; revision?: string }>
+  latestReadyRevision?: string
+  labels?: Record<string, string>
+} = {}) {
+  return { getService: vi.fn().mockResolvedValue([{ traffic, latestReadyRevision, template: { labels } }]) }
 }
 
 describe('loadNirmanaReleaseStatus', () => {
@@ -62,14 +70,41 @@ describe('loadNirmanaReleaseStatus', () => {
     const result = await loadNirmanaReleaseStatus({
       now: observedAt,
       fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'c'.repeat(40) }), { status: 200 })),
-      cloudRunClient: cloudRun([
+      cloudRunClient: cloudRun({ traffic: [
         { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-old' },
         { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-new' },
-      ]) as never,
+      ] }) as never,
     })
 
     expect(result.release).toMatchObject({ deployed_revision: null, production_in_sync: null })
     expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' })]))
+  })
+
+  it('uses a valid commit label only when the latest ready revision receives all serving traffic', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({ labels: { 'commit-sha': 'd'.repeat(40) } }) as never,
+    })
+
+    expect(result.release).toMatchObject({ deployed_sha: 'd'.repeat(40), production_in_sync: true })
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'fresh', error: null }),
+    ]))
+    expect(result.gaps).not.toContain('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
+  })
+
+  it('withholds a template commit label when traffic is not on the latest ready revision', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'e'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({
+        latestReadyRevision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-new',
+        labels: { 'commit-sha': 'e'.repeat(40) },
+      }) as never,
+    })
+
+    expect(result.release).toMatchObject({ deployed_sha: null, production_in_sync: null })
   })
 
   it('times out a stalled release source and returns a degraded observation', async () => {
