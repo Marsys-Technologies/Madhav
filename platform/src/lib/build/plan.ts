@@ -39,7 +39,7 @@ export interface ThroughputEntry {
 
 export interface BlockerEntry {
   dep_asset_id: AssetId
-  dep_state: AssetState
+  dep_state: AssetState | 'unknown'
   required_by: AssetId[]    // which in-scope assets need this dep
   guidance?: string         // non-empty for L0 dormant/error deps
 }
@@ -73,6 +73,8 @@ export interface ResolveBuildPlanArgs {
   action: BuildAction
   registry: RegistryEntry[]
   throughput: Map<AssetId, ThroughputEntry>
+  /** Sidecar-produced receipt classification; supplying it enables strict freshness checks. */
+  freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>
   // asset_ids protected (via build_protected_assets) for the chart_id this plan is being
   // resolved for. Pre-filtered by the CALLER (a `WHERE chart_id = $1` query) — plan.ts
   // itself never sees a chart_id or talks to the DB, staying a pure function. Defaults to
@@ -207,7 +209,8 @@ export function preflight(
   scope: BuildScope,
   scope_target: string | null,
   registry: RegistryEntry[],
-  throughput: Map<AssetId, ThroughputEntry>
+  throughput: Map<AssetId, ThroughputEntry>,
+  freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>,
 ): BlockerEntry[] {
   const regMap = new Map(registry.map(r => [r.asset_id, r]))
   const blockerMap = new Map<AssetId, BlockerEntry>()
@@ -245,15 +248,27 @@ export function preflight(
     collectDepsToCheck(candidate, new Set<AssetId>(), depsToCheck)
 
     for (const dep of depsToCheck) {
-      // Use undefined-safe: absent entries are not our concern (treat as ready)
+      // A dependency absent from the registry is unknown, never an earned ready
+      // state. Existing callers that do not yet supply the sidecar projection
+      // retain their historical sparse-throughput behaviour; once supplied, a
+      // missing throughput or receipt row is an explicit unknown blocker.
       const depState = throughput.get(dep)?.state
-      if (depState === undefined || READY_STATES.has(depState)) continue
+      const receipt = freshness?.get(dep)
+      const registered = regMap.has(dep)
+      const ready = registered && (freshness === undefined
+        ? (depState === undefined || READY_STATES.has(depState))
+        : (depState !== undefined && READY_STATES.has(depState) && receipt?.state === 'fresh'))
+      if (ready) continue
+
+      const effectiveState: AssetState | 'unknown' = !registered || depState === undefined
+        ? 'unknown'
+        : (freshness !== undefined && receipt?.state !== 'fresh' ? receipt?.state ?? 'unknown' : depState)
 
       if (!blockerMap.has(dep)) {
         const isL0 = regMap.get(dep)?.layer === 'brahmagyan'
         blockerMap.set(dep, {
           dep_asset_id: dep,
-          dep_state: depState,
+          dep_state: effectiveState,
           required_by: [],
           ...(isL0 ? { guidance: 'L0 dependency not built — run the Brahmagyan layer first' } : {}),
         })
@@ -330,6 +345,7 @@ export function resolveBuildPlan({
   action,
   registry,
   throughput,
+  freshness,
   protectedAssetIds,
 }: ResolveBuildPlanArgs): BuildPlan {
   const protectedSet: ReadonlySet<AssetId> = protectedAssetIds ?? EMPTY_PROTECTED_SET
@@ -410,7 +426,7 @@ export function resolveBuildPlan({
 
   // pre-flight gate: only for non-global scope (global has all assets as candidates)
   if (scope !== 'global') {
-    const blockers = preflight(candidates, scope, scope_target, registry, throughput)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
     if (blockers.length > 0) {
       return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
     }
