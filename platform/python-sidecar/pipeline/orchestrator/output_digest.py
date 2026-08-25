@@ -76,10 +76,38 @@ def _where_is_null(component: dict[str, Any]) -> str:
     return " AND ".join(f"source.{_quoted(column)} IS NULL" for column in columns)
 
 
+def _where_in(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
+    """Compose reviewed finite-set filters as parameterized PostgreSQL arrays."""
+    raw = component.get("where_in")
+    if raw is None:
+        return "", ()
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("output digest spec component requires non-empty where_in")
+    predicates: list[str] = []
+    params: list[object] = []
+    for raw_column in sorted(raw):
+        column = _identifier(raw_column, field="where_in")
+        values = raw[raw_column]
+        if not isinstance(values, list) or not values:
+            raise ValueError("output digest spec where_in values must be non-empty lists")
+        value_type = type(values[0])
+        if value_type not in (str, bool, int, float) or any(type(value) is not value_type for value in values):
+            raise ValueError("output digest spec where_in values must be same-type scalars")
+        if len(set(values)) != len(values) or values != sorted(values):
+            raise ValueError("output digest spec where_in values must be unique and sorted")
+        predicates.append(f"source.{_quoted(column)} = ANY(%s)")
+        params.append(values)
+    return " AND ".join(predicates), tuple(params)
+
+
 def _where_filter(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
-    equals_sql, values = _where_equals(component)
+    equals_sql, equals_values = _where_equals(component)
+    in_sql, in_values = _where_in(component)
     null_sql = _where_is_null(component)
-    return " AND ".join(part for part in (equals_sql, null_sql) if part), values
+    return (
+        " AND ".join(part for part in (equals_sql, in_sql, null_sql) if part),
+        equals_values + in_values,
+    )
 
 
 def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDigestSpec:
@@ -104,6 +132,7 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
         scope = canonical_digest({
             "relation": relation,
             "where_equals": component.get("where_equals"),
+            "where_in": component.get("where_in"),
             "where_is_null": component.get("where_is_null"),
         })
         if name in seen_names or scope in seen_scopes:

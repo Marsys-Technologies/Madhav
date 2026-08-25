@@ -121,6 +121,55 @@ def test_component_where_equals_is_parameterized_and_scopes_preflight_and_stream
     assert stream_params == ("dosha' OR TRUE --",)
 
 
+def test_component_where_in_is_parameterized_and_scopes_preflight_and_stream():
+    filtered = {
+        "version": "nirmana-output-digest-spec-v1",
+        "components": [{
+            "name": "canonical_texts",
+            "relation": "classical_texts",
+            "key_columns": ["text_id"],
+            "value_columns": ["text_id", "title_en"],
+            "where_in": {"text_id": ["bphs", "bphs_jaimini"]},
+        }],
+    }
+    cursor = _Cursor(
+        row={"spec": filtered, "spec_sha256": canonical_digest(filtered)},
+        batches=[[{"row_json": '{"text_id":"bphs","title_en":"BPHS"}'}]],
+    )
+
+    digest, _ = compute_output_digest(cursor, asset_id="bg_texts")
+
+    assert digest is not None
+    preflight_sql, preflight_params = cursor.executed[-2]
+    stream_sql, stream_params = cursor.executed[-1]
+    assert 'source."text_id" = ANY(%s)' in preflight_sql
+    assert 'source."text_id" = ANY(%s)' in stream_sql
+    assert preflight_params == (["bphs", "bphs_jaimini"],)
+    assert stream_params == (["bphs", "bphs_jaimini"],)
+
+
+def test_component_where_in_rejects_empty_unsorted_duplicate_and_mixed_sets():
+    invalid_sets = [[], ["bphs_jaimini", "bphs"], ["bphs", "bphs"], [1, "bphs"]]
+    for values in invalid_sets:
+        invalid = {
+            "version": "nirmana-output-digest-spec-v1",
+            "components": [{
+                "name": "canonical_texts",
+                "relation": "classical_texts",
+                "key_columns": ["text_id"],
+                "value_columns": ["text_id"],
+                "where_in": {"text_id": values},
+            }],
+        }
+        cursor = _Cursor(row={"spec": invalid, "spec_sha256": canonical_digest(invalid)})
+        try:
+            load_output_digest_spec(cursor, "bg_texts")
+        except ValueError as exc:
+            assert "where_in" in str(exc)
+        else:
+            raise AssertionError(f"invalid where_in set was accepted: {values!r}")
+
+
 def test_one_relation_can_be_split_into_disjoint_reviewed_null_scopes():
     split = {
         "version": "nirmana-output-digest-spec-v1",
@@ -238,6 +287,23 @@ def _migration_specs(path: pathlib.Path):
     return {asset_id: (spec_sha, json.loads(raw_spec)) for asset_id, spec_sha, raw_spec in matches}
 
 
+def _migration_609_specs(path: pathlib.Path):
+    text = path.read_text()
+    result = {}
+    for suffix, asset_id in (("reference", "bg_reference"), ("texts", "bg_texts")):
+        sha_match = re.search(
+            rf"new_{suffix}_sha constant text :=\s*'([a-f0-9]{{64}})'", text
+        )
+        spec_match = re.search(
+            rf"new_{suffix}_spec constant jsonb :=\s*'({{.+?}})'::jsonb;",
+            text,
+            re.DOTALL,
+        )
+        assert sha_match and spec_match, f"migration 609 exact spec missing for {asset_id}"
+        result[asset_id] = (sha_match.group(1), json.loads(spec_match.group(1)))
+    return result
+
+
 def test_every_frozen_l0_wave0_build_has_a_reviewed_canonical_digest_spec():
     platform_root = pathlib.Path(__file__).resolve().parents[4]
     repo_root = platform_root.parent
@@ -247,6 +313,9 @@ def test_every_frozen_l0_wave0_build_has_a_reviewed_canonical_digest_spec():
         "600_nirmana_l0_wave0_output_digest_specs.sql",
     ):
         seeded.update(_migration_specs(platform_root / "supabase/migrations" / filename))
+    seeded.update(_migration_609_specs(
+        platform_root / "supabase/migrations/609_nirmana_l0_digest_spec_revision.sql"
+    ))
 
     manifest = json.loads(
         (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json").read_text()
@@ -271,7 +340,7 @@ def test_every_frozen_l0_wave0_build_has_a_reviewed_canonical_digest_spec():
             _component_statement(component)
 
 
-def test_migration_600_closes_exactly_the_previously_unspecced_wave0_gap():
+def test_migration_600_remains_the_immutable_previously_unspecced_wave0_gap():
     platform_root = pathlib.Path(__file__).resolve().parents[4]
     specs_598 = _migration_specs(
         platform_root / "supabase/migrations/598_nirmana_output_digest_specs.sql"
@@ -283,12 +352,10 @@ def test_migration_600_closes_exactly_the_previously_unspecced_wave0_gap():
     assert not (set(specs_598) & set(specs_600))
     assert {"bg_reference", "bg_transit_rules", "bg_medical_mappings"} <= set(specs_600)
 
-    reference_relations = {
-        component["relation"]
-        for component in specs_600["bg_reference"][1]["components"]
+    legacy_reference_relations = {
+        component["relation"] for component in specs_600["bg_reference"][1]["components"]
     }
-    assert "reference_nakshatras" in reference_relations
-    assert len(reference_relations) == 12
+    assert "reference_nakshatras" in legacy_reference_relations
 
     transit_relations = {
         component["relation"]
@@ -296,6 +363,59 @@ def test_migration_600_closes_exactly_the_previously_unspecced_wave0_gap():
     }
     assert transit_relations == {"bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"}
 
+
+def test_migration_609_append_only_revisions_install_exact_owned_scopes():
+    platform_root = pathlib.Path(__file__).resolve().parents[4]
+    specs_609 = _migration_609_specs(
+        platform_root / "supabase/migrations/609_nirmana_l0_digest_spec_revision.sql"
+    )
+    assert set(specs_609) == {"bg_reference", "bg_texts"}
+    for spec_sha, spec in specs_609.values():
+        assert canonical_digest(spec) == spec_sha
+
+    reference_relations = {
+        component["relation"]
+        for component in specs_609["bg_reference"][1]["components"]
+    }
+    assert reference_relations == {
+        "reference_planets",
+        "reference_signs",
+        "reference_aspects",
+        "reference_vargas",
+        "reference_houses",
+        "reference_strength_systems",
+        "reference_karakas",
+        "reference_upagrahas",
+        "reference_constants",
+        "reference_topic_tags",
+        "reference_glossary",
+    }
+    assert len(reference_relations) == 11
+
+    text_components = specs_609["bg_texts"][1]["components"]
+    canonical_text_ids = {
+        "bhrigu_nandi_nadi", "bphs", "bphs_jaimini", "brihat_jataka",
+        "brihat_samhita", "hora_sara", "jataka_parijata",
+        "muhurta_chintamani", "nadi_navamsa_patel", "phaladeepika",
+        "saravali", "sarvartha_chintamani", "tajaka_neelakanthi",
+        "uttara_kalamrita", "yavana_jataka",
+    }
+    assert len(text_components) == 2
+    assert all(
+        set(component["where_in"]["text_id"]) == canonical_text_ids
+        for component in text_components
+    )
+    chunk_component = next(
+        component for component in text_components
+        if component["relation"] == "classical_text_chunks"
+    )
+    co_written_columns = {
+        "content_summary", "topics", "topic_tag", "ocr_confidence_score",
+        "cleaned_translation_text", "cleaned_devanagari_text",
+        "low_confidence_flag", "ocr_review_note", "ocr_cleanup_pass_version",
+        "translation_status", "translation_provenance",
+    }
+    assert co_written_columns.isdisjoint(chunk_component["value_columns"])
 
 def test_migration_601_completes_every_frozen_l0_build_digest_spec():
     platform_root = pathlib.Path(__file__).resolve().parents[4]

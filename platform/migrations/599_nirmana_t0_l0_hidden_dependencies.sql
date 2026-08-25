@@ -2,9 +2,11 @@
 --
 -- NIRMĀṆA ELEVATION v6 — corrected T0 L0 build-order contract.
 --
--- Source audit found three writers whose direct database inputs were absent from
+-- Source audit found five writers whose direct database inputs were absent from
 -- asset_registry.depends_on. That omission allowed a frozen campaign wave to
 -- schedule the consumer beside, rather than after, its source authority:
+--   * bg_reference validates against brahma_ontology (bg_ontology);
+--   * bg_remedies extracts governed corpus remedies from bg_texts;
 --   * bg_gochara_arcs reads ephemeris_daily (bg_ephemeris);
 --   * bg_kp_sublord_division verifies reference_nakshatra (bg_nakshatra);
 --   * bg_parihara_rules reads brahma_dosha_catalog and classical_texts
@@ -13,10 +15,10 @@
 -- Catalogue metadata only: this migration does not rebuild or mutate asset data.
 -- IDEMPOTENT: exact corrected arrays are accepted; only the known empty legacy
 -- contract is changed. Any third state fails before mutation.
--- REVERSIBLE: restore ARRAY[]::text[] for only these three assets after first
+-- REVERSIBLE: restore ARRAY[]::text[] for only these five assets after first
 -- proving that none of their writers reads the named authorities.
-
-BEGIN;
+-- TRANSACTION: migrate.ts owns the surrounding transaction; this file must not
+-- commit independently of the runner's migration ledger write.
 
 DO $$
 DECLARE
@@ -34,7 +36,7 @@ BEGIN
          )
     INTO bad_source
     FROM unnest(ARRAY[
-      'bg_ephemeris', 'bg_nakshatra', 'bg_doshas', 'bg_texts'
+      'bg_ontology', 'bg_ephemeris', 'bg_nakshatra', 'bg_doshas', 'bg_texts'
     ]::text[]) AS required(asset_id)
     LEFT JOIN asset_registry source ON source.asset_id = required.asset_id
    WHERE source.asset_id IS NULL
@@ -44,6 +46,30 @@ BEGIN
   IF bad_source IS NOT NULL THEN
     RAISE EXCEPTION
       'migration 599 requires CURRENT active source authorities: %', bad_source;
+  END IF;
+
+  SELECT depends_on INTO actual
+    FROM asset_registry
+   WHERE asset_id = 'bg_reference';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'migration 599 requires asset_registry.bg_reference';
+  END IF;
+  IF actual IS DISTINCT FROM ARRAY[]::text[]
+     AND actual IS DISTINCT FROM ARRAY['bg_ontology']::text[] THEN
+    RAISE EXCEPTION
+      'migration 599 refuses drifted bg_reference dependencies: %', actual;
+  END IF;
+
+  SELECT depends_on INTO actual
+    FROM asset_registry
+   WHERE asset_id = 'bg_remedies';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'migration 599 requires asset_registry.bg_remedies';
+  END IF;
+  IF actual IS DISTINCT FROM ARRAY[]::text[]
+     AND actual IS DISTINCT FROM ARRAY['bg_texts']::text[] THEN
+    RAISE EXCEPTION
+      'migration 599 refuses drifted bg_remedies dependencies: %', actual;
   END IF;
 
   SELECT depends_on INTO actual
@@ -82,6 +108,16 @@ BEGIN
       'migration 599 refuses drifted bg_parihara_rules dependencies: %', actual;
   END IF;
 END $$;
+
+UPDATE asset_registry
+   SET depends_on = ARRAY['bg_ontology']::text[]
+ WHERE asset_id = 'bg_reference'
+   AND depends_on = ARRAY[]::text[];
+
+UPDATE asset_registry
+   SET depends_on = ARRAY['bg_texts']::text[]
+ WHERE asset_id = 'bg_remedies'
+   AND depends_on = ARRAY[]::text[];
 
 UPDATE asset_registry
    SET depends_on = ARRAY['bg_ephemeris']::text[]
@@ -152,6 +188,22 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM asset_registry
+     WHERE asset_id = 'bg_reference'
+       AND depends_on = ARRAY['bg_ontology']::text[]
+  ) THEN
+    RAISE EXCEPTION 'migration 599 failed to correct bg_reference dependencies';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM asset_registry
+     WHERE asset_id = 'bg_remedies'
+       AND depends_on = ARRAY['bg_texts']::text[]
+  ) THEN
+    RAISE EXCEPTION 'migration 599 failed to correct bg_remedies dependencies';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM asset_registry
      WHERE asset_id = 'bg_gochara_arcs'
        AND depends_on = ARRAY['bg_ephemeris']::text[]
   ) THEN
@@ -174,5 +226,3 @@ BEGIN
     RAISE EXCEPTION 'migration 599 failed to correct bg_parihara_rules dependencies';
   END IF;
 END $$;
-
-COMMIT;

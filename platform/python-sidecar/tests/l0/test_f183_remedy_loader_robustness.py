@@ -42,6 +42,10 @@ CREATE TABLE brahma_remedy_corpus (
     remedy_type                TEXT NOT NULL,
     prescription_text          TEXT NOT NULL,
     mantra_text                TEXT,
+    gemstone                   TEXT,
+    charity_action             TEXT,
+    day_of_week                TEXT,
+    color_associated           TEXT,
     confidence                 NUMERIC NOT NULL DEFAULT 0.85,
     source_canonical_id        TEXT NOT NULL,
     source_citation            TEXT NOT NULL,
@@ -54,7 +58,8 @@ CREATE TABLE brahma_remedy_corpus (
     timing_rules_jsonb         TEXT,
     cost_tier                  TEXT,
     contraindications          TEXT,
-    classical_attestation_text TEXT
+    classical_attestation_text TEXT,
+    scaffold_status            TEXT NOT NULL DEFAULT 'live'
 )
 """
 
@@ -212,6 +217,81 @@ class TestCitationColumnsUpsert:
         assert row['classical_attestation_text'] == 'attestation-v2'
         assert row['deity'] == 'Śani'
         assert row['prescription_text'] == 'Corrected prescription.'
+
+
+class TestDeterministicTantricUpsert:
+    """A tantric reseed must converge every writer-owned output field."""
+
+    def test_planet_is_normalized_to_canonical_lowercase(self, corpus_conn):
+        row = _yaml_row(
+            citation='attestation', chapter='Ch. 91', verse='V. 12',
+            translit='oṃ śanaiścarāya namaḥ', category='tantric',
+        )
+
+        l0_remedy_loader.insert_to_corpus(corpus_conn, row)
+
+        assert _stored(corpus_conn)['planet'] == 'saturn'
+
+    def test_reseed_restores_all_writer_owned_content_and_live_status(self, corpus_conn):
+        canonical = dict(
+            _yaml_row(
+                citation='canonical attestation', chapter='Ch. 12', verse='V. 4',
+                translit='oṃ śanaiścarāya namaḥ', category='tantric',
+            ),
+            planet='saturn',
+            domain='health',
+            deity='Śani',
+            mantra_sanskrit='ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः',
+            ingredients_jsonb={'sesame_oil': True},
+            timing_rules_jsonb={'weekday': 'Saturday'},
+            cost_tier='accessible',
+            contraindications='Do not improvise the rite.',
+        )
+        l0_remedy_loader.insert_to_corpus(corpus_conn, canonical)
+        corpus_conn._raw.execute(
+            """
+            UPDATE brahma_remedy_corpus
+               SET planet='Jupiter', domain='stale', remedy_type='stale',
+                   prescription_text='stale', mantra_text='stale', gemstone='stale',
+                   charity_action='stale', day_of_week='stale', color_associated='stale',
+                   confidence=0.10, source_canonical_id='stale', source_citation='stale',
+                   classical_ref='stale', category='stale', deity='stale',
+                   mantra_sanskrit='stale', mantra_transliteration='stale',
+                   ingredients_jsonb='{}', timing_rules_jsonb='{}', cost_tier='high',
+                   contraindications='stale', classical_attestation_text='stale',
+                   scaffold_status='review'
+            """
+        )
+
+        l0_remedy_loader.insert_to_corpus(corpus_conn, canonical)
+
+        row = _stored(corpus_conn)
+        assert dict(row) == {
+            'remedy_id': 'f183_saturn_bija',
+            'planet': 'saturn',
+            'domain': 'health',
+            'remedy_type': 'tantric',
+            'prescription_text': 'Recite the Saturn bīja mantra.',
+            'mantra_text': 'oṃ śanaiścarāya namaḥ',
+            'gemstone': None,
+            'charity_action': None,
+            'day_of_week': None,
+            'color_associated': None,
+            'confidence': 0.85,
+            'source_canonical_id': 'BPHS',
+            'source_citation': 'canonical attestation',
+            'classical_ref': 'Ch. 12 V. 4',
+            'category': 'tantric',
+            'deity': 'Śani',
+            'mantra_sanskrit': 'ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः',
+            'mantra_transliteration': 'oṃ śanaiścarāya namaḥ',
+            'ingredients_jsonb': '{"sesame_oil": true}',
+            'timing_rules_jsonb': '{"weekday": "Saturday"}',
+            'cost_tier': 'low',
+            'contraindications': 'Do not improvise the rite.',
+            'classical_attestation_text': 'canonical attestation',
+            'scaffold_status': 'live',
+        }
 
 
 # ── Gap 2: null-safe truncation ───────────────────────────────────────────────

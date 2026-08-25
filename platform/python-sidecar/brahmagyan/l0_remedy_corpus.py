@@ -3251,7 +3251,14 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
         rows = cur.fetchall()
 
     result: list[dict[str, Any]] = []
-    for chunk_id, text_id, source_citation, content_en in rows:
+    for source_row in rows:
+        if isinstance(source_row, dict):
+            chunk_id = source_row["chunk_id"]
+            text_id = source_row["text_id"]
+            source_citation = source_row["source_citation"]
+            content_en = source_row["content_en"]
+        else:
+            chunk_id, text_id, source_citation, content_en = source_row
         if not content_en:
             continue
 
@@ -3400,11 +3407,9 @@ def seed_remedy_corpus(
 ) -> dict[str, Any]:
     """
     Seed brahma_remedy_corpus with combined remedy corpus.
-    Uses INSERT ... ON CONFLICT (remedy_id) DO NOTHING for idempotency, EXCEPT for
-    category='corpus_sweep' rows, which use DO UPDATE on (scaffold_status, confidence)
-    only (F-144) -- sweep rows' scaffold_status is re-derived from score_ocr_confidence()
-    on every writer run, so a re-run must be able to correct a row's classification, not
-    silently no-op forever on the first-ever insert.
+    Uses INSERT ... ON CONFLICT (remedy_id) DO UPDATE for idempotent convergence.
+    Every writer-owned content field is restored from the deterministic source on
+    replay, including corpus-sweep classification and source attribution.
 
     Returns dict with:
         remedies_inserted, remedies_skipped, live_count, total_built
@@ -3461,7 +3466,9 @@ def seed_remedy_corpus(
                     color_associated, confidence, source_canonical_id,
                     source_citation, classical_ref,
                     category, deity, mantra_sanskrit, mantra_transliteration,
-                    cost_tier, contraindications, scaffold_status
+                    ingredients_jsonb, timing_rules_jsonb, cost_tier,
+                    contraindications, classical_attestation_text,
+                    scaffold_status
                 ) VALUES (
                     %(remedy_id)s, %(planet)s, %(domain)s, %(remedy_type)s,
                     %(prescription_text)s, %(mantra_text)s, %(gemstone)s,
@@ -3469,13 +3476,35 @@ def seed_remedy_corpus(
                     %(confidence)s, %(source_canonical_id)s,
                     %(source_citation)s, %(classical_ref)s,
                     %(category)s, %(deity)s, %(mantra_sanskrit)s,
-                    %(mantra_transliteration)s, %(cost_tier)s,
-                    %(contraindications)s, %(scaffold_status)s
+                    %(mantra_transliteration)s, %(ingredients_jsonb)s::jsonb,
+                    %(timing_rules_jsonb)s::jsonb, %(cost_tier)s,
+                    %(contraindications)s, %(classical_attestation_text)s,
+                    %(scaffold_status)s
                 )
                 ON CONFLICT (remedy_id) DO UPDATE SET
-                    scaffold_status = EXCLUDED.scaffold_status,
-                    confidence = EXCLUDED.confidence
-                WHERE EXCLUDED.category = 'corpus_sweep'
+                    planet = EXCLUDED.planet,
+                    domain = EXCLUDED.domain,
+                    remedy_type = EXCLUDED.remedy_type,
+                    prescription_text = EXCLUDED.prescription_text,
+                    mantra_text = EXCLUDED.mantra_text,
+                    gemstone = EXCLUDED.gemstone,
+                    charity_action = EXCLUDED.charity_action,
+                    day_of_week = EXCLUDED.day_of_week,
+                    color_associated = EXCLUDED.color_associated,
+                    confidence = EXCLUDED.confidence,
+                    source_canonical_id = EXCLUDED.source_canonical_id,
+                    source_citation = EXCLUDED.source_citation,
+                    classical_ref = EXCLUDED.classical_ref,
+                    category = EXCLUDED.category,
+                    deity = EXCLUDED.deity,
+                    mantra_sanskrit = EXCLUDED.mantra_sanskrit,
+                    mantra_transliteration = EXCLUDED.mantra_transliteration,
+                    ingredients_jsonb = EXCLUDED.ingredients_jsonb,
+                    timing_rules_jsonb = EXCLUDED.timing_rules_jsonb,
+                    cost_tier = EXCLUDED.cost_tier,
+                    contraindications = EXCLUDED.contraindications,
+                    classical_attestation_text = EXCLUDED.classical_attestation_text,
+                    scaffold_status = EXCLUDED.scaffold_status
                 """,
                 {
                     "remedy_id": r["remedy_id"],
@@ -3496,8 +3525,17 @@ def seed_remedy_corpus(
                     "deity": r.get("deity"),
                     "mantra_sanskrit": r.get("mantra_sanskrit"),
                     "mantra_transliteration": r.get("mantra_transliteration"),
+                    "ingredients_jsonb": (
+                        json.dumps(r.get("ingredients_jsonb"))
+                        if r.get("ingredients_jsonb") is not None else None
+                    ),
+                    "timing_rules_jsonb": (
+                        json.dumps(r.get("timing_rules_jsonb"))
+                        if r.get("timing_rules_jsonb") is not None else None
+                    ),
                     "cost_tier": r.get("cost_tier"),
                     "contraindications": r.get("contraindications"),
+                    "classical_attestation_text": r.get("classical_attestation_text"),
                     "scaffold_status": r.get("scaffold_status", "live"),
                 },
             )

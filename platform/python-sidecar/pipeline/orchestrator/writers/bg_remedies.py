@@ -2,12 +2,14 @@
 bg_remedies writer — populates brahma_remedy_corpus with classical remedy corpus.
 Delegates to brahmagyan.l0_remedy_corpus.seed_remedy_corpus() for INSERT logic.
 
-Three data buckets:
-  1. gen_planet_matrix()  → 108 rows  (9 planets × 8 fixed cells + 36 dana-charity)
-  2. DOSHA_REMEDIES       → 102 rows  (50 doshas × 2 remedies + extras)
-  3. LEGACY_REMEDIES      → 54 rows   (v1.0 hardcoded set, remedy_type normalised)
+Writer composition:
+  1. deterministic base → 283 rows currently
+     (108 planet matrix + 54 dosha + 55 legacy + 66 expansion)
+  2. deterministic classical_text_chunks sweep → source-snapshot-derived count;
+     rows are classified live/review by the extraction gate
+  3. accepted tantric.yaml rows → canonical live rows via the careful-inclusion gate
 
-All rows scaffold_status='live'. ZERO LLM. ZERO fabrication.
+ZERO LLM. ZERO fabrication.
 Per holistic design v1.1 and brief CLAUDECODE_BRIEF_BG_REMEDIES_v1_0 (v1.1).
 
 BRAHMA-BG-0-9 writer
@@ -90,7 +92,7 @@ class RemediesWriter(WriterBase):
             notes=(
                 f"brahma_remedy_corpus: +{inserted} inserted / {skipped} skipped; "
                 f"live_count={live_count} / total_built={total_built}; "
-                f"buckets: 108 matrix + 102 dosha-linked + 54 legacy; "
+                f"buckets: deterministic base + source-derived sweep={total_built}; "
                 f"tantric: {tantric_inserted} inserted / {tantric_queued} review_queued"
             ),
         )

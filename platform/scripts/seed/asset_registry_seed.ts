@@ -207,7 +207,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '1,242 achieved rows across the 11 tables owned by bg_reference, as measured in the BA full-asset audit after migration 371 removed cross-asset double-counting. reference_yogas, reference_doshas, and reference_dasha_systems are owned by their dedicated assets; deprecated reference_nakshatras is excluded.',
-    depends_on: [],
+    depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -215,15 +215,24 @@ export const ASSETS: AssetDef[] = [
     layer: 'brahmagyan', sort_order: 3,
     sanskrit_name: 'Śāstrapāṭha',
     english_name: 'Classical Texts',
-    english_description: 'Indexed verse chunks from BPHS, Jaimini Sutram, KP Reader, Tajaka, Phaladeepika, etc.',
+    english_description: 'Indexed verse chunks from the 15 canonical classical texts, with immutable source-object generations and preserved supervised translations.',
     storage_type: 'postgres_table',
     target_table: 'classical_text_chunks',
     count_sql: 'SELECT count(*) FROM classical_text_chunks',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
     target_floor: 10651,
     expected_volume_formula: null, // non-parametric — target_floor = 10651 is the authoritative count
-    expected_volume_inputs: { corpus_texts: 13, actual_build_date: '2026-06-09', embedding_model: 'text-multilingual-embedding-002' },
-    volume_explanation: '10,651 chunks across 13 classical texts (deterministic rebuild from GCS PDFs, pinned text-multilingual-embedding-002). Complete corpus; honest count from actual build.',
+    expected_volume_inputs: {
+      corpus_texts: 15,
+      source_objects: 20,
+      chunk_count: 10651,
+      embedding_model: 'text-multilingual-embedding-002',
+      source_manifest: 'platform/python-sidecar/brahmagyan/bg_texts_source_manifest_v1.json',
+      source_manifest_sha256: 'bfcf536e16fb219d5f6faf1f01b6bd6a3a89830a96c997afb71d46eff32d1c36',
+      corpus_identity_sha256: '44b067b48544af32df4b2f4d8b13cc7c269aa029e236a0af3d2e8d7347d7d30e',
+      corpus_content_sha256: 'b81fb9c098847ecafc2072fd49d706f1a6bb811ab3fcc169d8753010ea6e17e2',
+    },
+    volume_explanation: '10,651 preserved chunks across 15 canonical texts. Twenty immutable GCS source-object generations are pinned by bg_texts_source_manifest_v1.json (SHA-256 bfcf536e16fb219d5f6faf1f01b6bd6a3a89830a96c997afb71d46eff32d1c36); metadata-only repair is the accepted disposition and destructive full rebuild is quarantined until staged per-text replacement exists.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -292,16 +301,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_remedy_corpus',
     count_sql: 'SELECT count(*) FROM brahma_remedy_corpus',
     size_sql: "SELECT pg_total_relation_size('brahma_remedy_corpus')",
-    // 266 = writer's designed deterministic ceiling: 108 planet-matrix + 102
-    // dosha-linked + 54 legacy + 2 net-new from corpus_sweep (migrations
-    // 192/199/231). Floor = achieved count per floors-are-aspirational
-    // policy (CLAUDE.md §N.4) — do not raise without expanding the
-    // deterministic corpus design (native-judgment decision).
-    target_floor: 266,
+    // Frozen deterministic source rebuild: 283 static + 54 bg_texts-derived
+    // sweep + 4 accepted tantric rows. Migration 608 installs the executable
+    // identity/taxonomy contract; the seed preserves its registry metadata.
+    target_floor: 341,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '266 remedies = writer\'s designed deterministic ceiling: gen_planet_matrix(108) + dosha-linked(102) + legacy(54) + corpus_sweep net-new(2). Floor = achieved count per floors-are-aspirational policy (CLAUDE.md §N.4); ZERO LLM, ZERO fabrication is a hard writer constraint, so this floor cannot be raised without a native-judgment decision to expand the deterministic corpus design.',
-    depends_on: [],
+    volume_explanation: '341 achieved remedies from the frozen deterministic build: 283 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.',
+    depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Pool } from 'pg'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ASSETS } from '../../scripts/seed/asset_registry_seed'
 
 const TEST_DB_URL = process.env.NIRMANA_T0_DAG_TEST_DATABASE_URL
 const run = TEST_DB_URL ? describe : describe.skip
@@ -13,11 +14,14 @@ const MIGRATION_599 = resolve(
 )
 
 const consumers = [
+  'bg_reference',
+  'bg_remedies',
   'bg_gochara_arcs',
   'bg_kp_sublord_division',
   'bg_parihara_rules',
 ]
 const sources = [
+  'bg_ontology',
   'bg_ephemeris',
   'bg_nakshatra',
   'bg_doshas',
@@ -67,10 +71,13 @@ run('migration 599 L0 hidden dependency correction', () => {
     }
   }
 
-  async function applyMigration() {
+  async function applyMigration({ commit = true }: { commit?: boolean } = {}) {
     const client = await pool.connect()
     try {
+      // Production's migrate.ts owns the transaction around every migration.
+      await client.query('BEGIN')
       await client.query(readFileSync(MIGRATION_599, 'utf8'))
+      await client.query(commit ? 'COMMIT' : 'ROLLBACK')
     } catch (error) {
       await client.query('ROLLBACK')
       throw error
@@ -78,6 +85,15 @@ run('migration 599 L0 hidden dependency correction', () => {
       client.release()
     }
   }
+
+  it('keeps the replay seed aligned with every corrected hidden dependency', () => {
+    const byId = new Map(ASSETS.map(asset => [asset.asset_id, asset.depends_on]))
+    expect(byId.get('bg_reference')).toEqual(['bg_ontology'])
+    expect(byId.get('bg_remedies')).toEqual(['bg_texts'])
+    expect(byId.get('bg_gochara_arcs')).toEqual(['bg_ephemeris'])
+    expect(byId.get('bg_kp_sublord_division')).toEqual(['bg_nakshatra'])
+    expect(byId.get('bg_parihara_rules')).toEqual(['bg_doshas', 'bg_texts'])
+  })
 
   it('rejects a missing source authority before mutating any consumer', async () => {
     await insertAssets([...consumers, 'bg_ephemeris', 'bg_nakshatra', 'bg_doshas'])
@@ -134,6 +150,21 @@ run('migration 599 L0 hidden dependency correction', () => {
       { asset_id: 'bg_gochara_arcs', depends_on: ['bg_ephemeris'] },
       { asset_id: 'bg_kp_sublord_division', depends_on: ['bg_nakshatra'] },
       { asset_id: 'bg_parihara_rules', depends_on: ['bg_doshas', 'bg_texts'] },
+      { asset_id: 'bg_reference', depends_on: ['bg_ontology'] },
+      { asset_id: 'bg_remedies', depends_on: ['bg_texts'] },
     ])
+  })
+
+  it('leaves every dependency change reversible until the runner commits', async () => {
+    await insertAssets([...consumers, ...sources])
+
+    await applyMigration({ commit: false })
+
+    const { rows } = await pool.query(
+      `SELECT asset_id, depends_on FROM asset_registry
+        WHERE asset_id = ANY($1::text[]) ORDER BY asset_id`,
+      [consumers],
+    )
+    expect(rows).toEqual(consumers.slice().sort().map(asset_id => ({ asset_id, depends_on: [] })))
   })
 })

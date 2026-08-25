@@ -1,5 +1,5 @@
 {
-  "probe_digest": "60da41846e5e5c493ae33affa1499c7dc5b6b4b4205b6d04eb3a23777199b97c",
+  "probe_digest": "1d6c53a6f5ab0d9dd79fc29af348be47189f1e724f839fb8c37eebf52b6ed277",
   "version": "nirmana-writer-digest-inventory/v1",
   "writers": {
     "bg_class_lifetime_counts": "32c553ffe868bfddccf7f495cccbccc9e2897e8418762bf35dfb84ea08bab6f8",
@@ -25,12 +25,12 @@
     "bg_phaladeepika_latta": "9170aa9ea0368e6f3854834ff44c8e83776f14b45fc911eab3bde6b5ae5eb5df",
     "bg_prashna_rules": "4c322ac5532448acd3255ed8cff602edfbc1ef354082447c37fce49a2b352b96",
     "bg_reference": "36c611ee482f7f51b74c3af1b29e9ccda84881e7bcf28403694848b4fcf591b3",
-    "bg_remedies": "5a4d734871e4ae3a3eee9df04be2eaece81d323bdb2c4bda8c615527b18594db",
+    "bg_remedies": "3e517cc61c339303ea6adb3b3e9813dea8450205891d75548cda489be8f45f9b",
     "bg_rules": "9335cf7cb04776e23879198e2d8f7022a7e3088a31dbe1cd0685d4b50c429bf7",
     "bg_sign_medical": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
     "bg_sky_calendar": "b48e30f116daaece72f5a245ec2f5767192fa0696b1ab4511248b3e654463ab2",
     "bg_text_index": "733f759a7fd199031bc68b52927370205826013626e3ada5c5a5214da2e33aa9",
-    "bg_texts": "2b676dd263ac94f20c458309f0926a5903ea123cf21bad0f4fa40a0ecf685e3e",
+    "bg_texts": "04d5ff2c0e393aadb775b3322f217b93ac884a88aa1e8ad8f37f12b9be5fdb11",
     "bg_transit_engine": "58b143b3313196343204c3376a75d6a321152c75740dd2d50a290b14218c8456",
     "bg_transit_rules": "58b143b3313196343204c3376a75d6a321152c75740dd2d50a290b14218c8456",
     "bg_vastu_directions": "6c978384761db6d841bcfe30d5adf3701c6dab9f2174644a0bcddb8661281e85",

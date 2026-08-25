@@ -12,15 +12,16 @@ BRAHMA-BG-0-3 | L0 Brahmagyan Build — bg_texts asset (Doc 6 of 15)
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import logging
 import os
 import re
 import threading
 import time
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
@@ -38,19 +39,42 @@ SMALLINT_MAX = 32_767        # PostgreSQL SMALLINT ceiling
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "madhav-astrology")
 VERTEX_LOCATION = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
 
-# sarvartha_chintamani: image-only PDF → use archive.org DjVu OCR extract
-_SARVARTHA_DJVU_URL = (
-    "https://archive.org/download/Astrology_Books_by_B_Suryanarayana_Row/"
-    + urllib.parse.quote(
-        "Sarvartha Chintamani with English Translation"
-        " - B Suryanarayana Row 1899_djvu.txt"
-    )
+# sarvartha_chintamani: image-only PDF → use the reviewed GCS snapshot of the
+# Archive.org DjVu OCR extract. Never fetch mutable upstream content at build time.
+_SARVARTHA_DJVU_GCS_PATH = (
+    "gs://madhav-marsys-sources/L8/classical_texts/source/"
+    "sarvartha_chintamani_djvu.txt"
 )
 
 # nadi_navamsa_patel: use pre-extracted DjVu .txt from GCS (cleaner than PDF OCR)
 _PATEL_DJVU_GCS_PATH = (
     "gs://madhav-marsys-sources/L8/classical_texts/source/nadi_navamsa_patel_djvu.txt"
 )
+
+_SOURCE_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "brahmagyan"
+    / "bg_texts_source_manifest_v1.json"
+)
+_SOURCE_MANIFEST_SHA256 = (
+    "bfcf536e16fb219d5f6faf1f01b6bd6a3a89830a96c997afb71d46eff32d1c36"
+)
+
+
+def _load_source_manifest(path: Path = _SOURCE_MANIFEST_PATH) -> dict[str, Any]:
+    """Load the governed manifest only when its exact bytes are reviewed."""
+    raw = path.read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    if actual != _SOURCE_MANIFEST_SHA256:
+        raise ValueError(
+            "bg_texts source manifest SHA-256 mismatch: "
+            f"expected {_SOURCE_MANIFEST_SHA256}, observed {actual}"
+        )
+    return json.loads(raw)
+
+
+SOURCE_MANIFEST: dict[str, Any] = _load_source_manifest()
+_SOURCE_OBJECTS = {item["gcs_path"]: item for item in SOURCE_MANIFEST["objects"]}
 
 # bhrigu_nandi_nadi: regex to strip chart-diagram label fragments
 # e.g. "Sat.", "Ven.", "Dh.", "Dt.", "Ma.", "Mo." appearing as isolated tokens
@@ -96,20 +120,42 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
 
 # ── GCS download ──────────────────────────────────────────────────────────────
 
+def _source_object(gcs_path: str) -> dict[str, Any]:
+    """Return one reviewed immutable source object or reject the build."""
+    source = _SOURCE_OBJECTS.get(gcs_path)
+    if source is None:
+        raise ValueError(f"bg_texts source path is not pinned: {gcs_path}")
+    return source
+
+
+def _verify_source_bytes(data: bytes, source: dict[str, Any]) -> None:
+    """Fail closed when downloaded bytes differ from the reviewed manifest."""
+    actual = base64.b64encode(hashlib.md5(data).digest()).decode("ascii")
+    if actual != source["md5_base64"]:
+        raise ValueError(
+            f"bg_texts source MD5 mismatch for {source['gcs_path']}: "
+            f"expected {source['md5_base64']}, observed {actual}"
+        )
+
+
 def _download_gcs(gcs_path: str) -> bytes | None:
-    """Download a GCS object. Returns bytes or None if absent/error."""
+    """Download the exact reviewed GCS generation and verify its content hash."""
+    source = _source_object(gcs_path)
+    generation = int(source["generation"])
     try:
         from google.cloud import storage  # type: ignore[import]
         parts = gcs_path.removeprefix("gs://").split("/", 1)
         bucket_name, blob_path = parts[0], parts[1]
         client = storage.Client(project=GCP_PROJECT)
-        blob = client.bucket(bucket_name).blob(blob_path)
+        blob = client.bucket(bucket_name).blob(blob_path, generation=generation)
         if not blob.exists():
             return None
-        return blob.download_as_bytes()
+        data = blob.download_as_bytes(if_generation_match=generation)
     except Exception as exc:
         logger.error("[bg_texts] GCS download failed %s: %s", gcs_path, exc)
         return None
+    _verify_source_bytes(data, source)
+    return data
 
 
 # ── PDF text extraction ───────────────────────────────────────────────────────
@@ -144,15 +190,14 @@ def _devanagari_ratio(pages: list[str], sample_n: int = 20) -> float:
 
 def _fetch_sarvartha_djvu() -> str | None:
     """
-    Download the sarvartha_chintamani DjVu OCR text from archive.org.
+    Download the pinned sarvartha_chintamani DjVu OCR snapshot from GCS.
     Returns cleaned text, or None on failure.
     """
     try:
-        req = urllib.request.Request(
-            _SARVARTHA_DJVU_URL, headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = r.read().decode("utf-8", errors="replace")
+        raw_bytes = _download_gcs(_SARVARTHA_DJVU_GCS_PATH)
+        if not raw_bytes:
+            return None
+        raw = raw_bytes.decode("utf-8", errors="replace")
         # DjVu format: form-feeds (\x0c) separate pages; strip noise lines
         cleaned = raw.replace("\x0c", "\n\n")
         lines = []
@@ -285,6 +330,51 @@ def _vec_str(vec: list[float]) -> str:
     return "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
 
 
+def _upsert_text_metadata(conn: Any, text: dict[str, Any]) -> None:
+    """Converge the canonical registry metadata without refreshing chunk provenance."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO classical_texts
+              (text_id, title_en, title_sa, author, school, tradition, tier,
+               license, license_cleared, total_chapters, total_verses,
+               source_edition, ingested_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (text_id) DO UPDATE SET
+              title_en        = EXCLUDED.title_en,
+              title_sa        = EXCLUDED.title_sa,
+              author          = EXCLUDED.author,
+              school          = EXCLUDED.school,
+              tradition       = EXCLUDED.tradition,
+              tier            = EXCLUDED.tier,
+              license         = EXCLUDED.license,
+              license_cleared = EXCLUDED.license_cleared,
+              total_chapters  = EXCLUDED.total_chapters,
+              total_verses    = EXCLUDED.total_verses,
+              source_edition  = EXCLUDED.source_edition
+            """,
+            (
+                text["text_id"], text["title_en"], text.get("title_sa"),
+                text.get("author"), text["school"], text["tradition"],
+                text["tier"], text["license"], text.get("license_cleared", True),
+                text.get("total_chapters"), text.get("total_verses"),
+                text.get("source_edition"), datetime.now(timezone.utc),
+            ),
+        )
+
+
+def _validate_rebuild_mode(raw_mode: object) -> str:
+    """Permit only non-destructive text maintenance until staged swap exists."""
+    if raw_mode == "full":
+        raise ValueError(
+            "bg_texts full rebuild is quarantined until per-text staged verification "
+            "and atomic selective replacement exist"
+        )
+    if raw_mode not in {"additive", "metadata_only"}:
+        raise ValueError(f"bg_texts unsupported rebuild_mode: {raw_mode!r}")
+    return str(raw_mode)
+
+
 # ── Main writer ───────────────────────────────────────────────────────────────
 
 @register("bg_texts")
@@ -302,54 +392,43 @@ class TextsWriter(WriterBase):
                 notes=f"dry_run=True; would ingest {len(TEXTS)} texts from GCS PDFs",
             )
 
-        # ── Step 0: Mode-gated clear + registry cleanup ───────────────────────
-        # rebuild_mode: 'additive' (default) — INSERT only new texts, leave existing chunks
-        #               'full' — DELETE all chunks then rebuild entire corpus from scratch
-        # The additive path is the routine-add path; 'full' is the reproducibility-proof path.
-        rebuild_mode = ctx.config.get("rebuild_mode", "additive")
+        # ── Step 0: Non-destructive mode + registry cleanup ──────────────────
+        # additive (default): insert only texts with no chunks.
+        # metadata_only: converge the 15 canonical registry rows and stop.
+        # full: quarantined because delete-first can destroy healthy chunks when
+        # a later source/extraction step is conditional. A staged per-text swap
+        # is required before that mode may return.
+        rebuild_mode = _validate_rebuild_mode(
+            ctx.config.get("rebuild_mode", "additive")
+        )
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) AS n FROM classical_text_chunks")
             pre_count = cur.fetchone()["n"]
-
-            if rebuild_mode == "full":
-                cur.execute("DELETE FROM classical_text_chunks")
-                logger.info("[bg_texts] full rebuild: cleared %d existing chunks", pre_count)
-            else:
-                logger.info(
-                    "[bg_texts] additive mode: %d existing chunks preserved; "
-                    "only new texts will be chunked + embedded",
-                    pre_count,
-                )
+            logger.info(
+                "[bg_texts] %s mode: %d existing chunks preserved",
+                rebuild_mode,
+                pre_count,
+            )
 
             cur.execute("DELETE FROM classical_texts WHERE text_id = 'lal_kitab'")
             if cur.rowcount:
                 logger.info("[bg_texts] removed lal_kitab from classical_texts (DROPPED corpus text)")
 
         # ── Step 1: Upsert classical_texts registry rows ──────────────────────
-        with conn.cursor() as cur:
-            for t in TEXTS:
-                cur.execute(
-                    """
-                    INSERT INTO classical_texts
-                      (text_id, title_en, title_sa, author, school, tradition, tier,
-                       license, license_cleared, total_chapters, total_verses,
-                       source_edition, ingested_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (text_id) DO UPDATE SET
-                      title_en       = EXCLUDED.title_en,
-                      source_edition = EXCLUDED.source_edition,
-                      ingested_at    = EXCLUDED.ingested_at
-                    """,
-                    (
-                        t["text_id"], t["title_en"], t.get("title_sa"), t.get("author"),
-                        t["school"], t["tradition"], t["tier"],
-                        t["license"], t.get("license_cleared", True),
-                        t.get("total_chapters"), t.get("total_verses"),
-                        t.get("source_edition"),
-                        datetime.now(timezone.utc),
-                    ),
-                )
-            logger.info("[bg_texts] upserted %d classical_texts registry rows", len(TEXTS))
+        for text in TEXTS:
+            _upsert_text_metadata(conn, text)
+        logger.info("[bg_texts] upserted %d classical_texts registry rows", len(TEXTS))
+
+        if rebuild_mode == "metadata_only":
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                duration_seconds=time.time() - t0,
+                notes=(
+                    f"metadata_only: converged {len(TEXTS)} canonical text rows; "
+                    f"preserved {pre_count} existing chunks"
+                ),
+            )
 
         # ── Steps 2–6: Per-text PDF→extract→chunk→embed→insert ───────────────
         total_chunks = 0
@@ -357,18 +436,15 @@ class TextsWriter(WriterBase):
         per_text_counts: dict[str, int] = {}
 
         # Pre-build the set of text_ids that already have chunks (for additive skip)
-        if rebuild_mode == "additive":
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT DISTINCT text_id FROM classical_text_chunks"
-                )
-                _already_present: set[str] = {row["text_id"] for row in cur.fetchall()}
-            logger.info(
-                "[bg_texts] additive mode: %d text_ids already have chunks → will skip them",
-                len(_already_present),
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT text_id FROM classical_text_chunks"
             )
-        else:
-            _already_present = set()
+            _already_present: set[str] = {row["text_id"] for row in cur.fetchall()}
+        logger.info(
+            "[bg_texts] additive mode: %d text_ids already have chunks → will skip them",
+            len(_already_present),
+        )
 
         for text in TEXTS:
             text_id = text["text_id"]

@@ -387,6 +387,58 @@ jobs:
           NIRMANA_L0_WAVE0_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_integrity_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_wave0_integrity_contracts.test.ts --reporter=verbose
 
+      - name: Nirmāṇa L0 — provision the migration 607 bg_reference integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_reference_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
+        env:
+          NIRMANA_BG_REFERENCE_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_reference_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_reference_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 608 bg_remedies integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_remedies_integrity_test;"
+
+      - name: Nirmāṇa L0 — install migration 608 writer test runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Nirmāṇa L0 — install migration 608 writer test dependencies
+        run: python -m pip install 'psycopg[binary]>=3.2' 'pyyaml>=6.0'
+
+      - name: Nirmāṇa L0 — migration 608 bg_remedies contract against real Postgres
+        env:
+          NIRMANA_BG_REMEDIES_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_remedies_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_remedies_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 609 digest-revision test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_digest_revision_test;"
+
+      - name: Nirmāṇa L0 — migration 609 append-only digest revision against real Postgres
+        env:
+          NIRMANA_L0_DIGEST_REVISION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_revision_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_digest_spec_revision.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 610 bg_texts integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_texts_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 610 bg_texts contract against real Postgres
+        env:
+          NIRMANA_BG_TEXTS_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_texts_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_texts_integrity_contract.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
@@ -1107,6 +1159,9 @@ jobs:
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
