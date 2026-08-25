@@ -300,6 +300,40 @@ def _assert_upgradeable_p0b_service(plist_path: Path, runtime: Path, port: int) 
     return old_release, old_sha
 
 
+def _assert_upgradeable_p1_service(plist_path: Path, runtime: Path, port: int) -> tuple[Path, str]:
+    """Refuse every service except the exact deployed P1-enabled control plane."""
+    try:
+        plist = plistlib.loads(plist_path.read_bytes())
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing control-plane plist is unreadable") from exc
+    arguments = plist.get("ProgramArguments") if isinstance(plist, dict) else None
+    if plist.get("Label") != SERVICE_LABEL or not isinstance(arguments, list):
+        raise ValueError("existing launchd job is not the approved control-plane service")
+    if len(arguments) != 10 or not isinstance(arguments[1], str):
+        raise ValueError("existing launchd job is not the exact P1-enabled service eligible for a P1 release upgrade")
+    old_release = Path(arguments[1]).parent
+    try:
+        old_sha = (old_release / ".source-sha").read_text(encoding="utf-8").strip()
+        assert_release_attestation(old_release, old_sha)
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing P1 release lacks a valid immutable attestation") from exc
+    expected = [arguments[0], str(old_release / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port)]
+    if arguments != expected:
+        raise ValueError("existing launchd job is not the exact P1-enabled service eligible for a P1 release upgrade")
+    return old_release, old_sha
+
+
+def _assert_private_p1_credentials(runtime: Path) -> None:
+    """Require existing P1 credentials without reading, copying, or rotating them."""
+    credential_path = runtime / "p1-credentials.json"
+    try:
+        status = credential_path.lstat()
+    except OSError as exc:
+        raise ValueError("P1 credentials are not a private regular file") from exc
+    if not stat.S_ISREG(status.st_mode) or stat.S_ISLNK(status.st_mode) or status.st_uid != os.getuid() or status.st_mode & 0o077 or status.st_mode & 0o600 != 0o600:
+        raise ValueError("P1 credentials are not a private regular file")
+
+
 def _write_private_file(path: Path, content: bytes) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -364,6 +398,56 @@ def upgrade_p1(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: 
         raise activation_error
 
 
+def upgrade_p1_release(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: Path, post_snapshot: Path, port: int = 8787) -> dict[str, str]:
+    """Atomically advance only an attested P1-enabled service to a new attested P1 release."""
+    if sys.platform != "darwin":
+        raise ValueError("launchd P1 release upgrades are supported only on macOS")
+    release_dir = assert_release_attestation(release_dir, source_sha)
+    runtime_preflight(runtime, APPROVED_RUNTIME, _filevault_status())
+    plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+    old_release, old_sha = _assert_upgradeable_p1_service(plist_path, runtime, port)
+    if old_sha == source_sha:
+        raise ValueError("candidate source SHA already runs as the exact P1-enabled service")
+    _assert_private_p1_credentials(runtime)
+    domain = f"gui/{os.getuid()}"
+    if subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True).returncode != 0:
+        raise ValueError("the approved P1-enabled service is not loaded; refusing an unproven replacement")
+    store = EventStore(runtime, p0b_only=True, p1_enabled=True)
+    if not store.verify_replay()["ok"]:
+        raise ValueError("P1-enabled replay integrity is not clean; refusing a P1 release upgrade")
+    with store.connection() as con:
+        if not EventStore._p0_to_p1_dependency_resolved(con):
+            raise ValueError("P0-to-P1 dependency is unresolved; refusing a P1 release upgrade")
+    pre = store.export_snapshot(pre_snapshot)
+    previous_plist = plist_path.read_bytes()
+    backup_plist = plist_path.with_name(f"{plist_path.name}.p1-backup-{source_sha[:12]}")
+    _write_private_file(backup_plist, previous_plist)
+    replacement = build_launchd_plist(release_dir, runtime, port, p1_enabled=True)
+    temporary_plist = plist_path.with_name(f".{plist_path.name}.{source_sha[:12]}.p1-release.tmp")
+    _write_private_file(temporary_plist, replacement)
+    candidate_bootstrap_attempted = False
+    try:
+        subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=True)
+        os.replace(temporary_plist, plist_path)
+        candidate_bootstrap_attempted = True
+        subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        if not store.verify_replay()["ok"]:
+            raise ValueError("P1-enabled release replay integrity is not clean")
+        post = store.export_snapshot(post_snapshot)
+        return {"pre_snapshot": pre["path"], "post_snapshot": post["path"], "backup_plist": str(backup_plist), "previous_source_sha": old_sha}
+    except Exception as activation_error:
+        temporary_plist.unlink(missing_ok=True)
+        try:
+            if candidate_bootstrap_attempted:
+                # A failed bootstrap can still have partially loaded the candidate; remove it before restoring P1.
+                subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=False, capture_output=True)
+            _replace_private_file(plist_path, previous_plist)
+            subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        except Exception as rollback_error:
+            raise RuntimeError(f"P1 release upgrade failed and P1 rollback failed; preserved plist backup: {backup_plist}") from rollback_error
+        raise activation_error
+
+
 def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787, *, p1_enabled: bool = False) -> Path:
     if sys.platform != "darwin":
         raise ValueError("launchd installation is supported only on macOS")
@@ -388,6 +472,7 @@ def main() -> None:
     parser.add_argument("--install", action="store_true")
     parser.add_argument("--attest-release", action="store_true")
     parser.add_argument("--upgrade-p1", action="store_true")
+    parser.add_argument("--upgrade-p1-release", action="store_true")
     parser.add_argument("--p1-enabled", action="store_true")
     parser.add_argument("--release-dir", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument("--source-repo", type=Path)
@@ -397,8 +482,8 @@ def main() -> None:
     parser.add_argument("--pre-snapshot", type=Path)
     parser.add_argument("--post-snapshot", type=Path)
     args = parser.parse_args()
-    if sum((args.attest_release, args.install, args.upgrade_p1)) != 1:
-        raise SystemExit("choose exactly one of --attest-release, --install, or --upgrade-p1")
+    if sum((args.attest_release, args.install, args.upgrade_p1, args.upgrade_p1_release)) != 1:
+        raise SystemExit("choose exactly one of --attest-release, --install, --upgrade-p1, or --upgrade-p1-release")
     if args.attest_release:
         if args.source_repo is None:
             raise SystemExit("--attest-release requires --source-repo at the repository with origin/main evidence")
@@ -408,10 +493,13 @@ def main() -> None:
         print(install(args.release_dir, args.runtime, args.source_sha, args.port, p1_enabled=args.p1_enabled))
         return
     if args.pre_snapshot is None or args.post_snapshot is None:
-        raise SystemExit("--upgrade-p1 requires distinct --pre-snapshot and --post-snapshot paths")
+        raise SystemExit("P1 upgrade commands require distinct --pre-snapshot and --post-snapshot paths")
     if args.pre_snapshot == args.post_snapshot:
         raise SystemExit("--upgrade-p1 snapshot paths must be distinct")
-    print(json.dumps(upgrade_p1(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
+    if args.upgrade_p1:
+        print(json.dumps(upgrade_p1(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
+        return
+    print(json.dumps(upgrade_p1_release(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
 
 
 if __name__ == "__main__":
