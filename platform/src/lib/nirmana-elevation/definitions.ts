@@ -4,11 +4,12 @@ import { z } from 'zod'
 import { query } from '@/lib/db/client'
 
 export const NirmanaElevationManifestSchema = z.object({
+  chart_id: z.string().uuid(),
   assets: z.array(z.object({
     asset_id: z.string(),
     layer: z.string(),
     wave_index: z.number().int().nonnegative().optional(),
-    execution_obligation: z.enum(['build', 'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'unresolved']).optional(),
+    execution_obligation: z.enum(['build', 'probe', 'producer_covered', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition', 'unresolved']).optional(),
     producer_id: z.string().optional(),
     covered_asset_ids: z.array(z.string()).optional(),
   })),
