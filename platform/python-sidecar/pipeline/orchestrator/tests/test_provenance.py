@@ -30,6 +30,7 @@ def _receipt(**overrides):
         "partition_declaration": "chart_id",
         "has_cowriters": False,
         "output_digest": "output-a",
+        "output_digest_spec_sha256": "a" * 64,
     }
     values.update(overrides)
     return build_receipt(**values)
@@ -62,14 +63,14 @@ def test_checked_in_writer_digest_inventory_matches_sidecar_sources():
 
 def test_each_receipt_dimension_is_classified_independently():
     stored = _receipt()
-    for field in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest"):
+    for field in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest", "output_digest_spec_sha256"):
         current = replace(stored, **{field: f"changed-{field}"})
         assert classify_receipt(stored, current) == ("stale", [f"{field}_changed"])
 
 
 def test_receipt_contract_version_change_is_never_fresh():
     stored = _receipt()
-    current = replace(stored, receipt_version="nirmana-provenance-receipt-v2")
+    current = replace(stored, receipt_version="nirmana-provenance-receipt-v3")
     assert classify_receipt(stored, current) == ("stale", ["receipt_version_changed"])
 
 
@@ -91,6 +92,12 @@ def test_digest_omission_is_an_explicit_unknown_blocker():
     assert classify_receipt(_receipt(), unknown) == (
         "unknown", ["code_digest_unavailable", "output_digest_unavailable"],
     )
+
+
+def test_no_reviewed_output_spec_is_unknown_even_when_a_legacy_digest_exists():
+    legacy = _receipt(output_digest_spec_sha256=None)
+    assert legacy.receipt_state == "unknown"
+    assert legacy.unknown_reasons == ("output_digest_spec_unavailable",)
 
 
 def test_unserialisable_config_is_unknown_not_a_successful_digest():
@@ -117,6 +124,7 @@ def test_reconciliation_records_stale_without_replacing_last_successful_receipt(
         "code_digest": "old-code", "config_digest": current.config_digest,
         "upstream_digest": current.upstream_digest, "partition_digest": current.partition_digest,
         "output_digest": current.output_digest, "upstream_receipts": [], "unknown_reasons": [],
+        "output_digest_spec_sha256": current.output_digest_spec_sha256,
         "receipt_version": current.receipt_version,
     }])
 

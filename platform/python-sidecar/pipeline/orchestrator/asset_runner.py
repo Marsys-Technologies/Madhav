@@ -1033,15 +1033,9 @@ def _run_data_writer(
     # retained for legacy unit fixtures, but cannot be reached from main.py.
     if declared_deps is not None:
         try:
-            from .provenance import canonical_digest, capture_and_persist_receipt
-            output_digest = canonical_digest({
-                "version": "nirmana-writer-output-v1",
-                "asset_id": asset_id,
-                "chart_id": chart_id,
-                "run_id": run_id,
-                "final_state": final_state,
-                "rows_written": rows_written,
-            })
+            from .output_digest import compute_output_digest
+            from .provenance import capture_and_persist_receipt
+            output_digest, output_digest_spec_sha256 = compute_output_digest(cur, asset_id=asset_id)
             capture_and_persist_receipt(
                 cur,
                 asset_id=asset_id,
@@ -1052,6 +1046,7 @@ def _run_data_writer(
                 upstream_digest=upstream_hash,
                 upstream_receipts=upstream_receipts,
                 output_digest=output_digest,
+                output_digest_spec_sha256=output_digest_spec_sha256,
                 partition_declaration=natural_key_partition,
                 has_cowriters=has_cowriters,
             )
