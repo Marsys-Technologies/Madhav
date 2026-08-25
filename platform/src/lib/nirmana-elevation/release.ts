@@ -1,5 +1,5 @@
 import 'server-only'
-import { ServicesClient } from '@google-cloud/run'
+import { RevisionsClient, ServicesClient } from '@google-cloud/run'
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 const REGION = process.env.GOOGLE_CLOUD_REGION ?? 'asia-south1'
@@ -31,13 +31,28 @@ export interface NirmanaReleaseStatus {
 }
 
 type FetchFn = typeof fetch
-type CloudRunClient = Pick<ServicesClient, 'getService'>
+type CloudRunClient = Pick<ServicesClient, 'getService'> & Pick<RevisionsClient, 'getRevision'>
 
 let servicesClient: ServicesClient | null = null
+let revisionsClient: RevisionsClient | null = null
 
 function cloudRunServices(): ServicesClient {
   if (!servicesClient) servicesClient = new ServicesClient()
   return servicesClient
+}
+
+function cloudRunRevisions(): RevisionsClient {
+  if (!revisionsClient) revisionsClient = new RevisionsClient()
+  return revisionsClient
+}
+
+function cloudRun(): CloudRunClient {
+  const services = cloudRunServices()
+  const revisions = cloudRunRevisions()
+  return {
+    getService: services.getService.bind(services),
+    getRevision: revisions.getRevision.bind(revisions),
+  }
 }
 
 function bounded<T>(operation: Promise<T>): Promise<T> {
@@ -63,7 +78,7 @@ function message(error: unknown): string {
 export async function loadNirmanaReleaseStatus({
   now = new Date(),
   fetchFn = fetch,
-  cloudRunClient = cloudRunServices(),
+  cloudRunClient = cloudRun(),
 }: {
   now?: Date
   fetchFn?: FetchFn
@@ -101,10 +116,14 @@ export async function loadNirmanaReleaseStatus({
         if (!servingRevision) throw new Error('Cloud Run service has no single serving revision')
         deployed_revision = servingRevision.split('/').at(-1) ?? null
         if (!deployed_revision) throw new Error('Cloud Run serving revision name is invalid')
-        const latestReadyRevision = service.latestReadyRevision?.split('/').at(-1) ?? null
-        const commitSha = service.template?.labels?.['commit-sha']
-        if (latestReadyRevision === deployed_revision && typeof commitSha === 'string' && /^[a-f0-9]{40}$/i.test(commitSha)) {
-          deployed_sha = commitSha
+        try {
+          const [revision] = await bounded(cloudRunClient.getRevision({ name: servingRevision }))
+          const commitSha = revision.labels?.['commit-sha']
+          if (typeof commitSha === 'string' && /^[a-f0-9]{40}$/i.test(commitSha)) {
+            deployed_sha = commitSha
+          }
+        } catch {
+          gaps.push('Serving Cloud Run revision provenance is unavailable; production sync is withheld.')
         }
         return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at, age_seconds: 0, error: null }
       } catch (error) {
