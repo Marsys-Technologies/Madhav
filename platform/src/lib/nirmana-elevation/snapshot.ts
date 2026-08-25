@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { query } from '@/lib/db/client'
 import { canonicalManifestDigest, parseNirmanaElevationManifest, type NirmanaElevationManifest } from './definitions'
+import type { NirmanaReleaseStatus } from './release'
 import { NirmanaElevationSnapshotSchema, type NirmanaElevationSnapshot } from './types'
 
 const LAYERS = [
@@ -133,7 +134,7 @@ function buildRunId(sourceRef: string): string | null {
   return sourceRef.startsWith('build_run:') ? sourceRef.slice('build_run:'.length) : null
 }
 
-export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString() }: { generatedAt?: string } = {}): NirmanaElevationSnapshot {
+export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString(), releaseStatus = null }: { generatedAt?: string; releaseStatus?: NirmanaReleaseStatus | null } = {}): NirmanaElevationSnapshot {
   const generated_at = new Date(generatedAt).toISOString()
   const definition = raw.campaign_definitions[0]
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
@@ -277,19 +278,23 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const definitionIsFrozen = Boolean(manifestAssets)
   const gaps = [
     ...(definitionIsFrozen ? [] : ['Campaign denominator is reconciling; totals and percentages are withheld.']),
-    'Release reconciliation is not yet connected to an authoritative deployment source.',
+    ...(releaseStatus?.gaps ?? ['Release reconciliation is not yet connected to an authoritative deployment source.']),
   ]
   const semantic = { campaign: definition ? { campaign_id: definition.campaign_id, definition_revision: definition.definition_revision, definition_status: definition.definition_status } : { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling' }, assets, layers, active_runs }
   const generation = digest(semantic)
+  const sources = [
+    ...[
+      ['asset_registry', 'Cloud SQL asset_registry'], ['asset_throughput', 'Cloud SQL asset_throughput'], ['build_runs', 'Cloud SQL build_runs'], ['build_run_assets', 'Cloud SQL build_run_assets'], ['build_substep_progress', 'Cloud SQL build_substep_progress'], ['campaign_definitions', 'Cloud SQL nirmana_elevation_campaign_definitions'], ['campaign_events', 'Cloud SQL nirmana_elevation_campaign_events'],
+    ].map(([source_id, provenance]) => ({ source_id, provenance, state: 'fresh' as const, observed_at: generated_at, age_seconds: 0, error: null })),
+    ...(releaseStatus?.sources ?? []),
+  ]
   return NirmanaElevationSnapshotSchema.parse({
     schema_version: '1.0', generation, generated_at,
     campaign: { campaign_id: definition?.campaign_id ?? 'nirmana-elevation', definition_revision: definition?.definition_revision ?? null, definition_status: definition?.definition_status ?? 'reconciling', campaign_status: definitionIsFrozen ? 'foundation' : 'takeover', current_layer: null, current_wave: null },
     progress: { denominator_status: definitionIsFrozen ? 'frozen' : 'reconciling', assets_total: manifestAssets?.length ?? null, assets_frozen: frozenAssetIds.size, layers_total: 6, layers_frozen: layers.filter((layer) => layer.state === 'frozen').length, buildable_assets_total: manifestAssets?.filter((asset) => asset.execution_obligation === 'build').length ?? null, accepted_rebuilds: acceptedBuildAssetIds.size },
     layers, assets, active_runs,
-    release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
-    sources: [
-      ['asset_registry', 'Cloud SQL asset_registry'], ['asset_throughput', 'Cloud SQL asset_throughput'], ['build_runs', 'Cloud SQL build_runs'], ['build_run_assets', 'Cloud SQL build_run_assets'], ['build_substep_progress', 'Cloud SQL build_substep_progress'], ['campaign_definitions', 'Cloud SQL nirmana_elevation_campaign_definitions'], ['campaign_events', 'Cloud SQL nirmana_elevation_campaign_events'],
-    ].map(([source_id, provenance]) => ({ source_id, provenance, state: 'fresh' as const, observed_at: generated_at, age_seconds: 0, error: null })),
+    release: releaseStatus?.release ?? { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
+    sources,
     data_quality: { verdict: gaps.length ? 'degraded' : 'reliable', gaps, contradictions: [] },
   })
 }
