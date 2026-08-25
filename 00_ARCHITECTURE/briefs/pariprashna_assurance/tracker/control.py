@@ -35,6 +35,7 @@ STREAMS = [("S1", "Navigation, Shell and History"), ("S2", "Conversation and Rea
 GATES = [("CG-0", "Control Plane Ready"), ("CG-1", "Takeover Reconciled"), ("CG-2", "Safe to Test"), ("CG-3", "Stream Complete"), ("CG-4", "Integrated Assurance"), ("CG-5", "Operationally Proven"), ("CG-6", "Native Accepted"), ("CG-7", "Release Closed")]
 STAGE_NAMES = {stage_id: stage_name for stage_id, stage_name, _ in STAGES}
 STREAM_IDS = {stream_id for stream_id, _ in STREAMS}
+P1_F004 = "P1-F-004"
 
 
 class RejectedEvent(ValueError):
@@ -350,7 +351,16 @@ class EventStore:
                 and request["payload"].get("from") == "P0"
                 and request["payload"].get("to") == "P1"
             )
-            if stream_id and stream_id not in streams and not p0b_onboarding_handoff:
+            p1_completion_handoff = (
+                self.p0b_only
+                and self.p1_enabled
+                and request["actor_id"] == "integrator-p1"
+                and event_type == "dependency_resolved"
+                and stream_id == "P2"
+                and request["payload"].get("from") == "P1"
+                and request["payload"].get("to") == "P2"
+            )
+            if stream_id and stream_id not in streams and not p0b_onboarding_handoff and not p1_completion_handoff:
                 con.execute("ROLLBACK")
                 raise RejectedEvent("STREAM_FORBIDDEN", f"{request['actor_id']} does not own {stream_id}")
             fingerprint = request_fingerprint(request)
@@ -491,16 +501,20 @@ class EventStore:
                 raise RejectedEvent("FINDING_REFERENCE_REQUIRED", "triage must reference a discovered finding in the same stream")
         if typ == "finding_discovered":
             finding_id = payload.get("finding_id")
-            if stream_id not in STREAM_IDS or not isinstance(finding_id, str) or not finding_id.strip() or payload.get("severity") not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
-                raise RejectedEvent("FINDING_SCHEMA", "a finding needs a known stream, unique non-empty id, and declared severity")
+            if stream_id == "P1" and (not self.p0b_only or not self.p1_enabled or finding_id != P1_F004):
+                raise RejectedEvent("P1_FINDING_SCHEMA", "P1 remediation is limited to P1-F-004 in the approved P1-enabled P0B runtime")
+            if stream_id not in STREAM_IDS | {"P1"} or not isinstance(finding_id, str) or not finding_id.strip() or payload.get("severity") not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
+                raise RejectedEvent("FINDING_SCHEMA", "a finding needs an eligible target, unique non-empty id, and declared severity")
             if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
                 raise RejectedEvent("FINDING_ID_CONFLICT", "a finding identifier may be discovered once")
             if self._remediation_contract(con, stream_id) is not None:
                 raise RejectedEvent("FINDING_FREEZE", "a new finding after the frozen remediation plan requires a separately governed scope path")
         if typ == "remediation_approved" and "remediation_plan" in payload:
             plan = payload["remediation_plan"]
-            if stream_id not in STREAM_IDS or not isinstance(plan, list):
-                raise RejectedEvent("REMEDIATION_PLAN_SCHEMA", "a remediation plan must be an array for a known stream")
+            if stream_id == "P1" and (not self.p0b_only or not self.p1_enabled or not isinstance(plan, list) or len(plan) != 1 or not isinstance(plan[0], dict) or plan[0].get("finding_id") != P1_F004):
+                raise RejectedEvent("P1_REMEDIATION_SCHEMA", "P1 may freeze only one P1-F-004 remediation in the approved P1-enabled P0B runtime")
+            if stream_id not in STREAM_IDS | {"P1"} or not isinstance(plan, list):
+                raise RejectedEvent("REMEDIATION_PLAN_SCHEMA", "a remediation plan must be an array for an eligible target")
             if self._remediation_contract(con, stream_id) is not None:
                 raise RejectedEvent("REMEDIATION_PLAN_LOCKED", "a stream remediation plan is frozen after triage")
             current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
@@ -548,6 +562,13 @@ class EventStore:
                 current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
                 if not any(gate["id"] == "CG-0" and gate["status"] == "CLOSED" for gate in current["gates"]):
                     raise RejectedEvent("P0B_HANDOFF_PREREQUISITE", "P0-to-P1 onboarding requires closed CG-0")
+            if self.p0b_only and self.p1_enabled and dependency == ("P1", "P2"):
+                current = fold(self.definition(), [self._row_event(row) for row in con.execute("SELECT * FROM events ORDER BY ledger_seq")], now_iso())
+                p1 = next(phase for phase in current["phases"] if phase["id"] == "P1")
+                cg1 = next(gate for gate in current["gates"] if gate["id"] == "CG-1")
+                f004 = next((remediation for remediation in current["remediations"] if remediation.get("stream_id") == "P1" and remediation.get("finding_id") == P1_F004), None)
+                if p1["completion_pct"] != 100 or cg1["status"] != "CLOSED" or not f004 or f004.get("status") != "VERIFIED":
+                    raise RejectedEvent("P1_HANDOFF_PREREQUISITE", "P1-to-P2 handoff requires complete P1 evidence, closed CG-1, and independently verified P1-F-004")
         if typ == "verification_accepted":
             finder = payload.get("finder_actor_id")
             fixer = payload.get("fixer_actor_id")
@@ -962,8 +983,9 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         elif typ == "remediation_implemented":
             rid = payload.get("remediation_id")
             if rid: remediations[rid] = {"id": rid, "finding_id": payload.get("finding_id"), "stream_id": event.get("stream_id"), "status": "AWAITING_VERIFICATION", "fixer": event["actor_id"], "evidence": evidence}
-        elif typ == "remediation_approved" and "remediation_plan" in payload and event.get("stream_id") in streams:
-            streams[event["stream_id"]]["remediation_plan"] = copy.deepcopy(payload["remediation_plan"])
+        elif typ == "remediation_approved" and "remediation_plan" in payload:
+            if event.get("stream_id") in streams:
+                streams[event["stream_id"]]["remediation_plan"] = copy.deepcopy(payload["remediation_plan"])
         elif typ in {"verification_accepted", "verification_rejected"}:
             vid = payload.get("verification_id", event["event_id"]); verifications[vid] = {"id": vid, "status": "ACCEPTED" if typ == "verification_accepted" else "REJECTED", "verifier": event["actor_id"], "finding_id": payload.get("finding_id"), "remediation_id": payload.get("remediation_id"), "evidence": evidence}
             rid = payload.get("remediation_id")

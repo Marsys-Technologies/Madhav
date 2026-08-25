@@ -273,6 +273,54 @@ class ControlPlaneTests(unittest.TestCase):
                 enabled.submit({"actor_id": "lead-p1", "idempotency_key": "p1-p2", "event_type": "work_started", "payload": {"session_id": "p1-p2"}, "stream_id": "P2", "expected_stream_seq": 0, "evidence": EVIDENCE})
             self.assertEqual(p2_attempt.exception.code, "STREAM_FORBIDDEN")
 
+    def test_p1_only_lifecycle_can_close_cg1_and_resolve_only_its_p2_handoff(self):
+        """P1 may reconcile its own finding and hand off, but cannot execute P2."""
+        with tempfile.TemporaryDirectory() as runtime:
+            p0b = EventStore(runtime, p0b_only=True)
+            p0b.provision_local_credentials()
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "bootstrap", "event_type": "campaign_bootstrapped", "payload": {"campaign_id": "pariprashna-experience-assurance-v3"}, "evidence": EVIDENCE})
+            item = p0b.submit({"actor_id": "verifier-p0b", "idempotency_key": "p0-item-verify", "event_type": "verification_accepted", "payload": {"verification_id": "p0-item", "work_item_id": "P0:completion", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0-item-accept", "event_type": "work_item_accepted", "payload": {"work_item_id": "P0:completion", "verification_event_id": item["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            gate = p0b.submit({"actor_id": "verifier-p0b", "idempotency_key": "cg0-verify", "event_type": "verification_accepted", "payload": {"verification_id": "cg0", "gate_id": "CG-0", "finder_actor_id": "lead-p0b", "fixer_actor_id": "lead-p0b"}, "stream_id": "P0", "expected_stream_seq": 2, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "cg0-close", "event_type": "gate_closed", "payload": {"gate_id": "CG-0", "verification_event_id": gate["event"]["event_id"]}, "stream_id": "P0", "expected_stream_seq": 3, "evidence": EVIDENCE})
+            p0b.submit({"actor_id": "integrator-p0b", "idempotency_key": "p0-p1", "event_type": "dependency_resolved", "payload": {"from": "P0", "to": "P1"}, "stream_id": "P1", "expected_stream_seq": 0, "evidence": EVIDENCE})
+
+            p1 = EventStore(runtime, p0b_only=True, p1_enabled=True)
+            p1.provision_p1_credentials()
+            def emit(actor, key, typ, payload):
+                return p1.submit({"actor_id": actor, "idempotency_key": key, "event_type": typ, "payload": payload, "stream_id": "P1", "expected_stream_seq": p1.next_stream_seq("P1"), "evidence": EVIDENCE})
+
+            emit("lead-p1", "p1-start", "work_started", {"session_id": "p1-reconciliation"})
+            with self.assertRaises(RejectedEvent) as premature_handoff:
+                p1.submit({"actor_id": "integrator-p1", "idempotency_key": "premature-p1-p2", "event_type": "dependency_resolved", "payload": {"from": "P1", "to": "P2"}, "stream_id": "P2", "expected_stream_seq": 0, "evidence": EVIDENCE})
+            self.assertEqual(premature_handoff.exception.code, "P1_HANDOFF_PREREQUISITE")
+            with self.assertRaises(RejectedEvent) as unrelated_finding:
+                emit("lead-p1", "f005-find", "finding_discovered", {"finding_id": "P1-F-005", "severity": "HIGH"})
+            self.assertEqual(unrelated_finding.exception.code, "P1_FINDING_SCHEMA")
+            emit("lead-p1", "f004-find", "finding_discovered", {"finding_id": "P1-F-004", "severity": "HIGH"})
+            emit("lead-p1", "f004-reproduce", "reproduction_recorded", {"finding_id": "P1-F-004"})
+            emit("surrogate-p1", "f004-triage", "finding_triaged", {"finding_id": "P1-F-004", "severity": "HIGH"})
+            emit("surrogate-p1", "f004-plan", "remediation_approved", {"remediation_plan": [{"id": "P1-F-004-fix", "finding_id": "P1-F-004"}]})
+            emit("lead-p1", "f004-implement", "remediation_implemented", {"remediation_id": "P1-F-004-fix", "finding_id": "P1-F-004"})
+            emit("verifier-p1", "f004-verify", "verification_accepted", {"verification_id": "f004", "remediation_id": "P1-F-004-fix", "finding_id": "P1-F-004", "finder_actor_id": "lead-p1", "fixer_actor_id": "lead-p1"})
+            completion = emit("verifier-p1", "p1-complete-verify", "verification_accepted", {"verification_id": "p1-complete", "work_item_id": "P1:completion", "finder_actor_id": "lead-p1", "fixer_actor_id": "lead-p1"})
+            emit("integrator-p1", "p1-complete-accept", "work_item_accepted", {"work_item_id": "P1:completion", "verification_event_id": completion["event"]["event_id"]})
+            cg1 = emit("verifier-p1", "cg1-verify", "verification_accepted", {"verification_id": "cg1", "gate_id": "CG-1", "finder_actor_id": "lead-p1", "fixer_actor_id": "lead-p1"})
+            emit("integrator-p1", "cg1-close", "gate_closed", {"gate_id": "CG-1", "verification_event_id": cg1["event"]["event_id"]})
+            p1.submit({"actor_id": "integrator-p1", "idempotency_key": "p1-p2", "event_type": "dependency_resolved", "payload": {"from": "P1", "to": "P2"}, "stream_id": "P2", "expected_stream_seq": 0, "evidence": EVIDENCE})
+
+            projection = p1.projection()["canonical"]
+            self.assertEqual(next(phase for phase in projection["phases"] if phase["id"] == "P1")["lifecycle"], "COMPLETE")
+            self.assertEqual(next(gate for gate in projection["gates"] if gate["id"] == "CG-1")["status"], "CLOSED")
+            self.assertEqual(next(edge for edge in projection["dependencies"] if edge["from"] == "P1" and edge["to"] == "P2")["status"], "RESOLVED")
+            self.assertEqual(next(phase for phase in projection["phases"] if phase["id"] == "P2")["lifecycle"], "READY")
+            with self.assertRaises(RejectedEvent) as p2_start:
+                p1.submit({"actor_id": "lead-p1", "idempotency_key": "p2-start", "event_type": "work_started", "payload": {"session_id": "p2-forbidden"}, "stream_id": "P2", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            self.assertEqual(p2_start.exception.code, "STREAM_FORBIDDEN")
+            with self.assertRaises(RejectedEvent) as p2_integrator_action:
+                p1.submit({"actor_id": "integrator-p1", "idempotency_key": "p2-forbidden-integrator", "event_type": "integration_baseline_advanced", "payload": {}, "stream_id": "P2", "expected_stream_seq": 1, "evidence": EVIDENCE})
+            self.assertEqual(p2_integrator_action.exception.code, "STREAM_FORBIDDEN")
+
     def test_runtime_and_database_permissions_are_private(self):
         with tempfile.TemporaryDirectory() as runtime:
             os.chmod(runtime, 0o755)
