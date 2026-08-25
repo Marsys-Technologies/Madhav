@@ -1,8 +1,8 @@
 import 'server-only'
 import { ServicesClient } from '@google-cloud/run'
 
-const PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
-const REGION = process.env.GCP_REGION ?? 'asia-south1'
+const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
+const REGION = process.env.GOOGLE_CLOUD_REGION ?? 'asia-south1'
 const SERVICE = process.env.NIRMANA_RELEASE_SERVICE ?? 'amjis-web'
 const GITHUB_REPOSITORY = 'Marsys-Technologies/Madhav'
 const TIMEOUT_MS = 5_000
