@@ -8,6 +8,7 @@ vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...
 import {
   canonicalManifestDigest,
   createNirmanaElevationDefinition,
+  freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
 } from '../definitions'
 
@@ -56,7 +57,7 @@ describe('Nirmana elevation definition repository', () => {
     await expect(createNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
-      definition_status: 'frozen',
+      definition_status: 'reconciling',
       manifest,
       manifest_sha256: '0'.repeat(64),
       created_by: 'admin-1',
@@ -65,23 +66,49 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('persists only a validated definition revision', async () => {
-    queryMock.mockResolvedValue({ rows: [] })
-    await createNirmanaElevationDefinition({
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    await expect(createNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
       definition_status: 'reconciling',
       manifest,
       manifest_sha256: canonicalManifestDigest(manifest),
       created_by: 'admin-1',
-    })
+    })).resolves.toBe('created')
 
     expect(queryMock).toHaveBeenCalledTimes(1)
-    expect(queryMock.mock.calls[0][0]).toContain('INSERT INTO nirmana_elevation_campaign_definitions')
+    expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision) DO NOTHING')
+  })
+
+  it('accepts an exact retried definition revision without overwriting its first receipt', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ definition_status: 'reconciling', manifest_sha256: canonicalManifestDigest(manifest) }] })
+
+    await expect(createNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling', manifest,
+      manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-2',
+    })).resolves.toBe('idempotent')
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('freezes only the exact prior reconciling manifest and accepts an exact retry', async () => {
+    queryMock.mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest, manifest_sha256: canonicalManifestDigest(manifest),
+    })).resolves.toBe('frozen')
+
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ definition_status: 'frozen', manifest_sha256: canonicalManifestDigest(manifest) }] })
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest, manifest_sha256: canonicalManifestDigest(manifest),
+    })).resolves.toBe('idempotent')
   })
 
   it('records evidence idempotently within its campaign definition revision', async () => {
-    queryMock.mockResolvedValue({ rows: [] })
-    await recordNirmanaElevationEvidence({
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
       idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
@@ -94,8 +121,39 @@ describe('Nirmana elevation definition repository', () => {
       source_ref: 'test:receipt',
       observed_at: '2026-08-25T09:00:00.000Z',
       recorded_by: 'admin-1',
-    })
+    })).resolves.toBe('created')
 
     expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING')
+  })
+
+  it('rejects a reused evidence idempotency key whose immutable receipt differs', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+        event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+        evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+        observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+      }] })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'second' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/idempotency key/i)
+  })
+
+  it('accepts an exact retried evidence receipt without overwriting the original actor', async () => {
+    const input = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [input] })
+    await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
   })
 })

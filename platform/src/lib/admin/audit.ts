@@ -12,6 +12,8 @@ export type AuditAction =
   | 'set_password'
   | 'chart_grant'
   | 'chart_revoke'
+  | 'nirmana_definition_recorded'
+  | 'nirmana_evidence_recorded'
 
 export async function writeAuditLog(
   actorId: string,
