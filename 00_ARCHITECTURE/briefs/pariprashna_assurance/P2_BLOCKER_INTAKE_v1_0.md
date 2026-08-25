@@ -17,3 +17,10 @@ then-current protected `origin/main`, on `codex/pariprashna-assurance-p2` (or a
 freshly authorized replacement), with a clean status and no historical campaign
 process ownership. Do not reuse this P1 worktree, its credentials, or P1
 execution session.
+
+## P1 handoff receipt (2026-08-25)
+
+P1→P2 is now RESOLVED through the P1-only integrator exception added by protected
+merge `ca4fd54ef8e142713b100c60cf718ea6c46b12bb`. This is an onboarding receipt,
+not P2 authorization to execute: P2 is READY at 0%, has no `work_started` event,
+and all intake items above remain unchanged.

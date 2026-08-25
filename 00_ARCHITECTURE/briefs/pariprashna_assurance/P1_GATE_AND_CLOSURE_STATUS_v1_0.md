@@ -1,7 +1,10 @@
 # P1 gate, verification, and closure status v1.0
 
-This is the P1 closure packet status record. It is intentionally **not** a
-closure packet or CG-1 decision.
+## Pre-close snapshot (before 2026-08-25T21:03:56Z)
+
+This historical status snapshot is intentionally **not** a closure packet or a
+CG-1 decision. The closure amendment below is the current status; the snapshot
+is retained only to preserve the pre-close evidence state.
 
 | Requirement | Current classification | Evidence / remaining condition |
 | --- | --- | --- |
@@ -22,3 +25,13 @@ the approved runtime backup directory. Their paths and permission metadata were
 verified, but their mutable contents are intentionally absent from Git. A later
 CG-1 close must take a fresh snapshot and prove restore/replay against that
 closure state.
+
+## 2026-08-25 closure amendment
+
+This status record is superseded for closure truth by
+`P1_CLOSURE_PACKET_v1_0.md`. The protected P1 boundary fix merged as
+`ca4fd54ef8e142713b100c60cf718ea6c46b12bb` and was deployed as an attested
+P1-only release. Lead, surrogate, verifier, and integrator recorded the
+P1-F-004 lifecycle; the verifier accepted both P1 completion and CG-1 evidence;
+the integrator accepted `P1:completion`, closed CG-1, and resolved only
+P1→P2. P2 has no execution event and is READY at 0%.

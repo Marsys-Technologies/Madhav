@@ -8,6 +8,9 @@
 | P1-U-004 | UNKNOWN_REQUIRES_RESOLUTION | Historic P-PORTAL product/deployment claims at `84c3c903…`. | Revalidate only in a later authorized P2 scope. |
 | P1-U-005 | DO_NOT_RELY | Historical heartbeat provenance and timer/liveness claims. | Never use them for P1 health or acceptance. |
 | P1-U-006 | PARKED | E-012 narrowed-proof/fix choice. | Fresh native authority is required. |
-| P1-U-007 | VERIFIED_CARRY_FORWARD | P1 branch head and deployed merge SHA differ. | Cite both, and treat only the attested merge SHA as deployed code. |
+| P1-U-007 | VERIFIED_CARRY_FORWARD | P1 branch head and deployed merge SHA differ. | Cite both, and treat only the currently attested `ca4fd54ef8e142713b100c60cf718ea6c46b12bb` release as deployed code. |
 
 No UNKNOWN item is promoted to PASS by this register.
+
+The P1 closure packet resolves its own native lifecycle only. None of these
+historical classifications is changed by CG-1 closure or by the P1→P2 handoff.
