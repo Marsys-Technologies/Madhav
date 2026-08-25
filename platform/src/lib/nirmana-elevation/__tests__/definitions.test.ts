@@ -239,6 +239,24 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    ['build action', "run.action = 'rebuild'"],
+    ['wrong canonical chart', 'run.chart_id = (definition.manifest ->> \'chart_id\')::uuid'],
+    ['asset outside the frozen manifest', "manifest_asset.value ->> 'asset_id' = $2"],
+    ['non-build manifest asset', "manifest_asset.value ->> 'execution_obligation' = 'build'"],
+  ])('rejects accepted rebuild evidence for %s', async (_caseName, requiredGuard) => {
+    queryMock.mockResolvedValueOnce({ rows: [{ proven: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `asset:bg_prashna_rules:rebuild:${_caseName}`,
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) },
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching proven content receipt/i)
+    expect(queryMock.mock.calls[0][0]).toContain(requiredGuard)
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+
   it('rejects legacy or malformed rebuild evidence before it can query or append an event', async () => {
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:legacy',

@@ -2,14 +2,18 @@
 from __future__ import annotations
 
 import pathlib
+import json
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
 from pipeline.orchestrator.output_digest import (
+    _component_statement,
     compute_output_digest,
     load_output_digest_spec,
 )
+from pipeline.orchestrator.provenance import canonical_digest
 
 
 class _Cursor:
@@ -74,3 +78,34 @@ def test_invalid_spec_identifier_fails_closed_before_querying_a_relation():
     else:  # pragma: no cover - assertion reads more clearly than pytest.raises here
         raise AssertionError("invalid digest spec was accepted")
     assert len(cursor.executed) == 1
+
+
+def _ghatana_spec():
+    migration = pathlib.Path(__file__).resolve().parents[4] / "supabase/migrations/598_nirmana_output_digest_specs.sql"
+    match = re.search(r"'bg_ghatana',\s*'([a-f0-9]{64})',\s*'({.+?})'::jsonb", migration.read_text(), re.DOTALL)
+    assert match, "migration 598 must seed a reviewed bg_ghatana digest spec"
+    spec = json.loads(match.group(2))
+    assert canonical_digest(spec) == match.group(1)
+    return spec
+
+
+def test_ghatana_spec_hashes_every_serving_semantic_event_shape_column():
+    spec = _ghatana_spec()
+    event_component = next(component for component in spec["components"] if component["name"] == "event_ontology")
+    required = {
+        "temporal_shape", "duration_prior", "milestone_template", "irreversibility_milestone",
+        "evidence_requirements", "self_report_non_discriminating", "kill_switch_criteria",
+    }
+    assert required <= set(event_component["value_columns"])
+    statement = _component_statement(event_component)
+    assert all(f'"{column}"' in statement for column in required)
+
+
+def test_ghatana_digest_changes_when_a_serving_semantic_event_shape_value_changes():
+    spec = _ghatana_spec()
+    sha = canonical_digest(spec)
+    point = '{"event_class_id":"career_entry","temporal_shape":"point","duration_prior":null}'
+    interval = '{"event_class_id":"career_entry","temporal_shape":"interval","duration_prior":{"min_days":1}}'
+    left = _Cursor(row={"spec": spec, "spec_sha256": sha}, batches=[[{"row_json": point}], [], [], []])
+    right = _Cursor(row={"spec": spec, "spec_sha256": sha}, batches=[[{"row_json": interval}], [], [], []])
+    assert compute_output_digest(left, asset_id="bg_ghatana")[0] != compute_output_digest(right, asset_id="bg_ghatana")[0]

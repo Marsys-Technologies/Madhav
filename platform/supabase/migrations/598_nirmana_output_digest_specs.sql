@@ -44,8 +44,8 @@ VALUES
 ),
 (
   'bg_ghatana',
-  '74e20776ad8673eb7a608c2676f5ae4077209cb62c3eebb3d3091a99c6155b24',
-  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"event_ontology","relation":"brahma_event_ontology","key_columns":["event_class_id"],"value_columns":["event_class_id","name_en","domain","lel_category","signature_model","magnitude_floor","adjacency","base_rate_by_age","matching_rules","citations","version"]},{"name":"activity_ontology","relation":"brahma_activity_ontology","key_columns":["activity_class_id"],"value_columns":["activity_class_id","name_en","significators","fructification_rules","related_event_class","citations","version"]}]}'::jsonb
+  'd6289d7e793e8cbefb3af3e2866a6b9863312cd1fd381d9127cf4967b15fc615',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"event_ontology","relation":"brahma_event_ontology","key_columns":["event_class_id"],"value_columns":["event_class_id","name_en","domain","lel_category","signature_model","magnitude_floor","adjacency","base_rate_by_age","matching_rules","citations","version","temporal_shape","duration_prior","milestone_template","irreversibility_milestone","evidence_requirements","self_report_non_discriminating","kill_switch_criteria"]},{"name":"activity_ontology","relation":"brahma_activity_ontology","key_columns":["activity_class_id"],"value_columns":["activity_class_id","name_en","significators","fructification_rules","related_event_class","citations","version"]}]}'::jsonb
 ),
 (
   'bg_parihara_rules',
