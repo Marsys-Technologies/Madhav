@@ -42,10 +42,13 @@ describe('Nirmana label catalogue', () => {
     const digest = canonicalLabelCatalogueDigest(input.labels)
     clientQuery
       .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
       })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 0, digest_matches: false }] })
       .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce(undefined)
@@ -53,33 +56,60 @@ describe('Nirmana label catalogue', () => {
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .resolves.toBe('created')
     expect(clientQuery).toHaveBeenNthCalledWith(1, 'BEGIN')
+    expect(clientQuery).toHaveBeenNthCalledWith(2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      ['nirmana-elevation:r1:labels-v1'])
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
   })
 
-  it('rolls back a revision that conflicts with an existing receipt', async () => {
+  it('treats a sequential retry with the same revision digest and count as idempotent', async () => {
     const digest = canonicalLabelCatalogueDigest(input.labels)
     clientQuery
+      .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
       })
-      .mockResolvedValueOnce({ rowCount: 0 })
-      .mockResolvedValueOnce({ rowCount: 0 })
-      .mockResolvedValueOnce({ rows: [{ label_count: 2, digest_matches: false }] })
-      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: 'f'.repeat(64), asset_count: 2 } }] })
+      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: digest, asset_count: 1 } }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })
       .mockResolvedValueOnce(undefined)
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
-      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
-    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+      .resolves.toBe('idempotent')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('takes a revision transaction lock before rejecting a concurrent-shape digest conflict without inserts', async () => {
+    const secondLabel = { ...input.labels[0], asset_id: 'sphurana', legacy_aliases: [] }
+    const digest = canonicalLabelCatalogueDigest([secondLabel])
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'sphurana' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: canonicalLabelCatalogueDigest(input.labels), asset_count: 1 } }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, labels: [secondLabel], catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery).toHaveBeenNthCalledWith(2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      ['nirmana-elevation:r1:labels-v1'])
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
   it('rolls back labels absent from the frozen definition manifest', async () => {
     const digest = canonicalLabelCatalogueDigest(input.labels)
     clientQuery
+      .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_status: 'frozen', manifest: { assets: [] } }] })
       .mockResolvedValueOnce(undefined)

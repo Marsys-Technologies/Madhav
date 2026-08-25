@@ -54,6 +54,12 @@ export async function recordNirmanaElevationLabelCatalogue(
   const client = await (await getPool()).connect()
   try {
     await client.query('BEGIN')
+    const revisionIdentity = `${input.campaign_id}:${input.definition_revision}:${input.catalogue_revision}`
+    const receiptIdempotencyKey = `asset-label-catalogue:${input.catalogue_revision}`
+    await client.query(
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      [revisionIdentity],
+    )
     const definition = await client.query(
       `SELECT definition_status, manifest FROM nirmana_elevation_campaign_definitions
        WHERE campaign_id = $1 AND definition_revision = $2 FOR SHARE`,
@@ -67,6 +73,38 @@ export async function recordNirmanaElevationLabelCatalogue(
     )
     if (input.labels.some((label) => !manifestAssetIds.has(label.asset_id))) {
       throw new Error('Label catalogue contains an asset absent from the frozen definition.')
+    }
+
+    const existingReceipt = await client.query(
+      `SELECT evidence_payload
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND idempotency_key = $3
+        FOR SHARE`,
+      [input.campaign_id, input.definition_revision, receiptIdempotencyKey],
+    )
+    const existingPayload = existingReceipt.rows[0]?.evidence_payload as Record<string, unknown> | undefined
+    if (existingPayload
+      && (existingPayload.catalogue_sha256 !== digest || existingPayload.asset_count !== input.labels.length)) {
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
+    }
+    const existingLabels = await client.query(
+      `SELECT count(*)::int AS label_count,
+              COALESCE(bool_and(label_digest = $4), false) AS digest_matches
+         FROM nirmana_elevation_asset_labels
+        WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
+      [input.campaign_id, input.definition_revision, input.catalogue_revision, digest],
+    )
+    if (existingPayload) {
+      if (existingLabels.rows[0]?.label_count === input.labels.length
+        && existingLabels.rows[0]?.digest_matches === true) {
+        await client.query('COMMIT')
+        return 'idempotent'
+      }
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
+    }
+    if (existingLabels.rows[0]?.label_count !== 0) {
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
     }
 
     const inserted = await client.query(
@@ -93,7 +131,7 @@ export async function recordNirmanaElevationLabelCatalogue(
        ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING
        RETURNING event_id`,
       [input.campaign_id, input.definition_revision,
-        `asset-label-catalogue:${input.catalogue_revision}:${digest}`,
+        receiptIdempotencyKey,
         input.catalogue_revision, JSON.stringify({ catalogue_sha256: digest, asset_count: input.labels.length }),
         `label_catalogue:${input.catalogue_revision}`, input.recorded_by],
     )
@@ -101,31 +139,7 @@ export async function recordNirmanaElevationLabelCatalogue(
       await client.query('COMMIT')
       return 'created'
     }
-
-    const existingLabels = await client.query(
-      `SELECT count(*)::int AS label_count,
-              COALESCE(bool_and(label_digest = $4), false) AS digest_matches
-         FROM nirmana_elevation_asset_labels
-        WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
-      [input.campaign_id, input.definition_revision, input.catalogue_revision, digest],
-    )
-    const existingReceipt = await client.query(
-      `SELECT evidence_payload
-         FROM nirmana_elevation_campaign_events
-        WHERE campaign_id = $1 AND definition_revision = $2
-          AND idempotency_key = $3`,
-      [input.campaign_id, input.definition_revision,
-        `asset-label-catalogue:${input.catalogue_revision}:${digest}`],
-    )
-    const payload = existingReceipt.rows[0]?.evidence_payload as Record<string, unknown> | undefined
-    if (existingLabels.rows[0]?.label_count !== input.labels.length
-      || existingLabels.rows[0]?.digest_matches !== true
-      || payload?.catalogue_sha256 !== digest
-      || payload?.asset_count !== input.labels.length) {
-      throw new Error('Label catalogue revision conflicts with an existing receipt.')
-    }
-    await client.query('COMMIT')
-    return 'idempotent'
+    throw new Error('Label catalogue revision conflicts with an existing receipt.')
   } catch (error) {
     await client.query('ROLLBACK')
     throw error
