@@ -30,16 +30,29 @@ const MIGRATION_599_PATH = resolve(
 let pool: Pool
 let client: PoolClient
 
+function assertDisposableTestDatabaseUrl(databaseUrl: string): void {
+  const databaseName = decodeURIComponent(new URL(databaseUrl).pathname).replace(/^\/+/, '')
+  if (!databaseName.includes('nirmana_elevation_test')) {
+    throw new Error(
+      'NIRMANA_ELEVATION_TEST_DATABASE_URL must point at a disposable database named ' +
+        '`nirmana_elevation_test`. This suite creates and drops an isolated schema and ' +
+        'must never run against production.'
+    )
+  }
+}
+
+describe('Nirmana elevation disposable database URL guard', () => {
+  it('requires the test marker in the decoded database pathname, not elsewhere in the DSN', () => {
+    expect(() => assertDisposableTestDatabaseUrl('postgresql://nirmana_elevation_test@db.example/production'))
+      .toThrow('NIRMANA_ELEVATION_TEST_DATABASE_URL must point at a disposable database')
+    expect(() => assertDisposableTestDatabaseUrl('postgresql://db.example/nirmana%5Felevation%5Ftest'))
+      .not.toThrow()
+  })
+})
+
 describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migration — live DB', () => {
   beforeAll(async () => {
-    if (!/nirmana_elevation_test/.test(TEST_DB_URL!)) {
-      throw new Error(
-        'NIRMANA_ELEVATION_TEST_DATABASE_URL must point at a disposable database named ' +
-          '`nirmana_elevation_test`. This suite creates and drops an isolated schema and ' +
-          'must never run against production.'
-      )
-    }
-
+    assertDisposableTestDatabaseUrl(TEST_DB_URL!)
     pool = new Pool({ connectionString: TEST_DB_URL })
     client = await pool.connect()
     await client.query(`CREATE SCHEMA "${SCHEMA}"`)
