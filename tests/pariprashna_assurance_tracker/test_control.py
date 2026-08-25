@@ -979,6 +979,32 @@ class ControlPlaneTests(unittest.TestCase):
                 _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
             self.assertEqual(connection.request.call_count, 2)
 
+    def test_p1_release_loopback_proof_normalizes_only_the_interpreter_symlink(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root); release = root_path / "candidate"; runtime = root_path / "runtime"; source_sha = "b" * 40
+            interpreter_target = root_path / "python3.14"; interpreter_target.write_text("fixture interpreter\n")
+            interpreter_link = root_path / "python3"; interpreter_link.symlink_to(interpreter_target)
+            arguments = [str(interpreter_link), str(release.resolve() / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", "8787"]
+            actual_arguments = [str(interpreter_target), *arguments[1:]]
+            response = MagicMock(); response.status = 200; response.read.return_value = json.dumps({"ok": True, "source_sha": source_sha, "release_dir": str(release.resolve()), "p0b_only": True, "p1_enabled": True, "replay_ok": True}).encode()
+            connection = MagicMock(); connection.getresponse.return_value = response
+            def system(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(actual_arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=system), patch("service.http.client.HTTPConnection", return_value=connection):
+                _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
+            other_interpreter = root_path / "other-python3.14"; other_interpreter.write_text("different fixture interpreter\n")
+            mismatched_arguments = [str(other_interpreter), *arguments[1:]]
+            def mismatched_system(command, **_kwargs):
+                if command[0] == "/bin/launchctl": return subprocess.CompletedProcess(command, 0, "state = running\npid = 123\n", "")
+                if command[0] == "/bin/ps": return subprocess.CompletedProcess(command, 0, " ".join(mismatched_arguments) + "\n", "")
+                return subprocess.CompletedProcess(command, 0, "python 123 Dev 3u IPv4 TCP 127.0.0.1:8787 (LISTEN)\n", "")
+            with patch("service.subprocess.run", side_effect=mismatched_system), patch("service.http.client.HTTPConnection") as http_connection:
+                with self.assertRaisesRegex(ValueError, "health proof failed"):
+                    _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
+            http_connection.assert_not_called()
+
     def test_p1_service_identity_binds_the_attested_release_sha_modes_and_replay(self):
         with tempfile.TemporaryDirectory() as root:
             release = Path(root) / "release"; release.mkdir(); (release / ".source-sha").write_text("a" * 40)

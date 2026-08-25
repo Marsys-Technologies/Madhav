@@ -368,6 +368,16 @@ def _p1_release_upgrade_lock(runtime: Path):
         os.close(descriptor)
 
 
+def _same_interpreter_binary(expected: str, actual: str) -> bool:
+    """Accept only an OS-resolved spelling of the launchd interpreter binary."""
+    if actual == expected:
+        return True
+    try:
+        return Path(actual).resolve(strict=True) == Path(expected).resolve(strict=True)
+    except OSError:
+        return False
+
+
 def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path, port: int, domain: str, expected_arguments: list[str], *, require_service_identity: bool, attempts: int = 10, retry_seconds: float = 0.25) -> None:
     """Prove the expected P1 process owns the loopback listener; candidates additionally self-attest."""
     if attempts < 1 or retry_seconds < 0:
@@ -390,7 +400,7 @@ def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path
                 actual_arguments = shlex.split(process.stdout.strip())
             except ValueError:
                 actual_arguments = []
-            if process.returncode != 0 or actual_arguments != expected_arguments:
+            if process.returncode != 0 or len(actual_arguments) != len(expected_arguments) or not _same_interpreter_binary(expected_arguments[0], actual_arguments[0]) or actual_arguments[1:] != expected_arguments[1:]:
                 last_error = "loaded P1 process arguments do not exactly match the expected release"
             elif listener.returncode != 0 or f"127.0.0.1:{port}" not in listener.stdout or "LISTEN" not in listener.stdout:
                 last_error = "expected P1 process does not own the loopback listener"
