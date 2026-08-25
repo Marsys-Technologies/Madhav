@@ -1,6 +1,7 @@
 ---
 artifact: NIRMANA_T0_SOURCE_CENSUS_2026-08-25.md
 canonical_id: NIRMANA_T0_SOURCE_CENSUS
+version: "1.0"
 status: SOURCE-EVIDENCE-ONLY
 campaign_id: nirmana-elevation
 chart_id: 482012f1-710e-4a25-994a-93821f5871aa
