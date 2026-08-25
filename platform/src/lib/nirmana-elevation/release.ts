@@ -82,7 +82,7 @@ export async function loadNirmanaReleaseStatus({
           cache: 'no-store',
         }))
         if (!response.ok) throw new Error(`GitHub main returned HTTP ${response.status}`)
-        const body = await response.json() as { sha?: unknown }
+        const body = await bounded(response.json() as Promise<{ sha?: unknown }>)
         if (typeof body.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(body.sha)) throw new Error('GitHub main response has no valid commit SHA')
         main_sha = body.sha
         return { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at, age_seconds: 0, error: null }

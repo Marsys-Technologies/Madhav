@@ -83,4 +83,19 @@ describe('loadNirmanaReleaseStatus', () => {
     expect(result.release).toMatchObject({ main_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
     expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'unavailable', error: expect.stringContaining('timed out') })]))
   })
+
+  it('times out a stalled GitHub response body after headers arrive', async () => {
+    vi.useFakeTimers()
+    const resultPromise = loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => new Promise(() => {}) } as unknown as Response),
+      cloudRunClient: cloudRun() as never,
+    })
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    const result = await resultPromise
+
+    expect(result.release.main_sha).toBeNull()
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'unavailable', error: expect.stringContaining('timed out') })]))
+  })
 })
