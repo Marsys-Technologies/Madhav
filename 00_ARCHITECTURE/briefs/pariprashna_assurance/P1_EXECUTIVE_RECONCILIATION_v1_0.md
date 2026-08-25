@@ -1,7 +1,8 @@
 # P1 executive reconciliation v1.0
 
-Status: **OPEN — P1 reconciliation in progress.** This is a governed
-takeover record, not a claim that CG-1 is closed.
+Status: **COMPLETE — native P1 reconciliation closed at CG-1.** This remains a
+governed takeover record; it does not resume or complete the historical
+autonomous campaign.
 
 ## Scope and evidence rule
 
@@ -15,9 +16,9 @@ carried only by immutable source reference and exactly one classification.
 | Historical assurance campaign | DO_NOT_RELY | It remains `SELF_PAUSED`; no historic agent, timer, service, or heartbeat is P1 activity. |
 | Historical completion/gates | OPEN_BLOCKER_FOR_P2 | Self-pause §0 records zero countersigned gates and no native acceptance. |
 | Historical EDIR fixed claims | DO_NOT_RELY | No entry is certified FIXED at the required independent rung. |
-| Current Option-B control plane | ACCEPTED_PRIMARY_EVIDENCE | Attested release `872df060152a3e0adb9433df9f8e297af9f00ff8`, loopback-only, replay healthy. |
+| Current Option-B control plane | ACCEPTED_PRIMARY_EVIDENCE | Attested release `ca4fd54ef8e142713b100c60cf718ea6c46b12bb`, loopback-only and replay healthy. The earlier `872df060…` is historical identity-enablement evidence. |
 | P1 identity boundary | VERIFIED_CARRY_FORWARD | Four P1-only identities were deployed by protected PR #1524; valid P0B-to-P1 attempt was rejected `STREAM_FORBIDDEN`. |
-| P1 takeover | UNKNOWN_REQUIRES_RESOLUTION | Historical sources have been inventoried, but the closure packet and integrator acceptance are still outstanding. |
+| P1 takeover | ACCEPTED_PRIMARY_EVIDENCE | The native P1 lifecycle, independent verification, integrator acceptance, and CG-1 closure are recorded in `P1_CLOSURE_PACKET_v1_0.md`; P2 remains unstarted. |
 
 ## Present control-plane facts
 
@@ -39,4 +40,6 @@ halted, and none of its old verifier/heartbeat material establishes a current
 acceptance, liveness, or deployment claim.
 
 See the companion inventory, environment inventory, uncertainty register,
-remediation plan, and P2 intake for source-by-source treatment.
+remediation plan, and P2 intake for source-by-source treatment. The historical
+counts and all non-reliance classifications remain carry-forward evidence, not
+P1 completion evidence.
