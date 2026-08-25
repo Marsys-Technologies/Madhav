@@ -9,7 +9,12 @@ import {
   type NirmanaElevationManifest,
   type NirmanaRegistryContractRow,
 } from './definitions'
-import { deriveEligibleNextAssetIds, projectAssetMilestones, projectCampaignStages } from './projection'
+import {
+  deriveEligibleNextAssetIds,
+  parseCampaignStageTransition,
+  projectAssetMilestones,
+  projectCampaignStages,
+} from './projection'
 import type { NirmanaReleaseStatus } from './release'
 import {
   NIRMANA_LAYER_NAMES,
@@ -195,38 +200,6 @@ function selectAcceptedLabels(
 
 type NirmanaStageId = (typeof NIRMANA_STAGE_IDS)[number]
 
-interface AcceptedStageTransition {
-  from: NirmanaStageId | null
-  to: NirmanaStageId
-  event: NirmanaElevationRawSources['campaign_events'][number]
-}
-
-function acceptedStageTransition(
-  event: NirmanaElevationRawSources['campaign_events'][number],
-): AcceptedStageTransition | null {
-  if (event.event_type !== 'stage_transition_accepted'
-    || event.entity_type !== 'campaign_stage'
-    || event.layer !== null
-    || !isRecord(event.evidence_payload)) return null
-  const from = event.evidence_payload.from_stage
-  const to = event.evidence_payload.to_stage
-  const prerequisites = event.evidence_payload.prerequisites_sha256
-  if (typeof to !== 'string'
-    || !(NIRMANA_STAGE_IDS as readonly string[]).includes(to)
-    || event.entity_id !== to
-    || typeof prerequisites !== 'string'
-    || !/^[a-f0-9]{64}$/.test(prerequisites)
-    || timestamp(event.observed_at) === 0
-    || timestamp(event.recorded_at) === 0) return null
-  const toStage = to as NirmanaStageId
-  if (from === null) return toStage === 'BOOTSTRAP' ? { from: null, to: toStage, event } : null
-  if (typeof from !== 'string' || !(NIRMANA_STAGE_IDS as readonly string[]).includes(from)) return null
-  const fromStage = from as NirmanaStageId
-  return NIRMANA_STAGE_IDS.indexOf(toStage) === NIRMANA_STAGE_IDS.indexOf(fromStage) + 1
-    ? { from: fromStage, to: toStage, event }
-    : null
-}
-
 function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_events']): {
   currentStage: NirmanaStageId | null
   enteredAt: Map<NirmanaStageId, string | null>
@@ -235,8 +208,10 @@ function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_event
 } {
   const candidates = events.filter((event) => event.event_type === 'stage_transition_accepted')
   const transitions = candidates
-    .map(acceptedStageTransition)
-    .filter((transition): transition is AcceptedStageTransition => transition !== null)
+    .flatMap((event) => {
+      const transition = parseCampaignStageTransition(event)
+      return transition === null ? [] : [transition]
+    })
     .sort((left, right) => timestamp(left.event.recorded_at) - timestamp(right.event.recorded_at)
       || timestamp(left.event.observed_at) - timestamp(right.event.observed_at)
       || left.event.source_ref.localeCompare(right.event.source_ref))

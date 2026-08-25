@@ -110,26 +110,38 @@ function isStageId(value: unknown): value is NonNullable<NirmanaStageId> {
   return typeof value === 'string' && (NIRMANA_STAGE_IDS as readonly string[]).includes(value)
 }
 
-interface StageTransition {
-  event: CampaignEvent
-  from: NonNullable<NirmanaStageId>
+export interface AcceptedCampaignStageTransition<TEvent extends CampaignEvent = CampaignEvent> {
+  event: TEvent
+  from: NirmanaStageId | null
   to: NonNullable<NirmanaStageId>
   prerequisitesSha256: string
 }
 
-function stageTransition(event: CampaignEvent): StageTransition | null {
+export function parseCampaignStageTransition<TEvent extends CampaignEvent>(
+  event: TEvent,
+): AcceptedCampaignStageTransition<TEvent> | null {
   if (event.event_type !== 'stage_transition_accepted'
     || event.entity_type !== 'campaign_stage'
     || event.layer !== null
-    || !isRecord(event.evidence_payload)) return null
+    || !isRecord(event.evidence_payload)
+    || !validIso(event.observed_at)
+    || !validIso(event.recorded_at)) return null
   const from = event.evidence_payload.from_stage
   const to = event.evidence_payload.to_stage
   const prerequisitesSha256 = event.evidence_payload.prerequisites_sha256
-  if (!isStageId(from) || !isStageId(to)
+  if (!isStageId(to)
     || event.entity_id !== to
     || typeof prerequisitesSha256 !== 'string'
     || !SHA256.test(prerequisitesSha256)) return null
+  if (from === null) {
+    return to === 'BOOTSTRAP' ? { event, from, to, prerequisitesSha256 } : null
+  }
+  if (!isStageId(from)) return null
   return { event, from, to, prerequisitesSha256 }
+}
+
+function stageIndex(stage: NirmanaStageId | null): number {
+  return stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(stage)
 }
 
 function laneReceipt(event: CampaignEvent): boolean {
@@ -150,35 +162,36 @@ export function projectCampaignStages(input: {
   layers: Array<{ layer_id: NirmanaLayerId; state: string; assets_total: number | null; frozen: number }>
 }): { current_stage: NirmanaStageId | null; stages: NirmanaCampaignStage[]; contradictions: string[] } {
   const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
-  const transitions = events.map(stageTransition).filter((value): value is StageTransition => value !== null)
+  const transitions = events.map(parseCampaignStageTransition)
+    .filter((value): value is AcceptedCampaignStageTransition => value !== null)
     .sort((left, right) => compareEvents(left.event, right.event))
   const currentTransition = transitions.at(-1)
   const current_stage = currentTransition?.to ?? null
   const currentIndex = current_stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(current_stage)
   const contradictions: string[] = []
-  let previous: StageTransition | null = null
+  let previous: AcceptedCampaignStageTransition | null = null
 
   for (const transition of transitions) {
-    const fromIndex = NIRMANA_STAGE_IDS.indexOf(transition.from)
-    const toIndex = NIRMANA_STAGE_IDS.indexOf(transition.to)
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
     const isDuplicate = previous?.from === transition.from && previous.to === transition.to
     if (toIndex !== fromIndex + 1) {
-      contradictions.push(`Contradictory stage transition ${transition.from} -> ${transition.to}: stages must advance exactly once in canonical order.`)
+      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: stages must advance exactly once in canonical order.`)
     } else if (previous && !isDuplicate && transition.from !== previous.to) {
-      contradictions.push(`Contradictory stage transition ${transition.from} -> ${transition.to}: prior accepted stage was ${previous.to}.`)
+      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prior accepted stage was ${previous.to}.`)
     } else if (isDuplicate && previous?.prerequisitesSha256 !== transition.prerequisitesSha256) {
-      contradictions.push(`Contradictory stage transition ${transition.from} -> ${transition.to}: prerequisite digests differ.`)
+      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prerequisite digests differ.`)
     }
     previous = transition
   }
 
   const completedAt = new Map<NonNullable<NirmanaStageId>, string | null>()
   for (const transition of transitions) {
-    const fromIndex = NIRMANA_STAGE_IDS.indexOf(transition.from)
-    const toIndex = NIRMANA_STAGE_IDS.indexOf(transition.to)
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
     const completionRequiresProjectedEvidence = transition.from === 'F0_FOUNDATION'
       || LAYER_IDS.includes(transition.from as NirmanaLayerId)
-    if (toIndex === fromIndex + 1 && !completionRequiresProjectedEvidence) {
+    if (transition.from !== null && toIndex === fromIndex + 1 && !completionRequiresProjectedEvidence) {
       completedAt.set(transition.from, acceptedAt(transition.event))
     }
   }
@@ -218,11 +231,11 @@ export function projectCampaignStages(input: {
   }
 
   for (const transition of transitions) {
-    const fromIndex = NIRMANA_STAGE_IDS.indexOf(transition.from)
-    const toIndex = NIRMANA_STAGE_IDS.indexOf(transition.to)
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
     const requiresProjectedEvidence = transition.from === 'F0_FOUNDATION'
       || LAYER_IDS.includes(transition.from as NirmanaLayerId)
-    if (toIndex === fromIndex + 1 && requiresProjectedEvidence && !completedAt.has(transition.from)) {
+    if (transition.from !== null && toIndex === fromIndex + 1 && requiresProjectedEvidence && !completedAt.has(transition.from)) {
       contradictions.push(`Contradictory stage transition ${transition.from} -> ${transition.to}: ${transition.from} completion evidence is incomplete.`)
     }
   }

@@ -35,7 +35,7 @@ function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
   }
 }
 
-function transition(from_stage: string, to_stage: string, recorded_at: string): CampaignEvent {
+function transition(from_stage: string | null, to_stage: string, recorded_at: string): CampaignEvent {
   return event({
     event_type: 'stage_transition_accepted',
     entity_type: 'campaign_stage',
@@ -92,6 +92,47 @@ function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Part
 }
 
 describe('projectCampaignStages', () => {
+  it('treats a same-digest bootstrap receipt replay as idempotent stage evidence', () => {
+    const bootstrap = transition(null, 'BOOTSTRAP', '2026-08-26T09:00:00.000Z')
+    const replay = {
+      ...bootstrap,
+      observed_at: '2026-08-26T09:00:01.000Z',
+      recorded_at: '2026-08-26T09:00:01.000Z',
+    }
+
+    const result = projectStages({
+      definitionStatus: 'reconciling',
+      events: [bootstrap, replay],
+      layers: emptyLayers,
+    })
+
+    expect(result.current_stage).toBe('BOOTSTRAP')
+    expect(result.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'active' })
+    expect(result.contradictions).toEqual([])
+  })
+
+  it('blocks bootstrap receipt replays whose prerequisite digests conflict', () => {
+    const bootstrap = transition(null, 'BOOTSTRAP', '2026-08-26T09:00:00.000Z')
+    const conflict = {
+      ...bootstrap,
+      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'b'.repeat(64) },
+      observed_at: '2026-08-26T09:00:01.000Z',
+      recorded_at: '2026-08-26T09:00:01.000Z',
+    }
+
+    const result = projectStages({
+      definitionStatus: 'reconciling',
+      events: [bootstrap, conflict],
+      layers: emptyLayers,
+    })
+
+    expect(result.current_stage).toBe('BOOTSTRAP')
+    expect(result.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'blocked' })
+    expect(result.contradictions).toEqual([
+      'Contradictory stage transition null -> BOOTSTRAP: prerequisite digests differ.',
+    ])
+  })
+
   it('uses the latest accepted stage transition instead of guessing from incomplete stages', () => {
     const result = projectStages({
       definitionStatus: 'reconciling',

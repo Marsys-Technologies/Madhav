@@ -1235,6 +1235,53 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.data_quality.contradictions).toEqual([])
   })
 
+  it('keeps a same-digest bootstrap receipt replay idempotent in the campaign snapshot', () => {
+    const manifest = defaultManifest()
+    const bootstrap = stageEventsThrough('BOOTSTRAP')[0]
+    const replay = {
+      ...bootstrap,
+      source_ref: 'stage:BOOTSTRAP:replay',
+      observed_at: '2026-08-25T09:00:01.000Z',
+      recorded_at: '2026-08-25T09:00:01.000Z',
+    }
+    const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [bootstrap, replay],
+    }, []), { generatedAt: observedAt })
+
+    expect(snapshot.campaign).toMatchObject({ current_stage: 'BOOTSTRAP', campaign_status: 'takeover' })
+    expect(snapshot.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'active' })
+    expect(snapshot.data_quality.contradictions).toEqual([])
+  })
+
+  it('blocks the campaign when bootstrap receipt replays have conflicting prerequisite digests', () => {
+    const manifest = defaultManifest()
+    const bootstrap = stageEventsThrough('BOOTSTRAP')[0]
+    const conflict = {
+      ...bootstrap,
+      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'f'.repeat(64) },
+      source_ref: 'stage:BOOTSTRAP:conflict',
+      observed_at: '2026-08-25T09:00:01.000Z',
+      recorded_at: '2026-08-25T09:00:01.000Z',
+    }
+    const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [bootstrap, conflict],
+    }, []), { generatedAt: observedAt })
+
+    expect(snapshot.campaign).toMatchObject({ current_stage: 'BOOTSTRAP', campaign_status: 'blocked' })
+    expect(snapshot.stages[0]).toMatchObject({ stage_id: 'BOOTSTRAP', state: 'blocked' })
+    expect(snapshot.data_quality.contradictions).toContain(
+      'Contradictory stage transition null -> BOOTSTRAP: prerequisite digests differ.',
+    )
+  })
+
   it('marks registry-English substitution as unversioned fallback when the governed English name is null', () => {
     const manifest = defaultManifest()
     const acceptedDigest = '5976b5fd12288c37e4dfc319f9593e79eb86aa3a1e2224ba387efcd6e3d8a541'
