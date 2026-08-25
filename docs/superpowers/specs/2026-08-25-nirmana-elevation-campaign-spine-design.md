@@ -1,7 +1,7 @@
 ---
 title: Nirmāṇa Elevation Tracker — Campaign Spine Redesign
 date: 2026-08-25
-status: PENDING_WRITTEN_REVIEW
+status: APPROVED
 design_approval: APPROVED_IN_CONVERSATION
 author: Abhisek Mohanty + Codex
 register: product
