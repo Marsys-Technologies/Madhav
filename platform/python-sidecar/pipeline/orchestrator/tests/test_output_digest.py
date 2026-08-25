@@ -167,3 +167,71 @@ def test_ghatana_digest_changes_when_a_serving_semantic_event_shape_value_change
     left = _Cursor(row={"spec": spec, "spec_sha256": sha}, batches=[[{"row_json": point}], [], [], []])
     right = _Cursor(row={"spec": spec, "spec_sha256": sha}, batches=[[{"row_json": interval}], [], [], []])
     assert compute_output_digest(left, asset_id="bg_ghatana")[0] != compute_output_digest(right, asset_id="bg_ghatana")[0]
+
+
+def _migration_specs(path: pathlib.Path):
+    matches = re.findall(
+        r"\(\s*'([^']+)',\s*'([a-f0-9]{64})',\s*'({.+?})'::jsonb\s*\)",
+        path.read_text(),
+        re.DOTALL,
+    )
+    return {asset_id: (spec_sha, json.loads(raw_spec)) for asset_id, spec_sha, raw_spec in matches}
+
+
+def test_every_frozen_l0_wave0_build_has_a_reviewed_canonical_digest_spec():
+    platform_root = pathlib.Path(__file__).resolve().parents[4]
+    repo_root = platform_root.parent
+    seeded = {}
+    for filename in (
+        "598_nirmana_output_digest_specs.sql",
+        "600_nirmana_l0_wave0_output_digest_specs.sql",
+    ):
+        seeded.update(_migration_specs(platform_root / "supabase/migrations" / filename))
+
+    manifest = json.loads(
+        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json").read_text()
+    )
+    wave0_builds = {
+        asset["asset_id"]
+        for asset in manifest["assets"]
+        if asset["layer"] == "L0"
+        and asset["wave_index"] == 0
+        and asset["execution_obligation"] == "build"
+    }
+    assert wave0_builds <= set(seeded)
+
+    execution_only = {"build_id", "created_at", "computed_at", "ingested_at", "updated_at"}
+    for asset_id in wave0_builds:
+        spec_sha, spec = seeded[asset_id]
+        assert canonical_digest(spec) == spec_sha
+        assert spec["components"]
+        for component in spec["components"]:
+            assert set(component["key_columns"]) <= set(component["value_columns"])
+            assert execution_only.isdisjoint(component["value_columns"])
+            _component_statement(component)
+
+
+def test_migration_600_closes_exactly_the_previously_unspecced_wave0_gap():
+    platform_root = pathlib.Path(__file__).resolve().parents[4]
+    specs_598 = _migration_specs(
+        platform_root / "supabase/migrations/598_nirmana_output_digest_specs.sql"
+    )
+    specs_600 = _migration_specs(
+        platform_root / "supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql"
+    )
+    assert len(specs_600) == 20
+    assert not (set(specs_598) & set(specs_600))
+    assert {"bg_reference", "bg_transit_rules", "bg_medical_mappings"} <= set(specs_600)
+
+    reference_relations = {
+        component["relation"]
+        for component in specs_600["bg_reference"][1]["components"]
+    }
+    assert "reference_nakshatras" in reference_relations
+    assert len(reference_relations) == 12
+
+    transit_relations = {
+        component["relation"]
+        for component in specs_600["bg_transit_rules"][1]["components"]
+    }
+    assert transit_relations == {"bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"}
