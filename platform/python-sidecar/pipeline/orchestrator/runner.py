@@ -21,7 +21,12 @@ import psycopg
 
 from .db import connect
 from .events import emit_event
-from .locks import acquire_chart_lock, release_chart_lock
+from .locks import (
+    acquire_chart_lock,
+    acquire_global_assets_lock,
+    release_chart_lock,
+    release_global_assets_lock,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -371,6 +376,29 @@ def mark_run_state(
     values.append(run_id)
     cur.execute(sql, values)
     conn.commit()
+
+
+def claim_runnable_run(conn: psycopg.Connection, cur, run_id: str) -> bool:
+    """Claim planned work or reclaim a lock-proven orphaned running attempt."""
+    cur.execute(
+        """UPDATE build_runs
+              SET state='running', started_at=COALESCE(started_at, NOW())
+            WHERE id=%s AND state IN ('planned', 'running')
+        RETURNING id""",
+        (run_id,),
+    )
+    claimed = cur.fetchone() is not None
+    conn.commit()
+    return claimed
+
+
+def count_other_running_runs(cur, run_id: str) -> int:
+    """Apply the fleet cap without making a crashed run block its own retry."""
+    cur.execute(
+        "SELECT count(*) AS active FROM build_runs WHERE state='running' AND id<>%s",
+        (run_id,),
+    )
+    return int(cur.fetchone()["active"])
 
 
 def check_signals(cur, run_id: str) -> Optional[str]:
@@ -1010,8 +1038,7 @@ def execute_run(run_id: str) -> None:
                 logger.warning(msg, len(_gaps), _gaps)
 
     # Concurrency cap: defer if too many runs are already active.
-    cur.execute("SELECT count(*) AS active FROM build_runs WHERE state = 'running'")
-    active_count = cur.fetchone()["active"]
+    active_count = count_other_running_runs(cur, run_id)
     if active_count >= _MAX_CONCURRENT_RUNS:
         logger.warning(
             "[orchestrator] max concurrent runs (%d) reached (%d active) — deferring run %s",
@@ -1026,6 +1053,29 @@ def execute_run(run_id: str) -> None:
         sys.exit(3)
     # Lock acquired; commit the advisory lock transaction so it survives later commits
     conn.commit()
+
+    holds_global_assets_lock = False
+    if any(scope == "global" for scope in _asset_scopes.values()):
+        if not acquire_global_assets_lock(cur):
+            logger.warning("[orchestrator] global assets locked by another run — deferring %s", run_id)
+            release_chart_lock(cur, chart_id)
+            conn.commit()
+            conn.close()
+            sys.exit(3)
+        holds_global_assets_lock = True
+        conn.commit()
+
+    # The dispatcher may have terminalized a failed/ambiguous job invocation
+    # after this process loaded the row.  Only a planned row can be claimed;
+    # losing the compare-and-swap means no asset or throughput state is touched.
+    if not claim_runnable_run(conn, cur, run_id):
+        logger.warning("[orchestrator] run %s is no longer runnable — refusing execution", run_id)
+        if holds_global_assets_lock:
+            release_global_assets_lock(cur)
+        release_chart_lock(cur, chart_id)
+        conn.commit()
+        conn.close()
+        return
 
     # Orphan cleanup: reset assets stuck in 'building' from a prior crashed run.
     # We hold the chart advisory lock, so no other orchestrator is running for this
@@ -1054,6 +1104,8 @@ def execute_run(run_id: str) -> None:
     logger.info("[orchestrator] orphan-cleanup complete for chart %s", chart_id)
 
     try:
+        # State is already atomically claimed above.  Keep the standard state
+        # helper/event path for observers and existing instrumentation.
         mark_run_state(conn, cur, run_id, "running", started_at=True)
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "running"})
 
@@ -1115,6 +1167,8 @@ def execute_run(run_id: str) -> None:
         except Exception:
             pass
         try:
+            if holds_global_assets_lock:
+                release_global_assets_lock(cur)
             release_chart_lock(cur, chart_id)
             conn.commit()
         except Exception:
