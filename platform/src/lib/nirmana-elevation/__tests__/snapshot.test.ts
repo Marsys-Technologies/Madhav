@@ -219,6 +219,62 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.progress).toMatchObject({ accepted_rebuilds: 0, assets_frozen: 0 })
   })
 
+  it('withholds a build-obligated denominator for an active registry asset cockpit cannot dispatch', () => {
+    const lifecycleEvents = [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ].map((event_type) => ({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'bg_prashna_rules',
+      layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence',
+      source_ref: event_type === 'accepted_rebuild_observed' ? 'build_run:run-1' : `event:${event_type}`,
+      observed_at: observedAt, recorded_at: observedAt,
+    }))
+    const manifest = { chart_id: canonicalChartId, assets: [{ asset_id: 'bg_prashna_rules', layer: 'L0', execution_obligation: 'build' }] }
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: [{
+        asset_id: 'bg_prashna_rules', english_name: 'Prashna Rules', layer: 'brahmagyan', scope: 'per_chart', sort_order: 1,
+        has_writer: false, asset_type: 'data', asset_kind: 'data', is_active: true, depends_on: [],
+      }],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: lifecycleEvents,
+      build_runs: [{ id: 'run-1', chart_id: canonicalChartId, state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'run-1', asset_id: 'bg_prashna_rules', position: 1, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'reconciling', buildable_assets_total: null, accepted_rebuilds: 0, assets_frozen: 0 })
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('unverified')
+  })
+
+  it('allows an active non-writer asset to freeze only through its frozen formal non-build disposition', () => {
+    const lifecycleEvents = [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'source_accepted', 'integrity_verified', 'asset_frozen',
+    ].map((event_type) => ({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'bg_prashna_rules',
+      layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}`,
+      observed_at: observedAt, recorded_at: observedAt,
+    }))
+    const manifest = { chart_id: canonicalChartId, assets: [{ asset_id: 'bg_prashna_rules', layer: 'L0', execution_obligation: 'source_acceptance' }] }
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: [{
+        asset_id: 'bg_prashna_rules', english_name: 'Prashna Rules', layer: 'brahmagyan', scope: 'per_chart', sort_order: 1,
+        has_writer: false, asset_type: 'data', asset_kind: 'data', is_active: true, depends_on: [],
+      }],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: lifecycleEvents,
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', buildable_assets_total: 0, accepted_rebuilds: 0, assets_frozen: 1 })
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
+      execution_obligation: 'source_acceptance',
+      lifecycle_state: 'frozen',
+    })
+  })
+
   it('accepts formal non-build dispositions and producer-covered evidence without a rebuild of the logical asset', () => {
     const assetIds = ['bg_source', 'bg_producer', 'bg_covered']
     const manifest = {

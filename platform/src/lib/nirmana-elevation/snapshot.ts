@@ -65,14 +65,15 @@ function asIso(value: string | null | undefined): string | null {
   return value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : null
 }
 
-function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryIds: Set<string>): NirmanaElevationManifest | null {
+function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryById: Map<string, NirmanaElevationRawSources['asset_registry'][number]>): NirmanaElevationManifest | null {
   if (!definition || definition.definition_status !== 'frozen') return null
   const parsed = parseNirmanaElevationManifest(definition.manifest)
   if (!parsed) return null
   if (canonicalManifestDigest(parsed) !== definition.manifest_sha256) return null
   const ids = parsed.assets.map((asset) => asset.asset_id)
-  if (new Set(ids).size !== ids.length || ids.some((id) => !registryIds.has(id))) return null
+  if (new Set(ids).size !== ids.length || ids.some((id) => !registryById.has(id))) return null
   const assetsById = new Map(parsed.assets.map((asset) => [asset.asset_id, asset]))
+  if (parsed.assets.some((asset) => asset.execution_obligation === 'build' && registryById.get(asset.asset_id)?.has_writer !== true)) return null
   if (parsed.assets.some((asset) => asset.execution_obligation === 'producer_covered'
     && (!asset.producer_id || assetsById.get(asset.producer_id)?.execution_obligation !== 'build'))) return null
   return parsed
@@ -136,7 +137,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const generated_at = new Date(generatedAt).toISOString()
   const definition = raw.campaign_definitions[0]
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
-  const manifest = validManifest(definition, new Set(registryById.keys()))
+  const manifest = validManifest(definition, registryById)
   const manifestAssets = manifest?.assets ?? null
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
   const throughputById = runtimeThroughputById(raw, registryById, manifest?.chart_id)
