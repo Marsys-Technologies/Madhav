@@ -16,6 +16,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
 from dataclasses import dataclass
 from typing import Any, Optional
+from uuid import UUID
 
 import psycopg
 
@@ -254,7 +255,19 @@ def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
         raise ValueError("frozen run manifest is incomplete")
     if manifest["version"] != "nirmana-run-manifest/v1":
         raise ValueError("unsupported frozen run manifest version")
-    for field in ("chart_id", "scope", "scope_target", "action"):
+    # psycopg decodes UUID columns to ``uuid.UUID`` while JSONB retains the
+    # dispatch-time string.  Parse both representations before comparison so a
+    # valid non-canonical spelling cannot falsely terminalize an accepted run.
+    manifest_chart_id = manifest["chart_id"]
+    run_chart_id = run.get("chart_id")
+    try:
+        manifest_chart_uuid = UUID(manifest_chart_id) if isinstance(manifest_chart_id, str) else None
+        run_chart_uuid = run_chart_id if isinstance(run_chart_id, UUID) else UUID(str(run_chart_id))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("frozen run manifest chart_id does not match build_run") from None
+    if manifest_chart_uuid is None or manifest_chart_uuid != run_chart_uuid:
+        raise ValueError("frozen run manifest chart_id does not match build_run")
+    for field in ("scope", "scope_target", "action"):
         if manifest[field] != run.get(field):
             raise ValueError(f"frozen run manifest {field} does not match build_run")
 
@@ -307,6 +320,23 @@ def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
         plan=list(plan), asset_scopes=asset_scopes, asset_deps=asset_deps,
         asset_partitions=asset_partitions, asset_has_cowriters=asset_has_cowriters,
         expected_code_digests=expected_code_digests,
+    )
+
+
+def _terminalize_preflight_failure(cur, *, run_id: str, message: str) -> None:
+    """Fail an unclaimed run and abort its queued assets in one statement."""
+    cur.execute(
+        """WITH failed_run AS (
+               UPDATE build_runs
+                  SET state='failed', ended_at=NOW(), last_error=%s
+                WHERE id=%s AND state IN ('planned', 'running', 'paused')
+            RETURNING id
+           )
+           UPDATE build_run_assets
+              SET state='aborted', ended_at=NOW(), error=%s
+            WHERE run_id IN (SELECT id FROM failed_run)
+              AND state='queued'""",
+        (message, run_id, message),
     )
 
 
@@ -998,10 +1028,7 @@ def execute_run(run_id: str) -> None:
         # it terminal rather than falling back to mutable planning inputs.
         message = f"frozen manifest validation failed: {exc}"
         logger.error("[orchestrator] run %s %s", run_id, message)
-        cur.execute(
-            "UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=%s WHERE id=%s",
-            (message[:2000], run_id),
-        )
+        _terminalize_preflight_failure(cur, run_id=run_id, message=message[:2000])
         conn.commit()
         conn.close()
         sys.exit(1)
