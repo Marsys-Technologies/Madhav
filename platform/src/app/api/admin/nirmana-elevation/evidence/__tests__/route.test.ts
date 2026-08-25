@@ -66,7 +66,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
-    expect(queryMock.mock.calls[0][1]).toContain('admin-1')
+    const insertCall = queryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+    expect(insertCall?.[1]).toContain('admin-1')
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'created' }))
   })
 
