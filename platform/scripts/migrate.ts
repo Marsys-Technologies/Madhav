@@ -68,6 +68,22 @@ export interface MigrationFile {
   dir: string
 }
 
+/**
+ * `594_nirmana_t0_sky_calendar_contract.sql` was committed after the historical
+ * table rename had already happened in production, but that rename was not
+ * represented by a replayable file.  The compatibility migration is deliberately
+ * numbered after 594 (to preserve the single-number allocation rule) yet must
+ * establish the relation before 594 when replaying from an empty database.
+ *
+ * Keep this exception closed: it names one prerequisite and one target only.
+ * It is not a general dependency mechanism and cannot silently reorder other
+ * migrations.
+ */
+const NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE =
+  '597_nirmana_t0_sky_calendar_replay_compat.sql'
+const NIRMANA_SKY_CALENDAR_REPLAY_TARGET =
+  '594_nirmana_t0_sky_calendar_contract.sql'
+
 export interface RunOptions {
   dryRun?: boolean
   target?: string
@@ -406,6 +422,20 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
     files.push(...entries.map(name => ({ name, dir })))
   }
   files.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Preserve ordinary lexical order, except for the one closed replay repair
+  // above.  A previously applied 597 remains in this list and is still skipped
+  // by the normal `_migrations_applied` check in runMigrations().
+  const prerequisiteIndex = files.findIndex(
+    file => file.name === NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE
+  )
+  const targetIndex = files.findIndex(
+    file => file.name === NIRMANA_SKY_CALENDAR_REPLAY_TARGET
+  )
+  if (prerequisiteIndex !== -1 && targetIndex !== -1 && prerequisiteIndex > targetIndex) {
+    const [prerequisite] = files.splice(prerequisiteIndex, 1)
+    files.splice(targetIndex, 0, prerequisite)
+  }
   return files
 }
 
