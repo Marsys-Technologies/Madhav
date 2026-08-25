@@ -7,14 +7,7 @@ import { CampaignSpine } from './CampaignSpine'
 import { NowNextRail } from './NowNextRail'
 
 function snapshotFixture(): NirmanaElevationSnapshotV2 {
-  const snapshot = structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
-  snapshot.progress.assets_frozen = 18
-  snapshot.layers[0].waves[0].active_asset_ids = ['bg_prashna_rules', 'bg_sign_medical', 'bg_chart_service']
-  snapshot.active_runs = [{
-    ...snapshot.active_runs[0],
-    active_asset_ids: ['bg_prashna_rules', 'bg_sign_medical', 'bg_chart_service'],
-  }]
-  return snapshot
+  return structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
 }
 
 function CampaignSurface({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
@@ -30,8 +23,8 @@ describe('CampaignSpine', () => {
     render(<CampaignSurface snapshot={snapshotFixture()} />)
 
     expect(screen.getByText('L0 · Brahmagyan · Wave 2')).toBeVisible()
-    expect(screen.getByText('18 / 128')).toBeVisible()
-    expect(screen.getByText(/3 assets active/i)).toBeVisible()
+    expect(screen.getByText('3 / 5')).toBeVisible()
+    expect(screen.getByText(/1 asset active/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /L1 · Ganita/i })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getAllByRole('button', { name: /BOOTSTRAP|T0_CENSUS|PLAN_FROZEN|DENOMINATOR_FROZEN|F0_FOUNDATION|L[0-5]|CLOSING|COMPLETE/ })).toHaveLength(13)

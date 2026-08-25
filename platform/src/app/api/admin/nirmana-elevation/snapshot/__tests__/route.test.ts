@@ -39,9 +39,9 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     releaseMock.mockReset().mockResolvedValue({
       release: { main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null, observed_at: '2026-08-25T09:00:00.000Z' },
       sources: [
-        { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error: null },
-        { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error: null },
-        { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'unknown', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: null, error: 'No immutable deployment commit SHA is present on the serving revision.' },
+        { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error_code: null, error_message: null },
+        { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error_code: null, error_message: null },
+        { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'unknown', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: null, error_code: 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE', error_message: 'Immutable serving-revision commit provenance is unavailable.' },
       ],
       gaps: ['Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.'],
     })
@@ -91,7 +91,8 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
 
   it('returns an explicit degraded 503 snapshot when any authoritative source fails', async () => {
     superAdmin()
-    queryMock.mockRejectedValueOnce(new Error('database unavailable'))
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    queryMock.mockRejectedValueOnce(new Error('password=super-secret host=private-db.internal'))
     const { GET } = await import('../route')
 
     const response = await GET()
@@ -104,8 +105,18 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(body.stages).toHaveLength(13)
     expect(body.data_quality.verdict).toBe('degraded')
     expect(body.sources).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source_id: 'asset_registry', state: 'unavailable', error: 'database unavailable' }),
+      expect.objectContaining({
+        source_id: 'asset_registry', state: 'unavailable',
+        error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+        error_message: 'Authoritative source is unavailable.',
+      }),
     ]))
+    expect(JSON.stringify(body)).not.toContain('super-secret')
+    expect(JSON.stringify(body)).not.toContain('private-db.internal')
+    expect(log).toHaveBeenCalledWith(
+      '[nirmana-elevation] authoritative source query failed',
+      expect.objectContaining({ source_id: 'asset_registry', cause: expect.any(Error) }),
+    )
     expect(body.progress.assets_total).toBeNull()
     expect(body.assets).toEqual([])
   })
@@ -132,8 +143,11 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(body.sources).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source_id: 'asset_label_catalogue', state: 'unavailable',
-        error: 'relation "nirmana_elevation_asset_labels" does not exist',
+        error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+        error_message: 'Authoritative source is unavailable.',
       }),
     ]))
+    expect(JSON.stringify(body)).not.toContain('does not exist')
+    expect(JSON.stringify(body)).not.toContain('relation "')
   })
 })

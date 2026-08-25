@@ -16,6 +16,27 @@ function layerFixture(snapshot: NirmanaElevationSnapshotV2) {
 }
 
 describe('LayerStage', () => {
+  it('renders accessible layer progress, the state legend, eligible preview, and collapsed completed waves', () => {
+    const snapshot = snapshotFixture()
+    const layer = snapshot.layers.find((candidate) => candidate.layer_id === 'L0')
+    if (!layer) throw new Error('Fixture must include L0.')
+
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+
+    const progress = screen.getByRole('progressbar', { name: /L0 · Brahmagyan layer progress/i })
+    expect(progress).toHaveAttribute('aria-valuenow', String(layer.frozen))
+    expect(progress).toHaveAttribute('aria-valuemax', String(layer.assets_total))
+    expect(screen.getByText(`${layer.frozen} / ${layer.assets_total} assets frozen`)).toBeVisible()
+    const legend = screen.getByLabelText(/asset state legend/i)
+    for (const label of ['Frozen', 'Active', 'Blocked', 'Eligible next', 'Locked', 'Unknown']) {
+      expect(within(legend).getByText(label)).toBeVisible()
+    }
+    expect(screen.getByText(/eligible-next preview/i)).toBeVisible()
+    expect(within(screen.getByLabelText(/eligible-next preview/i)).getByText('bg_prashna_rules')).toBeVisible()
+    const completedSummary = screen.getByText(/Wave 0.*completed/i)
+    expect(completedSummary.closest('details')).not.toHaveAttribute('open')
+  })
+
   it('stacks waves in numeric order and keeps parallel assets within their labelled wave', () => {
     const snapshot = snapshotFixture()
     const layer = layerFixture(snapshot)
@@ -28,13 +49,14 @@ describe('LayerStage', () => {
     const waveThree = { ...kaSmriti, asset_id: 'ka_wave_three', wave_index: 3, sanskrit_name: 'Kāla Three', english_name: 'Kala Three', description: 'Third wave asset' }
     snapshot.assets = [waveThree, waveTwoSibling, waveOne, waveTwo] as NirmanaElevationSnapshotV2['assets']
     layer.waves = [
-      { wave_index: 3, state: 'locked', asset_ids: ['ka_wave_three'], active_asset_ids: [], blocked_asset_ids: [] },
-      { wave_index: 2, state: 'active', asset_ids: ['ka_wave_two_a', 'ka_wave_two_b'], active_asset_ids: ['ka_wave_two_a'], blocked_asset_ids: [] },
-      { wave_index: 1, state: 'completed', asset_ids: ['ka_wave_one'], active_asset_ids: [], blocked_asset_ids: [] },
+      { wave_index: 3, state: 'locked', asset_ids: ['ka_wave_three'], completed_asset_ids: [], active_asset_ids: [], blocked_asset_ids: [], locked_asset_ids: ['ka_wave_three'], unknown_asset_ids: [], eligible_next_asset_ids: [] },
+      { wave_index: 2, state: 'active', asset_ids: ['ka_wave_two_a', 'ka_wave_two_b'], completed_asset_ids: [], active_asset_ids: ['ka_wave_two_a'], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: ['ka_wave_two_b'], eligible_next_asset_ids: ['ka_wave_two_b'] },
+      { wave_index: 1, state: 'completed', asset_ids: ['ka_wave_one'], completed_asset_ids: ['ka_wave_one'], active_asset_ids: [], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: [], eligible_next_asset_ids: [] },
     ]
 
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
 
+    fireEvent.click(screen.getByText(/Wave 1.*completed/i))
     expect(screen.getAllByRole('group', { name: /wave [123]/i }).map((element) => element.getAttribute('aria-label'))).toEqual(['Wave 1', 'Wave 2', 'Wave 3'])
     const waveTwoGroup = screen.getByRole('group', { name: 'Wave 2' })
     expect(within(waveTwoGroup).getByText('ka_wave_two_a')).toBeVisible()
@@ -51,7 +73,7 @@ describe('LayerStage', () => {
     asset.legacy_aliases = asset.legacy_aliases.map((alias) => ({ ...alias, english_name: 'Year-by-year digest' }))
     const incomplete = { ...asset, asset_id: 'ka_uncatalogued', sanskrit_name: null, english_name: 'Uncatalogued asset', description: null, legacy_aliases: [], identity_quality: 'incomplete' as const }
     snapshot.assets = [asset, incomplete] as NirmanaElevationSnapshotV2['assets']
-    layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_smriti', 'ka_uncatalogued'], active_asset_ids: ['ka_smriti'], blocked_asset_ids: [] }]
+    layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_smriti', 'ka_uncatalogued'], completed_asset_ids: [], active_asset_ids: ['ka_smriti'], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: ['ka_uncatalogued'], eligible_next_asset_ids: ['ka_uncatalogued'] }]
     const onOpenAudit = vi.fn()
 
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} />)
@@ -103,7 +125,7 @@ describe('LayerStage', () => {
       milestones_required: 6,
     }
     snapshot.assets = [asset, fiveOfSix] as NirmanaElevationSnapshotV2['assets']
-    layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_disclosure', 'ka_five_of_six'], active_asset_ids: ['ka_disclosure'], blocked_asset_ids: [] }]
+    layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_disclosure', 'ka_five_of_six'], completed_asset_ids: [], active_asset_ids: ['ka_disclosure'], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: ['ka_five_of_six'], eligible_next_asset_ids: ['ka_five_of_six'] }]
 
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
 

@@ -62,6 +62,7 @@ describe('loadNirmanaReleaseStatus', () => {
   })
 
   it('isolates unavailable Cloud Run observations without inventing a serving revision', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const unavailableCloudRun = { getService: vi.fn().mockRejectedValue(new Error('ADC unavailable')) }
     const result = await loadNirmanaReleaseStatus({
       now: observedAt,
@@ -70,8 +71,36 @@ describe('loadNirmanaReleaseStatus', () => {
     })
 
     expect(result.release).toMatchObject({ main_sha: 'b'.repeat(40), deployed_revision: null, production_in_sync: null })
-    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' })]))
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'cloud_run_web', state: 'unavailable',
+      error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
+    expect(JSON.stringify(result)).not.toContain('ADC unavailable')
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', expect.objectContaining({ source_id: 'cloud_run_web', cause: expect.any(Error) }))
     expect(result.gaps).toContain('Authoritative Cloud Run serving revision is unavailable; release sync is withheld.')
+  })
+
+  it('logs immutable provenance failures while keeping their causes out of the public source contract', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const cloudRunClient = cloudRun()
+    cloudRunClient.getRevision.mockRejectedValue(new Error('authorization=Bearer super-secret'))
+
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'b'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'artifact_registry_commit', state: 'unknown',
+      error_code: 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+      error_message: 'Immutable serving-revision commit provenance is unavailable.',
+    })]))
+    expect(JSON.stringify(result)).not.toContain('super-secret')
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', expect.objectContaining({
+      source_id: 'artifact_registry_commit', cause: expect.any(Error),
+    }))
   })
 
   it('treats split serving traffic as unavailable instead of choosing a revision arbitrarily', async () => {
@@ -185,7 +214,7 @@ describe('loadNirmanaReleaseStatus', () => {
     })
     expect(result.release).toMatchObject({ deployed_sha: 'd'.repeat(40), production_in_sync: true })
     expect(result.sources).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'fresh', error: null }),
+      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'fresh', error_code: null, error_message: null }),
     ]))
     expect(result.gaps).not.toContain('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
   })
@@ -211,7 +240,10 @@ describe('loadNirmanaReleaseStatus', () => {
     const result = await resultPromise
 
     expect(result.release).toMatchObject({ main_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
-    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'unavailable', error: expect.stringContaining('timed out') })]))
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'github_main', state: 'unavailable', error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
   })
 
   it('times out a stalled GitHub response body after headers arrive', async () => {
@@ -226,6 +258,9 @@ describe('loadNirmanaReleaseStatus', () => {
     const result = await resultPromise
 
     expect(result.release.main_sha).toBeNull()
-    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'unavailable', error: expect.stringContaining('timed out') })]))
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'github_main', state: 'unavailable', error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
   })
 })

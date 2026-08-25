@@ -101,6 +101,7 @@ export const NirmanaElevationSnapshotV1Schema = z.object({
 
 const LayerIdSchema = z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
 const LayerNameSchema = z.enum(['Brahmagyan', 'Ganita', 'Bodha', 'Kala', 'Phala', 'Mimamsa'])
+const OperationalStateSchema = z.enum(['completed', 'active', 'blocked', 'locked', 'unknown'])
 
 const FoundationLaneSchema = z.object({
   lane_id: z.enum(['A', 'B', 'C', 'D', 'E']),
@@ -144,11 +145,40 @@ const OrderedStagesSchema = z.array(NirmanaCampaignStageSchema)
     }
   })
 
+const V2WaveSchema = z.object({
+  wave_index: z.number().int().nonnegative(),
+  state: OperationalStateSchema,
+  asset_ids: z.array(z.string()),
+  completed_asset_ids: z.array(z.string()),
+  active_asset_ids: z.array(z.string()),
+  blocked_asset_ids: z.array(z.string()),
+  locked_asset_ids: z.array(z.string()),
+  unknown_asset_ids: z.array(z.string()),
+  eligible_next_asset_ids: z.array(z.string()),
+}).superRefine((wave, context) => {
+  const partitions = [
+    ...wave.completed_asset_ids,
+    ...wave.active_asset_ids,
+    ...wave.blocked_asset_ids,
+    ...wave.locked_asset_ids,
+    ...wave.unknown_asset_ids,
+  ]
+  if (new Set(partitions).size !== partitions.length
+    || partitions.length !== wave.asset_ids.length
+    || wave.asset_ids.some((assetId) => !partitions.includes(assetId))) {
+    context.addIssue({ code: 'custom', path: ['asset_ids'], message: 'Every wave asset must appear in exactly one normalized state partition.' })
+  }
+  if (wave.eligible_next_asset_ids.some((assetId) => !wave.asset_ids.includes(assetId))) {
+    context.addIssue({ code: 'custom', path: ['eligible_next_asset_ids'], message: 'Eligible assets must belong to their wave.' })
+  }
+})
+
 const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.extend({
   layer_id: LayerIdSchema,
   layer_name: LayerNameSchema,
   required_gate: z.string(),
   eligible_next_asset_ids: z.array(z.string()),
+  waves: z.array(V2WaveSchema),
 }).superRefine((layer, context) => {
   if (layer.layer_name !== NIRMANA_LAYER_NAMES[layer.layer_id]) {
     context.addIssue({ code: 'custom', path: ['layer_name'], message: `${layer.layer_id} must use its governed layer name.` })
@@ -162,6 +192,7 @@ const V2AssetSchema = NirmanaElevationSnapshotV1Schema.shape.assets.element.exte
   legacy_aliases: z.array(NirmanaLegacyAliasSchema),
   identity_quality: z.enum(['complete', 'incomplete', 'unversioned_fallback']),
   layer: LayerIdSchema,
+  campaign_state: OperationalStateSchema,
   milestones: z.array(NirmanaMilestoneSchema)
     .length(NIRMANA_MILESTONE_IDS.length)
     .superRefine((milestones, context) => {
@@ -199,6 +230,56 @@ const V2AssetSchema = NirmanaElevationSnapshotV1Schema.shape.assets.element.exte
   }
 })
 
+const V2SourceSchema = z.object({
+  source_id: z.string(),
+  provenance: z.string(),
+  state: z.enum(['fresh', 'stale', 'unavailable', 'unknown']),
+  observed_at: nullableIso,
+  age_seconds: z.number().int().nonnegative().nullable(),
+  error_code: z.enum([
+    'NIRMANA_SOURCE_UNAVAILABLE',
+    'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+    'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+  ]).nullable(),
+  error_message: z.string().max(240).nullable(),
+})
+
+const AuditReceiptSchema = z.object({
+  ledger_ref: z.string().min(1).max(256),
+  event_type: z.enum([
+    'asset_analysis_accepted',
+    'optimization_verdict_accepted',
+    'implementation_accepted',
+    'accepted_rebuild_observed',
+    'integrity_verified',
+    'asset_frozen',
+    'probe_accepted',
+    'static_accepted',
+    'source_accepted',
+    'empty_accepted',
+    'retired_with_disposition',
+    'producer_covered',
+    'stage_transition_accepted',
+    'foundation_lane_accepted',
+    'asset_label_catalogue_accepted',
+    'build_run_authorized',
+  ]),
+  entity_type: z.enum(['asset', 'campaign_stage', 'foundation_lane', 'label_catalogue', 'build_run']),
+  entity_id: z.string().min(1).max(256),
+  related_asset_ids: z.array(z.string()),
+  layer: LayerIdSchema.nullable(),
+  source_kind: z.string().min(1).max(128),
+  source_ref: z.string().min(1).max(512),
+  observed_at: z.string().datetime(),
+  recorded_at: z.string().datetime(),
+  payload_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+const AuditLedgerRefSchema = z.object({
+  ledger_kind: z.enum(['campaign_event', 'build_run']),
+  ledger_ref: z.string().min(1).max(256),
+})
+
 /** Version 2 adds governed campaign stages and display identities without changing v1. */
 export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema.extend({
   schema_version: z.literal('2.0'),
@@ -208,6 +289,11 @@ export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema
   stages: OrderedStagesSchema,
   layers: z.array(V2LayerSchema),
   assets: z.array(V2AssetSchema),
+  sources: z.array(V2SourceSchema),
+  audit: z.object({
+    receipts: z.array(AuditReceiptSchema),
+    raw_ledger_refs: z.array(AuditLedgerRefSchema),
+  }),
 })
 
 export const NirmanaElevationSnapshotSchema = z.discriminatedUnion('schema_version', [

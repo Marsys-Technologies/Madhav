@@ -46,11 +46,11 @@ const SOURCE_PROVENANCE: Record<SourceId, string> = {
 export interface NirmanaElevationRawSources {
   asset_registry: Array<NirmanaRegistryContractRow & { english_name: string | null; asset_type: string | null }>
   asset_throughput: Array<{ asset_id: string; chart_id: string | null; state: string; last_built_at: string | null }>
-  build_runs: Array<{ id: string; chart_id: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null; triggered_by?: string | null }>
+  build_runs: Array<{ id: string; chart_id: string | null; action?: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null; triggered_by?: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
   build_substep_progress: Array<{ chart_id: string; asset_id: string; committed: string | number; last_progress_at: string | null }>
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
-  campaign_events: Array<{ event_id?: string; campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>
+  campaign_events: Array<{ event_id?: string; idempotency_key?: string; campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>
   asset_labels: Array<{
     campaign_id: string
     definition_revision: string
@@ -67,8 +67,12 @@ export interface NirmanaElevationRawSources {
 }
 
 export class NirmanaElevationSourceError extends Error {
-  constructor(readonly sourceId: SourceId, cause: unknown) {
-    super(cause instanceof Error ? cause.message : 'source query failed')
+  readonly publicCode = 'NIRMANA_SOURCE_UNAVAILABLE' as const
+  readonly publicMessage = 'Authoritative source is unavailable.'
+
+  constructor(readonly sourceId: SourceId, options?: { cause?: unknown }) {
+    super('Authoritative Nirmana source query failed.', options)
+    this.name = 'NirmanaElevationSourceError'
   }
 }
 
@@ -76,8 +80,10 @@ async function loadSource<K extends RawSourceId>(sourceId: K, sql: string): Prom
   try {
     const { rows } = await query(sql)
     return { [sourceId]: rows } as Pick<NirmanaElevationRawSources, K>
-  } catch (error) {
-    throw new NirmanaElevationSourceError(sourceId === 'asset_labels' ? 'asset_label_catalogue' : sourceId, error)
+  } catch (cause) {
+    const publicSourceId: SourceId = sourceId === 'asset_labels' ? 'asset_label_catalogue' : sourceId as SourceId
+    console.error('[nirmana-elevation] authoritative source query failed', { source_id: publicSourceId, cause })
+    throw new NirmanaElevationSourceError(publicSourceId, { cause })
   }
 }
 
@@ -89,11 +95,11 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
     superseded_by, data_disposition, dead_flag
     FROM asset_registry ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
-  const runs = await loadSource('build_runs', `SELECT id, chart_id, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
+  const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
   const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
-  const events = await loadSource('campaign_events', `SELECT event_id, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
+  const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
   const labels = await loadSource('asset_labels', `SELECT campaign_id, definition_revision, catalogue_revision, asset_id,
        sanskrit_name, english_name, description, legacy_aliases,
        source_ref, label_digest, recorded_at
@@ -255,9 +261,13 @@ function activeRunPriority(run: NirmanaElevationRawSources['build_runs'][number]
   return run.state === 'running' ? 2 : run.state === 'paused' ? 1 : 0
 }
 
-function activeRunsForChart(raw: NirmanaElevationRawSources, chartId: string | null | undefined): NirmanaElevationRawSources['build_runs'] {
+function activeRunsForChart(raw: NirmanaElevationRawSources, chartId: string | null | undefined, acceptedRunIds: Set<string>): NirmanaElevationRawSources['build_runs'] {
   return raw.build_runs
-    .filter((run) => chartId !== undefined && run.chart_id === chartId && ['planned', 'running', 'paused'].includes(run.state))
+    .filter((run) => chartId !== undefined
+      && run.chart_id === chartId
+      && acceptedRunIds.has(run.id.toLowerCase())
+      && run.triggered_by !== 'nirmana-f0-machinery-canary'
+      && ['planned', 'running', 'paused'].includes(run.state))
     .sort((left, right) => activeRunPriority(right) - activeRunPriority(left) || runTimestamp(right) - runTimestamp(left) || right.id.localeCompare(left.id))
 }
 
@@ -284,20 +294,23 @@ function currentRunAssetsById(raw: NirmanaElevationRawSources, activeRuns: Nirma
   return byAsset
 }
 
-function latestTerminalErrorsByAsset(raw: NirmanaElevationRawSources, chartId: string | null | undefined): Map<string, { run_id: string; error: string; timestamp: number }> {
+function latestTerminalErrorsByAsset(raw: NirmanaElevationRawSources, chartId: string | null | undefined, acceptedRunIds: Set<string>): Map<string, { run_id: string; timestamp: number }> {
   const terminalRunsById = new Map(raw.build_runs
-    .filter((run) => chartId !== undefined && run.chart_id === chartId && ['failed', 'error', 'cancelled', 'stopped'].includes(run.state))
+    .filter((run) => chartId !== undefined
+      && run.chart_id === chartId
+      && acceptedRunIds.has(run.id.toLowerCase())
+      && run.triggered_by !== 'nirmana-f0-machinery-canary'
+      && ['failed', 'error', 'cancelled', 'stopped'].includes(run.state))
     .map((run) => [run.id, run]))
   const candidates = raw.build_run_assets
     .filter((asset) => terminalRunsById.has(asset.run_id) && Boolean(asset.error))
     .map((asset) => ({
       asset_id: asset.asset_id,
       run_id: asset.run_id,
-      error: asset.error!,
       timestamp: Date.parse(asset.ended_at ?? asset.started_at ?? '') || runTimestamp(terminalRunsById.get(asset.run_id)!),
     }))
     .sort((left, right) => right.timestamp - left.timestamp || right.run_id.localeCompare(left.run_id))
-  const byAsset = new Map<string, { run_id: string; error: string; timestamp: number }>()
+  const byAsset = new Map<string, { run_id: string; timestamp: number }>()
   for (const candidate of candidates) {
     if (!byAsset.has(candidate.asset_id)) byAsset.set(candidate.asset_id, candidate)
   }
@@ -318,33 +331,168 @@ function runtimeThroughputById(raw: NirmanaElevationRawSources, registryById: Ma
   return byAsset
 }
 
+const BUILD_RUN_SOURCE_REF = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+const SHA256 = /^[a-f0-9]{64}$/
+const PUBLIC_AUDIT_EVENT_ENTITIES = {
+  asset_analysis_accepted: 'asset', optimization_verdict_accepted: 'asset', implementation_accepted: 'asset',
+  accepted_rebuild_observed: 'asset', integrity_verified: 'asset', asset_frozen: 'asset', probe_accepted: 'asset',
+  static_accepted: 'asset', source_accepted: 'asset', empty_accepted: 'asset', retired_with_disposition: 'asset',
+  producer_covered: 'asset', stage_transition_accepted: 'campaign_stage', foundation_lane_accepted: 'foundation_lane',
+  asset_label_catalogue_accepted: 'label_catalogue', build_run_authorized: 'build_run',
+} as const
+
+type PublicAuditEventType = keyof typeof PUBLIC_AUDIT_EVENT_ENTITIES
+
 function buildRunId(sourceRef: string): string | null {
-  return sourceRef.startsWith('build_run:') ? sourceRef.slice('build_run:'.length) : null
+  return BUILD_RUN_SOURCE_REF.exec(sourceRef)?.[1]?.toLowerCase() ?? null
+}
+
+function sanitizedSourceKind(value: string): string {
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(value) ? value : 'other'
+}
+
+function sanitizedReference(value: string): string {
+  const bounded = value.slice(0, 512)
+  return /(?:password|passwd|token|secret|api[_-]?key|authorization)\s*[=:]|bearer\s|postgres(?:ql)?:\/\/|[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:[^/\s@]+@|BEGIN [A-Z ]*PRIVATE KEY/i.test(bounded)
+    ? 'redacted:unsafe-reference'
+    : bounded || 'unknown:reference'
+}
+
+type RunAuthorization = { layer: (typeof LAYERS)[number][0]; waveIndex: number; assetIds: string[] }
+
+function acceptedRunAuthorizations(
+  raw: NirmanaElevationRawSources,
+  events: NirmanaElevationRawSources['campaign_events'],
+  manifest: NirmanaElevationManifest | null,
+): { byRunId: Map<string, RunAuthorization>; contradictions: string[] } {
+  const byRunId = new Map<string, RunAuthorization & { signature: string }>()
+  const conflictedRunIds = new Set<string>()
+  const contradictions: string[] = []
+  if (!manifest) return { byRunId, contradictions }
+  const manifestById = new Map(manifest.assets.map((asset) => [asset.asset_id, asset]))
+  const runsById = new Map(raw.build_runs.map((run) => [run.id.toLowerCase(), run]))
+
+  for (const event of events) {
+    if (event.event_type !== 'build_run_authorized'
+      || event.entity_type !== 'build_run'
+      || !isRecord(event.evidence_payload)) continue
+    const runId = buildRunId(event.source_ref)
+    const waveIndex = event.evidence_payload.wave_index
+    const assetIds = event.evidence_payload.asset_ids
+    const authorizationSha256 = event.evidence_payload.authorization_sha256
+    const layer = event.layer
+    if (!runId
+      || event.entity_id.toLowerCase() !== runId
+      || !LAYERS.some(([layerId]) => layerId === layer)
+      || !Number.isInteger(waveIndex)
+      || Number(waveIndex) < 0
+      || !Array.isArray(assetIds)
+      || assetIds.length === 0
+      || assetIds.some((assetId) => typeof assetId !== 'string')
+      || new Set(assetIds).size !== assetIds.length
+      || typeof authorizationSha256 !== 'string'
+      || !SHA256.test(authorizationSha256)) continue
+    const typedLayer = layer as RunAuthorization['layer']
+    const sortedAssetIds = [...assetIds as string[]].sort((left, right) => left.localeCompare(right))
+    if (sortedAssetIds.some((assetId) => {
+      const asset = manifestById.get(assetId)
+      return !asset
+        || asset.layer !== typedLayer
+        || asset.wave_index !== waveIndex
+        || (asset.execution_obligation !== 'build' && asset.execution_obligation !== 'probe')
+    })) continue
+    const run = runsById.get(runId)
+    if (!run
+      || run.chart_id !== manifest.chart_id
+      || (run.action != null && run.action !== 'rebuild')
+      || run.triggered_by === 'nirmana-f0-machinery-canary') continue
+    const runAssetIds = [...new Set(raw.build_run_assets
+      .filter((asset) => asset.run_id.toLowerCase() === runId)
+      .map((asset) => asset.asset_id))].sort((left, right) => left.localeCompare(right))
+    if (runAssetIds.length === 0 || stableJson(runAssetIds) !== stableJson(sortedAssetIds)) continue
+    const signature = stableJson({ layer: typedLayer, wave_index: waveIndex, asset_ids: sortedAssetIds, authorization_sha256: authorizationSha256 })
+    if (conflictedRunIds.has(runId)) continue
+    const existing = byRunId.get(runId)
+    if (existing && existing.signature !== signature) {
+      byRunId.delete(runId)
+      conflictedRunIds.add(runId)
+      contradictions.push(`Build run ${runId} has conflicting campaign authorization receipts.`)
+      continue
+    }
+    if (!existing) byRunId.set(runId, { layer: typedLayer, waveIndex: Number(waveIndex), assetIds: sortedAssetIds, signature })
+  }
+
+  return {
+    byRunId: new Map([...byRunId].map(([runId, { layer, waveIndex, assetIds }]) => [runId, { layer, waveIndex, assetIds }])),
+    contradictions,
+  }
+}
+
+function projectAudit(
+  events: NirmanaElevationRawSources['campaign_events'],
+  manifest: NirmanaElevationManifest | null,
+) {
+  const manifestIds = new Set(manifest?.assets.map((asset) => asset.asset_id) ?? [])
+  const receipts = events
+    .filter((event): event is typeof event & { event_type: PublicAuditEventType } => event.event_type in PUBLIC_AUDIT_EVENT_ENTITIES
+      && PUBLIC_AUDIT_EVENT_ENTITIES[event.event_type as PublicAuditEventType] === event.entity_type
+      && timestamp(event.observed_at) > 0
+      && timestamp(event.recorded_at) > 0)
+    .map((event) => {
+      const payloadAssetIds = event.entity_type === 'build_run' && isRecord(event.evidence_payload) && Array.isArray(event.evidence_payload.asset_ids)
+        ? event.evidence_payload.asset_ids.filter((assetId): assetId is string => typeof assetId === 'string' && manifestIds.has(assetId))
+        : []
+      const related_asset_ids = event.entity_type === 'asset' && manifestIds.has(event.entity_id)
+        ? [event.entity_id]
+        : [...new Set(payloadAssetIds)].sort((left, right) => left.localeCompare(right))
+      const fallbackRef = digest({
+        campaign_id: event.campaign_id,
+        definition_revision: event.definition_revision,
+        event_type: event.event_type,
+        entity_type: event.entity_type,
+        entity_id: event.entity_id,
+        recorded_at: event.recorded_at,
+      })
+      return {
+        ledger_ref: `campaign_event:${event.event_id && /^[0-9a-f-]{36}$/i.test(event.event_id) ? event.event_id : fallbackRef}`,
+        event_type: event.event_type,
+        entity_type: event.entity_type,
+        entity_id: event.entity_id.slice(0, 256),
+        related_asset_ids,
+        layer: LAYERS.some(([layerId]) => layerId === event.layer) ? event.layer : null,
+        source_kind: sanitizedSourceKind(event.source_kind),
+        source_ref: sanitizedReference(event.source_ref),
+        observed_at: new Date(event.observed_at).toISOString(),
+        recorded_at: new Date(event.recorded_at).toISOString(),
+        payload_sha256: digest(event.evidence_payload),
+      }
+    })
+  const raw_ledger_refs = [...new Map(receipts.flatMap((receipt) => {
+    const refs: Array<{ ledger_kind: 'campaign_event' | 'build_run'; ledger_ref: string }> = [
+      { ledger_kind: 'campaign_event', ledger_ref: receipt.ledger_ref },
+    ]
+    const runId = buildRunId(receipt.source_ref)
+    if (runId) refs.push({ ledger_kind: 'build_run' as const, ledger_ref: `build_run:${runId}` })
+    return refs.map((reference) => [`${reference.ledger_kind}:${reference.ledger_ref}`, reference] as const)
+  })).values()]
+  return { receipts, raw_ledger_refs }
 }
 
 export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString(), releaseStatus = null }: { generatedAt?: string; releaseStatus?: NirmanaReleaseStatus | null } = {}): NirmanaElevationSnapshotV2 {
   const generated_at = new Date(generatedAt).toISOString()
   const definition = raw.campaign_definitions[0]
-  const assetLabels = raw.asset_labels ?? []
-  const rawWithLabels = assetLabels === raw.asset_labels ? raw : { ...raw, asset_labels: assetLabels }
+  const rawWithLabels = raw.asset_labels ? raw : { ...raw, asset_labels: [] }
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
   const manifest = validManifest(definition, registryById)
   const manifestAssets = manifest?.assets ?? null
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
-  const throughputById = runtimeThroughputById(raw, registryById, manifest?.chart_id)
-  const activeRuns = activeRunsForChart(raw, manifest?.chart_id)
-  const activeRunById = new Map(activeRuns.map((run) => [run.id, run]))
-  const runAssetById = currentRunAssetsById(raw, activeRuns)
-  const terminalErrorByAsset = latestTerminalErrorsByAsset(raw, manifest?.chart_id)
-  const substepsById = new Map(raw.build_substep_progress
-    .filter((entry) => manifest?.chart_id !== undefined && entry.chart_id === manifest.chart_id)
-    .map((entry) => [entry.asset_id, entry]))
   const campaignEvents = definition ? raw.campaign_events
     .filter((event) => event.campaign_id === definition.campaign_id
       && event.definition_revision === definition.definition_revision)
-    .sort((left, right) => Date.parse(left.recorded_at) - Date.parse(right.recorded_at)
+    .sort((left, right) => timestamp(left.recorded_at) - timestamp(right.recorded_at)
       || (left.event_id ?? '').localeCompare(right.event_id ?? '')) : []
   const labelSelection = selectAcceptedLabels(rawWithLabels, definition)
+  const audit = projectAudit(campaignEvents, manifest)
   const eventTypesByAsset = new Map<string, Set<string>>()
   const acceptedAnalysisFingerprintByAsset = new Map<string, string>()
   const acceptedAnalysisDigestByAsset = new Map<string, string>()
@@ -388,246 +536,122 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const completedRunIds = new Set(raw.build_runs
     .filter((run) => run.state === 'completed'
       && run.chart_id === manifest?.chart_id
+      && (run.action == null || run.action === 'rebuild')
       && run.triggered_by !== 'nirmana-f0-machinery-canary')
-    .map((run) => run.id))
-  const completedRunAssets = new Set(
-    raw.build_run_assets
-      .filter((asset) => asset.state === 'complete' && completedRunIds.has(asset.run_id))
-      .map((asset) => `${asset.run_id}:${asset.asset_id}`),
-  )
+    .map((run) => run.id.toLowerCase()))
+  const completedRunAssets = new Set(raw.build_run_assets
+    .filter((asset) => asset.state === 'complete' && completedRunIds.has(asset.run_id.toLowerCase()))
+    .map((asset) => `${asset.run_id.toLowerCase()}:${asset.asset_id}`))
   const acceptedBuildRunIdsByAsset = new Map<string, Set<string>>()
-  for (const event of campaignEvents.filter((event) => event.event_type === 'accepted_rebuild_observed')) {
+  for (const event of campaignEvents.filter((candidate) => candidate.event_type === 'accepted_rebuild_observed')) {
     const runId = buildRunId(event.source_ref)
     const manifestAsset = manifestById.get(event.entity_id)
-    if (event.entity_type === 'asset'
-      && manifestAsset?.layer === event.layer
-      && runId !== null
+    if (event.entity_type === 'asset' && manifestAsset?.layer === event.layer && runId
       && completedRunAssets.has(`${runId}:${event.entity_id}`)) {
       const runIds = acceptedBuildRunIdsByAsset.get(event.entity_id) ?? new Set<string>()
       runIds.add(runId)
       acceptedBuildRunIdsByAsset.set(event.entity_id, runIds)
     }
   }
-  const acceptedBuildAssetIds = new Set(
-    manifestAssets
-      ?.filter((asset) => asset.execution_obligation === 'build')
-      .filter((asset) => acceptedBuildRunIdsByAsset.has(asset.asset_id))
-      .map((asset) => asset.asset_id) ?? [],
-  )
-  const milestoneProjectionById = new Map((manifestAssets ?? []).map((asset) => [
-    asset.asset_id,
-    projectAssetMilestones({
-      campaignId: definition?.campaign_id ?? 'nirmana-elevation',
-      definitionRevision: definition?.definition_revision ?? 'unavailable',
-      asset,
-      events: campaignEvents,
-      activeRunState: runAssetById.get(asset.asset_id)?.state ?? null,
-      producerAsset: asset.producer_id ? manifestById.get(asset.producer_id) ?? null : null,
-    }),
-  ]))
-  const dispositionedAssetIds = new Set(
-    manifestAssets
-      ?.filter((asset) => asset.execution_obligation !== 'build' && asset.execution_obligation !== 'producer_covered')
-      .filter((asset) => {
-        const milestones = milestoneProjectionById.get(asset.asset_id)?.milestones ?? []
-        const disposition = milestones.find((milestone) => milestone.milestone_id === 'built_or_dispositioned')
-        const execution = milestones.find((milestone) => milestone.milestone_id === 'deployed_and_executed')
-        return disposition?.state === 'earned'
-          && (execution?.state === 'earned' || execution?.state === 'not_applicable')
-      })
-      .map((asset) => asset.asset_id) ?? [],
-  )
-  const producerCoveredAssetIds = new Set(
-    manifestAssets
-      ?.filter((asset) => asset.execution_obligation === 'producer_covered' && Boolean(asset.producer_id))
-      .filter((asset) => {
-        const milestones = milestoneProjectionById.get(asset.asset_id)?.milestones ?? []
-        const acceptedProducerRuns = acceptedBuildAssetIds.has(asset.producer_id!)
-          ? acceptedBuildRunIdsByAsset.get(asset.producer_id!)
-          : undefined
-        return milestones.find((milestone) => milestone.milestone_id === 'built_or_dispositioned')?.state === 'earned'
-          && milestones.find((milestone) => milestone.milestone_id === 'deployed_and_executed')?.state === 'earned'
-          && Boolean(acceptedProducerRuns)
-          && campaignEvents.some((event) => event.entity_id === asset.asset_id
-            && event.event_type === 'producer_covered'
-            && event.entity_type === 'asset'
-            && event.layer === asset.layer
-            && acceptedProducerRuns?.has(buildRunId(event.source_ref) ?? ''))
-      })
-      .map((asset) => asset.asset_id) ?? [],
-  )
-  const terminalExecutionAssetIds = new Set([
-    ...acceptedBuildAssetIds,
-    ...dispositionedAssetIds,
-    ...producerCoveredAssetIds,
-  ])
-  const frozenAssetIds = new Set(
-    manifestAssets?.filter((asset) => {
-      const types = eventTypesByAsset.get(asset.asset_id) ?? new Set<string>()
-      const acceptedFingerprint = acceptedAnalysisFingerprintByAsset.get(asset.asset_id)
-      const liveFingerprint = liveRegistryFingerprintByAsset.get(asset.asset_id)
-      const analysisMatchesCurrentContract = types.has('asset_analysis_accepted')
-        && (acceptedFingerprint === liveFingerprint
-          || (acceptedFingerprint === undefined && liveFingerprint === asset.registry_fingerprint_sha256))
-      return terminalExecutionAssetIds.has(asset.asset_id)
-        && !unacceptedContractDriftIds.has(asset.asset_id)
-        && analysisMatchesCurrentContract
-        && ['optimization_verdict_accepted', 'integrity_verified', 'asset_frozen'].every((type) => types.has(type))
-        && milestoneProjectionById.get(asset.asset_id)?.milestones.every((milestone) =>
-          milestone.state === 'earned' || milestone.state === 'not_applicable') === true
-    }).map((asset) => asset.asset_id) ?? [],
-  )
-
-  const unlocksById = new Map<string, string[]>()
-  for (const manifestAsset of manifestAssets ?? []) {
-    for (const dependencyId of manifestAsset.depends_on ?? []) {
-      const unlocks = unlocksById.get(dependencyId) ?? []
-      unlocks.push(manifestAsset.asset_id)
-      unlocksById.set(dependencyId, unlocks)
-    }
-  }
-  for (const unlocks of unlocksById.values()) unlocks.sort((left, right) => left.localeCompare(right))
-
-  const assets = raw.asset_registry.map((asset) => {
-    const manifestAsset = manifestById.get(asset.asset_id)
-    const runAsset = runAssetById.get(asset.asset_id)
-    const throughput = throughputById.get(asset.asset_id)
-    const eventRefs = [
-      ...campaignEvents.filter((event) => event.entity_type === 'asset'
-        && event.entity_id === asset.asset_id
-        && event.layer === layerIdForRegistry(asset.layer)).map((event) => event.source_ref),
-      ...(labelSelection.labelsById.get(asset.asset_id)?.source_ref
-        ? [labelSelection.labelsById.get(asset.asset_id)!.source_ref]
-        : []),
-    ]
-    const liveRegistryFingerprint = liveRegistryFingerprintByAsset.get(asset.asset_id)
-    const acceptedAnalysisFingerprint = acceptedAnalysisFingerprintByAsset.get(asset.asset_id)
-    const acceptedAnalysisDigest = acceptedAnalysisDigestByAsset.get(asset.asset_id)
-    const contractRefs = manifestAsset ? [
-      `registry:t0:${manifestAsset.registry_fingerprint_sha256}`,
-      ...(liveRegistryFingerprint ? [`registry:live:${liveRegistryFingerprint}`] : []),
-      ...(acceptedAnalysisFingerprint ? [`registry:accepted:${acceptedAnalysisFingerprint}`] : []),
-      ...(acceptedAnalysisDigest ? [`analysis:sha256:${acceptedAnalysisDigest}`] : []),
-    ] : []
-    const substeps = substepsById.get(asset.asset_id)
-    const terminalError = terminalErrorByAsset.get(asset.asset_id)
-    const retryRun = runAsset ? activeRunById.get(runAsset.run_id) : undefined
-    const contractBlocker = unacceptedContractDriftIds.has(asset.asset_id)
-      ? 'Live registry contract changed after the frozen T0 definition and has no matching asset_analysis_accepted fingerprint.'
-      : staleAcceptedAnalysisIds.has(asset.asset_id)
-        ? 'The accepted asset analysis fingerprint is stale relative to the current live registry contract.'
-      : null
-    const blocker = contractBlocker ?? runAsset?.error
-      ?? (terminalError && retryRun
-        ? `Previous failed run ${terminalError.run_id}: ${terminalError.error}; retry run ${retryRun.id} is ${retryRun.state}.`
-        : terminalError?.error ?? null)
-    const layer = layerIdForRegistry(asset.layer)
-    if (!layer) throw new Error(`Unsupported Nirmana registry layer ${asset.layer} for ${asset.asset_id}.`)
-    const acceptedLabel = labelSelection.labelsById.get(asset.asset_id)
-    const english_name = acceptedLabel?.english_name ?? asset.english_name ?? asset.asset_id
-    const identity_quality = !acceptedLabel || acceptedLabel.english_name === null ? 'unversioned_fallback' as const
-      : acceptedLabel.sanskrit_name && acceptedLabel.english_name && acceptedLabel.description ? 'complete' as const : 'incomplete' as const
-    const milestoneProjection = manifestAsset
-      ? milestoneProjectionById.get(asset.asset_id)!
-      : {
-        milestones: NIRMANA_MILESTONE_IDS.map((milestone_id) => ({
-          milestone_id, state: 'pending' as const, event_type: null, accepted_at: null,
-        })),
-        milestones_earned: null,
-        milestones_required: null,
-        current_action: null,
-        next_action: null,
-        inherited_from_asset_id: null,
-      }
-    return {
-      asset_id: asset.asset_id,
-      display_name: english_name,
-      sanskrit_name: acceptedLabel?.sanskrit_name ?? null,
-      english_name,
-      description: acceptedLabel?.description ?? null,
-      legacy_aliases: acceptedLabel?.legacy_aliases ?? [],
-      identity_quality,
-      layer,
-      wave_index: manifestAsset?.wave_index ?? null,
-      producer_id: manifestAsset?.producer_id ?? null,
-      covered_asset_ids: manifestAsset?.covered_asset_ids ?? [],
-      execution_obligation: manifestAsset?.execution_obligation ?? 'unresolved',
-      lifecycle_state: !manifestAsset ? 'unverified'
-        : contractBlocker ? 'blocked'
-        : frozenAssetIds.has(asset.asset_id) ? 'frozen'
-          : milestoneProjection.milestones.find((milestone) => milestone.milestone_id === 'verified')?.state === 'earned' ? 'verifying'
-            : acceptedBuildAssetIds.has(asset.asset_id) ? 'rebuilt'
-              : terminalExecutionAssetIds.has(asset.asset_id) ? 'dispositioned'
-              : 'catalogued',
-      readiness_state: throughput?.state ?? 'unknown',
-      current_run_state: runAsset?.state ?? null,
-      progress_mode: runAsset?.state === 'building' ? 'indeterminate' : 'not_applicable',
-      work_committed: null,
-      work_total: null,
-      current_unit_label: runAsset?.state === 'building' ? (substeps ? `Historical resumable work: ${substeps.committed} committed substeps` : 'execution in progress') : null,
-      baseline_duration_seconds: null,
-      final_duration_seconds: null,
-      improvement_percent: null,
-      blocker,
-      evidence_refs: [...new Set([...eventRefs, ...contractRefs])],
-      milestones: milestoneProjection.milestones,
-      milestones_earned: milestoneProjection.milestones_earned,
-      milestones_required: milestoneProjection.milestones_required,
-      current_action: milestoneProjection.current_action,
-      next_action: milestoneProjection.next_action,
-      depends_on: manifestAsset?.depends_on ?? asset.depends_on ?? [],
-      unlocks: unlocksById.get(asset.asset_id) ?? [],
-    } as const
-  })
-
-  const blockedAssetIds = new Set(raw.asset_registry
-    .filter((asset) => runAssetById.get(asset.asset_id)?.state === 'error'
-      || (terminalErrorByAsset.has(asset.asset_id) && !runAssetById.has(asset.asset_id)))
+  const acceptedBuildAssetIds = new Set((manifestAssets ?? [])
+    .filter((asset) => asset.execution_obligation === 'build' && acceptedBuildRunIdsByAsset.has(asset.asset_id))
     .map((asset) => asset.asset_id))
-  const definitionIsFrozen = Boolean(manifestAssets)
-  const baseLayers = LAYERS.map(([layer_id], order) => {
-    const layerManifest = manifestAssets?.filter((asset) => asset.layer === layer_id) ?? []
-    const waves = [...new Set(layerManifest.map((asset) => asset.wave_index).filter((value): value is number => value != null))].sort((a, b) => a - b).map((wave_index) => {
-      const asset_ids = layerManifest.filter((asset) => asset.wave_index === wave_index).map((asset) => asset.asset_id)
-      const active_asset_ids = asset_ids.filter((assetId) => runAssetById.get(assetId)?.state === 'building')
-      const blocked_asset_ids = asset_ids.filter((assetId) => runAssetById.get(assetId)?.state === 'error' || unacceptedContractDriftIds.has(assetId) || staleAcceptedAnalysisIds.has(assetId))
-      return { wave_index, state: active_asset_ids.length ? 'running' : blocked_asset_ids.length ? 'blocked' : 'pending', asset_ids, active_asset_ids, blocked_asset_ids }
-    })
-    const layerAssetIds = new Set(layerManifest.map((asset) => asset.asset_id))
-    const frozen = [...layerAssetIds].filter((assetId) => frozenAssetIds.has(assetId)).length
-    const rebuilt_or_dispositioned = [...layerAssetIds].filter((assetId) => terminalExecutionAssetIds.has(assetId)).length
-    const verified = [...layerAssetIds].filter((assetId) => milestoneProjectionById.get(assetId)?.milestones
-      .find((milestone) => milestone.milestone_id === 'verified')?.state === 'earned').length
-    const optimization_reviewed = [...layerAssetIds].filter((assetId) => milestoneProjectionById.get(assetId)?.milestones
-      .find((milestone) => milestone.milestone_id === 'decision_accepted')?.state === 'earned').length
-    return { layer_id, order, state: 'locked' as const, assets_total: manifestAssets ? layerManifest.length : null, optimization_reviewed, rebuilt_or_dispositioned, verified, frozen, waves }
+  const acceptedMilestoneEvents = campaignEvents.filter((event) => {
+    if (event.event_type === 'accepted_rebuild_observed') {
+      const runId = buildRunId(event.source_ref)
+      return Boolean(runId && acceptedBuildRunIdsByAsset.get(event.entity_id)?.has(runId))
+    }
+    if (event.event_type === 'producer_covered') {
+      const coveredAsset = manifestById.get(event.entity_id)
+      const runId = buildRunId(event.source_ref)
+      return Boolean(coveredAsset?.producer_id && runId
+        && acceptedBuildRunIdsByAsset.get(coveredAsset.producer_id)?.has(runId))
+    }
+    return true
   })
+  const milestoneProjectionById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, projectAssetMilestones({
+    campaignId: definition?.campaign_id ?? 'nirmana-elevation',
+    definitionRevision: definition?.definition_revision ?? 'unavailable',
+    asset,
+    events: acceptedMilestoneEvents,
+    activeRunState: null,
+    producerAsset: asset.producer_id ? manifestById.get(asset.producer_id) ?? null : null,
+  })]))
+  const dispositionedAssetIds = new Set((manifestAssets ?? [])
+    .filter((asset) => asset.execution_obligation !== 'build' && asset.execution_obligation !== 'producer_covered')
+    .filter((asset) => {
+      const milestones = milestoneProjectionById.get(asset.asset_id)?.milestones ?? []
+      const disposition = milestones.find((milestone) => milestone.milestone_id === 'built_or_dispositioned')
+      const execution = milestones.find((milestone) => milestone.milestone_id === 'deployed_and_executed')
+      return disposition?.state === 'earned' && (execution?.state === 'earned' || execution?.state === 'not_applicable')
+    }).map((asset) => asset.asset_id))
+  const producerCoveredAssetIds = new Set((manifestAssets ?? [])
+    .filter((asset) => asset.execution_obligation === 'producer_covered' && Boolean(asset.producer_id))
+    .filter((asset) => {
+      const milestones = milestoneProjectionById.get(asset.asset_id)?.milestones ?? []
+      const acceptedProducerRuns = acceptedBuildAssetIds.has(asset.producer_id!)
+        ? acceptedBuildRunIdsByAsset.get(asset.producer_id!) : undefined
+      return milestones.find((milestone) => milestone.milestone_id === 'built_or_dispositioned')?.state === 'earned'
+        && milestones.find((milestone) => milestone.milestone_id === 'deployed_and_executed')?.state === 'earned'
+        && campaignEvents.some((event) => event.entity_id === asset.asset_id
+          && event.event_type === 'producer_covered'
+          && event.entity_type === 'asset'
+          && event.layer === asset.layer
+          && acceptedProducerRuns?.has(buildRunId(event.source_ref) ?? ''))
+    }).map((asset) => asset.asset_id))
+  const terminalExecutionAssetIds = new Set([...acceptedBuildAssetIds, ...dispositionedAssetIds, ...producerCoveredAssetIds])
+  const frozenAssetIds = new Set((manifestAssets ?? []).filter((asset) => {
+    const acceptedFingerprint = acceptedAnalysisFingerprintByAsset.get(asset.asset_id)
+    const liveFingerprint = liveRegistryFingerprintByAsset.get(asset.asset_id)
+    const analysisMatchesCurrentContract = eventTypesByAsset.get(asset.asset_id)?.has('asset_analysis_accepted') === true
+      && (acceptedFingerprint === liveFingerprint
+        || (acceptedFingerprint === undefined && liveFingerprint === asset.registry_fingerprint_sha256))
+    return terminalExecutionAssetIds.has(asset.asset_id)
+      && !unacceptedContractDriftIds.has(asset.asset_id)
+      && analysisMatchesCurrentContract
+      && milestoneProjectionById.get(asset.asset_id)?.milestones.every((milestone) =>
+        milestone.state === 'earned' || milestone.state === 'not_applicable') === true
+  }).map((asset) => asset.asset_id))
+  const definitionIsFrozen = Boolean(manifestAssets)
 
+  const layerEvidence = LAYERS.map(([layer_id], order) => {
+    const layerManifest = manifestAssets?.filter((asset) => asset.layer === layer_id) ?? []
+    const layerAssetIds = layerManifest.map((asset) => asset.asset_id)
+    return {
+      layer_id,
+      order,
+      state: 'locked' as const,
+      assets_total: manifestAssets ? layerManifest.length : null,
+      optimization_reviewed: layerAssetIds.filter((assetId) => milestoneProjectionById.get(assetId)?.milestones.find((milestone) => milestone.milestone_id === 'decision_accepted')?.state === 'earned').length,
+      rebuilt_or_dispositioned: layerAssetIds.filter((assetId) => terminalExecutionAssetIds.has(assetId)).length,
+      verified: layerAssetIds.filter((assetId) => milestoneProjectionById.get(assetId)?.milestones.find((milestone) => milestone.milestone_id === 'verified')?.state === 'earned').length,
+      frozen: layerAssetIds.filter((assetId) => frozenAssetIds.has(assetId)).length,
+      waves: [],
+    }
+  })
   const stageProjection = projectCampaignStages({
     campaignId: definition?.campaign_id ?? 'nirmana-elevation',
     definitionRevision: definition?.definition_revision ?? 'unavailable',
     definitionStatus: definition?.definition_status ?? 'reconciling',
     events: campaignEvents,
-    layers: baseLayers,
+    layers: layerEvidence,
   })
   const stageSpine = contiguousStageSpine(campaignEvents)
+  const runAuthorizations = acceptedRunAuthorizations(raw, campaignEvents, manifest)
   const currentStage = stageSpine.currentStage
   const currentStageIndex = currentStage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(currentStage)
-  const stageContradictions = [...stageProjection.contradictions, ...stageSpine.contradictions]
+  const stageContradictions = [...stageProjection.contradictions, ...stageSpine.contradictions, ...runAuthorizations.contradictions]
   const completedStages = new Set<NirmanaStageId>()
   let priorStageComplete = true
   for (const stageId of NIRMANA_STAGE_IDS) {
     const stage = stageProjection.stages.find((candidate) => candidate.stage_id === stageId)!
-    const layer = baseLayers.find((candidate) => candidate.layer_id === stageId)
+    const layer = layerEvidence.find((candidate) => candidate.layer_id === stageId)
     const gateSatisfied = stageId === 'DENOMINATOR_FROZEN' ? definitionIsFrozen
       : stageId === 'F0_FOUNDATION' ? stage.earned === stage.required && stage.required === 5
-        : layer ? layer.assets_total !== null && layer.frozen === layer.assets_total
-          : true
+        : layer ? layer.assets_total !== null && layer.frozen === layer.assets_total : true
     const reached = currentStageIndex >= NIRMANA_STAGE_IDS.indexOf(stageId)
     const transitionedOut = stageSpine.exitedAt.has(stageId)
-    const complete: boolean = stageId === 'COMPLETE'
-      ? reached && priorStageComplete
-      : priorStageComplete && gateSatisfied && transitionedOut
+    const complete: boolean = stageId === 'COMPLETE' ? reached && priorStageComplete : priorStageComplete && gateSatisfied && transitionedOut
     if (transitionedOut && (!priorStageComplete || !gateSatisfied)) {
       stageContradictions.push(`Accepted transition left ${stageId} before its governed completion evidence was satisfied.`)
     }
@@ -638,58 +662,197 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     const completed = completedStages.has(stage.stage_id)
     const active = currentStage === stage.stage_id && !completed
     const blocked = active && stageContradictions.length > 0
-    const state = completed ? 'completed' as const
-      : blocked ? 'blocked' as const
-        : active ? 'active' as const
-          : currentStageIndex >= 0 && stage.order > currentStageIndex ? 'locked' as const : 'unknown' as const
     return {
       ...stage,
-      state,
+      state: completed ? 'completed' as const : blocked ? 'blocked' as const : active ? 'active' as const
+        : currentStageIndex >= 0 && stage.order > currentStageIndex ? 'locked' as const : 'unknown' as const,
       completed_at: completed
-        ? stage.stage_id === 'COMPLETE'
-          ? stageSpine.enteredAt.get(stage.stage_id) ?? null
-          : stageSpine.exitedAt.get(stage.stage_id) ?? null
+        ? stage.stage_id === 'COMPLETE' ? stageSpine.enteredAt.get(stage.stage_id) ?? null : stageSpine.exitedAt.get(stage.stage_id) ?? null
         : null,
       blocked_reason: blocked ? stageContradictions.join(' ') : null,
     }
   })
-  const current_layer = currentStage !== null && LAYERS.some(([layerId]) => layerId === currentStage)
+  const current_layer = currentStage && LAYERS.some(([layerId]) => layerId === currentStage)
     ? currentStage as (typeof LAYERS)[number][0] : null
-  const currentLayerManifest = current_layer === null ? [] : manifestAssets?.filter((asset) => asset.layer === current_layer) ?? []
-  const unfinishedWaveIndexes = currentLayerManifest
-    .filter((asset) => !frozenAssetIds.has(asset.asset_id))
-    .map((asset) => asset.wave_index)
-    .filter((waveIndex): waveIndex is number => waveIndex !== undefined)
+  const currentLayerManifest = current_layer ? manifestAssets?.filter((asset) => asset.layer === current_layer) ?? [] : []
+  const unfinishedWaveIndexes = currentLayerManifest.filter((asset) => !frozenAssetIds.has(asset.asset_id))
+    .map((asset) => asset.wave_index).filter((waveIndex): waveIndex is number => waveIndex !== undefined)
   const current_wave = unfinishedWaveIndexes.length > 0 ? Math.min(...unfinishedWaveIndexes) : null
+
+  const scopedRunIds = new Set([...runAuthorizations.byRunId]
+    .filter(([, authorization]) => authorization.layer === current_layer && authorization.waveIndex === current_wave)
+    .map(([runId]) => runId))
+  const activeRuns = activeRunsForChart(raw, manifest?.chart_id, scopedRunIds)
+  const activeRunById = new Map(activeRuns.map((run) => [run.id, run]))
+  const runAssetById = currentRunAssetsById(raw, activeRuns)
+  const terminalErrorByAsset = latestTerminalErrorsByAsset(raw, manifest?.chart_id, scopedRunIds)
+  const blockedAssetIds = new Set((manifestAssets ?? []).filter((asset) => asset.execution_obligation === 'unresolved'
+    || unacceptedContractDriftIds.has(asset.asset_id)
+    || staleAcceptedAnalysisIds.has(asset.asset_id)
+    || runAssetById.get(asset.asset_id)?.state === 'error'
+    || terminalErrorByAsset.has(asset.asset_id)).map((asset) => asset.asset_id))
+  const eligibleNextAssetIds = current_layer && stages.find((stage) => stage.stage_id === current_layer)?.state === 'active'
+    ? deriveEligibleNextAssetIds({ manifestAssets: manifestAssets ?? [], frozenAssetIds, blockedAssetIds, currentLayer: current_layer, currentWave: current_wave })
+    : []
+  const eligibleSet = new Set(eligibleNextAssetIds)
+  const activeAssetIds = new Set([...runAssetById]
+    .filter(([, runAsset]) => ['planned', 'building', 'running', 'paused'].includes(runAsset.state))
+    .map(([assetId]) => assetId))
+  const campaignStateById = new Map((manifestAssets ?? []).map((asset) => {
+    if (frozenAssetIds.has(asset.asset_id)) return [asset.asset_id, 'completed' as const]
+    if (blockedAssetIds.has(asset.asset_id)) return [asset.asset_id, 'blocked' as const]
+    if (asset.layer === current_layer && asset.wave_index === current_wave) {
+      return [asset.asset_id, activeAssetIds.has(asset.asset_id) ? 'active' as const : 'unknown' as const]
+    }
+    const layerStage = stages.find((stage) => stage.stage_id === asset.layer)
+    if (layerStage?.state === 'locked' || (asset.layer === current_layer && current_wave !== null && (asset.wave_index ?? -1) > current_wave)) {
+      return [asset.asset_id, 'locked' as const]
+    }
+    return [asset.asset_id, 'unknown' as const]
+  }))
+
+  const unlocksById = new Map<string, string[]>()
+  for (const manifestAsset of manifestAssets ?? []) {
+    for (const dependencyId of manifestAsset.depends_on ?? []) {
+      const unlocks = unlocksById.get(dependencyId) ?? []
+      unlocks.push(manifestAsset.asset_id)
+      unlocksById.set(dependencyId, unlocks)
+    }
+  }
+  for (const unlocks of unlocksById.values()) unlocks.sort((left, right) => left.localeCompare(right))
+  const throughputById = runtimeThroughputById(raw, registryById, manifest?.chart_id)
+  const substepsById = new Map(raw.build_substep_progress
+    .filter((entry) => manifest?.chart_id !== undefined && entry.chart_id === manifest.chart_id)
+    .map((entry) => [entry.asset_id, entry]))
+  const assets = raw.asset_registry.map((asset) => {
+    const layer = layerIdForRegistry(asset.layer)
+    if (!layer) throw new Error(`Unsupported Nirmana registry layer ${asset.layer} for ${asset.asset_id}.`)
+    const manifestAsset = manifestById.get(asset.asset_id)
+    const milestoneProjection = manifestAsset ? milestoneProjectionById.get(asset.asset_id)! : {
+      milestones: NIRMANA_MILESTONE_IDS.map((milestone_id) => ({ milestone_id, state: 'pending' as const, event_type: null, accepted_at: null })),
+      milestones_earned: null, milestones_required: null, current_action: null, next_action: null, inherited_from_asset_id: null,
+    }
+    const runAsset = runAssetById.get(asset.asset_id)
+    const run = runAsset ? activeRunById.get(runAsset.run_id) : undefined
+    const terminalError = terminalErrorByAsset.get(asset.asset_id)
+    const contractBlocker = unacceptedContractDriftIds.has(asset.asset_id)
+      ? 'Live registry contract changed after the frozen T0 definition and has no matching asset_analysis_accepted fingerprint.'
+      : staleAcceptedAnalysisIds.has(asset.asset_id)
+        ? 'The accepted asset analysis fingerprint is stale relative to the current live registry contract.'
+        : null
+    const blocker = contractBlocker ?? (manifestAsset?.execution_obligation === 'unresolved' ? 'Execution obligation is unresolved.'
+      : runAsset?.error ? `Accepted campaign run ${runAsset.run_id} recorded an asset failure.`
+        : terminalError && run ? `Accepted campaign run ${terminalError.run_id} ended with an asset failure; retry run ${run.id} is ${run.state}.`
+          : terminalError ? `Accepted campaign run ${terminalError.run_id} ended with an asset failure.` : null)
+    const acceptedLabel = labelSelection.labelsById.get(asset.asset_id)
+    const english_name = acceptedLabel?.english_name ?? asset.english_name ?? asset.asset_id
+    const identity_quality = !acceptedLabel || acceptedLabel.english_name === null ? 'unversioned_fallback' as const
+      : acceptedLabel.sanskrit_name && acceptedLabel.description ? 'complete' as const : 'incomplete' as const
+    const substeps = substepsById.get(asset.asset_id)
+    const liveRegistryFingerprint = liveRegistryFingerprintByAsset.get(asset.asset_id)
+    const acceptedAnalysisFingerprint = acceptedAnalysisFingerprintByAsset.get(asset.asset_id)
+    const acceptedAnalysisDigest = acceptedAnalysisDigestByAsset.get(asset.asset_id)
+    const evidence_refs = [
+      ...campaignEvents.filter((event) => event.entity_type === 'asset' && event.entity_id === asset.asset_id && event.layer === layer).map((event) => sanitizedReference(event.source_ref)),
+      ...(acceptedLabel?.source_ref ? [sanitizedReference(acceptedLabel.source_ref)] : []),
+      ...(manifestAsset ? [`registry:t0:${manifestAsset.registry_fingerprint_sha256}`] : []),
+      ...(liveRegistryFingerprint ? [`registry:live:${liveRegistryFingerprint}`] : []),
+      ...(acceptedAnalysisFingerprint ? [`registry:accepted:${acceptedAnalysisFingerprint}`] : []),
+      ...(acceptedAnalysisDigest ? [`analysis:sha256:${acceptedAnalysisDigest}`] : []),
+    ]
+    return {
+      asset_id: asset.asset_id,
+      display_name: english_name,
+      sanskrit_name: acceptedLabel?.sanskrit_name ?? null,
+      english_name,
+      description: acceptedLabel?.description ?? null,
+      legacy_aliases: acceptedLabel?.legacy_aliases ?? [],
+      identity_quality,
+      layer,
+      campaign_state: campaignStateById.get(asset.asset_id) ?? 'unknown',
+      wave_index: manifestAsset?.wave_index ?? null,
+      producer_id: manifestAsset?.producer_id ?? null,
+      covered_asset_ids: manifestAsset?.covered_asset_ids ?? [],
+      execution_obligation: manifestAsset?.execution_obligation ?? 'unresolved',
+      lifecycle_state: !manifestAsset ? 'unverified' : contractBlocker ? 'blocked' : frozenAssetIds.has(asset.asset_id) ? 'frozen'
+        : milestoneProjection.milestones.find((milestone) => milestone.milestone_id === 'verified')?.state === 'earned' ? 'verifying'
+          : acceptedBuildAssetIds.has(asset.asset_id) ? 'rebuilt' : terminalExecutionAssetIds.has(asset.asset_id) ? 'dispositioned' : 'catalogued',
+      readiness_state: throughputById.get(asset.asset_id)?.state ?? 'unknown',
+      current_run_state: runAsset?.state ?? null,
+      progress_mode: runAsset?.state === 'building' ? 'indeterminate' as const : 'not_applicable' as const,
+      work_committed: null,
+      work_total: null,
+      current_unit_label: runAsset?.state === 'building'
+        ? substeps ? `Historical resumable work: ${substeps.committed} committed substeps` : 'execution in progress' : null,
+      baseline_duration_seconds: null,
+      final_duration_seconds: null,
+      improvement_percent: null,
+      blocker,
+      evidence_refs,
+      milestones: milestoneProjection.milestones,
+      milestones_earned: milestoneProjection.milestones_earned,
+      milestones_required: milestoneProjection.milestones_required,
+      current_action: runAsset ? `Accepted campaign run: ${runAsset.state}` : milestoneProjection.current_action,
+      next_action: milestoneProjection.next_action,
+      depends_on: manifestAsset?.depends_on ?? asset.depends_on ?? [],
+      unlocks: unlocksById.get(asset.asset_id) ?? [],
+    }
+  })
+  const campaignAssetById = new Map(assets.map((asset) => [asset.asset_id, asset]))
+  const baseLayers = layerEvidence.map((layer) => {
+    const layerManifest = manifestAssets?.filter((asset) => asset.layer === layer.layer_id) ?? []
+    const waves = [...new Set(layerManifest.map((asset) => asset.wave_index).filter((value): value is number => value != null))]
+      .sort((left, right) => left - right)
+      .map((wave_index) => {
+        const asset_ids = layerManifest.filter((asset) => asset.wave_index === wave_index).map((asset) => asset.asset_id)
+        const partition = (state: 'completed' | 'active' | 'blocked' | 'locked' | 'unknown') => asset_ids.filter((assetId) => campaignAssetById.get(assetId)?.campaign_state === state)
+        const completed_asset_ids = partition('completed')
+        const active_asset_ids = partition('active')
+        const blocked_asset_ids = partition('blocked')
+        const locked_asset_ids = partition('locked')
+        const unknown_asset_ids = partition('unknown')
+        const state = completed_asset_ids.length === asset_ids.length ? 'completed' as const
+          : blocked_asset_ids.length > 0 ? 'blocked' as const
+            : active_asset_ids.length > 0 ? 'active' as const
+              : locked_asset_ids.length === asset_ids.length ? 'locked' as const : 'unknown' as const
+        return {
+          wave_index, state, asset_ids, completed_asset_ids, active_asset_ids, blocked_asset_ids,
+          locked_asset_ids, unknown_asset_ids,
+          eligible_next_asset_ids: asset_ids.filter((assetId) => eligibleSet.has(assetId)),
+        }
+      })
+    return { ...layer, waves }
+  })
   const layers = baseLayers.map((layer) => {
     const layerStage = stages.find((stage) => stage.stage_id === layer.layer_id)!
     const isCurrent = layer.layer_id === current_layer
-    const state = layerStage.state === 'completed' ? 'frozen' as const
-      : isCurrent && layerStage.state === 'blocked' ? 'blocked' as const
-        : isCurrent ? 'open' as const
-          : currentStage === null ? 'unknown' as const : 'locked' as const
     return {
       ...layer,
-      state,
+      state: layerStage.state === 'completed' ? 'frozen' as const
+        : isCurrent && layerStage.state === 'blocked' ? 'blocked' as const
+          : isCurrent ? 'open' as const : currentStage === null ? 'unknown' as const : 'locked' as const,
       layer_name: NIRMANA_LAYER_NAMES[layer.layer_id],
       required_gate: layerStage.required_gate,
-      eligible_next_asset_ids: isCurrent && layerStage.state === 'active'
-        ? deriveEligibleNextAssetIds({
-          manifestAssets: manifestAssets ?? [], frozenAssetIds, blockedAssetIds,
-          currentLayer: current_layer, currentWave: current_wave,
-        })
-        : [],
+      eligible_next_asset_ids: isCurrent ? eligibleNextAssetIds : [],
     }
   })
-
-  const active_runs = activeRuns
-    .map((run) => {
+  const active_runs = activeRuns.map((run) => {
+    const authorization = runAuthorizations.byRunId.get(run.id.toLowerCase())!
     const runAssets = raw.build_run_assets.filter((asset) => asset.run_id === run.id)
-    const active_asset_ids = runAssets.filter((asset) => asset.state === 'building').map((asset) => asset.asset_id)
-    const timestamp = runAssets.map((asset) => asset.ended_at ?? asset.started_at).filter((value): value is string => Boolean(value)).sort().at(-1) ?? run.started_at
-    const currentAsset = run.current_asset_id ? registryById.get(run.current_asset_id) : undefined
-    return { run_id: run.id, layer: currentAsset ? (LAYERS.find(([, sourceLayer]) => sourceLayer === currentAsset.layer)?.[0] ?? currentAsset.layer) : null, wave_index: run.current_asset_id ? manifestById.get(run.current_asset_id)?.wave_index ?? null : null, state: run.state, active_asset_ids, completed_assets: runAssets.filter((asset) => asset.state === 'complete' || asset.state === 'skipped').length, planned_assets: runAssets.length, started_at: asIso(run.started_at), last_progress_at: asIso(timestamp) }
-    })
+    const active_asset_ids = runAssets.filter((asset) => ['planned', 'building', 'running', 'paused'].includes(asset.state)).map((asset) => asset.asset_id)
+    const latestProgress = runAssets.map((asset) => asset.ended_at ?? asset.started_at).filter((value): value is string => Boolean(value)).sort().at(-1) ?? run.started_at
+    return {
+      run_id: run.id,
+      layer: authorization.layer,
+      wave_index: authorization.waveIndex,
+      state: run.state,
+      active_asset_ids,
+      completed_assets: runAssets.filter((asset) => asset.state === 'complete' || asset.state === 'skipped').length,
+      planned_assets: runAssets.length,
+      started_at: asIso(run.started_at),
+      last_progress_at: asIso(latestProgress),
+    }
+  })
 
   const unversionedIdentityCount = assets.filter((asset) => asset.identity_quality === 'unversioned_fallback').length
   const gaps = [
@@ -697,14 +860,14 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     ...(unacceptedContractDriftIds.size === 0 ? [] : [`${unacceptedContractDriftIds.size} asset registry contract${unacceptedContractDriftIds.size === 1 ? ' has' : 's have'} changed without a matching accepted analysis fingerprint.`]),
     ...(staleAcceptedAnalysisIds.size === 0 ? [] : [`${staleAcceptedAnalysisIds.size} accepted asset analysis fingerprint${staleAcceptedAnalysisIds.size === 1 ? ' is' : 's are'} stale relative to the live registry contract.`]),
     ...(currentStage === null ? ['No contiguous accepted campaign-stage spine is available; current position is withheld.'] : []),
-    ...(unversionedIdentityCount > 0
-      ? [`${unversionedIdentityCount} asset identities use unversioned asset_registry fallback because no matching accepted catalogue label is available.`]
-      : []),
+    ...(unversionedIdentityCount > 0 ? [`${unversionedIdentityCount} asset identities use unversioned asset_registry fallback because no matching accepted catalogue label is available.`] : []),
     ...(releaseStatus?.gaps ?? ['Release reconciliation is not yet connected to an authoritative deployment source.']),
   ]
   const sources = [
-    ...(Object.entries(SOURCE_PROVENANCE) as Array<[SourceId, string]>)
-      .map(([source_id, provenance]) => ({ source_id, provenance, state: 'fresh' as const, observed_at: generated_at, age_seconds: 0, error: null })),
+    ...(Object.entries(SOURCE_PROVENANCE) as Array<[SourceId, string]>).map(([source_id, provenance]) => ({
+      source_id, provenance, state: 'fresh' as const, observed_at: generated_at, age_seconds: 0,
+      error_code: null, error_message: null,
+    })),
     ...(releaseStatus?.sources ?? []),
   ]
   const contradictions = [
@@ -724,12 +887,9 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     accepted_rebuilds: acceptedBuildAssetIds.size,
   }
   const campaign_status = definition?.definition_status === 'superseded' ? 'paused' as const
-    : stageContradictions.length > 0 ? 'blocked' as const
-      : currentStage === null ? 'unknown' as const
-        : currentStage === 'COMPLETE' ? 'completed' as const
-          : currentStage === 'F0_FOUNDATION' ? 'foundation' as const
-            : ['L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'CLOSING'].includes(currentStage) ? 'running' as const
-              : 'takeover' as const
+    : stageContradictions.length > 0 ? 'blocked' as const : currentStage === null ? 'unknown' as const
+      : currentStage === 'COMPLETE' ? 'completed' as const : currentStage === 'F0_FOUNDATION' ? 'foundation' as const
+        : ['L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'CLOSING'].includes(currentStage) ? 'running' as const : 'takeover' as const
   const campaign = {
     campaign_id: definition?.campaign_id ?? 'nirmana-elevation',
     definition_revision: definition?.definition_revision ?? null,
@@ -739,23 +899,14 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     current_layer,
     current_wave,
   }
-  const data_quality = {
-    verdict: contradictions.length || gaps.length ? 'degraded' as const : 'reliable' as const,
-    gaps,
-    contradictions,
-  }
+  const data_quality = { verdict: contradictions.length || gaps.length ? 'degraded' as const : 'reliable' as const, gaps, contradictions }
   const generation = digest({
     campaign, progress, stages, layers, assets, active_runs,
-    audit: {
-      accepted_label_catalogue_revision: labelSelection.acceptedCatalogueRevision,
-      release,
-      sources: sources.map(({ source_id, provenance, state, error }) => ({ source_id, provenance, state, error })),
-      data_quality,
-    },
+    audit: { accepted_label_catalogue_revision: labelSelection.acceptedCatalogueRevision, release, sources, data_quality, receipts: audit.receipts, raw_ledger_refs: audit.raw_ledger_refs },
   })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
-    campaign, progress, stages, layers, assets, active_runs, release, sources, data_quality,
+    campaign, progress, stages, layers, assets, active_runs, release, sources, data_quality, audit,
   })
 }
 
@@ -784,21 +935,23 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     state: source_id === error.sourceId ? 'unavailable' as const : 'unknown' as const,
     observed_at: null,
     age_seconds: null,
-    error: source_id === error.sourceId ? error.message : null,
+    error_code: source_id === error.sourceId ? error.publicCode : null,
+    error_message: source_id === error.sourceId ? error.publicMessage : null,
   }))
   const data_quality = {
     verdict: 'degraded' as const,
     gaps: [`Authoritative source ${error.sourceId} is unavailable; no empty-state conclusion is valid.`],
     contradictions: [],
   }
-  const generation = digest({ unavailable: error.sourceId, message: error.message, stages, layers, sources, data_quality })
+  const audit = { receipts: [], raw_ledger_refs: [] }
+  const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, data_quality, audit })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
     campaign: { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling', campaign_status: 'unknown', current_stage: null, current_layer: null, current_wave: null },
     progress: { denominator_status: 'reconciling', assets_total: null, assets_frozen: 0, layers_total: 6, layers_frozen: 0, buildable_assets_total: null, accepted_rebuilds: 0 },
     stages, layers, assets: [], active_runs: [],
     release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
-    sources, data_quality,
+    sources, data_quality, audit,
   })
 }
 

@@ -22,7 +22,7 @@ export function AssetCard({ asset, onOpenAudit }: { asset: NirmanaElevationSnaps
         <p className="text-sm font-medium text-brand-text-1">{identityValue(asset.english_name)}</p>
         <p className="text-xs text-brand-text-2">{identityValue(asset.description)}</p>
       </div>
-      <span className="shrink-0 rounded border border-brand-border px-1.5 py-0.5 text-[10px] capitalize text-brand-text-3">{asset.lifecycle_state}</span>
+      <span className="shrink-0 rounded border border-brand-border px-1.5 py-0.5 text-[10px] capitalize text-brand-text-3">{asset.campaign_state}</span>
     </div>
 
     {asset.legacy_aliases.length > 0 && <div className="mt-2 space-y-1 border-l border-brand-border pl-2 text-xs text-brand-text-3">

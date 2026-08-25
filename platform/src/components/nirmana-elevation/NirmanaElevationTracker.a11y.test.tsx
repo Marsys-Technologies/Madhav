@@ -58,7 +58,7 @@ describe('NirmanaElevationTracker responsive structure', () => {
   it('stacks wave assets on mobile and adds columns only at desktop breakpoints', () => {
     renderTracker()
 
-    const assetGrid = screen.getByText('bg_prashna_rules').closest('div.grid')
+    const assetGrid = screen.getByRole('heading', { name: 'bg_prashna_rules' }).closest('div.grid')
     if (!assetGrid) throw new Error('Wave asset grid is missing.')
     expect(assetGrid).toHaveClass('grid', 'gap-3', 'lg:grid-cols-2', 'xl:grid-cols-3')
     expect([...assetGrid.classList].filter((className) => /^grid-cols-/.test(className))).toEqual([])

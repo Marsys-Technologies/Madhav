@@ -72,11 +72,13 @@ describe('Nirmana elevation snapshot v2 contract', () => {
 
   it('requires structured legacy aliases with their own stable asset identity', () => {
     const snapshot = copyFixture()
-    snapshot.assets[1].legacy_aliases = [{ asset_id: 'A22', sanskrit_name: 'Varsha-Darshan', english_name: 'Yearly Vision' }]
+    const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'ka_smriti')
+    if (!asset) throw new Error('Projected fixture must include ka_smriti.')
+    asset.legacy_aliases = [{ asset_id: 'A22', sanskrit_name: 'Varsha-Darshan', english_name: 'Yearly Vision' }]
     const parsed = NirmanaElevationSnapshotV2Schema.parse(snapshot)
-    expect(parsed.assets[1].asset_id).toBe('ka_smriti')
+    expect(parsed.assets.find((candidate) => candidate.asset_id === 'ka_smriti')?.legacy_aliases[0]?.asset_id).toBe('A22')
 
-    snapshot.assets[1].legacy_aliases = ['Per-varsha digest'] as unknown as Array<{ asset_id: string; sanskrit_name: string | null; english_name: string | null }>
+    asset.legacy_aliases = ['Per-varsha digest'] as unknown as Array<{ asset_id: string; sanskrit_name: string | null; english_name: string | null }>
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
   })
 
@@ -90,20 +92,36 @@ describe('Nirmana elevation snapshot v2 contract', () => {
 
   it('computes determinate milestone counters around not-applicable milestones', () => {
     const snapshot = copyFixture()
-    snapshot.assets[0].milestones[5].state = 'not_applicable'
-    snapshot.assets[0].milestones_required = 5
+    const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')!
+    asset.milestones[5].state = 'not_applicable'
+    asset.milestones_required = 5
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
   })
 
   it('rejects contradictory determinate milestone counters', () => {
     const snapshot = copyFixture()
-    snapshot.assets[0].milestones_earned = 6
-    snapshot.assets[0].milestones_required = 6
+    const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')!
+    asset.milestones_earned = 6
+    asset.milestones_required = 6
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
   })
 
   it('accepts a v1 fixture through the compatibility union', () => {
     expect(NirmanaElevationSnapshotV1Schema.safeParse(v1Fixture).success).toBe(true)
     expect(NirmanaElevationSnapshotSchema.safeParse(v1Fixture).success).toBe(true)
+  })
+
+  it('requires the normalized v2 operational-state and server audit contracts', () => {
+    const snapshot = copyFixture()
+    delete (snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules') as { campaign_state?: string }).campaign_state
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
+
+    const legacyWave = copyFixture()
+    ;(legacyWave.layers[0].waves[0] as { state: string }).state = 'running'
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(legacyWave).success).toBe(false)
+
+    const noAudit = copyFixture()
+    delete (noAudit as { audit?: unknown }).audit
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(noAudit).success).toBe(false)
   })
 })

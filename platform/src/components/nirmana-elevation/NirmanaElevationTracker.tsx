@@ -42,8 +42,12 @@ function formatTime(value: string | Date | null | undefined): string {
 }
 
 function failureMessage(snapshot: NirmanaElevationSnapshot): string {
-  const unavailable = snapshot.sources.find((source) => source.state === 'unavailable' && source.error)
-  return unavailable?.error ?? 'The snapshot source is unavailable.'
+  if (snapshot.schema_version === '1.0') {
+    const unavailable = snapshot.sources.find((source) => source.state === 'unavailable' && source.error)
+    return unavailable?.error ?? 'The snapshot source is unavailable.'
+  }
+  const unavailable = snapshot.sources.find((source) => source.state === 'unavailable' && source.error_message)
+  return unavailable?.error_message ?? 'The snapshot source is unavailable.'
 }
 
 function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {

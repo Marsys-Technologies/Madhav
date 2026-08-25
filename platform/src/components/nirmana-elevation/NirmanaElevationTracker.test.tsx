@@ -66,9 +66,10 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-function unavailableV2(message: string): NirmanaElevationSnapshotV2 {
+function unavailableV2(): NirmanaElevationSnapshotV2 {
+  const message = 'Authoritative source is unavailable.'
   const snapshot = snapshotV2()
-  snapshot.sources = [{ ...snapshot.sources[0], state: 'unavailable', error: message }]
+  snapshot.sources = [{ ...snapshot.sources[0], state: 'unavailable', error_code: 'NIRMANA_SOURCE_UNAVAILABLE', error_message: message }]
   snapshot.data_quality = { verdict: 'degraded', gaps: [message], contradictions: [] }
   return snapshot
 }
@@ -119,8 +120,8 @@ describe('NirmanaElevationTracker', () => {
   it.each([
     {
       label: '503 response',
-      nextResponse: () => jsonResponse(unavailableV2('Cloud SQL unavailable'), 503),
-      error: /cloud sql unavailable/i,
+      nextResponse: () => jsonResponse(unavailableV2(), 503),
+      error: /authoritative source is unavailable/i,
     },
     {
       label: 'malformed response',
@@ -177,14 +178,14 @@ describe('NirmanaElevationTracker', () => {
 
   it('withholds numeric milestone progress for an unresolved asset', () => {
     const snapshot = snapshotV2()
-    const asset = snapshot.assets[0]
+    const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')!
     asset.execution_obligation = 'unresolved'
     asset.milestones_earned = null
     asset.milestones_required = null
 
     render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
 
-    const card = screen.getByText(asset.asset_id).closest('article')
+    const card = screen.getByRole('heading', { name: asset.asset_id }).closest('article')
     if (!card) throw new Error('Current asset card is missing.')
     expect(within(card).getByText('Milestone count unavailable')).toBeVisible()
     expect(within(card).queryByText(/\d+ of \d+ required milestones/i)).not.toBeInTheDocument()
@@ -200,18 +201,24 @@ describe('NirmanaElevationTracker', () => {
       observed_at: '2026-08-26T00:02:00.000Z',
     }
     snapshot.data_quality.contradictions = ['Deployed SHA differs from main.']
-    snapshot.assets[1].evidence_refs = ['unrelated:ka_smriti']
+    snapshot.assets.find((asset) => asset.asset_id === 'ka_smriti')!.evidence_refs = ['unrelated:ka_smriti']
+    const projectedReceipt = snapshot.audit.receipts.find((receipt) => receipt.event_type === 'build_run_authorized')
+    if (!projectedReceipt) throw new Error('Server-projected fixture must include a build-run authorization receipt.')
 
     render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
     fireEvent.click(screen.getByRole('button', { name: /audit details for bg_prashna_rules/i }))
 
     const drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
-    expect(within(drawer).getByText('Reusable contract fixture')).toBeVisible()
+    expect(within(drawer).getByText('Cloud SQL asset_registry')).toBeVisible()
     expect(within(drawer).getByText('main-abc')).toBeVisible()
     expect(within(drawer).getByText('deployed-def')).toBeVisible()
     expect(within(drawer).getByText('amjis-web-0042')).toBeVisible()
     expect(within(drawer).getByText('Deployed SHA differs from main.')).toBeVisible()
-    expect(within(drawer).getByText('build_run:run-l0-wave-2')).toBeVisible()
+    expect(within(drawer).getByText('campaign_authorization')).toBeVisible()
+    expect(within(drawer).getByText('build_run_authorized')).toBeVisible()
+    expect(within(drawer).getAllByText(projectedReceipt.ledger_ref).length).toBeGreaterThan(0)
+    expect(within(drawer).getByText(projectedReceipt.payload_sha256)).toBeVisible()
+    expect(within(drawer).getAllByText('build_run:33333333-3333-4333-8333-333333333333').length).toBeGreaterThan(0)
     expect(within(drawer).queryByText('unrelated:ka_smriti')).not.toBeInTheDocument()
 
     fireEvent.click(within(drawer).getByRole('button', { name: /close audit drawer/i }))
@@ -241,15 +248,16 @@ describe('NirmanaElevationTracker', () => {
   it('clears an asset audit filter on close and globally reopens all campaign evidence', async () => {
     const user = userEvent.setup()
     const snapshot = snapshotV2()
-    snapshot.assets[1].evidence_refs = ['unrelated:ka_smriti']
+    snapshot.assets.find((asset) => asset.asset_id === 'ka_smriti')!.evidence_refs = ['unrelated:ka_smriti']
     render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
     const assetTrigger = screen.getByRole('button', { name: /audit details for bg_prashna_rules/i })
 
     assetTrigger.focus()
     await user.keyboard('{Enter}')
     let drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
-    expect(within(drawer).getByText('build_run:run-l0-wave-2')).toBeVisible()
+    expect(within(drawer).getAllByText('build_run:33333333-3333-4333-8333-333333333333').length).toBeGreaterThan(0)
     expect(within(drawer).queryByText('unrelated:ka_smriti')).not.toBeInTheDocument()
+    expect(within(drawer).queryByText('build_run:11111111-1111-4111-8111-111111111111')).not.toBeInTheDocument()
 
     const close = within(drawer).getByRole('button', { name: /close audit drawer/i })
     close.focus()
@@ -257,12 +265,12 @@ describe('NirmanaElevationTracker', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument())
     expect(assetTrigger).toHaveFocus()
 
-    const globalTrigger = screen.getByRole('button', { name: /audit evidence.*3 references.*reliable/i })
+    const globalTrigger = screen.getByRole('button', { name: /audit evidence.*reliable/i })
     globalTrigger.focus()
     await user.keyboard('{Enter}')
     drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
-    expect(within(drawer).getByText('build_run:run-l0-wave-2')).toBeVisible()
+    expect(within(drawer).getAllByText('build_run:33333333-3333-4333-8333-333333333333').length).toBeGreaterThan(0)
     expect(within(drawer).getByText('unrelated:ka_smriti')).toBeVisible()
-    expect(within(drawer).getByText('build_run:medical-mappings')).toBeVisible()
+    expect(within(drawer).getAllByText('build_run:11111111-1111-4111-8111-111111111111').length).toBeGreaterThan(0)
   })
 })
