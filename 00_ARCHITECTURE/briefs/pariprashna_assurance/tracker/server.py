@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse, urlsplit
 
 from control import EventStore, RejectedEvent
+from service import assert_release_attestation
 
 
 def seed_empty_demo_runtime(runtime: str | Path) -> None:
@@ -96,6 +97,19 @@ def adapter_health() -> dict:
     return {"github": {"health": "UNKNOWN", "reason": "not configured for local CG-0 runtime"}, "ci": {"health": "UNKNOWN", "reason": "not configured for local CG-0 runtime"}, "canonical_state_unchanged": True}
 
 
+def service_identity(store: EventStore, release_dir: Path | None = None) -> dict:
+    """Return a read-only, attested identity for the loopback service currently handling requests."""
+    release = (release_dir or Path(__file__).resolve().parent).resolve()
+    base = {"release_dir": str(release), "p0b_only": bool(store.p0b_only), "p1_enabled": bool(store.p1_enabled)}
+    try:
+        source_sha = (release / ".source-sha").read_text(encoding="utf-8").strip()
+        assert_release_attestation(release, source_sha)
+        replay_ok = store.verify_replay()["ok"] is True
+    except (OSError, ValueError, KeyError):
+        return {"ok": False, "source_sha": None, **base, "replay_ok": False}
+    return {"ok": replay_ok, "source_sha": source_sha, **base, "replay_ok": replay_ok}
+
+
 def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
     class Handler(BaseHTTPRequestHandler):
         server_version = "PariprashnaAssuranceTracker/1"
@@ -148,6 +162,7 @@ def handler_factory(store: EventStore, bus: EventBus, dashboard: Path):
             if path == "/api/projection":
                 self._json(200, {"service_health": "UNKNOWN", "reason": "replay monitor failure"} if bus.service_unavailable() else store.projection()); return
             if path == "/api/integrity": self._json(200, store.verify_replay()); return
+            if path == "/api/service-identity": self._json(200, service_identity(store)); return
             if path == "/api/rejected": self._json(200, {"rejected_events": store.rejected()}); return
             if path == "/api/adapters": self._json(200, adapter_health()); return
             if path == "/events":
