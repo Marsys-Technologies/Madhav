@@ -402,10 +402,11 @@ def seed_kp_sublord_division(conn: Any, *, dry_run: bool = False,
     rows = build_divisions()
 
     verdict = verify_star_lords_against_reference(conn)
-    if verdict["status"] == "divergent_flagged":
+    if verdict["status"] != TWO_PASS_VERIFIED:
         raise RuntimeError(
-            "HALT: bg_kp_sublord_division star_lord disagrees with the L0 nakshatra "
-            f"authority (reference_nakshatra): {verdict['mismatches'][:5]}"
+            "HALT: bg_kp_sublord_division requires a two_pass_verified star-lord "
+            "cross-check against the L0 nakshatra authority (reference_nakshatra); "
+            f"received {verdict['status']}: {verdict['mismatches'][:5]}"
         )
     logger.info(
         "[bg_kp_sublord_division] star-lord cross-check: %s (%d divisions checked)",

@@ -22,6 +22,14 @@ describe('asset_registry_seed — catalog reconciliation', () => {
     expect(bad).toEqual([])
   })
 
+  it('declares the hidden L0 writer inputs as exact build-order dependencies', () => {
+    const dependencies = new Map(ASSETS.map(asset => [asset.asset_id, asset.depends_on]))
+
+    expect(dependencies.get('bg_gochara_arcs')).toEqual(['bg_ephemeris'])
+    expect(dependencies.get('bg_kp_sublord_division')).toEqual(['bg_nakshatra'])
+    expect(dependencies.get('bg_parihara_rules')).toEqual(['bg_doshas', 'bg_texts'])
+  })
+
   it('every data asset has a non-empty count_sql', () => {
     const bad: string[] = []
     for (const asset of ASSETS) {
