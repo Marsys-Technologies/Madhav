@@ -27,6 +27,33 @@ REGISTRY = [
 PLAN = ["A", "B", "C", "D"]
 
 
+def _frozen_run_fields():
+    """Return a valid manifest for scheduler-focused execute_run tests."""
+    manifest = {
+        "version": "nirmana-run-manifest/v1",
+        "chart_id": "chart-C",
+        "scope": "global",
+        "scope_target": None,
+        "action": "rebuild",
+        "waves": [PLAN],
+        "assets": [
+            {
+                "asset_id": row["asset_id"],
+                "scope": row["scope"],
+                "depends_on": row["depends_on"],
+                "natural_key_partition": None,
+                "has_cowriters": False,
+                "expected_code_digest": "0" * 64,
+            }
+            for row in REGISTRY
+        ],
+    }
+    return {
+        "plan_manifest": manifest,
+        "plan_manifest_digest": runner._canonical_manifest_digest(manifest),
+    }
+
+
 class FakeCursor:
     """Minimal cursor that answers exactly the queries execute_run issues."""
     def __init__(self, state: dict):
@@ -41,6 +68,7 @@ class FakeCursor:
             self._result = [{
                 "id": "run-1", "chart_id": "chart-C", "scope": "global",
                 "scope_target": None, "action": "rebuild", "plan": PLAN, "state": "planned",
+                **_frozen_run_fields(),
             }]
         elif "FROM asset_registry WHERE asset_id = ANY" in s:
             self._result = list(REGISTRY)
@@ -84,6 +112,10 @@ def _install(monkeypatch, state, fail_assets):
     monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
     monkeypatch.setattr(runner, "mark_run_state", lambda *a, **k: None)
     monkeypatch.setattr(runner, "emit_event", lambda *a, **k: None)
+    # Manifest integrity itself has dedicated tests. These scheduler tests use
+    # synthetic asset IDs, so isolate them from live registry/code parity.
+    monkeypatch.setattr(runner, "_verify_registry_still_matches_manifest", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "_verify_sidecar_code_matches_manifest", lambda *a, **k: None)
     import pipeline.orchestrator.writers as writers_mod
     monkeypatch.setattr(writers_mod, "discover_all", lambda: None, raising=False)
     # Patch out the writer-gap guard: this test focuses on DAG blocking behaviour,
@@ -93,7 +125,13 @@ def _install(monkeypatch, state, fail_assets):
 
     ran: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(
+        conn, cur, run_id, chart_id, asset_id, position, *,
+        declared_deps, natural_key_partition, has_cowriters,
+    ):
+        assert declared_deps == next(row["depends_on"] for row in REGISTRY if row["asset_id"] == asset_id)
+        assert natural_key_partition is None
+        assert has_cowriters is False
         ran.append(asset_id)
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",

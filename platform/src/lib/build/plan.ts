@@ -39,7 +39,7 @@ export interface ThroughputEntry {
 
 export interface BlockerEntry {
   dep_asset_id: AssetId
-  dep_state: AssetState
+  dep_state: AssetState | 'unknown'
   required_by: AssetId[]    // which in-scope assets need this dep
   guidance?: string         // non-empty for L0 dormant/error deps
 }
@@ -73,6 +73,8 @@ export interface ResolveBuildPlanArgs {
   action: BuildAction
   registry: RegistryEntry[]
   throughput: Map<AssetId, ThroughputEntry>
+  /** Sidecar-produced receipt classification; supplying it enables strict freshness checks. */
+  freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>
   // asset_ids protected (via build_protected_assets) for the chart_id this plan is being
   // resolved for. Pre-filtered by the CALLER (a `WHERE chart_id = $1` query) — plan.ts
   // itself never sees a chart_id or talks to the DB, staying a pure function. Defaults to
@@ -207,9 +209,11 @@ export function preflight(
   scope: BuildScope,
   scope_target: string | null,
   registry: RegistryEntry[],
-  throughput: Map<AssetId, ThroughputEntry>
+  throughput: Map<AssetId, ThroughputEntry>,
+  freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>,
 ): BlockerEntry[] {
   const regMap = new Map(registry.map(r => [r.asset_id, r]))
+  const candidateSet = new Set(candidates)
   const blockerMap = new Map<AssetId, BlockerEntry>()
 
   function collectDepsToCheck(
@@ -223,6 +227,9 @@ export function preflight(
     if (!entry) return
 
     for (const dep of entry.depends_on) {
+      // Dependencies dispatched in this same immutable plan are ordered by the
+      // DAG and must not be mistaken for missing out-of-plan prerequisites.
+      if (candidateSet.has(dep)) continue
       const depLayer = regMap.get(dep)?.layer
       const isIntraLayer = scope === 'layer' && scope_target != null && depLayer === scope_target
 
@@ -245,15 +252,27 @@ export function preflight(
     collectDepsToCheck(candidate, new Set<AssetId>(), depsToCheck)
 
     for (const dep of depsToCheck) {
-      // Use undefined-safe: absent entries are not our concern (treat as ready)
+      // A dependency absent from the registry is unknown, never an earned ready
+      // state. Existing callers that do not yet supply the sidecar projection
+      // retain their historical sparse-throughput behaviour; once supplied, a
+      // missing throughput or receipt row is an explicit unknown blocker.
       const depState = throughput.get(dep)?.state
-      if (depState === undefined || READY_STATES.has(depState)) continue
+      const receipt = freshness?.get(dep)
+      const registered = regMap.has(dep)
+      const ready = registered && (freshness === undefined
+        ? (depState === undefined || READY_STATES.has(depState))
+        : (depState !== undefined && READY_STATES.has(depState) && receipt?.state === 'fresh'))
+      if (ready) continue
+
+      const effectiveState: AssetState | 'unknown' = !registered || depState === undefined
+        ? 'unknown'
+        : (freshness !== undefined && receipt?.state !== 'fresh' ? receipt?.state ?? 'unknown' : depState)
 
       if (!blockerMap.has(dep)) {
         const isL0 = regMap.get(dep)?.layer === 'brahmagyan'
         blockerMap.set(dep, {
           dep_asset_id: dep,
-          dep_state: depState,
+          dep_state: effectiveState,
           required_by: [],
           ...(isL0 ? { guidance: 'L0 dependency not built — run the Brahmagyan layer first' } : {}),
         })
@@ -330,6 +349,7 @@ export function resolveBuildPlan({
   action,
   registry,
   throughput,
+  freshness,
   protectedAssetIds,
 }: ResolveBuildPlanArgs): BuildPlan {
   const protectedSet: ReadonlySet<AssetId> = protectedAssetIds ?? EMPTY_PROTECTED_SET
@@ -343,7 +363,10 @@ export function resolveBuildPlan({
   // update and cascade: no pre-flight, use existing behavior, return new shape
   if (action === 'update') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
-    const stale = scopeAssets.filter(id => throughput.get(id)?.state === 'stale')
+    const stale = scopeAssets.filter(id =>
+      throughput.get(id)?.state === 'stale' ||
+      (freshness !== undefined && freshness.get(id)?.state !== 'fresh')
+    )
     const dormant = scopeAssets.filter(id => {
       const t = throughput.get(id)
       return !t || t.state === 'dormant'
@@ -363,7 +386,10 @@ export function resolveBuildPlan({
 
   if (action === 'cascade') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
-    const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
+    const stale = registry.filter(r =>
+      throughput.get(r.asset_id)?.state === 'stale' ||
+      (freshness !== undefined && freshness.get(r.asset_id)?.state !== 'fresh')
+    ).map(r => r.asset_id)
     const rawCandidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
     const sorted = topoSort(candidates, registry)
@@ -382,6 +408,7 @@ export function resolveBuildPlan({
   if (action === 'build') {
     rawCandidates = scopeAssets.filter(id => {
       const t = throughput.get(id)
+      const receiptNeedsBuild = freshness !== undefined && freshness.get(id)?.state !== 'fresh'
       // 'incomplete' (migration 474) means "ran, some data present, substep plan
       // work still remains" — it is by definition NOT finished, so `build` must
       // pick it up. Omitting it made an 'incomplete' asset unreachable by the
@@ -391,7 +418,7 @@ export function resolveBuildPlan({
       // Ruling 10), which is the first path to write 'incomplete' from the
       // TypeScript side; also repairs the same latent strand for the Python
       // path's 'incomplete' (asset_runner.py:677), which predates this change.
-      return !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
+      return receiptNeedsBuild || !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
     })
   } else {
     // rebuild: all assets in scope (no transitive downstream expansion)
@@ -410,7 +437,7 @@ export function resolveBuildPlan({
 
   // pre-flight gate: only for non-global scope (global has all assets as candidates)
   if (scope !== 'global') {
-    const blockers = preflight(candidates, scope, scope_target, registry, throughput)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
     if (blockers.length > 0) {
       return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
     }

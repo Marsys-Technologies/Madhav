@@ -47,11 +47,13 @@ def _install(monkeypatch, state, fail_assets, mark_calls):
 
     monkeypatch.setattr(runner, "mark_run_state", fake_mark_run_state)
     monkeypatch.setattr(runner, "emit_event", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "_verify_registry_still_matches_manifest", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "_verify_sidecar_code_matches_manifest", lambda *a, **k: None)
     import pipeline.orchestrator.writers as writers_mod
     monkeypatch.setattr(writers_mod, "discover_all", lambda: None, raising=False)
     monkeypatch.setattr(runner, "_check_writer_registry_gaps", lambda cur: [], raising=False)
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
             ("error" if asset_id in fail_assets else "complete", run_id, asset_id),
@@ -315,6 +317,8 @@ def _install_race(monkeypatch, state, db_truth, mark_calls, run_asset_fn, throug
 
     monkeypatch.setattr(runner, "mark_run_state", fake_mark_run_state)
     monkeypatch.setattr(runner, "emit_event", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "_verify_registry_still_matches_manifest", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "_verify_sidecar_code_matches_manifest", lambda *a, **k: None)
     import pipeline.orchestrator.writers as writers_mod
     monkeypatch.setattr(writers_mod, "discover_all", lambda: None, raising=False)
     monkeypatch.setattr(runner, "_check_writer_registry_gaps", lambda cur: [], raising=False)
@@ -336,7 +340,7 @@ def test_run_reported_failed_when_db_shows_error_the_in_process_tracker_missed(m
     throughput: dict[str, str] = {}
     mark_calls: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
             ("complete", run_id, asset_id),
@@ -366,7 +370,7 @@ def test_run_reported_completed_when_db_shows_success_the_in_process_tracker_los
     throughput: dict[str, str] = {}
     mark_calls: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         in_process_state = "error" if asset_id == "D" else "complete"
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
@@ -408,7 +412,7 @@ def test_run_reported_failed_when_a_writer_landed_incomplete(monkeypatch):
     throughput: dict[str, str] = {}
     mark_calls: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         # build_run_assets: the unconditional literal, for EVERY asset
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
@@ -451,7 +455,7 @@ def test_incomplete_upstream_blocks_its_downstream_from_running(monkeypatch):
     mark_calls: list[str] = []
     ran: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         ran.append(asset_id)
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
@@ -482,7 +486,7 @@ def test_run_still_completed_when_every_asset_is_dormant(monkeypatch):
     throughput: dict[str, str] = {}
     mark_calls: list[str] = []
 
-    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position):
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **_kwargs):
         cur.execute(
             "UPDATE build_run_assets SET state=%s WHERE run_id=%s AND asset_id=%s",
             ("complete", run_id, asset_id),

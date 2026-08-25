@@ -89,6 +89,26 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByText(/indeterminate — awaiting probe/i)).toBeVisible()
   })
 
+  it('does not present frozen wave members as ready when planner readiness is unavailable', async () => {
+    const waveSnapshot: NirmanaTrackerSnapshot = {
+      ...snapshot,
+      assets: [
+        { ...snapshot.assets[0], lifecycle_state: 'frozen', current_run_state: null, progress_mode: 'not_applicable', work_committed: null, work_total: null, current_unit_label: null },
+        { ...snapshot.assets[1], lifecycle_state: 'catalogued', blocker: null },
+      ],
+      layers: [{
+        ...snapshot.layers[0],
+        waves: [{ wave_index: 2, state: 'pending', asset_ids: ['ga_lagna', 'ga_sensitive'], active_asset_ids: [], blocked_asset_ids: [] }],
+      }, ...snapshot.layers.slice(1)],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(waveSnapshot)))
+
+    render(<NirmanaElevationTracker />)
+
+    expect(await screen.findByText('Pending / unreported · 1')).toBeVisible()
+    expect(screen.queryByText(/ready ·/i)).not.toBeInTheDocument()
+  })
+
   it('retains the last known snapshot behind an explicit unknown overlay after an unavailable response', async () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse(snapshot))

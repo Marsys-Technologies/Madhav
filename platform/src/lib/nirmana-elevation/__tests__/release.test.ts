@@ -7,16 +7,16 @@ import { loadNirmanaReleaseStatus } from '../release'
 const observedAt = new Date('2026-08-25T09:00:00.000Z')
 
 function cloudRun({
-  traffic = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }],
+  trafficStatuses = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }],
   templateLabels,
   revisionLabels,
 }: {
-  traffic?: Array<{ percent?: number; revision?: string }>
+  trafficStatuses?: Array<{ percent?: number; revision?: string }>
   templateLabels?: Record<string, string>
   revisionLabels?: Record<string, string>
 } = {}) {
   return {
-    getService: vi.fn().mockResolvedValue([{ traffic, template: { labels: templateLabels } }]),
+    getService: vi.fn().mockResolvedValue([{ trafficStatuses, template: { labels: templateLabels } }]),
     getRevision: vi.fn().mockResolvedValue([{ labels: revisionLabels }]),
   }
 }
@@ -45,9 +45,12 @@ describe('loadNirmanaReleaseStatus', () => {
   })
 
   it('isolates unavailable GitHub observations without inventing a main SHA', async () => {
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
     const result = await loadNirmanaReleaseStatus({
       now: observedAt,
-      fetchFn: vi.fn().mockResolvedValue(new Response(null, { status: 503 })),
+      fetchFn,
       cloudRunClient: cloudRun() as never,
     })
 
@@ -73,7 +76,7 @@ describe('loadNirmanaReleaseStatus', () => {
     const result = await loadNirmanaReleaseStatus({
       now: observedAt,
       fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'c'.repeat(40) }), { status: 200 })),
-      cloudRunClient: cloudRun({ traffic: [
+      cloudRunClient: cloudRun({ trafficStatuses: [
         { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-old' },
         { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-new' },
       ] }) as never,
@@ -81,6 +84,40 @@ describe('loadNirmanaReleaseStatus', () => {
 
     expect(result.release).toMatchObject({ deployed_revision: null, production_in_sync: null })
     expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' })]))
+  })
+
+  it('uses the GitHub commits feed when the shared REST quota is exhausted', async () => {
+    const sha = 'f'.repeat(40)
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response(
+        `<feed><entry><id>tag:github.com,2008:Grit::Commit/${sha}</id></entry></feed>`,
+        { status: 200 },
+      ))
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn,
+      cloudRunClient: cloudRun({ revisionLabels: { 'commit-sha': sha } }) as never,
+    })
+
+    expect(result.release).toMatchObject({ main_sha: sha, deployed_sha: sha, production_in_sync: true })
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('normalizes a short realized revision name before reading its immutable label', async () => {
+    const cloudRunClient = cloudRun({
+      trafficStatuses: [{ percent: 100, revision: 'amjis-web-01704-mvb' }],
+      revisionLabels: { 'commit-sha': 'd'.repeat(40) },
+    })
+    await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb',
+    })
   })
 
   it('uses a valid commit label from the exact serving revision', async () => {

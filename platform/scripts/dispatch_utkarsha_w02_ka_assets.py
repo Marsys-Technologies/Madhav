@@ -13,7 +13,7 @@ TARGET ASSETS (per chart):
 NOTE: bg_gochara_arcs is scope='global' — this script CHECKS its state.
 If NOT lit, it prints a warning. Fix: run the global build first:
   cd platform/python-sidecar
-  python3 -m pipeline.orchestrator.main --global-build
+  Dispatch a canonical cockpit build_run; direct --global-build is retired.
 Then re-run this script.
 
 PRECONDITIONS:
@@ -84,7 +84,7 @@ def main() -> None:
     if arcs_row is None:
         print("[W0.2 WARN] bg_gochara_arcs: no asset_throughput row (never built).", file=sys.stderr)
         print("[W0.2 WARN] Run global build FIRST:", file=sys.stderr)
-        print("[W0.2 WARN]   cd platform/python-sidecar && python3 -m pipeline.orchestrator.main --global-build", file=sys.stderr)
+        print("[W0.2 WARN]   create a canonical cockpit build_run; direct --global-build is retired", file=sys.stderr)
         print("[W0.2 WARN] Then re-run this script.", file=sys.stderr)
         conn.close()
         sys.exit(1)
@@ -92,7 +92,7 @@ def main() -> None:
         print(f"[W0.2 WARN] bg_gochara_arcs state={arcs_row['state']} (not lit).", file=sys.stderr)
         print(f"[W0.2 WARN] last_error={arcs_row['last_error']}", file=sys.stderr)
         print("[W0.2 WARN] Run global build FIRST:", file=sys.stderr)
-        print("[W0.2 WARN]   cd platform/python-sidecar && python3 -m pipeline.orchestrator.main --global-build", file=sys.stderr)
+        print("[W0.2 WARN]   create a canonical cockpit build_run; direct --global-build is retired", file=sys.stderr)
         print("[W0.2 WARN] Then re-run this script.", file=sys.stderr)
         conn.close()
         sys.exit(1)

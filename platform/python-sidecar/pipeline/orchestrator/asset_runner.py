@@ -44,7 +44,12 @@ _stale_mark_lock = threading.Lock()
 _DEP_ASSERT_MODE = os.environ.get("ORCHESTRATOR_DEP_ASSERT", "enforce").lower()
 
 
-def deps_unsatisfied(cur, chart_id, asset_id: str) -> list[str]:
+def deps_unsatisfied(
+    cur,
+    chart_id,
+    asset_id: str,
+    declared_deps: list[str] | None = None,
+) -> list[str]:
     """Return the list of this asset's declared deps that are NOT satisfied for the
     target scope, as 'dep(state)' strings. Empty list = all deps ready.
 
@@ -53,42 +58,48 @@ def deps_unsatisfied(cur, chart_id, asset_id: str) -> list[str]:
     A service dep (asset_kind/type='service') has no data rows and is never 'lit';
     it is satisfied unless explicitly in 'error'.
     """
-    cur.execute(
-        "SELECT COALESCE(depends_on, '{}') AS deps FROM asset_registry WHERE asset_id = %s",
-        (asset_id,),
-    )
-    row = cur.fetchone()
-    # Defensive: a real dict_row has 'deps'; if the cursor can't resolve it (no row,
-    # or a context that doesn't answer this query), treat as "no deps to verify" — the
-    # assertion is a backstop, it must never crash the writer path.
-    deps = list(row.get("deps") or []) if isinstance(row, dict) else []
+    if declared_deps is None:
+        cur.execute(
+            "SELECT COALESCE(depends_on, '{}') AS deps FROM asset_registry WHERE asset_id = %s",
+            (asset_id,),
+        )
+        row = cur.fetchone()
+        # Legacy/unit callers may omit frozen deps. Production F0 runs always
+        # supply the digest-verified manifest list from runner.py.
+        deps = list(row.get("deps") or []) if isinstance(row, dict) else []
+    else:
+        deps = list(declared_deps)
     if not deps:
         return []
     cur.execute(
         """
-        SELECT r.asset_id,
-               COALESCE(r.asset_kind, r.asset_type) AS kind,
-               t.state
-        FROM asset_registry r
+        SELECT dep.asset_id, t.state, f.freshness_state
+        FROM unnest(%s::text[]) AS dep(asset_id)
         LEFT JOIN LATERAL (
             SELECT state FROM asset_throughput at
-            WHERE at.asset_id = r.asset_id
-              AND (CASE WHEN r.scope = 'global' THEN at.chart_id IS NULL
-                        ELSE at.chart_id = %s END)
+            WHERE at.asset_id = dep.asset_id
+              AND (at.chart_id IS NOT DISTINCT FROM %s OR at.chart_id IS NULL)
+            ORDER BY (at.chart_id IS NOT DISTINCT FROM %s) DESC, at.last_built_at DESC NULLS LAST
             LIMIT 1
         ) t ON true
-        WHERE r.asset_id = ANY(%s)
+        LEFT JOIN LATERAL (
+            SELECT freshness_state FROM asset_freshness af
+            WHERE af.asset_id = dep.asset_id
+              AND (af.chart_id IS NOT DISTINCT FROM %s OR af.chart_id IS NULL)
+            ORDER BY (af.chart_id IS NOT DISTINCT FROM %s) DESC, af.observed_at DESC
+            LIMIT 1
+        ) f ON true
         """,
-        (chart_id, deps),
+        (deps, chart_id, chart_id, chart_id, chart_id),
     )
     bad: list[str] = []
     for d in cur.fetchall():
         state = d["state"]
-        if d["kind"] == "service":
-            if state == "error":
-                bad.append(f"{d['asset_id']}(service:error)")
-        elif state != "lit":
+        freshness = d["freshness_state"]
+        if state not in ("lit", "service_ok"):
             bad.append(f"{d['asset_id']}({state or 'absent'})")
+        elif freshness != "fresh":
+            bad.append(f"{d['asset_id']}(receipt:{freshness or 'absent'})")
     return bad
 
 
@@ -150,8 +161,53 @@ def canonical_upstream_hash(
     return hashlib.sha256(encoded).hexdigest()
 
 
-def compute_upstream_hash(cur, asset_id: str, chart_id: str | None) -> str:
+def load_upstream_receipts(cur, declared_deps: list[str], chart_id: str | None) -> list[dict[str, object]]:
+    """Load exact, scoped successful receipts without consulting mutable DAG metadata."""
+    if not declared_deps:
+        return []
+    cur.execute(
+        """
+        SELECT dep.asset_id, p.receipt_version, p.code_digest, p.config_digest,
+               p.upstream_digest, p.partition_digest, p.output_digest,
+               p.receipt_state, p.observed_at
+        FROM unnest(%s::text[]) AS dep(asset_id)
+        LEFT JOIN LATERAL (
+            SELECT receipt_version, code_digest, config_digest, upstream_digest,
+                   partition_digest, output_digest, receipt_state, observed_at
+              FROM asset_provenance_receipts apr
+             WHERE apr.asset_id = dep.asset_id
+               AND (apr.chart_id IS NOT DISTINCT FROM %s OR apr.chart_id IS NULL)
+             ORDER BY (apr.chart_id IS NOT DISTINCT FROM %s) DESC, apr.observed_at DESC
+             LIMIT 1
+        ) p ON true
+        ORDER BY dep.asset_id
+        """,
+        (declared_deps, chart_id, chart_id),
+    )
+    return [dict(row) for row in cur.fetchall()]
+
+
+def compute_upstream_hash(
+    cur,
+    asset_id: str,
+    chart_id: str | None,
+    declared_deps: list[str] | None = None,
+) -> str | None:
     """Return a reproducible digest of this execution's actual scoped upstream receipts."""
+    if declared_deps is not None:
+        from .provenance import canonical_digest
+        receipts = load_upstream_receipts(cur, declared_deps, chart_id)
+        if len(receipts) != len(declared_deps) or any(
+            row.get("receipt_state") != "proven" or not row.get("output_digest")
+            for row in receipts
+        ):
+            return None
+        return canonical_digest({
+            "version": "nirmana-upstream-receipts-v2",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "receipts": receipts,
+        })
     cur.execute(
         """
         SELECT ar.asset_id, t.last_built_at
@@ -314,6 +370,61 @@ def get_writer_source_hash(asset_id: str) -> str:
     return digest.hexdigest()
 
 
+def get_probe_source_hash() -> str:
+    """Hash the generic probe implementation used when no asset writer exists."""
+    from pipeline.orchestrator import service_probes
+    digest = hashlib.sha256(b"nirmana-probe-source-v1\0")
+    for path in sorted((Path(__file__).resolve(), Path(service_probes.__file__).resolve())):
+        content = path.read_bytes()
+        digest.update(path.name.encode("utf-8"))
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def _persist_probe_receipt(
+    cur,
+    *,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    declared_deps: list[str] | None,
+    natural_key_partition: str | None,
+    has_cowriters: bool | None,
+    probe_config: dict[str, object],
+    result_message: str,
+) -> None:
+    """Persist a GREEN probe as evidence in the caller's success transaction."""
+    from .provenance import canonical_digest, capture_and_persist_receipt
+    deps = declared_deps or []
+    upstream_receipts = load_upstream_receipts(cur, deps, chart_id)
+    upstream_digest = compute_upstream_hash(cur, asset_id, chart_id, declared_deps)
+    try:
+        code_digest = get_writer_source_hash(asset_id)
+    except Exception:
+        code_digest = get_probe_source_hash()
+    capture_and_persist_receipt(
+        cur,
+        asset_id=asset_id,
+        chart_id=chart_id,
+        build_id=run_id,
+        code_digest=code_digest,
+        config=probe_config,
+        upstream_digest=upstream_digest,
+        upstream_receipts=upstream_receipts,
+        output_digest=canonical_digest({
+            "version": "nirmana-probe-output-v1",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "run_id": run_id,
+            "status": "GREEN",
+            "message": result_message,
+        }),
+        partition_declaration=natural_key_partition,
+        has_cowriters=has_cowriters,
+    )
+
+
 # ── Data-presence probe (D-1.6 state-write defect fix) ───────────────────────
 
 def _data_rows_present(conn, cur, asset_id: str, chart_id) -> int | None:
@@ -458,6 +569,9 @@ def _run_service_health_probe(
     chart_id: str,
     asset_id: str,
     health_probe: dict | None,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
 ) -> None:
     """
     Execute the health probe for a service asset (storage_type='service').
@@ -496,6 +610,22 @@ def _run_service_health_probe(
                WHERE asset_id = %s""",
             (asset_id,),
         )
+        try:
+            _persist_probe_receipt(
+                cur,
+                run_id=run_id,
+                chart_id=chart_id,
+                asset_id=asset_id,
+                declared_deps=declared_deps,
+                natural_key_partition=natural_key_partition,
+                has_cowriters=has_cowriters,
+                probe_config={"health_probe": health_probe},
+                result_message=message,
+            )
+        except Exception as exc:
+            conn.rollback()
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            return
         conn.commit()
         emit_event({
             "type": "asset.state_change",
@@ -655,7 +785,18 @@ def _probe_asset(conn, cur, asset_id: str, registry_row: dict, is_service: bool)
     return False, "no check defined"
 
 
-def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, message: str) -> None:
+def _mark_probe_green(
+    conn,
+    cur,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    message: str,
+    registry_row: dict,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
+) -> None:
     """Skip-if-green: mark the asset lit WITHOUT running its writer (no rows)."""
     cur.execute(
         """UPDATE asset_throughput
@@ -669,6 +810,26 @@ def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, mess
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
+    try:
+        _persist_probe_receipt(
+            cur,
+            run_id=run_id,
+            chart_id=chart_id,
+            asset_id=asset_id,
+            declared_deps=declared_deps,
+            natural_key_partition=natural_key_partition,
+            has_cowriters=has_cowriters,
+            probe_config={
+                "health_probe": registry_row.get("health_probe"),
+                "integrity_check_sql": registry_row.get("integrity_check_sql"),
+                "rebuild_on_probe_fail": bool(registry_row.get("rebuild_on_probe_fail")),
+            },
+            result_message=message,
+        )
+    except Exception as exc:
+        conn.rollback()
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+        return
     conn.commit()
     emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
                 "status": "green", "action": "skipped", "message": message[:500]})
@@ -676,7 +837,16 @@ def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, mess
                 "from_state": "building", "to_state": "lit"})
 
 
-def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bool:
+def _run_data_writer(
+    conn,
+    cur,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
+) -> bool:
     """
     Run a data asset's registered writer to completion (sub-step driven). Marks
     'lit' + downstream stale on success (returns True); marks 'error' and returns
@@ -707,7 +877,12 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     # source or receipt is a failed execution, never a successful run with an
     # "unknown" provenance marker that would mask later invalidation.
     try:
-        upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
+        upstream_receipts = load_upstream_receipts(cur, declared_deps or [], chart_id)
+        upstream_hash = (
+            compute_upstream_hash(cur, asset_id, chart_id)
+            if declared_deps is None
+            else compute_upstream_hash(cur, asset_id, chart_id, declared_deps)
+        )
         writer_hash = get_writer_source_hash(asset_id)
     except Exception as exc:
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
@@ -854,26 +1029,42 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
+    # Only digest-verified F0 runs supply declared_deps. Direct helper calls are
+    # retained for legacy unit fixtures, but cannot be reached from main.py.
+    if declared_deps is not None:
+        try:
+            from .provenance import canonical_digest, capture_and_persist_receipt
+            output_digest = canonical_digest({
+                "version": "nirmana-writer-output-v1",
+                "asset_id": asset_id,
+                "chart_id": chart_id,
+                "run_id": run_id,
+                "final_state": final_state,
+                "rows_written": rows_written,
+            })
+            capture_and_persist_receipt(
+                cur,
+                asset_id=asset_id,
+                chart_id=chart_id,
+                build_id=run_id,
+                code_digest=writer_hash,
+                config=ctx.config,
+                upstream_digest=upstream_hash,
+                upstream_receipts=upstream_receipts,
+                output_digest=output_digest,
+                partition_declaration=natural_key_partition,
+                has_cowriters=has_cowriters,
+            )
+        except Exception as exc:
+            conn.rollback()
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            return False
     conn.commit()
 
     emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
                 "from_state": "building", "to_state": final_state})
     emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
                 "rows_written": rows_written})
-
-    with _stale_mark_lock:
-        downstream = compute_downstream_closure(cur, asset_id)
-        if downstream:
-            cur.execute(
-                """UPDATE asset_throughput SET state = 'stale'
-                   WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
-                   AND state IN ('lit', 'mature')""",
-                (chart_id, downstream),
-            )
-            conn.commit()
-        for d in downstream:
-            emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": d,
-                        "from_state": "lit", "to_state": "stale"})
 
     logger.info("[orchestrator] asset %s complete — %d rows", asset_id, rows_written)
     return True
@@ -888,6 +1079,9 @@ def run_asset(
     chart_id: str,
     asset_id: str,
     position: int,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
 ) -> None:
     """
     Execute one asset writer inside a savepoint.
@@ -905,7 +1099,11 @@ def run_asset(
     # dispatch, or a never-built upstream — so the writer never silently builds on
     # missing/incomplete data (many writers swallow missing-table reads).
     if _DEP_ASSERT_MODE != "off":
-        unmet = deps_unsatisfied(cur, chart_id, asset_id)
+        unmet = (
+            deps_unsatisfied(cur, chart_id, asset_id)
+            if declared_deps is None
+            else deps_unsatisfied(cur, chart_id, asset_id, declared_deps)
+        )
         if unmet:
             detail = ", ".join(sorted(unmet))
             if _DEP_ASSERT_MODE == "warn":
@@ -1046,7 +1244,10 @@ def run_asset(
     if has_check and rebuild_policy:
         ok, msg = _probe_asset(conn, cur, asset_id, registry_row, is_service)
         if ok:
-            _mark_probe_green(conn, cur, run_id, chart_id, asset_id, msg)
+            _mark_probe_green(
+                conn, cur, run_id, chart_id, asset_id, msg, registry_row, declared_deps,
+                natural_key_partition, has_cowriters,
+            )
             return
         emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
                     "status": "failed", "action": "regenerating", "message": msg[:500]})
@@ -1054,7 +1255,10 @@ def run_asset(
             mark_asset_error(conn, cur, run_id, chart_id, asset_id,
                              f"probe failed ({msg}); no writer to regenerate")
             return
-        if not _run_data_writer(conn, cur, run_id, chart_id, asset_id):
+        if not _run_data_writer(
+            conn, cur, run_id, chart_id, asset_id, declared_deps,
+            natural_key_partition, has_cowriters,
+        ):
             return  # writer failed; already marked error
         ok2, msg2 = _probe_asset(conn, cur, asset_id, registry_row, is_service)
         if ok2:
@@ -1072,12 +1276,21 @@ def run_asset(
         # _run_data_writer which now safely handles chart_id=None (global-scope backstop).
         discover_all()
         if get_writer(asset_id) is not None:
-            _run_data_writer(conn, cur, run_id, chart_id, asset_id)
+            _run_data_writer(
+                conn, cur, run_id, chart_id, asset_id, declared_deps,
+                natural_key_partition, has_cowriters,
+            )
             return
         # Legacy health-probe path (bg_* assets with health_probe JSONB spec).
-        _run_service_health_probe(conn, cur, run_id, chart_id, asset_id,
-                                  registry_row.get("health_probe"))
+        _run_service_health_probe(
+            conn, cur, run_id, chart_id, asset_id,
+            registry_row.get("health_probe"), declared_deps,
+            natural_key_partition, has_cowriters,
+        )
         return
 
     # Data asset: run its registered writer to completion (sub-step driven).
-    _run_data_writer(conn, cur, run_id, chart_id, asset_id)
+    _run_data_writer(
+        conn, cur, run_id, chart_id, asset_id, declared_deps,
+        natural_key_partition, has_cowriters,
+    )

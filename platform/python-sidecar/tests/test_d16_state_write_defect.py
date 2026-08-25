@@ -233,6 +233,31 @@ def test_d16_zero_rows_probe_unavailable_stays_dormant(monkeypatch):
     assert _final_state(cur) == "dormant"
 
 
+def test_f0_digest_verified_writer_persists_receipt_before_success_commit(monkeypatch):
+    """Production runner calls include frozen deps, which makes receipts reachable."""
+    from pipeline.orchestrator import provenance
+
+    captured: list[dict] = []
+    _patch_common(monkeypatch, _ZeroRowWriter)
+    monkeypatch.setattr(ar, "compute_upstream_hash", lambda cur, aid, cid, deps=None: "hash-upstream")
+    monkeypatch.setattr(
+        provenance,
+        "capture_and_persist_receipt",
+        lambda cur, **kwargs: captured.append(kwargs) or ("fresh", []),
+    )
+    conn, cur = FakeConn(), FakeCursor(rows_present=0)
+
+    assert ar._run_data_writer(
+        conn, cur, "00000000-0000-0000-0000-000000000009", "chart-abc",
+        _ZeroRowWriter.asset_id, declared_deps=[],
+    ) is True
+    assert len(captured) == 1
+    assert captured[0]["asset_id"] == _ZeroRowWriter.asset_id
+    assert captured[0]["build_id"] == "00000000-0000-0000-0000-000000000009"
+    assert captured[0]["upstream_receipts"] == []
+    assert captured[0]["output_digest"]
+
+
 # ── 2. Safety net: state UPDATE matching 0 rows is recovered, not lost ─────────
 
 def test_guard_state_write_recovers_zero_rowcount(monkeypatch):

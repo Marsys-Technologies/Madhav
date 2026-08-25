@@ -16,6 +16,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 // ─── module-level mocks (must precede route import) ───────────────────────────
 
@@ -76,6 +77,7 @@ const REGISTRY_GLOBAL_FULL = [
 
 // No protected assets for this chart — the common case every existing test exercises.
 const NO_PROTECTED_ASSETS = { rows: [], rowCount: 0 }
+const NO_FRESHNESS = { rows: [], rowCount: 0 }
 
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/runs', {
@@ -101,6 +103,7 @@ function seedSuccessfulBuild(registryRows: typeof REGISTRY_WITH_L0) {
     .mockResolvedValueOnce({ rows: registryRows, rowCount: registryRows.length }) // asset_registry
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // asset_throughput (all dormant)
     .mockResolvedValueOnce(NO_PROTECTED_ASSETS) // build_protected_assets — none
+    .mockResolvedValueOnce(NO_FRESHNESS) // asset_freshness — no prior receipts
     .mockResolvedValue({ rows: [{ id: 'run-abc' }], rowCount: 1 }) // INSERT build_runs + assets
   mockInvokeRunJob.mockResolvedValue(undefined)
 }
@@ -139,6 +142,32 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     expect(body.data.plan).not.toContain('bg_ontology')
     // Per-chart L1+ assets are included as usual
     expect(body.data.plan).toContain('ga_positions')
+  })
+
+  it('persists the ordered waves and registry dependency snapshot with the run', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    expect(insert).toBeDefined()
+    const params = insert![1] as unknown[]
+    expect(JSON.parse(params[5] as string)).toEqual({
+      version: 'nirmana-run-manifest/v1',
+      chart_id: 'c1',
+      scope: 'global',
+      scope_target: null,
+      action: 'build',
+      waves: [['ga_positions'], ['ga_strength']],
+      assets: [
+        { asset_id: 'ga_positions', scope: 'per_chart', depends_on: [], natural_key_partition: null, has_cowriters: false, expected_code_digest: (writerDigestInventory.writers as Record<string, string>).ga_positions },
+        { asset_id: 'ga_strength', scope: 'per_chart', depends_on: ['ga_positions'], natural_key_partition: null, has_cowriters: false, expected_code_digest: (writerDigestInventory.writers as Record<string, string>).ga_strength },
+      ],
+    })
+    expect(params[6]).toMatch(/^[a-f0-9]{64}$/)
   })
 })
 
@@ -211,6 +240,27 @@ describe('POST /api/cockpit/runs — client + scope=layer/ganita', () => {
     // Ganita assets must appear
     expect(body.data.plan).toContain('ga_positions')
   })
+
+  it('maps the durable one-active-run constraint to 409 under a concurrent insert race', async () => {
+    seedRole('client')
+    const conflict = Object.assign(new Error('duplicate active run'), {
+      code: '23505', constraint: 'build_runs_one_active_per_chart_idx',
+    })
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+      .mockRejectedValueOnce(conflict)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe('RUN_ACTIVE')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
 })
 
 // ─── 6. client build global → plan silently excludes L0 (NO error message) ───
@@ -272,6 +322,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_BODHA, rowCount: REGISTRY_BODHA.length })   // asset_registry
       .mockResolvedValueOnce({ rows: throughput, rowCount: 0 })                            // asset_throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                          // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                  // asset_freshness
       // Promise.all x3 preconditions (order matches Promise.all array in route.ts)
       .mockResolvedValueOnce({ rows: [{ count: String(chartFactsCount) }], rowCount: 1 }) // chart_facts count
       .mockResolvedValueOnce({ rows: gaStructuralState ? [{ state: gaStructuralState }] : [], rowCount: gaStructuralState ? 1 : 0 }) // ga_structural
@@ -352,6 +403,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput (all dormant)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0 (empty)
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '500' }], rowCount: 1 })                              // remedy_corpus present
@@ -375,6 +427,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // remedy_corpus EMPTY
@@ -399,6 +452,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                              // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                      // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-ga-001' }], rowCount: 1 })                      // INSERT
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -501,6 +555,27 @@ describe('POST /api/cockpit/runs — scope=asset_set', () => {
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
 
 describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () => {
+  it('rebuilds a lit asset when the checked-in sidecar digest differs from its receipt', async () => {
+    seedRole('client')
+    const registry = [REGISTRY_GANITA_ONLY[0]]
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: registry, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ asset_id: registry[0].asset_id, state: 'lit' }], rowCount: 1 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce({
+        rows: [{ asset_id: registry[0].asset_id, state: 'fresh', reasons: [], code_digest: 'old-code' }],
+        rowCount: 1,
+      })
+      .mockResolvedValue({ rows: [{ id: 'run-code-change' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual([registry[0].asset_id])
+  })
+
   it('RED — action=build on all-lit layer returns 422 with generic error (before G1 fix)', async () => {
     // Demonstrates the pre-G1 behavior: 422 with no actionable guidance.
     // After G1 the response now includes code=ALL_LIT + hint pointing to Rebuild.
@@ -512,6 +587,15 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
+      .mockResolvedValueOnce({
+        rows: REGISTRY_GANITA_ONLY.map(r => ({
+          asset_id: r.asset_id,
+          state: 'fresh',
+          reasons: [],
+          code_digest: (writerDigestInventory.writers as Record<string, string>)[r.asset_id],
+        })),
+        rowCount: REGISTRY_GANITA_ONLY.length,
+      })                                                                                         // asset_freshness
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
@@ -531,6 +615,7 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                        // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-rebuild-001' }], rowCount: 1 })
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -569,6 +654,7 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
       .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (dormant)
       .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets — protected!
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                // asset_freshness
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ka_gochara_sweep', action: 'build' }))
@@ -591,6 +677,7 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
       .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (both dormant)
       .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-kala-001' }], rowCount: 1 })                 // INSERT build_runs + assets
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -609,17 +696,17 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
     ])
   })
 
-  it('a non-protected pair proceeds normally — no protected_assets key when nothing is protected', async () => {
+  it('a retired writer cannot be dispatched merely because protection was removed', async () => {
     seedRole('client')
     seedSuccessfulBuild(REGISTRY_SWEEP) // NO_PROTECTED_ASSETS — nothing protected for this chart
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'kala', action: 'build' }))
 
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(422)
     const body = await res.json()
-    expect(body.data.plan).toContain('ka_gochara_sweep')
-    expect(body.data.plan).toContain('ka_kshetra')
-    expect(body.data.protected_assets).toBeUndefined()
+    expect(body.code).toBe('CODE_DIGEST_UNAVAILABLE')
+    expect(body.error).toContain('ka_gochara_sweep')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 })

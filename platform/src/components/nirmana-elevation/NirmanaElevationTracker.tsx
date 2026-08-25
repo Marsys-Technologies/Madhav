@@ -163,12 +163,12 @@ function WaveBoard({ snapshot }: { snapshot: NirmanaElevationSnapshot }) {
         {layer.waves.length === 0 ? <p className="rounded-md border border-dashed border-brand-border p-4 text-sm text-brand-text-3">No waves have been recorded for this layer.</p> : layer.waves.map((wave) => {
           const active = new Set(wave.active_asset_ids)
           const blocked = new Set(wave.blocked_asset_ids)
-          const ready = wave.asset_ids.filter((id) => !active.has(id) && !blocked.has(id))
           const completed = wave.asset_ids.filter((id) => assetsById.get(id)?.lifecycle_state === 'frozen')
+          const pendingOrUnreported = wave.asset_ids.filter((id) => !active.has(id) && !blocked.has(id) && !completed.includes(id))
           return <article key={wave.wave_index} className="rounded-lg border border-brand-border bg-brand-bg p-3" aria-label={`Wave ${wave.wave_index}`}>
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-mono text-sm font-semibold text-brand-gold-2">Wave {wave.wave_index}</h3><span className="flex items-center gap-1 text-xs capitalize text-brand-text-2"><StatusMark state={wave.state} />{statusText(wave.state)}</span></div>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <WaveAssets label="Ready" ids={ready} />
+              <WaveAssets label="Pending / unreported" ids={pendingOrUnreported} />
               <WaveAssets label="Active" ids={wave.active_asset_ids} />
               <WaveAssets label="Blocked" ids={wave.blocked_asset_ids} />
               <WaveAssets label="Completed" ids={completed} />

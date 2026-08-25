@@ -166,6 +166,106 @@ describe('projectNirmanaElevationSnapshot', () => {
     ])
   })
 
+  it('derives the campaign layer and wave from the selected canonical active run', () => {
+    const manifest = manifestFor(defaultRegistry, [{ asset_id: 'bg_prashna_rules', wave_index: 0, execution_obligation: 'build' }])
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      build_runs: [{ id: 'run-current', chart_id: canonicalChartId, state: 'running', current_asset_id: 'bg_prashna_rules', created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'run-current', asset_id: 'bg_prashna_rules', position: 1, state: 'building', started_at: observedAt, ended_at: null, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.campaign).toMatchObject({ current_layer: 'L0', current_wave: 0 })
+    expect(snapshot.layers[0]?.state).toBe('open')
+  })
+
+  it('retains the latest terminal asset error when no active retry has replaced it', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      build_runs: [{ id: 'failed-run', chart_id: canonicalChartId, state: 'failed', current_asset_id: 'bg_prashna_rules', created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'failed-run', asset_id: 'bg_prashna_rules', position: 1, state: 'running', started_at: observedAt, ended_at: observedAt, error: 'writer failed its integrity check' }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
+      current_run_state: null,
+      blocker: 'writer failed its integrity check',
+    })
+  })
+
+  it('retains terminal failure context while a later run retries the asset', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      build_runs: [
+        { id: 'failed-run', chart_id: canonicalChartId, state: 'failed', current_asset_id: 'bg_prashna_rules', created_at: '2026-08-25T09:00:00.000Z', started_at: '2026-08-25T09:00:00.000Z' },
+        { id: 'retry-run', chart_id: canonicalChartId, state: 'planned', current_asset_id: 'bg_prashna_rules', created_at: observedAt, started_at: null },
+      ],
+      build_run_assets: [
+        { run_id: 'failed-run', asset_id: 'bg_prashna_rules', position: 1, state: 'error', started_at: '2026-08-25T09:00:00.000Z', ended_at: '2026-08-25T09:01:00.000Z', error: 'writer failed its integrity check' },
+        { run_id: 'retry-run', asset_id: 'bg_prashna_rules', position: 1, state: 'planned', started_at: null, ended_at: null, error: null },
+      ],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
+      current_run_state: 'planned',
+      blocker: 'Previous failed run failed-run: writer failed its integrity check; retry run retry-run is planned.',
+    })
+  })
+
+  it('labels cross-attempt substep receipts as historical resumable work, not current progress', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      build_runs: [{ id: 'run-current', chart_id: canonicalChartId, state: 'running', current_asset_id: 'bg_prashna_rules', created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'run-current', asset_id: 'bg_prashna_rules', position: 1, state: 'building', started_at: observedAt, ended_at: null, error: null }],
+      build_substep_progress: [{ chart_id: canonicalChartId, asset_id: 'bg_prashna_rules', committed: 7, last_progress_at: observedAt }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
+      progress_mode: 'indeterminate',
+      work_committed: null,
+      work_total: null,
+      current_unit_label: 'Historical resumable work: 7 committed substeps',
+    })
+  })
+
+  it('credits a global manifest asset through the mandatory canonical-chart cockpit build receipt', () => {
+    const assetRegistry = [registryAsset({ scope: 'global' })]
+    const manifest = manifestFor(assetRegistry, [{ asset_id: 'bg_prashna_rules', execution_obligation: 'build' }])
+    const lifecycleEvents = [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ].map((event_type) => ({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'bg_prashna_rules',
+      layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: event_type === 'accepted_rebuild_observed' ? 'build_run:canonical-global-run' : `event:${event_type}`,
+      observed_at: observedAt, recorded_at: observedAt,
+    }))
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: assetRegistry,
+      asset_throughput: [{ asset_id: 'bg_prashna_rules', chart_id: null, state: 'lit', last_built_at: observedAt }],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: lifecycleEvents,
+      build_runs: [{ id: 'canonical-global-run', chart_id: canonicalChartId, state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: 'canonical-global-run', asset_id: 'bg_prashna_rules', position: 1, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('frozen')
+  })
+
   it('does not let an uncorroborated frozen event turn primary evidence into elevation progress', () => {
     const snapshot = projectNirmanaElevationSnapshot(
       sources({
