@@ -18,10 +18,11 @@ import {
   NirmanaLabelCatalogueInputSchema,
   recordNirmanaElevationLabelCatalogue,
 } from '@/lib/nirmana-elevation/labels'
+import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 const campaignId = z.literal('nirmana-elevation')
 const revision = z.string().regex(/^[A-Za-z0-9._-]{1,128}$/)
-const receipt = z.object({
+const assetReceipt = z.object({
   command: z.literal('record_evidence'),
   campaign_id: campaignId,
   definition_revision: revision,
@@ -29,6 +30,7 @@ const receipt = z.object({
   event_type: z.enum([
     'asset_analysis_accepted',
     'optimization_verdict_accepted',
+    'implementation_accepted',
     'accepted_rebuild_observed',
     'integrity_verified',
     'asset_frozen',
@@ -87,6 +89,44 @@ const receipt = z.object({
     }
   }
 })
+
+const campaignStageReceipt = z.object({
+  command: z.literal('record_evidence'),
+  campaign_id: campaignId,
+  definition_revision: revision,
+  idempotency_key: z.string().min(1).max(256),
+  event_type: z.literal('stage_transition_accepted'),
+  entity_type: z.literal('campaign_stage'),
+  entity_id: z.enum(NIRMANA_STAGE_IDS),
+  layer: z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5']).nullable(),
+  evidence_payload: z.object({
+    from_stage: z.enum(NIRMANA_STAGE_IDS).nullable(),
+    to_stage: z.enum(NIRMANA_STAGE_IDS),
+    prerequisites_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  source_kind: z.string().min(1).max(128),
+  source_ref: z.string().min(1).max(512),
+  observed_at: z.string().datetime(),
+}).strict()
+
+const foundationLaneReceipt = z.object({
+  command: z.literal('record_evidence'),
+  campaign_id: campaignId,
+  definition_revision: revision,
+  idempotency_key: z.string().min(1).max(256),
+  event_type: z.literal('foundation_lane_accepted'),
+  entity_type: z.literal('foundation_lane'),
+  entity_id: z.enum(['A', 'B', 'C', 'D', 'E']),
+  layer: z.null(),
+  evidence_payload: z.object({
+    acceptance_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  source_kind: z.string().min(1).max(128),
+  source_ref: z.string().min(1).max(512),
+  observed_at: z.string().datetime(),
+}).strict()
+
+const receipt = z.union([assetReceipt, campaignStageReceipt, foundationLaneReceipt])
 
 const definition = z.object({
   command: z.literal('record_definition'),
@@ -172,8 +212,14 @@ export async function POST(request: Request) {
     }
 
     if (parsed.data.command === 'record_label_catalogue') {
-      const { command: _command, ...catalogue } = parsed.data
-      const outcome = await recordNirmanaElevationLabelCatalogue({ ...catalogue, recorded_by: auth.user.uid })
+      const outcome = await recordNirmanaElevationLabelCatalogue({
+        campaign_id: parsed.data.campaign_id,
+        definition_revision: parsed.data.definition_revision,
+        catalogue_revision: parsed.data.catalogue_revision,
+        labels: parsed.data.labels,
+        catalogue_sha256: parsed.data.catalogue_sha256,
+        recorded_by: auth.user.uid,
+      })
       await writeAuditLog(auth.user.uid, 'nirmana_label_catalogue_recorded', null, {
         campaign_id: parsed.data.campaign_id,
         definition_revision: parsed.data.definition_revision,

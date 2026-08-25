@@ -169,6 +169,61 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(response.status).toBe(201)
   })
 
+  it('records the implementation acceptance milestone receipt', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:implementation', event_type: 'implementation_accepted', entity_type: 'asset',
+      entity_id: 'bg_prashna_rules', layer: 'L0', evidence_payload: { change_ref: 'commit:abc123' },
+      source_kind: 'review', source_ref: 'review:implementation', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  it('rejects an invalid campaign-stage transition payload before any database write', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'stage:test:t0', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
+      entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'not-a-digest' },
+      source_kind: 'campaign_gate', source_ref: 'stage:T0_CENSUS', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps stage and foundation-lane receipts reachable through the record-evidence command union', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const stage = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'stage:test:t0', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
+      entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
+      source_kind: 'campaign_gate', source_ref: 'stage:T0_CENSUS', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    const lane = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'lane:test:A', event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane',
+      entity_id: 'A', layer: null, evidence_payload: { acceptance_sha256: 'b'.repeat(64) },
+      source_kind: 'campaign_gate', source_ref: 'foundation:A', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(stage.status).toBe(201)
+    expect(lane.status).toBe(201)
+  })
+
   it('records an audited reconciling definition and freezes only its exact manifest', async () => {
     superAdmin()
     queryMock

@@ -28,6 +28,7 @@ function sourceRows() {
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [] })
+    .mockResolvedValueOnce({ rows: [] })
 }
 
 describe('GET /api/admin/nirmana-elevation/snapshot', () => {
@@ -69,6 +70,9 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('ETag')).toMatch(/^"[a-f0-9]{64}"$/)
     expect(body.campaign.campaign_status).toBe('takeover')
+    expect(body.schema_version).toBe('2.0')
+    expect(body.campaign.current_stage).toBeNull()
+    expect(body.stages).toHaveLength(13)
     expect(body.progress.assets_total).toBeNull()
     expect(body.release).toMatchObject({ main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
     expect(body.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'fresh' })]))
@@ -81,6 +85,7 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(sql).toContain('build_runs')
     expect(sql).toContain('build_run_assets')
     expect(sql).toContain('build_substep_progress')
+    expect(sql).toContain('nirmana_elevation_asset_labels')
     expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM build_runs br')
   })
 
@@ -94,11 +99,41 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
 
     expect(response.status).toBe(503)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(body.schema_version).toBe('2.0')
+    expect(body.campaign.current_stage).toBeNull()
+    expect(body.stages).toHaveLength(13)
     expect(body.data_quality.verdict).toBe('degraded')
     expect(body.sources).toEqual(expect.arrayContaining([
       expect.objectContaining({ source_id: 'asset_registry', state: 'unavailable', error: 'database unavailable' }),
     ]))
     expect(body.progress.assets_total).toBeNull()
     expect(body.assets).toEqual([])
+  })
+
+  it('returns the label catalogue as an explicit unavailable authoritative source before migration application', async () => {
+    superAdmin()
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(new Error('relation "nirmana_elevation_asset_labels" does not exist'))
+    const { GET } = await import('../route')
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(body.schema_version).toBe('2.0')
+    expect(body.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source_id: 'asset_label_catalogue', state: 'unavailable',
+        error: 'relation "nirmana_elevation_asset_labels" does not exist',
+      }),
+    ]))
   })
 })
