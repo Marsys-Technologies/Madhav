@@ -595,6 +595,8 @@ def _schedule_parallel(
     action: str,
     asset_scopes: dict[str, str],
     asset_deps: dict[str, list[str]],
+    asset_partitions: dict[str, str | None],
+    asset_has_cowriters: dict[str, bool],
 ) -> tuple[set[str], Optional[str]]:
     """
     Wave-parallel DAG executor. Replaces the serial plan walk while preserving the
@@ -692,8 +694,8 @@ def _schedule_parallel(
             run_asset(
                 wconn, wcur, run_id, eff(asset_id), asset_id, pos_of[asset_id],
                 declared_deps=deps_of[asset_id],
-                natural_key_partition=frozen.asset_partitions[asset_id],
-                has_cowriters=frozen.asset_has_cowriters[asset_id],
+                natural_key_partition=asset_partitions[asset_id],
+                has_cowriters=asset_has_cowriters[asset_id],
             )
             wcur.execute(
                 "SELECT state FROM build_run_assets WHERE run_id = %s AND asset_id = %s",
@@ -1061,6 +1063,7 @@ def execute_run(run_id: str) -> None:
         # concurrently (width = ORCHESTRATOR_WORKER_LIMIT, default 4; 1 = serial).
         failed_assets, terminal = _schedule_parallel(
             conn, cur, run_id, chart_id, plan, action, _asset_scopes, _asset_deps,
+            frozen.asset_partitions, frozen.asset_has_cowriters,
         )
 
         if terminal == "stopped":

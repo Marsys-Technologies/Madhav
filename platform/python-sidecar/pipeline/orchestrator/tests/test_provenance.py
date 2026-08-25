@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
-import json
 import pathlib
+import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
@@ -16,7 +16,7 @@ from pipeline.orchestrator.provenance import (
     persist_successful_receipt,
     reconcile_receipt,
 )
-from pipeline.orchestrator.provenance_inventory import DEFAULT_OUTPUT, build_inventory
+from pipeline.orchestrator.provenance_inventory import DEFAULT_OUTPUT
 
 
 def _receipt(**overrides):
@@ -43,7 +43,21 @@ def test_config_digest_is_stable_across_mapping_order():
 
 
 def test_checked_in_writer_digest_inventory_matches_sidecar_sources():
-    assert json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8")) == build_inventory()
+    # The broader suite deliberately mutates WRITER_REGISTRY in several tests.
+    # Verify the generated artefact in a clean interpreter, matching the CI and
+    # release invocation instead of depending on order-contaminated module state.
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pipeline.orchestrator.provenance_inventory",
+            "--check",
+            "--output",
+            str(DEFAULT_OUTPUT),
+        ],
+        check=True,
+        cwd=pathlib.Path(__file__).resolve().parents[3],
+    )
 
 
 def test_each_receipt_dimension_is_classified_independently():
