@@ -64,11 +64,12 @@ describe('NirmanaElevationTracker responsive structure', () => {
     expect([...assetGrid.classList].filter((className) => /^grid-cols-/.test(className))).toEqual([])
   })
 
-  it('keeps the Now/Next rail fluid at mobile widths', () => {
+  it('keeps the Now/Next rail fluid on mobile and stacked inside the 18rem xl sidebar', () => {
     renderTracker()
 
     const rail = screen.getByLabelText('Now, next, then campaign rail')
-    expect(rail).toHaveClass('grid', 'gap-2', 'lg:grid-cols-4')
+    expect(rail.parentElement).toHaveClass('xl:grid-cols-[minmax(0,1fr)_18rem]')
+    expect(rail).toHaveClass('grid', 'gap-2', 'lg:grid-cols-4', 'xl:grid-cols-1')
     expect([...rail.classList]).not.toEqual(expect.arrayContaining([
       expect.stringMatching(/^(?:w|min-w|max-w)-/),
     ]))
