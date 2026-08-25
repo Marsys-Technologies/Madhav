@@ -378,12 +378,12 @@ def mark_run_state(
     conn.commit()
 
 
-def claim_planned_run(conn: psycopg.Connection, cur, run_id: str) -> bool:
-    """Atomically win execution ownership without reviving a terminalized run."""
+def claim_runnable_run(conn: psycopg.Connection, cur, run_id: str) -> bool:
+    """Claim planned work or reclaim a lock-proven orphaned running attempt."""
     cur.execute(
         """UPDATE build_runs
               SET state='running', started_at=COALESCE(started_at, NOW())
-            WHERE id=%s AND state='planned'
+            WHERE id=%s AND state IN ('planned', 'running')
         RETURNING id""",
         (run_id,),
     )
@@ -1060,8 +1060,8 @@ def execute_run(run_id: str) -> None:
     # The dispatcher may have terminalized a failed/ambiguous job invocation
     # after this process loaded the row.  Only a planned row can be claimed;
     # losing the compare-and-swap means no asset or throughput state is touched.
-    if not claim_planned_run(conn, cur, run_id):
-        logger.warning("[orchestrator] run %s is no longer planned — refusing execution", run_id)
+    if not claim_runnable_run(conn, cur, run_id):
+        logger.warning("[orchestrator] run %s is no longer runnable — refusing execution", run_id)
         if holds_global_assets_lock:
             release_global_assets_lock(cur)
         release_chart_lock(cur, chart_id)

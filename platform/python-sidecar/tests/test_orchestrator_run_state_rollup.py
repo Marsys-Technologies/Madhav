@@ -41,7 +41,7 @@ def _install(monkeypatch, state, fail_assets, mark_calls):
     monkeypatch.setattr(runner, "release_chart_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
     monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
-    monkeypatch.setattr(runner, "claim_planned_run", lambda *a, **k: True)
+    monkeypatch.setattr(runner, "claim_runnable_run", lambda *a, **k: True)
 
     def fake_mark_run_state(conn, cur, run_id, new_state, **kwargs):
         mark_calls.append(new_state)
@@ -312,7 +312,7 @@ def _install_race(monkeypatch, state, db_truth, mark_calls, run_asset_fn, throug
     monkeypatch.setattr(runner, "release_chart_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
     monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
-    monkeypatch.setattr(runner, "claim_planned_run", lambda *a, **k: True)
+    monkeypatch.setattr(runner, "claim_runnable_run", lambda *a, **k: True)
 
     def fake_mark_run_state(conn, cur, run_id, new_state, **kwargs):
         mark_calls.append(new_state)

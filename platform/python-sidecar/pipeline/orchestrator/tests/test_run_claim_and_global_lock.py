@@ -23,14 +23,14 @@ class Connection:
         self.commits += 1
 
 
-def test_claim_planned_run_is_an_atomic_compare_and_swap() -> None:
+def test_claim_runnable_run_is_an_atomic_compare_and_swap() -> None:
     """Catches a terminalized run being revived by a late Cloud Run execution."""
     cur = Cursor([{"id": "run-1"}])
     conn = Connection()
 
-    assert runner.claim_planned_run(conn, cur, "run-1") is True
+    assert runner.claim_runnable_run(conn, cur, "run-1") is True
     assert cur.calls == [(
-        "UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=%s AND state='planned' RETURNING id",
+        "UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=%s AND state IN ('planned', 'running') RETURNING id",
         ("run-1",),
     )]
     assert conn.commits == 1
@@ -41,7 +41,16 @@ def test_claim_loses_cleanly_after_dispatch_failure_terminalizes_run() -> None:
     cur = Cursor([])
     conn = Connection()
 
-    assert runner.claim_planned_run(conn, cur, "run-1") is False
+    assert runner.claim_runnable_run(conn, cur, "run-1") is False
+    assert conn.commits == 1
+
+
+def test_claim_reclaims_a_running_run_after_session_locks_prove_owner_is_gone() -> None:
+    """Catches a crash-after-claim defeating Cloud Run retry recovery."""
+    cur = Cursor([{"id": "run-1"}])
+    conn = Connection()
+
+    assert runner.claim_runnable_run(conn, cur, "run-1") is True
     assert conn.commits == 1
 
 
