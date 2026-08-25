@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import re
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
+
+from psycopg.rows import dict_row
 
 from .provenance import canonical_digest
 
@@ -118,6 +122,18 @@ def _component_statement(component: dict[str, Any]) -> str:
     )
 
 
+@contextmanager
+def _streaming_cursor(cur):
+    """Use a server-side cursor in production; retain lightweight fake support."""
+    connection = getattr(cur, "connection", None)
+    if connection is None:
+        yield cur
+        return
+    name = f"nirmana_digest_{uuid.uuid4().hex}"
+    with connection.cursor(name=name, row_factory=dict_row) as stream:
+        yield stream
+
+
 def compute_output_digest(cur, *, asset_id: str) -> tuple[str | None, str | None]:
     """Stream a reviewed asset's declared rows into a canonical SHA-256.
 
@@ -135,16 +151,17 @@ def compute_output_digest(cur, *, asset_id: str) -> tuple[str | None, str | None
         name = _identifier(component.get("name"), field="component name")
         digest.update(name.encode("ascii"))
         digest.update(b"\\0")
-        cur.execute(_component_statement(component))
         row_count = 0
-        while rows := cur.fetchmany(_BATCH_SIZE):
-            for row in rows:
-                value = row.get("row_json")
-                if not isinstance(value, str):
-                    raise ValueError("output digest query returned a non-text JSON row")
-                encoded = value.encode("utf-8")
-                digest.update(len(encoded).to_bytes(8, "big"))
-                digest.update(encoded)
-                row_count += 1
+        with _streaming_cursor(cur) as stream:
+            stream.execute(_component_statement(component))
+            while rows := stream.fetchmany(_BATCH_SIZE):
+                for row in rows:
+                    value = row.get("row_json")
+                    if not isinstance(value, str):
+                        raise ValueError("output digest query returned a non-text JSON row")
+                    encoded = value.encode("utf-8")
+                    digest.update(len(encoded).to_bytes(8, "big"))
+                    digest.update(encoded)
+                    row_count += 1
         digest.update(row_count.to_bytes(8, "big"))
     return digest.hexdigest(), loaded.spec_sha256

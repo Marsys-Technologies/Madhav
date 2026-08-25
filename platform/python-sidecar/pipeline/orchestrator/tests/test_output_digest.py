@@ -31,6 +31,22 @@ class _Cursor:
     def fetchmany(self, size):
         return self.batches.pop(0) if self.batches else []
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+
+class _Connection:
+    def __init__(self, stream_cursor):
+        self.stream_cursor = stream_cursor
+        self.cursor_calls = []
+
+    def cursor(self, **kwargs):
+        self.cursor_calls.append(kwargs)
+        return self.stream_cursor
+
 
 SPEC = {
     "version": "nirmana-output-digest-spec-v1",
@@ -72,6 +88,23 @@ def test_component_statement_materializes_aliases_before_collated_ordering():
     assert "AS digest_source" in statement
     assert 'digest_source.row_json COLLATE "C"' in statement
     assert 'to_jsonb(source."rule_id")::text COLLATE "C"' in statement
+
+
+def test_digest_uses_a_named_server_cursor_instead_of_client_buffering():
+    stream = _Cursor(
+        batches=[[{"row_json": '{"rule_id":"a","rule_text":"first"}'}]],
+    )
+    spec_cursor = _Cursor(row={"spec": SPEC, "spec_sha256": canonical_digest(SPEC)})
+    spec_cursor.connection = _Connection(stream)
+
+    digest, spec_sha = compute_output_digest(spec_cursor, asset_id="bg_rules")
+
+    assert digest is not None
+    assert spec_sha == canonical_digest(SPEC)
+    assert len(spec_cursor.executed) == 1  # spec lookup only
+    assert len(stream.executed) == 1
+    assert spec_cursor.connection.cursor_calls[0]["name"].startswith("nirmana_digest_")
+    assert spec_cursor.connection.cursor_calls[0]["row_factory"] is not None
 
 
 def test_invalid_spec_identifier_fails_closed_before_querying_a_relation():
