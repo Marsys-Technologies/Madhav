@@ -793,9 +793,9 @@ export const ASSETS: AssetDef[] = [
     // migration 473's asset_registry INSERT exactly — a clean reseed must not
     // silently drop this asset. Global L0, super-admin-triggered only (never
     // auto-pulled into a per-chart build — brief §2.5.2). target_floor is the
-    // REAL row count from a live verification run against a real (throwaway)
-    // Postgres, 2026-07-29 — see migration 473's comment for the exact
-    // per-event-family breakdown.
+    // authoritative 2026-08-02 production baseline built with the pinned
+    // Swiss Ephemeris file corpus on Linux/x86_64. Migration 605 corrects the
+    // earlier local Moshier-fallback provenance and keeps reseeds aligned.
     asset_id: 'bg_sky_calendar',
     layer: 'brahmagyan', sort_order: 69,
     catalog_status: 'CURRENT',
@@ -806,10 +806,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'bg_sky_calendar',
     count_sql: 'SELECT COUNT(*) FROM bg_sky_calendar',
     size_sql: "SELECT pg_total_relation_size('bg_sky_calendar')",
-    target_floor: 31064,
+    target_floor: 31059,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Live-verified 2026-07-29 against a real throwaway Postgres: 28,760 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit = 31,064, over horizon 1900-01-01 -> 2036-07-29 (today+10y at verification time). A later build reads >= this count as the forward edge rolls forward (never less).',
+    volume_explanation: '31,059 achieved rows in the authoritative 2026-08-02 production build using the pinned Swiss Ephemeris file corpus on Linux/x86_64: 28,755 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit. This is an achieved baseline, not a forecast; explicit rolling-horizon rebuilds may increase it.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
