@@ -1,8 +1,12 @@
 import { z } from 'zod'
+import { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
+
+export { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
 const nullableIso = z.string().datetime().nullable()
 
-export const NirmanaElevationSnapshotSchema = z.object({
+/** Version 1 remains the on-wire contract emitted by the existing projection. */
+export const NirmanaElevationSnapshotV1Schema = z.object({
   schema_version: z.literal('1.0'),
   generation: z.string().regex(/^[a-f0-9]{64}$/),
   generated_at: z.string().datetime(),
@@ -94,4 +98,104 @@ export const NirmanaElevationSnapshotSchema = z.object({
   }),
 })
 
+const LayerIdSchema = z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
+const LayerNameSchema = z.enum(['Brahmagyan', 'Ganita', 'Bodha', 'Kala', 'Phala', 'Mimamsa'])
+
+const FoundationLaneSchema = z.object({
+  lane_id: z.enum(['A', 'B', 'C', 'D', 'E']),
+  name: z.enum(['Asset and DAG census', 'Run and progress truth', 'Hash and invalidation', 'Tracker and release', 'Evidence control']),
+  state: z.enum(['completed', 'active', 'locked', 'blocked', 'unknown']),
+  completed_at: nullableIso,
+  blocked_reason: z.string().nullable(),
+})
+
+export const NirmanaCampaignStageSchema = z.object({
+  stage_id: z.enum(NIRMANA_STAGE_IDS),
+  order: z.number().int().min(0).max(12),
+  kind: z.enum(['bootstrap', 'census', 'plan', 'denominator', 'foundation', 'layer', 'closing', 'complete']),
+  state: z.enum(['completed', 'active', 'locked', 'blocked', 'paused', 'unknown']),
+  required_gate: z.string(),
+  completed_at: nullableIso,
+  blocked_reason: z.string().nullable(),
+  earned: z.number().int().nonnegative().nullable(),
+  required: z.number().int().nonnegative().nullable(),
+  foundation_lanes: z.array(FoundationLaneSchema).nullable(),
+})
+
+export const NirmanaMilestoneSchema = z.object({
+  milestone_id: z.enum(NIRMANA_MILESTONE_IDS),
+  state: z.enum(['earned', 'current', 'pending', 'not_applicable']),
+  event_type: z.string().nullable(),
+  accepted_at: nullableIso,
+})
+
+const OrderedStagesSchema = z.array(NirmanaCampaignStageSchema)
+  .length(NIRMANA_STAGE_IDS.length)
+  .superRefine((stages, context) => {
+    for (const [index, expectedStageId] of NIRMANA_STAGE_IDS.entries()) {
+      const stage = stages[index]
+      if (stage?.stage_id !== expectedStageId) {
+        context.addIssue({ code: 'custom', path: [index, 'stage_id'], message: `Stage ${index} must be ${expectedStageId}.` })
+      }
+      if (stage?.order !== index) {
+        context.addIssue({ code: 'custom', path: [index, 'order'], message: `Stage ${expectedStageId} must have order ${index}.` })
+      }
+    }
+  })
+
+const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.extend({
+  layer_id: LayerIdSchema,
+  layer_name: LayerNameSchema,
+  required_gate: z.string(),
+  eligible_next_asset_ids: z.array(z.string()),
+}).superRefine((layer, context) => {
+  if (layer.layer_name !== NIRMANA_LAYER_NAMES[layer.layer_id]) {
+    context.addIssue({ code: 'custom', path: ['layer_name'], message: `${layer.layer_id} must use its governed layer name.` })
+  }
+})
+
+const V2AssetSchema = NirmanaElevationSnapshotV1Schema.shape.assets.element.extend({
+  sanskrit_name: z.string().nullable(),
+  english_name: z.string().min(1),
+  description: z.string().nullable(),
+  legacy_aliases: z.array(z.string()),
+  identity_quality: z.enum(['complete', 'incomplete']),
+  layer: LayerIdSchema,
+  milestones: z.array(NirmanaMilestoneSchema)
+    .length(NIRMANA_MILESTONE_IDS.length)
+    .superRefine((milestones, context) => {
+      for (const [index, expectedMilestoneId] of NIRMANA_MILESTONE_IDS.entries()) {
+        if (milestones[index]?.milestone_id !== expectedMilestoneId) {
+          context.addIssue({ code: 'custom', path: [index, 'milestone_id'], message: `Milestone ${index} must be ${expectedMilestoneId}.` })
+        }
+      }
+    }),
+  milestones_earned: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length),
+  milestones_required: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length),
+  current_action: z.string().nullable(),
+  next_action: z.string().nullable(),
+  depends_on: z.array(z.string()),
+  unlocks: z.array(z.string()),
+})
+
+/** Version 2 adds governed campaign stages and display identities without changing v1. */
+export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema.extend({
+  schema_version: z.literal('2.0'),
+  campaign: NirmanaElevationSnapshotV1Schema.shape.campaign.extend({
+    current_stage: z.enum(NIRMANA_STAGE_IDS),
+  }),
+  stages: OrderedStagesSchema,
+  layers: z.array(V2LayerSchema),
+  assets: z.array(V2AssetSchema),
+})
+
+export const NirmanaElevationSnapshotSchema = z.discriminatedUnion('schema_version', [
+  NirmanaElevationSnapshotV1Schema,
+  NirmanaElevationSnapshotV2Schema,
+])
+
+export type NirmanaCampaignStage = z.infer<typeof NirmanaCampaignStageSchema>
+export type NirmanaMilestone = z.infer<typeof NirmanaMilestoneSchema>
+export type NirmanaElevationSnapshotV1 = z.infer<typeof NirmanaElevationSnapshotV1Schema>
+export type NirmanaElevationSnapshotV2 = z.infer<typeof NirmanaElevationSnapshotV2Schema>
 export type NirmanaElevationSnapshot = z.infer<typeof NirmanaElevationSnapshotSchema>

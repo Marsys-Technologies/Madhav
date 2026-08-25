@@ -1,0 +1,93 @@
+export const fixtureV2 = {
+  schema_version: '2.0',
+  generation: 'a'.repeat(64),
+  generated_at: '2026-08-26T00:00:00.000Z',
+  campaign: {
+    campaign_id: 'nirmana-elevation',
+    definition_revision: 'nirmana-elevation-v1',
+    definition_status: 'frozen',
+    campaign_status: 'foundation',
+    current_layer: 'L0',
+    current_wave: 2,
+    current_stage: 'L0',
+  },
+  progress: {
+    denominator_status: 'frozen',
+    assets_total: 128,
+    assets_frozen: 1,
+    layers_total: 6,
+    layers_frozen: 0,
+    buildable_assets_total: 126,
+    accepted_rebuilds: 1,
+  },
+  stages: [
+    { stage_id: 'BOOTSTRAP', order: 0, kind: 'bootstrap', state: 'completed', required_gate: 'Campaign charter accepted', completed_at: '2026-08-20T00:00:00.000Z', blocked_reason: null, earned: null, required: null, foundation_lanes: null },
+    { stage_id: 'T0_CENSUS', order: 1, kind: 'census', state: 'completed', required_gate: 'Registry census reconciled', completed_at: '2026-08-21T00:00:00.000Z', blocked_reason: null, earned: 128, required: 128, foundation_lanes: null },
+    { stage_id: 'PLAN_FROZEN', order: 2, kind: 'plan', state: 'completed', required_gate: 'Campaign plan frozen', completed_at: '2026-08-22T00:00:00.000Z', blocked_reason: null, earned: null, required: null, foundation_lanes: null },
+    { stage_id: 'DENOMINATOR_FROZEN', order: 3, kind: 'denominator', state: 'completed', required_gate: '128-asset denominator frozen', completed_at: '2026-08-23T00:00:00.000Z', blocked_reason: null, earned: 128, required: 128, foundation_lanes: null },
+    {
+      stage_id: 'F0_FOUNDATION', order: 4, kind: 'foundation', state: 'completed', required_gate: 'Foundation lanes accepted', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null, earned: 5, required: 5,
+      foundation_lanes: [
+        { lane_id: 'A', name: 'Asset and DAG census', state: 'completed', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null },
+        { lane_id: 'B', name: 'Run and progress truth', state: 'completed', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null },
+        { lane_id: 'C', name: 'Hash and invalidation', state: 'completed', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null },
+        { lane_id: 'D', name: 'Tracker and release', state: 'completed', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null },
+        { lane_id: 'E', name: 'Evidence control', state: 'completed', completed_at: '2026-08-24T00:00:00.000Z', blocked_reason: null },
+      ],
+    },
+    { stage_id: 'L0', order: 5, kind: 'layer', state: 'active', required_gate: 'L0 assets frozen', completed_at: null, blocked_reason: null, earned: 1, required: 24, foundation_lanes: null },
+    { stage_id: 'L1', order: 6, kind: 'layer', state: 'locked', required_gate: 'L1 assets frozen', completed_at: null, blocked_reason: null, earned: 0, required: 24, foundation_lanes: null },
+    { stage_id: 'L2', order: 7, kind: 'layer', state: 'locked', required_gate: 'L2 assets frozen', completed_at: null, blocked_reason: null, earned: 0, required: 20, foundation_lanes: null },
+    { stage_id: 'L3', order: 8, kind: 'layer', state: 'locked', required_gate: 'L3 assets frozen', completed_at: null, blocked_reason: null, earned: 0, required: 20, foundation_lanes: null },
+    { stage_id: 'L4', order: 9, kind: 'layer', state: 'locked', required_gate: 'L4 assets frozen', completed_at: null, blocked_reason: null, earned: 0, required: 20, foundation_lanes: null },
+    { stage_id: 'L5', order: 10, kind: 'layer', state: 'locked', required_gate: 'L5 assets frozen', completed_at: null, blocked_reason: null, earned: 0, required: 20, foundation_lanes: null },
+    { stage_id: 'CLOSING', order: 11, kind: 'closing', state: 'locked', required_gate: 'Campaign close evidence accepted', completed_at: null, blocked_reason: null, earned: null, required: null, foundation_lanes: null },
+    { stage_id: 'COMPLETE', order: 12, kind: 'complete', state: 'locked', required_gate: 'All campaign stages closed', completed_at: null, blocked_reason: null, earned: null, required: null, foundation_lanes: null },
+  ],
+  layers: [
+    { layer_id: 'L0', layer_name: 'Brahmagyan', order: 0, state: 'open', required_gate: 'L0 assets frozen', eligible_next_asset_ids: ['bg_prashna_rules'], assets_total: 24, optimization_reviewed: 1, rebuilt_or_dispositioned: 1, verified: 1, frozen: 1, waves: [{ wave_index: 2, state: 'running', asset_ids: ['bg_prashna_rules'], active_asset_ids: ['bg_prashna_rules'], blocked_asset_ids: [] }] },
+    { layer_id: 'L1', layer_name: 'Ganita', order: 1, state: 'locked', required_gate: 'L0 assets frozen', eligible_next_asset_ids: [], assets_total: 24, optimization_reviewed: 0, rebuilt_or_dispositioned: 0, verified: 0, frozen: 0, waves: [] },
+    { layer_id: 'L2', layer_name: 'Bodha', order: 2, state: 'locked', required_gate: 'L1 assets frozen', eligible_next_asset_ids: [], assets_total: 20, optimization_reviewed: 0, rebuilt_or_dispositioned: 0, verified: 0, frozen: 0, waves: [] },
+    { layer_id: 'L3', layer_name: 'Kala', order: 3, state: 'locked', required_gate: 'L2 assets frozen', eligible_next_asset_ids: [], assets_total: 20, optimization_reviewed: 0, rebuilt_or_dispositioned: 0, verified: 0, frozen: 0, waves: [] },
+    { layer_id: 'L4', layer_name: 'Phala', order: 4, state: 'locked', required_gate: 'L3 assets frozen', eligible_next_asset_ids: [], assets_total: 20, optimization_reviewed: 0, rebuilt_or_dispositioned: 0, verified: 0, frozen: 0, waves: [] },
+    { layer_id: 'L5', layer_name: 'Mimamsa', order: 5, state: 'locked', required_gate: 'L4 assets frozen', eligible_next_asset_ids: [], assets_total: 20, optimization_reviewed: 0, rebuilt_or_dispositioned: 0, verified: 0, frozen: 0, waves: [] },
+  ],
+  assets: [
+    {
+      asset_id: 'bg_prashna_rules', display_name: 'Prashna Rules', sanskrit_name: 'Praśna Rules', english_name: 'Prashna Rules', description: 'Active foundation build asset', legacy_aliases: [], identity_quality: 'complete', layer: 'L0', wave_index: 2, producer_id: null, covered_asset_ids: [], execution_obligation: 'build', lifecycle_state: 'building', readiness_state: 'unknown', current_run_state: 'building', progress_mode: 'indeterminate', work_committed: null, work_total: null, current_unit_label: 'execution in progress', baseline_duration_seconds: null, final_duration_seconds: null, improvement_percent: null, blocker: null, evidence_refs: ['build_run:run-l0-wave-2'], milestones: [
+        { milestone_id: 'analysed', state: 'earned', event_type: 'asset_analysis_accepted', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'decision_accepted', state: 'earned', event_type: 'optimization_verdict_accepted', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'built_or_dispositioned', state: 'current', event_type: null, accepted_at: null },
+        { milestone_id: 'deployed_and_executed', state: 'pending', event_type: null, accepted_at: null },
+        { milestone_id: 'verified', state: 'pending', event_type: null, accepted_at: null },
+        { milestone_id: 'frozen', state: 'pending', event_type: null, accepted_at: null },
+      ], milestones_earned: 2, milestones_required: 6, current_action: 'Run wave 2 build', next_action: 'Record accepted rebuild evidence', depends_on: [], unlocks: ['ga_chart_service'],
+    },
+    {
+      asset_id: 'ka_smriti', display_name: 'Kala Smriti', sanskrit_name: 'Kāla Smṛti', english_name: 'Kala Smriti', description: 'Per-varsha digest', legacy_aliases: ['Per-varsha digest'], identity_quality: 'complete', layer: 'L3', wave_index: 0, producer_id: null, covered_asset_ids: [], execution_obligation: 'probe', lifecycle_state: 'blocked', readiness_state: 'unknown', current_run_state: null, progress_mode: 'not_applicable', work_committed: null, work_total: null, current_unit_label: null, baseline_duration_seconds: null, final_duration_seconds: null, improvement_percent: null, blocker: 'Probe endpoint has no accepted evidence', evidence_refs: [], milestones: [
+        { milestone_id: 'analysed', state: 'earned', event_type: 'asset_analysis_accepted', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'decision_accepted', state: 'current', event_type: null, accepted_at: null },
+        { milestone_id: 'built_or_dispositioned', state: 'pending', event_type: null, accepted_at: null },
+        { milestone_id: 'deployed_and_executed', state: 'pending', event_type: null, accepted_at: null },
+        { milestone_id: 'verified', state: 'pending', event_type: null, accepted_at: null },
+        { milestone_id: 'frozen', state: 'pending', event_type: null, accepted_at: null },
+      ], milestones_earned: 1, milestones_required: 6, current_action: 'Resolve probe evidence gap', next_action: 'Accept probe result', depends_on: [], unlocks: [],
+    },
+    {
+      asset_id: 'bg_sign_medical', display_name: 'Sign Medical', sanskrit_name: 'Rāśi Medical', english_name: 'Sign Medical', description: 'Producer-covered foundation asset', legacy_aliases: [], identity_quality: 'complete', layer: 'L0', wave_index: 0, producer_id: 'bg_medical_mappings', covered_asset_ids: [], execution_obligation: 'producer_covered', lifecycle_state: 'frozen', readiness_state: 'lit', current_run_state: null, progress_mode: 'not_applicable', work_committed: null, work_total: null, current_unit_label: null, baseline_duration_seconds: null, final_duration_seconds: null, improvement_percent: null, blocker: null, evidence_refs: ['build_run:medical-mappings'], milestones: [
+        { milestone_id: 'analysed', state: 'earned', event_type: 'asset_analysis_accepted', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'decision_accepted', state: 'earned', event_type: 'optimization_verdict_accepted', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'built_or_dispositioned', state: 'earned', event_type: 'producer_covered', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'deployed_and_executed', state: 'earned', event_type: 'accepted_rebuild_observed', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'verified', state: 'earned', event_type: 'integrity_verified', accepted_at: '2026-08-24T00:00:00.000Z' },
+        { milestone_id: 'frozen', state: 'earned', event_type: 'asset_frozen', accepted_at: '2026-08-24T00:00:00.000Z' },
+      ], milestones_earned: 6, milestones_required: 6, current_action: null, next_action: null, depends_on: ['bg_medical_mappings'], unlocks: [],
+    },
+  ],
+  active_runs: [{ run_id: 'run-l0-wave-2', layer: 'L0', wave_index: 2, state: 'running', active_asset_ids: ['bg_prashna_rules'], completed_assets: 0, planned_assets: 1, started_at: '2026-08-26T00:00:00.000Z', last_progress_at: '2026-08-26T00:00:00.000Z' }],
+  release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
+  sources: [{ source_id: 'fixture', provenance: 'Reusable contract fixture', state: 'fresh', observed_at: '2026-08-26T00:00:00.000Z', age_seconds: 0, error: null }],
+  data_quality: { verdict: 'reliable', gaps: [], contradictions: [] },
+} as const
+
+export const NIRMANA_ELEVATION_SNAPSHOT_V2_FIXTURE = fixtureV2

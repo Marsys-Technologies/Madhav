@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest'
+import {
+  NirmanaElevationSnapshotSchema,
+  NirmanaElevationSnapshotV1Schema,
+  NirmanaElevationSnapshotV2Schema,
+  type NirmanaElevationSnapshotV2,
+} from '../types'
+import { fixtureV2 } from './fixture-v2'
+
+const expectedStageIds = [
+  'BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN', 'DENOMINATOR_FROZEN', 'F0_FOUNDATION',
+  'L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'CLOSING', 'COMPLETE',
+]
+
+function copyFixture(): NirmanaElevationSnapshotV2 {
+  return structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
+}
+
+const v1Fixture = {
+  schema_version: '1.0', generation: 'b'.repeat(64), generated_at: '2026-08-26T00:00:00.000Z',
+  campaign: { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling', campaign_status: 'takeover', current_layer: null, current_wave: null },
+  progress: { denominator_status: 'reconciling', assets_total: null, assets_frozen: 0, layers_total: 6, layers_frozen: 0, buildable_assets_total: null, accepted_rebuilds: 0 },
+  layers: [], assets: [], active_runs: [],
+  release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
+  sources: [], data_quality: { verdict: 'unknown', gaps: [], contradictions: [] },
+} as const
+
+describe('Nirmana elevation snapshot v2 contract', () => {
+  it('parses the fixture only as schema version 2.0', () => {
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(fixtureV2).success).toBe(true)
+    expect(NirmanaElevationSnapshotV1Schema.safeParse(fixtureV2).success).toBe(false)
+    expect(NirmanaElevationSnapshotSchema.parse(fixtureV2).schema_version).toBe('2.0')
+  })
+
+  it('contains exactly the 13 governed stages in order', () => {
+    expect(expectedStageIds).toHaveLength(13)
+    expect(fixtureV2.stages).toHaveLength(13)
+    expect(fixtureV2.stages.map((stage) => stage.stage_id)).toEqual(expectedStageIds)
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(fixtureV2).success).toBe(true)
+  })
+
+  it('rejects a bare layer without its governed layer name', () => {
+    const snapshot = copyFixture()
+    delete (snapshot.layers[0] as { layer_name?: string }).layer_name
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('rejects an asset without separate identity fields and milestones', () => {
+    const snapshot = copyFixture()
+    delete (snapshot.assets[0] as { english_name?: string }).english_name
+    delete (snapshot.assets[0] as { milestones?: unknown }).milestones
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('allows incomplete asset identities to retain nullable Sanskrit and description fields', () => {
+    const snapshot = copyFixture()
+    snapshot.assets[1].sanskrit_name = null
+    snapshot.assets[1].description = null
+    snapshot.assets[1].identity_quality = 'incomplete'
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('accepts a v1 fixture through the compatibility union', () => {
+    expect(NirmanaElevationSnapshotV1Schema.safeParse(v1Fixture).success).toBe(true)
+    expect(NirmanaElevationSnapshotSchema.safeParse(v1Fixture).success).toBe(true)
+  })
+})
