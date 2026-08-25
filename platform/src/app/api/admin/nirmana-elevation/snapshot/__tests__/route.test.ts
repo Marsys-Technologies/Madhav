@@ -69,7 +69,7 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('ETag')).toMatch(/^"[a-f0-9]{64}"$/)
-    expect(body.campaign.campaign_status).toBe('takeover')
+    expect(body.campaign.campaign_status).toBe('unknown')
     expect(body.schema_version).toBe('2.0')
     expect(body.campaign.current_stage).toBeNull()
     expect(body.stages).toHaveLength(13)

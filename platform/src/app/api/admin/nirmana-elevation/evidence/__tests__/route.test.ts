@@ -201,6 +201,38 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).not.toHaveBeenCalled()
   })
 
+  it.each([
+    {
+      name: 'entity ID differs from the destination stage', entity_id: 'PLAN_FROZEN', layer: null,
+      payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'a null source targets a non-bootstrap stage', entity_id: 'T0_CENSUS', layer: null,
+      payload: { from_stage: null, to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'the transition skips a canonical stage', entity_id: 'PLAN_FROZEN', layer: null,
+      payload: { from_stage: 'BOOTSTRAP', to_stage: 'PLAN_FROZEN', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'the campaign-stage receipt carries a layer', entity_id: 'L0', layer: 'L0',
+      payload: { from_stage: 'F0_FOUNDATION', to_stage: 'L0', prerequisites_sha256: 'a'.repeat(64) },
+    },
+  ])('rejects a stage transition when $name', async ({ entity_id, layer, payload }) => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: `stage:invalid:${entity_id}`, event_type: 'stage_transition_accepted',
+      entity_type: 'campaign_stage', entity_id, layer, evidence_payload: payload,
+      source_kind: 'campaign_gate', source_ref: `stage:${entity_id}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
+  })
+
   it('keeps stage and foundation-lane receipts reachable through the record-evidence command union', async () => {
     superAdmin()
     useEvidenceTransaction()
@@ -208,10 +240,10 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const { POST } = await import('../route')
     const stage = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
-      idempotency_key: 'stage:test:t0', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
-      entity_id: 'T0_CENSUS', layer: null,
-      evidence_payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
-      source_kind: 'campaign_gate', source_ref: 'stage:T0_CENSUS', observed_at: '2026-08-25T09:00:00.000Z',
+      idempotency_key: 'stage:test:bootstrap', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
+      entity_id: 'BOOTSTRAP', layer: null,
+      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'a'.repeat(64) },
+      source_kind: 'campaign_gate', source_ref: 'stage:BOOTSTRAP', observed_at: '2026-08-25T09:00:00.000Z',
     }))
     const lane = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',

@@ -98,7 +98,7 @@ const campaignStageReceipt = z.object({
   event_type: z.literal('stage_transition_accepted'),
   entity_type: z.literal('campaign_stage'),
   entity_id: z.enum(NIRMANA_STAGE_IDS),
-  layer: z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5']).nullable(),
+  layer: z.null(),
   evidence_payload: z.object({
     from_stage: z.enum(NIRMANA_STAGE_IDS).nullable(),
     to_stage: z.enum(NIRMANA_STAGE_IDS),
@@ -107,7 +107,22 @@ const campaignStageReceipt = z.object({
   source_kind: z.string().min(1).max(128),
   source_ref: z.string().min(1).max(512),
   observed_at: z.string().datetime(),
-}).strict()
+}).strict().superRefine((value, context) => {
+  if (value.entity_id !== value.evidence_payload.to_stage) {
+    context.addIssue({ code: 'custom', path: ['entity_id'], message: 'Campaign-stage entity_id must equal evidence_payload.to_stage.' })
+  }
+  if (value.evidence_payload.from_stage === null) {
+    if (value.evidence_payload.to_stage !== 'BOOTSTRAP') {
+      context.addIssue({ code: 'custom', path: ['evidence_payload', 'from_stage'], message: 'Only BOOTSTRAP may have a null source stage.' })
+    }
+    return
+  }
+  const fromIndex = NIRMANA_STAGE_IDS.indexOf(value.evidence_payload.from_stage)
+  const toIndex = NIRMANA_STAGE_IDS.indexOf(value.evidence_payload.to_stage)
+  if (toIndex !== fromIndex + 1) {
+    context.addIssue({ code: 'custom', path: ['evidence_payload', 'to_stage'], message: 'Campaign stages must advance exactly once in canonical order.' })
+  }
+})
 
 const foundationLaneReceipt = z.object({
   command: z.literal('record_evidence'),
