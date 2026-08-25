@@ -2,12 +2,9 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { getPool } from '@/lib/db/client'
+import { NirmanaLegacyAliasSchema } from './label-contract'
 
-export const NirmanaLegacyAliasSchema = z.object({
-  asset_id: z.string().min(1),
-  sanskrit_name: z.string().min(1).nullable(),
-  english_name: z.string().min(1).nullable(),
-}).strict()
+export { NirmanaLegacyAliasSchema } from './label-contract'
 
 export const NirmanaAssetLabelSchema = z.object({
   asset_id: z.string().min(1),

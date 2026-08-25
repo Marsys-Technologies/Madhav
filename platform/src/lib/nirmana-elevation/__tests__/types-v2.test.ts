@@ -39,6 +39,12 @@ describe('Nirmana elevation snapshot v2 contract', () => {
     expect(NirmanaElevationSnapshotV2Schema.safeParse(fixtureV2).success).toBe(true)
   })
 
+  it('allows a null current stage when no valid transition is known', () => {
+    const snapshot = copyFixture()
+    snapshot.campaign.current_stage = null
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
   it('rejects a bare layer without its governed layer name', () => {
     const snapshot = copyFixture()
     delete (snapshot.layers[0] as { layer_name?: string }).layer_name
@@ -52,12 +58,48 @@ describe('Nirmana elevation snapshot v2 contract', () => {
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
   })
 
-  it('allows incomplete asset identities to retain nullable Sanskrit and description fields', () => {
+  it('accepts complete, incomplete, and unversioned-fallback identity quality', () => {
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(fixtureV2).success).toBe(true)
     const snapshot = copyFixture()
     snapshot.assets[1].sanskrit_name = null
     snapshot.assets[1].description = null
     snapshot.assets[1].identity_quality = 'incomplete'
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+
+    snapshot.assets[1].identity_quality = 'unversioned_fallback'
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('requires structured legacy aliases with their own stable asset identity', () => {
+    const snapshot = copyFixture()
+    snapshot.assets[1].legacy_aliases = [{ asset_id: 'A22', sanskrit_name: 'Varsha-Darshan', english_name: 'Yearly Vision' }]
+    const parsed = NirmanaElevationSnapshotV2Schema.parse(snapshot)
+    expect(parsed.assets[1].asset_id).toBe('ka_smriti')
+
+    snapshot.assets[1].legacy_aliases = ['Per-varsha digest'] as unknown as Array<{ asset_id: string; sanskrit_name: string | null; english_name: string | null }>
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('accepts null milestone counters for an unresolved obligation', () => {
+    const snapshot = copyFixture()
+    snapshot.assets[0].execution_obligation = 'unresolved'
+    snapshot.assets[0].milestones_earned = null
+    snapshot.assets[0].milestones_required = null
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('computes determinate milestone counters around not-applicable milestones', () => {
+    const snapshot = copyFixture()
+    snapshot.assets[0].milestones[5].state = 'not_applicable'
+    snapshot.assets[0].milestones_required = 5
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('rejects contradictory determinate milestone counters', () => {
+    const snapshot = copyFixture()
+    snapshot.assets[0].milestones_earned = 6
+    snapshot.assets[0].milestones_required = 6
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(false)
   })
 
   it('accepts a v1 fixture through the compatibility union', () => {

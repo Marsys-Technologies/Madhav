@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { NirmanaLegacyAliasSchema } from './label-contract'
 import { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
 export { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
@@ -158,8 +159,8 @@ const V2AssetSchema = NirmanaElevationSnapshotV1Schema.shape.assets.element.exte
   sanskrit_name: z.string().nullable(),
   english_name: z.string().min(1),
   description: z.string().nullable(),
-  legacy_aliases: z.array(z.string()),
-  identity_quality: z.enum(['complete', 'incomplete']),
+  legacy_aliases: z.array(NirmanaLegacyAliasSchema),
+  identity_quality: z.enum(['complete', 'incomplete', 'unversioned_fallback']),
   layer: LayerIdSchema,
   milestones: z.array(NirmanaMilestoneSchema)
     .length(NIRMANA_MILESTONE_IDS.length)
@@ -170,19 +171,39 @@ const V2AssetSchema = NirmanaElevationSnapshotV1Schema.shape.assets.element.exte
         }
       }
     }),
-  milestones_earned: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length),
-  milestones_required: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length),
+  milestones_earned: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length).nullable(),
+  milestones_required: z.number().int().nonnegative().max(NIRMANA_MILESTONE_IDS.length).nullable(),
   current_action: z.string().nullable(),
   next_action: z.string().nullable(),
   depends_on: z.array(z.string()),
   unlocks: z.array(z.string()),
+}).superRefine((asset, context) => {
+  if (asset.execution_obligation === 'unresolved') {
+    if (asset.milestones_earned !== null || asset.milestones_required !== null) {
+      context.addIssue({ code: 'custom', path: ['milestones_earned'], message: 'Unresolved obligations must withhold milestone counters.' })
+    }
+    return
+  }
+
+  const expectedRequired = asset.milestones.filter((milestone) => milestone.state !== 'not_applicable').length
+  const expectedEarned = asset.milestones.filter((milestone) => milestone.state === 'earned').length
+  if (asset.milestones_required === null) {
+    context.addIssue({ code: 'custom', path: ['milestones_required'], message: 'Determinate obligations must declare milestone requirements.' })
+  } else if (asset.milestones_required !== expectedRequired) {
+    context.addIssue({ code: 'custom', path: ['milestones_required'], message: `Milestone requirements must equal ${expectedRequired} after not-applicable milestones.` })
+  }
+  if (asset.milestones_earned === null) {
+    context.addIssue({ code: 'custom', path: ['milestones_earned'], message: 'Determinate obligations must declare earned milestones.' })
+  } else if (asset.milestones_earned !== expectedEarned) {
+    context.addIssue({ code: 'custom', path: ['milestones_earned'], message: `Earned milestones must equal ${expectedEarned}.` })
+  }
 })
 
 /** Version 2 adds governed campaign stages and display identities without changing v1. */
 export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema.extend({
   schema_version: z.literal('2.0'),
   campaign: NirmanaElevationSnapshotV1Schema.shape.campaign.extend({
-    current_stage: z.enum(NIRMANA_STAGE_IDS),
+    current_stage: z.enum(NIRMANA_STAGE_IDS).nullable(),
   }),
   stages: OrderedStagesSchema,
   layers: z.array(V2LayerSchema),
