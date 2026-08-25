@@ -26,6 +26,7 @@ describe('Nirmana elevation definition repository', () => {
 
   it('requires the frozen manifest to pin its campaign chart', () => {
     expect(() => canonicalManifestDigest({ assets: manifest.assets })).toThrow(/chart_id/i)
+    expect(() => canonicalManifestDigest({ ...manifest, chart_id: '11111111-1111-4111-8111-111111111111' })).toThrow(/chart_id/i)
   })
 
   it('gives JSONB-equivalent manifests the same digest regardless of object-key order', () => {

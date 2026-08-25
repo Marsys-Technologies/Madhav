@@ -5,6 +5,7 @@ import { query } from '@/lib/db/client'
 
 const LayerSchema = z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
 const layerPrefixes = { L0: 'bg_', L1: 'ga_', L2: 'bo_', L3: 'ka_', L4: 'ph_', L5: 'mi_' } as const
+export const CANONICAL_NIRMANA_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
 const ManifestAssetSchema = z.object({
   asset_id: z.string().min(1),
@@ -16,7 +17,7 @@ const ManifestAssetSchema = z.object({
 })
 
 export const NirmanaElevationManifestSchema = z.object({
-  chart_id: z.string().uuid(),
+  chart_id: z.literal(CANONICAL_NIRMANA_CHART_ID),
   assets: z.array(ManifestAssetSchema).min(1),
 }).strict().superRefine((manifest, context) => {
   const assetIds = new Set<string>()
