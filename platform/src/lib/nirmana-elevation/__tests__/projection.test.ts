@@ -29,6 +29,7 @@ function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
     entity_id: 'bg_alpha',
     layer: 'L0',
     evidence_payload: {},
+    source_ref: 'event:test',
     observed_at: observedAt,
     recorded_at: observedAt,
     ...overrides,
@@ -325,7 +326,9 @@ describe('projectAssetMilestones', () => {
     const covered = manifestAsset({ asset_id: 'bg_covered', execution_obligation: 'producer_covered', producer_id: producer.asset_id, depends_on: [producer.asset_id] })
     const coveredEvents = assetEvents(covered, [
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered', 'integrity_verified', 'asset_frozen',
-    ])
+    ]).map((receipt) => receipt.event_type === 'producer_covered'
+      ? { ...receipt, source_ref: 'build_run:11111111-1111-4111-8111-111111111111' }
+      : receipt)
     const independentCoveredBuild = event({
       event_type: 'accepted_rebuild_observed', entity_id: covered.asset_id, layer: covered.layer,
       observed_at: '2026-08-26T11:00:00.000Z', recorded_at: '2026-08-26T11:00:00.000Z',
@@ -333,7 +336,8 @@ describe('projectAssetMilestones', () => {
     const producerBuild = event({
       event_type: 'accepted_rebuild_observed', entity_id: producer.asset_id, layer: producer.layer,
       observed_at: '2026-08-26T11:01:00.000Z', recorded_at: '2026-08-26T11:01:00.000Z',
-    })
+    }) as CampaignEvent & { source_ref: string }
+    producerBuild.source_ref = 'build_run:11111111-1111-4111-8111-111111111111'
 
     const withoutProducer = projectMilestones({
       asset: covered, events: [...coveredEvents, independentCoveredBuild], activeRunState: null, producerAsset: producer,
@@ -345,6 +349,33 @@ describe('projectAssetMilestones', () => {
     expect(withoutProducer.milestones[3].state).toBe('current')
     expect(inherited.milestones[3]).toMatchObject({ state: 'earned', event_type: 'accepted_rebuild_observed', accepted_at: producerBuild.observed_at })
     expect(inherited.inherited_from_asset_id).toBe(producer.asset_id)
+  })
+
+  it('inherits producer execution only when coverage names the exact accepted producer run', () => {
+    const producer = manifestAsset({ asset_id: 'bg_producer', covered_asset_ids: ['bg_covered'] })
+    const covered = manifestAsset({
+      asset_id: 'bg_covered', execution_obligation: 'producer_covered', producer_id: producer.asset_id,
+      depends_on: [producer.asset_id],
+    })
+    const coverage = {
+      ...assetEvents(covered, ['producer_covered'])[0],
+      source_ref: 'build_run:11111111-1111-4111-8111-111111111111',
+    }
+    const producerBuild = {
+      ...assetEvents(producer, ['accepted_rebuild_observed'])[0],
+      source_ref: 'build_run:22222222-2222-4222-8222-222222222222',
+    }
+
+    const result = projectMilestones({
+      asset: covered,
+      events: [coverage, producerBuild],
+      activeRunState: null,
+      producerAsset: producer,
+    })
+
+    expect(result.milestones[2]).toMatchObject({ milestone_id: 'built_or_dispositioned', state: 'earned' })
+    expect(result.milestones[3]).toMatchObject({ milestone_id: 'deployed_and_executed', state: 'pending', event_type: null })
+    expect(result.inherited_from_asset_id).toBeNull()
   })
 
   it('withholds determinate progress for an unresolved obligation', () => {

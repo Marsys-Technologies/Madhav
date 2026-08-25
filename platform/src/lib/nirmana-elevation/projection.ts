@@ -10,6 +10,7 @@ export interface CampaignEvent {
   entity_id: string
   layer: string | null
   evidence_payload: unknown
+  source_ref: string
   observed_at: string
   recorded_at: string
 }
@@ -59,6 +60,7 @@ const FOUNDATION_LANES = [
 
 const LAYER_IDS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as const
 const SHA256 = /^[a-f0-9]{64}$/
+const BUILD_RUN_SOURCE_REF = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -395,9 +397,16 @@ export function projectAssetMilestones(input: {
     if (execution) acceptedEvents.set('deployed_and_executed', execution)
   } else if (obligation === 'producer_covered') {
     const coverage = latestAssetEvent(events, input.asset, 'producer_covered')
-    if (coverage) acceptedEvents.set('built_or_dispositioned', coverage)
-    if (coverage && validProducer) {
-      const producerExecution = latestAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.deployed_and_executed)
+    const coverageRunId = coverage ? BUILD_RUN_SOURCE_REF.exec(coverage.source_ref)?.[1]?.toLowerCase() : undefined
+    if (coverage && coverageRunId) acceptedEvents.set('built_or_dispositioned', coverage)
+    if (coverageRunId && validProducer) {
+      const producerExecution = latest(events.filter((event) => {
+        if (event.event_type !== BUILD_EVENT_BY_MILESTONE.deployed_and_executed
+          || event.entity_type !== 'asset'
+          || event.entity_id !== validProducer.asset_id
+          || event.layer !== validProducer.layer) return false
+        return BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase() === coverageRunId
+      }))
       if (producerExecution) acceptedEvents.set('deployed_and_executed', producerExecution)
     }
   } else {
@@ -433,7 +442,7 @@ export function projectAssetMilestones(input: {
     current_action: currentIndex < 0 ? null
       : input.activeRunState ? `Active run: ${input.activeRunState}` : ACTIONS[milestones[currentIndex].milestone_id],
     next_action: nextIndex < 0 ? null : ACTIONS[milestones[nextIndex].milestone_id],
-    inherited_from_asset_id: validProducer?.asset_id ?? null,
+    inherited_from_asset_id: acceptedEvents.has('deployed_and_executed') ? validProducer?.asset_id ?? null : null,
   }
 }
 

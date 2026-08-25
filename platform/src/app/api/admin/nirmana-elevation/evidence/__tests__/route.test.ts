@@ -325,6 +325,40 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
+  it('rejects producer coverage without an exact build-run UUID reference', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:coverage', event_type: 'producer_covered', entity_type: 'asset', entity_id: 'bg_sign_medical', layer: 'L0',
+      evidence_payload: {}, source_kind: 'build_run', source_ref: 'build_run:not-a-uuid', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts a typed definition-scoped build-run authorization receipt', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ authorized: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const runId = '33333333-3333-4333-8333-333333333333'
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: `run:${runId}:authorization`, event_type: 'build_run_authorized', entity_type: 'build_run', entity_id: runId, layer: 'L0',
+      evidence_payload: { wave_index: 2, asset_ids: ['bg_prashna_rules'], authorization_sha256: 'c'.repeat(64) },
+      source_kind: 'campaign_authorization', source_ref: `build_run:${runId}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(queryMock.mock.calls[0][0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
+    expect(queryMock.mock.calls[0][0]).toContain("execution_obligation' IN ('build', 'probe')")
+    expect(queryMock.mock.calls[0][0]).toContain('FROM unnest($6::text[]) AS authorized_asset(asset_id)')
+    expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
+  })
+
   it('rejects legacy rebuild evidence without both reviewed content hashes', async () => {
     superAdmin()
     const { POST } = await import('../route')

@@ -22,6 +22,7 @@ import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 const campaignId = z.literal('nirmana-elevation')
 const revision = z.string().regex(/^[A-Za-z0-9._-]{1,128}$/)
+const buildRunSourceRef = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
 const assetReceipt = z.object({
   command: z.literal('record_evidence'),
   campaign_id: campaignId,
@@ -49,13 +50,10 @@ const assetReceipt = z.object({
   source_ref: z.string().min(1).max(512),
   observed_at: z.string().datetime(),
 }).superRefine((value, context) => {
-  if (['accepted_rebuild_observed', 'producer_covered'].includes(value.event_type) && !value.source_ref.startsWith('build_run:')) {
-    context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires an exact build_run:<id> source reference.` })
+  if (['accepted_rebuild_observed', 'producer_covered'].includes(value.event_type) && !buildRunSourceRef.test(value.source_ref)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires an exact build_run UUID source reference.` })
   }
   if (value.event_type === 'accepted_rebuild_observed') {
-    if (!/^build_run:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.source_ref)) {
-      context.addIssue({ code: 'custom', path: ['source_ref'], message: 'accepted_rebuild_observed requires an exact build_run UUID source reference.' })
-    }
     const payload = z.object({
       output_digest: z.string().regex(/^[a-f0-9]{64}$/),
       output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -141,7 +139,34 @@ const foundationLaneReceipt = z.object({
   observed_at: z.string().datetime(),
 }).strict()
 
-const receipt = z.union([assetReceipt, campaignStageReceipt, foundationLaneReceipt])
+const buildRunAuthorizationReceipt = z.object({
+  command: z.literal('record_evidence'),
+  campaign_id: campaignId,
+  definition_revision: revision,
+  idempotency_key: z.string().min(1).max(256),
+  event_type: z.literal('build_run_authorized'),
+  entity_type: z.literal('build_run'),
+  entity_id: z.string().uuid(),
+  layer: z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5']),
+  evidence_payload: z.object({
+    wave_index: z.number().int().nonnegative(),
+    asset_ids: z.array(z.string().min(1).max(256)).min(1).max(256),
+    authorization_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  source_kind: z.string().min(1).max(128),
+  source_ref: z.string().min(1).max(512),
+  observed_at: z.string().datetime(),
+}).strict().superRefine((value, context) => {
+  const match = buildRunSourceRef.exec(value.source_ref)
+  if (!match || match[1].toLowerCase() !== value.entity_id.toLowerCase()) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'Build-run authorization must reference its exact entity UUID.' })
+  }
+  if (new Set(value.evidence_payload.asset_ids).size !== value.evidence_payload.asset_ids.length) {
+    context.addIssue({ code: 'custom', path: ['evidence_payload', 'asset_ids'], message: 'Authorized asset IDs must be unique.' })
+  }
+})
+
+const receipt = z.union([assetReceipt, campaignStageReceipt, foundationLaneReceipt, buildRunAuthorizationReceipt])
 
 const definition = z.object({
   command: z.literal('record_definition'),
