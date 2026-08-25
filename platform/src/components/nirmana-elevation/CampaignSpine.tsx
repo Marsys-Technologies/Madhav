@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight, CircleHelp, LockKeyhole, PauseCircle, XCircle } from 'lucide-react'
 import { FoundationStage } from './FoundationStage'
+import { LayerStage } from './LayerStage'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import type { NirmanaStageId } from '@/lib/nirmana-elevation/projection'
 
@@ -29,8 +30,15 @@ function countLabel(stage: NirmanaCampaignStage): string | null {
   return `${stage.earned} / ${stage.required}`
 }
 
-function StageBody({ stage, snapshot }: { stage: NirmanaCampaignStage; snapshot: NirmanaElevationSnapshotV2 }) {
+function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignStage; snapshot: NirmanaElevationSnapshotV2; onOpenAudit: (assetId: string) => void }) {
   if (stage.kind === 'census' || stage.kind === 'foundation') return <FoundationStage stage={stage} snapshot={snapshot} />
+
+  if (stage.kind === 'layer') {
+    const layer = snapshot.layers.find((candidate) => candidate.layer_id === stage.stage_id)
+    return layer
+      ? <LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} />
+      : <p className="text-sm text-brand-text-3">Layer projection unavailable.</p>
+  }
 
   return <div className="space-y-2 text-sm text-brand-text-2">
     <p>Required gate: {stage.required_gate}</p>
@@ -39,7 +47,7 @@ function StageBody({ stage, snapshot }: { stage: NirmanaCampaignStage; snapshot:
   </div>
 }
 
-export function CampaignSpine({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
+export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
   const [expanded, setExpanded] = useState<Set<NirmanaStageId>>(
     () => new Set(snapshot.campaign.current_stage ? [snapshot.campaign.current_stage] : []),
   )
@@ -81,7 +89,7 @@ export function CampaignSpine({ snapshot }: { snapshot: NirmanaElevationSnapshot
                 {stage.state === 'blocked' && stage.blocked_reason && <span className="mt-1 block text-xs text-brand-err">Blocked: {stage.blocked_reason}</span>}
               </span>
             </button>
-            {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} /></div>}
+            {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} onOpenAudit={onOpenAudit} /></div>}
           </article>
           {index < stages.length - 1 && <div aria-hidden="true" className="ml-5 h-3 border-l border-brand-border" />}
         </li>
