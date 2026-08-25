@@ -234,7 +234,10 @@ describe('Nirmana label catalogue', () => {
     const digest = canonicalLabelCatalogueDigest(input.labels)
     clientQuery
       .mockResolvedValueOnce(undefined) // BEGIN
-      .mockResolvedValueOnce({ rowCount: 1 }) // definition lock/check
+      .mockResolvedValueOnce({ // frozen definition lock/check
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
       .mockResolvedValueOnce({ rowCount: 1 }) // label insert
       .mockResolvedValueOnce({ rowCount: 1 }) // acceptance event
       .mockResolvedValueOnce(undefined) // COMMIT
@@ -325,11 +328,19 @@ export async function recordNirmanaElevationLabelCatalogue(
   try {
     await client.query('BEGIN')
     const definition = await client.query(
-      `SELECT definition_status FROM nirmana_elevation_campaign_definitions
+      `SELECT definition_status, manifest FROM nirmana_elevation_campaign_definitions
        WHERE campaign_id = $1 AND definition_revision = $2 FOR SHARE`,
       [input.campaign_id, input.definition_revision],
     )
     if (definition.rows[0]?.definition_status !== 'frozen') throw new Error('Labels require a frozen campaign definition.')
+    const manifestAssetIds = new Set(
+      ((definition.rows[0]?.manifest as { assets?: Array<{ asset_id?: string }> } | undefined)?.assets ?? [])
+        .map((asset) => asset.asset_id)
+        .filter((assetId): assetId is string => typeof assetId === 'string'),
+    )
+    if (input.labels.some((label) => !manifestAssetIds.has(label.asset_id))) {
+      throw new Error('Label catalogue contains an asset absent from the frozen definition.')
+    }
 
     const inserted = await client.query(
       `INSERT INTO nirmana_elevation_asset_labels
@@ -397,7 +408,7 @@ export async function recordNirmanaElevationLabelCatalogue(
 }
 ```
 
-Add one test with an existing mismatched digest/count and assert the function rolls back and throws `Label catalogue revision conflicts with an existing receipt.`
+Add one test with an existing mismatched digest/count and assert the function rolls back and throws `Label catalogue revision conflicts with an existing receipt.` Add one test whose frozen definition manifest omits a submitted label asset; assert it rolls back and throws `Label catalogue contains an asset absent from the frozen definition.` This verifies canonical membership without inventing a hard-coded identifier-prefix convention.
 
 - [ ] **Step 4: Add the failing audited-ingress route test**
 
