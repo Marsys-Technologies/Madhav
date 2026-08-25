@@ -528,7 +528,7 @@
       "layer": "L0",
       "name": "query_medical_mappings",
       "short_label": "Query Medical Mappings",
-      "one_line": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
+      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",

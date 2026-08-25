@@ -2,7 +2,7 @@
  * query_medical_mappings — L0 Brahmagyan graha→medical reference
  * ==================================================================
  * W2b dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set,
- * `bg_medical_mappings`, 9 rows). Serves the classical graha→Ayurvedic
+ * `bg_medical_mappings`, 21 rows). Serves the classical Jyotish→Ayurvedic
  * dosha/dhatu/organ-system/body-part/disease-tendency reference (BPHS
  * Ch.18, Ashtanga Hridayam, Charaka Samhita). Global classical reference —
  * no chart_id needed.
@@ -20,15 +20,15 @@ export const queryMedicalMappingsCapability: CapabilityDescriptor = {
   name:  'query_medical_mappings',
 
   description: [
-    'Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per',
-    'graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita). Each row: dosha[], dhatu[],',
+    'Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas,',
+    '6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita). Each row: dosha[], dhatu[],',
     'organ_systems[], body_part[], disease_tendency[], classical_citation. Filter by graha.',
     'Global classical reference — no chart_id needed. Jyotish reference only — NOT a medical',
     'diagnostic system; not_diagnosis applies to any downstream indication built from this.',
   ].join(' '),
 
   input_schema: {
-    graha: { type: 'string', description: 'Filter by graha (case-insensitive, e.g. "Mars"). Omit for all 9.' },
+    graha: { type: 'string', description: 'Filter by mapping key (case-insensitive, e.g. "Mars", "Sun+Saturn", or "Sun_exalted"). Omit for all 21.' },
   },
 
   required_inputs: [],
