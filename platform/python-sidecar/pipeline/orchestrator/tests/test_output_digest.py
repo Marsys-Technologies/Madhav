@@ -65,6 +65,15 @@ def test_digest_streams_ordered_canonical_rows_and_never_fetches_all():
     assert "public" in cursor.executed[-1][0]
 
 
+def test_component_statement_materializes_aliases_before_collated_ordering():
+    statement = _component_statement(SPEC["components"][0])
+    assert "FROM (SELECT" in statement
+    assert 'AS "__key_0"' in statement
+    assert "AS digest_source" in statement
+    assert 'digest_source.row_json COLLATE "C"' in statement
+    assert 'to_jsonb(source."rule_id")::text COLLATE "C"' in statement
+
+
 def test_invalid_spec_identifier_fails_closed_before_querying_a_relation():
     from pipeline.orchestrator.provenance import canonical_digest
     invalid = {"version": "nirmana-output-digest-spec-v1", "components": [{

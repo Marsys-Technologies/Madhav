@@ -95,14 +95,26 @@ def _component_statement(component: dict[str, Any]) -> str:
     for column in value_columns:
         pairs.extend([f"'{column}'", f"source.{_quoted(column)}"])
     row_json = f"jsonb_build_object({', '.join(pairs)})::text"
-    order = ", ".join(f"source.{_quoted(column)} NULLS FIRST" for column in key_columns)
-    # `row_json` makes rows with an accidentally non-unique natural key order
-    # deterministically as well.  The fixed public schema forbids any caller
-    # supplied table path or SQL expression.
+    key_projection = ", ".join(
+        f"to_jsonb(source.{_quoted(column)})::text COLLATE \"C\" AS {_quoted(f'__key_{index}')}"
+        for index, column in enumerate(key_columns)
+    )
+    order = ", ".join(
+        f"digest_source.{_quoted(f'__key_{index}')} NULLS FIRST"
+        for index in range(len(key_columns))
+    )
+    # PostgreSQL does not expose a SELECT-list alias inside an ORDER BY
+    # expression such as `row_json COLLATE "C"`. Materialize the aliases in an
+    # inner query first. Key values are normalized to JSON text so ordering is
+    # deterministic across database locales and works for non-text key types.
+    # `row_json` then provides a deterministic tie-breaker if a reviewed key is
+    # accidentally non-unique. The fixed public schema forbids caller-supplied
+    # table paths or SQL expressions.
     return (
-        f"SELECT {row_json} AS row_json "
-        f"FROM public.{_quoted(relation)} AS source "
-        f"ORDER BY {order}, row_json COLLATE \"C\""
+        "SELECT digest_source.row_json "
+        f"FROM (SELECT {row_json} AS row_json, {key_projection} "
+        f"FROM public.{_quoted(relation)} AS source) AS digest_source "
+        f"ORDER BY {order}, digest_source.row_json COLLATE \"C\""
     )
 
 
