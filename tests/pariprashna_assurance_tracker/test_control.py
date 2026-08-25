@@ -17,7 +17,7 @@ TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assura
 sys.path.insert(0, str(TRACKER))
 from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime, service_identity  # noqa: E402
-from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _p1_release_upgrade_lock, _prove_loopback_p1_service, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
+from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _p1_release_upgrade_lock, _prove_loopback_p1_service, _same_interpreter_binary, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release  # noqa: E402
 from http.server import ThreadingHTTPServer
 
 EVIDENCE = [{"kind": "test-artifact", "uri": "file://evidence/result.json"}]
@@ -1004,6 +1004,15 @@ class ControlPlaneTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "health proof failed"):
                     _prove_loopback_p1_service(release, source_sha, runtime, 8787, "gui/504", arguments, require_service_identity=True, attempts=1, retry_seconds=0)
             http_connection.assert_not_called()
+
+    def test_p1_interpreter_proof_accepts_only_matching_macos_framework_launcher(self):
+        with tempfile.TemporaryDirectory() as root:
+            version_root = Path(root) / "Python.framework/Versions/3.14"
+            expected = version_root / "bin/python3.14"; expected.parent.mkdir(parents=True); expected.write_text("framework binary\n")
+            launcher = version_root / "Resources/Python.app/Contents/MacOS/Python"; launcher.parent.mkdir(parents=True); launcher.write_text("framework launcher\n")
+            self.assertTrue(_same_interpreter_binary(str(expected), str(launcher)))
+            wrong_version = Path(root) / "Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python"; wrong_version.parent.mkdir(parents=True); wrong_version.write_text("other framework launcher\n")
+            self.assertFalse(_same_interpreter_binary(str(expected), str(wrong_version)))
 
     def test_p1_service_identity_binds_the_attested_release_sha_modes_and_replay(self):
         with tempfile.TemporaryDirectory() as root:

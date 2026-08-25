@@ -369,13 +369,20 @@ def _p1_release_upgrade_lock(runtime: Path):
 
 
 def _same_interpreter_binary(expected: str, actual: str) -> bool:
-    """Accept only an OS-resolved spelling of the launchd interpreter binary."""
+    """Accept only the same binary or Python's matching macOS framework launcher."""
     if actual == expected:
         return True
     try:
-        return Path(actual).resolve(strict=True) == Path(expected).resolve(strict=True)
+        expected_path = Path(expected).resolve(strict=True)
+        actual_path = Path(actual).resolve(strict=True)
     except OSError:
         return False
+    if actual_path == expected_path:
+        return True
+    version_root = expected_path.parent.parent
+    if expected_path.parent.name != "bin" or version_root.parent.name != "Versions" or version_root.parent.parent.name != "Python.framework" or re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", expected_path.name) is None:
+        return False
+    return actual_path == version_root / "Resources/Python.app/Contents/MacOS/Python"
 
 
 def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path, port: int, domain: str, expected_arguments: list[str], *, require_service_identity: bool, attempts: int = 10, retry_seconds: float = 0.25) -> None:
