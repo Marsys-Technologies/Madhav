@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { fixtureV2 } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
@@ -50,6 +50,37 @@ describe('CampaignSpine', () => {
     expect(screen.getByText('Reconciling — no percentage')).toBeVisible()
     expect(screen.getByText('Current position unknown')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('keeps a known F0 current stage in the rail without inventing a current layer', () => {
+    const snapshot = snapshotFixture()
+    snapshot.campaign.current_stage = 'F0_FOUNDATION'
+    snapshot.campaign.current_layer = null
+    snapshot.campaign.current_wave = null
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    const rail = screen.getByLabelText('Now, next, then campaign rail')
+    const now = within(rail).getByText('Now').closest('section')
+    if (!now) throw new Error('Now rail section is missing.')
+    expect(within(now).getByText('F0_FOUNDATION')).toBeVisible()
+    expect(within(now).queryByText('Unknown current stage')).not.toBeInTheDocument()
+  })
+
+  it('labels active-layer eligibility as eligible now and keeps the gate as a separate prerequisite', () => {
+    render(<CampaignSurface snapshot={snapshotFixture()} />)
+
+    const strip = screen.getByRole('region', { name: /nirmāṇa campaign/i })
+    expect(within(strip).getByText('Eligible now')).toBeVisible()
+    expect(within(strip).getByText('1 asset eligible now')).toBeVisible()
+    expect(within(strip).getByText('Completion prerequisite: L0 assets frozen')).toBeVisible()
+
+    const rail = screen.getByLabelText('Now, next, then campaign rail')
+    const eligible = within(rail).getByText('Eligible now').closest('section')
+    if (!eligible) throw new Error('Eligible-now rail section is missing.')
+    expect(within(eligible).getByText('1 asset eligible now')).toBeVisible()
+    expect(within(eligible).getByText('Completion prerequisite: L0 assets frozen')).toBeVisible()
+    expect(within(eligible).queryByText(/eligible after gate/i)).not.toBeInTheDocument()
   })
 
   it('toggles stages with the keyboard and reports unknown F0 lanes without a fabricated percentage', () => {

@@ -29,8 +29,8 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
 }
 
 export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
-  const currentLayer = snapshot.campaign.current_layer
-    ? snapshot.layers.find((layer) => layer.layer_id === snapshot.campaign.current_layer)
+  const currentLayer = snapshot.campaign.current_stage && /^L[0-5]$/.test(snapshot.campaign.current_stage)
+    ? snapshot.layers.find((layer) => layer.layer_id === snapshot.campaign.current_stage)
     : undefined
   const activeAssets = activeAssetCount(snapshot)
   const denominator = snapshot.progress.denominator_status === 'frozen'
@@ -52,7 +52,9 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
       <Metric label="Current position">{stagePosition(snapshot)}</Metric>
       <Metric label="Overall elevation">{denominator}</Metric>
       <Metric label="Active now">{activeAssets === 1 ? '1 asset active' : `${activeAssets} assets active`}</Metric>
-      <Metric label="Next unlock">{currentLayer ? `${currentLayer.eligible_next_asset_ids.length} assets after ${currentLayer.required_gate}` : 'Unknown — no current layer'}</Metric>
+      <Metric label="Eligible now">{currentLayer
+        ? <><span className="block">{currentLayer.eligible_next_asset_ids.length === 1 ? '1 asset eligible now' : `${currentLayer.eligible_next_asset_ids.length} assets eligible now`}</span><span className="mt-1 block text-xs font-normal text-brand-text-3">Completion prerequisite: {currentLayer.required_gate}</span></>
+        : 'Unknown — no active layer'}</Metric>
       <Metric label="Freshness"><time dateTime={snapshot.generated_at}>{formatObservedAt(snapshot.generated_at)}</time></Metric>
     </dl>
 
