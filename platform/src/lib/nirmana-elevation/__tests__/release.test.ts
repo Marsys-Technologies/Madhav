@@ -8,15 +8,17 @@ const observedAt = new Date('2026-08-25T09:00:00.000Z')
 
 function cloudRun({
   trafficStatuses = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }],
+  latestReadyRevision,
   templateLabels,
   revisionLabels,
 }: {
-  trafficStatuses?: Array<{ percent?: number; revision?: string }>
+  trafficStatuses?: Array<{ percent?: number; revision?: string; type?: string }>
+  latestReadyRevision?: string
   templateLabels?: Record<string, string>
   revisionLabels?: Record<string, string>
 } = {}) {
   return {
-    getService: vi.fn().mockResolvedValue([{ trafficStatuses, template: { labels: templateLabels } }]),
+    getService: vi.fn().mockResolvedValue([{ trafficStatuses, latestReadyRevision, template: { labels: templateLabels } }]),
     getRevision: vi.fn().mockResolvedValue([{ labels: revisionLabels }]),
   }
 }
@@ -84,6 +86,56 @@ describe('loadNirmanaReleaseStatus', () => {
 
     expect(result.release).toMatchObject({ deployed_revision: null, production_in_sync: null })
     expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' })]))
+  })
+
+  it('resolves a 100% LATEST traffic target through the realized latest-ready revision', async () => {
+    const sha = 'd'.repeat(40)
+    const cloudRunClient = cloudRun({
+      trafficStatuses: [
+        { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST', percent: 100, revision: '' },
+        { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION', percent: 0, revision: 'amjis-web-tagged' },
+      ],
+      latestReadyRevision: 'amjis-web-01717-l42',
+      revisionLabels: { 'commit-sha': sha },
+    })
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01717-l42',
+    })
+    expect(result.release).toMatchObject({
+      main_sha: sha,
+      deployed_sha: sha,
+      deployed_revision: 'amjis-web-01717-l42',
+      production_in_sync: true,
+    })
+  })
+
+  it('does not substitute latest-ready for an unresolved pinned-revision target', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({
+        trafficStatuses: [
+          { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION', percent: 100, revision: '' },
+        ],
+        latestReadyRevision: 'amjis-web-01717-l42',
+        revisionLabels: { 'commit-sha': 'd'.repeat(40) },
+      }) as never,
+    })
+
+    expect(result.release).toMatchObject({
+      deployed_sha: null,
+      deployed_revision: null,
+      production_in_sync: null,
+    })
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' }),
+    ]))
   })
 
   it('uses the GitHub commits feed when the shared REST quota is exhausted', async () => {

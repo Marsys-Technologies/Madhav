@@ -33,7 +33,12 @@ export interface NirmanaReleaseStatus {
 type FetchFn = typeof fetch
 type CloudRunClient = Pick<ServicesClient, 'getService'> & Pick<RevisionsClient, 'getRevision'>
 type CloudRunServiceObservation = {
-  trafficStatuses?: Array<{ percent?: number | null; revision?: string | null }> | null
+  trafficStatuses?: Array<{
+    percent?: number | null
+    revision?: string | null
+    type?: string | number | null
+  }> | null
+  latestReadyRevision?: string | null
 }
 
 let servicesClient: ServicesClient | null = null
@@ -108,7 +113,12 @@ async function loadGithubMainSha(fetchFn: FetchFn): Promise<string> {
 
 function realizedServingRevision(service: CloudRunServiceObservation): string {
   const active = (service.trafficStatuses ?? []).filter((target) => (target.percent ?? 0) > 0)
-  const revision = active.length === 1 ? active[0]?.revision : null
+  const target = active.length === 1 ? active[0] : null
+  const revision = target?.revision || (
+    target?.type === 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST'
+      ? service.latestReadyRevision
+      : null
+  )
   if (!revision) throw new Error('Cloud Run service has no single realized serving revision')
   return revision.includes('/')
     ? revision
