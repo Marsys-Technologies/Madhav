@@ -25,13 +25,14 @@ REGISTRY = [
     {"asset_id": "D", "scope": "per_chart", "depends_on": []},
 ]
 PLAN = ["A", "B", "C", "D"]
+CHART_ID = "22222222-2222-4222-8222-222222222222"
 
 
 def _frozen_run_fields():
     """Return a valid manifest for scheduler-focused execute_run tests."""
     manifest = {
         "version": "nirmana-run-manifest/v1",
-        "chart_id": "chart-C",
+        "chart_id": CHART_ID,
         "scope": "global",
         "scope_target": None,
         "action": "rebuild",
@@ -66,7 +67,7 @@ class FakeCursor:
             self._result = [{"active": 0}]
         elif "FROM build_runs WHERE id" in s:
             self._result = [{
-                "id": "run-1", "chart_id": "chart-C", "scope": "global",
+                "id": "run-1", "chart_id": CHART_ID, "scope": "global",
                 "scope_target": None, "action": "rebuild", "plan": PLAN, "state": "planned",
                 **_frozen_run_fields(),
             }]

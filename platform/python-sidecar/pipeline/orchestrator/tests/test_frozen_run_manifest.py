@@ -17,16 +17,17 @@ from pipeline.orchestrator.runner import (
 
 
 def _run() -> dict:
+    chart_id = "11111111-1111-4111-8111-111111111111"
     run = {
         "id": "run-1",
-        "chart_id": "chart-1",
+        "chart_id": chart_id,
         "scope": "layer",
         "scope_target": "ganita",
         "action": "rebuild",
         "plan": ["ga_positions", "ga_strength"],
         "plan_manifest": {
             "version": "nirmana-run-manifest/v1",
-            "chart_id": "chart-1",
+            "chart_id": chart_id,
             "scope": "layer",
             "scope_target": "ganita",
             "action": "rebuild",
@@ -59,6 +60,18 @@ def test_valid_manifest_accepts_psycopg_uuid_chart_id():
     chart_id = str(uuid.uuid4())
     run["chart_id"] = uuid.UUID(chart_id)
     run["plan_manifest"]["chart_id"] = chart_id
+    run["plan_manifest_digest"] = _canonical_manifest_digest(run["plan_manifest"])
+
+    frozen = validate_frozen_run_manifest(run)
+
+    assert frozen.plan == ["ga_positions", "ga_strength"]
+
+
+def test_valid_manifest_canonicalizes_uppercase_json_uuid():
+    run = _run()
+    chart_id = uuid.uuid4()
+    run["chart_id"] = chart_id
+    run["plan_manifest"]["chart_id"] = str(chart_id).upper()
     run["plan_manifest_digest"] = _canonical_manifest_digest(run["plan_manifest"])
 
     frozen = validate_frozen_run_manifest(run)

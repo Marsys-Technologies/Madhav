@@ -16,6 +16,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
 from dataclasses import dataclass
 from typing import Any, Optional
+from uuid import UUID
 
 import psycopg
 
@@ -255,15 +256,16 @@ def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
     if manifest["version"] != "nirmana-run-manifest/v1":
         raise ValueError("unsupported frozen run manifest version")
     # psycopg decodes UUID columns to ``uuid.UUID`` while JSONB retains the
-    # dispatch-time string.  Compare the UUID field in its canonical textual
-    # form; the remaining build_run columns are TEXT and must match exactly.
+    # dispatch-time string.  Parse both representations before comparison so a
+    # valid non-canonical spelling cannot falsely terminalize an accepted run.
     manifest_chart_id = manifest["chart_id"]
     run_chart_id = run.get("chart_id")
-    if (
-        not isinstance(manifest_chart_id, str)
-        or run_chart_id is None
-        or manifest_chart_id != str(run_chart_id)
-    ):
+    try:
+        manifest_chart_uuid = UUID(manifest_chart_id) if isinstance(manifest_chart_id, str) else None
+        run_chart_uuid = run_chart_id if isinstance(run_chart_id, UUID) else UUID(str(run_chart_id))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("frozen run manifest chart_id does not match build_run") from None
+    if manifest_chart_uuid is None or manifest_chart_uuid != run_chart_uuid:
         raise ValueError("frozen run manifest chart_id does not match build_run")
     for field in ("scope", "scope_target", "action"):
         if manifest[field] != run.get(field):
