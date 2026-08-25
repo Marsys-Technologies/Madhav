@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paripraśna Shadow Elevation</title></head>
+  <body>
+    <main>
+      <h1>Paripraśna Shadow Elevation</h1>
+      <p id="boundary">Observations are not accepted evidence. This dashboard cannot close a gate or authorize cutover.</p>
+      <dl><dt>Active plan revision</dt><dd id="plan">UNKNOWN</dd></dl>
+      <h2>Source freshness</h2><ul id="sources"></ul>
+      <h2>Contradictions</h2><ul id="contradictions"></ul>
+    </main>
+    <script>
+      fetch('/api/elevation').then(r => r.json()).then(data => {
+        document.querySelector('#plan').textContent = data.plan_revision ?? 'NONE';
+        for (const [name, state] of Object.entries(data.source_states)) {
+          const li = document.createElement('li'); li.textContent = `${name}: ${state.freshness}`;
+          document.querySelector('#sources').append(li);
+        }
+        for (const item of data.contradictions) {
+          const li = document.createElement('li'); li.textContent = `${item.id}: ${item.detail}`;
+          document.querySelector('#contradictions').append(li);
+        }
+      });
+    </script>
+  </body>
+</html>
