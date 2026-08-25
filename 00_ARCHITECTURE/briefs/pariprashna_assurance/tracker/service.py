@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
+import http.client
 import json
 import os
 import plistlib
+import re
 import secrets
+import shlex
 import socket
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from control import EventStore
@@ -300,6 +306,134 @@ def _assert_upgradeable_p0b_service(plist_path: Path, runtime: Path, port: int) 
     return old_release, old_sha
 
 
+def _assert_upgradeable_p1_service(plist_path: Path, runtime: Path, port: int) -> tuple[Path, str]:
+    """Refuse every service except the exact deployed P1-enabled control plane."""
+    try:
+        plist = plistlib.loads(plist_path.read_bytes())
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing control-plane plist is unreadable") from exc
+    arguments = plist.get("ProgramArguments") if isinstance(plist, dict) else None
+    if plist.get("Label") != SERVICE_LABEL or not isinstance(arguments, list):
+        raise ValueError("existing launchd job is not the approved control-plane service")
+    if len(arguments) != 10 or not isinstance(arguments[1], str):
+        raise ValueError("existing launchd job is not the exact P1-enabled service eligible for a P1 release upgrade")
+    old_release = Path(arguments[1]).parent
+    try:
+        old_sha = (old_release / ".source-sha").read_text(encoding="utf-8").strip()
+        assert_release_attestation(old_release, old_sha)
+    except (OSError, ValueError) as exc:
+        raise ValueError("existing P1 release lacks a valid immutable attestation") from exc
+    expected = [arguments[0], str(old_release / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port)]
+    if arguments != expected:
+        raise ValueError("existing launchd job is not the exact P1-enabled service eligible for a P1 release upgrade")
+    return old_release, old_sha
+
+
+def _assert_private_p1_credentials(runtime: Path) -> None:
+    """Require existing P1 credentials without reading, copying, or rotating them."""
+    credential_path = runtime / "p1-credentials.json"
+    try:
+        status = credential_path.lstat()
+    except OSError as exc:
+        raise ValueError("P1 credentials are not a private regular file") from exc
+    if not stat.S_ISREG(status.st_mode) or stat.S_ISLNK(status.st_mode) or status.st_uid != os.getuid() or status.st_mode & 0o077 or status.st_mode & 0o600 != 0o600:
+        raise ValueError("P1 credentials are not a private regular file")
+
+
+@contextlib.contextmanager
+def _p1_release_upgrade_lock(runtime: Path):
+    """Hold a persistent private kernel lock before any P1 release-upgrade preflight."""
+    lock_path = runtime / ".p1-release-upgrade.lock"
+    try:
+        prior = lock_path.lstat()
+    except FileNotFoundError:
+        prior = None
+    if prior is not None and (stat.S_ISLNK(prior.st_mode) or not stat.S_ISREG(prior.st_mode) or prior.st_uid != os.getuid() or prior.st_mode & 0o777 != 0o600):
+        raise ValueError("P1 release upgrade lifecycle lock is not a private regular 0600 file")
+    try:
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    except OSError as exc:
+        raise ValueError("P1 release upgrade lifecycle lock cannot be created in the approved runtime") from exc
+    try:
+        status = os.fstat(descriptor)
+        if not stat.S_ISREG(status.st_mode) or status.st_uid != os.getuid() or status.st_mode & 0o777 != 0o600:
+            raise ValueError("P1 release upgrade lifecycle lock is not a private regular 0600 file")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("P1 release upgrade lifecycle lock is already held; refusing concurrent or reentrant upgrade") from exc
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path, port: int, domain: str, expected_arguments: list[str], *, require_service_identity: bool, attempts: int = 10, retry_seconds: float = 0.25) -> None:
+    """Prove the expected P1 process owns the loopback listener; candidates additionally self-attest."""
+    if attempts < 1 or retry_seconds < 0:
+        raise ValueError("loopback service proof requires at least one non-negative bounded attempt")
+    release_dir = release_dir.resolve()
+    if len(expected_arguments) != 10 or expected_arguments != [expected_arguments[0], str(release_dir / "server.py"), "--runtime", str(runtime), "--p0b-only", "--p1-enabled", "--host", "127.0.0.1", "--port", str(port)]:
+        raise ValueError("loopback service proof requires the exact P1-enabled launchd argument vector")
+    last_error = "service did not answer"
+    for attempt in range(attempts):
+        job = subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True, text=True)
+        pid_match = re.search(r"^\s*pid = (\d+)\s*$", job.stdout, flags=re.MULTILINE) if job.returncode == 0 else None
+        running_match = re.search(r"^\s*state = running\s*$", job.stdout, flags=re.MULTILINE) if job.returncode == 0 else None
+        if pid_match is None or running_match is None:
+            last_error = "launchd did not report a running P1 process"
+        else:
+            pid = pid_match.group(1)
+            process = subprocess.run(["/bin/ps", "-ww", "-p", pid, "-o", "command="], check=False, capture_output=True, text=True)
+            listener = subprocess.run(["/usr/sbin/lsof", "-nP", "-a", "-p", pid, f"-iTCP:{port}", "-sTCP:LISTEN"], check=False, capture_output=True, text=True)
+            try:
+                actual_arguments = shlex.split(process.stdout.strip())
+            except ValueError:
+                actual_arguments = []
+            if process.returncode != 0 or actual_arguments != expected_arguments:
+                last_error = "loaded P1 process arguments do not exactly match the expected release"
+            elif listener.returncode != 0 or f"127.0.0.1:{port}" not in listener.stdout or "LISTEN" not in listener.stdout:
+                last_error = "expected P1 process does not own the loopback listener"
+            else:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+                try:
+                    connection.request("GET", "/api/integrity", headers={"Host": f"127.0.0.1:{port}"})
+                    response = connection.getresponse()
+                    body = response.read(1024 * 1024 + 1)
+                    if len(body) > 1024 * 1024:
+                        last_error = "integrity response exceeds the bounded proof size"
+                    elif response.status != 200:
+                        last_error = f"integrity endpoint returned HTTP {response.status}"
+                    else:
+                        integrity = json.loads(body)
+                        if not isinstance(integrity, dict) or integrity.get("ok") is not True:
+                            last_error = "integrity endpoint did not report a healthy replay"
+                        elif not require_service_identity:
+                            return
+                        else:
+                            connection.request("GET", "/api/service-identity", headers={"Host": f"127.0.0.1:{port}"})
+                            identity_response = connection.getresponse()
+                            identity_body = identity_response.read(1024 * 1024 + 1)
+                            if len(identity_body) > 1024 * 1024:
+                                last_error = "service-identity response exceeds the bounded proof size"
+                            elif identity_response.status != 200:
+                                last_error = f"service-identity endpoint returned HTTP {identity_response.status}"
+                            else:
+                                payload = json.loads(identity_body)
+                                expected_identity = {"ok": True, "source_sha": source_sha, "release_dir": str(release_dir), "p0b_only": True, "p1_enabled": True, "replay_ok": True}
+                                if not isinstance(payload, dict) or any(payload.get(key) != value for key, value in expected_identity.items()):
+                                    last_error = "service-identity endpoint did not bind the expected healthy P1 release"
+                                else:
+                                    return
+                except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
+                    last_error = f"loopback service proof request failed: {type(exc).__name__}"
+                finally:
+                    connection.close()
+        if attempt + 1 < attempts:
+            time.sleep(retry_seconds)
+    raise ValueError(f"P1 loopback service health proof failed: {last_error}")
+
+
 def _write_private_file(path: Path, content: bytes) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
@@ -364,6 +498,64 @@ def upgrade_p1(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: 
         raise activation_error
 
 
+def upgrade_p1_release(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: Path, post_snapshot: Path, port: int = 8787) -> dict[str, str]:
+    """Atomically advance only an attested P1-enabled service to a new attested P1 release."""
+    if sys.platform != "darwin":
+        raise ValueError("launchd P1 release upgrades are supported only on macOS")
+    with _p1_release_upgrade_lock(runtime):
+        return _upgrade_p1_release_locked(release_dir, runtime, source_sha, pre_snapshot, post_snapshot, port)
+
+
+def _upgrade_p1_release_locked(release_dir: Path, runtime: Path, source_sha: str, pre_snapshot: Path, post_snapshot: Path, port: int) -> dict[str, str]:
+    """Perform the P1-only swap while the lifecycle lock is held by ``upgrade_p1_release``."""
+    release_dir = assert_release_attestation(release_dir, source_sha)
+    runtime_preflight(runtime, APPROVED_RUNTIME, _filevault_status())
+    plist_path = Path.home() / "Library/LaunchAgents" / f"{SERVICE_LABEL}.plist"
+    old_release, old_sha = _assert_upgradeable_p1_service(plist_path, runtime, port)
+    if old_sha == source_sha:
+        raise ValueError("candidate source SHA already runs as the exact P1-enabled service")
+    _assert_private_p1_credentials(runtime)
+    domain = f"gui/{os.getuid()}"
+    if subprocess.run(["/bin/launchctl", "print", f"{domain}/{SERVICE_LABEL}"], check=False, capture_output=True).returncode != 0:
+        raise ValueError("the approved P1-enabled service is not loaded; refusing an unproven replacement")
+    store = EventStore(runtime, p0b_only=True, p1_enabled=True)
+    if not store.verify_replay()["ok"]:
+        raise ValueError("P1-enabled replay integrity is not clean; refusing a P1 release upgrade")
+    with store.connection() as con:
+        if not EventStore._p0_to_p1_dependency_resolved(con):
+            raise ValueError("P0-to-P1 dependency is unresolved; refusing a P1 release upgrade")
+    pre = store.export_snapshot(pre_snapshot)
+    previous_plist = plist_path.read_bytes()
+    backup_plist = plist_path.with_name(f"{plist_path.name}.p1-backup-{source_sha[:12]}")
+    _write_private_file(backup_plist, previous_plist)
+    replacement = build_launchd_plist(release_dir, runtime, port, p1_enabled=True)
+    temporary_plist = plist_path.with_name(f".{plist_path.name}.{source_sha[:12]}.p1-release.tmp")
+    _write_private_file(temporary_plist, replacement)
+    candidate_bootstrap_attempted = False
+    try:
+        subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=True)
+        os.replace(temporary_plist, plist_path)
+        candidate_bootstrap_attempted = True
+        subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+        _prove_loopback_p1_service(release_dir, source_sha, runtime, port, domain, plistlib.loads(replacement)["ProgramArguments"], require_service_identity=True)
+        if not store.verify_replay()["ok"]:
+            raise ValueError("P1-enabled release replay integrity is not clean")
+        post = store.export_snapshot(post_snapshot)
+        return {"pre_snapshot": pre["path"], "post_snapshot": post["path"], "backup_plist": str(backup_plist), "previous_source_sha": old_sha}
+    except Exception as activation_error:
+        temporary_plist.unlink(missing_ok=True)
+        try:
+            if candidate_bootstrap_attempted:
+                # A failed bootstrap can still have partially loaded the candidate; remove it before restoring P1.
+                subprocess.run(["/bin/launchctl", "bootout", domain, str(plist_path)], check=False, capture_output=True)
+            _replace_private_file(plist_path, previous_plist)
+            subprocess.run(["/bin/launchctl", "bootstrap", domain, str(plist_path)], check=True)
+            _prove_loopback_p1_service(old_release, old_sha, runtime, port, domain, plistlib.loads(previous_plist)["ProgramArguments"], require_service_identity=False)
+        except Exception as rollback_error:
+            raise RuntimeError(f"P1 release upgrade failed and P1 rollback failed; preserved plist backup: {backup_plist}") from rollback_error
+        raise activation_error
+
+
 def install(release_dir: Path, runtime: Path, source_sha: str, port: int = 8787, *, p1_enabled: bool = False) -> Path:
     if sys.platform != "darwin":
         raise ValueError("launchd installation is supported only on macOS")
@@ -388,6 +580,7 @@ def main() -> None:
     parser.add_argument("--install", action="store_true")
     parser.add_argument("--attest-release", action="store_true")
     parser.add_argument("--upgrade-p1", action="store_true")
+    parser.add_argument("--upgrade-p1-release", action="store_true")
     parser.add_argument("--p1-enabled", action="store_true")
     parser.add_argument("--release-dir", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument("--source-repo", type=Path)
@@ -397,8 +590,8 @@ def main() -> None:
     parser.add_argument("--pre-snapshot", type=Path)
     parser.add_argument("--post-snapshot", type=Path)
     args = parser.parse_args()
-    if sum((args.attest_release, args.install, args.upgrade_p1)) != 1:
-        raise SystemExit("choose exactly one of --attest-release, --install, or --upgrade-p1")
+    if sum((args.attest_release, args.install, args.upgrade_p1, args.upgrade_p1_release)) != 1:
+        raise SystemExit("choose exactly one of --attest-release, --install, --upgrade-p1, or --upgrade-p1-release")
     if args.attest_release:
         if args.source_repo is None:
             raise SystemExit("--attest-release requires --source-repo at the repository with origin/main evidence")
@@ -408,10 +601,13 @@ def main() -> None:
         print(install(args.release_dir, args.runtime, args.source_sha, args.port, p1_enabled=args.p1_enabled))
         return
     if args.pre_snapshot is None or args.post_snapshot is None:
-        raise SystemExit("--upgrade-p1 requires distinct --pre-snapshot and --post-snapshot paths")
+        raise SystemExit("P1 upgrade commands require distinct --pre-snapshot and --post-snapshot paths")
     if args.pre_snapshot == args.post_snapshot:
         raise SystemExit("--upgrade-p1 snapshot paths must be distinct")
-    print(json.dumps(upgrade_p1(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
+    if args.upgrade_p1:
+        print(json.dumps(upgrade_p1(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
+        return
+    print(json.dumps(upgrade_p1_release(args.release_dir, args.runtime, args.source_sha, args.pre_snapshot, args.post_snapshot, args.port), sort_keys=True))
 
 
 if __name__ == "__main__":
