@@ -9,6 +9,8 @@ vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...
 
 const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
+const releaseMock = vi.fn()
+vi.mock('@/lib/nirmana-elevation/release', () => ({ loadNirmanaReleaseStatus: () => releaseMock() }))
 
 function superAdmin() {
   authMock.mockResolvedValue({
@@ -33,6 +35,15 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     vi.resetModules()
     queryMock.mockReset()
     authMock.mockReset()
+    releaseMock.mockReset().mockResolvedValue({
+      release: { main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null, observed_at: '2026-08-25T09:00:00.000Z' },
+      sources: [
+        { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error: null },
+        { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: 0, error: null },
+        { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'unknown', observed_at: '2026-08-25T09:00:00.000Z', age_seconds: null, error: 'No immutable deployment commit SHA is present on the serving revision.' },
+      ],
+      gaps: ['Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.'],
+    })
   })
 
   it('protects the snapshot before any evidence query', async () => {
@@ -59,6 +70,8 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(response.headers.get('ETag')).toMatch(/^"[a-f0-9]{64}"$/)
     expect(body.campaign.campaign_status).toBe('takeover')
     expect(body.progress.assets_total).toBeNull()
+    expect(body.release).toMatchObject({ main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
+    expect(body.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'fresh' })]))
     // The primary build evidence is fresh, but the denominator and release
     // reconciliation are intentionally not frozen in the takeover baseline.
     expect(body.data_quality.verdict).toBe('degraded')

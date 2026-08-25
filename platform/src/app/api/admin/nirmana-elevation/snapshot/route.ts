@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { loadNirmanaElevationRawSources, NirmanaElevationSourceError, projectNirmanaElevationSnapshot, unavailableNirmanaElevationSnapshot } from '@/lib/nirmana-elevation/snapshot'
+import { loadNirmanaReleaseStatus } from '@/lib/nirmana-elevation/release'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
@@ -20,7 +21,8 @@ export async function GET() {
   }
 
   try {
-    return snapshotResponse(projectNirmanaElevationSnapshot(await loadNirmanaElevationRawSources()))
+    const [raw, releaseStatus] = await Promise.all([loadNirmanaElevationRawSources(), loadNirmanaReleaseStatus()])
+    return snapshotResponse(projectNirmanaElevationSnapshot(raw, { releaseStatus }))
   } catch (error) {
     if (error instanceof NirmanaElevationSourceError) {
       return snapshotResponse(unavailableNirmanaElevationSnapshot(error), 503)
