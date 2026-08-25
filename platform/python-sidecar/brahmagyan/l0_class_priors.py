@@ -1,7 +1,7 @@
 """
 brahmagyan.l0_class_priors — bg_class_priors L0 global seed.
 
-Populates brahma_class_priors with 165 rows across 5 prior axes:
+Populates brahma_class_priors with 171 rows across 5 prior axes:
   · 17 signal_type_class rows
   · 12 source_subsystem rows
   · 6 signal_tradition rows
@@ -286,7 +286,7 @@ def seed_class_priors(
     autocommit: bool = True,
 ) -> dict[str, int]:
     """
-    Upsert all 165 rows into brahma_class_priors across 5 prior axes.
+    Upsert all 171 rows into brahma_class_priors across 5 prior axes.
 
     Returns {"brahma_class_priors": <total_upserted>}.
 

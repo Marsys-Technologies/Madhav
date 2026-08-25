@@ -3,7 +3,7 @@
   "version": "nirmana-writer-digest-inventory/v1",
   "writers": {
     "bg_class_lifetime_counts": "32c553ffe868bfddccf7f495cccbccc9e2897e8418762bf35dfb84ea08bab6f8",
-    "bg_class_priors": "a8f1bed812ba905cd804a266c0cc8cfabda30e97b9e62b263450cf8aac231e23",
+    "bg_class_priors": "4c32ab44d0ce568e96b2177ba7a40037328229f0dd76ab4ce4ca08769edc9d06",
     "bg_cohort": "0637b6fe09f24096722732053daebc2c970b2ffdefc59559b438f1002b5e8c86",
     "bg_compendium_index": "a09afc1d6b7031003fa292f7581a06be29add0cfac3cde3e957435f2d2fd5ad5",
     "bg_concordance": "4f06639cdf838664ca59f4f1c57d359a07191dd5b9f200aad0d2f0e9bb04d9a2",
@@ -12,7 +12,7 @@
     "bg_doshas": "fa0b0b4dd4faa8d305b05c9e64c17de83c3b22117431774d941b2c5b92b8e38c",
     "bg_ephemeris": "a5ab5f5c1e62b4ca3372d2659213281df37fa73cab86ce36d73a711f7bd5a7bd",
     "bg_formula_constants": "9cce89f843181436afc4b70b0a14bfd72ffab73637867d8280207c016d1a2cfe",
-    "bg_ghatana": "61b75c57e1899ebcf85d19bcfd26c9108a409bf9225624259eb09de5d7cbe68e",
+    "bg_ghatana": "71cbb4a1a5e879a51a2df91112b090c6bd7b793c33e206b10f63ead0493d3d72",
     "bg_gochara_arcs": "00b62d5a8d6ae84112955d75cb6480ad6aa9af0d06ee58c65ecf257aec9b2979",
     "bg_kota_chakra_rings": "f416a3c52b95938def7a287f491b58883c193c579fa4fd57c4e80ecd5bc70076",
     "bg_kp_sublord_division": "6dd29b469bed730e6338952059951f82152ec9a11810cff3b0d9373ee93a5b01",

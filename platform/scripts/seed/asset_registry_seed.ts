@@ -499,15 +499,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Ghaṭanā',
     english_name: 'Event Ontology',
-    english_description: 'Global life-event + electional-activity ontology — 22 life-event classes (brahma_event_ontology) and 12 electional activity classes (brahma_activity_ontology); source W1 seed package §5-§6.',
+    english_description: 'Global life-event + electional-activity ontology — 27 life-event classes (brahma_event_ontology) and 12 electional activity classes (brahma_activity_ontology), including DR-13 temporal-shape and evidence fields.',
     storage_type: 'postgres_table',
     target_table: 'brahma_event_ontology',
     count_sql: 'SELECT (SELECT count(*) FROM brahma_event_ontology) + (SELECT count(*) FROM brahma_activity_ontology) AS count',
     size_sql: "SELECT pg_total_relation_size('brahma_event_ontology')",
-    target_floor: 34,
+    target_floor: 39,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '22 life-event classes + 12 electional activity classes = 34 total rows, seeded verbatim from W1 seed package §5-§6.',
+    volume_explanation: '27 life-event classes + 12 electional activity classes = 39 total rows, including the five DR-13 coverage extensions.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -548,10 +548,8 @@ export const ASSETS: AssetDef[] = [
     // built" the moment migration 522 lands and BEFORE a single N_e row exists —
     // a cockpit-truth violation (§N.4) and an §N.8 signal that cannot read false.
     //
-    // `target_floor: 0` is deliberate, not a placeholder. §N.4: floors are
-    // aspirational and set to the ACHIEVED count after a build. On this asset
-    // specifically, a non-zero floor would be pressure to fabricate exactly the
-    // rows ADJUDICATION-2's hard stop forbids ("honest-empty beats fabricated-full").
+    // The achieved floor is six sourced rows. It is not a target for filling the
+    // uncovered classes: §N.4 still forbids fabricating any absent N_e row.
     asset_id: 'bg_class_lifetime_counts',
     layer: 'brahmagyan', sort_order: 21,
     catalog_status: 'CURRENT',
@@ -573,16 +571,15 @@ export const ASSETS: AssetDef[] = [
       'fabricated baseline.',
     storage_type: 'postgres_table',
     target_table: 'brahma_class_priors',
-    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'",
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='ne_v01' AND fact_kind='lifetime_count_per_100y'",
     size_sql: null,
-    target_floor: 0,
+    target_floor: 6,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation:
-      'One row per event class for which a Tier N-i (or Tier N-ii derived-identity) ' +
-      'source could actually be obtained and cited. Set to the ACHIEVED count after ' +
-      'the first build (§N.4). Unseeded classes are an honest per-class coverage gap ' +
-      'registered by name in the ledger, never a reason to invent a row.',
+      '6 achieved Tier N-i/N-ii lifetime-count rows at the writer-owned ne_v01 ' +
+      'coordinate. Unseeded event classes remain an explicit coverage gap; this ' +
+      'floor must rise only with defensible cited sources, never fabricated rows.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -721,15 +718,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Varga-pūrva',
     english_name: 'Class Priors',
-    english_description: 'Global signal-classification priors across 5 axes — signal_type_class, source_subsystem, signal_tradition, varga, graha x domain — from W1 seed package §2-§4.',
+    english_description: 'Global signal-classification priors across 5 writer-owned axes — signal_type_class, source_subsystem, signal_tradition, varga, and graha x domain — from W1 seed package §2-§4 plus ratified append-only class extensions.',
     storage_type: 'postgres_table',
     target_table: 'brahma_class_priors',
-    count_sql: 'SELECT count(*) FROM brahma_class_priors',
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='1.0'",
     size_sql: "SELECT pg_total_relation_size('brahma_class_priors')",
-    target_floor: 164,
+    target_floor: 171,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '17 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha x domain priors (per writer docstring 165; live-measured 164, 2026-07-05).',
+    volume_explanation: '24 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha x domain priors = 171 achieved writer-owned rows at prior_version 1.0.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
