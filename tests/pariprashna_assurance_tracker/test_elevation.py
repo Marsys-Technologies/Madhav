@@ -12,6 +12,12 @@ sys.path.insert(0, str(TRACKER))
 from elevation import AdapterRunner, ElevationStore, InvariantViolation
 from elevation_operations import ShadowOperations, cutover_guard
 from elevation_server import handler_factory
+from elevation_service import (
+    APPROVED_SHADOW_RUNTIME,
+    SHADOW_DASHBOARD_LABEL,
+    assert_shadow_release_attestation,
+    build_shadow_dashboard_plist,
+)
 
 
 PLAN_V1 = {
@@ -153,6 +159,27 @@ class ElevationStoreTests(unittest.TestCase):
         with self.assertRaises(InvariantViolation) as fabricated:
             cutover_guard({"eligible": True, "live_runtime_changed": False, "native_decision": "forged"})
         self.assertEqual(fabricated.exception.code, "CUTOVER_NOT_AUTHORIZED")
+
+    def test_shadow_dashboard_launchd_spec_is_pinned_to_the_shadow_runtime_and_loopback(self):
+        """Break caught: a shadow dashboard job can target the accepted tracker or a network listener."""
+        import plistlib
+
+        release = Path(self.tmp.name) / "sealed-release"
+        plist = plistlib.loads(build_shadow_dashboard_plist(release, APPROVED_SHADOW_RUNTIME, "a" * 40))
+        self.assertEqual(plist["Label"], SHADOW_DASHBOARD_LABEL)
+        self.assertIn("127.0.0.1", plist["ProgramArguments"])
+        self.assertIn("8788", plist["ProgramArguments"])
+        self.assertIn(str(APPROVED_SHADOW_RUNTIME / "elevation.sqlite3"), plist["ProgramArguments"])
+        with self.assertRaises(ValueError):
+            build_shadow_dashboard_plist(release, Path("/Users/Dev/.pariprashna-assurance-control"), "a" * 40)
+
+    def test_shadow_dashboard_refuses_an_unsealed_or_mutable_release(self):
+        """Break caught: launchd can execute an arbitrary mutable dashboard tree."""
+        release = Path(self.tmp.name) / "release"
+        release.mkdir()
+        with self.assertRaises(ValueError) as rejected:
+            assert_shadow_release_attestation(release, "a" * 40)
+        self.assertIn("attested", str(rejected.exception))
 
     def test_shadow_operations_create_private_snapshot_and_verify_isolated_restore(self):
         """Break caught: a scheduled recovery job reports success without a private, replayable shadow snapshot."""
