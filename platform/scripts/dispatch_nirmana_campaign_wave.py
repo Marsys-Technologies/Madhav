@@ -1,0 +1,653 @@
+#!/usr/bin/env python3
+"""Create one exact frozen Nirmana campaign wave and dispatch it safely.
+
+The command is rollback-only unless ``--commit`` and the explicit confirmation
+token are supplied. It never records campaign acceptance evidence; verification
+and acceptance remain a separate responsibility after the production run.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import uuid
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+
+CAMPAIGN_ID = "nirmana-elevation"
+DEFAULT_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+DEFAULT_DEFINITION_REVISION = "t0-2026-08-25-4a78a5c4"
+CONFIRMATION = "NIRMANA_CAMPAIGN_WAVE"
+LAYERS = frozenset({"L0", "L1", "L2", "L3", "L4", "L5"})
+LAYER_RANK = {f"L{index}": index for index in range(6)}
+REGISTRY_LAYER = {
+    "L0": "brahmagyan",
+    "L1": "ganita",
+    "L2": "bodha",
+    "L3": "kala",
+    "L4": "phala",
+    "L5": "mimamsa",
+}
+REGISTRY_CONTRACT_FIELDS = (
+    "sort_order",
+    "scope",
+    "asset_kind",
+    "catalog_status",
+    "is_active",
+    "has_writer",
+    "target_table",
+    "count_sql",
+    "integrity_check_sql",
+    "health_probe",
+    "natural_key_partition",
+    "superseded_by",
+    "data_disposition",
+    "dead_flag",
+)
+WRITER_DIGESTS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "generated"
+    / "nirmana-writer-digests.json"
+)
+
+
+def _stable_json(value: object, *, ensure_ascii: bool) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=ensure_ascii,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _sha256_json(value: object, *, ensure_ascii: bool) -> str:
+    return hashlib.sha256(
+        _stable_json(value, ensure_ascii=ensure_ascii).encode("utf-8")
+    ).hexdigest()
+
+
+def _valid_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def _select_frozen_build_assets(
+    *,
+    chart_id: str,
+    definition_revision: str,
+    definition_manifest: Mapping[str, Any],
+    definition_manifest_digest: str,
+    layer: str,
+    wave_index: int,
+) -> list[dict[str, Any]]:
+    if chart_id != DEFAULT_CHART_ID:
+        raise ValueError("campaign dispatch is restricted to the approved chart")
+    if definition_revision != DEFAULT_DEFINITION_REVISION:
+        raise ValueError("campaign dispatch is restricted to the frozen definition revision")
+    if layer not in LAYERS:
+        raise ValueError(f"unsupported campaign layer: {layer}")
+    if wave_index < 0:
+        raise ValueError("campaign wave index cannot be negative")
+    if definition_manifest.get("chart_id") != chart_id:
+        raise ValueError("definition manifest chart does not match the approved chart")
+    if not _valid_sha256(definition_manifest_digest):
+        raise ValueError("definition manifest digest is invalid")
+    actual_definition_digest = _sha256_json(definition_manifest, ensure_ascii=False)
+    if actual_definition_digest != definition_manifest_digest:
+        raise ValueError("definition manifest digest does not match frozen contents")
+    assets = definition_manifest.get("assets")
+    if not isinstance(assets, list):
+        raise ValueError("definition manifest assets are invalid")
+    selected = [
+        asset
+        for asset in assets
+        if isinstance(asset, dict)
+        and asset.get("layer") == layer
+        and asset.get("wave_index") == wave_index
+        and asset.get("execution_obligation") == "build"
+    ]
+    if not selected:
+        raise ValueError(f"{layer} wave {wave_index} has no build obligations")
+    return selected
+
+
+def campaign_prerequisite_asset_ids(
+    *,
+    definition_manifest: Mapping[str, Any],
+    layer: str,
+    wave_index: int,
+) -> list[str]:
+    """Return every asset that strict layer/wave sequencing requires frozen."""
+    if layer not in LAYERS:
+        raise ValueError(f"unsupported campaign layer: {layer}")
+    assets = definition_manifest.get("assets")
+    if not isinstance(assets, list):
+        raise ValueError("definition manifest assets are invalid")
+    prerequisites: list[str] = []
+    for asset in assets:
+        if not isinstance(asset, dict):
+            raise ValueError("definition manifest contains an invalid asset")
+        asset_id = asset.get("asset_id")
+        asset_layer = asset.get("layer")
+        asset_wave = asset.get("wave_index")
+        if (
+            not isinstance(asset_id, str)
+            or asset_layer not in LAYERS
+            or not isinstance(asset_wave, int)
+        ):
+            raise ValueError("definition manifest contains an invalid asset identity")
+        if LAYER_RANK[asset_layer] < LAYER_RANK[layer] or (
+            asset_layer == layer and asset_wave < wave_index
+        ):
+            prerequisites.append(asset_id)
+    return prerequisites
+
+
+def build_campaign_wave_manifest(
+    *,
+    chart_id: str,
+    definition_revision: str,
+    definition_manifest: Mapping[str, Any],
+    definition_manifest_digest: str,
+    layer: str,
+    wave_index: int,
+    candidates: Sequence[Mapping[str, Any]],
+    writer_digests: Mapping[str, str],
+    snapshot_ref: str | None = None,
+) -> tuple[dict[str, Any], str, list[str]]:
+    """Validate frozen/live/code identity and create a runner manifest."""
+    selected = _select_frozen_build_assets(
+        chart_id=chart_id,
+        definition_revision=definition_revision,
+        definition_manifest=definition_manifest,
+        definition_manifest_digest=definition_manifest_digest,
+        layer=layer,
+        wave_index=wave_index,
+    )
+    candidate_by_id = {
+        candidate.get("asset_id"): candidate
+        for candidate in candidates
+        if isinstance(candidate.get("asset_id"), str)
+    }
+    asset_ids: list[str] = []
+    manifest_assets: list[dict[str, Any]] = []
+    for frozen_asset in selected:
+        asset_id = frozen_asset.get("asset_id")
+        if not isinstance(asset_id, str) or not asset_id:
+            raise ValueError("frozen wave contains an invalid asset ID")
+        candidate = candidate_by_id.get(asset_id)
+        if candidate is None:
+            raise ValueError(f"live registry row missing for {asset_id}")
+        if candidate.get("layer") != REGISTRY_LAYER[layer]:
+            raise ValueError(f"live registry contract changed for {asset_id}: layer")
+        frozen_dependencies = frozen_asset.get("depends_on")
+        if not isinstance(frozen_dependencies, list) or any(
+            not isinstance(dependency, str) for dependency in frozen_dependencies
+        ):
+            raise ValueError(f"frozen dependencies are invalid for {asset_id}")
+        if list(candidate.get("depends_on") or []) != frozen_dependencies:
+            raise ValueError(f"live registry contract changed for {asset_id}: depends_on")
+        frozen_contract = frozen_asset.get("registry_contract")
+        if not isinstance(frozen_contract, dict):
+            raise ValueError(f"frozen registry contract missing for {asset_id}")
+        live_contract = {field: candidate.get(field) for field in REGISTRY_CONTRACT_FIELDS}
+        if live_contract != frozen_contract:
+            raise ValueError(f"live registry contract changed for {asset_id}")
+        expected_code_digest = writer_digests.get(asset_id)
+        if not _valid_sha256(expected_code_digest):
+            raise ValueError(f"writer digest missing or invalid for {asset_id}")
+        asset_ids.append(asset_id)
+        manifest_assets.append(
+            {
+                "asset_id": asset_id,
+                "scope": frozen_contract["scope"],
+                "depends_on": list(frozen_dependencies),
+                "natural_key_partition": frozen_contract["natural_key_partition"],
+                "has_cowriters": bool(candidate.get("has_cowriters")),
+                "expected_code_digest": expected_code_digest,
+            }
+        )
+    if set(candidate_by_id) != set(asset_ids):
+        raise ValueError("live registry query returned assets outside the frozen build wave")
+
+    scope_target = ",".join(asset_ids)
+    manifest: dict[str, Any] = {
+        "version": "nirmana-run-manifest/v1",
+        "chart_id": chart_id,
+        "scope": "asset_set",
+        "scope_target": scope_target,
+        "action": "rebuild",
+        "waves": [list(asset_ids)],
+        "assets": manifest_assets,
+    }
+    if snapshot_ref is not None:
+        if not snapshot_ref.strip():
+            raise ValueError("snapshot reference cannot be blank")
+        manifest["campaign_control"] = {
+            "campaign_id": CAMPAIGN_ID,
+            "definition_revision": definition_revision,
+            "layer": layer,
+            "wave_index": wave_index,
+            "snapshot_ref": snapshot_ref,
+        }
+    return (
+        manifest,
+        _sha256_json(manifest, ensure_ascii=True),
+        asset_ids,
+    )
+
+
+def _load_writer_digests() -> dict[str, str]:
+    inventory = json.loads(WRITER_DIGESTS_PATH.read_text(encoding="utf-8"))
+    writers = inventory.get("writers")
+    if not isinstance(writers, dict):
+        raise RuntimeError("writer digest inventory is invalid")
+    return writers
+
+
+def _triggered_by(definition_revision: str, layer: str, wave_index: int) -> str:
+    return f"{CAMPAIGN_ID}:{definition_revision}:{layer}:wave-{wave_index}"
+
+
+def _load_definition(cur, definition_revision: str) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT definition_revision, definition_status, manifest, manifest_sha256
+          FROM nirmana_elevation_campaign_definitions
+         WHERE campaign_id=%s AND definition_revision=%s
+           AND superseded_at IS NULL
+         FOR SHARE
+        """,
+        (CAMPAIGN_ID, definition_revision),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise RuntimeError("frozen campaign definition is missing")
+    if row["definition_status"] != "frozen":
+        raise RuntimeError("campaign definition is not frozen")
+    return dict(row)
+
+
+def _load_candidates(cur, asset_ids: list[str]) -> list[dict[str, Any]]:
+    cur.execute(
+        """
+        SELECT ar.asset_id, ar.layer, COALESCE(ar.depends_on, '{}') AS depends_on,
+               ar.sort_order, ar.scope, ar.asset_kind, ar.catalog_status,
+               ar.is_active, ar.has_writer, ar.target_table, ar.count_sql,
+               ar.integrity_check_sql, ar.health_probe, ar.natural_key_partition,
+               ar.superseded_by, ar.data_disposition, ar.dead_flag,
+               EXISTS (
+                 SELECT 1 FROM asset_registry peer
+                  WHERE peer.target_table = ar.target_table
+                    AND ar.target_table IS NOT NULL
+                    AND peer.asset_id <> ar.asset_id
+                    AND peer.is_active = true AND peer.has_writer = true
+               ) AS has_cowriters
+          FROM asset_registry ar
+         WHERE ar.asset_id = ANY(%s)
+         FOR SHARE OF ar
+        """,
+        (asset_ids,),
+    )
+    return [dict(row) for row in cur.fetchall()]
+
+
+def create_campaign_run(
+    *,
+    database_url: str,
+    chart_id: str,
+    definition_revision: str,
+    layer: str,
+    wave_index: int,
+    commit: bool,
+    snapshot_ref: str | None = None,
+    expected_manifest_digest: str | None = None,
+) -> dict[str, Any]:
+    if commit and not snapshot_ref:
+        raise ValueError("committed campaign wave requires a recovery snapshot reference")
+    if commit and not expected_manifest_digest:
+        raise ValueError("committed campaign wave requires the reviewed preview manifest digest")
+    import psycopg
+    import psycopg.rows
+
+    connection = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    connection.autocommit = False
+    try:
+        cur = connection.cursor()
+        triggered_by = _triggered_by(definition_revision, layer, wave_index)
+        cur.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (triggered_by,),
+        )
+        definition = _load_definition(cur, definition_revision)
+        selected = _select_frozen_build_assets(
+            chart_id=chart_id,
+            definition_revision=definition_revision,
+            definition_manifest=definition["manifest"],
+            definition_manifest_digest=definition["manifest_sha256"],
+            layer=layer,
+            wave_index=wave_index,
+        )
+        asset_ids = [asset["asset_id"] for asset in selected]
+
+        required_evidence_types = (
+            "asset_analysis_accepted",
+            "optimization_verdict_accepted",
+        )
+        cur.execute(
+            """
+            SELECT entity_id, event_type
+              FROM nirmana_elevation_campaign_events
+             WHERE campaign_id=%s AND definition_revision=%s
+               AND entity_id = ANY(%s) AND event_type = ANY(%s)
+            """,
+            (
+                CAMPAIGN_ID,
+                definition_revision,
+                asset_ids,
+                list(required_evidence_types),
+            ),
+        )
+        observed_evidence = {
+            (row["entity_id"], row["event_type"]) for row in cur.fetchall()
+        }
+        missing_evidence = [
+            f"{asset_id}:{event_type}"
+            for asset_id in asset_ids
+            for event_type in required_evidence_types
+            if (asset_id, event_type) not in observed_evidence
+        ]
+        if missing_evidence:
+            raise RuntimeError(
+                "campaign analysis/verdict evidence is incomplete for the wave "
+                f"({len(missing_evidence)} missing events)"
+            )
+
+        prerequisites = campaign_prerequisite_asset_ids(
+            definition_manifest=definition["manifest"],
+            layer=layer,
+            wave_index=wave_index,
+        )
+        if prerequisites:
+            cur.execute(
+                """
+                SELECT DISTINCT entity_id
+                  FROM nirmana_elevation_campaign_events
+                 WHERE campaign_id=%s AND definition_revision=%s
+                   AND event_type='asset_frozen' AND entity_id = ANY(%s)
+                """,
+                (CAMPAIGN_ID, definition_revision, prerequisites),
+            )
+            frozen_prerequisites = {row["entity_id"] for row in cur.fetchall()}
+            missing_prerequisites = [
+                asset_id
+                for asset_id in prerequisites
+                if asset_id not in frozen_prerequisites
+            ]
+            if missing_prerequisites:
+                raise RuntimeError(
+                    "strict campaign sequencing requires all prior layers/waves frozen "
+                    f"({len(missing_prerequisites)} assets remain)"
+                )
+
+        cur.execute(
+            """SELECT id, chart_id, state FROM build_runs
+                 WHERE state IN ('planned', 'running', 'paused')
+                 ORDER BY created_at"""
+        )
+        active = cur.fetchall()
+        if active:
+            raise RuntimeError(f"active build runs exist; campaign wave refused ({len(active)})")
+
+        cur.execute(
+            "SELECT id, state FROM build_runs WHERE triggered_by=%s ORDER BY created_at",
+            (triggered_by,),
+        )
+        prior_runs = cur.fetchall()
+        if prior_runs:
+            raise RuntimeError(
+                "a run already exists for this frozen campaign wave; duplicate execution refused"
+            )
+
+        cur.execute(
+            """
+            SELECT entity_id
+              FROM nirmana_elevation_campaign_events
+             WHERE campaign_id=%s AND definition_revision=%s
+               AND event_type='accepted_rebuild_observed'
+               AND entity_id = ANY(%s)
+            """,
+            (CAMPAIGN_ID, definition_revision, asset_ids),
+        )
+        accepted = [row["entity_id"] for row in cur.fetchall()]
+        if accepted:
+            raise RuntimeError(
+                f"accepted rebuild evidence already exists for {len(accepted)} selected assets"
+            )
+
+        cur.execute(
+            """SELECT asset_id FROM build_protected_assets
+                 WHERE chart_id=%s AND asset_id = ANY(%s)
+                 ORDER BY asset_id""",
+            (chart_id, asset_ids),
+        )
+        protected = [row["asset_id"] for row in cur.fetchall()]
+        if protected:
+            raise RuntimeError(
+                f"campaign wave contains protected assets: {','.join(protected)}"
+            )
+
+        candidates = _load_candidates(cur, asset_ids)
+        manifest, manifest_digest, asset_ids = build_campaign_wave_manifest(
+            chart_id=chart_id,
+            definition_revision=definition_revision,
+            definition_manifest=definition["manifest"],
+            definition_manifest_digest=definition["manifest_sha256"],
+            layer=layer,
+            wave_index=wave_index,
+            candidates=candidates,
+            writer_digests=_load_writer_digests(),
+            snapshot_ref=snapshot_ref,
+        )
+        if expected_manifest_digest is not None:
+            if not _valid_sha256(expected_manifest_digest):
+                raise RuntimeError("expected preview manifest digest is invalid")
+            if manifest_digest != expected_manifest_digest:
+                raise RuntimeError(
+                    "runner manifest no longer matches the reviewed dry-run preview"
+                )
+        run_id = str(uuid.uuid4())
+        scope_target = manifest["scope_target"]
+        cur.execute(
+            """
+            INSERT INTO build_runs
+              (id, chart_id, scope, scope_target, action, state, plan,
+               plan_manifest, plan_manifest_digest, triggered_by)
+            VALUES (%s, %s, 'asset_set', %s, 'rebuild', 'planned', %s::jsonb,
+                    %s::jsonb, %s, %s)
+            """,
+            (
+                run_id,
+                chart_id,
+                scope_target,
+                json.dumps(asset_ids),
+                json.dumps(manifest),
+                manifest_digest,
+                triggered_by,
+            ),
+        )
+        cur.executemany(
+            """INSERT INTO build_run_assets (run_id, asset_id, position, state)
+               VALUES (%s, %s, %s, 'queued')""",
+            [(run_id, asset_id, position) for position, asset_id in enumerate(asset_ids)],
+        )
+        if commit:
+            connection.commit()
+        else:
+            connection.rollback()
+        return {
+            "run_id": run_id,
+            "chart_id": chart_id,
+            "definition_revision": definition_revision,
+            "layer": layer,
+            "wave_index": wave_index,
+            "asset_count": len(asset_ids),
+            "asset_ids": asset_ids,
+            "manifest_digest": manifest_digest,
+            "triggered_by": triggered_by,
+            "committed": commit,
+            "acceptance_event_recorded": False,
+            "snapshot_ref": snapshot_ref,
+        }
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def dispatch_campaign_run(
+    *,
+    run_id: str,
+    project: str,
+    region: str,
+    job: str,
+    run_command=subprocess.run,
+) -> str:
+    result = run_command(
+        [
+            "gcloud",
+            "run",
+            "jobs",
+            "execute",
+            job,
+            f"--project={project}",
+            f"--region={region}",
+            f"--args=--run-id,{run_id}",
+            "--async",
+            "--format=value(metadata.name)",
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "unknown gcloud error").strip()[:1000]
+        raise RuntimeError(detail)
+    execution = result.stdout.strip()
+    if not execution:
+        raise RuntimeError("gcloud returned no execution name")
+    return execution
+
+
+def terminalize_dispatch_failure(cur, *, run_id: str, error: str) -> None:
+    message = f"campaign wave dispatch failed: {error}"[:2000]
+    cur.execute(
+        """WITH failed_run AS (
+               UPDATE build_runs
+                  SET state='failed', ended_at=NOW(), last_error=%s
+                WHERE id=%s AND state='planned'
+            RETURNING id
+           )
+           UPDATE build_run_assets
+              SET state='aborted', ended_at=NOW(), error=%s
+            WHERE run_id IN (SELECT id FROM failed_run)
+              AND state='queued'""",
+        (message, run_id, message),
+    )
+
+
+def mark_dispatch_failed(*, database_url: str, run_id: str, error: str) -> None:
+    import psycopg
+
+    with psycopg.connect(database_url) as connection:
+        with connection.cursor() as cur:
+            terminalize_dispatch_failure(cur, run_id=run_id, error=error)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Create one exact frozen Nirmana campaign build wave"
+    )
+    parser.add_argument("--layer", required=True, choices=sorted(LAYERS))
+    parser.add_argument("--wave", required=True, type=int)
+    parser.add_argument("--definition-revision", default=DEFAULT_DEFINITION_REVISION)
+    parser.add_argument("--project", default="madhav-astrology")
+    parser.add_argument("--region", default="asia-south1")
+    parser.add_argument("--job", default="brahma-build-pipeline-job")
+    parser.add_argument(
+        "--snapshot-ref",
+        help="Recovery snapshot/backup reference to bind into the reviewed manifest",
+    )
+    parser.add_argument(
+        "--expected-manifest-digest",
+        help="Required with --commit; must equal the prior dry-run preview digest",
+    )
+    parser.add_argument(
+        "--commit",
+        action="store_true",
+        help="Commit and dispatch the run; omission is a rollback-only dry run",
+    )
+    parser.add_argument("--confirm", help=f"Required with --commit: {CONFIRMATION}")
+    args = parser.parse_args()
+
+    if args.commit and args.confirm != CONFIRMATION:
+        parser.error(f"--commit requires --confirm {CONFIRMATION}")
+    if args.commit and not args.snapshot_ref:
+        parser.error("--commit requires --snapshot-ref")
+    if args.commit and not args.expected_manifest_digest:
+        parser.error("--commit requires --expected-manifest-digest from a reviewed dry run")
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print(
+            "ERROR: DATABASE_URL is required; obtain it from configured secret access without printing it.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        receipt = create_campaign_run(
+            database_url=database_url,
+            chart_id=DEFAULT_CHART_ID,
+            definition_revision=args.definition_revision,
+            layer=args.layer,
+            wave_index=args.wave,
+            commit=args.commit,
+            snapshot_ref=args.snapshot_ref,
+            expected_manifest_digest=args.expected_manifest_digest,
+        )
+    except Exception as exc:
+        print(f"ERROR: campaign wave run not created: {exc}", file=sys.stderr)
+        return 2
+    if args.commit:
+        try:
+            receipt["execution_name"] = dispatch_campaign_run(
+                run_id=receipt["run_id"],
+                project=args.project,
+                region=args.region,
+                job=args.job,
+            )
+        except Exception as exc:
+            mark_dispatch_failed(
+                database_url=database_url,
+                run_id=receipt["run_id"],
+                error=str(exc),
+            )
+            print(
+                f"ERROR: campaign wave dispatch failed and run was terminalized: {exc}",
+                file=sys.stderr,
+            )
+            return 3
+    print(json.dumps(receipt, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
