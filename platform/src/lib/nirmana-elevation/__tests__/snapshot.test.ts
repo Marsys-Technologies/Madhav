@@ -67,6 +67,31 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(NirmanaElevationSnapshotSchema.safeParse(snapshot).success).toBe(true)
   })
 
+  it('projects available release observations while withholding a commit-unproven sync verdict', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources(), {
+      generatedAt: observedAt,
+      releaseStatus: {
+        release: {
+          main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb',
+          production_in_sync: null, observed_at: observedAt,
+        },
+        sources: [
+          { source_id: 'github_main', provenance: 'GitHub public commits API', state: 'fresh', observed_at: observedAt, age_seconds: 0, error: null },
+          { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at: observedAt, age_seconds: 0, error: null },
+          { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'unknown', observed_at: observedAt, age_seconds: null, error: 'No immutable deployment commit SHA is present on the serving revision.' },
+        ],
+        gaps: ['Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.'],
+      },
+    })
+
+    expect(snapshot.release).toMatchObject({ main_sha: 'a'.repeat(40), deployed_sha: null, production_in_sync: null })
+    expect(snapshot.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'github_main', state: 'fresh' }),
+      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'unknown' }),
+    ]))
+    expect(snapshot.data_quality.gaps).toContain('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
+  })
+
   it('keeps current-run progress separate from persistent lit readiness', () => {
     const snapshot = projectNirmanaElevationSnapshot(
       sources({
