@@ -368,6 +368,23 @@ def _p1_release_upgrade_lock(runtime: Path):
         os.close(descriptor)
 
 
+def _same_interpreter_binary(expected: str, actual: str) -> bool:
+    """Accept only the same binary or Python's matching macOS framework launcher."""
+    if actual == expected:
+        return True
+    try:
+        expected_path = Path(expected).resolve(strict=True)
+        actual_path = Path(actual).resolve(strict=True)
+    except OSError:
+        return False
+    if actual_path == expected_path:
+        return True
+    version_root = expected_path.parent.parent
+    if expected_path.parent.name != "bin" or version_root.parent.name != "Versions" or version_root.parent.parent.name != "Python.framework" or re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", expected_path.name) is None:
+        return False
+    return actual_path == version_root / "Resources/Python.app/Contents/MacOS/Python"
+
+
 def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path, port: int, domain: str, expected_arguments: list[str], *, require_service_identity: bool, attempts: int = 10, retry_seconds: float = 0.25) -> None:
     """Prove the expected P1 process owns the loopback listener; candidates additionally self-attest."""
     if attempts < 1 or retry_seconds < 0:
@@ -390,7 +407,7 @@ def _prove_loopback_p1_service(release_dir: Path, source_sha: str, runtime: Path
                 actual_arguments = shlex.split(process.stdout.strip())
             except ValueError:
                 actual_arguments = []
-            if process.returncode != 0 or actual_arguments != expected_arguments:
+            if process.returncode != 0 or len(actual_arguments) != len(expected_arguments) or not _same_interpreter_binary(expected_arguments[0], actual_arguments[0]) or actual_arguments[1:] != expected_arguments[1:]:
                 last_error = "loaded P1 process arguments do not exactly match the expected release"
             elif listener.returncode != 0 or f"127.0.0.1:{port}" not in listener.stdout or "LISTEN" not in listener.stdout:
                 last_error = "expected P1 process does not own the loopback listener"
