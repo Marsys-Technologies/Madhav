@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 
-RECEIPT_VERSION = "nirmana-provenance-receipt-v1"
+RECEIPT_VERSION = "nirmana-provenance-receipt-v2"
 WHOLE_ASSET_PARTITION = "__whole_asset__"
 FreshnessState = Literal["fresh", "stale", "unknown"]
 
@@ -48,6 +48,7 @@ class Receipt:
     upstream_digest: str | None
     partition_digest: str | None
     output_digest: str | None
+    output_digest_spec_sha256: str | None
     upstream_receipts: list[dict[str, Any]]
     unknown_reasons: tuple[str, ...]
     receipt_version: str = RECEIPT_VERSION
@@ -68,6 +69,7 @@ def build_receipt(
     partition_declaration: str | None,
     has_cowriters: bool,
     output_digest: str | None,
+    output_digest_spec_sha256: str | None,
 ) -> Receipt:
     """Build a receipt without guessing a missing partition or output digest."""
     partition_key = partition_declaration or WHOLE_ASSET_PARTITION
@@ -78,6 +80,8 @@ def build_receipt(
         reasons.append("upstream_digest_unavailable")
     if output_digest is None:
         reasons.append("output_digest_unavailable")
+    if output_digest_spec_sha256 is None:
+        reasons.append("output_digest_spec_unavailable")
     if has_cowriters and partition_declaration is None:
         reasons.append("partition_undeclared")
     partition_digest = None if has_cowriters and partition_declaration is None else canonical_digest({
@@ -107,6 +111,7 @@ def build_receipt(
         upstream_digest=upstream_digest,
         partition_digest=partition_digest,
         output_digest=output_digest,
+        output_digest_spec_sha256=output_digest_spec_sha256,
         upstream_receipts=normalised_upstream,
         unknown_reasons=tuple(sorted(set(reasons))),
     )
@@ -123,7 +128,7 @@ def classify_receipt(stored: Receipt | None, current: Receipt | None) -> tuple[F
     if stored.receipt_version != current.receipt_version:
         return "stale", ["receipt_version_changed"]
     changed = [
-        name for name in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest")
+        name for name in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest", "output_digest_spec_sha256")
         if getattr(stored, name) != getattr(current, name)
     ]
     return ("stale", [f"{name}_changed" for name in changed]) if changed else ("fresh", [])
@@ -156,7 +161,7 @@ def _stored_receipt(cur, receipt: Receipt) -> Receipt | None:
     cur.execute(
         """
         SELECT code_digest, config_digest, upstream_digest, partition_digest,
-               output_digest, upstream_receipts, unknown_reasons, receipt_version
+               output_digest, output_digest_spec_sha256, upstream_receipts, unknown_reasons, receipt_version
           FROM asset_provenance_receipts
          WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
         """,
@@ -169,7 +174,8 @@ def _stored_receipt(cur, receipt: Receipt) -> Receipt | None:
         partition_key=receipt.partition_key,
         code_digest=old.get("code_digest"), config_digest=old.get("config_digest"),
         upstream_digest=old.get("upstream_digest"), partition_digest=old.get("partition_digest"),
-        output_digest=old.get("output_digest"), upstream_receipts=list(old.get("upstream_receipts") or []),
+        output_digest=old.get("output_digest"), output_digest_spec_sha256=old.get("output_digest_spec_sha256"),
+        upstream_receipts=list(old.get("upstream_receipts") or []),
         unknown_reasons=tuple(old.get("unknown_reasons") or []),
         receipt_version=old.get("receipt_version") or RECEIPT_VERSION,
     )
@@ -224,20 +230,21 @@ def persist_successful_receipt(cur, receipt: Receipt, build_id: str | None) -> t
         """
         INSERT INTO asset_provenance_receipts
           (asset_id, chart_id, partition_key, receipt_version, code_digest, config_digest,
-           upstream_digest, partition_digest, output_digest, upstream_receipts, receipt_state,
+           upstream_digest, partition_digest, output_digest, output_digest_spec_sha256, upstream_receipts, receipt_state,
            unknown_reasons, observed_at, build_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, NOW(), %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, NOW(), %s)
         ON CONFLICT (asset_id, scope_key, partition_key) DO UPDATE SET
           receipt_version = EXCLUDED.receipt_version, code_digest = EXCLUDED.code_digest,
           config_digest = EXCLUDED.config_digest, upstream_digest = EXCLUDED.upstream_digest,
           partition_digest = EXCLUDED.partition_digest, output_digest = EXCLUDED.output_digest,
+          output_digest_spec_sha256 = EXCLUDED.output_digest_spec_sha256,
           upstream_receipts = EXCLUDED.upstream_receipts, receipt_state = EXCLUDED.receipt_state,
           unknown_reasons = EXCLUDED.unknown_reasons, observed_at = EXCLUDED.observed_at,
           build_id = EXCLUDED.build_id
         """,
         (receipt.asset_id, receipt.chart_id, receipt.partition_key, receipt.receipt_version,
          receipt.code_digest, receipt.config_digest, receipt.upstream_digest, receipt.partition_digest,
-         receipt.output_digest, json.dumps(receipt.upstream_receipts), receipt.receipt_state,
+         receipt.output_digest, receipt.output_digest_spec_sha256, json.dumps(receipt.upstream_receipts), receipt.receipt_state,
          json.dumps(list(receipt.unknown_reasons)), build_id),
     )
     _upsert_freshness(cur, receipt, freshness, reasons)
@@ -255,6 +262,7 @@ def capture_and_persist_receipt(
     upstream_digest: str | None,
     upstream_receipts: list[dict[str, Any]],
     output_digest: str | None = None,
+    output_digest_spec_sha256: str | None = None,
     partition_declaration: str | None = None,
     has_cowriters: bool | None = None,
 ) -> tuple[FreshnessState, list[str]]:
@@ -265,6 +273,6 @@ def capture_and_persist_receipt(
         asset_id=asset_id, chart_id=chart_id, code_digest=code_digest, config=config,
         upstream_digest=upstream_digest, upstream_receipts=upstream_receipts,
         partition_declaration=partition_declaration, has_cowriters=has_cowriters,
-        output_digest=output_digest,
+        output_digest=output_digest, output_digest_spec_sha256=output_digest_spec_sha256,
     )
     return persist_successful_receipt(cur, receipt, build_id)

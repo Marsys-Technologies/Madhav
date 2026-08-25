@@ -211,6 +211,44 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING')
   })
 
+  it('admits accepted rebuild evidence only after an exact completed run/asset and matching proven content receipt', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ proven: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:1',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) },
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(queryMock.mock.calls[0][0]).toContain("receipt.output_digest_spec_sha256 = $4")
+    expect(queryMock.mock.calls[0][0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
+    expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
+  })
+
+  it('fails closed when the completed run has no matching proven receipt', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ proven: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:missing',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) },
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching proven content receipt/i)
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects legacy or malformed rebuild evidence before it can query or append an event', async () => {
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:legacy',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:not-a-uuid',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/output digest/i)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
   it('rejects a reused evidence idempotency key whose immutable receipt differs', async () => {
     queryMock
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })

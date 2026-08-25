@@ -42,6 +42,18 @@ const receipt = z.object({
   if (['accepted_rebuild_observed', 'producer_covered'].includes(value.event_type) && !value.source_ref.startsWith('build_run:')) {
     context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires an exact build_run:<id> source reference.` })
   }
+  if (value.event_type === 'accepted_rebuild_observed') {
+    if (!/^build_run:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.source_ref)) {
+      context.addIssue({ code: 'custom', path: ['source_ref'], message: 'accepted_rebuild_observed requires an exact build_run UUID source reference.' })
+    }
+    const payload = z.object({
+      output_digest: z.string().regex(/^[a-f0-9]{64}$/),
+      output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict().safeParse(value.evidence_payload)
+    if (!payload.success) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires only output_digest and output_digest_spec_sha256 SHA-256 fields.' })
+    }
+  }
 })
 
 const definition = z.object({

@@ -56,12 +56,14 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
 
   it('records a typed build receipt with actor attribution', async () => {
     superAdmin()
-    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ proven: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
       idempotency_key: 'bg:test:run-1', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
-      evidence_payload: { run: 'run-1' }, source_kind: 'build_run', source_ref: 'build_run:run-1', observed_at: '2026-08-25T09:00:00.000Z',
+      evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
     expect(queryMock.mock.calls[0][1]).toContain('admin-1')
@@ -125,21 +127,34 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
+  it('rejects legacy rebuild evidence without both reviewed content hashes', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:legacy', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
   it('maps a conflicting immutable evidence replay to 409 rather than reporting idempotent success', async () => {
     superAdmin()
     queryMock
+      .mockResolvedValueOnce({ rows: [{ proven: true }] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rows: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'bg:test:run-1',
         event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
-        evidence_payload: { run: 'different-run' }, source_kind: 'build_run', source_ref: 'build_run:run-1',
+        evidence_payload: { output_digest: 'c'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
         observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
       }] })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
       idempotency_key: 'bg:test:run-1', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
-      evidence_payload: { run: 'run-1' }, source_kind: 'build_run', source_ref: 'build_run:run-1', observed_at: '2026-08-25T09:00:00.000Z',
+      evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(409)
     expect(auditMock).not.toHaveBeenCalled()

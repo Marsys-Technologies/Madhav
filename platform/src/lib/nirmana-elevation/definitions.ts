@@ -417,10 +417,53 @@ export interface RecordNirmanaElevationEvidenceInput {
   recorded_by: string
 }
 
+const OutputDigestEvidenceSchema = z.object({
+  output_digest: z.string().regex(/^[a-f0-9]{64}$/),
+  output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
+const buildRunSourceRef = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+
+async function requireAcceptedRebuildProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+  const sourceMatch = buildRunSourceRef.exec(input.source_ref)
+  const payload = OutputDigestEvidenceSchema.safeParse(input.evidence_payload)
+  if (!sourceMatch || !payload.success) {
+    throw new Error('accepted_rebuild_observed requires an exact build_run UUID and output digest/spec SHA-256 evidence.')
+  }
+  const verified = await query<{ proven: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM build_runs run
+         JOIN build_run_assets asset ON asset.run_id = run.id
+         JOIN asset_registry registry ON registry.asset_id = asset.asset_id
+         JOIN asset_provenance_receipts receipt
+           ON receipt.build_id = run.id
+          AND receipt.asset_id = asset.asset_id
+        WHERE run.id = $1::uuid
+          AND run.state = 'completed'
+          AND run.triggered_by <> 'nirmana-f0-machinery-canary'
+          AND asset.asset_id = $2
+          AND asset.state = 'complete'
+          AND receipt.receipt_state = 'proven'
+          AND receipt.receipt_version = 'nirmana-provenance-receipt-v2'
+          AND receipt.output_digest = $3
+          AND receipt.output_digest_spec_sha256 = $4
+          AND ((registry.scope = 'global' AND receipt.chart_id IS NULL)
+            OR (registry.scope = 'per_chart' AND receipt.chart_id = run.chart_id))
+     ) AS proven`,
+    [sourceMatch[1], input.entity_id, payload.data.output_digest, payload.data.output_digest_spec_sha256],
+  )
+  if (verified.rows[0]?.proven !== true) {
+    throw new Error('accepted_rebuild_observed requires a completed exact run/asset with a matching proven content receipt.')
+  }
+}
+
 /** Appends a receipt; an idempotent retry deliberately leaves the first receipt intact. */
 export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevationEvidenceInput): Promise<'created' | 'idempotent'> {
   if (Number.isNaN(Date.parse(input.observed_at))) {
     throw new Error('Evidence observed_at must be an ISO-8601 timestamp.')
+  }
+  if (input.event_type === 'accepted_rebuild_observed') {
+    await requireAcceptedRebuildProvenance(input)
   }
   const inserted = await query(
     `INSERT INTO nirmana_elevation_campaign_events
