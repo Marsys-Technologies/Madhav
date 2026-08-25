@@ -92,6 +92,66 @@ def test_component_statement_orders_by_reviewed_natural_keys_without_a_json_sort
     assert "row_json COLLATE" not in statement
 
 
+def test_component_where_equals_is_parameterized_and_scopes_preflight_and_stream():
+    filtered = {
+        "version": "nirmana-output-digest-spec-v1",
+        "components": [{
+            "name": "ontology_doshas",
+            "relation": "brahma_ontology",
+            "key_columns": ["entity_class", "canonical_id"],
+            "value_columns": ["entity_class", "canonical_id", "canonical_name_en"],
+            "where_equals": {"entity_class": "dosha' OR TRUE --"},
+        }],
+    }
+    cursor = _Cursor(
+        row={"spec": filtered, "spec_sha256": canonical_digest(filtered)},
+        batches=[[{"row_json": '{"entity_class":"dosha","canonical_id":"kala_sarpa"}'}]],
+    )
+
+    digest, _ = compute_output_digest(cursor, asset_id="bg_doshas")
+
+    assert digest is not None
+    preflight_sql, preflight_params = cursor.executed[-2]
+    stream_sql, stream_params = cursor.executed[-1]
+    assert 'source."entity_class" = %s' in preflight_sql
+    assert 'source."entity_class" = %s' in stream_sql
+    assert "OR TRUE" not in preflight_sql
+    assert "OR TRUE" not in stream_sql
+    assert preflight_params == ("dosha' OR TRUE --",)
+    assert stream_params == ("dosha' OR TRUE --",)
+
+
+def test_one_relation_can_be_split_into_disjoint_reviewed_null_scopes():
+    split = {
+        "version": "nirmana-output-digest-spec-v1",
+        "components": [
+            {
+                "name": "compendium_by_chapter",
+                "relation": "brahma_compendium_index",
+                "key_columns": ["text_id", "chapter_num"],
+                "value_columns": ["text_id", "chapter_num", "summary_text"],
+                "where_is_null": ["topic_id"],
+            },
+            {
+                "name": "compendium_by_topic",
+                "relation": "brahma_compendium_index",
+                "key_columns": ["text_id", "topic_id"],
+                "value_columns": ["text_id", "topic_id", "summary_text"],
+                "where_is_null": ["chapter_num"],
+            },
+        ],
+    }
+    cursor = _Cursor(row={"spec": split, "spec_sha256": canonical_digest(split)})
+
+    loaded = load_output_digest_spec(cursor, "bg_compendium_index")
+
+    assert loaded is not None
+    chapter_sql = _component_statement(split["components"][0])
+    topic_sql = _component_statement(split["components"][1])
+    assert 'source."topic_id" IS NULL' in chapter_sql
+    assert 'source."chapter_num" IS NULL' in topic_sql
+
+
 def test_digest_uses_a_named_server_cursor_instead_of_client_buffering():
     stream = _Cursor(
         batches=[[{"row_json": '{"rule_id":"a","rule_text":"first"}'}]],
@@ -235,3 +295,45 @@ def test_migration_600_closes_exactly_the_previously_unspecced_wave0_gap():
         for component in specs_600["bg_transit_rules"][1]["components"]
     }
     assert transit_relations == {"bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"}
+
+
+def test_migration_601_completes_every_frozen_l0_build_digest_spec():
+    platform_root = pathlib.Path(__file__).resolve().parents[4]
+    repo_root = platform_root.parent
+    seeded = {}
+    for filename in (
+        "598_nirmana_output_digest_specs.sql",
+        "600_nirmana_l0_wave0_output_digest_specs.sql",
+        "601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
+    ):
+        seeded.update(_migration_specs(platform_root / "supabase/migrations" / filename))
+
+    manifest = json.loads(
+        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json").read_text()
+    )
+    l0_builds = {
+        asset["asset_id"]
+        for asset in manifest["assets"]
+        if asset["layer"] == "L0" and asset["execution_obligation"] == "build"
+    }
+    assert l0_builds == set(seeded)
+
+    specs_601 = _migration_specs(
+        platform_root / "supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql"
+    )
+    assert len(specs_601) == 10
+    compendium = specs_601["bg_compendium_index"][1]["components"]
+    assert {component["where_is_null"][0] for component in compendium} == {
+        "chapter_num", "topic_id",
+    }
+    for asset_id, entity_class in (
+        ("bg_dasha_systems", "dasha_system"),
+        ("bg_doshas", "dosha"),
+        ("bg_yogas", "yoga"),
+    ):
+        ontology = next(
+            component
+            for component in specs_601[asset_id][1]["components"]
+            if component["relation"] == "brahma_ontology"
+        )
+        assert ontology["where_equals"] == {"entity_class": entity_class}
