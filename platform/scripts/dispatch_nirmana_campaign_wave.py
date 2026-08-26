@@ -105,6 +105,14 @@ def _valid_git_commit_source(row: Mapping[str, Any]) -> bool:
     )
 
 
+def _valid_git_commit_sha(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
 def _load_l0_canonical_receipt_contract() -> dict[str, str]:
     """Read the checked-in L0 receipt grounding contract or fail closed.
 
@@ -322,16 +330,15 @@ def validate_wave_evidence_bindings(
                     f"current campaign evidence has invalid provenance for {asset_id}"
                 )
             if canonical_analysis_digests is not None:
-                if analysis_digest != canonical_analysis_digests[asset_id]:
-                    raise RuntimeError(
-                        "campaign evidence does not match the current canonical "
-                        f"analysis receipt for {asset_id}"
-                    )
-                if row["source_ref"] != f"git:{reviewed_deployment_sha}":
-                    raise RuntimeError(
-                        "campaign evidence does not match the reviewed deployment "
-                        f"convergence SHA for {asset_id}"
-                    )
+                # Evidence is append-only.  A prior valid receipt may retain
+                # the same registry fingerprint while an explicitly reviewed
+                # deployment advances the canonical receipt/source pair.  It
+                # remains auditable history, not current dispatch authority.
+                if (
+                    analysis_digest != canonical_analysis_digests[asset_id]
+                    or row["source_ref"] != f"git:{reviewed_deployment_sha}"
+                ):
+                    continue
             current_rows[row["event_type"]].append((row, analysis_digest))
 
         analyses = current_rows["asset_analysis_accepted"]
@@ -621,11 +628,16 @@ def create_campaign_run(
     commit: bool,
     snapshot_ref: str | None = None,
     expected_manifest_digest: str | None = None,
+    reviewed_deployment_sha: str | None = None,
 ) -> dict[str, Any]:
     if commit and not snapshot_ref:
         raise ValueError("committed campaign wave requires a recovery snapshot reference")
     if commit and not expected_manifest_digest:
         raise ValueError("committed campaign wave requires the reviewed preview manifest digest")
+    if layer == "L0" and not _valid_git_commit_sha(reviewed_deployment_sha):
+        raise ValueError(
+            "L0 campaign dispatch requires an exact reviewed deployed commit SHA"
+        )
     import psycopg
     import psycopg.rows
 
@@ -666,9 +678,8 @@ def create_campaign_run(
         }
         writer_digests = _load_writer_digests()
         canonical_analysis_digests: Mapping[str, str] | None = None
-        reviewed_deployment_sha: str | None = None
         if layer == "L0":
-            canonical_analysis_digests, reviewed_deployment_sha = (
+            canonical_analysis_digests, _convergence_commit = (
                 _current_l0_analysis_receipt_digests(
                     selected_assets=selected,
                     candidates_by_id=candidate_by_id,
@@ -926,6 +937,14 @@ def main() -> int:
         help="Required with --commit; must equal the prior dry-run preview digest",
     )
     parser.add_argument(
+        "--reviewed-deployment-sha",
+        default=os.environ.get("NIRMANA_DEPLOYED_SHA"),
+        help=(
+            "Exact current deployed commit SHA for L0 evidence; defaults to "
+            "NIRMANA_DEPLOYED_SHA when configured"
+        ),
+    )
+    parser.add_argument(
         "--commit",
         action="store_true",
         help="Commit and dispatch the run; omission is a rollback-only dry run",
@@ -939,6 +958,10 @@ def main() -> int:
         parser.error("--commit requires --snapshot-ref")
     if args.commit and not args.expected_manifest_digest:
         parser.error("--commit requires --expected-manifest-digest from a reviewed dry run")
+    if args.layer == "L0" and not _valid_git_commit_sha(args.reviewed_deployment_sha):
+        parser.error(
+            "L0 requires --reviewed-deployment-sha (or configured NIRMANA_DEPLOYED_SHA)"
+        )
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print(
@@ -956,6 +979,7 @@ def main() -> int:
             commit=args.commit,
             snapshot_ref=args.snapshot_ref,
             expected_manifest_digest=args.expected_manifest_digest,
+            reviewed_deployment_sha=args.reviewed_deployment_sha,
         )
     except Exception as exc:
         print(f"ERROR: campaign wave run not created: {exc}", file=sys.stderr)
