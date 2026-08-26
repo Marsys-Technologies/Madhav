@@ -166,3 +166,34 @@ git add platform/src/lib/nirmana-elevation/types.ts \
   docs/superpowers/plans/2026-08-26-ntap-label-acceptance-release-fix.md
 git commit -m "fix(nirmana): expose baseline observation provenance"
 ```
+
+### Task 4: Preserve historical retries and source-time freshness
+
+**Files:**
+- Modify: `platform/src/lib/nirmana-elevation/labels.ts`
+- Modify: `platform/src/lib/nirmana-elevation/__tests__/labels.test.ts`
+- Modify: `platform/src/lib/nirmana-elevation/snapshot.ts`
+- Modify: `platform/src/lib/nirmana-elevation/__tests__/snapshot.test.ts`
+- Modify: `platform/src/lib/nirmana-elevation/__tests__/monitor.test.ts`
+- Modify: `infra/scheduler/main.tf`
+- Modify: scheduler contract tests and `infra/scheduler/README.md` only if the IAM binding changes.
+
+**Interfaces:**
+- Consumes: immutable legacy catalogue receipts, persisted monitor `source_observed_at`, `freshness_state`, and `freshness_deadline_at`.
+- Produces: exact-safe legacy idempotency, truthful source-time program-monitor freshness, least-privilege scheduler OIDC delegation, and full one-field label-preservation coverage.
+
+- [ ] **Step 1: Add failing regressions**
+
+Add tests that (a) accept an exact pre-provenance receipt only when its immutable event identity, digest, count, and persisted label digests match; (b) show a recently inserted monitor row whose persisted source deadline has elapsed as stale; and (c) independently preserve Sanskrit-only, English-only, and description-only source labels without adding the placeholder.
+
+- [ ] **Step 2: Run focused tests and observe red**
+
+Run label, snapshot, and monitor focused suites. Expected: legacy retry conflicts, source-age is recomputed from insertion time, and the label-preservation matrix is absent.
+
+- [ ] **Step 3: Make the smallest compatible correction**
+
+Recognize only the exact legacy two-field receipt as an idempotent predecessor; require complete provenance for new receipts. Project persisted monitor source/freshness fields and derive dashboard freshness from its deadline, never row insertion time. Retain null/unavailable behavior. Narrow the Scheduler token-minting IAM role to OIDC-only if the platform contract supports it, updating tests/docs together.
+
+- [ ] **Step 4: Verify and commit**
+
+Run all NTAP-focused tests, TypeScript, targeted ESLint, Terraform formatting/validation and diff check. Commit only the reviewed changes.
