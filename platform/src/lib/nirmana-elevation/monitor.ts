@@ -1,6 +1,7 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
+import { query } from '@/lib/db/client'
 import {
   assertFreezableManifest,
   assertManifestMatchesRegistry,
@@ -17,6 +18,7 @@ import {
 import {
   NirmanaLegacyAliasSchema,
 } from './label-contract'
+import { loadNirmanaReleaseStatus } from './release'
 
 const layerIds = {
   brahmagyan: 'L0',
@@ -107,6 +109,57 @@ export interface NirmanaMonitorComparisonObservation {
   incomplete_label_asset_ids?: string[]
   release_in_sync?: boolean | null
 }
+
+export interface NirmanaMonitorObservation {
+  id: string
+  observed_at: string
+  status: NirmanaMonitorStatusCode
+  affected_asset_ids: string[]
+  current_definition_sha256: string | null
+  candidate_definition_sha256: string | null
+  registry_identity_sha256: string | null
+  registry_contract_sha256: string | null
+  candidate_catalogue_sha256: string | null
+  selected_catalogue_sha256: string | null
+  runtime_sha256: string | null
+  release_sha256: string | null
+  public_detail: string
+  source_error_code: string | null
+}
+
+interface StoredFrozenDefinition {
+  definition_revision: string
+  definition_status: 'frozen'
+  manifest: NirmanaElevationManifest
+  manifest_sha256: string
+}
+
+interface AcceptedCatalogueReceipt {
+  catalogue_revision: string
+  catalogue_sha256: string
+}
+
+interface SelectedLabelRow {
+  asset_id: string
+  sanskrit_name: string | null
+  english_name: string | null
+  description: string | null
+  legacy_aliases: NirmanaBaselineLabel['legacy_aliases']
+  source_ref: string
+  label_digest: string
+}
+
+const MONITOR_PUBLIC_DETAIL: Record<NirmanaMonitorStatusCode, string> = {
+  in_sync: 'Program sources are synchronized.',
+  baseline_missing: 'No accepted frozen program definition exists.',
+  plan_adaptation_required: 'Registry identity or dependencies differ from the accepted definition.',
+  evidence_refresh_required: 'Registry execution contracts require refreshed evidence.',
+  label_refresh_required: 'The governed label catalogue requires refresh.',
+  release_attention: 'Release reconciliation requires attention.',
+  source_unavailable: 'Authoritative source is unavailable.',
+}
+
+const SOURCE_UNAVAILABLE_CODE = 'NIRMANA_SOURCE_UNAVAILABLE'
 
 function orderedRegistryRows(rows: NirmanaRegistryContractRow[]): NirmanaRegistryContractRow[] {
   return [...rows].sort((left, right) => {
@@ -315,4 +368,225 @@ export function classifyNirmanaDivergence(input: {
   }
 
   return statusResult('in_sync', candidate, currentDigest)
+}
+
+async function loadMonitorInputs(): Promise<{
+  candidate: NirmanaBaselineCandidate
+  definition: StoredFrozenDefinition | null
+  selectedCatalogueSha256: string | null
+  selectedCatalogueAssetIds: string[]
+  incompleteLabelAssetIds: string[]
+  runtimeSha256: string
+  releaseSha256: string
+  releaseInSync: boolean | null
+}> {
+  const registry = await query<NirmanaRegistryContractRow>(
+    `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
+            sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
+            target_table, count_sql, integrity_check_sql, health_probe,
+            natural_key_partition, superseded_by, data_disposition, dead_flag,
+            sanskrit_name, english_name, english_description
+       FROM asset_registry
+      ORDER BY layer, sort_order, asset_id`,
+  )
+  const candidate = buildNirmanaBaselineCandidate(registry.rows)
+
+  const definitions = await query<StoredFrozenDefinition>(
+    `SELECT definition_revision, definition_status, manifest, manifest_sha256
+       FROM nirmana_elevation_campaign_definitions
+      WHERE campaign_id = 'nirmana-elevation'
+        AND definition_status = 'frozen'
+        AND superseded_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+  )
+  const definition = definitions.rows[0] ?? null
+
+  const receipts = await query<AcceptedCatalogueReceipt>(
+    `SELECT entity_id AS catalogue_revision,
+            evidence_payload ->> 'catalogue_sha256' AS catalogue_sha256
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = 'nirmana-elevation'
+        AND definition_revision = $1
+        AND event_type = 'asset_label_catalogue_accepted'
+        AND entity_type = 'label_catalogue'
+      ORDER BY recorded_at DESC, observed_at DESC, event_id DESC
+      LIMIT 1`,
+    [definition?.definition_revision ?? null],
+  )
+  const receipt = receipts.rows[0] ?? null
+  const labels = await query<SelectedLabelRow>(
+    `SELECT asset_id, sanskrit_name, english_name, description, legacy_aliases,
+            source_ref, label_digest
+       FROM nirmana_elevation_asset_labels
+      WHERE campaign_id = 'nirmana-elevation'
+        AND definition_revision = $1
+        AND catalogue_revision = $2
+      ORDER BY asset_id`,
+    [definition?.definition_revision ?? null, receipt?.catalogue_revision ?? null],
+  )
+  const selectedCatalogueSha256 = receipt !== null && labels.rows.length > 0
+    ? canonicalCandidateLabelCatalogueDigest(labels.rows.map((label) => ({
+      asset_id: label.asset_id,
+      sanskrit_name: label.sanskrit_name,
+      english_name: label.english_name,
+      description: label.description,
+      legacy_aliases: label.legacy_aliases,
+      source_ref: label.source_ref,
+    })))
+    : null
+  const receiptDigestValid = receipt !== null
+    && /^[a-f0-9]{64}$/.test(receipt.catalogue_sha256)
+    && selectedCatalogueSha256 === receipt.catalogue_sha256
+    && labels.rows.every((label) => label.label_digest === receipt.catalogue_sha256)
+  const selectedCatalogueAssetIds = labels.rows.map((label) => label.asset_id).sort()
+  const incompleteLabelAssetIds = [...new Set([
+    ...labels.rows
+    .filter((label) => label.sanskrit_name === null && label.english_name === null && label.description === null)
+      .map((label) => label.asset_id),
+    ...(!receiptDigestValid && receipt !== null ? candidate.labels.map((label) => label.asset_id) : []),
+  ])].sort()
+
+  const throughput = await query(
+    `SELECT asset_id, chart_id, state, last_built_at
+       FROM asset_throughput
+      WHERE chart_id = $1 OR chart_id IS NULL
+      ORDER BY asset_id, chart_id NULLS FIRST, last_built_at DESC NULLS LAST`,
+    [CANONICAL_NIRMANA_CHART_ID],
+  )
+  const runs = await query(
+    `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at
+       FROM build_runs
+      WHERE chart_id = $1
+        AND state IN ('planned', 'running', 'paused')
+      ORDER BY created_at, id`,
+    [CANONICAL_NIRMANA_CHART_ID],
+  )
+  const runAssets = await query(
+    `SELECT bra.run_id, bra.asset_id, bra.position, bra.state,
+            bra.started_at, bra.ended_at, bra.error
+       FROM build_run_assets bra
+       JOIN build_runs br ON br.id = bra.run_id
+      WHERE br.chart_id = $1
+        AND br.state IN ('planned', 'running', 'paused')
+      ORDER BY bra.run_id, bra.position, bra.asset_id`,
+    [CANONICAL_NIRMANA_CHART_ID],
+  )
+  const substeps = await query(
+    `SELECT bsp.chart_id, bsp.asset_id, bsp.substep_key, bsp.build_fingerprint,
+            bsp.rows_written, bsp.completed_at
+       FROM build_substep_progress bsp
+      WHERE bsp.chart_id = $1
+        AND EXISTS (
+          SELECT 1 FROM build_runs br
+           WHERE br.chart_id = bsp.chart_id
+             AND br.state IN ('planned', 'running', 'paused')
+        )
+      ORDER BY bsp.asset_id, bsp.substep_key`,
+    [CANONICAL_NIRMANA_CHART_ID],
+  )
+  const runtimeSha256 = digest({
+    asset_throughput: throughput.rows,
+    build_runs: runs.rows,
+    build_run_assets: runAssets.rows,
+    build_substep_progress: substeps.rows,
+  })
+
+  const release = await loadNirmanaReleaseStatus()
+  const releaseSha256 = digest({
+    main_sha: release.release.main_sha,
+    deployed_sha: release.release.deployed_sha,
+    deployed_revision: release.release.deployed_revision,
+    production_in_sync: release.release.production_in_sync,
+  })
+
+  return {
+    candidate,
+    definition,
+    selectedCatalogueSha256,
+    selectedCatalogueAssetIds,
+    incompleteLabelAssetIds,
+    runtimeSha256,
+    releaseSha256,
+    releaseInSync: release.release.production_in_sync,
+  }
+}
+
+async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>): Promise<NirmanaMonitorObservation> {
+  const affectedAssetIds = [...new Set(input.affected_asset_ids)].sort()
+  const inserted = await query<NirmanaMonitorObservation>(
+    `INSERT INTO nirmana_elevation_monitor_observations
+       (status, affected_asset_ids, current_definition_sha256,
+        candidate_definition_sha256, registry_identity_sha256,
+        registry_contract_sha256, candidate_catalogue_sha256,
+        selected_catalogue_sha256, runtime_sha256, release_sha256,
+        public_detail, source_error_code)
+     VALUES ($1, $2::text[], $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id, observed_at, status, affected_asset_ids,
+               current_definition_sha256, candidate_definition_sha256,
+               registry_identity_sha256, registry_contract_sha256,
+               candidate_catalogue_sha256, selected_catalogue_sha256,
+               runtime_sha256, release_sha256, public_detail, source_error_code`,
+    [
+      input.status,
+      affectedAssetIds,
+      input.current_definition_sha256,
+      input.candidate_definition_sha256,
+      input.registry_identity_sha256,
+      input.registry_contract_sha256,
+      input.candidate_catalogue_sha256,
+      input.selected_catalogue_sha256,
+      input.runtime_sha256,
+      input.release_sha256,
+      input.public_detail,
+      input.source_error_code,
+    ],
+  )
+  const observation = inserted.rows[0]
+  if (!observation) throw new Error('Nirmana elevation monitor observation was not recorded.')
+  return observation
+}
+
+export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObservation> {
+  let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>
+  try {
+    const inputs = await loadMonitorInputs()
+    const comparison = classifyNirmanaDivergence({
+      definition: inputs.definition,
+      candidate: inputs.candidate,
+      observation: {
+        selected_catalogue_sha256: inputs.selectedCatalogueSha256,
+        selected_catalogue_asset_ids: inputs.selectedCatalogueAssetIds,
+        incomplete_label_asset_ids: inputs.incompleteLabelAssetIds,
+        release_in_sync: inputs.releaseInSync,
+      },
+    })
+    observation = {
+      ...comparison,
+      candidate_definition_sha256: comparison.candidate_definition_sha256,
+      candidate_catalogue_sha256: comparison.candidate_catalogue_sha256,
+      selected_catalogue_sha256: inputs.selectedCatalogueSha256,
+      runtime_sha256: inputs.runtimeSha256,
+      release_sha256: inputs.releaseSha256,
+      public_detail: MONITOR_PUBLIC_DETAIL[comparison.status],
+      source_error_code: null,
+    }
+  } catch (cause) {
+    console.error('[nirmana-elevation] monitor source read failed', { cause })
+    observation = {
+      status: 'source_unavailable',
+      affected_asset_ids: [],
+      current_definition_sha256: null,
+      candidate_definition_sha256: null,
+      registry_identity_sha256: null,
+      registry_contract_sha256: null,
+      candidate_catalogue_sha256: null,
+      selected_catalogue_sha256: null,
+      runtime_sha256: null,
+      release_sha256: null,
+      public_detail: MONITOR_PUBLIC_DETAIL.source_unavailable,
+      source_error_code: SOURCE_UNAVAILABLE_CODE,
+    }
+  }
+  return insertMonitorObservation(observation)
 }
