@@ -17,12 +17,18 @@ const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
 const auditMock = vi.fn()
 vi.mock('@/lib/admin/audit', () => ({ writeAuditLog: (...args: unknown[]) => auditMock(...args) }))
+const labelCatalogueRecorderMock = vi.fn()
+vi.mock('@/lib/nirmana-elevation/labels', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/nirmana-elevation/labels')>(),
+  recordNirmanaElevationLabelCatalogue: (...args: unknown[]) => labelCatalogueRecorderMock(...args),
+}))
 
 import {
   canonicalManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
   canonicalRegistryContractDigest,
 } from '@/lib/nirmana-elevation/definitions'
+import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
 
 const registry_contract = {
   sort_order: 1, scope: 'global' as const, asset_kind: 'data' as const, catalog_status: 'CURRENT' as const,
@@ -75,6 +81,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     transactionReleaseMock.mockReset()
     authMock.mockReset()
     auditMock.mockReset().mockResolvedValue(undefined)
+    labelCatalogueRecorderMock.mockReset()
   })
 
   it('refuses an unauthenticated write before parsing or recording a receipt', async () => {
@@ -82,6 +89,44 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const { POST } = await import('../route')
     const response = await POST(request({ command: 'record_evidence' }))
     expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('records a governed label catalogue with a server-derived actor and compact audit metadata', async () => {
+    superAdmin()
+    labelCatalogueRecorderMock.mockResolvedValue('created')
+    const labels = [{
+      asset_id: 'ka_smriti', sanskrit_name: 'Kala Smriti', english_name: 'Per-varsha digest',
+      description: 'Produces a year-by-year digest of annual chart features.', legacy_aliases: [],
+      source_ref: 'PARIKSHA/ASSET_REGISTRY.md#kala-smriti',
+    }]
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_label_catalogue', campaign_id: 'nirmana-elevation', definition_revision: 'r1',
+      catalogue_revision: 'labels-v1', labels, catalogue_sha256: canonicalLabelCatalogueDigest(labels),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(labelCatalogueRecorderMock).toHaveBeenCalledWith({
+      campaign_id: 'nirmana-elevation', definition_revision: 'r1', catalogue_revision: 'labels-v1', labels,
+      catalogue_sha256: canonicalLabelCatalogueDigest(labels), recorded_by: 'admin-1',
+    })
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_label_catalogue_recorded', null, {
+      campaign_id: 'nirmana-elevation', definition_revision: 'r1', catalogue_revision: 'labels-v1',
+      catalogue_sha256: canonicalLabelCatalogueDigest(labels), asset_count: 1, outcome: 'created',
+    })
+  })
+
+  it('does not record a label catalogue for a non-super-admin request', async () => {
+    authMock.mockResolvedValue(NextResponse.json({ error: 'forbidden' }, { status: 403 }))
+    const { POST } = await import('../route')
+    const response = await POST(request({ command: 'record_label_catalogue' }))
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(labelCatalogueRecorderMock).not.toHaveBeenCalled()
     expect(queryMock).not.toHaveBeenCalled()
   })
 
@@ -122,6 +167,93 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
+  })
+
+  it('records the implementation acceptance milestone receipt', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:implementation', event_type: 'implementation_accepted', entity_type: 'asset',
+      entity_id: 'bg_prashna_rules', layer: 'L0', evidence_payload: { change_ref: 'commit:abc123' },
+      source_kind: 'review', source_ref: 'review:implementation', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  it('rejects an invalid campaign-stage transition payload before any database write', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'stage:test:t0', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
+      entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'not-a-digest' },
+      source_kind: 'campaign_gate', source_ref: 'stage:T0_CENSUS', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      name: 'entity ID differs from the destination stage', entity_id: 'PLAN_FROZEN', layer: null,
+      payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'a null source targets a non-bootstrap stage', entity_id: 'T0_CENSUS', layer: null,
+      payload: { from_stage: null, to_stage: 'T0_CENSUS', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'the transition skips a canonical stage', entity_id: 'PLAN_FROZEN', layer: null,
+      payload: { from_stage: 'BOOTSTRAP', to_stage: 'PLAN_FROZEN', prerequisites_sha256: 'a'.repeat(64) },
+    },
+    {
+      name: 'the campaign-stage receipt carries a layer', entity_id: 'L0', layer: 'L0',
+      payload: { from_stage: 'F0_FOUNDATION', to_stage: 'L0', prerequisites_sha256: 'a'.repeat(64) },
+    },
+  ])('rejects a stage transition when $name', async ({ entity_id, layer, payload }) => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: `stage:invalid:${entity_id}`, event_type: 'stage_transition_accepted',
+      entity_type: 'campaign_stage', entity_id, layer, evidence_payload: payload,
+      source_kind: 'campaign_gate', source_ref: `stage:${entity_id}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps stage and foundation-lane receipts reachable through the record-evidence command union', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const stage = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'stage:test:bootstrap', event_type: 'stage_transition_accepted', entity_type: 'campaign_stage',
+      entity_id: 'BOOTSTRAP', layer: null,
+      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'a'.repeat(64) },
+      source_kind: 'campaign_gate', source_ref: 'stage:BOOTSTRAP', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    const lane = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'lane:test:A', event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane',
+      entity_id: 'A', layer: null, evidence_payload: { acceptance_sha256: 'b'.repeat(64) },
+      source_kind: 'campaign_gate', source_ref: 'foundation:A', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(stage.status).toBe(201)
+    expect(lane.status).toBe(201)
   })
 
   it('records an audited reconciling definition and freezes only its exact manifest', async () => {
@@ -191,6 +323,41 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     }))
     expect(response.status).toBe(400)
     expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects producer coverage without an exact build-run UUID reference', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:coverage', event_type: 'producer_covered', entity_type: 'asset', entity_id: 'bg_sign_medical', layer: 'L0',
+      evidence_payload: {}, source_kind: 'build_run', source_ref: 'build_run:not-a-uuid', observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts a typed definition-scoped build-run authorization receipt', async () => {
+    superAdmin()
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ authorized: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const runId = '33333333-3333-4333-8333-333333333333'
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: `run:${runId}:authorization`, event_type: 'build_run_authorized', entity_type: 'build_run', entity_id: runId, layer: 'L0',
+      evidence_payload: { wave_index: 2, asset_ids: ['bg_prashna_rules'], authorization_sha256: 'c'.repeat(64) },
+      source_kind: 'campaign_authorization', source_ref: `build_run:${runId}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(queryMock.mock.calls[0][0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
+    expect(queryMock.mock.calls[0][0]).toContain("execution_obligation' IN ('build', 'probe')")
+    expect(queryMock.mock.calls[0][0]).toContain('FROM unnest($6::text[]) AS authorized_asset(asset_id)')
+    expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
+    expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
   })
 
   it('rejects legacy rebuild evidence without both reviewed content hashes', async () => {

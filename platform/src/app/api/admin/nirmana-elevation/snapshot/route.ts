@@ -28,6 +28,6 @@ export async function GET() {
       return snapshotResponse(unavailableNirmanaElevationSnapshot(error), 503)
     }
     console.error('[api/admin/nirmana-elevation/snapshot] unexpected failure', error)
-    return snapshotResponse(unavailableNirmanaElevationSnapshot(new NirmanaElevationSourceError('asset_registry', error)), 503)
+    return snapshotResponse(unavailableNirmanaElevationSnapshot(new NirmanaElevationSourceError('asset_registry', { cause: error })), 503)
   }
 }

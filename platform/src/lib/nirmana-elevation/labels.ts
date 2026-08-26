@@ -1,0 +1,146 @@
+import 'server-only'
+import { createHash } from 'node:crypto'
+import { z } from 'zod'
+import { getPool } from '@/lib/db/client'
+import { NirmanaLegacyAliasSchema } from './label-contract'
+
+export { NirmanaLegacyAliasSchema } from './label-contract'
+
+export const NirmanaAssetLabelSchema = z.object({
+  asset_id: z.string().min(1),
+  sanskrit_name: z.string().min(1).nullable(),
+  english_name: z.string().min(1).nullable(),
+  description: z.string().min(1).nullable(),
+  legacy_aliases: z.array(NirmanaLegacyAliasSchema),
+  source_ref: z.string().min(1).max(512),
+}).strict().refine(
+  (value) => value.sanskrit_name !== null || value.english_name !== null || value.description !== null,
+  'At least one governed human-readable label is required.',
+)
+
+export const NirmanaLabelCatalogueInputSchema = z.object({
+  campaign_id: z.literal('nirmana-elevation'),
+  definition_revision: z.string().regex(/^[A-Za-z0-9._-]{1,128}$/),
+  catalogue_revision: z.string().regex(/^[A-Za-z0-9._-]{1,128}$/),
+  labels: z.array(NirmanaAssetLabelSchema).min(1),
+  catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  recorded_by: z.string().min(1),
+}).strict()
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  const object = value as Record<string, unknown>
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`).join(',')}}`
+}
+
+export function canonicalLabelCatalogueDigest(labels: z.infer<typeof NirmanaAssetLabelSchema>[]): string {
+  const parsed = z.array(NirmanaAssetLabelSchema).min(1).parse(labels)
+  const assetIds = new Set(parsed.map((label) => label.asset_id))
+  if (assetIds.size !== parsed.length) throw new Error('Label catalogue asset IDs must be unique.')
+  return createHash('sha256').update(stableJson([...parsed].sort((a, b) => a.asset_id.localeCompare(b.asset_id)))).digest('hex')
+}
+
+export async function recordNirmanaElevationLabelCatalogue(
+  raw: z.input<typeof NirmanaLabelCatalogueInputSchema>,
+): Promise<'created' | 'idempotent'> {
+  const input = NirmanaLabelCatalogueInputSchema.parse(raw)
+  const digest = canonicalLabelCatalogueDigest(input.labels)
+  if (digest !== input.catalogue_sha256) throw new Error('Label catalogue digest mismatch.')
+
+  const client = await (await getPool()).connect()
+  try {
+    await client.query('BEGIN')
+    const revisionIdentity = `${input.campaign_id}:${input.definition_revision}:${input.catalogue_revision}`
+    const receiptIdempotencyKey = `asset-label-catalogue:${input.catalogue_revision}`
+    await client.query(
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      [revisionIdentity],
+    )
+    const definition = await client.query(
+      `SELECT definition_status, manifest FROM nirmana_elevation_campaign_definitions
+       WHERE campaign_id = $1 AND definition_revision = $2 FOR SHARE`,
+      [input.campaign_id, input.definition_revision],
+    )
+    if (definition.rows[0]?.definition_status !== 'frozen') throw new Error('Labels require a frozen campaign definition.')
+    const manifestAssetIds = new Set(
+      ((definition.rows[0]?.manifest as { assets?: Array<{ asset_id?: string }> } | undefined)?.assets ?? [])
+        .map((asset) => asset.asset_id)
+        .filter((assetId): assetId is string => typeof assetId === 'string'),
+    )
+    if (input.labels.some((label) => !manifestAssetIds.has(label.asset_id))) {
+      throw new Error('Label catalogue contains an asset absent from the frozen definition.')
+    }
+
+    const existingReceipt = await client.query(
+      `SELECT evidence_payload
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND idempotency_key = $3
+        FOR SHARE`,
+      [input.campaign_id, input.definition_revision, receiptIdempotencyKey],
+    )
+    const existingPayload = existingReceipt.rows[0]?.evidence_payload as Record<string, unknown> | undefined
+    if (existingPayload
+      && (existingPayload.catalogue_sha256 !== digest || existingPayload.asset_count !== input.labels.length)) {
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
+    }
+    const existingLabels = await client.query(
+      `SELECT count(*)::int AS label_count,
+              COALESCE(bool_and(label_digest = $4), false) AS digest_matches
+         FROM nirmana_elevation_asset_labels
+        WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
+      [input.campaign_id, input.definition_revision, input.catalogue_revision, digest],
+    )
+    if (existingPayload) {
+      if (existingLabels.rows[0]?.label_count === input.labels.length
+        && existingLabels.rows[0]?.digest_matches === true) {
+        await client.query('COMMIT')
+        return 'idempotent'
+      }
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
+    }
+    if (existingLabels.rows[0]?.label_count !== 0) {
+      throw new Error('Label catalogue revision conflicts with an existing receipt.')
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO nirmana_elevation_asset_labels
+       (campaign_id, definition_revision, catalogue_revision, asset_id, sanskrit_name,
+        english_name, description, legacy_aliases, source_ref, label_digest, recorded_by)
+       SELECT $1, $2, $3, label.asset_id, label.sanskrit_name, label.english_name,
+              label.description, label.legacy_aliases, label.source_ref, $5, $6
+       FROM jsonb_to_recordset($4::jsonb) AS label(
+         asset_id text, sanskrit_name text, english_name text, description text,
+         legacy_aliases jsonb, source_ref text
+       )
+       ON CONFLICT DO NOTHING`,
+      [input.campaign_id, input.definition_revision, input.catalogue_revision,
+        JSON.stringify(input.labels), digest, input.recorded_by],
+    )
+
+    const receipt = await client.query(
+      `INSERT INTO nirmana_elevation_campaign_events
+       (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
+        evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+       VALUES ($1, $2, $3, 'asset_label_catalogue_accepted', 'label_catalogue', $4,
+               $5::jsonb, 'governed_catalogue', $6, now(), $7)
+       ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING
+       RETURNING event_id`,
+      [input.campaign_id, input.definition_revision,
+        receiptIdempotencyKey,
+        input.catalogue_revision, JSON.stringify({ catalogue_sha256: digest, asset_count: input.labels.length }),
+        `label_catalogue:${input.catalogue_revision}`, input.recorded_by],
+    )
+    if (inserted.rowCount === input.labels.length && receipt.rowCount === 1) {
+      await client.query('COMMIT')
+      return 'created'
+    }
+    throw new Error('Label catalogue revision conflicts with an existing receipt.')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}

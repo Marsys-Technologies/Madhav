@@ -15,7 +15,8 @@ export interface NirmanaReleaseSource {
   state: NirmanaReleaseSourceState
   observed_at: string | null
   age_seconds: number | null
-  error: string | null
+  error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE' | 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE' | null
+  error_message: string | null
 }
 
 export interface NirmanaReleaseStatus {
@@ -79,8 +80,8 @@ function bounded<T>(operation: Promise<T>): Promise<T> {
   })
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message.slice(0, 240) : 'unknown release-source failure'
+function logSourceFailure(source_id: NirmanaReleaseSource['source_id'], cause: unknown): void {
+  console.error('[nirmana-elevation] release source query failed', { source_id, cause })
 }
 
 async function loadGithubMainSha(fetchFn: FetchFn): Promise<string> {
@@ -144,10 +145,11 @@ export async function loadNirmanaReleaseStatus({
     (async (): Promise<NirmanaReleaseSource> => {
       try {
         main_sha = await loadGithubMainSha(fetchFn)
-        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'fresh', observed_at, age_seconds: 0, error: null }
+        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'fresh', observed_at, age_seconds: 0, error_code: null, error_message: null }
       } catch (error) {
+        logSourceFailure('github_main', error)
         gaps.push('Authoritative GitHub main revision is unavailable; release sync is withheld.')
-        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'unavailable', observed_at, age_seconds: null, error: message(error) }
+        return { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'unavailable', observed_at, age_seconds: null, error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE', error_message: 'Authoritative release source is unavailable.' }
       }
     })(),
     (async (): Promise<NirmanaReleaseSource> => {
@@ -163,13 +165,15 @@ export async function loadNirmanaReleaseStatus({
           if (typeof commitSha === 'string' && /^[a-f0-9]{40}$/i.test(commitSha)) {
             deployed_sha = commitSha
           }
-        } catch {
+        } catch (error) {
+          logSourceFailure('artifact_registry_commit', error)
           gaps.push('Serving Cloud Run revision provenance is unavailable; production sync is withheld.')
         }
-        return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at, age_seconds: 0, error: null }
+        return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at, age_seconds: 0, error_code: null, error_message: null }
       } catch (error) {
+        logSourceFailure('cloud_run_web', error)
         gaps.push('Authoritative Cloud Run serving revision is unavailable; release sync is withheld.')
-        return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'unavailable', observed_at, age_seconds: null, error: message(error) }
+        return { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'unavailable', observed_at, age_seconds: null, error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE', error_message: 'Authoritative release source is unavailable.' }
       }
     })(),
   ])
@@ -181,7 +185,8 @@ export async function loadNirmanaReleaseStatus({
     state: deployed_sha ? 'fresh' : 'unknown',
     observed_at,
     age_seconds: deployed_sha ? 0 : null,
-    error: deployed_sha ? null : 'No immutable deployment commit SHA is present on the serving revision.',
+    error_code: deployed_sha ? null : 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+    error_message: deployed_sha ? null : 'Immutable serving-revision commit provenance is unavailable.',
   }
 
   return {

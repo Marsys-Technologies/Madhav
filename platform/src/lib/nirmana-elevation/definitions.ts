@@ -752,6 +752,11 @@ export function canonicalNirmanaAssetAnalysisDigestForRegistryRow(
   })
 }
 const buildRunSourceRef = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+const BuildRunAuthorizationEvidenceSchema = z.object({
+  wave_index: z.number().int().nonnegative(),
+  asset_ids: z.array(z.string().min(1).max(256)).min(1).max(256),
+  authorization_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
 const gitCommitSourceRef = /^git:[0-9a-f]{40}$/
 
 interface CurrentAssetAnalysisContext {
@@ -908,6 +913,64 @@ async function requireAcceptedRebuildProvenance(
   }
 }
 
+async function requireBuildRunAuthorizationProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
+  const sourceMatch = buildRunSourceRef.exec(input.source_ref)
+  const payload = BuildRunAuthorizationEvidenceSchema.safeParse(input.evidence_payload)
+  if (!sourceMatch || sourceMatch[1].toLowerCase() !== input.entity_id.toLowerCase() || !payload.success || input.layer === null) {
+    throw new NirmanaElevationEvidenceValidationError('build_run_authorized requires an exact run UUID and a typed layer/wave/asset authorization.')
+  }
+  if (new Set(payload.data.asset_ids).size !== payload.data.asset_ids.length) {
+    throw new NirmanaElevationEvidenceValidationError('build_run_authorized requires unique authorized asset IDs.')
+  }
+  const verified = await client.query<{ authorized: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM build_runs run
+         JOIN nirmana_elevation_campaign_definitions definition
+           ON definition.campaign_id = $2
+          AND definition.definition_revision = $3
+          AND definition.definition_status = 'frozen'
+          AND definition.superseded_at IS NULL
+        WHERE run.id = $1::uuid
+          AND run.action = 'rebuild'
+          AND run.triggered_by <> 'nirmana-f0-machinery-canary'
+          AND run.chart_id = (definition.manifest ->> 'chart_id')::uuid
+          AND EXISTS (SELECT 1 FROM build_run_assets asset WHERE asset.run_id = run.id)
+          AND NOT EXISTS (
+            SELECT 1
+              FROM build_run_assets asset
+             WHERE asset.run_id = run.id
+               AND NOT EXISTS (
+                 SELECT 1
+                   FROM jsonb_array_elements(definition.manifest -> 'assets') AS manifest_asset(value)
+                  WHERE manifest_asset.value ->> 'asset_id' = asset.asset_id
+                    AND manifest_asset.value ->> 'layer' = $4
+                    AND (manifest_asset.value ->> 'wave_index')::int = $5
+                    AND manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')
+                    AND asset.asset_id = ANY($6::text[])
+               )
+          )
+          AND NOT EXISTS (
+            SELECT 1
+              FROM unnest($6::text[]) AS authorized_asset(asset_id)
+             WHERE NOT EXISTS (
+               SELECT 1
+                 FROM build_run_assets asset
+                WHERE asset.run_id = run.id
+                  AND asset.asset_id = authorized_asset.asset_id
+             )
+          )
+     ) AS authorized`,
+    [sourceMatch[1], input.campaign_id, input.definition_revision, input.layer, payload.data.wave_index, payload.data.asset_ids],
+  )
+  if (verified.rows[0]?.authorized !== true) {
+    throw new NirmanaElevationEvidenceValidationError('build_run_authorized requires an exact non-canary rebuild scoped to the frozen definition.')
+  }
+}
+
 async function findExistingEvidenceReceipt(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -979,6 +1042,9 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     await requireCurrentFrozenDefinition(client, input)
     if (input.event_type === 'accepted_rebuild_observed') {
       await requireAcceptedRebuildProvenance(client, input)
+    }
+    if (input.event_type === 'build_run_authorized') {
+      await requireBuildRunAuthorizationProvenance(client, input)
     }
     if (input.event_type === 'asset_analysis_accepted' || input.event_type === 'optimization_verdict_accepted') {
       if (input.source_kind !== 'git_commit') {

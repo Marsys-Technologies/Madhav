@@ -14,6 +14,7 @@ export type AuditAction =
   | 'chart_revoke'
   | 'nirmana_definition_recorded'
   | 'nirmana_evidence_recorded'
+  | 'nirmana_label_catalogue_recorded'
 
 export async function writeAuditLog(
   actorId: string,
