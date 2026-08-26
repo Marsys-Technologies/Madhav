@@ -80,12 +80,7 @@ resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
   http_target {
     http_method = "POST"
     uri         = "${var.amjis_web_url}/api/admin/internal/nirmana-elevation-monitor"
-    headers = {
-      "Content-Type" = "application/json"
-      # The MARSYS_CRON_SECRET custom header is configured outside Terraform.
-      # Do not use Authorization: Cloud Scheduler uses that header for OIDC.
-    }
-    body = base64encode("{}")
+    body        = base64encode("{}")
 
     oidc_token {
       service_account_email = google_service_account.nirmana_elevation_monitor.email
@@ -93,10 +88,6 @@ resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
     }
   }
 
-  // Preserve the custom secret header installed by an approved operator.
-  lifecycle {
-    ignore_changes = [http_target[0].headers]
-  }
 }
 
 output "nirmana_elevation_monitor_job" {

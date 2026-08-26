@@ -16,32 +16,15 @@ delete or recreate any existing Scheduler resource.
   — `roles/iam.serviceAccountOpenIdTokenCreator` for Cloud Scheduler's service
   agent on only that dedicated service account.
 - `google_cloud_scheduler_job.nirmana_elevation_monitor` — the five-minute POST
-  job to the internal monitor route.
+  job `amjis-nirmana-elevation-monitor` to the internal monitor route, with the
+  Cloud Scheduler OIDC token.
 
-Terraform never stores the application secret. After a protected-main apply, an
-approved secret-aware operator must configure the existing `MARSYS_CRON_SECRET`
-as `X-Marsys-Cron-Secret` outside Terraform and state. Do not use `Authorization`:
-Cloud Scheduler uses it for the OIDC token. The job ignores only its HTTP header
-map so later plans preserve that externally managed header.
-
-Use the approved secret-injection mechanism; never put the value in source,
-Terraform input, or shell history:
-
-```sh
-gcloud scheduler jobs update http amjis-nirmana-elevation-monitor \
-  --project=madhav-astrology \
-  --location=asia-south1 \
-  --update-headers='X-Marsys-Cron-Secret=<value injected only by the approved secret-aware operator>'
-```
-
-Verify the header exists without printing its value:
-
-```sh
-gcloud scheduler jobs describe amjis-nirmana-elevation-monitor \
-  --project=madhav-astrology \
-  --location=asia-south1 \
-  --format=json | jq -e '.httpTarget.headers | has("X-Marsys-Cron-Secret")'
-```
+The route authenticates only the Cloud Scheduler OIDC bearer token. It verifies
+the fixed Cloud Run audience
+`https://amjis-web-938361928218.asia-south1.run.app` and the dedicated service
+account `amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com` before
+any observation work. Terraform therefore has no externally managed HTTP headers
+or application-authentication value in its state.
 
 ## Apply discipline and bootstrap permissions
 
@@ -56,7 +39,7 @@ account, and this state prefix where the platform permits it:
 
 | Scope | Required permissions |
 | --- | --- |
-| Project and service account | `resourcemanager.projects.get`, `iam.serviceAccounts.create`, `iam.serviceAccounts.get`, `iam.serviceAccounts.getIamPolicy`, `iam.serviceAccounts.setIamPolicy` |
+| Project and dedicated service account | `resourcemanager.projects.get`, `iam.serviceAccounts.create`, `iam.serviceAccounts.get`, `iam.serviceAccounts.getIamPolicy`, `iam.serviceAccounts.setIamPolicy`, `iam.serviceAccounts.actAs` |
 | `amjis-web` only | `run.services.get`, `run.services.getIamPolicy`, `run.services.setIamPolicy` |
 | This monitor job only | `cloudscheduler.jobs.get`, `cloudscheduler.jobs.create`, `cloudscheduler.jobs.update` |
 | `scheduler/nirmana-elevation-monitor` state objects | the existing Terraform-state read/write/lock object permissions (`get`, `list`, `create`, `update`, and lock release) |
