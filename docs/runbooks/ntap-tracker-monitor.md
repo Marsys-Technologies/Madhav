@@ -20,18 +20,21 @@ alternate acceptance paths.
 1. In the authenticated dashboard Audit Drawer, or from the authenticated snapshot
    API, check `program_sync.status`. Continue only when it is `baseline_missing`
    and the latest observation is fresh (the `program_monitor` source is `fresh`).
-   From that same fresh authenticated Audit Drawer observation, record both the
-   displayed `candidate_definition_sha256` and
-   `candidate_catalogue_sha256`. Do not combine digests from different
-   observations, calculate or infer either digest, or retrieve a substitute
-   through the scheduler-only internal endpoint.
+   From that same fresh authenticated Audit Drawer observation, copy the displayed
+   `source_observation_id`, `candidate_definition_sha256`, and
+   `candidate_catalogue_sha256` together. Do not combine values from different
+   observations, calculate or infer either digest, hand-derive or substitute an
+   observation ID, or retrieve a substitute through the scheduler-only internal
+   endpoint.
 2. Choose a new, unique definition revision, for example `ntap-v1`. Submit the
-   evidence command with the exact two current candidate digests:
+   evidence command with the exact observation UUID and two current candidate
+   digests copied above:
 
    ```json
    {
      "command": "accept_baseline_candidate",
      "definition_revision": "ntap-v1",
+     "source_observation_id": "<exact source_observation_id from the same fresh observation>",
      "expected_candidate_sha256": "<exact current candidate_definition_sha256>",
      "expected_candidate_catalogue_sha256": "<exact current candidate_catalogue_sha256>"
    }
@@ -42,7 +45,8 @@ alternate acceptance paths.
    means the candidate changed or another current definition exists. A `429`
    means the per-actor mutation limit was reached; wait for `Retry-After`, then
    re-read one fresh Audit Drawer observation before retrying. Never substitute a
-   digest by hand.
+   digest or observation UUID by hand, and never bypass this command through the
+   scheduler endpoint.
 3. Confirm the result is `created` (or the exact safe retry is `idempotent`), then
    refresh the snapshot after the next monitor observation. Verify that the
    definition is frozen and synchronization reflects the new observation. Baseline

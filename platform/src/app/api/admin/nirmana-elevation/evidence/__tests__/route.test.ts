@@ -204,6 +204,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     ]))
     expect(transactionSql.join('\n')).not.toContain('stage_transition_accepted')
     expect(transactionSql.join('\n')).not.toContain('asset_frozen')
+    const sourceObservationQuery = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM nirmana_elevation_monitor_observations'))
+    expect(sourceObservationQuery?.[1]).toEqual([baselineObservationId])
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, {
       command: 'accept_baseline_candidate',
       campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',

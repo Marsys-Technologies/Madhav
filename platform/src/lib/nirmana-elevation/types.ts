@@ -291,6 +291,7 @@ const ProgramSyncSchema = z.object({
     'release_attention',
     'source_unavailable',
   ]),
+  source_observation_id: z.string().uuid().nullable(),
   observed_at: nullableIso,
   age_seconds: z.number().int().nonnegative().nullable(),
   affected_asset_ids: z.array(z.string()),

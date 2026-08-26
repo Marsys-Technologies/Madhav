@@ -186,7 +186,7 @@ function projectProgramSync(
   if (!latest) {
     return {
       programSync: {
-        status: 'unknown', observed_at: null, age_seconds: null, affected_asset_ids: [],
+        status: 'unknown', source_observation_id: null, observed_at: null, age_seconds: null, affected_asset_ids: [],
         current_definition_sha256: null, candidate_definition_sha256: null, candidate_catalogue_sha256: null,
       },
       source: {
@@ -213,6 +213,7 @@ function projectProgramSync(
   return {
     programSync: {
       status,
+      source_observation_id: unavailable ? null : latest.id,
       observed_at: observedAt,
       age_seconds: ageSeconds,
       affected_asset_ids: [...new Set(latest.affected_asset_ids)].sort(),
@@ -1168,6 +1169,7 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
   const audit = { receipts: [], raw_ledger_refs: [] }
   const program_sync: NirmanaElevationSnapshotV2['program_sync'] = {
     status: error.sourceId === 'program_monitor' ? 'source_unavailable' : 'unknown',
+    source_observation_id: null,
     observed_at: null,
     age_seconds: null,
     affected_asset_ids: [],

@@ -51,6 +51,7 @@ describe('CampaignSpine', () => {
     const snapshot = snapshotFixture()
     snapshot.program_sync = {
       status: 'unknown',
+      source_observation_id: null,
       observed_at: null,
       age_seconds: null,
       affected_asset_ids: [],
@@ -82,6 +83,7 @@ describe('CampaignSpine', () => {
     const definitionHash = 'd'.repeat(64)
     snapshot.program_sync = {
       status: 'release_attention',
+      source_observation_id: null,
       observed_at: '2026-08-26T00:02:00.000Z',
       age_seconds: 60,
       affected_asset_ids: [],
@@ -120,16 +122,19 @@ describe('CampaignSpine', () => {
     expect(within(synchronization).queryByText('Evidence refresh required')).not.toBeInTheDocument()
   })
 
-  it('shows the candidate label catalogue digest in the audit drawer only', () => {
+  it('shows the exact source observation identity with the candidate digests in the audit drawer only', () => {
     const snapshot = snapshotFixture()
+    const sourceObservationId = '30303030-3030-4030-8030-303030303030'
     const candidateDigest = 'c'.repeat(64)
     snapshot.program_sync = {
       ...snapshot.program_sync,
+      source_observation_id: sourceObservationId,
       candidate_catalogue_sha256: candidateDigest,
     }
 
     render(<AuditDrawer snapshot={snapshot} assetId={null} open onOpenChange={() => {}} finalFocus={createRef<HTMLElement>()} />)
 
+    expect(screen.getByText(sourceObservationId)).toBeInTheDocument()
     expect(screen.getByText(`Candidate label catalogue: ${candidateDigest}`)).toBeInTheDocument()
   })
 

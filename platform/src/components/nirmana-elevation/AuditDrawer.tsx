@@ -111,6 +111,7 @@ export function AuditDrawer({ snapshot, assetId, open, onOpenChange, finalFocus 
             <div><dt className="text-xs text-brand-text-3">Observed</dt><dd className="mt-1 text-xs text-brand-text-1"><time dateTime={snapshot.program_sync.observed_at ?? undefined}>{formatTime(snapshot.program_sync.observed_at)}</time></dd></div>
             <div><dt className="text-xs text-brand-text-3">Observation age</dt><dd className="mt-1 text-xs text-brand-text-1">{snapshot.program_sync.age_seconds === null ? 'Unknown' : `${snapshot.program_sync.age_seconds}s old`}</dd></div>
             <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Source provenance</dt><dd className="mt-1 text-xs text-brand-text-1">{programMonitor?.provenance ?? 'Unknown'}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Source observation UUID</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.source_observation_id ?? 'Not available'}</dd></div>
             <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Current definition SHA-256</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.current_definition_sha256 ?? 'Unknown'}</dd></div>
             <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Candidate definition SHA-256</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.candidate_definition_sha256 ?? 'Unknown'}</dd></div>
           </dl>
