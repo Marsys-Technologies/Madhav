@@ -10,7 +10,10 @@ import {
 import { AuditDrawer } from './AuditDrawer'
 import { CampaignSnapshotStrip } from './CampaignSnapshotStrip'
 import { CampaignSpine } from './CampaignSpine'
-import { NirmanaElevationTrackerV1 } from './NirmanaElevationTrackerV1'
+import {
+  NIRMANA_V1_PUBLIC_SOURCE_ERROR,
+  NirmanaElevationTrackerV1,
+} from './NirmanaElevationTrackerV1'
 import { NowNextRail } from './NowNextRail'
 
 const SNAPSHOT_URL = '/api/admin/nirmana-elevation/snapshot'
@@ -44,7 +47,7 @@ function formatTime(value: string | Date | null | undefined): string {
 function failureMessage(snapshot: NirmanaElevationSnapshot): string {
   if (snapshot.schema_version === '1.0') {
     const unavailable = snapshot.sources.find((source) => source.state === 'unavailable' && source.error)
-    return unavailable?.error ?? 'The snapshot source is unavailable.'
+    return unavailable ? NIRMANA_V1_PUBLIC_SOURCE_ERROR : 'The snapshot source is unavailable.'
   }
   const unavailable = snapshot.sources.find((source) => source.state === 'unavailable' && source.error_message)
   return unavailable?.error_message ?? 'The snapshot source is unavailable.'

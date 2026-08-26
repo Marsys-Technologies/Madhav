@@ -108,6 +108,47 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.queryByRole('heading', { name: /campaign spine/i })).not.toBeInTheDocument()
   })
 
+  it('renders bounded generic text for credential-bearing v1 source errors and asset blockers', () => {
+    const unsafeSnapshot = structuredClone(snapshotV1)
+    unsafeSnapshot.sources[0] = {
+      ...unsafeSnapshot.sources[0],
+      state: 'unavailable',
+      error: 'postgresql://tracker_admin:secret-password@db.private.internal/nirmana',
+    }
+    unsafeSnapshot.assets[0] = {
+      ...unsafeSnapshot.assets[0],
+      current_run_state: null,
+      blocker: 'run 99999999-9999-4999-8999-999999999999 failed: password=secret-password host=db.private.internal',
+      evidence_refs: [],
+    }
+    unsafeSnapshot.active_runs = []
+
+    render(<NirmanaElevationTrackerView snapshot={unsafeSnapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
+
+    expect(screen.getByText('Authoritative source is unavailable.')).toBeVisible()
+    expect(screen.getByText('Accepted asset execution requires attention.')).toBeVisible()
+    expect(document.body).not.toHaveTextContent('secret-password')
+    expect(document.body).not.toHaveTextContent('db.private.internal')
+    expect(document.body).not.toHaveTextContent('99999999-9999-4999-8999-999999999999')
+  })
+
+  it('does not copy a credential-bearing v1 source error into the unavailable banner', async () => {
+    const unsafeSnapshot = structuredClone(snapshotV1)
+    unsafeSnapshot.sources[0] = {
+      ...unsafeSnapshot.sources[0],
+      state: 'unavailable',
+      error: 'password=secret-password host=db.private.internal run=private-cause',
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(unsafeSnapshot, 503)))
+
+    render(<NirmanaElevationTracker />)
+
+    expect(await screen.findByText(/live snapshot unavailable — authoritative source is unavailable\./i)).toBeVisible()
+    expect(document.body).not.toHaveTextContent('secret-password')
+    expect(document.body).not.toHaveTextContent('db.private.internal')
+    expect(document.body).not.toHaveTextContent('private-cause')
+  })
+
   it('treats a malformed v2 snapshot as unavailable instead of rendering a partial tracker', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ ...snapshotV2(), stages: [] })))
 
