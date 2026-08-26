@@ -1354,27 +1354,50 @@ def seed_nakshatra(
     autocommit: bool = False,
 ) -> dict[str, int]:
     """
-    Insert bg_nakshatra data into the 3 reference tables.
+    Replace bg_nakshatra data in the 3 owned reference tables.
 
-    L0 idempotency: ON CONFLICT DO NOTHING.
+    The payload is fully validated before the first DELETE. Rebuilds replace the
+    complete global projection so stale-but-key-complete rows cannot survive.
     Caller owns the transaction; this function never commits.
     Returns row counts per table.
     """
+    expected_counts = {
+        "reference_nakshatra": 28,
+        "reference_nakshatra_pada": 108,
+        "reference_nakshatra_matrix": 2721,
+    }
+    actual_counts = {
+        "reference_nakshatra": len(NAKSHATRAS_ENRICHED),
+        "reference_nakshatra_pada": len(PADAS),
+        "reference_nakshatra_matrix": len(MATRICES),
+    }
+    if actual_counts != expected_counts:
+        raise ValueError(
+            f"bg_nakshatra source payload has unexpected counts: {actual_counts}"
+        )
+    if [row["nakshatra_id"] for row in NAKSHATRAS_ENRICHED] != list(range(1, 29)):
+        raise ValueError("bg_nakshatra source payload requires nakshatra IDs 1..28")
+    if len({(row["nakshatra_id"], row["pada_number"]) for row in PADAS}) != 108:
+        raise ValueError("bg_nakshatra source payload has duplicate pada keys")
+    if any(row["nakshatra_id"] not in range(1, 28) for row in PADAS):
+        raise ValueError("bg_nakshatra source payload has an invalid pada parent")
+    if len({(row["matrix_type"], row["from_key"], row["to_key"]) for row in MATRICES}) != 2721:
+        raise ValueError("bg_nakshatra source payload has duplicate matrix keys")
+
     if dry_run:
         _logger.info("[bg_nakshatra] dry_run=True")
-        return {
-            "reference_nakshatra": len(NAKSHATRAS_ENRICHED),
-            "reference_nakshatra_pada": len(PADAS),
-            "reference_nakshatra_matrix": len(MATRICES),
-        }
+        return actual_counts
 
-    counts: dict[str, int] = {}
     cur = conn.cursor()
+    try:
+        # Delete children before their parent. All three relations are the
+        # complete global output owned by this writer.
+        cur.execute("DELETE FROM reference_nakshatra_matrix")
+        cur.execute("DELETE FROM reference_nakshatra_pada")
+        cur.execute("DELETE FROM reference_nakshatra")
 
-    # ── GRAIN 1: reference_nakshatra ──────────────────────────────────────────
-    inserted = 0
-    for row in NAKSHATRAS_ENRICHED:
-        cur.execute(
+        # ── GRAIN 1: reference_nakshatra ──────────────────────────────────────
+        cur.executemany(
             """
             INSERT INTO reference_nakshatra (
                 nakshatra_id, name_sa_iast, name_sa_devanagari, name_en, alt_names,
@@ -1405,20 +1428,19 @@ def seed_nakshatra(
                 %(is_gandanta)s, %(is_mula_sangya)s, %(is_panchaka)s, %(is_abhijit)s,
                 %(tradition_scope)s, %(classical_source)s, %(build_id)s
             )
-            ON CONFLICT (nakshatra_id) DO NOTHING
             """,
-            {**row,
-             "degree_in_rashi_ranges": _json.dumps(row["degree_in_rashi_ranges"]),
-             "build_id": build_id},
+            [
+                {
+                    **row,
+                    "degree_in_rashi_ranges": _json.dumps(row["degree_in_rashi_ranges"]),
+                    "build_id": build_id,
+                }
+                for row in NAKSHATRAS_ENRICHED
+            ],
         )
-        inserted += cur.rowcount
-    counts["reference_nakshatra"] = inserted
-    _logger.info("[bg_nakshatra] reference_nakshatra: %d inserted", inserted)
 
-    # ── GRAIN 2: reference_nakshatra_pada ─────────────────────────────────────
-    inserted = 0
-    for row in PADAS:
-        cur.execute(
+        # ── GRAIN 2: reference_nakshatra_pada ─────────────────────────────────
+        cur.executemany(
             """
             INSERT INTO reference_nakshatra_pada (
                 pada_id, nakshatra_id, pada_number, absolute_pada,
@@ -1435,18 +1457,12 @@ def seed_nakshatra(
                 %(pada_deity_nuance)s, %(element_shading)s, %(dosha_shading)s,
                 %(tradition_scope)s, %(classical_source)s, %(build_id)s
             )
-            ON CONFLICT (nakshatra_id, pada_number) DO NOTHING
             """,
-            {**row, "build_id": build_id},
+            [{**row, "build_id": build_id} for row in PADAS],
         )
-        inserted += cur.rowcount
-    counts["reference_nakshatra_pada"] = inserted
-    _logger.info("[bg_nakshatra] reference_nakshatra_pada: %d inserted", inserted)
 
-    # ── GRAIN 3: reference_nakshatra_matrix ───────────────────────────────────
-    inserted = 0
-    for row in MATRICES:
-        cur.execute(
+        # ── GRAIN 3: reference_nakshatra_matrix ───────────────────────────────
+        cur.executemany(
             """
             INSERT INTO reference_nakshatra_matrix (
                 matrix_type, from_key, to_key, relation_value,
@@ -1457,16 +1473,35 @@ def seed_nakshatra(
                 %(guna_points)s, %(max_points)s, %(notes)s,
                 %(tradition_scope)s, %(classical_source)s, %(build_id)s
             )
-            ON CONFLICT (matrix_type, from_key, to_key) DO NOTHING
             """,
-            {**row, "build_id": build_id},
+            [{**row, "build_id": build_id} for row in MATRICES],
         )
-        inserted += cur.rowcount
-    counts["reference_nakshatra_matrix"] = inserted
-    _logger.info("[bg_nakshatra] reference_nakshatra_matrix: %d inserted", inserted)
 
-    cur.close()
-    return counts
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM reference_nakshatra) AS nakshatra_count,
+              (SELECT count(*) FROM reference_nakshatra_pada) AS pada_count,
+              (SELECT count(*) FROM reference_nakshatra_matrix) AS matrix_count
+            """
+        )
+        row = cur.fetchone()
+        achieved = (
+            (row["nakshatra_count"], row["pada_count"], row["matrix_count"])
+            if isinstance(row, dict)
+            else tuple(row)
+        )
+        expected = tuple(expected_counts.values())
+        if achieved != expected:
+            raise RuntimeError(
+                f"bg_nakshatra exact postflight failed: expected {expected}, got {achieved}"
+            )
+    finally:
+        cur.close()
+
+    for table, count in actual_counts.items():
+        _logger.info("[bg_nakshatra] %s: %d replaced", table, count)
+    return actual_counts
 
 
 def check_volume(conn) -> dict[str, dict]:
