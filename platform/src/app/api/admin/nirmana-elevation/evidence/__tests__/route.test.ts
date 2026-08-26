@@ -236,10 +236,8 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).not.toHaveBeenCalled()
   })
 
-  it('keeps stage and foundation-lane receipts reachable through the record-evidence command union', async () => {
+  it('rejects generic stage and foundation-lane hash claims before any database write', async () => {
     superAdmin()
-    useEvidenceTransaction()
-    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
     const { POST } = await import('../route')
     const stage = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
@@ -255,8 +253,10 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'campaign_gate', source_ref: 'foundation:A', observed_at: '2026-08-25T09:00:00.000Z',
     }))
 
-    expect(stage.status).toBe(201)
-    expect(lane.status).toBe(201)
+    expect(stage.status).toBe(400)
+    expect(lane.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
   })
 
   it('records an audited reconciling definition and freezes only its exact manifest', async () => {

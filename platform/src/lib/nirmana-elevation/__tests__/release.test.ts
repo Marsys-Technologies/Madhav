@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { loadNirmanaReleaseStatus } from '../release'
+import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from '../release'
 
 const observedAt = new Date('2026-08-25T09:00:00.000Z')
 
@@ -26,6 +26,17 @@ function cloudRun({
 describe('loadNirmanaReleaseStatus', () => {
   beforeEach(() => vi.restoreAllMocks())
   afterEach(() => vi.useRealTimers())
+
+  it('accepts only the successful main-push Ganga Quality Gate for the exact release commit', async () => {
+    const sha = 'a'.repeat(40)
+    await expect(verifyNirmanaCiRun('12345', sha, vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      name: 'CI — Ganga Quality Gate', event: 'push', head_sha: sha, status: 'completed', conclusion: 'success',
+    }), { status: 200 })))).resolves.toBeUndefined()
+
+    await expect(verifyNirmanaCiRun('12346', sha, vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      name: 'ad hoc green check', event: 'workflow_dispatch', head_sha: sha, status: 'completed', conclusion: 'success',
+    }), { status: 200 })))).rejects.toThrow(/not a successful completed run/i)
+  })
 
   it('reports independent main and serving-revision observations while withholding a commit-unproven sync verdict', async () => {
     const result = await loadNirmanaReleaseStatus({

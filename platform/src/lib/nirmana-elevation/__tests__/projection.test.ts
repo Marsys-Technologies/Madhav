@@ -29,6 +29,7 @@ function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
     entity_id: 'bg_alpha',
     layer: 'L0',
     evidence_payload: {},
+    source_kind: 'test',
     source_ref: 'event:test',
     observed_at: observedAt,
     recorded_at: observedAt,
@@ -42,7 +43,11 @@ function transition(from_stage: string | null, to_stage: string, recorded_at: st
     entity_type: 'campaign_stage',
     entity_id: to_stage,
     layer: null,
-    evidence_payload: { from_stage, to_stage, prerequisites_sha256: 'a'.repeat(64) },
+    evidence_payload: {
+      schema_version: 'nirmana-stage-transition-receipt/v1', from_stage, to_stage, manifest_sha256: 'a'.repeat(64),
+    },
+    source_ref: 'nirmana-elevation:stage-spine',
+    source_kind: 'server_reconstructed',
     observed_at: recorded_at,
     recorded_at,
   })
@@ -55,10 +60,21 @@ function foundationLane(laneId: string, minute = Number(laneId.charCodeAt(0) - 6
     entity_type: 'foundation_lane',
     entity_id: laneId,
     layer: null,
-    evidence_payload: { acceptance_sha256: 'b'.repeat(64) },
+    evidence_payload: foundationPayload(laneId),
+    source_ref: `nirmana-elevation:foundation-lane:${laneId}`,
+    source_kind: 'server_reconstructed',
     observed_at: timestamp,
     recorded_at: timestamp,
   })
+}
+
+function foundationPayload(laneId: string) {
+  const base = { schema_version: 'nirmana-foundation-lane-receipt/v1' as const, lane_id: laneId }
+  if (laneId === 'A') return { ...base, manifest_sha256: 'a'.repeat(64), asset_count: 1 }
+  if (laneId === 'B') return { ...base, manifest_sha256: 'a'.repeat(64), build_run_count: 0, terminal_build_run_count: 0 }
+  if (laneId === 'C') return { ...base, manifest_sha256: 'a'.repeat(64), registry_fingerprint_set_sha256: 'b'.repeat(64), manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0 }
+  if (laneId === 'D') return { ...base, manifest_sha256: 'a'.repeat(64), main_sha: 'b'.repeat(40), serving_sha: 'b'.repeat(40), serving_revision: 'amjis-web-01799-abc', ci_run_id: '123' }
+  return { ...base, manifest_sha256: 'a'.repeat(64), migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: 'c'.repeat(64) }
 }
 
 const emptyLayers = [
@@ -119,7 +135,9 @@ describe('projectCampaignStages', () => {
     const advance = transition('BOOTSTRAP', 'T0_CENSUS', '2026-08-26T09:00:01.000Z')
     const conflict = {
       ...bootstrap,
-      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'b'.repeat(64) },
+      evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: null, to_stage: 'BOOTSTRAP', manifest_sha256: 'b'.repeat(64),
+      },
       observed_at: '2026-08-26T09:00:02.000Z',
       recorded_at: '2026-08-26T09:00:02.000Z',
     }
@@ -207,6 +225,32 @@ describe('projectCampaignStages', () => {
       ['A', 'completed'], ['B', 'completed'], ['C', 'completed'], ['D', 'completed'], ['E', 'completed'],
     ])
     expect(incomplete.stages.find(({ stage_id }) => stage_id === 'F0_FOUNDATION')?.foundation_lanes?.at(-1)).toMatchObject({ lane_id: 'E', state: 'unknown' })
+  })
+
+  it('does not project Lane C from receipts missing its registry fingerprint or reporting invalidated analysis', () => {
+    const omittedFingerprint = foundationLane('C')
+    omittedFingerprint.evidence_payload = {
+      schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: 'a'.repeat(64),
+      manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0,
+    }
+    const invalidatedAnalysis = foundationLane('C')
+    invalidatedAnalysis.evidence_payload = {
+      schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: 'a'.repeat(64),
+      registry_fingerprint_set_sha256: 'b'.repeat(64), manifest_asset_count: 1,
+      live_registry_asset_count: 1, invalidated_analysis_count: 1,
+    }
+
+    for (const invalidLaneC of [omittedFingerprint, invalidatedAnalysis]) {
+      const result = projectStages({
+        definitionStatus: 'frozen',
+        events: ['A', 'B', 'D', 'E'].map((laneId) => foundationLane(laneId)).concat(invalidLaneC),
+        layers: emptyLayers,
+      })
+      const foundation = result.stages.find(({ stage_id }) => stage_id === 'F0_FOUNDATION')
+
+      expect(foundation).toMatchObject({ state: 'unknown', earned: 4, required: 5 })
+      expect(foundation?.foundation_lanes?.find(({ lane_id }) => lane_id === 'C')).toMatchObject({ state: 'unknown' })
+    }
   })
 
   it('marks a layer complete only when every in-layer asset is frozen and prior layers are complete', () => {

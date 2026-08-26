@@ -8,8 +8,10 @@ import {
   NirmanaElevationEvidenceConflictError,
   NirmanaElevationEvidenceValidationError,
   NirmanaAssetAnalysisEvidenceSchema,
+  NirmanaFoundationLaneEvidenceSchema,
   NirmanaElevationManifestSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
+  NirmanaStageTransitionEvidenceSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
   supersedeNirmanaElevationDefinition,
@@ -97,28 +99,13 @@ const campaignStageReceipt = z.object({
   entity_type: z.literal('campaign_stage'),
   entity_id: z.enum(NIRMANA_STAGE_IDS),
   layer: z.null(),
-  evidence_payload: z.object({
-    from_stage: z.enum(NIRMANA_STAGE_IDS).nullable(),
-    to_stage: z.enum(NIRMANA_STAGE_IDS),
-    prerequisites_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-  }).strict(),
-  source_kind: z.string().min(1).max(128),
-  source_ref: z.string().min(1).max(512),
+  evidence_payload: NirmanaStageTransitionEvidenceSchema,
+  source_kind: z.literal('server_reconstructed'),
+  source_ref: z.literal('nirmana-elevation:stage-spine'),
   observed_at: z.string().datetime(),
 }).strict().superRefine((value, context) => {
   if (value.entity_id !== value.evidence_payload.to_stage) {
     context.addIssue({ code: 'custom', path: ['entity_id'], message: 'Campaign-stage entity_id must equal evidence_payload.to_stage.' })
-  }
-  if (value.evidence_payload.from_stage === null) {
-    if (value.evidence_payload.to_stage !== 'BOOTSTRAP') {
-      context.addIssue({ code: 'custom', path: ['evidence_payload', 'from_stage'], message: 'Only BOOTSTRAP may have a null source stage.' })
-    }
-    return
-  }
-  const fromIndex = NIRMANA_STAGE_IDS.indexOf(value.evidence_payload.from_stage)
-  const toIndex = NIRMANA_STAGE_IDS.indexOf(value.evidence_payload.to_stage)
-  if (toIndex !== fromIndex + 1) {
-    context.addIssue({ code: 'custom', path: ['evidence_payload', 'to_stage'], message: 'Campaign stages must advance exactly once in canonical order.' })
   }
 })
 
@@ -131,13 +118,18 @@ const foundationLaneReceipt = z.object({
   entity_type: z.literal('foundation_lane'),
   entity_id: z.enum(['A', 'B', 'C', 'D', 'E']),
   layer: z.null(),
-  evidence_payload: z.object({
-    acceptance_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-  }).strict(),
-  source_kind: z.string().min(1).max(128),
-  source_ref: z.string().min(1).max(512),
+  evidence_payload: NirmanaFoundationLaneEvidenceSchema,
+  source_kind: z.literal('server_reconstructed'),
+  source_ref: z.string().regex(/^nirmana-elevation:foundation-lane:[A-E]$/),
   observed_at: z.string().datetime(),
-}).strict()
+}).strict().superRefine((value, context) => {
+  if (value.entity_id !== value.evidence_payload.lane_id) {
+    context.addIssue({ code: 'custom', path: ['entity_id'], message: 'Foundation-lane entity_id must equal the typed receipt lane.' })
+  }
+  if (value.source_ref !== `nirmana-elevation:foundation-lane:${value.evidence_payload.lane_id}`) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'Foundation-lane source_ref must identify its exact typed lane.' })
+  }
+})
 
 const buildRunAuthorizationReceipt = z.object({
   command: z.literal('record_evidence'),

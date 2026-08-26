@@ -4,6 +4,8 @@ import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { getPool, query } from '@/lib/db/client'
 import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
+import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from './release'
+import { NIRMANA_STAGE_IDS } from './vocab'
 
 const LayerSchema = z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
 const layerPrefixes = { L0: 'bg_', L1: 'ga_', L2: 'bo_', L3: 'ka_', L4: 'ph_', L5: 'mi_' } as const
@@ -759,6 +761,54 @@ const BuildRunAuthorizationEvidenceSchema = z.object({
 }).strict()
 const gitCommitSourceRef = /^git:[0-9a-f]{40}$/
 
+const NirmanaReceiptSha256 = z.string().regex(/^[a-f0-9]{64}$/)
+const NirmanaGitSha = z.string().regex(/^[a-f0-9]{40}$/)
+const NirmanaServingRevision = z.string().regex(/^[a-z][a-z0-9-]{2,62}$/)
+const NirmanaCiRunId = z.string().regex(/^[1-9][0-9]{0,18}$/)
+const NirmanaEvidenceControlMigration = z.literal('592_nirmana_elevation_campaign_evidence.sql')
+const NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256 = '56a86201d15a0d91cf35455758416391e36960e71043cc84fbdb11ff3b72a53e'
+
+/**
+ * F0 receipts deliberately contain only identities that the writer can
+ * reconstruct from authoritative sources.  They are not operator-supplied
+ * acceptance hashes.
+ */
+export const NirmanaFoundationLaneEvidenceSchema = z.discriminatedUnion('lane_id', [
+  z.object({
+    schema_version: z.literal('nirmana-foundation-lane-receipt/v1'), lane_id: z.literal('A'),
+    manifest_sha256: NirmanaReceiptSha256, asset_count: z.number().int().positive(),
+  }).strict(),
+  z.object({
+    schema_version: z.literal('nirmana-foundation-lane-receipt/v1'), lane_id: z.literal('B'),
+    manifest_sha256: NirmanaReceiptSha256, build_run_count: z.number().int().nonnegative(),
+    terminal_build_run_count: z.number().int().nonnegative(),
+  }).strict(),
+  z.object({
+    schema_version: z.literal('nirmana-foundation-lane-receipt/v1'), lane_id: z.literal('C'),
+    manifest_sha256: NirmanaReceiptSha256, registry_fingerprint_set_sha256: NirmanaReceiptSha256,
+    manifest_asset_count: z.number().int().positive(), live_registry_asset_count: z.number().int().positive(),
+    invalidated_analysis_count: z.literal(0),
+  }).strict(),
+  z.object({
+    schema_version: z.literal('nirmana-foundation-lane-receipt/v1'), lane_id: z.literal('D'),
+    manifest_sha256: NirmanaReceiptSha256,
+    main_sha: NirmanaGitSha, serving_sha: NirmanaGitSha,
+    serving_revision: NirmanaServingRevision, ci_run_id: NirmanaCiRunId,
+  }).strict(),
+  z.object({
+    schema_version: z.literal('nirmana-foundation-lane-receipt/v1'), lane_id: z.literal('E'),
+    manifest_sha256: NirmanaReceiptSha256,
+    migration_filename: NirmanaEvidenceControlMigration, migration_sha256: NirmanaReceiptSha256,
+  }).strict(),
+])
+
+export const NirmanaStageTransitionEvidenceSchema = z.object({
+  schema_version: z.literal('nirmana-stage-transition-receipt/v1'),
+  from_stage: z.enum(NIRMANA_STAGE_IDS).nullable(),
+  to_stage: z.enum(NIRMANA_STAGE_IDS),
+  manifest_sha256: NirmanaReceiptSha256,
+}).strict()
+
 interface CurrentAssetAnalysisContext {
   registryFingerprint: string
   analysisDigest: string
@@ -971,6 +1021,275 @@ async function requireBuildRunAuthorizationProvenance(
   }
 }
 
+interface FrozenReceiptDefinition {
+  manifest_sha256: string
+  manifest_asset_count: number
+  manifest: unknown
+}
+
+async function loadFrozenReceiptDefinition(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<FrozenReceiptDefinition> {
+  const definition = await client.query<FrozenReceiptDefinition>(
+    `SELECT manifest, manifest_sha256, jsonb_array_length(manifest -> 'assets')::int AS manifest_asset_count
+       FROM nirmana_elevation_campaign_definitions
+      WHERE campaign_id = $1
+        AND definition_revision = $2
+        AND definition_status = 'frozen'
+        AND superseded_at IS NULL`,
+    [input.campaign_id, input.definition_revision],
+  )
+  const row = definition.rows[0]
+  if (!row) throw new NirmanaElevationEvidenceValidationError('Evidence requires the current frozen definition revision.')
+  return row
+}
+
+function canonicalRegistryFingerprintSetDigest(manifest: NirmanaElevationManifest): string {
+  return createHash('sha256').update(stableJson(manifest.assets
+    .map(({ asset_id, registry_fingerprint_sha256 }) => ({ asset_id, registry_fingerprint_sha256 }))
+    .sort((left, right) => left.asset_id.localeCompare(right.asset_id)))).digest('hex')
+}
+
+async function loadCurrentRegistryRows(client: PoolClient): Promise<NirmanaRegistryContractRow[]> {
+  const registry = await client.query<NirmanaRegistryContractRow>(
+    `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
+            sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
+            target_table, count_sql, integrity_check_sql, health_probe,
+            natural_key_partition, superseded_by, data_disposition, dead_flag
+       FROM asset_registry
+      ORDER BY asset_id`,
+  )
+  return registry.rows
+}
+
+function requireTypedFoundationSource(input: RecordNirmanaElevationEvidenceInput, laneId: string): void {
+  if (input.source_kind !== 'server_reconstructed' || input.source_ref !== `nirmana-elevation:foundation-lane:${laneId}`) {
+    throw new NirmanaElevationEvidenceValidationError('Foundation evidence must use the server-reconstructed source identity.')
+  }
+}
+
+async function requireFoundationLaneProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
+  const parsed = NirmanaFoundationLaneEvidenceSchema.safeParse(input.evidence_payload)
+  if (!parsed.success || input.entity_type !== 'foundation_lane' || input.entity_id !== parsed.data?.lane_id || input.layer !== null) {
+    throw new NirmanaElevationEvidenceValidationError('foundation_lane_accepted requires a strict typed receipt for its exact lane.')
+  }
+  const receipt = parsed.data
+  requireTypedFoundationSource(input, receipt.lane_id)
+  const existingLane = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'foundation_lane_accepted' AND entity_type = 'foundation_lane'
+          AND entity_id = $3 AND layer IS NULL
+          AND evidence_payload ->> 'schema_version' = 'nirmana-foundation-lane-receipt/v1'
+     ) AS present`,
+    [input.campaign_id, input.definition_revision, receipt.lane_id],
+  )
+  if (existingLane.rows[0]?.present === true) {
+    throw new NirmanaElevationEvidenceValidationError('Foundation lane already has an immutable accepted receipt; use its exact idempotency retry.')
+  }
+  const definition = await loadFrozenReceiptDefinition(client, input)
+
+  if (receipt.manifest_sha256 !== definition.manifest_sha256) {
+    throw new NirmanaElevationEvidenceValidationError('Foundation receipt does not bind the current frozen manifest.')
+  }
+
+  if (receipt.lane_id === 'A') {
+    if (receipt.asset_count !== definition.manifest_asset_count) {
+      throw new NirmanaElevationEvidenceValidationError('Foundation census asset count does not match the frozen manifest.')
+    }
+    return
+  }
+
+  if (receipt.lane_id === 'B') {
+    const runs = await client.query<{ build_run_count: number; terminal_build_run_count: number }>(
+      `SELECT count(*)::int AS build_run_count,
+              count(*) FILTER (WHERE state IN ('completed', 'failed', 'cancelled'))::int AS terminal_build_run_count
+         FROM build_runs
+        WHERE plan_manifest #>> '{campaign_control,campaign_id}' = $1
+          AND plan_manifest #>> '{campaign_control,definition_revision}' = $2`,
+      [input.campaign_id, input.definition_revision],
+    )
+    const actual = runs.rows[0]
+    if (!actual || receipt.build_run_count !== actual.build_run_count || receipt.terminal_build_run_count !== actual.terminal_build_run_count) {
+      throw new NirmanaElevationEvidenceValidationError('Foundation run ledger facts do not match the authoritative build-run ledger.')
+    }
+    return
+  }
+
+  if (receipt.lane_id === 'C') {
+    const manifest = NirmanaElevationManifestSchema.parse(definition.manifest)
+    const registryRows = await loadCurrentRegistryRows(client)
+    try {
+      assertManifestMatchesRegistry(manifest, registryRows)
+    } catch {
+      throw new NirmanaElevationEvidenceValidationError('Foundation hash/invalidation receipt requires the current registry contract to match the frozen manifest.')
+    }
+    const liveFingerprints = new Map(registryRows.map((row) => [row.asset_id,
+      canonicalRegistryContractDigest(registryContractFingerprintInput(row))]))
+    const acceptedAnalyses = await client.query<{ entity_id: string; evidence_payload: unknown }>(
+      `SELECT entity_id, evidence_payload
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'asset_analysis_accepted' AND entity_type = 'asset'`,
+      [input.campaign_id, input.definition_revision],
+    )
+    const invalidatedAnalysisCount = acceptedAnalyses.rows.filter((event) => {
+      const payload = NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && liveFingerprints.get(event.entity_id) !== payload.data.registry_fingerprint_sha256
+    }).length
+    const registry = await client.query<{ live_registry_asset_count: number }>(
+      `SELECT count(*)::int AS live_registry_asset_count
+         FROM asset_registry registry
+         JOIN LATERAL jsonb_array_elements((SELECT manifest FROM nirmana_elevation_campaign_definitions
+           WHERE campaign_id = $1 AND definition_revision = $2 AND definition_status = 'frozen' AND superseded_at IS NULL) -> 'assets') AS asset(value)
+           ON asset.value ->> 'asset_id' = registry.asset_id
+          AND asset.value ->> 'layer' = CASE registry.layer
+            WHEN 'brahmagyan' THEN 'L0' WHEN 'ganita' THEN 'L1' WHEN 'bodha' THEN 'L2'
+            WHEN 'kala' THEN 'L3' WHEN 'phala' THEN 'L4' WHEN 'mimamsa' THEN 'L5' END`,
+      [input.campaign_id, input.definition_revision],
+    )
+    const actual = registry.rows[0]
+    if (!actual || receipt.registry_fingerprint_set_sha256 !== canonicalRegistryFingerprintSetDigest(manifest)
+      || receipt.invalidated_analysis_count !== invalidatedAnalysisCount || invalidatedAnalysisCount !== 0
+      || receipt.manifest_asset_count !== definition.manifest_asset_count
+      || receipt.live_registry_asset_count !== actual.live_registry_asset_count
+      || receipt.manifest_asset_count !== receipt.live_registry_asset_count) {
+      throw new NirmanaElevationEvidenceValidationError('Foundation hash/invalidation census does not match the current registry contract or has invalidated analysis evidence.')
+    }
+    return
+  }
+
+  if (receipt.lane_id === 'D') {
+    const status = await loadNirmanaReleaseStatus()
+    const release = status.release
+    if (release.production_in_sync !== true
+      || release.main_sha?.toLowerCase() !== receipt.main_sha
+      || release.deployed_sha?.toLowerCase() !== receipt.serving_sha
+      || release.deployed_revision !== receipt.serving_revision
+      || receipt.main_sha !== receipt.serving_sha) {
+      throw new NirmanaElevationEvidenceValidationError('Foundation release receipt does not match one current in-sync main and serving revision.')
+    }
+    try {
+      await verifyNirmanaCiRun(receipt.ci_run_id, receipt.main_sha)
+    } catch {
+      throw new NirmanaElevationEvidenceValidationError('Foundation release receipt lacks a successful CI run for the exact serving commit.')
+    }
+    return
+  }
+
+  const migration = await client.query<{ applied: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM _migrations_applied
+        WHERE filename = $1 AND sha256 = $2
+     ) AS applied`,
+    [receipt.migration_filename, NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256],
+  )
+  if (receipt.migration_sha256 !== NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256 || migration.rows[0]?.applied !== true) {
+    throw new NirmanaElevationEvidenceValidationError('Foundation evidence-control receipt requires the exact applied migration-ledger entry.')
+  }
+}
+
+async function requireStageTransitionProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
+  const parsed = NirmanaStageTransitionEvidenceSchema.safeParse(input.evidence_payload)
+  if (!parsed.success || input.entity_type !== 'campaign_stage' || input.entity_id !== parsed.data?.to_stage || input.layer !== null
+    || input.source_kind !== 'server_reconstructed' || input.source_ref !== 'nirmana-elevation:stage-spine') {
+    throw new NirmanaElevationEvidenceValidationError('stage_transition_accepted requires a strict server-reconstructed stage receipt.')
+  }
+  const receipt = parsed.data
+  const definition = await loadFrozenReceiptDefinition(client, input)
+  if (receipt.manifest_sha256 !== definition.manifest_sha256) {
+    throw new NirmanaElevationEvidenceValidationError('Stage receipt does not bind the current frozen manifest.')
+  }
+  const manifest = NirmanaElevationManifestSchema.parse(definition.manifest)
+  const toIndex = NIRMANA_STAGE_IDS.indexOf(receipt.to_stage)
+  const expectedFrom = toIndex === 0 ? null : NIRMANA_STAGE_IDS[toIndex - 1]
+  if (receipt.from_stage !== expectedFrom) {
+    throw new NirmanaElevationEvidenceValidationError('Campaign stage receipt does not follow the canonical sequential spine.')
+  }
+  const targetExists = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'stage_transition_accepted' AND entity_type = 'campaign_stage'
+          AND entity_id = $3 AND layer IS NULL
+          AND evidence_payload ->> 'schema_version' = 'nirmana-stage-transition-receipt/v1'
+     ) AS present`,
+    [input.campaign_id, input.definition_revision, receipt.to_stage],
+  )
+  if (targetExists.rows[0]?.present === true) {
+    throw new NirmanaElevationEvidenceValidationError('Campaign stage already has an immutable accepted receipt; use its exact idempotency retry.')
+  }
+  if (expectedFrom !== null) {
+    const prior = await client.query<{ present: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM nirmana_elevation_campaign_events
+          WHERE campaign_id = $1 AND definition_revision = $2
+            AND event_type = 'stage_transition_accepted' AND entity_type = 'campaign_stage'
+            AND entity_id = $3 AND layer IS NULL
+            AND evidence_payload ->> 'schema_version' = 'nirmana-stage-transition-receipt/v1'
+            AND evidence_payload ->> 'to_stage' = $3
+       ) AS present`,
+      [input.campaign_id, input.definition_revision, expectedFrom],
+    )
+    if (prior.rows[0]?.present !== true) {
+      throw new NirmanaElevationEvidenceValidationError('Campaign stage receipt requires the immediately preceding accepted stage receipt.')
+    }
+  }
+  if (receipt.to_stage === 'T0_CENSUS' || receipt.to_stage === 'DENOMINATOR_FROZEN') {
+    const registryRows = await loadCurrentRegistryRows(client)
+    try {
+      if (receipt.to_stage === 'T0_CENSUS') assertManifestMatchesRegistryIdentity(manifest, registryRows)
+      else assertManifestMatchesRegistry(manifest, registryRows)
+    } catch {
+      throw new NirmanaElevationEvidenceValidationError(`${receipt.to_stage} requires the frozen manifest to match the canonical live registry gate.`)
+    }
+  }
+  if (receipt.to_stage === 'PLAN_FROZEN') {
+    try {
+      assertFreezableManifest(manifest)
+    } catch {
+      throw new NirmanaElevationEvidenceValidationError('PLAN_FROZEN requires a complete, freezable canonical manifest.')
+    }
+  }
+  if (receipt.to_stage === 'L0') {
+    const lanes = await client.query<{ accepted_lane_count: number }>(
+      `SELECT count(DISTINCT entity_id)::int AS accepted_lane_count
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'foundation_lane_accepted' AND entity_type = 'foundation_lane' AND layer IS NULL
+          AND evidence_payload ->> 'schema_version' = 'nirmana-foundation-lane-receipt/v1'`,
+      [input.campaign_id, input.definition_revision],
+    )
+    if (lanes.rows[0]?.accepted_lane_count !== 5) {
+      throw new NirmanaElevationEvidenceValidationError('L0 entry requires all five typed F0 foundation-lane receipts.')
+    }
+  }
+  if (expectedFrom !== null && ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'].includes(expectedFrom)) {
+    throw new NirmanaElevationEvidenceValidationError(`Campaign stage ${expectedFrom} exit is fail-closed until a server-side freeze-lifecycle verifier reconstructs every asset receipt.`)
+  }
+  if (receipt.to_stage === 'COMPLETE') {
+    const status = await loadNirmanaReleaseStatus()
+    if (status.release.production_in_sync !== true) {
+      throw new NirmanaElevationEvidenceValidationError('COMPLETE requires a current in-sync canonical release observation.')
+    }
+    const migration = await client.query<{ applied: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM _migrations_applied WHERE filename = $1 AND sha256 = $2) AS applied`,
+      ['592_nirmana_elevation_campaign_evidence.sql', NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256],
+    )
+    if (migration.rows[0]?.applied !== true) {
+      throw new NirmanaElevationEvidenceValidationError('COMPLETE requires the canonical evidence migration ledger gate.')
+    }
+  }
+}
+
 async function findExistingEvidenceReceipt(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -1040,6 +1359,12 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     }
 
     await requireCurrentFrozenDefinition(client, input)
+    if (input.event_type === 'foundation_lane_accepted') {
+      await requireFoundationLaneProvenance(client, input)
+    }
+    if (input.event_type === 'stage_transition_accepted') {
+      await requireStageTransitionProvenance(client, input)
+    }
     if (input.event_type === 'accepted_rebuild_observed') {
       await requireAcceptedRebuildProvenance(client, input)
     }

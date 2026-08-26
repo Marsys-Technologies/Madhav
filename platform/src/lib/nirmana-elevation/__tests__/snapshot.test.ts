@@ -126,9 +126,18 @@ function foundationLaneEvents() {
   return ['A', 'B', 'C', 'D', 'E'].map((laneId) => ({
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'foundation_lane_accepted',
     entity_type: 'foundation_lane', entity_id: laneId, layer: null,
-    evidence_payload: { acceptance_sha256: laneId.toLowerCase().repeat(64) }, source_kind: 'campaign_gate',
-    source_ref: `foundation:${laneId}`, observed_at: observedAt, recorded_at: observedAt,
+    evidence_payload: foundationPayload(laneId), source_kind: 'server_reconstructed',
+    source_ref: `nirmana-elevation:foundation-lane:${laneId}`, observed_at: observedAt, recorded_at: observedAt,
   }))
+}
+
+function foundationPayload(laneId: string) {
+  const base = { schema_version: 'nirmana-foundation-lane-receipt/v1' as const, lane_id: laneId, manifest_sha256: 'a'.repeat(64) }
+  if (laneId === 'A') return { ...base, asset_count: 1 }
+  if (laneId === 'B') return { ...base, build_run_count: 0, terminal_build_run_count: 0 }
+  if (laneId === 'C') return { ...base, registry_fingerprint_set_sha256: 'b'.repeat(64), manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0 }
+  if (laneId === 'D') return { ...base, main_sha: 'b'.repeat(40), serving_sha: 'b'.repeat(40), serving_revision: 'amjis-web-01799-abc', ci_run_id: '123' }
+  return { ...base, migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: 'c'.repeat(64) }
 }
 
 function stageEventsThrough(stageId: (typeof NIRMANA_STAGE_IDS)[number]) {
@@ -139,10 +148,11 @@ function stageEventsThrough(stageId: (typeof NIRMANA_STAGE_IDS)[number]) {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'stage_transition_accepted',
       entity_type: 'campaign_stage', entity_id: to_stage, layer: null,
       evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1',
         from_stage: index === 0 ? null : NIRMANA_STAGE_IDS[index - 1],
-        to_stage, prerequisites_sha256: String(index.toString(16)).repeat(64),
+        to_stage, manifest_sha256: String(index.toString(16)).repeat(64),
       },
-      source_kind: 'campaign_gate', source_ref: `stage:${to_stage}`, observed_at: eventAt, recorded_at: eventAt,
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine', observed_at: eventAt, recorded_at: eventAt,
     }
   })
 }
@@ -1272,8 +1282,8 @@ describe('projectNirmanaElevationSnapshot', () => {
       campaign_events: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'stage_transition_accepted',
         entity_type: 'campaign_stage', entity_id: 'T0_CENSUS', layer: null,
-        evidence_payload: { from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', prerequisites_sha256: 'c'.repeat(64) },
-        source_kind: 'campaign_gate', source_ref: 'stage:T0_CENSUS', observed_at: observedAt, recorded_at: observedAt,
+        evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', manifest_sha256: 'c'.repeat(64) },
+        source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine', observed_at: observedAt, recorded_at: observedAt,
       }],
     }, [])
 
@@ -1287,8 +1297,8 @@ describe('projectNirmanaElevationSnapshot', () => {
     const campaign_events = ['A', 'B', 'C', 'D', 'E'].map((laneId) => ({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'foundation_lane_accepted',
       entity_type: 'foundation_lane', entity_id: laneId, layer: null,
-      evidence_payload: { acceptance_sha256: laneId.toLowerCase().repeat(64) }, source_kind: 'campaign_gate',
-      source_ref: `foundation:${laneId}`, observed_at: observedAt, recorded_at: observedAt,
+      evidence_payload: foundationPayload(laneId), source_kind: 'server_reconstructed',
+      source_ref: `nirmana-elevation:foundation-lane:${laneId}`, observed_at: observedAt, recorded_at: observedAt,
     }))
     const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
       campaign_definitions: [{
@@ -1305,13 +1315,44 @@ describe('projectNirmanaElevationSnapshot', () => {
     })
   })
 
+  it('keeps Lane C unknown in snapshots when its fingerprint is omitted or its analysis is invalidated', () => {
+    const manifest = defaultManifest()
+    const invalidLaneCPayloads = [
+      {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: 'a'.repeat(64),
+        manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0,
+      },
+      {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: 'a'.repeat(64),
+        registry_fingerprint_set_sha256: 'b'.repeat(64), manifest_asset_count: 1,
+        live_registry_asset_count: 1, invalidated_analysis_count: 1,
+      },
+    ]
+
+    for (const evidence_payload of invalidLaneCPayloads) {
+      const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        campaign_events: foundationLaneEvents().map((event) => event.entity_id === 'C'
+          ? { ...event, evidence_payload }
+          : event),
+      }, []), { generatedAt: observedAt })
+
+      const foundation = snapshot.stages.find((stage) => stage.stage_id === 'F0_FOUNDATION')
+      expect(foundation).toMatchObject({ state: 'unknown', earned: 4, required: 5 })
+      expect(foundation?.foundation_lanes?.find(({ lane_id }) => lane_id === 'C')).toMatchObject({ state: 'unknown' })
+    }
+  })
+
   it('projects the nullable-from initial transition as the active bootstrap stage', () => {
     const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
       campaign_events: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'stage_transition_accepted',
         entity_type: 'campaign_stage', entity_id: 'BOOTSTRAP', layer: null,
-        evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'a'.repeat(64) },
-        source_kind: 'campaign_gate', source_ref: 'stage:BOOTSTRAP', observed_at: observedAt, recorded_at: observedAt,
+        evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: null, to_stage: 'BOOTSTRAP', manifest_sha256: 'a'.repeat(64) },
+        source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine', observed_at: observedAt, recorded_at: observedAt,
       }],
       campaign_definitions: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling',
@@ -1609,13 +1650,13 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(projectAt('COMPLETE').campaign).toMatchObject({ current_stage: 'COMPLETE', campaign_status: 'completed' })
   })
 
-  it('does not block a contiguous stage spine on a consecutive idempotent transition duplicate', () => {
+  it('tolerates a historical duplicate stage receipt while the writer itself prevents a second append', () => {
     const manifest = defaultManifest()
     const transitions = stageEventsThrough('L0')
     const original = transitions[1]
     transitions.splice(2, 0, {
       ...original,
-      source_ref: 'stage:T0_CENSUS:duplicate',
+      source_ref: 'nirmana-elevation:stage-spine',
       observed_at: '2026-08-25T09:00:01.500Z',
       recorded_at: '2026-08-25T09:00:01.500Z',
     })
@@ -1631,12 +1672,12 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.data_quality.contradictions).toEqual([])
   })
 
-  it('keeps a delayed same-digest bootstrap receipt replay idempotent in the campaign snapshot', () => {
+  it('tolerates a historical duplicate bootstrap receipt while the writer itself prevents a second append', () => {
     const manifest = defaultManifest()
     const [bootstrap, advance] = stageEventsThrough('T0_CENSUS')
     const replay = {
       ...bootstrap,
-      source_ref: 'stage:BOOTSTRAP:replay',
+      source_ref: 'nirmana-elevation:stage-spine',
       observed_at: '2026-08-25T09:00:02.000Z',
       recorded_at: '2026-08-25T09:00:02.000Z',
     }
@@ -1658,8 +1699,8 @@ describe('projectNirmanaElevationSnapshot', () => {
     const [bootstrap, advance] = stageEventsThrough('T0_CENSUS')
     const conflict = {
       ...bootstrap,
-      evidence_payload: { from_stage: null, to_stage: 'BOOTSTRAP', prerequisites_sha256: 'f'.repeat(64) },
-      source_ref: 'stage:BOOTSTRAP:conflict',
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: null, to_stage: 'BOOTSTRAP', manifest_sha256: 'f'.repeat(64) },
+      source_ref: 'nirmana-elevation:stage-spine',
       observed_at: '2026-08-25T09:00:02.000Z',
       recorded_at: '2026-08-25T09:00:02.000Z',
     }
