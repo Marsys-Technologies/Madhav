@@ -45,14 +45,83 @@ describe('CampaignSpine', () => {
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('distinguishes a not-yet-observed synchronization state from source failure', () => {
+    const snapshot = snapshotFixture()
+    snapshot.program_sync = {
+      status: 'unknown',
+      observed_at: null,
+      age_seconds: null,
+      affected_asset_ids: [],
+      current_definition_sha256: null,
+      candidate_definition_sha256: null,
+    }
+    const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+    if (!monitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(monitor, {
+      state: 'unknown',
+      observed_at: null,
+      age_seconds: null,
+      error_code: null,
+      error_message: null,
+    })
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    const synchronization = screen.getByText('Synchronization not yet observed').closest<HTMLElement>('[role="alert"]')
+    if (!synchronization) throw new Error('Unknown synchronization live region is missing.')
+    expect(within(synchronization).getByText('Observation age: Unknown')).toBeVisible()
+    expect(within(synchronization).getByText('Affected assets: 0')).toBeVisible()
+    expect(within(synchronization).queryByText('Source unavailable')).not.toBeInTheDocument()
+  })
+
+  it('distinguishes release reconciliation from evidence refresh using release-divergence evidence', () => {
+    const snapshot = snapshotFixture()
+    const definitionHash = 'd'.repeat(64)
+    snapshot.program_sync = {
+      status: 'release_attention',
+      observed_at: '2026-08-26T00:02:00.000Z',
+      age_seconds: 60,
+      affected_asset_ids: [],
+      current_definition_sha256: definitionHash,
+      candidate_definition_sha256: definitionHash,
+    }
+    snapshot.release = {
+      main_sha: 'a'.repeat(40),
+      deployed_sha: 'b'.repeat(40),
+      deployed_revision: 'amjis-web-release-divergence',
+      production_in_sync: false,
+      observed_at: '2026-08-26T00:02:00.000Z',
+    }
+    snapshot.data_quality = {
+      verdict: 'degraded',
+      gaps: ['Program release reconciliation requires attention.'],
+      contradictions: ['Deployed SHA differs from main.'],
+    }
+    const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+    if (!monitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(monitor, {
+      state: 'fresh',
+      observed_at: snapshot.program_sync.observed_at,
+      age_seconds: snapshot.program_sync.age_seconds,
+      error_code: null,
+      error_message: null,
+    })
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    const synchronization = screen.getByText('Release reconciliation required').closest<HTMLElement>('[role="alert"]')
+    if (!synchronization) throw new Error('Release-reconciliation live region is missing.')
+    expect(within(synchronization).getByText('Observation age: 1 minute')).toBeVisible()
+    expect(within(synchronization).getByText('Affected assets: 0')).toBeVisible()
+    expect(within(synchronization).queryByText('Evidence refresh required')).not.toBeInTheDocument()
+  })
+
   it.each([
-    ['unknown', 'Source unavailable'],
     ['baseline_missing', 'Baseline awaiting acceptance'],
     ['plan_adaptation_required', 'Plan adaptation required'],
     ['evidence_refresh_required', 'Evidence refresh required'],
     ['label_refresh_required', 'Label catalogue refresh required'],
     ['in_sync', 'In sync'],
-    ['release_attention', 'Evidence refresh required'],
     ['source_unavailable', 'Source unavailable'],
   ] as const)('renders %s with the required plain-language synchronization copy', (status, copy) => {
     const snapshot = snapshotFixture()

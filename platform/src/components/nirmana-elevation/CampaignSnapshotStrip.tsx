@@ -4,13 +4,13 @@ import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 type ProgramSyncStatus = NirmanaElevationSnapshotV2['program_sync']['status']
 
 const PROGRAM_SYNC_COPY: Record<ProgramSyncStatus, string> = {
-  unknown: 'Source unavailable',
+  unknown: 'Synchronization not yet observed',
   baseline_missing: 'Baseline awaiting acceptance',
   plan_adaptation_required: 'Plan adaptation required',
   evidence_refresh_required: 'Evidence refresh required',
   label_refresh_required: 'Label catalogue refresh required',
   in_sync: 'In sync',
-  release_attention: 'Evidence refresh required',
+  release_attention: 'Release reconciliation required',
   source_unavailable: 'Source unavailable',
 }
 
@@ -79,7 +79,6 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
   const programNeedsAttention = staleProgramObservation
     || !['baseline_missing', 'in_sync'].includes(snapshot.program_sync.status)
   const programUnavailable = snapshot.program_sync.status === 'source_unavailable'
-    || snapshot.program_sync.status === 'unknown'
 
   return <section aria-labelledby="campaign-snapshot-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
     <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-brand-border pb-3">
