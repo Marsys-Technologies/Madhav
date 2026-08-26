@@ -19,6 +19,7 @@ vi.mock('@/lib/db/client', () => ({
 }))
 
 import {
+  assertFreezableManifest,
   assertNirmanaGitCommitMatchesDeployment,
   canonicalManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
@@ -63,8 +64,12 @@ const manifest = {
   chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
   assets: [manifestAsset],
 }
-const reconciledT0Manifest = JSON.parse(readFileSync(
+const historicalT0Manifest = JSON.parse(readFileSync(
   new URL('../../../../../00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json', import.meta.url),
+  'utf8',
+))
+const reconciledT0Manifest = JSON.parse(readFileSync(
+  new URL('../../../../../00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_1.json', import.meta.url),
   'utf8',
 ))
 
@@ -164,9 +169,16 @@ describe('Nirmana elevation definition repository', () => {
     expect(() => canonicalManifestDigest(nonBuildManifest)).not.toThrow()
   })
 
-  it('validates the full 128-asset T0 manifest, exact DAG waves, and registry fingerprints', async () => {
+  it('preserves the immutable historical T0 v1.0 definition bytes and digest', () => {
+    expect(historicalT0Manifest.assets).toHaveLength(128)
+    expect(canonicalManifestDigest(historicalT0Manifest)).toBe('c0097895ab6b5318e8b9a2c34de34f7fe685eedfe9b8fb2293abe78593a5a3c4')
+    expect(() => assertFreezableManifest(historicalT0Manifest)).not.toThrow()
+  })
+
+  it('validates the full post-626 T0 v1.1 manifest, exact DAG waves, and registry fingerprints', async () => {
     expect(reconciledT0Manifest.assets).toHaveLength(128)
-    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('ef81829b177c3226197cd0cb93b8a2c91f21e64ae4d6b0da85448157d880e42d')
+    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('faa4d6b08dcde6c64efedc11c56561f24f8832ec92d2b6680660ba94de85f4a8')
+    expect(() => assertFreezableManifest(reconciledT0Manifest)).not.toThrow()
 
     const exactAssets = new Map(reconciledT0Manifest.assets.map((asset: typeof manifestAsset) => [asset.asset_id, asset]))
     expect(exactAssets.get('bg_gochara_arcs')).toMatchObject({ wave_index: 1, depends_on: ['bg_ephemeris'] })
