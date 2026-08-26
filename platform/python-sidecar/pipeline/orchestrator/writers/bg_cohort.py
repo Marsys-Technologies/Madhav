@@ -112,10 +112,10 @@ Conforms to FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
 - returns WriterResult with actual rows_inserted
 - honours ctx.dry_run
 
-L0 idempotency (CLAUDE.md §N.3): global reference table, `ON CONFLICT
-(synthetic_id) DO NOTHING` — safe to upsert; the fixed RNG seed makes every
-rebuild recompute byte-identical rows, so a re-run correctly reports zero new
-inserts (mirrors bg_ephemeris's ON CONFLICT DO NOTHING convention exactly).
+L0 idempotency (CLAUDE.md §N.3): global reference tables are fully converged
+with `ON CONFLICT ... DO UPDATE`, followed by exact count/key postflight. The
+fixed RNG seed makes every rebuild reproduce the same semantic rows while
+repairing stale keyed content instead of preserving it.
 
 ZERO LLM use. Pure deterministic pyswisseph / algorithmic computation +
 Python's stdlib `random.Random` with a fixed seed for the synthetic sampling
@@ -124,11 +124,13 @@ Python's stdlib `random.Random` with a fixed seed for the synthetic sampling
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import random
 import time
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from pipeline.orchestrator.writers import (
@@ -149,8 +151,17 @@ COHORT_WINDOW_END = date(2099, 12, 31)
 COHORT_LAT_MIN, COHORT_LAT_MAX = -60.0, 60.0
 COHORT_LON_MIN, COHORT_LON_MAX = -180.0, 180.0
 AYANAMSHA_KEY = "lahiri"
-SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_v1"
-SOURCE_CITATION = "pyswisseph DE441 (Swiss Ephemeris); Lahiri ayanamsha; synthetic sampled birth parameters"
+SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v2"
+SOURCE_CITATION = (
+    "pyswisseph file-backed Swiss Ephemeris sepl_18/semo_18/seas_18 corpus; "
+    "Lahiri ayanamsha; TRUE_NODE Rahu; synthetic sampled birth parameters"
+)
+
+EPHEMERIS_FILE_SHA256: dict[str, str] = {
+    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+}
 
 SIGN_NAMES = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -187,6 +198,57 @@ NAK_LORD_CYCLE: list[str] = [
 ]
 
 CHAIN_VERSION = "vim_md_age_v1"
+
+
+def _require_reproducible_write_runtime() -> None:
+    """Pin writes to the runtime that reproduces production rounding keys."""
+    import platform
+
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    if system != "linux" or machine not in {"x86_64", "amd64"}:
+        raise RuntimeError(
+            "bg_cohort writes require the reproducible Linux/x86_64 runtime; "
+            f"observed {platform.system()}/{platform.machine()}"
+        )
+
+
+def _require_pinned_ephemeris_runtime(swe: Any, ephe_path: str | None) -> str:
+    """Require the exact file-backed corpus whose provenance is persisted."""
+    if not ephe_path:
+        raise RuntimeError(
+            "bg_cohort requires the pinned Swiss Ephemeris file corpus; "
+            "refusing the silent Moshier fallback"
+        )
+
+    root = Path(ephe_path)
+    for filename, expected_digest in EPHEMERIS_FILE_SHA256.items():
+        path = root / filename
+        try:
+            actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise RuntimeError(
+                f"bg_cohort ephemeris file is unavailable: {path}"
+            ) from exc
+        if actual_digest != expected_digest:
+            raise RuntimeError(
+                "bg_cohort ephemeris digest mismatch for "
+                f"{filename}: expected {expected_digest}, observed {actual_digest}"
+            )
+
+    swe.set_ephe_path(ephe_path)
+    probe_jd = swe.julday(2000, 1, 1, 0.0)
+    _position, retflag = swe.calc_ut(
+        probe_jd,
+        swe.SUN,
+        swe.FLG_SWIEPH | swe.FLG_SPEED,
+    )
+    if not (retflag & swe.FLG_SWIEPH) or (retflag & swe.FLG_MOSEPH):
+        raise RuntimeError(
+            "bg_cohort Swiss Ephemeris file backend was not active; "
+            "refusing the silent Moshier fallback"
+        )
+    return ephe_path
 
 
 # ── Synthetic birth-parameter sampling (pure, no DB/swisseph — testable) ─────
@@ -412,10 +474,8 @@ class BgCohortWriter(WriterBase):
     from each row's already-computed Moon longitude (KALA_W2_FIELD_DESIGN_v1_0
     §6.3, ANTARYĀMIN ADJUDICATION-1). See module docstring for both.
 
-    L0 writer — chart-agnostic, global scope. Idempotency: ON CONFLICT
-    (synthetic_id) DO NOTHING for bg_synthetic_cohort, ON CONFLICT
-    (synthetic_id, md_index) DO NOTHING for bg_synthetic_cohort_md — see
-    module docstring.
+    L0 writer — chart-agnostic, global scope. Idempotency is a full semantic
+    upsert of both owned projections plus exact key/count postflight.
     """
 
     asset_id = "bg_cohort"
@@ -424,15 +484,6 @@ class BgCohortWriter(WriterBase):
     _BATCH_SIZE = 500
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        from brahmagyan.l0_ephemeris import _resolve_ephe_path
-
-        try:
-            import swisseph as swe  # type: ignore[import]
-            _swe_available = True
-        except ImportError:
-            swe = None  # type: ignore[assignment]
-            _swe_available = False
-
         t0 = time.time()
 
         if ctx.dry_run:
@@ -444,91 +495,117 @@ class BgCohortWriter(WriterBase):
                 duration_seconds=round(time.time() - t0, 2),
             )
 
-        if not _swe_available:
-            logger.warning("[bg_cohort] swisseph not available — skipping computation.")
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes="skipped: swisseph unavailable",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+        from brahmagyan.l0_ephemeris import _resolve_ephe_path
 
-        ephe_path = _resolve_ephe_path()
+        try:
+            import swisseph as swe  # type: ignore[import]
+        except ImportError as exc:
+            raise RuntimeError("bg_cohort requires pyswisseph") from exc
+
+        _require_reproducible_write_runtime()
+        ephe_path = _require_pinned_ephemeris_runtime(swe, _resolve_ephe_path())
         samples = sample_birth_params()
+        if len(samples) != COHORT_SIZE:
+            raise RuntimeError(
+                f"bg_cohort expected {COHORT_SIZE} deterministic samples, got {len(samples)}"
+            )
 
         conn = ctx.db_conn
         rows_written = 0
         md_rows_written = 0
         md_skipped_honest_null = 0
-        try:
-            with conn.cursor() as cur:
-                batch: list[dict[str, Any]] = []
-                md_batch: list[dict[str, Any]] = []
-                for sample in samples:
-                    positions = compute_synthetic_positions(
-                        sample["birth_datetime_utc"], sample["lat"], sample["lon"],
-                        swe, ephe_path,
-                    )
-                    batch.append({
+        with conn.cursor() as cur:
+            batch: list[dict[str, Any]] = []
+            md_batch: list[dict[str, Any]] = []
+            for sample in samples:
+                positions = compute_synthetic_positions(
+                    sample["birth_datetime_utc"], sample["lat"], sample["lon"],
+                    swe, ephe_path,
+                )
+                batch.append({
+                    "synthetic_id": sample["synthetic_id"],
+                    "birth_datetime_utc": sample["birth_datetime_utc"],
+                    "birth_lat": sample["lat"],
+                    "birth_lon": sample["lon"],
+                    "ayanamsha_key": AYANAMSHA_KEY,
+                    "positions": json.dumps(positions),
+                    "sampling_method": SAMPLING_METHOD_VERSION,
+                    "source_citation": SOURCE_CITATION,
+                    "build_id": ctx.build_id,
+                })
+
+                # ── MD-lord chain, second pass (§6.3) — from the SAME
+                # already-computed `positions`, no extra ephemeris call.
+                chain_rows = compute_md_lord_chain(positions)
+                if not chain_rows:
+                    md_skipped_honest_null += 1
+                for row in chain_rows:
+                    md_batch.append({
                         "synthetic_id": sample["synthetic_id"],
-                        "birth_datetime_utc": sample["birth_datetime_utc"],
-                        "birth_lat": sample["lat"],
-                        "birth_lon": sample["lon"],
-                        "ayanamsha_key": AYANAMSHA_KEY,
-                        "positions": json.dumps(positions),
-                        "sampling_method": SAMPLING_METHOD_VERSION,
-                        "source_citation": SOURCE_CITATION,
-                        "build_id": ctx.build_id,
+                        "md_index": row["md_index"],
+                        "md_lord": row["md_lord"],
+                        "start_age_years": round(row["start_age_years"], 6),
+                        "end_age_years": round(row["end_age_years"], 6),
+                        "md_full_years": row["md_full_years"],
+                        "is_partial": row["is_partial"],
+                        "chain_version": CHAIN_VERSION,
                     })
 
-                    # ── MD-lord chain, second pass (§6.3) — from the SAME
-                    # already-computed `positions`, no extra ephemeris call. A
-                    # missing/null Moon (structurally near-unreachable — see
-                    # module docstring) is an honest-empty skip, never a crash.
-                    chain_rows = compute_md_lord_chain(positions)
-                    if not chain_rows:
-                        md_skipped_honest_null += 1
-                    for row in chain_rows:
-                        md_batch.append({
-                            "synthetic_id": sample["synthetic_id"],
-                            "md_index": row["md_index"],
-                            "md_lord": row["md_lord"],
-                            "start_age_years": round(row["start_age_years"], 6),
-                            "end_age_years": round(row["end_age_years"], 6),
-                            "md_full_years": row["md_full_years"],
-                            "is_partial": row["is_partial"],
-                            "chain_version": CHAIN_VERSION,
-                        })
-
-                    # IMPORTANT: bg_synthetic_cohort_md.synthetic_id FK-references
-                    # bg_synthetic_cohort.synthetic_id, so the cohort batch for a
-                    # given synthetic_id MUST be inserted (even if not yet
-                    # committed — same-transaction visibility is enough) before
-                    # its MD-chain rows are. Both flushes are therefore gated on
-                    # the SAME trigger (the cohort batch's own size), cohort
-                    # first, chain second — never chain-batch-size-triggered on
-                    # its own, which would flush chain rows for synthetic_ids
-                    # still sitting uninserted in the cohort batch.
-                    if len(batch) >= self._BATCH_SIZE:
-                        rows_written += self._flush_batch(cur, batch)
-                        batch = []
-                        if rows_written % (self._BATCH_SIZE * 4) == 0:
-                            logger.info("[bg_cohort] %d/%d synthetic charts computed", rows_written, len(samples))
-                        if md_batch:
-                            md_rows_written += self._flush_md_batch(cur, md_batch)
-                            md_batch = []
-                if batch:
+                # The parent batch must be visible before its MD children.
+                if len(batch) >= self._BATCH_SIZE:
                     rows_written += self._flush_batch(cur, batch)
-                if md_batch:
-                    md_rows_written += self._flush_md_batch(cur, md_batch)
-        except Exception as exc:
-            logger.error("[bg_cohort] computation failed after %d rows (%d md rows): %s", rows_written, md_rows_written, exc)
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=rows_written,
-                notes=f"partial: {exc} (md_rows_inserted={md_rows_written})",
-                duration_seconds=round(time.time() - t0, 2),
+                    batch = []
+                    if rows_written % (self._BATCH_SIZE * 4) == 0:
+                        logger.info("[bg_cohort] %d/%d synthetic charts computed", rows_written, len(samples))
+                    if md_batch:
+                        md_rows_written += self._flush_md_batch(cur, md_batch)
+                        md_batch = []
+            if batch:
+                rows_written += self._flush_batch(cur, batch)
+            if md_batch:
+                md_rows_written += self._flush_md_batch(cur, md_batch)
+
+            if rows_written != COHORT_SIZE or md_rows_written != 10 * COHORT_SIZE:
+                raise RuntimeError(
+                    "bg_cohort deterministic payload was incomplete: "
+                    f"cohort={rows_written}, md={md_rows_written}, "
+                    f"honest_null={md_skipped_honest_null}"
+                )
+
+            # Dense deterministic keys make extras precisely identifiable.
+            cur.execute(
+                "DELETE FROM bg_synthetic_cohort_md "
+                "WHERE synthetic_id NOT BETWEEN 1 AND %s OR md_index NOT BETWEEN 1 AND 10",
+                (COHORT_SIZE,),
             )
+            cur.execute(
+                "DELETE FROM bg_synthetic_cohort WHERE synthetic_id NOT BETWEEN 1 AND %s",
+                (COHORT_SIZE,),
+            )
+            cur.execute(
+                """
+                SELECT
+                  (SELECT count(*) FROM bg_synthetic_cohort) AS cohort_count,
+                  (SELECT min(synthetic_id) FROM bg_synthetic_cohort) AS cohort_min,
+                  (SELECT max(synthetic_id) FROM bg_synthetic_cohort) AS cohort_max,
+                  (SELECT count(*) FROM bg_synthetic_cohort_md) AS md_count,
+                  (SELECT count(*) FROM (
+                     SELECT synthetic_id FROM bg_synthetic_cohort_md
+                     GROUP BY synthetic_id HAVING count(*) <> 10
+                   ) invalid_chains) AS invalid_chain_count
+                """
+            )
+            postflight = cur.fetchone()
+            values = (
+                postflight["cohort_count"], postflight["cohort_min"],
+                postflight["cohort_max"], postflight["md_count"],
+                postflight["invalid_chain_count"],
+            ) if isinstance(postflight, dict) else tuple(postflight)
+            expected = (COHORT_SIZE, 1, COHORT_SIZE, 10 * COHORT_SIZE, 0)
+            if values != expected:
+                raise RuntimeError(
+                    f"bg_cohort exact postflight failed: expected {expected}, got {values}"
+                )
 
         elapsed = round(time.time() - t0, 2)
         logger.info(
@@ -559,7 +636,16 @@ class BgCohortWriter(WriterBase):
               (%(synthetic_id)s, %(birth_datetime_utc)s, %(birth_lat)s, %(birth_lon)s,
                %(ayanamsha_key)s, %(positions)s::jsonb, %(sampling_method)s,
                %(source_citation)s, %(build_id)s, NOW())
-            ON CONFLICT (synthetic_id) DO NOTHING
+            ON CONFLICT (synthetic_id) DO UPDATE SET
+              birth_datetime_utc = EXCLUDED.birth_datetime_utc,
+              birth_lat = EXCLUDED.birth_lat,
+              birth_lon = EXCLUDED.birth_lon,
+              ayanamsha_key = EXCLUDED.ayanamsha_key,
+              positions = EXCLUDED.positions,
+              sampling_method = EXCLUDED.sampling_method,
+              source_citation = EXCLUDED.source_citation,
+              build_id = EXCLUDED.build_id,
+              computed_at = EXCLUDED.computed_at
             """,
             batch,
         )
@@ -568,10 +654,8 @@ class BgCohortWriter(WriterBase):
     @staticmethod
     def _flush_md_batch(cur: Any, batch: list[dict[str, Any]]) -> int:
         """
-        Insert bg_synthetic_cohort_md rows. L0 idempotency (§N.3): ON CONFLICT
-        (synthetic_id, md_index) DO NOTHING — the chain is a pure function of
-        the already-stored Moon longitude, so a re-run recomputes
-        byte-identical rows (mirrors bg_synthetic_cohort's own convention).
+        Converge bg_synthetic_cohort_md rows. The chain is a pure function of
+        the same-run Moon longitude; stale keyed rows must be repaired.
         """
         cur.executemany(
             """
@@ -582,7 +666,14 @@ class BgCohortWriter(WriterBase):
               (%(synthetic_id)s, %(md_index)s, %(md_lord)s, %(start_age_years)s,
                %(end_age_years)s, %(md_full_years)s, %(is_partial)s,
                %(chain_version)s, NOW())
-            ON CONFLICT (synthetic_id, md_index) DO NOTHING
+            ON CONFLICT (synthetic_id, md_index) DO UPDATE SET
+              md_lord = EXCLUDED.md_lord,
+              start_age_years = EXCLUDED.start_age_years,
+              end_age_years = EXCLUDED.end_age_years,
+              md_full_years = EXCLUDED.md_full_years,
+              is_partial = EXCLUDED.is_partial,
+              chain_version = EXCLUDED.chain_version,
+              computed_at = EXCLUDED.computed_at
             """,
             batch,
         )
