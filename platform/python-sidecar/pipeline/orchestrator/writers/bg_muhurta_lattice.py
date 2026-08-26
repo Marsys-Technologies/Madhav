@@ -134,6 +134,10 @@ from pipeline.orchestrator.writers import (
     WriterResult,
     register,
 )
+from pipeline.orchestrator.writers.bg_sky_calendar import (
+    _require_pinned_ephemeris_files,
+    _require_swiss_file_backend,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -556,11 +560,22 @@ class BgMuhurtaLatticeWriter(WriterBase):
             )
 
         try:
-            import swisseph  # noqa: F401  -- availability probe
+            import swisseph as swe
         except ImportError as exc:
             raise RuntimeError(
                 "bg_muhurta_lattice requires pyswisseph and cannot rebuild without it"
             ) from exc
+
+        from brahmagyan.l0_ephemeris import _resolve_ephe_path
+
+        ephe_path = _resolve_ephe_path()
+        if not ephe_path:
+            raise RuntimeError(
+                "Swiss Ephemeris production .se1 files are required for "
+                "bg_muhurta_lattice; refusing the Moshier analytic fallback"
+            )
+        _require_pinned_ephemeris_files(ephe_path)
+        _require_swiss_file_backend(swe, ephe_path)
 
         start, end = compute_horizon()
         year = int(step.key.split(":", 1)[1])

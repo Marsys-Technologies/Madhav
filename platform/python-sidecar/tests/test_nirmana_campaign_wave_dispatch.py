@@ -132,6 +132,7 @@ def _evidence_row(
     registry_fingerprint_sha256: str,
     analysis_digest: str,
     verdict: str = "examined_and_already_efficient",
+    source_ref: str = "git:" + "a" * 40,
 ) -> dict:
     payload = {
         "registry_fingerprint_sha256": registry_fingerprint_sha256,
@@ -162,7 +163,7 @@ def _evidence_row(
         "event_type": event_type,
         "evidence_payload": payload,
         "source_kind": "git_commit",
-        "source_ref": "git:" + "a" * 40,
+        "source_ref": source_ref,
     }
 
 
@@ -464,6 +465,100 @@ def test_rejects_stale_unbound_or_multiple_wave_evidence(rows: list[dict], messa
             asset_ids=["bg_reference"],
             live_registry_fingerprints={"bg_reference": "1" * 64},
             evidence_rows=rows,
+        )
+
+
+def test_l0_dispatch_receipt_binding_rejects_writer_drift_without_registry_drift(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Old accepted evidence cannot authorize after only writer inventory changes."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    selected = [definition["assets"][0], definition["assets"][1]]
+    candidates = {_candidate(asset)["asset_id"]: _candidate(asset) for asset in selected}
+    writer_digests = {"bg_reference": "a" * 64, "bg_formula_constants": "b" * 64}
+    convergence_sha = "c" * 40
+    receipts_path = tmp_path / "nirmana-l0-analysis-receipts.ts"
+    receipts_path.write_text(
+        "\n".join(
+            [
+                f"export const NIRMANA_L0_CONVERGENCE_COMMIT = '{convergence_sha}' as const",
+                "export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = "
+                f"'{_digest(writer_digests)}' as const",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "L0_ANALYSIS_RECEIPTS_PATH", receipts_path)
+
+    receipt_digests, reviewed_sha = module._current_l0_analysis_receipt_digests(
+        selected_assets=selected,
+        candidates_by_id=candidates,
+        writer_digests=writer_digests,
+    )
+    module.validate_wave_evidence_bindings(
+        asset_ids=["bg_reference"],
+        live_registry_fingerprints={"bg_reference": _registry_fingerprint(candidates["bg_reference"])},
+        canonical_analysis_digests={"bg_reference": receipt_digests["bg_reference"]},
+        reviewed_deployment_sha=reviewed_sha,
+        evidence_rows=[
+            _evidence_row(
+                event_id=1,
+                asset_id="bg_reference",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest=receipt_digests["bg_reference"],
+                source_ref=f"git:{reviewed_sha}",
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="bg_reference",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest=receipt_digests["bg_reference"],
+                source_ref=f"git:{reviewed_sha}",
+            ),
+        ],
+    )
+
+    drifted_digests = {**writer_digests, "bg_reference": "d" * 64}
+    with pytest.raises(RuntimeError, match="writer inventory.*convergence"):
+        module._current_l0_analysis_receipt_digests(
+            selected_assets=selected,
+            candidates_by_id=candidates,
+            writer_digests=drifted_digests,
+        )
+
+
+def test_l0_dispatch_receipt_binding_requires_the_reviewed_deployment_sha() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+    with pytest.raises(RuntimeError, match="reviewed deployment convergence SHA"):
+        module.validate_wave_evidence_bindings(
+            asset_ids=["bg_reference"],
+            live_registry_fingerprints={"bg_reference": "1" * 64},
+            canonical_analysis_digests={"bg_reference": "2" * 64},
+            reviewed_deployment_sha="a" * 40,
+            evidence_rows=[
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                    source_ref="git:" + "b" * 40,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                    source_ref="git:" + "b" * 40,
+                ),
+            ],
         )
 
 

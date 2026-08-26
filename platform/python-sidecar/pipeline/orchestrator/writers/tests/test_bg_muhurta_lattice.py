@@ -381,11 +381,93 @@ def test_writer_fails_closed_when_swisseph_is_unavailable(monkeypatch):
         BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
 
 
+def test_writer_fails_closed_before_computation_without_swiss_ephemeris_files(monkeypatch):
+    """A configured library alone must not silently select Moshier for writes."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: None)
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match=r"Swiss Ephemeris .*\.se1"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_fails_closed_when_pinned_ephemeris_bytes_are_corrupt(monkeypatch, tmp_path):
+    """Matching file names are insufficient: persisted rows require pinned bytes."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    for filename in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
+        (tmp_path / filename).write_bytes(b"corrupt")
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: str(tmp_path))
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match="digest"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_fails_closed_when_swisseph_reports_moshier_fallback(monkeypatch):
+    """The return flags, not import success, prove the Swiss-file backend."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    class MoshierSwe:
+        SIDM_LAHIRI = 1
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SIDEREAL = 64 * 1024
+        FLG_SPEED = 256
+        SUN = 0
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def set_sid_mode(_mode):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2_451_544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 1.0, 1.0, 0.0, 0.0), MoshierSwe.FLG_MOSEPH)
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
+    monkeypatch.setitem(sys.modules, "swisseph", MoshierSwe)
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match="Moshier"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
 def test_writer_propagates_day_computation_failure(monkeypatch):
     """A partial year must roll back instead of being marked complete."""
     import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
 
     monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
     monkeypatch.setattr(
         lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
     )
@@ -418,6 +500,8 @@ def test_writer_propagates_insert_failure(monkeypatch):
             return CursorContext()
 
     monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
     monkeypatch.setattr(
         lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
     )
