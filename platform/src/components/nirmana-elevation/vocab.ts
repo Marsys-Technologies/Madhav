@@ -21,21 +21,14 @@ export function stageDisplayName(stageId: NirmanaStageId, snapshot: NirmanaEleva
   return STAGE_DISPLAY_NAMES[stageId as keyof typeof STAGE_DISPLAY_NAMES]
 }
 
-export function planAssetReference(asset: Asset): string | null {
-  return asset.legacy_aliases.find((alias) => /^A\d+$/i.test(alias.asset_id))?.asset_id ?? null
-}
-
 export function assetPrimaryName(asset: Asset): string {
   return asset.sanskrit_name ?? asset.english_name
 }
 
 export function assetHeading(asset: Asset): string {
-  const reference = planAssetReference(asset)
-  const name = assetPrimaryName(asset)
-  return reference ? `${reference} · ${name}` : name
+  return assetPrimaryName(asset)
 }
 
 export function assetCompactLabel(asset: Asset): string {
-  const reference = planAssetReference(asset)
-  return reference ? `${reference} · ${asset.english_name}` : asset.english_name
+  return asset.english_name
 }

@@ -12,11 +12,14 @@ function assetFixture(assetId = 'ka_smriti'): NirmanaElevationSnapshotV2['assets
 }
 
 describe('AssetCard', () => {
-  it('presents a plan reference and human identity before the raw system id', () => {
+  it('presents canonical human identity first and keeps A-number aliases as explicit legacy references', () => {
     render(<AssetCard asset={assetFixture()} onOpenAudit={vi.fn()} />)
 
-    expect(screen.getByRole('heading', { name: /A22 · Kāla Smṛti/i })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Kāla Smṛti' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: /A22/i })).not.toBeInTheDocument()
     expect(screen.getByText('Kala Smriti')).toBeVisible()
+    expect(screen.getByText('Legacy reference')).toBeVisible()
+    expect(screen.getByText('A22')).toBeVisible()
     expect(screen.getByText('System ID: ka_smriti')).toBeVisible()
   })
 
@@ -45,6 +48,25 @@ describe('AssetCard', () => {
     expect(progress).toHaveAttribute('aria-valuenow', String(asset.milestones_earned))
     expect(progress).toHaveAttribute('aria-valuemax', String(asset.milestones_required))
     expect(progress).toHaveAttribute('aria-valuetext', `${asset.milestones_earned} of ${asset.milestones_required} required milestones earned`)
+  })
+
+  it('renders missing counters as explicitly indeterminate rather than an empty zero-percent bar', () => {
+    const asset = {
+      ...assetFixture('bg_prashna_rules'),
+      execution_obligation: 'unresolved' as const,
+      milestones_earned: null,
+      milestones_required: null,
+    }
+
+    render(<AssetCard asset={asset} onOpenAudit={vi.fn()} />)
+
+    const progress = screen.getByRole('progressbar', { name: /Prashna Rules asset completion/i })
+    expect(progress).toHaveAttribute('data-progress-state', 'indeterminate')
+    expect(progress).not.toHaveAttribute('aria-valuenow')
+    expect(progress).not.toHaveAttribute('aria-valuemax')
+    expect(progress).toHaveAttribute('aria-valuetext', 'Asset completion is unknown because milestone counters are unavailable')
+    expect(progress.querySelector('.nirmana-asset-progress-indeterminate')).toBeInTheDocument()
+    expect(progress.querySelector('[style="width: 0%;"]')).not.toBeInTheDocument()
   })
 
   it('keeps one current action and blocker visible without opening details', () => {

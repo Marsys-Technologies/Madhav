@@ -28,7 +28,7 @@ export function MilestoneBar({ asset }: { asset: NirmanaElevationSnapshotV2['ass
   const hasCounters = earned !== null && required !== null
   const progressText = hasCounters
     ? `${earned} of ${required} required milestones earned`
-    : 'Asset completion is not yet evidenced'
+    : 'Asset completion is unknown because milestone counters are unavailable'
   const progressWidth = hasCounters && required > 0
     ? `${Math.min(100, (earned / required) * 100)}%`
     : '0%'
@@ -41,9 +41,12 @@ export function MilestoneBar({ asset }: { asset: NirmanaElevationSnapshotV2['ass
       aria-valuenow={earned ?? undefined}
       aria-valuemax={required ?? undefined}
       aria-valuetext={progressText}
+      data-progress-state={hasCounters ? 'determinate' : 'indeterminate'}
       className="h-2 overflow-hidden rounded-full bg-brand-border"
     >
-      <span className="block h-full rounded-full bg-brand-gold-2" style={{ width: progressWidth }} />
+      {hasCounters
+        ? <span className="block h-full rounded-full bg-brand-gold-2" style={{ width: progressWidth }} />
+        : <span aria-hidden="true" className="nirmana-asset-progress-indeterminate block h-full w-full bg-[repeating-linear-gradient(135deg,rgba(148,163,184,0.18),rgba(148,163,184,0.18)_4px,rgba(234,179,8,0.35)_4px,rgba(234,179,8,0.35)_8px)]" />}
     </div>
     <ol className="grid grid-cols-6 gap-1" aria-label={`Milestones for ${asset.asset_id}`}>
       {asset.milestones.map((milestone) => {

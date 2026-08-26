@@ -26,7 +26,7 @@ export function AssetCard({ asset, onOpenAudit }: { asset: NirmanaElevationSnaps
     </div>
 
     {asset.legacy_aliases.length > 0 && <div className="mt-2 space-y-1 border-l border-brand-border pl-2 text-xs text-brand-text-3">
-      {asset.legacy_aliases.map((alias) => <p key={alias.asset_id}><span className="font-medium text-brand-text-2">Legacy alias</span> <span className="font-mono">{alias.asset_id}</span>{alias.sanskrit_name && <> · {alias.sanskrit_name}</>}{alias.english_name && <> · {alias.english_name}</>}</p>)}
+      {asset.legacy_aliases.map((alias) => <p key={alias.asset_id}><span className="font-medium text-brand-text-2">Legacy reference</span> <span className="font-mono">{alias.asset_id}</span>{alias.sanskrit_name && <> · {alias.sanskrit_name}</>}{alias.english_name && <> · {alias.english_name}</>}</p>)}
     </div>}
 
     <div className="mt-3"><MilestoneBar asset={asset} /></div>
