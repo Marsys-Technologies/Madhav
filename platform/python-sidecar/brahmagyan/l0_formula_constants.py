@@ -246,7 +246,8 @@ def seed_formula_constants(
                     consumer_assets          = EXCLUDED.consumer_assets,
                     citation_or_ratification = EXCLUDED.citation_or_ratification,
                     calibratable             = EXCLUDED.calibratable,
-                    bounds                   = EXCLUDED.bounds
+                    bounds                   = EXCLUDED.bounds,
+                    version                  = EXCLUDED.version
                 """,
                 (
                     row["constant_id"],
