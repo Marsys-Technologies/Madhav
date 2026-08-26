@@ -15,6 +15,7 @@ on:
           - cloud_scheduler
           - iam
           - logging
+          - scheduler
       action:
         description: 'plan (safe, default) or apply'
         required: true
