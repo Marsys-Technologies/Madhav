@@ -1241,7 +1241,10 @@ def _p27_extract(m: re.Match, full_text: str) -> dict | None:
     sign_num = _canon_sign(m.group(4)) if m.group(4) else None
     if not p1 or not p2 or not sign_num:
         return None
-    planets = list({p for p in (p1, p2, p3) if p})
+    # Rule identity hashes the antecedent JSON. Preserve first textual
+    # occurrence while removing duplicates; Python's randomized set iteration
+    # must never choose the planet order for a rule_id.
+    planets = list(dict.fromkeys(p for p in (p1, p2, p3) if p))
     if len(planets) < 2:
         return None
     result = _extract_result_clause(full_text, m.end())
