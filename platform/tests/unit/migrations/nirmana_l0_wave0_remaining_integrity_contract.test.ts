@@ -7,7 +7,7 @@ import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
 
 const migrationPath = path.resolve(
   process.cwd(),
-  'supabase/migrations/627_nirmana_l0_wave0_remaining_integrity_contracts.sql',
+  'supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql',
 )
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_WAVE0_REMAINING_TEST_DATABASE_URL
@@ -47,10 +47,10 @@ const CONTRACTS = [
   },
 ] as const
 
-describe('migration 627 — remaining L0 wave-0 integrity contracts', () => {
+describe('migration 628 — remaining L0 wave-0 integrity contracts', () => {
   it('is runner-owned, fail-closed, and aligned with reviewed registry identities', () => {
     expect(migration).not.toBe('')
-    expect(migration).toContain('migration 627 refuses unknown')
+    expect(migration).toContain('migration 628 refuses unknown')
     expect(migration).not.toMatch(/^BEGIN;/m)
     expect(migration).not.toMatch(/^COMMIT;/m)
 
@@ -85,7 +85,7 @@ describe('migration 627 — remaining L0 wave-0 integrity contracts', () => {
   })
 })
 
-describe.skipIf(!TEST_DATABASE_URL)('migration 627 — real PostgreSQL behavior', () => {
+describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior', () => {
   async function connectPrepared(): Promise<Client> {
     const client = new Client({ connectionString: TEST_DATABASE_URL })
     await client.connect()
@@ -133,7 +133,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 627 — real PostgreSQL behavior'
         WHERE asset_id = 'bg_sky_calendar' AND retired_at IS NULL
       `)
       await expect(client.query(migration)).rejects.toThrow(
-        'migration 627 refuses unknown output digest contract',
+        'migration 628 refuses unknown output digest contract',
       )
       const status = await client.query(
         `SELECT catalog_status FROM asset_registry WHERE asset_id='bg_vidhi_primitives'`,

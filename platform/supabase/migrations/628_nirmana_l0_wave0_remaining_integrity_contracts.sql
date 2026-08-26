@@ -1,4 +1,4 @@
--- Migration 627: close the remaining reviewed L0 wave-0 integrity contracts.
+-- Migration 628: close the remaining reviewed L0 wave-0 integrity contracts.
 --
 -- Sky Calendar and Muhurta Lattice are rolling corpora, so their registry
 -- checks pin structural invariants, complete producer-family coverage, and
@@ -103,7 +103,7 @@ BEGIN
         OR (asset_id = 'bg_muhurta_lattice'
           AND spec_sha256 = 'dd96913547048da000efbd94cfc106a9f90fe15b14b2def68aba9f45b4e4db98'
           AND spec = muhurta_spec))) <> 3 THEN
-    RAISE EXCEPTION 'migration 627 refuses unknown output digest contract';
+    RAISE EXCEPTION 'migration 628 refuses unknown output digest contract';
   END IF;
 
   SELECT * INTO registry_row FROM asset_registry
@@ -126,7 +126,7 @@ BEGIN
     AND (registry_row.integrity_check_sql IS NULL
       OR registry_row.integrity_check_sql = sky_check)
   ) IS NOT TRUE THEN
-    RAISE EXCEPTION 'migration 627 refuses unknown bg_sky_calendar registry contract';
+    RAISE EXCEPTION 'migration 628 refuses unknown bg_sky_calendar registry contract';
   END IF;
 
   SELECT * INTO registry_row FROM asset_registry
@@ -149,7 +149,7 @@ BEGIN
     AND (registry_row.integrity_check_sql IS NULL
       OR registry_row.integrity_check_sql = vidhi_check)
   ) IS NOT TRUE THEN
-    RAISE EXCEPTION 'migration 627 refuses unknown bg_vidhi_primitives registry contract';
+    RAISE EXCEPTION 'migration 628 refuses unknown bg_vidhi_primitives registry contract';
   END IF;
 
   SELECT * INTO registry_row FROM asset_registry
@@ -172,7 +172,7 @@ BEGIN
     AND (registry_row.integrity_check_sql IS NULL
       OR registry_row.integrity_check_sql = muhurta_check)
   ) IS NOT TRUE THEN
-    RAISE EXCEPTION 'migration 627 refuses unknown bg_muhurta_lattice registry contract';
+    RAISE EXCEPTION 'migration 628 refuses unknown bg_muhurta_lattice registry contract';
   END IF;
 
   UPDATE asset_registry
@@ -190,7 +190,7 @@ BEGIN
 
   GET DIAGNOSTICS changed_rows = ROW_COUNT;
   IF changed_rows <> 3 THEN
-    RAISE EXCEPTION 'migration 627 expected 3 rows, updated %', changed_rows;
+    RAISE EXCEPTION 'migration 628 expected 3 rows, updated %', changed_rows;
   END IF;
 
   IF (SELECT count(*) FROM asset_registry
@@ -206,7 +206,7 @@ BEGIN
         AND catalog_status = 'CURRENT'
         AND natural_key_partition = muhurta_partition
         AND integrity_check_sql = muhurta_check)) <> 3 THEN
-    RAISE EXCEPTION 'migration 627 postflight registry mismatch';
+    RAISE EXCEPTION 'migration 628 postflight registry mismatch';
   END IF;
 
   -- Recheck the reviewed JSONB itself after mutation as well as before it. The
@@ -222,6 +222,6 @@ BEGIN
         OR (asset_id = 'bg_muhurta_lattice'
           AND spec_sha256 = 'dd96913547048da000efbd94cfc106a9f90fe15b14b2def68aba9f45b4e4db98'
           AND spec = muhurta_spec))) <> 3 THEN
-    RAISE EXCEPTION 'migration 627 postflight output digest contract mismatch';
+    RAISE EXCEPTION 'migration 628 postflight output digest contract mismatch';
   END IF;
 END $$;
