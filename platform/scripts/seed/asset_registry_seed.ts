@@ -21,7 +21,7 @@ import { resolve } from 'path'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface AssetDef {
+export interface AssetDef {
   asset_id: string
   layer: 'brahmagyan' | 'ganita' | 'bodha' | 'kala' | 'phala' | 'mimamsa'
   sort_order: number
@@ -49,6 +49,11 @@ interface AssetDef {
   catalog_status?: 'CURRENT' | 'DRAFT' | 'RETIRED'  // L0 = CURRENT; L1–L5 = DRAFT; RETIRED for post-cutover decommissioned assets
   // Migration 242 fields (L3 service/artifact asset kinds)
   asset_kind?: 'data' | 'service' | 'artifact'  // defaults to 'data'
+  // Migration-owned writer governance. Only set when this canonical seed is
+  // also the bootstrap authority for those values; conflict updates preserve DB state.
+  has_writer?: boolean
+  has_substeps?: boolean
+  writer_timeout_seconds?: number
 }
 
 interface CoefficientDef {
@@ -1007,6 +1012,31 @@ export const ASSETS: AssetDef[] = [
     asset_kind: 'data',
   },
   {
+    // Migration 565 (MR-25) owns the backing static citation-resolution table.
+    // Keep its registry identity in the canonical bootstrap seed so a clean
+    // environment and a migrated environment expose the same DAG surface.
+    asset_id: 'bg_gochara_citation_resolution',
+    layer: 'brahmagyan', sort_order: 80,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gochara Udāharaṇa Sandarbha Sāraṇī',
+    english_name: 'Gochara Citation→Verse-Ref Resolution Table (MR-25)',
+    english_description: 'MR-25 (PARIṢKĀRA): maps gochara citation strings (gochara_grammar/citations.py constants + primitives.py families) to classical_text_chunks verse_refs. Resolved rows carry a confirmed chunk_id + verse_ref from the corpus; unresolved rows record honest corpus gaps per B.10. Consumed by register_gochara_windows.ts serving join to surface verse_refs on gochara_forecast_get and gochara_activation_get responses.',
+    storage_type: 'postgres_table',
+    target_table: 'bg_gochara_citation_resolution',
+    count_sql: 'SELECT COUNT(*) FROM bg_gochara_citation_resolution',
+    size_sql: "SELECT pg_total_relation_size('bg_gochara_citation_resolution')",
+    target_floor: 4,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: null,
+    depends_on: ['bg_texts'],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+    has_writer: false,
+    has_substeps: false,
+    writer_timeout_seconds: 60,
+  },
+  {
     // ṢAḌ-DARŚANA W2G (GOCHARA-2.0, item 19) · migration 538. The
     // CHART-INDEPENDENT half of the 2.0 transit engine, and the reason W2G is
     // the campaign's production-scalability keystone: when Saturn reaches
@@ -1135,7 +1165,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS', // STALE_FORMULA: naive expansion gives (54+864+72)*5=4950 which over-counts by ~2×; actual=2184 because not all ashtakavarga sign×graha combos are stored and vimsopaka/bhava_bala sub-families are smaller than the theoretical max
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
-    depends_on: ['ga_positions'],
+    depends_on: ['ga_positions', 'ga_vargas'],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1283,7 +1313,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 11,019 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one row per ayanamsha" formula predates the full Sade Sati fact family (cycle / phase / phase_quarter / dhaiya / kantaka / ashtama / janma-shani periods + overlays).',
-    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_vargas', 'ga_dashas', 'ga_structural'],
+    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_vargas', 'ga_dashas', 'ga_structural', 'ga_nakshatra'],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1305,7 +1335,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null, // non-parametric — target_floor = 240 (A7 hybrid window varsha 1..48 × 5 ayanamshas)
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
-    depends_on: ['ga_positions', 'ga_dashas'],
+    depends_on: ['ga_positions', 'ga_dashas', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1339,7 +1369,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts — floor 77,821 post-Phase-2 rebuild (2026-06-18). All 14 depth categories active: sambandha_grade(180), nakshatra_dispositor_chain(45), dispositor_tree(50), bhava_significance_link(180), karaka_bhava_concordance(150), net_argala(60), nway_configuration(5), chart_center_of_gravity(10), graha_centrality(45), chart_cluster(45), convergence_count(105), contradiction_pair(1810), dispositor_cycle(0 — no cycles), varga_provenance_meta(0 — no issues).',
-    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas', 'ga_nakshatra'],
+    depends_on: ['ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sensitive', 'ga_strength', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
@@ -1532,7 +1562,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    depends_on: ['ga_structural', 'ga_vichara', 'bg_rules'],
+    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1553,7 +1583,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count ≥300 (edges + paths) per L2 build (chart 482012f1). Sub-graphs, motifs, topology rows excluded per migration 326 narrowing.',
     // Migration 356: bo_bimba added — karanajala reads bodha_cgm_nodes (bo_bimba output)
-    depends_on: ['bo_laksana', 'bo_bimba'],
+    depends_on: ['bo_laksana', 'bo_bimba', 'ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1571,7 +1601,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'EVENT_CLASSES * AYANAMSHAS',
     expected_volume_inputs: { EVENT_CLASSES: 22, AYANAMSHAS: 5 },
     volume_explanation: '22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.',
-    depends_on: ['bo_laksana', 'bg_ghatana'],
+    depends_on: ['bo_laksana', 'bo_sangati'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1630,7 +1660,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count 84 (cdlm_cells + convergence + contradictions) per L2 build (chart 482012f1). Ancillary rollup tables excluded per migration 326 narrowing.',
-    depends_on: ['bo_laksana'],
+    depends_on: ['bo_laksana', 'bo_karanajala'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1730,7 +1760,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count 5 (5 UCD gestalt rows via vw_chart_digest) per L2 build (chart 482012f1).',
-    depends_on: ['bo_laksana'],
+    depends_on: ['bo_laksana', 'bo_karanajala', 'bo_upaya', 'bo_sangati', 'bo_pramana_mapa'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1767,7 +1797,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count 1 per L2 build (chart 482012f1). DAG terminal asset — one scorecard row per chart.',
-    depends_on: ['bo_upaya', 'bo_drishti', 'bo_anveshana'],
+    depends_on: ['bo_upaya', 'bo_drishti', 'bo_anveshana', 'bo_laksana', 'bo_sangati', 'bo_bimba', 'bo_karanajala', 'bo_samskara'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1804,7 +1834,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed floor 5,770 (1,411 discoveries + 4,359 anomalies) per L2 build (chart 482012f1). Per migration 326.',
-    depends_on: ['bo_sangati', 'bo_karanajala', 'bo_samskara', 'bo_drishti'],
+    depends_on: ['bo_sangati', 'bo_karanajala', 'bo_samskara', 'bo_drishti', 'bo_bimba', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2144,7 +2174,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per signal × ayanamsha; count grows with number of active MSR signals in kala_activation_predicates',
-    depends_on: ['ka_yojaka', 'ka_sangam'],
+    depends_on: ['ka_yojaka', 'ka_sangam', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
   },
@@ -2162,7 +2192,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from dasha + transit cluster analysis; count depends on alignment density',
-    depends_on: ['ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva'],
+    depends_on: ['ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva', 'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions', 'ga_tajaka', 'bg_transit_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
   },
@@ -2180,7 +2210,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from transit analysis over sensitive points; count depends on graha configuration',
-    depends_on: ['ka_sangam', 'ka_gochara', 'ka_muhurta_seva'],
+    depends_on: ['ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
   },
@@ -2254,7 +2284,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per mahadasha (typically 9 for a full Vimshottari cycle)',
-    depends_on: ['ka_kala_darshana', 'ka_dasha_kala'],
+    depends_on: ['ka_kala_darshana', 'ka_dasha_kala', 'ka_sangam', 'ka_yojaka', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2272,7 +2302,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Up to 50 ranked projections per chart over a 3-year forward horizon; depends on ka_kala_darshana output',
-    depends_on: ['ka_kala_darshana', 'ka_vighnakara'],
+    depends_on: ['ka_kala_darshana', 'ka_vighnakara', 'ka_sangam', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2450,7 +2480,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per vedha-checkable house transit (house_vedha) or per sarvatobhadra-vedha-nakshatra dwelling window, over the same ~460-day scanned horizon — small, gated by rule/nakshatra match, typically a handful per chart. Floors are aspirational per §N.4; seeded 0, set to the achieved count after the first real build.',
-    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules'],
+    depends_on: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules', 'bg_sarvatobhadra_grid', 'bg_vedha_malefic_scale', 'bg_phaladeepika_latta'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -2472,7 +2502,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per predictive anchor; count depends on convergence density and multi-axis derivation',
-    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati'],
+    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2490,7 +2520,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per scored muhurta candidate window in query range',
-    depends_on: ['ph_nimitta', 'ka_kalasutra', 'ga_panchanga'],
+    depends_on: ['ph_nimitta', 'ka_kalasutra', 'ga_panchanga', 'ka_vighnakara', 'ga_condition', 'ka_gochara', 'ga_positions', 'ka_sangam'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2526,7 +2556,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per remedy recommendation, sequenced by feasibility tier',
-    depends_on: ['ph_nimitta', 'bo_upaya', 'ka_vighnakara'],
+    depends_on: ['ph_nimitta', 'bo_upaya', 'ka_vighnakara', 'ka_sangam'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2544,7 +2574,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per rectification verdict (decisive/probable/unresolved); accumulates across runs',
-    depends_on: ['ph_sodhana'],
+    depends_on: ['ph_sodhana', 'ph_nimitta'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2598,7 +2628,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Seven rows per chart (one per domain)',
-    depends_on: ['ph_nimitta', 'ph_muhurta', 'ph_pratikara', 'ph_suddha_sodhana', 'ph_sankrama', 'ph_pramana'],
+    depends_on: ['ph_nimitta', 'ph_muhurta', 'ph_pratikara', 'ph_suddha_sodhana', 'ph_sankrama', 'ph_pramana', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2698,7 +2728,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Accumulates as predictions are logged — not a deterministic target',
-    depends_on: ['ph_pramana', 'ph_nimitta', 'ph_phaladesa', 'mi_kula', 'mi_jivanaghatana'],
+    depends_on: ['ph_pramana', 'ph_nimitta', 'ph_phaladesa', 'mi_kula', 'mi_jivanaghatana', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2765,7 +2795,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One overlay row per (origin_id × weight_id); starts sparse, grows with evidence',
-    depends_on: ['mi_gunanaka'],
+    depends_on: ['mi_gunanaka', 'bo_laksana', 'ka_sangam', 'ph_nimitta', 'ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2801,7 +2831,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Structural baseline from classical priors; empirical cells accumulate with event outcomes',
-    depends_on: ['mi_pramana', 'mi_pariksha'],
+    depends_on: ['mi_pramana', 'mi_pariksha', 'mi_bhavisya'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -3147,6 +3177,67 @@ function checkNoCycles(assets: AssetDef[]): void {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
+export const ASSET_REGISTRY_UPSERT_SQL = `INSERT INTO asset_registry (
+  asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
+  storage_type, target_table, count_sql, size_sql, target_floor,
+  expected_volume_formula, expected_volume_inputs, volume_explanation,
+  depends_on, scope, is_active, estimated_seconds,
+  asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
+  asset_kind, has_writer, has_substeps, writer_timeout_seconds
+) VALUES (
+  $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28
+) ON CONFLICT (asset_id) DO UPDATE SET
+  layer = EXCLUDED.layer,
+  sort_order = EXCLUDED.sort_order,
+  sanskrit_name = EXCLUDED.sanskrit_name,
+  english_name = EXCLUDED.english_name,
+  english_description = EXCLUDED.english_description,
+  storage_type = EXCLUDED.storage_type,
+  target_table = EXCLUDED.target_table,
+  count_sql = EXCLUDED.count_sql,
+  size_sql = EXCLUDED.size_sql,
+  target_floor = EXCLUDED.target_floor,
+  expected_volume_formula = EXCLUDED.expected_volume_formula,
+  expected_volume_inputs = EXCLUDED.expected_volume_inputs,
+  volume_explanation = EXCLUDED.volume_explanation,
+  -- Dependency identity is migration-governed once a row exists. The seed
+  -- supplies it for new rows but a routine re-seed cannot rewrite the live DAG.
+  depends_on = asset_registry.depends_on,
+  scope = EXCLUDED.scope,
+  -- MR-06 (PARISHKARA cutover durability): RETIRED guard.
+  -- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER
+  -- be resurrected by a re-seed. If the existing DB row is already RETIRED,
+  -- preserve that status and the corresponding is_active=false rather than
+  -- blindly overwriting with whatever the seed says. This is the ON-CONFLICT
+  -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
+  -- irreversible by the seed; only an explicit native-authorized migration
+  -- can reverse it.
+  catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                        THEN asset_registry.catalog_status
+                        ELSE EXCLUDED.catalog_status END,
+  is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                   THEN asset_registry.is_active
+                   ELSE EXCLUDED.is_active END,
+  asset_type = EXCLUDED.asset_type,
+  layer_name = EXCLUDED.layer_name,
+  layer_index = EXCLUDED.layer_index,
+  provides_apis = EXCLUDED.provides_apis,
+  health_probe = EXCLUDED.health_probe,
+  asset_kind = EXCLUDED.asset_kind,
+  has_writer = asset_registry.has_writer,
+  has_substeps = asset_registry.has_substeps,
+  writer_timeout_seconds = asset_registry.writer_timeout_seconds`
+
+export function assetRegistryWriterGovernance(
+  asset: AssetDef,
+): [boolean, boolean, number] {
+  return [
+    asset.has_writer ?? false,
+    asset.has_substeps ?? false,
+    asset.writer_timeout_seconds ?? 600,
+  ]
+}
+
 async function main(): Promise<void> {
   const dbUrl = process.env.DATABASE_URL
   if (!dbUrl) throw new Error('DATABASE_URL env var required')
@@ -3227,53 +3318,10 @@ async function main(): Promise<void> {
     const layerName = asset.layer_name ?? layerNames[asset.layer] ?? asset.layer
     const layerIndex = asset.layer_index ?? layerIndices[asset.layer] ?? null
     const catalogStatus = asset.catalog_status ?? (asset.layer === 'brahmagyan' ? 'CURRENT' : 'DRAFT')
+    const writerGovernance = assetRegistryWriterGovernance(asset)
 
     await client.query(
-      `INSERT INTO asset_registry (
-        asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
-        storage_type, target_table, count_sql, size_sql, target_floor,
-        expected_volume_formula, expected_volume_inputs, volume_explanation,
-        depends_on, scope, is_active, estimated_seconds,
-        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
-        asset_kind
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
-      ) ON CONFLICT (asset_id) DO UPDATE SET
-        layer = EXCLUDED.layer,
-        sort_order = EXCLUDED.sort_order,
-        sanskrit_name = EXCLUDED.sanskrit_name,
-        english_name = EXCLUDED.english_name,
-        english_description = EXCLUDED.english_description,
-        storage_type = EXCLUDED.storage_type,
-        target_table = EXCLUDED.target_table,
-        count_sql = EXCLUDED.count_sql,
-        size_sql = EXCLUDED.size_sql,
-        target_floor = EXCLUDED.target_floor,
-        expected_volume_formula = EXCLUDED.expected_volume_formula,
-        expected_volume_inputs = EXCLUDED.expected_volume_inputs,
-        volume_explanation = EXCLUDED.volume_explanation,
-        depends_on = EXCLUDED.depends_on,
-        scope = EXCLUDED.scope,
-        -- MR-06 (PARISHKARA cutover durability): RETIRED guard.
-        -- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER
-        -- be resurrected by a re-seed. If the existing DB row is already RETIRED,
-        -- preserve that status and the corresponding is_active=false rather than
-        -- blindly overwriting with whatever the seed says. This is the ON-CONFLICT
-        -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
-        -- irreversible by the seed; only an explicit native-authorized migration
-        -- can reverse it.
-        catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
-                              THEN asset_registry.catalog_status
-                              ELSE EXCLUDED.catalog_status END,
-        is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
-                         THEN asset_registry.is_active
-                         ELSE EXCLUDED.is_active END,
-        asset_type = EXCLUDED.asset_type,
-        layer_name = EXCLUDED.layer_name,
-        layer_index = EXCLUDED.layer_index,
-        provides_apis = EXCLUDED.provides_apis,
-        health_probe = EXCLUDED.health_probe,
-        asset_kind = EXCLUDED.asset_kind`,
+      ASSET_REGISTRY_UPSERT_SQL,
       [
         asset.asset_id, asset.layer, asset.sort_order,
         asset.sanskrit_name, asset.english_name, asset.english_description,
@@ -3287,6 +3335,7 @@ async function main(): Promise<void> {
         asset.health_probe ? JSON.stringify(asset.health_probe) : null,
         catalogStatus,
         assetKind,
+        ...writerGovernance,
       ],
     )
     console.log(`  ${asset.is_active ? '✓' : '⚠'} ${asset.asset_id}`)
