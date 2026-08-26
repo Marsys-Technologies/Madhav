@@ -56,7 +56,7 @@ function failureMessage(snapshot: NirmanaElevationSnapshot): string {
 
 function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
   snapshot: NirmanaElevationSnapshotV2
-  onBaselineAccepted?: () => void | Promise<void>
+  onBaselineAccepted?: () => Promise<boolean>
 }) {
   const [auditAssetId, setAuditAssetId] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState(false)
@@ -104,7 +104,7 @@ function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
 export function NirmanaElevationTrackerView({ snapshot, fetchedAt, onBaselineAccepted }: {
   snapshot: NirmanaElevationSnapshot
   fetchedAt: Date
-  onBaselineAccepted?: () => void | Promise<void>
+  onBaselineAccepted?: () => Promise<boolean>
 }) {
   if (snapshot.schema_version === '1.0') {
     return <NirmanaElevationTrackerV1 snapshot={snapshot} fetchedAt={fetchedAt} />
@@ -125,7 +125,7 @@ export function NirmanaElevationTracker({
   const abortController = useRef<AbortController | null>(null)
   const mounted = useRef(false)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     abortController.current?.abort()
     const controller = new AbortController()
     abortController.current = controller
@@ -136,13 +136,14 @@ export function NirmanaElevationTracker({
       if (!parsed.success) throw new SnapshotUnavailableError('The snapshot response did not satisfy the shared evidence contract.')
       const body = parsed.data
       if (!response.ok) throw new SnapshotUnavailableError(failureMessage(body))
-      if (!mounted.current || currentRequest !== requestId.current) return
+      if (!mounted.current || currentRequest !== requestId.current) return false
       setSnapshot(body)
       setFetchedAt(new Date())
       setFailure(null)
       setFailures(0)
+      return true
     } catch (error) {
-      if (controller.signal.aborted || !mounted.current || currentRequest !== requestId.current) return
+      if (controller.signal.aborted || !mounted.current || currentRequest !== requestId.current) return false
       const message = error instanceof SnapshotUnavailableError
         ? error.message
         : error instanceof Error
@@ -150,6 +151,7 @@ export function NirmanaElevationTracker({
           : 'The live snapshot could not be loaded.'
       setFailure({ message, occurredAt: new Date() })
       setFailures((count) => count + 1)
+      return false
     }
   }, [])
 

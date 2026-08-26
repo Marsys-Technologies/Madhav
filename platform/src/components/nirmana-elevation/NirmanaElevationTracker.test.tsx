@@ -124,6 +124,28 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.queryByRole('button', { name: 'Accept current baseline' })).not.toBeInTheDocument()
   })
 
+  it('reports accepted baseline truthfully when the authoritative snapshot reload fails', async () => {
+    const baselineMissing = baselineMissingV2()
+    let snapshotLoads = 0
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/evidence')) {
+        return Promise.resolve(jsonResponse({ outcome: 'created' }, 201))
+      }
+      snapshotLoads += 1
+      return Promise.resolve(snapshotLoads === 1
+        ? jsonResponse(baselineMissing)
+        : jsonResponse(unavailableV2(), 503))
+    }))
+
+    render(<NirmanaElevationTracker />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept current baseline' }))
+
+    expect(await screen.findByText(/baseline was accepted, but current evidence could not refresh/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Baseline accepted' })).toBeDisabled()
+    expect(screen.queryByText(/refreshing the tracker from authoritative evidence/i)).not.toBeInTheDocument()
+  })
+
   it('renders the v2 campaign spine and keeps the audit surface secondary by default', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(snapshotV2())))
 

@@ -64,6 +64,7 @@ describe('BaselineAcceptancePanel', () => {
     monitor.state = 'stale'
     rerender(<BaselineAcceptancePanel snapshot={stale} />)
     expect(screen.queryByRole('button', { name: 'Accept current baseline' })).not.toBeInTheDocument()
+    expect(screen.getByText(/acceptance is withheld until the monitor observation.*all tracker sources are fresh/i)).toBeVisible()
 
     const changed = baselineMissingSnapshot()
     changed.program_sync.status = 'plan_adaptation_required'
@@ -76,7 +77,7 @@ describe('BaselineAcceptancePanel', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const onAccepted = vi.fn()
+    const onAccepted = vi.fn().mockResolvedValue(true)
     const { rerender } = render(<BaselineAcceptancePanel snapshot={snapshot} onAccepted={onAccepted} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept current baseline' }))

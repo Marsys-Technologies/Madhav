@@ -8,7 +8,7 @@ const EVIDENCE_URL = '/api/admin/nirmana-elevation/evidence'
 
 type Props = {
   snapshot: NirmanaElevationSnapshotV2
-  onAccepted?: () => void | Promise<void>
+  onAccepted?: () => Promise<boolean>
 }
 
 type AcceptanceCandidate = {
@@ -68,9 +68,18 @@ export function BaselineAcceptancePanel({ snapshot, onAccepted }: Props) {
   const candidate = currentCandidate(snapshot)
   const [submitting, setSubmitting] = useState(false)
   const [accepted, setAccepted] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!candidate) return null
+  if (!candidate) {
+    if (snapshot.program_sync.status !== 'baseline_missing') return null
+    return <section role="status" className="rounded-xl border border-brand-warn/60 bg-brand-warn/10 p-4">
+      <h2 className="font-serif text-lg text-brand-gold-cream">Baseline acceptance unavailable</h2>
+      <p className="mt-1 text-sm text-brand-text-2">
+        Acceptance is withheld until the monitor observation, candidate identity, and all tracker sources are fresh. No baseline action is available from this snapshot.
+      </p>
+    </section>
+  }
 
   const accept = async () => {
     const confirmed = window.confirm(
@@ -105,9 +114,19 @@ export function BaselineAcceptancePanel({ snapshot, onAccepted }: Props) {
         return
       }
       setAccepted(true)
-      void Promise.resolve(onAccepted?.()).catch(() => {
-        setError('The baseline was accepted, but the tracker could not refresh. Reload the page to retrieve authoritative evidence.')
-      })
+      if (onAccepted) {
+        setRefreshing(true)
+        let refreshed = false
+        try {
+          refreshed = await onAccepted()
+        } catch {
+          refreshed = false
+        }
+        setRefreshing(false)
+        if (!refreshed) {
+          setError('The baseline was accepted, but current evidence could not refresh. Reload the page to retrieve authoritative evidence.')
+        }
+      }
     } catch {
       setError('The baseline request could not be completed. No program progress was changed. Refresh the tracker before trying again.')
     } finally {
@@ -142,7 +161,8 @@ export function BaselineAcceptancePanel({ snapshot, onAccepted }: Props) {
           : <><ShieldCheck aria-hidden="true" className="size-4" /> {submitting ? 'Accepting current baseline' : 'Accept current baseline'}</>}
       </button>
     </div>
-    {accepted && <p role="status" className="mt-3 text-sm text-brand-success">Baseline accepted. Refreshing the tracker from authoritative evidence…</p>}
+    {accepted && refreshing && <p role="status" className="mt-3 text-sm text-brand-success">Baseline accepted. Refreshing the tracker from authoritative evidence…</p>}
+    {accepted && !refreshing && !error && <p role="status" className="mt-3 text-sm text-brand-success">Baseline accepted. Current evidence refreshed.</p>}
     {error && <p role="alert" className="mt-3 text-sm text-brand-warn">{error}</p>}
   </section>
 }
