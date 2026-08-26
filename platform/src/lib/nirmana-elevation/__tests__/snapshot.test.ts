@@ -486,6 +486,7 @@ describe('projectNirmanaElevationSnapshot', () => {
         affected_asset_ids: [],
         current_definition_sha256: null,
         candidate_definition_sha256: null,
+        candidate_catalogue_sha256: 'c'.repeat(64),
         source_state: 'unavailable',
         runtime_liveness: 'unavailable',
         source_error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
@@ -499,7 +500,10 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(unknown.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
       state: 'unknown', observed_at: null, age_seconds: null,
     })
-    expect(unavailable.program_sync.status).toBe('source_unavailable')
+    expect(unavailable.program_sync).toMatchObject({
+      status: 'source_unavailable',
+      candidate_catalogue_sha256: null,
+    })
     expect(unavailable.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
       state: 'unavailable', error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
       error_message: 'Authoritative source is unavailable.',

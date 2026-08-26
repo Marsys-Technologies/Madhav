@@ -215,7 +215,7 @@ function projectProgramSync(
       affected_asset_ids: [...new Set(latest.affected_asset_ids)].sort(),
       current_definition_sha256: latest.current_definition_sha256,
       candidate_definition_sha256: latest.candidate_definition_sha256,
-      candidate_catalogue_sha256: latest.candidate_catalogue_sha256,
+      candidate_catalogue_sha256: unavailable ? null : latest.candidate_catalogue_sha256,
     },
     source: {
       source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
