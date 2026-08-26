@@ -42,6 +42,10 @@ provider "google" {
   region  = var.gcp_region
 }
 
+data "google_project" "scheduler" {
+  project_id = var.gcp_project
+}
+
 // ── Job: MV refresh (every 6 hours UTC) ──────────────────────────────────────
 
 resource "google_cloud_scheduler_job" "mv_refresh" {
@@ -129,6 +133,31 @@ resource "google_cloud_scheduler_job" "pending_stream_reaper" {
 
 // ── Job: Nirmana elevation monitor (every 5 minutes UTC) ────────────────────
 
+// This identity is intentionally dedicated to the monitor. It may invoke only
+// amjis-web; the legacy scheduler_invoker_sa remains unchanged for existing jobs.
+resource "google_service_account" "nirmana_elevation_monitor" {
+  account_id   = "amjis-nirmana-monitor"
+  display_name = "Nirmana elevation monitor Scheduler invoker"
+  description  = "Dedicated Cloud Scheduler OIDC identity for the read-only Nirmana elevation monitor."
+  project      = var.gcp_project
+}
+
+resource "google_cloud_run_v2_service_iam_member" "nirmana_elevation_monitor_invokes_web" {
+  project  = var.gcp_project
+  location = var.gcp_region
+  name     = "amjis-web"
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.nirmana_elevation_monitor.email}"
+}
+
+// Cloud Scheduler's Google-managed service agent mints the job's OIDC token.
+// Scope the standard token-mint role to this one dedicated service account.
+resource "google_service_account_iam_member" "cloud_scheduler_mints_nirmana_monitor_oidc" {
+  service_account_id = google_service_account.nirmana_elevation_monitor.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.scheduler.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
 resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
   name             = "amjis-nirmana-elevation-monitor"
   description      = "Record a read-only Nirmana elevation program-monitor observation every five minutes."
@@ -158,9 +187,15 @@ resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
     body = base64encode("{}")
 
     oidc_token {
-      service_account_email = var.scheduler_invoker_sa
+      service_account_email = google_service_account.nirmana_elevation_monitor.email
       audience              = var.amjis_web_url
     }
+  }
+
+  // The secret header is configured outside Terraform after protected-main
+  // apply. Ignore only the target header map so future plans do not remove it.
+  lifecycle {
+    ignore_changes = [http_target[0].headers]
   }
 }
 

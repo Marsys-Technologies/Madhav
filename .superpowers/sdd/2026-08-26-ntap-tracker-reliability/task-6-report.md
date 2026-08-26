@@ -45,3 +45,30 @@ both. The runbook therefore blocks baseline acceptance until an authenticated
 candidate-detail surface exposes both exact current digests; it forbids deriving a
 replacement through the scheduler-only internal endpoint, direct SQL, or a manual
 value. This is an existing acceptance-surface gap, not bypassed by Task 6.
+
+## Fix Round 1 — dedicated monitor scheduler principal
+
+The initial Scheduler resource reused `scheduler_invoker_sa`, whose default is the
+broad `amjis-builder-runtime` identity. Per the controller's least-privilege ruling,
+the monitor now uses a dedicated `amjis-nirmana-monitor` service account instead.
+
+- Terraform grants that principal `roles/run.invoker` only on the `amjis-web` Cloud
+  Run service in the configured region; legacy jobs and their existing principal are
+  unchanged.
+- Terraform grants the Cloud Scheduler Google-managed service agent the standard
+  OIDC token-mint role only on this dedicated service account.
+- The monitor job ignores only its HTTP-header map after initial creation so the
+  approved out-of-band `X-Marsys-Cron-Secret` configuration is not later removed by
+  Terraform. The README now includes protected-main pre-apply IAM requirements and
+  a non-secret-bearing job/project/region/header-presence verification procedure.
+- The static test was strengthened to inspect the exact service-account, service
+  IAM, token-mint IAM, and Scheduler job resources plus the operator instructions.
+
+Verification after Fix Round 1:
+
+- Focused scheduler contract test — PASS (1 test).
+- `cd platform && npx tsc --noEmit` — PASS.
+- `terraform fmt -check infra/scheduler/main.tf` — PASS.
+- `git diff --check` — PASS.
+
+No Terraform apply, Scheduler mutation, deployment, or monitor invocation was run.
