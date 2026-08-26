@@ -1,17 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+import {
+  NIRMANA_L0_ANALYSIS_RECEIPT_COUNT,
+  NIRMANA_L0_ANALYSIS_RECEIPTS,
+} from '@/generated/nirmana-l0-analysis-receipts'
 
 vi.mock('server-only', () => ({}))
 
 const queryMock = vi.fn()
-vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
+const transactionQueryMock = vi.fn()
+const transactionReleaseMock = vi.fn()
+vi.mock('@/lib/db/client', () => ({
+  query: (...args: unknown[]) => queryMock(...args),
+  getPool: () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
 
 import {
+  assertNirmanaGitCommitMatchesDeployment,
   canonicalManifestDigest,
+  canonicalNirmanaAssetAnalysisDigestForRegistryRow,
   canonicalRegistryContractDigest,
   createNirmanaElevationDefinition,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
+  supersedeNirmanaElevationDefinition,
 } from '../definitions'
 
 const registry_contract = {
@@ -59,15 +73,29 @@ function registryRowsFor(candidate: typeof manifest | typeof reconciledT0Manifes
     asset_id: asset.asset_id,
     layer: layerNames[asset.layer],
     depends_on: asset.depends_on,
+    frozen_manifest_asset: asset,
     ...asset.registry_contract,
   }))
 }
 
 describe('Nirmana elevation definition repository', () => {
-  beforeEach(() => queryMock.mockReset())
+  beforeEach(() => {
+    queryMock.mockReset()
+    transactionQueryMock.mockReset()
+    transactionReleaseMock.mockReset()
+  })
 
   it('derives one canonical SHA-256 digest for the validated manifest', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('bundles one grounded receipt base for each of the 40 frozen L0 assets', () => {
+    expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(NIRMANA_L0_ANALYSIS_RECEIPT_COUNT)
+    expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS).sort()).toEqual(
+      reconciledT0Manifest.assets.filter((asset: typeof manifestAsset) => asset.layer === 'L0').map((asset: typeof manifestAsset) => asset.asset_id).sort(),
+    )
+    expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_prashna_rules.writer_digest_sha256).toMatch(/^[a-f0-9]{64}$/)
+    expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_panchanga.writer_digest_sha256).toBeNull()
   })
 
   it('requires the frozen manifest to pin its campaign chart', () => {
@@ -184,6 +212,99 @@ describe('Nirmana elevation definition repository', () => {
     })).resolves.toBe('idempotent')
   })
 
+  it('atomically supersedes the exact current frozen definition with a live-registry-matched frozen revision', async () => {
+    const oldDigest = 'c'.repeat(64)
+    transactionQueryMock
+      .mockResolvedValueOnce({}) // BEGIN
+      .mockResolvedValueOnce({ rows: [{
+        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+        manifest, created_by: 'admin-0', superseded_at: null,
+      }] })
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
+      .mockResolvedValueOnce({}) // COMMIT
+
+    await expect(supersedeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation',
+      expected_current_revision: 'v1',
+      expected_current_manifest_sha256: oldDigest,
+      new_definition_revision: 'v2',
+      new_manifest: manifest,
+      new_manifest_sha256: canonicalManifestDigest(manifest),
+      created_by: 'admin-1',
+    })).resolves.toBe('superseded')
+
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')))
+      .toEqual(['BEGIN', 'SELECT definition_revision,', 'SELECT asset_id,', 'UPDATE nirmana_elevation_campaign_definitions', 'INSERT INTO', 'COMMIT'])
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('treats only an exact completed supersession retry as idempotent', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const newDigest = canonicalManifestDigest(manifest)
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [
+        { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: '2026-08-26T00:00:00.000Z' },
+        { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: newDigest, manifest, created_by: 'admin-1', superseded_at: null },
+      ] })
+      .mockResolvedValueOnce({})
+
+    await expect(supersedeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
+      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: newDigest, created_by: 'admin-2',
+    })).resolves.toBe('idempotent')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(3)
+    expect(String(transactionQueryMock.mock.calls[2][0])).toBe('COMMIT')
+  })
+
+  it('rolls back and leaves the old definition current when the replacement insert fails', async () => {
+    const oldDigest = 'c'.repeat(64)
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{
+        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+        manifest, created_by: 'admin-0', superseded_at: null,
+      }] })
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+      .mockRejectedValueOnce(new Error('replacement insert failed'))
+      .mockResolvedValueOnce({})
+
+    await expect(supersedeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
+      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
+    })).rejects.toThrow('replacement insert failed')
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rejects reuse of an existing replacement revision before superseding the current definition', async () => {
+    const oldDigest = 'c'.repeat(64)
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [
+        {
+          definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+          manifest, created_by: 'admin-0', superseded_at: null,
+        },
+        {
+          definition_revision: 'v2', definition_status: 'superseded', manifest_sha256: 'd'.repeat(64),
+          manifest, created_by: 'admin-other', superseded_at: '2026-08-26T00:00:00.000Z',
+        },
+      ] })
+      .mockResolvedValueOnce({})
+
+    await expect(supersedeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
+      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
+    })).rejects.toThrow(/revision already exists/i)
+    expect(transactionQueryMock).toHaveBeenCalledTimes(3)
+    expect(String(transactionQueryMock.mock.calls[2][0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
   it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
     const driftedRows = registryRowsFor(manifest)
     driftedRows[0].count_sql = 'SELECT count(*) FROM a_different_table'
@@ -214,6 +335,175 @@ describe('Nirmana elevation definition repository', () => {
     })).resolves.toBe('created')
 
     expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING')
+  })
+
+  it('rejects a syntactically valid asset-analysis digest that is not the deployed canonical receipt', async () => {
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: registryRowsFor(manifest) })
+      if (String(sql).includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:analysis:forged',
+      event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: 'f'.repeat(64),
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/canonical deployed analysis receipt/i)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  it('requires a configured production deployment SHA and matches the receipt source to it', () => {
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: undefined,
+    })).toThrow(/NIRMANA_DEPLOYED_SHA/)
+
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: 'b'.repeat(40),
+    })).toThrow(/currently deployed commit/i)
+
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: 'a'.repeat(40),
+    })).not.toThrow()
+  })
+
+  it('permits an exact Git source in test/dev only when no deployment SHA is configured', () => {
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'test',
+      deployedSha: undefined,
+    })).not.toThrow()
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'development',
+      deployedSha: 'not-a-sha',
+    })).toThrow(/NIRMANA_DEPLOYED_SHA/)
+  })
+
+  it('rejects an optimization verdict unless an exact accepted analysis binds the current contract', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (String(sql).includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:unbound',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching accepted asset analysis/i)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  it('records a strict optimization verdict when it binds the exact current accepted analysis', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        return Promise.resolve({ rows: [{ accepted_count: 1 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:accepted',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes("event_type = 'asset_analysis_accepted'"))).toBe(true)
+  })
+
+  it('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        return Promise.resolve({ rows: [{ accepted: true, accepted_count: 2 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:ambiguous',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/ambiguous/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it.each([
+    ['registry fingerprint', 'f'.repeat(64), null],
+    ['analysis digest', manifestAsset.registry_fingerprint_sha256, 'f'.repeat(64)],
+  ])('rejects an optimization verdict with a stale or mismatched %s', async (_caseName, registryFingerprint, digestOverride) => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const currentDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `asset:bg_prashna_rules:optimization:${_caseName}`,
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: registryFingerprint,
+        analysis_digest: digestOverride ?? currentDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/does not match/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
   })
 
   it('admits accepted rebuild evidence only after an exact completed run/asset and matching proven content receipt', async () => {

@@ -1,7 +1,8 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { query } from '@/lib/db/client'
+import { getPool, query } from '@/lib/db/client'
+import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
 
 const LayerSchema = z.enum(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
 const layerPrefixes = { L0: 'bg_', L1: 'ga_', L2: 'bo_', L3: 'ka_', L4: 'ph_', L5: 'mi_' } as const
@@ -356,6 +357,31 @@ export class NirmanaElevationEvidenceConflictError extends Error {
 
 export class NirmanaElevationEvidenceValidationError extends Error {}
 
+export function assertNirmanaGitCommitMatchesDeployment(
+  sourceRef: string,
+  runtime: { nodeEnv?: string; deployedSha?: string } = {
+    nodeEnv: process.env.NODE_ENV,
+    deployedSha: process.env.NIRMANA_DEPLOYED_SHA,
+  },
+): void {
+  if (!gitCommitSourceRef.test(sourceRef)) {
+    throw new NirmanaElevationEvidenceValidationError('Evidence requires source_kind=git_commit and an exact git:<40-hex> commit source.')
+  }
+  const deployedSha = runtime.deployedSha?.trim().toLowerCase()
+  if (deployedSha !== undefined && !/^[a-f0-9]{40}$/.test(deployedSha)) {
+    throw new NirmanaElevationEvidenceValidationError('NIRMANA_DEPLOYED_SHA must be an exact 40-hex commit SHA.')
+  }
+  if (!deployedSha) {
+    if (runtime.nodeEnv === 'production') {
+      throw new NirmanaElevationEvidenceValidationError('NIRMANA_DEPLOYED_SHA is required to accept Git-backed evidence in production.')
+    }
+    return
+  }
+  if (sourceRef !== `git:${deployedSha}`) {
+    throw new NirmanaElevationEvidenceValidationError('Evidence Git source does not match the currently deployed commit.')
+  }
+}
+
 /**
  * The sole server-side insertion seam for campaign definitions. Callers must
  * supply the digest they received with the evidence; it is checked before the
@@ -394,6 +420,16 @@ export interface FreezeNirmanaElevationDefinitionInput {
   definition_revision: string
   manifest: unknown
   manifest_sha256: string
+}
+
+export interface SupersedeNirmanaElevationDefinitionInput {
+  campaign_id: string
+  expected_current_revision: string
+  expected_current_manifest_sha256: string
+  new_definition_revision: string
+  new_manifest: unknown
+  new_manifest_sha256: string
+  created_by: string
 }
 
 /** Freezes only the exact previously recorded reconciling definition revision. */
@@ -435,6 +471,115 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   throw new NirmanaElevationDefinitionConflictError()
 }
 
+interface StoredNirmanaDefinition {
+  definition_revision: string
+  definition_status: 'reconciling' | 'frozen' | 'superseded'
+  manifest: unknown
+  manifest_sha256: string
+  created_by: string
+  superseded_at: string | null
+}
+
+/**
+ * Replaces one exact current frozen definition with a distinct already-frozen
+ * revision on one dedicated connection. The old row is superseded before the
+ * insert so the one-current-definition index remains satisfied; any later
+ * failure rolls the update back with the insert.
+ */
+export async function supersedeNirmanaElevationDefinition(
+  input: SupersedeNirmanaElevationDefinitionInput,
+): Promise<'superseded' | 'idempotent'> {
+  if (input.expected_current_revision === input.new_definition_revision) {
+    throw new NirmanaElevationDefinitionConflictError()
+  }
+  if (!/^[a-f0-9]{64}$/.test(input.expected_current_manifest_sha256)) {
+    throw new NirmanaElevationDefinitionConflictError()
+  }
+  const manifest = NirmanaElevationManifestSchema.parse(input.new_manifest)
+  assertFreezableManifest(manifest)
+  const canonicalDigest = canonicalManifestDigest(manifest)
+  if (input.new_manifest_sha256 !== canonicalDigest) {
+    throw new Error('Replacement campaign definition manifest digest does not match its canonical manifest.')
+  }
+
+  const pool = await getPool()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const stored = await client.query<StoredNirmanaDefinition>(
+      `SELECT definition_revision, definition_status, manifest, manifest_sha256,
+              created_by, superseded_at
+         FROM nirmana_elevation_campaign_definitions
+        WHERE campaign_id = $1
+          AND definition_revision = ANY($2::text[])
+        ORDER BY definition_revision
+        FOR UPDATE`,
+      [input.campaign_id, [input.expected_current_revision, input.new_definition_revision]],
+    )
+    const current = stored.rows.find((row) => row.definition_revision === input.expected_current_revision)
+    const replacement = stored.rows.find((row) => row.definition_revision === input.new_definition_revision)
+
+    const exactRetry = current?.definition_status === 'superseded'
+      && current.superseded_at !== null
+      && current.manifest_sha256 === input.expected_current_manifest_sha256
+      && replacement?.definition_status === 'frozen'
+      && replacement.superseded_at === null
+      && replacement.manifest_sha256 === canonicalDigest
+      && stableJson(replacement.manifest) === stableJson(manifest)
+    if (exactRetry) {
+      await client.query('COMMIT')
+      return 'idempotent'
+    }
+
+    if (replacement
+      || current?.definition_status !== 'frozen'
+      || current.superseded_at !== null
+      || current.manifest_sha256 !== input.expected_current_manifest_sha256) {
+      throw new NirmanaElevationDefinitionConflictError()
+    }
+
+    const registry = await client.query<NirmanaRegistryContractRow>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
+              sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
+              target_table, count_sql, integrity_check_sql, health_probe,
+              natural_key_partition, superseded_by, data_disposition, dead_flag
+         FROM asset_registry
+        ORDER BY asset_id
+        FOR SHARE`,
+    )
+    assertManifestMatchesRegistry(manifest, registry.rows)
+
+    const superseded = await client.query(
+      `UPDATE nirmana_elevation_campaign_definitions
+          SET definition_status = 'superseded', superseded_at = clock_timestamp()
+        WHERE campaign_id = $1
+          AND definition_revision = $2
+          AND definition_status = 'frozen'
+          AND superseded_at IS NULL
+          AND manifest_sha256 = $3
+      RETURNING definition_revision`,
+      [input.campaign_id, input.expected_current_revision, input.expected_current_manifest_sha256],
+    )
+    if (superseded.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+
+    const inserted = await client.query(
+      `INSERT INTO nirmana_elevation_campaign_definitions
+         (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+       VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5)
+       RETURNING definition_revision`,
+      [input.campaign_id, input.new_definition_revision, JSON.stringify(manifest), canonicalDigest, input.created_by],
+    )
+    if (inserted.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+    await client.query('COMMIT')
+    return 'superseded'
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 export interface RecordNirmanaElevationEvidenceInput {
   campaign_id: string
   definition_revision: string
@@ -454,46 +599,204 @@ const OutputDigestEvidenceSchema = z.object({
   output_digest: z.string().regex(/^[a-f0-9]{64}$/),
   output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict()
-const AssetAnalysisEvidenceSchema = z.object({
+export const NirmanaAssetAnalysisEvidenceSchema = z.object({
   registry_fingerprint_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   analysis_digest: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict()
+const OptimizationMeasurementSchema = z.object({
+  status: z.enum(['measured', 'insufficient_history', 'not_applicable']),
+  sample_count: z.number().int().nonnegative().nullable(),
+  p50_ms: z.number().finite().nonnegative().nullable(),
+  p90_ms: z.number().finite().nonnegative().nullable(),
+  hotspot: z.string().min(1).max(1024).nullable(),
+}).strict().superRefine((measurement, context) => {
+  if (measurement.status === 'measured') {
+    if (measurement.sample_count === null || measurement.sample_count < 1) {
+      context.addIssue({ code: 'custom', path: ['sample_count'], message: 'Measured optimization evidence requires at least one sample.' })
+    }
+    if (measurement.p50_ms === null || measurement.p90_ms === null || measurement.hotspot === null) {
+      context.addIssue({ code: 'custom', message: 'Measured optimization evidence requires p50_ms, p90_ms, and hotspot.' })
+    }
+  } else if (measurement.p50_ms !== null || measurement.p90_ms !== null) {
+    context.addIssue({ code: 'custom', message: 'Unmeasured optimization evidence cannot claim p50_ms or p90_ms.' })
+  }
+  if (measurement.status === 'not_applicable'
+    && (measurement.sample_count !== null || measurement.hotspot !== null)) {
+    context.addIssue({ code: 'custom', message: 'Not-applicable optimization evidence must leave measurement fields null.' })
+  }
+  if (measurement.p50_ms !== null && measurement.p90_ms !== null && measurement.p90_ms < measurement.p50_ms) {
+    context.addIssue({ code: 'custom', path: ['p90_ms'], message: 'p90_ms cannot be lower than p50_ms.' })
+  }
+})
+export const NirmanaOptimizationVerdictEvidenceSchema = z.object({
+  registry_fingerprint_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  analysis_digest: z.string().regex(/^[a-f0-9]{64}$/),
+  verdict: z.enum(['optimize', 'correct', 'optimize_and_correct', 'examined_and_already_efficient', 'non_build_disposition']),
+  basis: z.object({
+    measurement: OptimizationMeasurementSchema,
+    evidence_refs: z.array(z.string().min(1).max(512)).min(1).max(32),
+  }).strict(),
+  proposal: z.object({
+    action: z.enum(['optimize', 'correct', 'optimize_and_correct', 'no_change', 'formal_disposition']),
+    summary: z.string().min(1).max(2048),
+    output_contract: z.enum(['digest_identical', 'correctness_change', 'not_applicable']),
+  }).strict(),
+}).strict().superRefine((payload, context) => {
+  const expected = {
+    optimize: { action: 'optimize', output_contract: 'digest_identical' },
+    correct: { action: 'correct', output_contract: 'correctness_change' },
+    optimize_and_correct: { action: 'optimize_and_correct', output_contract: 'correctness_change' },
+    examined_and_already_efficient: { action: 'no_change', output_contract: 'digest_identical' },
+    non_build_disposition: { action: 'formal_disposition', output_contract: 'not_applicable' },
+  }[payload.verdict]
+  if (payload.proposal.action !== expected.action) {
+    context.addIssue({ code: 'custom', path: ['proposal', 'action'], message: `Verdict ${payload.verdict} requires proposal action ${expected.action}.` })
+  }
+  if (payload.proposal.output_contract !== expected.output_contract) {
+    context.addIssue({ code: 'custom', path: ['proposal', 'output_contract'], message: `Verdict ${payload.verdict} requires output contract ${expected.output_contract}.` })
+  }
+})
+export type NirmanaOptimizationVerdictEvidence = z.infer<typeof NirmanaOptimizationVerdictEvidenceSchema>
+
+const NirmanaAssetAnalysisReceiptSchema = z.object({
+  schema_version: z.literal('nirmana-asset-analysis-receipt/v1'),
+  base: z.object({
+    schema_version: z.literal('nirmana-asset-analysis-receipt-base/v1'),
+    asset_id: z.string().min(1),
+    layer: z.literal('L0'),
+    writer_digest_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    grounding: z.object({
+      convergence_commit: z.string().regex(/^[a-f0-9]{40}$/),
+      frozen_manifest_source: z.literal('nirmana_elevation_campaign_definitions.manifest'),
+      writer_digest_ref: z.literal('platform/src/generated/nirmana-writer-digests.json'),
+    }).strict(),
+  }).strict(),
+  frozen_manifest_asset: ManifestAssetSchema,
+  current_registry_contract: RegistryFingerprintInputSchema,
+}).strict()
+
+export type NirmanaAssetAnalysisReceipt = z.infer<typeof NirmanaAssetAnalysisReceiptSchema>
+
+export function canonicalNirmanaAssetAnalysisReceiptDigest(receipt: unknown): string {
+  const parsed = NirmanaAssetAnalysisReceiptSchema.parse(receipt)
+  return createHash('sha256').update(stableJson(parsed)).digest('hex')
+}
+
+export function canonicalNirmanaAssetAnalysisDigestForRegistryRow(
+  assetId: string,
+  registryRow: NirmanaRegistryContractRow,
+  frozenManifestAsset: unknown,
+): string {
+  const receiptBase = getNirmanaL0AnalysisReceiptBase(assetId)
+  if (!receiptBase) {
+    throw new NirmanaElevationEvidenceValidationError(`No deployed L0 analysis receipt base exists for ${assetId}.`)
+  }
+  const manifestAsset = ManifestAssetSchema.parse(frozenManifestAsset)
+  if (manifestAsset.asset_id !== assetId || manifestAsset.layer !== 'L0') {
+    throw new NirmanaElevationEvidenceValidationError(`Frozen manifest asset ${assetId} does not match its deployed analysis receipt base.`)
+  }
+  return canonicalNirmanaAssetAnalysisReceiptDigest({
+    schema_version: 'nirmana-asset-analysis-receipt/v1',
+    base: receiptBase,
+    frozen_manifest_asset: manifestAsset,
+    current_registry_contract: registryContractFingerprintInput(registryRow),
+  })
+}
 const buildRunSourceRef = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
 const gitCommitSourceRef = /^git:[0-9a-f]{40}$/
 
-async function requireAcceptedAssetAnalysisProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
-  const payload = AssetAnalysisEvidenceSchema.safeParse(input.evidence_payload)
-  if (!payload.success || input.source_kind !== 'git_commit' || !gitCommitSourceRef.test(input.source_ref)) {
-    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires exact registry/analysis SHA-256 evidence and a git:<40-hex> commit source.')
+interface CurrentAssetAnalysisContext {
+  registryFingerprint: string
+  analysisDigest: string
+}
+
+async function loadCurrentAssetAnalysisContext(input: RecordNirmanaElevationEvidenceInput): Promise<CurrentAssetAnalysisContext> {
+  const receiptBase = getNirmanaL0AnalysisReceiptBase(input.entity_id)
+  if (!receiptBase || input.layer !== 'L0') {
+    throw new NirmanaElevationEvidenceValidationError('Evidence requires a reconstructable deployed analysis receipt for the frozen asset.')
   }
-  const registry = await query<NirmanaRegistryContractRow>(
+  const registry = await query<NirmanaRegistryContractRow & { frozen_manifest_asset: unknown }>(
     `SELECT registry.asset_id, registry.layer, COALESCE(registry.depends_on, '{}') AS depends_on,
             registry.sort_order, registry.scope, registry.asset_kind, registry.catalog_status,
             registry.is_active, registry.has_writer, registry.target_table, registry.count_sql,
             registry.integrity_check_sql, registry.health_probe, registry.natural_key_partition,
-            registry.superseded_by, registry.data_disposition, registry.dead_flag
+            registry.superseded_by, registry.data_disposition, registry.dead_flag,
+            manifest_asset.value AS frozen_manifest_asset
        FROM asset_registry registry
        JOIN nirmana_elevation_campaign_definitions definition
          ON definition.campaign_id = $1
         AND definition.definition_revision = $2
         AND definition.definition_status = 'frozen'
         AND definition.superseded_at IS NULL
-      WHERE registry.asset_id = $3
-        AND EXISTS (
-          SELECT 1
-            FROM jsonb_array_elements(definition.manifest -> 'assets') AS manifest_asset(value)
-           WHERE manifest_asset.value ->> 'asset_id' = registry.asset_id
-             AND manifest_asset.value ->> 'layer' = $4
-        )`,
+       JOIN LATERAL jsonb_array_elements(definition.manifest -> 'assets') AS manifest_asset(value)
+         ON manifest_asset.value ->> 'asset_id' = registry.asset_id
+        AND manifest_asset.value ->> 'layer' = $4
+      WHERE registry.asset_id = $3`,
     [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
   )
   const registryRow = registry.rows[0]
   if (!registryRow) {
-    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires an asset in the current frozen definition and matching layer.')
+    throw new NirmanaElevationEvidenceValidationError('Evidence requires an asset in the current frozen definition and matching layer.')
   }
   const currentFingerprint = canonicalRegistryContractDigest(registryContractFingerprintInput(registryRow))
-  if (payload.data.registry_fingerprint_sha256 !== currentFingerprint) {
+  return {
+    registryFingerprint: currentFingerprint,
+    analysisDigest: canonicalNirmanaAssetAnalysisDigestForRegistryRow(input.entity_id, registryRow, registryRow.frozen_manifest_asset),
+  }
+}
+
+async function requireAcceptedAssetAnalysisProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+  const payload = NirmanaAssetAnalysisEvidenceSchema.safeParse(input.evidence_payload)
+  if (!payload.success || input.source_kind !== 'git_commit') {
+    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires exact registry/analysis SHA-256 evidence and a Git commit source.')
+  }
+  assertNirmanaGitCommitMatchesDeployment(input.source_ref)
+  const current = await loadCurrentAssetAnalysisContext(input)
+  if (payload.data.registry_fingerprint_sha256 !== current.registryFingerprint) {
     throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted registry fingerprint does not match the current live contract.')
+  }
+  if (payload.data.analysis_digest !== current.analysisDigest) {
+    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted analysis digest does not match the canonical deployed analysis receipt.')
+  }
+}
+
+async function requireAcceptedOptimizationVerdictProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+  const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(input.evidence_payload)
+  if (!payload.success || input.source_kind !== 'git_commit') {
+    throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted requires a strict typed verdict bound to a Git commit source.')
+  }
+  assertNirmanaGitCommitMatchesDeployment(input.source_ref)
+  const current = await loadCurrentAssetAnalysisContext(input)
+  if (payload.data.registry_fingerprint_sha256 !== current.registryFingerprint) {
+    throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted registry fingerprint does not match the current live contract.')
+  }
+  if (payload.data.analysis_digest !== current.analysisDigest) {
+    throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted analysis digest does not match the canonical deployed analysis receipt.')
+  }
+  const accepted = await query<{ accepted_count: number }>(
+    `SELECT count(*)::int AS accepted_count
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = $1
+        AND definition_revision = $2
+        AND event_type = 'asset_analysis_accepted'
+        AND entity_type = 'asset'
+        AND entity_id = $3
+        AND layer = $4
+        AND evidence_payload = jsonb_build_object(
+          'registry_fingerprint_sha256', $5::text,
+          'analysis_digest', $6::text)
+        AND source_kind = 'git_commit'
+        AND source_ref = $7`,
+    [
+      input.campaign_id, input.definition_revision, input.entity_id, input.layer,
+      current.registryFingerprint, current.analysisDigest, input.source_ref,
+    ],
+  )
+  if ((accepted.rows[0]?.accepted_count ?? 0) > 1) {
+    throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted cannot bind ambiguous duplicate current asset analyses.')
+  }
+  if (accepted.rows[0]?.accepted_count !== 1) {
+    throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted requires a matching accepted asset analysis for the current live contract.')
   }
 }
 
@@ -579,13 +882,22 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
   if (input.event_type === 'accepted_rebuild_observed') {
     await requireAcceptedRebuildProvenance(input)
   }
-  if (input.event_type === 'asset_analysis_accepted') {
+  if (input.event_type === 'asset_analysis_accepted' || input.event_type === 'optimization_verdict_accepted') {
+    if (input.source_kind !== 'git_commit') {
+      throw new NirmanaElevationEvidenceValidationError(`${input.event_type} requires source_kind=git_commit.`)
+    }
+    assertNirmanaGitCommitMatchesDeployment(input.source_ref)
     const existing = await findExistingEvidenceReceipt(input)
     if (existing) {
       if (isExactEvidenceReceipt(existing, input)) return 'idempotent'
       throw new NirmanaElevationEvidenceConflictError()
     }
+  }
+  if (input.event_type === 'asset_analysis_accepted') {
     await requireAcceptedAssetAnalysisProvenance(input)
+  }
+  if (input.event_type === 'optimization_verdict_accepted') {
+    await requireAcceptedOptimizationVerdictProvenance(input)
   }
   const inserted = await query(
     `INSERT INTO nirmana_elevation_campaign_events

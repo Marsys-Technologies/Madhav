@@ -5,13 +5,24 @@ import { NextResponse } from 'next/server'
 vi.mock('server-only', () => ({}))
 
 const queryMock = vi.fn()
-vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
+const transactionQueryMock = vi.fn()
+const transactionReleaseMock = vi.fn()
+vi.mock('@/lib/db/client', () => ({
+  query: (...args: unknown[]) => queryMock(...args),
+  getPool: () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
 const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
 const auditMock = vi.fn()
 vi.mock('@/lib/admin/audit', () => ({ writeAuditLog: (...args: unknown[]) => auditMock(...args) }))
 
-import { canonicalManifestDigest, canonicalRegistryContractDigest } from '@/lib/nirmana-elevation/definitions'
+import {
+  canonicalManifestDigest,
+  canonicalNirmanaAssetAnalysisDigestForRegistryRow,
+  canonicalRegistryContractDigest,
+} from '@/lib/nirmana-elevation/definitions'
 
 const registry_contract = {
   sort_order: 1, scope: 'global' as const, asset_kind: 'data' as const, catalog_status: 'CURRENT' as const,
@@ -28,7 +39,7 @@ const manifestAsset = {
 }
 const manifest = { chart_id: '482012f1-710e-4a25-994a-93821f5871aa', assets: [manifestAsset] }
 const manifest_sha256 = canonicalManifestDigest(manifest)
-const registryRows = [{ asset_id: manifestAsset.asset_id, layer: 'brahmagyan', depends_on: [], ...registry_contract }]
+const registryRows = [{ asset_id: manifestAsset.asset_id, layer: 'brahmagyan' as const, depends_on: [], frozen_manifest_asset: manifestAsset, ...registry_contract }]
 
 function request(body: unknown) {
   return new Request('http://localhost/api/admin/nirmana-elevation/evidence', { method: 'POST', body: JSON.stringify(body) })
@@ -42,6 +53,8 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
   beforeEach(() => {
     vi.resetModules()
     queryMock.mockReset()
+    transactionQueryMock.mockReset()
+    transactionReleaseMock.mockReset()
     authMock.mockReset()
     auditMock.mockReset().mockResolvedValue(undefined)
   })
@@ -106,6 +119,32 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).toHaveBeenLastCalledWith('admin-1', 'nirmana_definition_recorded', null, expect.objectContaining({ definition_status: 'frozen', outcome: 'frozen' }))
   })
 
+  it('accepts a typed atomic definition-supersession command', async () => {
+    superAdmin()
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{
+        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: 'c'.repeat(64),
+        manifest, created_by: 'admin-0', superseded_at: null,
+      }] })
+      .mockResolvedValueOnce({ rows: registryRows })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
+      .mockResolvedValueOnce({})
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'supersede_definition', campaign_id: 'nirmana-elevation',
+      expected_current_revision: 'v1', expected_current_manifest_sha256: 'c'.repeat(64),
+      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: manifest_sha256,
+    }))
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual({ outcome: 'superseded' })
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, expect.objectContaining({
+      command: 'supersede_definition', expected_current_revision: 'v1', new_definition_revision: 'v2', outcome: 'superseded',
+    }))
+  })
+
   it('rejects a malformed frozen manifest before it can transition state', async () => {
     superAdmin()
     const { POST } = await import('../route')
@@ -153,8 +192,44 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
+  it('rejects an untyped optimization verdict before it can query or append evidence', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:optimization-untyped', event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { verdict: 'looks-good' }, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a typed optimization verdict whose proposal contradicts its verdict', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:optimization-contradiction', event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: 'a'.repeat(64),
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'correct', summary: 'Contradictory action.', output_contract: 'correctness_change' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
   it('records asset analysis only after the server re-derives the pinned current registry fingerprint', async () => {
     superAdmin()
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', registryRows[0], manifestAsset)
     queryMock
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: registryRows })
@@ -163,7 +238,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const response = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
       idempotency_key: 'bg:test:analysis', event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
-      evidence_payload: { registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256, analysis_digest: 'b'.repeat(64) },
+      evidence_payload: { registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256, analysis_digest: analysisDigest },
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
