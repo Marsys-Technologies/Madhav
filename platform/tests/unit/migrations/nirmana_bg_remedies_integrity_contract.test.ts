@@ -66,7 +66,8 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 608 — real Postgres behavior', 
         contraindications text, classical_attestation_text text, scaffold_status text);
       CREATE TABLE remedy_review_queue (
         review_id bigserial PRIMARY KEY, remedy_id text, source_file text,
-        raw_data jsonb, validation_errors jsonb, queued_at timestamptz DEFAULT now());
+        raw_data jsonb, validation_errors jsonb, category text,
+        queued_at timestamptz DEFAULT now());
       CREATE TABLE asset_registry (
         asset_id text PRIMARY KEY, layer text, sort_order integer, scope text,
         asset_kind text, catalog_status text, is_active boolean, has_writer boolean,

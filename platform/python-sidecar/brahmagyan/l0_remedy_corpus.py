@@ -3544,7 +3544,24 @@ def seed_remedy_corpus(
             else:
                 skipped += 1
 
-        # Query live count after insert
+        # This writer owns the complete deterministic corpus projection. Remove
+        # identities no longer produced by the current base + text sweep so a
+        # replay converges after source removals as well as additions/updates.
+        cur.execute(
+            "DELETE FROM brahma_remedy_corpus "
+            "WHERE NOT (remedy_id = ANY(%s))",
+            (sorted(r["remedy_id"] for r in all_remedies),),
+        )
+
+        cur.execute("SELECT COUNT(*) FROM brahma_remedy_corpus")
+        stored_count = cur.fetchone()["count"]
+        if stored_count != total_built:
+            raise RuntimeError(
+                "bg_remedies postflight mismatch: "
+                f"expected {total_built} rows, found {stored_count}"
+            )
+
+        # Query live count after deterministic convergence.
         cur.execute(
             "SELECT COUNT(*) FROM brahma_remedy_corpus WHERE scaffold_status='live'"
         )

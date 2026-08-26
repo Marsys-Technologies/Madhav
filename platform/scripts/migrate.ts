@@ -84,6 +84,20 @@ const NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE =
 const NIRMANA_SKY_CALENDAR_REPLAY_TARGET =
   '594_nirmana_t0_sky_calendar_contract.sql'
 
+/**
+ * `630_nirmana_l0_wave1_correctness_contract.sql` owns a typed provenance
+ * relation whose foreign key targets `classical_text_chunks`.  The active
+ * creator for that table is the unnumbered historical-continuity migration
+ * `ws2_l0_texts.sql`.  Global lexical ordering puts every numbered migration
+ * before that creator, so a fresh replay would otherwise reach 630 too early.
+ *
+ * Keep this exception closed for the same reason as the 597/594 repair above:
+ * it is a single, named replay prerequisite, not a general dependency system.
+ */
+const NIRMANA_L0_WAVE1_TEXTS_REPLAY_PREREQUISITE = 'ws2_l0_texts.sql'
+const NIRMANA_L0_WAVE1_TEXTS_REPLAY_TARGET =
+  '630_nirmana_l0_wave1_correctness_contract.sql'
+
 export interface RunOptions {
   dryRun?: boolean
   target?: string
@@ -423,9 +437,9 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
   }
   files.sort((a, b) => a.name.localeCompare(b.name))
 
-  // Preserve ordinary lexical order, except for the one closed replay repair
-  // above.  A previously applied 597 remains in this list and is still skipped
-  // by the normal `_migrations_applied` check in runMigrations().
+  // Preserve ordinary lexical order, except for the two closed replay repairs
+  // above. A previously applied prerequisite remains in this list and is still
+  // skipped by the normal `_migrations_applied` check in runMigrations().
   const prerequisiteIndex = files.findIndex(
     file => file.name === NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE
   )
@@ -435,6 +449,19 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
   if (prerequisiteIndex !== -1 && targetIndex !== -1 && prerequisiteIndex > targetIndex) {
     const [prerequisite] = files.splice(prerequisiteIndex, 1)
     files.splice(targetIndex, 0, prerequisite)
+  }
+
+  const waveOneTextsPrerequisiteIndex = files.findIndex(
+    file => file.name === NIRMANA_L0_WAVE1_TEXTS_REPLAY_PREREQUISITE
+  )
+  const waveOneTargetIndex = files.findIndex(
+    file => file.name === NIRMANA_L0_WAVE1_TEXTS_REPLAY_TARGET
+  )
+  if (waveOneTextsPrerequisiteIndex !== -1
+    && waveOneTargetIndex !== -1
+    && waveOneTextsPrerequisiteIndex > waveOneTargetIndex) {
+    const [prerequisite] = files.splice(waveOneTextsPrerequisiteIndex, 1)
+    files.splice(waveOneTargetIndex, 0, prerequisite)
   }
   return files
 }

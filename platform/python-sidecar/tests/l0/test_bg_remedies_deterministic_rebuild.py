@@ -43,6 +43,15 @@ class _SqliteCursor:
         if "information_schema.tables" in sql:
             self._synthetic_row = {"count": 1}
             return
+        if "WHERE NOT (remedy_id = ANY(%s))" in sql:
+            remedy_ids = tuple(params[0])
+            placeholders = ",".join("?" for _ in remedy_ids)
+            self._cur.execute(
+                f"DELETE FROM brahma_remedy_corpus WHERE remedy_id NOT IN ({placeholders})",
+                remedy_ids,
+            )
+            self._synthetic_row = None
+            return
         self._synthetic_row = None
         translated = re.sub(r"%\((\w+)\)s", r":\1", sql.replace("::jsonb", ""))
         self._cur.execute(translated, params or {})
@@ -135,6 +144,17 @@ def test_reseed_converges_every_writer_owned_output_field(monkeypatch) -> None:
     )
 
     l0_remedy_corpus.seed_remedy_corpus(conn, autocommit=False)
+    conn.raw.execute(
+        """
+        INSERT INTO brahma_remedy_corpus (
+          remedy_id, planet, domain, remedy_type, prescription_text,
+          source_canonical_id, source_citation, scaffold_status
+        ) VALUES (
+          'obsolete_remedy', 'mars', 'general', 'puja', 'stale',
+          'stale', 'stale', 'live'
+        )
+        """
+    )
     conn.raw.execute(
         """
         UPDATE brahma_remedy_corpus SET

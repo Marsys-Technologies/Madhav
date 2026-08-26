@@ -138,6 +138,17 @@ class GocharaArcsWriter(WriterBase):
                 ),
             )
 
+        # A standard full rebuild starts by removing obsolete versions and
+        # identities outside the closed nine-body source. Custom narrowed
+        # repair runs preserve untouched bodies deliberately.
+        requested_bodies = tuple(ctx.config.get("bodies") or BODIES)
+        if requested_bodies == BODIES and body == BODIES[0]:
+            ctx.db_conn.execute(
+                f"DELETE FROM {TABLE} "
+                "WHERE substrate_version <> %s OR body <> ALL(%s)",
+                [substrate_version, list(BODIES)],
+            )
+
         # §N.3 replace-not-accrete, scoped to exactly this substep's key.
         ctx.db_conn.execute(
             f"DELETE FROM {TABLE} WHERE substrate_version = %s AND body = %s",
@@ -166,6 +177,30 @@ class GocharaArcsWriter(WriterBase):
                     logger.info(
                         "[bg_gochara_arcs] %s: %d/%d arcs inserted", body, inserted, len(rows)
                     )
+            cur.execute(
+                f"""
+                SELECT count(*) AS row_count,
+                       min(arc_index) AS min_index,
+                       max(arc_index) AS max_index,
+                       count(DISTINCT arc_fingerprint) AS fingerprint_count
+                FROM {TABLE}
+                WHERE substrate_version = %s AND body = %s
+                """,
+                [substrate_version, body],
+            )
+            postflight = cur.fetchone()
+            values = (
+                (postflight["row_count"], postflight["min_index"], postflight["max_index"],
+                 postflight["fingerprint_count"])
+                if isinstance(postflight, dict)
+                else tuple(postflight)
+            )
+            expected = (len(rows), 0, len(rows) - 1, 1)
+            if values != expected:
+                raise RuntimeError(
+                    f"bg_gochara_arcs exact postflight failed for {body}: "
+                    f"expected {expected}, got {values}"
+                )
 
         retrograde = sum(1 for a in arcs if a.direction == -1)
         return WriterResult(
