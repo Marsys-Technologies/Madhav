@@ -366,5 +366,5 @@ Commit: `test(nirmana): prove NTAP tracker synchronization behavior`
 ## Plan self-review
 
 - Spec coverage: Tasks 1–3 provide baseline identity, controlled acceptance, and non-mutating monitor behavior; Tasks 4–5 expose freshness/adaptation in the snapshot and dashboard; Task 6 provides scheduler and operation boundary; Task 7 proves the no-fabrication and UX constraints end to end.
-- Placeholder scan: no TODO/TBD steps; each test and implementation step has concrete files, commands, and expected behavior.
+- Placeholder scan: no deferred-placeholder steps; each test and implementation step has concrete files, commands, and expected behavior.
 - Interface consistency: Task 1 provides candidate/classifier, Task 2 writes observations, Task 3 uses candidate acceptance, Task 4 projects observations, Tasks 5–7 consume the V2 contract.
