@@ -1,4 +1,4 @@
--- Migration 629: Nirmana L0 wave-1 correctness and provenance contracts.
+-- Migration 630: Nirmana L0 wave-1 correctness and provenance contracts.
 -- Created: 2026-08-26
 --
 -- Transaction ownership belongs to platform/scripts/migrate.ts. This migration
@@ -106,7 +106,7 @@ BEGIN
   INTO exact_schema;
 
   IF exact_schema IS NOT TRUE THEN
-    RAISE EXCEPTION 'migration 629 refuses pre-existing noncanonical brahma_yoga_source_chunks';
+    RAISE EXCEPTION 'migration 630 refuses pre-existing noncanonical brahma_yoga_source_chunks';
   END IF;
 END $$;
 
@@ -218,7 +218,7 @@ BEGIN
   INTO exact_schema;
 
   IF exact_schema IS NOT TRUE THEN
-    RAISE EXCEPTION 'migration 629 brahma_yoga_source_chunks schema postflight failed';
+    RAISE EXCEPTION 'migration 630 brahma_yoga_source_chunks schema postflight failed';
   END IF;
 END $$;
 
@@ -244,7 +244,7 @@ BEGIN
     WHERE constant_name='VAKRA_RETROGRADE_BPHS_27'
     OFFSET 1
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown VAKRA citation mapping';
+    RAISE EXCEPTION 'migration 630 refuses unknown VAKRA citation mapping';
   END IF;
 
   IF (
@@ -271,7 +271,7 @@ BEGIN
     WHERE constant_name='VAKRA_RETROGRADE_BPHS_27';
     GET DIAGNOSTICS changed_rows = ROW_COUNT;
     IF changed_rows <> 1 THEN
-      RAISE EXCEPTION 'migration 629 VAKRA transition updated % rows',changed_rows;
+      RAISE EXCEPTION 'migration 630 VAKRA transition updated % rows',changed_rows;
     END IF;
   ELSIF NOT (
     vakra_row.citation_string='BPHS Ch.27 — Vakra (retrogression; cheshta bala)'
@@ -285,7 +285,7 @@ BEGIN
       'The prior bphs_ch27_v001 mapping was same-chapter proximity only; that chunk contains karaka doctrine and cannot ground this claim.'
     AND vakra_row.created_at IS NOT NULL
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown VAKRA citation mapping';
+    RAISE EXCEPTION 'migration 630 refuses unknown VAKRA citation mapping';
   END IF;
 END $$;
 
@@ -437,7 +437,7 @@ BEGIN
   SELECT * INTO registry_row FROM asset_registry
   WHERE asset_id='bg_text_index' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_text_index registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_text_index registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -456,7 +456,7 @@ BEGIN
     )
     AND integrity_sha='93446a84cceda0809a1e58c2d703329a26f9141242d17dc5a3046ab1184a1ed0'
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_text_index registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_text_index registry contract';
   END IF;
   UPDATE asset_registry SET depends_on=ARRAY['bg_texts','bg_reference']::text[]
   WHERE asset_id='bg_text_index';
@@ -464,7 +464,7 @@ BEGIN
   SELECT * INTO registry_row FROM asset_registry
   WHERE asset_id='bg_rules' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_rules registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_rules registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -483,7 +483,7 @@ BEGIN
     )
     AND integrity_sha='bbc85c5f1ee64688e2fd932c5ff6563ae829cf7e9e03c43e42609d85b916de6f'
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_rules registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_rules registry contract';
   END IF;
   UPDATE asset_registry
   SET depends_on=ARRAY['bg_texts','bg_yogas','bg_dasha_systems']::text[]
@@ -491,7 +491,7 @@ BEGIN
 
   SELECT * INTO registry_row FROM asset_registry WHERE asset_id='bg_yogas' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_yogas registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_yogas registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -510,7 +510,7 @@ BEGIN
     (metadata_sha='f4adc4d444334af48a831ed9dbdceec3adab5ba27013c6c53db3a2f61771410a'
       AND registry_row.integrity_check_sql=yoga_check)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_yogas registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_yogas registry contract';
   END IF;
   UPDATE asset_registry SET target_floor=784,count_sql=yoga_count_sql,
     volume_explanation=yoga_explanation,natural_key_partition=yoga_partition,
@@ -520,7 +520,7 @@ BEGIN
   SELECT * INTO registry_row FROM asset_registry
   WHERE asset_id='bg_kp_sublord_division' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_kp_sublord_division registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_kp_sublord_division registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -537,14 +537,14 @@ BEGIN
     (metadata_sha='4e4524584a3860747707aef35a9ee5bc02693fd1512211ebcbd47c6ccb2fef50'
       AND registry_row.integrity_check_sql=kp_check)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_kp_sublord_division registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_kp_sublord_division registry contract';
   END IF;
   UPDATE asset_registry SET natural_key_partition='bg_kp_sublord_division.(table_version,division_index)',
     integrity_check_sql=kp_check WHERE asset_id='bg_kp_sublord_division';
 
   SELECT * INTO registry_row FROM asset_registry WHERE asset_id='bg_gochara_arcs' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_gochara_arcs registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_gochara_arcs registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -561,14 +561,14 @@ BEGIN
     (metadata_sha='6bc7ed2f54cd008566c98987edcdf337f57dcccd443ee88a8367b10906dc07fc'
       AND registry_row.integrity_check_sql=arcs_check)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_gochara_arcs registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_gochara_arcs registry contract';
   END IF;
   UPDATE asset_registry SET natural_key_partition='bg_gochara_arcs.(substrate_version,body,arc_index)',
     integrity_check_sql=arcs_check WHERE asset_id='bg_gochara_arcs';
 
   SELECT * INTO registry_row FROM asset_registry WHERE asset_id='bg_vidhi_floors' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_vidhi_floors registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_vidhi_floors registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -585,7 +585,7 @@ BEGIN
     (metadata_sha='78ca618f910577c6a5da76cbf2efb8bcabf3841369c2caab1623e084a4a00706'
       AND registry_row.integrity_check_sql=vidhi_check)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_vidhi_floors registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_vidhi_floors registry contract';
   END IF;
   UPDATE asset_registry SET target_floor=423,count_sql=vidhi_count_sql,
     volume_explanation='423 owned rows = 14 current intent floors + 409 ordered floor items from the canonical Vidhi registry.',
@@ -595,7 +595,7 @@ BEGIN
   SELECT * INTO registry_row FROM asset_registry
   WHERE asset_id='bg_gochara_citation_resolution' FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'migration 629 requires bg_gochara_citation_resolution registry row';
+    RAISE EXCEPTION 'migration 630 requires bg_gochara_citation_resolution registry row';
   END IF;
   metadata_sha := encode(sha256(convert_to(jsonb_build_array(
     registry_row.layer,registry_row.sort_order,registry_row.scope,
@@ -612,7 +612,7 @@ BEGIN
     (metadata_sha='9189699f8f72f40c9bff35e030be10beea517fa3dbe86f51ae08ab24ad1f7139'
       AND registry_row.integrity_check_sql=citation_check)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown bg_gochara_citation_resolution registry contract';
+    RAISE EXCEPTION 'migration 630 refuses unknown bg_gochara_citation_resolution registry contract';
   END IF;
   UPDATE asset_registry SET target_floor=14,
     volume_explanation='14 governed citation mappings: 3 exact resolved chunk links and 11 honest corpus gaps. Same-chapter proximity is never treated as source evidence.',
@@ -656,7 +656,7 @@ BEGIN
          COALESCE(registry.integrity_check_sql,''),'UTF8')),'hex')
          IS DISTINCT FROM expected.integrity_sha
   ) THEN
-    RAISE EXCEPTION 'migration 629 exact registry postflight failed';
+    RAISE EXCEPTION 'migration 630 exact registry postflight failed';
   END IF;
 END $$;
 
@@ -681,13 +681,13 @@ BEGIN
     (current_sha=old_sha AND current_spec=old_spec)
     OR (current_sha=new_sha AND current_spec=new_spec)
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses unknown current bg_yogas digest spec: %',current_sha;
+    RAISE EXCEPTION 'migration 630 refuses unknown current bg_yogas digest spec: %',current_sha;
   END IF;
   IF current_sha=old_sha AND EXISTS (
     SELECT 1 FROM asset_output_digest_specs
     WHERE asset_id='bg_yogas' AND spec_sha256=new_sha
   ) THEN
-    RAISE EXCEPTION 'migration 629 refuses pre-existing non-current yoga replacement';
+    RAISE EXCEPTION 'migration 630 refuses pre-existing non-current yoga replacement';
   END IF;
   UPDATE asset_output_digest_specs SET retired_at=COALESCE(retired_at,now())
   WHERE asset_id='bg_yogas' AND spec_sha256=old_sha AND spec=old_spec
@@ -698,11 +698,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM asset_output_digest_specs
       WHERE asset_id='bg_yogas' AND spec_sha256=new_sha
         AND spec=new_spec AND retired_at IS NULL) THEN
-    RAISE EXCEPTION 'migration 629 yoga digest replacement postflight failed';
+    RAISE EXCEPTION 'migration 630 yoga digest replacement postflight failed';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM asset_output_digest_specs
       WHERE asset_id='bg_yogas' AND spec_sha256=old_sha
         AND spec=old_spec AND retired_at IS NOT NULL) THEN
-    RAISE EXCEPTION 'migration 629 failed to retain exact retired yoga predecessor';
+    RAISE EXCEPTION 'migration 630 failed to retain exact retired yoga predecessor';
   END IF;
 END $$;
