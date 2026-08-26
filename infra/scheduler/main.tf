@@ -3,7 +3,6 @@
 // Cloud Scheduler jobs (IaC):
 //   amjis-mv-refresh             — every 6h, refreshes materialized views.
 //   amjis-pending-stream-reaper  — every 10m, fails orphaned pending streams.
-//   amjis-nirmana-elevation-monitor — every 5m, records NTAP program observations.
 
 terraform {
   required_version = ">= 1.5.0"
@@ -40,10 +39,6 @@ variable "scheduler_invoker_sa" {
 provider "google" {
   project = var.gcp_project
   region  = var.gcp_region
-}
-
-data "google_project" "scheduler" {
-  project_id = var.gcp_project
 }
 
 // ── Job: MV refresh (every 6 hours UTC) ──────────────────────────────────────
@@ -131,78 +126,9 @@ resource "google_cloud_scheduler_job" "pending_stream_reaper" {
   }
 }
 
-// ── Job: Nirmana elevation monitor (every 5 minutes UTC) ────────────────────
-
-// This identity is intentionally dedicated to the monitor. It may invoke only
-// amjis-web; the legacy scheduler_invoker_sa remains unchanged for existing jobs.
-resource "google_service_account" "nirmana_elevation_monitor" {
-  account_id   = "amjis-nirmana-monitor"
-  display_name = "Nirmana elevation monitor Scheduler invoker"
-  description  = "Dedicated Cloud Scheduler OIDC identity for the read-only Nirmana elevation monitor."
-  project      = var.gcp_project
-}
-
-resource "google_cloud_run_v2_service_iam_member" "nirmana_elevation_monitor_invokes_web" {
-  project  = var.gcp_project
-  location = var.gcp_region
-  name     = "amjis-web"
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.nirmana_elevation_monitor.email}"
-}
-
-// Cloud Scheduler's Google-managed service agent mints only the job's OIDC token.
-// Scope that OIDC-only role to this one dedicated service account.
-resource "google_service_account_iam_member" "cloud_scheduler_mints_nirmana_monitor_oidc" {
-  service_account_id = google_service_account.nirmana_elevation_monitor.name
-  role               = "roles/iam.serviceAccountOpenIdTokenCreator"
-  member             = "serviceAccount:service-${data.google_project.scheduler.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
-}
-
-resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
-  name             = "amjis-nirmana-elevation-monitor"
-  description      = "Record a read-only Nirmana elevation program-monitor observation every five minutes."
-  schedule         = "*/5 * * * *"
-  time_zone        = "Etc/UTC"
-  region           = var.gcp_region
-  attempt_deadline = "120s"
-
-  retry_config {
-    retry_count          = 2
-    min_backoff_duration = "30s"
-    max_backoff_duration = "120s"
-    max_doublings        = 2
-  }
-
-  http_target {
-    http_method = "POST"
-    uri         = "${var.amjis_web_url}/api/admin/internal/nirmana-elevation-monitor"
-    headers = {
-      "Content-Type" = "application/json"
-      # x-marsys-cron-secret is deliberately not stored in Terraform or state.
-      # After protected-main apply, configure the existing MARSYS_CRON_SECRET as
-      # the X-Marsys-Cron-Secret header using the established Scheduler secret-
-      # header procedure. It must not use Authorization: OIDC occupies that
-      # header on Cloud Scheduler's Cloud Run dispatch.
-    }
-    body = base64encode("{}")
-
-    oidc_token {
-      service_account_email = google_service_account.nirmana_elevation_monitor.email
-      audience              = var.amjis_web_url
-    }
-  }
-
-  // The secret header is configured outside Terraform after protected-main
-  // apply. Ignore only the target header map so future plans do not remove it.
-  lifecycle {
-    ignore_changes = [http_target[0].headers]
-  }
-}
-
 output "scheduler_jobs" {
   value = [
     google_cloud_scheduler_job.mv_refresh.name,
     google_cloud_scheduler_job.pending_stream_reaper.name,
-    google_cloud_scheduler_job.nirmana_elevation_monitor.name,
   ]
 }

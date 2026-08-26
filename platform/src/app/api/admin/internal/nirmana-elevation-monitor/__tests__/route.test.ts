@@ -4,6 +4,9 @@ import type { NirmanaRegistryContractRow } from '@/lib/nirmana-elevation/definit
 
 vi.mock('server-only', () => ({}))
 
+const { verifyOidcTokenMock } = vi.hoisted(() => ({ verifyOidcTokenMock: vi.fn() }))
+vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: verifyOidcTokenMock }))
+
 const clientQueryMock = vi.fn()
 const clientReleaseMock = vi.fn()
 const connectMock = vi.fn()
@@ -16,7 +19,9 @@ vi.mock('@/lib/db/client', () => ({
 const releaseMock = vi.fn()
 vi.mock('@/lib/nirmana-elevation/release', () => ({ loadNirmanaReleaseStatus: () => releaseMock() }))
 
-const schedulerCredential = 'scheduler-secret'
+const schedulerOidcToken = 'scheduler-oidc-token'
+const schedulerOidcAudience = 'https://amjis-web-938361928218.asia-south1.run.app'
+const schedulerServiceAccount = 'amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com'
 const sourceObservedAt = new Date().toISOString()
 const freshnessDeadlineAt = new Date(Date.parse(sourceObservedAt) + 15 * 60 * 1000).toISOString()
 
@@ -103,7 +108,10 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       ],
       gaps: [],
     })
-    process.env.MARSYS_CRON_SECRET = schedulerCredential
+    verifyOidcTokenMock.mockReset().mockResolvedValue({
+      email: schedulerServiceAccount,
+      sub: 'scheduler-subject',
+    })
   })
 
   it('rejects an unauthenticated request before reading or recording program state', async () => {
@@ -111,21 +119,48 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     const response = await POST(request())
     expect(response.status).toBe(401)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(verifyOidcTokenMock).not.toHaveBeenCalled()
     expect(connectMock).not.toHaveBeenCalled()
     expect(insertQueryMock).not.toHaveBeenCalled()
     expect(releaseMock).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ['scheduler header', { 'X-Marsys-Cron-Secret': schedulerCredential }],
-    ['bearer fallback', { Authorization: `Bearer ${schedulerCredential}` }],
-  ])('records explicit fresh, quiet, and release state with the %s', async (_label, headers) => {
+  it('rejects an invalid OIDC token before reading or recording program state', async () => {
+    verifyOidcTokenMock.mockResolvedValueOnce(null)
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(verifyOidcTokenMock).toHaveBeenCalledWith(schedulerOidcToken, {
+      expectedAudience: schedulerOidcAudience,
+      expectedServiceAccount: schedulerServiceAccount,
+    })
+    expect(connectMock).not.toHaveBeenCalled()
+    expect(insertQueryMock).not.toHaveBeenCalled()
+    expect(releaseMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects an OIDC verification failure before reading or recording program state', async () => {
+    verifyOidcTokenMock.mockRejectedValueOnce(new Error('TokenExpiredError'))
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    expect(response.status).toBe(403)
+    expect(connectMock).not.toHaveBeenCalled()
+    expect(insertQueryMock).not.toHaveBeenCalled()
+    expect(releaseMock).not.toHaveBeenCalled()
+  })
+
+  it('records explicit fresh, quiet, and release state with the dedicated Scheduler OIDC token', async () => {
     successfulSources()
     const { POST } = await import('../route')
-    const response = await POST(request(headers))
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(verifyOidcTokenMock).toHaveBeenCalledWith(schedulerOidcToken, {
+      expectedAudience: schedulerOidcAudience,
+      expectedServiceAccount: schedulerServiceAccount,
+    })
     expect(body).toEqual({
       ok: true, observation_id: 'a8c01784-865f-4880-b91b-0988ab7f31de',
       status: 'baseline_missing', source_state: 'available', freshness_state: 'fresh',
@@ -163,7 +198,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       gaps: ['Immutable release provenance is unavailable.'],
     })
     const { POST } = await import('../route')
-    const response = await POST(request({ 'X-Marsys-Cron-Secret': schedulerCredential }))
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       source_state: 'available', freshness_state: 'stale', runtime_liveness: 'active',
@@ -179,7 +214,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     successfulSources()
     clientQueryMock.mockImplementationOnce(() => Promise.reject(sensitiveDatabaseError('super-secret', 'private-db.internal')))
     const { POST } = await import('../route')
-    const response = await POST(request({ 'X-Marsys-Cron-Secret': schedulerCredential }))
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
     expect(response.status).toBe(200)
     expect(body).toMatchObject({
@@ -207,7 +242,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       }],
     })
     const { POST } = await import('../route')
-    const response = await POST(request({ 'X-Marsys-Cron-Secret': schedulerCredential }))
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     expect(response.status).toBe(200)
     expect((await response.json()).status).toBe('label_refresh_required')
   })
@@ -217,7 +252,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     successfulSources()
     insertQueryMock.mockRejectedValueOnce(sensitiveDatabaseError('write-secret', 'writer.internal'))
     const { POST } = await import('../route')
-    const response = await POST(request({ 'X-Marsys-Cron-Secret': schedulerCredential }))
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
     expect(response.status).toBe(503)
     expect(response.headers.get('Cache-Control')).toBe('no-store')

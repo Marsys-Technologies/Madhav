@@ -1,19 +1,35 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
+import { verifyOidcToken } from '@/lib/auth/oidc'
 import { runNirmanaElevationMonitor } from '@/lib/nirmana-elevation/monitor'
 
-function validateCronSecret(request: Request): boolean {
-  const expected = process.env.MARSYS_CRON_SECRET
-  if (!expected) return false
-  if (request.headers.get('X-Marsys-Cron-Secret') === expected) return true
-  return request.headers.get('Authorization') === `Bearer ${expected}`
-}
+const SCHEDULER_OIDC_AUDIENCE = 'https://amjis-web-938361928218.asia-south1.run.app'
+const SCHEDULER_SERVICE_ACCOUNT = 'amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com'
 
 export async function POST(request: Request) {
-  if (!validateCronSecret(request)) {
+  const authorization = request.headers.get('Authorization')
+  if (!authorization?.startsWith('Bearer ')) {
     return NextResponse.json(
       { error: 'unauthorized' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
+  try {
+    const identity = await verifyOidcToken(authorization.slice('Bearer '.length), {
+      expectedAudience: SCHEDULER_OIDC_AUDIENCE,
+      expectedServiceAccount: SCHEDULER_SERVICE_ACCOUNT,
+    })
+    if (!identity) {
+      return NextResponse.json(
+        { error: 'forbidden' },
+        { status: 403, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+  } catch {
+    return NextResponse.json(
+      { error: 'forbidden' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
     )
   }
 
