@@ -111,10 +111,10 @@ Conforms to FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md �
   so this writer takes the heavy-writer shape from the start rather than
   discovering the >~10 min threshold in production.
 
-L0 idempotency (CLAUDE.md §N.3): global reference table, `ON CONFLICT
-(factor_family, factor_key, start_utc) DO NOTHING` — deterministic recomputation
-of an already-covered window reproduces identical rows; a re-run only WIDENS
-coverage as the rolling forward horizon advances.
+L0 convergence (CLAUDE.md §N.3): global reference table, `ON CONFLICT
+(factor_family, factor_key, start_utc)` conditionally repairs stale semantic
+values. Deterministic recomputation leaves exact rows untouched and widens the
+rolling horizon only as time advances.
 
 ZERO LLM use. Pure deterministic panchang_engine (pyswisseph-backed) computation,
 reused wholesale.
@@ -557,13 +557,10 @@ class BgMuhurtaLatticeWriter(WriterBase):
 
         try:
             import swisseph  # noqa: F401  -- availability probe
-        except ImportError:
-            logger.warning("[bg_muhurta_lattice] swisseph not available — skipping %s", step.key)
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=0,
-                notes="skipped: swisseph unavailable",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+        except ImportError as exc:
+            raise RuntimeError(
+                "bg_muhurta_lattice requires pyswisseph and cannot rebuild without it"
+            ) from exc
 
         start, end = compute_horizon()
         year = int(step.key.split(":", 1)[1])
@@ -576,12 +573,10 @@ class BgMuhurtaLatticeWriter(WriterBase):
                 all_rows.extend(compute_day_factors(d))
                 d += timedelta(days=1)
         except Exception as exc:
-            logger.error("[bg_muhurta_lattice] computation failed for %s: %s", step.key, exc)
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=0,
-                notes=f"failed: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
+            logger.exception(
+                "[bg_muhurta_lattice] computation failed for %s: %s", step.key, exc
             )
+            raise
 
         conn = ctx.db_conn
         rows_written = 0
@@ -596,15 +591,11 @@ class BgMuhurtaLatticeWriter(WriterBase):
                 if batch:
                     rows_written += self._flush_batch(cur, batch)
         except Exception as exc:
-            logger.error(
+            logger.exception(
                 "[bg_muhurta_lattice] insert failed after %d rows for %s: %s",
                 rows_written, step.key, exc,
             )
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=rows_written,
-                notes=f"partial: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+            raise
 
         elapsed = round(time.time() - t0, 2)
         logger.info(
@@ -657,7 +648,42 @@ class BgMuhurtaLatticeWriter(WriterBase):
                %(ayanamsha_key)s, %(sampling_method)s, %(source_citation)s,
                %(corpus_status)s, %(build_id)s, NOW())
             ON CONFLICT (factor_family, factor_key, start_utc)
-            DO NOTHING
+            DO UPDATE SET
+              end_utc = EXCLUDED.end_utc,
+              detail = EXCLUDED.detail,
+              reference_lat = EXCLUDED.reference_lat,
+              reference_lon = EXCLUDED.reference_lon,
+              reference_tz_offset_minutes = EXCLUDED.reference_tz_offset_minutes,
+              reference_location_key = EXCLUDED.reference_location_key,
+              ayanamsha_key = EXCLUDED.ayanamsha_key,
+              sampling_method = EXCLUDED.sampling_method,
+              source_citation = EXCLUDED.source_citation,
+              corpus_status = EXCLUDED.corpus_status,
+              build_id = EXCLUDED.build_id,
+              computed_at = NOW()
+            WHERE ROW(
+              bg_muhurta_lattice.end_utc,
+              bg_muhurta_lattice.detail,
+              bg_muhurta_lattice.reference_lat,
+              bg_muhurta_lattice.reference_lon,
+              bg_muhurta_lattice.reference_tz_offset_minutes,
+              bg_muhurta_lattice.reference_location_key,
+              bg_muhurta_lattice.ayanamsha_key,
+              bg_muhurta_lattice.sampling_method,
+              bg_muhurta_lattice.source_citation,
+              bg_muhurta_lattice.corpus_status
+            ) IS DISTINCT FROM ROW(
+              EXCLUDED.end_utc,
+              EXCLUDED.detail,
+              EXCLUDED.reference_lat,
+              EXCLUDED.reference_lon,
+              EXCLUDED.reference_tz_offset_minutes,
+              EXCLUDED.reference_location_key,
+              EXCLUDED.ayanamsha_key,
+              EXCLUDED.sampling_method,
+              EXCLUDED.source_citation,
+              EXCLUDED.corpus_status
+            )
             """,
             batch,
         )

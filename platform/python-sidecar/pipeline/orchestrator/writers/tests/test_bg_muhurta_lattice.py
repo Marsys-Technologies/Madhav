@@ -13,6 +13,7 @@ test_bg_sky_calendar.py):
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from datetime import date
 
@@ -370,12 +371,101 @@ def test_writer_dry_run_no_db_needed():
     assert result.notes == "dry_run"
 
 
+def test_writer_fails_closed_when_swisseph_is_unavailable(monkeypatch):
+    """A missing compute dependency must not become a zero-row success."""
+    monkeypatch.setitem(sys.modules, "swisseph", None)
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match="requires pyswisseph"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_day_computation_failure(monkeypatch):
+    """A partial year must roll back instead of being marked complete."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(
+        lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
+    )
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(ValueError("day computation exploded")),
+    )
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+    with pytest.raises(ValueError, match="day computation exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_insert_failure(monkeypatch):
+    """A failed batch write must escape so the substep savepoint is rolled back."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    class CursorContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        @staticmethod
+        def cursor():
+            return CursorContext()
+
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(
+        lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
+    )
+    monkeypatch.setattr(lattice, "compute_day_factors", lambda *_args: [object()])
+    monkeypatch.setattr(
+        BgMuhurtaLatticeWriter,
+        "_to_insert_dict",
+        staticmethod(lambda *_args: {}),
+    )
+    monkeypatch.setattr(
+        BgMuhurtaLatticeWriter,
+        "_flush_batch",
+        staticmethod(lambda *_args: (_ for _ in ()).throw(RuntimeError("insert exploded"))),
+    )
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice",
+        build_id=str(uuid.uuid4()),
+        db_conn=Connection(),
+    )
+    with pytest.raises(RuntimeError, match="insert exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
 def test_reference_location_matches_bhubaneswar_panchang_convention():
     """The reference (lat, lon, tz_offset) must match panchang.py's own
     FORENSIC-matching 'bhubaneswar' fallback triple, not a different value."""
     assert REFERENCE_LAT == 20.27
     assert REFERENCE_LON == 85.84
     assert REFERENCE_TZ_OFFSET_MINUTES == 330
+
+
+def test_flush_batch_repairs_stale_rows_on_natural_key_conflict():
+    """A rolling rebuild must converge an existing legacy lattice atom."""
+    class RecordingCursor:
+        rowcount = 1
+        sql = ""
+
+        def executemany(self, sql, _batch):
+            self.sql = sql
+
+    cursor = RecordingCursor()
+    written = BgMuhurtaLatticeWriter._flush_batch(cursor, [{}])
+
+    assert written == 1
+    assert "DO UPDATE SET" in cursor.sql
+    assert "end_utc = EXCLUDED.end_utc" in cursor.sql
+    assert "bg_muhurta_lattice.source_citation" in cursor.sql
+    assert "IS DISTINCT FROM" in cursor.sql
 
 
 # ── Live tests (require DATABASE_URL; skipped otherwise) ─────────────────────

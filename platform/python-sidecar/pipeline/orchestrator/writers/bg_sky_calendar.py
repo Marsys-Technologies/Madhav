@@ -600,8 +600,8 @@ class BgSkyCalendarWriter(WriterBase):
     per-chart joins -- those are `ka_kshetra`'s job).
 
     L0 writer -- chart-agnostic, global scope. Idempotency: ON CONFLICT on the
-    natural key (event_type, primary_body, secondary_body, event_jd_rounded)
-    DO NOTHING -- see migration 473's comment for the exact constraint.
+    canonical natural key conditionally repairs stale semantic values while
+    leaving already-exact events untouched.
     """
 
     asset_id = "bg_sky_calendar"
@@ -731,7 +731,42 @@ class BgSkyCalendarWriter(WriterBase):
                %(speed_dps)s, %(detail)s::jsonb, %(ayanamsha_key)s,
                %(sampling_method)s, %(source_citation)s, %(build_id)s, NOW())
             ON CONFLICT (event_type, primary_body, secondary_body_key, event_jd)
-            DO NOTHING
+            DO UPDATE SET
+              secondary_body = EXCLUDED.secondary_body,
+              event_datetime_utc = EXCLUDED.event_datetime_utc,
+              sign = EXCLUDED.sign,
+              nakshatra = EXCLUDED.nakshatra,
+              longitude_deg = EXCLUDED.longitude_deg,
+              speed_dps = EXCLUDED.speed_dps,
+              detail = EXCLUDED.detail,
+              ayanamsha_key = EXCLUDED.ayanamsha_key,
+              sampling_method = EXCLUDED.sampling_method,
+              source_citation = EXCLUDED.source_citation,
+              build_id = EXCLUDED.build_id,
+              computed_at = NOW()
+            WHERE ROW(
+              bg_sky_calendar.secondary_body,
+              bg_sky_calendar.event_datetime_utc,
+              bg_sky_calendar.sign,
+              bg_sky_calendar.nakshatra,
+              bg_sky_calendar.longitude_deg,
+              bg_sky_calendar.speed_dps,
+              bg_sky_calendar.detail,
+              bg_sky_calendar.ayanamsha_key,
+              bg_sky_calendar.sampling_method,
+              bg_sky_calendar.source_citation
+            ) IS DISTINCT FROM ROW(
+              EXCLUDED.secondary_body,
+              EXCLUDED.event_datetime_utc,
+              EXCLUDED.sign,
+              EXCLUDED.nakshatra,
+              EXCLUDED.longitude_deg,
+              EXCLUDED.speed_dps,
+              EXCLUDED.detail,
+              EXCLUDED.ayanamsha_key,
+              EXCLUDED.sampling_method,
+              EXCLUDED.source_citation
+            )
             """,
             batch,
         )

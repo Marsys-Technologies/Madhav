@@ -21,6 +21,7 @@ Tests:
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock
 import pytest
 
@@ -59,6 +60,182 @@ class TestVolumeFloor:
         mod = _get_module()
         domains = [e for e in mod.ENTITIES if e["entity_class"] == "domain"]
         assert len(domains) >= 10, f"Need >= 10 domains, got {len(domains)}"
+
+
+class TestWriterConvergence:
+    def test_seed_repairs_owned_rows_without_deleting_co_writer_rows(self):
+        """Cleanup must converge only bg_ontology's exclusive partitions."""
+        mod = _get_module()
+
+        class Cursor:
+            def __init__(self):
+                self.calls = []
+                self.rowcount = 1
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, sql, params=None):
+                self.calls.append((sql, params))
+
+        class Connection:
+            def __init__(self):
+                self.cursor_instance = Cursor()
+
+            def cursor(self):
+                return self.cursor_instance
+
+            def commit(self):
+                raise AssertionError("autocommit=False must preserve caller ownership")
+
+        conn = Connection()
+        mod.seed_ontology(conn, build_id="convergence", autocommit=False)
+
+        statements = [sql for sql, _ in conn.cursor_instance.calls]
+        upserts = [sql for sql in statements if "INSERT INTO brahma_ontology" in sql]
+        deletes = [sql for sql in statements if "DELETE FROM brahma_ontology" in sql]
+        assert len(upserts) == len(mod.ENTITIES)
+        for sql, params in conn.cursor_instance.calls:
+            if "INSERT INTO brahma_ontology" not in sql:
+                continue
+            if params[0] in mod.CO_WRITER_ENTITY_CLASSES:
+                assert "DO NOTHING" in sql
+                assert "DO UPDATE SET" not in sql
+            else:
+                assert "DO UPDATE SET" in sql and "IS DISTINCT FROM" in sql
+        assert len(deletes) == 1
+        assert "entity_class = ANY(%s)" in deletes[0]
+
+        delete_params = next(
+            params for sql, params in conn.cursor_instance.calls
+            if "DELETE FROM brahma_ontology" in sql
+        )
+        owned_classes, canonical_keys = delete_params
+        assert set(owned_classes) == set(mod.ONTOLOGY_OWNED_ENTITY_CLASSES)
+        assert set(owned_classes).isdisjoint(mod.CO_WRITER_ENTITY_CLASSES)
+        assert {"yoga", "dosha", "dasha_system"}.issubset(
+            mod.CO_WRITER_ENTITY_CLASSES
+        )
+
+        # Model the exact SQL predicate against representative live rows. The
+        # stale owned row is deleted; every co-writer/foreign row survives.
+        rows = {
+            ("planet", "stale_owned_planet"),
+            ("yoga", "foreign_yoga"),
+            ("dosha", "foreign_dosha"),
+            ("dasha_system", "foreign_dasha"),
+            ("future_writer_class", "foreign_future_row"),
+        }
+        canonical_key_set = set(canonical_keys)
+        survivors = {
+            row for row in rows
+            if not (
+                row[0] in set(owned_classes)
+                and f"{row[0]}\x1f{row[1]}" not in canonical_key_set
+            )
+        }
+        assert ("planet", "stale_owned_planet") not in survivors
+        assert rows - {("planet", "stale_owned_planet")} <= survivors
+
+    @pytest.mark.skipif(
+        not os.environ.get("TEST_DATABASE_URL"),
+        reason="TEST_DATABASE_URL not configured",
+    )
+    def test_real_postgres_cleanup_preserves_foreign_partitions(self):
+        """Exercise the scoped DELETE against a disposable PostgreSQL table."""
+        import psycopg
+
+        mod = _get_module()
+        with psycopg.connect(os.environ["TEST_DATABASE_URL"]) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TEMP TABLE brahma_ontology (
+                      entity_class text NOT NULL,
+                      canonical_id text NOT NULL,
+                      canonical_name_en text NOT NULL,
+                      canonical_name_sa text,
+                      synonyms text[] NOT NULL,
+                      description text,
+                      source_citation text NOT NULL,
+                      created_at timestamptz NOT NULL,
+                      UNIQUE (entity_class, canonical_id)
+                    ) ON COMMIT DROP
+                    """
+                )
+                cur.executemany(
+                    """
+                    INSERT INTO brahma_ontology
+                      (entity_class,canonical_id,canonical_name_en,synonyms,
+                       source_citation,created_at)
+                    VALUES (%s,%s,%s,ARRAY[]::text[],'test',now())
+                    """,
+                    [
+                        ("planet", "stale_owned_planet", "Stale owned"),
+                        ("yoga", "foreign_yoga", "Foreign yoga"),
+                        ("dosha", "foreign_dosha", "Foreign dosha"),
+                        ("dasha_system", "foreign_dasha", "Foreign dasha"),
+                        ("dasha_system", "vimshottari", "Dedicated Vimshottari"),
+                        ("future_writer_class", "foreign_future_row", "Foreign future"),
+                    ],
+                )
+
+                cur.execute(
+                    """
+                    UPDATE brahma_ontology
+                    SET canonical_name_sa = 'Dedicated',
+                        synonyms = ARRAY['dedicated_writer']::text[],
+                        description = 'Dedicated writer owns this row',
+                        source_citation = 'Dedicated source'
+                    WHERE entity_class = 'dasha_system'
+                      AND canonical_id = 'vimshottari'
+                    """
+                )
+                cur.execute(
+                    """
+                    SELECT canonical_name_en,canonical_name_sa,synonyms,
+                           description,source_citation,created_at
+                    FROM brahma_ontology
+                    WHERE entity_class='dasha_system' AND canonical_id='vimshottari'
+                    """
+                )
+                dedicated_before = cur.fetchone()
+
+            mod.seed_ontology(conn, build_id="postgres-scope", autocommit=False)
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT entity_class,canonical_id FROM brahma_ontology
+                    WHERE canonical_id = ANY(ARRAY[
+                      'stale_owned_planet','foreign_yoga','foreign_dosha',
+                      'foreign_dasha','foreign_future_row'
+                    ]::text[])
+                    """
+                )
+                survivors = set(cur.fetchall())
+                cur.execute(
+                    """
+                    SELECT canonical_name_en,canonical_name_sa,synonyms,
+                           description,source_citation,created_at
+                    FROM brahma_ontology
+                    WHERE entity_class='dasha_system' AND canonical_id='vimshottari'
+                    """
+                )
+                dedicated_after = cur.fetchone()
+
+            assert ("planet", "stale_owned_planet") not in survivors
+            assert survivors == {
+                ("yoga", "foreign_yoga"),
+                ("dosha", "foreign_dosha"),
+                ("dasha_system", "foreign_dasha"),
+                ("future_writer_class", "foreign_future_row"),
+            }
+            assert dedicated_after == dedicated_before
+            conn.rollback()
 
 
 class TestResolve:
