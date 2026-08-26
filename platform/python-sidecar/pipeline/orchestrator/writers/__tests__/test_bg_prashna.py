@@ -14,8 +14,8 @@ def test_writer_is_registered():
     assert writer.asset_id == "bg_prashna_rules"
 
 
-def test_all_11_tajik_yogas_present():
-    """All 11 Tajik horary yogas must be present in the seed data."""
+def test_all_16_tajik_yogas_present():
+    """The complete 16-yoga Tajik horary corpus must be source-owned."""
     from brahmagyan.l0_prashna import TAJIK_YOGAS
 
     expected_ids = {
@@ -30,6 +30,11 @@ def test_all_11_tajik_yogas_present():
         "rudda",
         "khallasara",
         "duhphali_kuttha",
+        "ikbal",
+        "kuttha",
+        "dutthadhuta",
+        "tambira",
+        "durupha",
     }
     found_ids = {y["yoga_id"] for y in TAJIK_YOGAS}
     assert found_ids == expected_ids, f"Missing yogas: {expected_ids - found_ids}"
@@ -120,11 +125,11 @@ def test_dry_run_returns_correct_counts():
     counts = seed_prashna_rules(MagicMock(), dry_run=True)
 
     assert counts["lagna_methods"] == 5
-    assert counts["tajik_yogas"] == 11
+    assert counts["tajik_yogas"] == 16
     assert counts["significators"] == 12
     assert counts["fructification"] == 5
     assert counts["special_techniques"] == 3
-    assert counts["total_rules"] == 36
+    assert counts["total_rules"] == 41
 
 
 def test_writer_result_structure():
@@ -141,6 +146,6 @@ def test_writer_result_structure():
     result = writer.run(ctx)
 
     assert result.asset_id == "bg_prashna_rules"
-    assert result.rows_inserted == 36
-    assert "tajik_yogas=11" in result.notes
+    assert result.rows_inserted == 41
+    assert "tajik_yogas=16" in result.notes
     assert "lagna_methods=5" in result.notes
