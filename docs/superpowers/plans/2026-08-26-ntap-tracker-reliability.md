@@ -318,7 +318,51 @@ Run: `cd platform && npx vitest run src/app/api/admin/internal/nirmana-elevation
 
 Commit: `feat(nirmana): schedule NTAP tracker monitoring`
 
-### Task 7: Integrated verification and branch review
+### Task 7: Authorized candidate-detail completion
+
+**Files:**
+- Modify: `platform/src/lib/nirmana-elevation/types.ts`
+- Modify: `platform/src/lib/nirmana-elevation/snapshot.ts`
+- Modify: `platform/src/components/nirmana-elevation/AuditDrawer.tsx`
+- Modify: `platform/src/lib/nirmana-elevation/__tests__/snapshot.test.ts`
+- Modify: `platform/src/components/nirmana-elevation/CampaignSpine.test.tsx`
+
+**Interfaces:**
+- Consumes: Task 2 persisted `candidate_catalogue_sha256` and Task 3 `accept_baseline_candidate` exact two-digest contract.
+- Produces: authenticated `program_sync.candidate_catalogue_sha256` alongside `candidate_definition_sha256`, available in the Audit Drawer only.
+
+- [ ] **Step 1: Write failing snapshot and audit-detail tests**
+
+```ts
+expect(snapshot.program_sync.candidate_catalogue_sha256).toMatch(/^[a-f0-9]{64}$/)
+expect(screen.getByText(`Candidate label catalogue: ${candidateDigest}`)).toBeInTheDocument()
+```
+
+- [ ] **Step 2: Run the focused test and verify it fails**
+
+Run: `cd platform && npx vitest run src/lib/nirmana-elevation/__tests__/snapshot.test.ts src/components/nirmana-elevation/CampaignSpine.test.tsx`
+
+Expected: FAIL because the candidate catalogue digest is not in the public V2 contract.
+
+- [ ] **Step 3: Project the persisted candidate catalogue digest read-only**
+
+Add nullable `candidate_catalogue_sha256` to `program_sync`. Select and schema-validate it from the latest monitor row. Include it in the deterministic generation hash. Do not recompute, accept, write, or infer any candidate on the snapshot path.
+
+- [ ] **Step 4: Render only in Audit Drawer**
+
+```tsx
+<p>Candidate label catalogue: {snapshot.program_sync.candidate_catalogue_sha256 ?? 'Not available'}</p>
+```
+
+Do not put either digest in the executive canvas. This value is super-admin-only because the full snapshot is super-admin-only.
+
+- [ ] **Step 5: Run focused checks and commit**
+
+Run: `cd platform && npx vitest run src/lib/nirmana-elevation/__tests__/snapshot.test.ts src/components/nirmana-elevation/CampaignSpine.test.tsx && npx tsc --noEmit && npx eslint src/lib/nirmana-elevation/types.ts src/lib/nirmana-elevation/snapshot.ts src/components/nirmana-elevation/AuditDrawer.tsx`
+
+Commit: `fix(nirmana): expose authorized baseline candidate digests`
+
+### Task 8: Integrated verification and branch review
 
 **Files:**
 - Modify: `platform/src/lib/nirmana-elevation/__tests__/fixture-v2.ts`
