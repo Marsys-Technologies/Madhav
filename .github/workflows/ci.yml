@@ -399,7 +399,7 @@ jobs:
           python-version: '3.11'
 
       - name: Nirmāṇa L0 — install writer test dependencies
-        run: python -m pip install 'psycopg[binary]>=3.2' 'pyyaml>=6.0'
+        run: python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0'
 
       - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
         env:
