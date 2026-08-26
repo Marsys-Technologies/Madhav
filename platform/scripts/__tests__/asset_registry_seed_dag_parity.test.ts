@@ -110,7 +110,7 @@ describe('asset_registry_seed — post-626 DAG parity', () => {
       sort_order: 80,
       storage_type: 'postgres_table',
       target_table: 'bg_gochara_citation_resolution',
-      target_floor: 4,
+      target_floor: 14,
       scope: 'global',
       is_active: true,
       catalog_status: 'CURRENT',

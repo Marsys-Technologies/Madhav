@@ -27,7 +27,7 @@ describe('migration 617 — text-index integrity contract', () => {
       target_table: 'classical_text_chunks',
       target_floor: 361,
       volume_explanation: CANONICAL_EXPLANATION,
-      depends_on: ['bg_texts'],
+      depends_on: ['bg_texts', 'bg_reference'],
     })
   })
 })

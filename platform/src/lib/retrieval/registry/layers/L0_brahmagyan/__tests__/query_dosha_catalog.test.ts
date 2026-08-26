@@ -8,6 +8,10 @@ import { queryDoshaCatalogCapability } from '../query_dosha_catalog'
 describe('queryDoshaCatalogCapability', () => {
   beforeEach(() => { mockQuery.mockReset() })
 
+  it('documents the current 79-row catalog', () => {
+    expect(queryDoshaCatalogCapability.description).toContain('79 canonical doshas')
+  })
+
   it('no filter: queries all rows unconditionally', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ canonical_id: 'manglik', name_en: 'Manglik Dosha' }] })
     const result = await queryDoshaCatalogCapability.handler({}, undefined)

@@ -11,7 +11,7 @@ export const queryYogaCatalogCapability: CapabilityDescriptor = {
   layer: 'L0',
   name: 'query_yoga_catalog',
   description:
-    'Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 175 canonical yogas with ' +
+    'Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 233 canonical yogas with ' +
     'classical activation rules, tradition, domain tags, and classical sources. ' +
     'Use to look up what a yoga means, its activation predicate, and which classical text defines it. ' +
     'Supports search by yoga name, tradition (parashari/jaimini/tajik/lal_kitab/kp/nadi_bhrigu/maharsi), ' +

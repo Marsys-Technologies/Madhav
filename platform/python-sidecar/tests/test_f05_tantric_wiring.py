@@ -63,9 +63,48 @@ def test_loader_selects_tantric_file_and_keeps_review_gate(tmp_path: Path, monke
     assert result["category_counts"] == {"tantric": 1}
 
 
+def test_tantric_review_queue_converges_to_current_rejections():
+    conn = MagicMock()
+
+    l0_remedy_loader._converge_tantric_review_queue(
+        conn,
+        rejected_remedy_ids={"rejected-current"},
+    )
+
+    cursor = conn.cursor.return_value.__enter__.return_value
+    sql, params = cursor.execute.call_args.args
+    assert "DELETE FROM remedy_review_queue" in sql
+    assert "category = 'tantric'" in sql
+    assert "NOT (remedy_id = ANY(%(rejected_remedy_ids)s))" in sql
+    assert params == {"rejected_remedy_ids": ["rejected-current"]}
+
+
+def test_empty_tantric_snapshot_clears_obsolete_review_rows(tmp_path: Path):
+    """An empty governed snapshot still owns and must converge its review projection."""
+    (tmp_path / "tantric.yaml").write_text("[]\n", encoding="utf-8")
+    conn = object()
+
+    with patch.object(l0_remedy_loader, "_converge_tantric_review_queue") as converge:
+        result = l0_remedy_loader.load_remedies(
+            tmp_path,
+            conn=conn,
+            file_glob="tantric.yaml",
+            manage_transaction=False,
+        )
+
+    converge.assert_called_once_with(conn, rejected_remedy_ids=set())
+    assert result["files_processed"] == 1
+    assert result["inserted"] == 0
+    assert result["review_queued"] == 0
+
+
 def test_writer_loads_tantric_file_on_orchestrator_connection_without_transaction_control():
     """F05 must make tantric source rows part of every bg_remedies rebuild."""
     conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value.fetchone.return_value = {
+        "corpus_count": 14,
+        "review_count": 0,
+    }
     ctx = ContextSpec(asset_id="bg_remedies", build_id="f05-test", db_conn=conn)
     seed_counts = {
         "remedies_inserted": 10,
@@ -92,13 +131,18 @@ def test_writer_loads_tantric_file_on_orchestrator_connection_without_transactio
     assert result.rows_inserted == 14
     assert result.rows_skipped == 2
     assert "tantric: 4 inserted / 0 review_queued" in result.notes
+    postflight_sql = conn.cursor.return_value.__enter__.return_value.execute.call_args.args[0]
+    assert "FROM brahma_remedy_corpus" in postflight_sql
+    assert "FROM remedy_review_queue" in postflight_sql
 
 
 def test_actual_tantric_corpus_load_is_gated_and_leaves_writer_transaction_untouched():
     """All four shipped tantric rows are accepted without committing caller state."""
     corpus_dir = Path(l0_remedy_loader.__file__).resolve().parent / "remedy_corpus"
 
-    with patch.object(l0_remedy_loader, "insert_to_corpus") as insert_to_corpus:
+    with patch.object(l0_remedy_loader, "insert_to_corpus") as insert_to_corpus, patch.object(
+        l0_remedy_loader, "_converge_tantric_review_queue"
+    ):
         result = l0_remedy_loader.load_remedies(
             corpus_dir,
             conn=object(),
