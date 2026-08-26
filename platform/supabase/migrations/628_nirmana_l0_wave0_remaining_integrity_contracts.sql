@@ -1,5 +1,12 @@
 -- Migration 628: close the remaining reviewed L0 wave-0 integrity contracts.
 --
+-- This migration remains deliberately amended in place: it was recorded as
+-- failed and is absent from the production migration ledger, so a successor
+-- migration would leave the blocked 628 slot unable to apply. The accepted
+-- predecessor states below are historical facts, not broadened guards: this
+-- migration explicitly transitions sky sort_order 21 -> 69 and Vidhi's
+-- achieved target_floor 48 -> 60, then replay accepts only the final state.
+--
 -- Sky Calendar and Muhurta Lattice are rolling corpora, so their registry
 -- checks pin structural invariants, complete producer-family coverage, and
 -- freshness while the separately reviewed output-digest specification binds
@@ -40,7 +47,11 @@ SELECT
     HAVING count(*) <> 1)
   AND NOT EXISTS (
     SELECT 1 FROM bg_sky_calendar
-    WHERE primary_body = '' OR secondary_body_key = ''
+    WHERE primary_body = ''
+      -- Migration 473 intentionally generates '' for NULL secondary_body on
+      -- single-body events; reject only a key that disagrees with that total
+      -- natural-key projection.
+      OR secondary_body_key <> COALESCE(secondary_body, '')
       OR event_datetime_utc IS NULL OR event_jd IS NULL
       OR ayanamsha_key <> 'lahiri'
       OR sampling_method <> 'sky_calendar_ingress_station_eclipse_doubletransit_v1'
@@ -63,14 +74,46 @@ SELECT
 $check$;
   muhurta_check constant text := $check$
 SELECT
-  (SELECT count(*) >= 91477 FROM bg_muhurta_lattice)
+  -- Migration 530's nine-family v2 lattice is binding. Legacy v1 rows remain
+  -- accepted historical data, but they cannot substitute for the v2 corpus.
+  (SELECT count(*) FILTER (WHERE sampling_method =
+      'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2')
+      >= 164575 FROM bg_muhurta_lattice)
   AND (SELECT array_agg(DISTINCT factor_family ORDER BY factor_family) =
-      ARRAY['agnivasa','combination_yoga','ghati_muhurta','kalam']::text[]
-    FROM bg_muhurta_lattice)
-  AND (SELECT count(*) FILTER (WHERE factor_family = 'agnivasa') >= 1826
-       AND count(*) FILTER (WHERE factor_family = 'combination_yoga') >= 1481
-       AND count(*) FILTER (WHERE factor_family = 'kalam') >= 33390
-       AND count(*) FILTER (WHERE factor_family = 'ghati_muhurta') >= 54780
+      ARRAY['agnivasa','combination_yoga','ghati_muhurta','hora','kalam',
+            'lagna','nakshatra','tithi','vara']::text[]
+    FROM bg_muhurta_lattice
+    WHERE sampling_method =
+      'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2')
+  -- Exact observed v2 minima are per-family as well as aggregate. Retained
+  -- v1 rows must not mask a deficit in any required v2 family.
+  AND (SELECT count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'agnivasa') >= 1826
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'combination_yoga') >= 1480
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'ghati_muhurta') >= 54780
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'hora') >= 43824
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'kalam') >= 33389
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'lagna') >= 23798
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'nakshatra') >= 1826
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'tithi') >= 1826
+       AND count(*) FILTER (WHERE sampling_method =
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family = 'vara') >= 1826
     FROM bg_muhurta_lattice)
   AND NOT EXISTS (
     SELECT 1 FROM bg_muhurta_lattice
@@ -83,7 +126,17 @@ SELECT
       OR reference_tz_offset_minutes <> 330
       OR reference_location_key <> 'bhubaneswar'
       OR ayanamsha_key <> 'lahiri'
-      OR sampling_method <> 'muhurta_lattice_agnivasa_yoga_kalam_ghati_v1'
+      OR sampling_method NOT IN (
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_v1',
+        'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2')
+      OR (sampling_method = 'muhurta_lattice_agnivasa_yoga_kalam_ghati_v1'
+        AND factor_family NOT IN (
+          'agnivasa','combination_yoga','ghati_muhurta','kalam'))
+      OR (sampling_method =
+          'muhurta_lattice_agnivasa_yoga_kalam_ghati_hora_vara_nakshatra_tithi_lagna_v2'
+        AND factor_family NOT IN (
+          'agnivasa','combination_yoga','ghati_muhurta','hora','kalam',
+          'lagna','nakshatra','tithi','vara'))
       OR source_citation = ''
       OR corpus_status NOT IN ('computed_cited','computed_uncited_convention'))
   AND (SELECT max(end_utc) >= CURRENT_DATE + INTERVAL '4 years'
@@ -110,7 +163,7 @@ BEGIN
   WHERE asset_id = 'bg_sky_calendar' FOR UPDATE;
   IF NOT FOUND OR (
     registry_row.layer = 'brahmagyan'
-    AND registry_row.sort_order = 69
+    AND registry_row.sort_order IN (21, 69)
     AND registry_row.scope = 'global'
     AND registry_row.asset_kind = 'data'
     AND registry_row.catalog_status = 'CURRENT'
@@ -141,7 +194,7 @@ BEGIN
     AND registry_row.has_writer IS TRUE
     AND registry_row.target_table = 'vidhi_primitives'
     AND registry_row.count_sql = '(SELECT COUNT(*) FROM vidhi_primitives)'
-    AND registry_row.target_floor = 60
+    AND registry_row.target_floor IN (48, 60)
     AND registry_row.depends_on = ARRAY[]::text[]
     AND registry_row.data_disposition IS NULL
     AND (registry_row.natural_key_partition IS NULL
@@ -178,6 +231,10 @@ BEGIN
   UPDATE asset_registry
   SET catalog_status = CASE WHEN asset_id = 'bg_vidhi_primitives'
         THEN 'CURRENT' ELSE catalog_status END,
+      sort_order = CASE WHEN asset_id = 'bg_sky_calendar' THEN 69
+        ELSE sort_order END,
+      target_floor = CASE WHEN asset_id = 'bg_vidhi_primitives' THEN 60
+        ELSE target_floor END,
       natural_key_partition = CASE asset_id
         WHEN 'bg_sky_calendar' THEN sky_partition
         WHEN 'bg_vidhi_primitives' THEN vidhi_partition
@@ -196,10 +253,12 @@ BEGIN
   IF (SELECT count(*) FROM asset_registry
       WHERE (asset_id = 'bg_sky_calendar'
         AND catalog_status = 'CURRENT'
+        AND sort_order = 69
         AND natural_key_partition = sky_partition
         AND integrity_check_sql = sky_check)
          OR (asset_id = 'bg_vidhi_primitives'
         AND catalog_status = 'CURRENT'
+        AND target_floor = 60
         AND natural_key_partition = vidhi_partition
         AND integrity_check_sql = vidhi_check)
          OR (asset_id = 'bg_muhurta_lattice'
