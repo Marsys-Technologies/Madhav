@@ -3,6 +3,19 @@ import type { NirmanaElevationSnapshotV1 } from '@/lib/nirmana-elevation/types'
 
 export const NIRMANA_V1_PUBLIC_SOURCE_ERROR = 'Authoritative source is unavailable.'
 export const NIRMANA_V1_PUBLIC_ASSET_BLOCKER = 'Accepted asset execution requires attention.'
+export const NIRMANA_V1_PUBLIC_EVIDENCE_REFERENCE = 'redacted:unsafe-reference'
+
+const V1_PUBLIC_REFERENCE = /^(?:run|sha|event|build_run|stage|foundation|source|catalogue|label_catalogue|release|receipt):[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$/
+const V1_SENSITIVE_REFERENCE = /(?:password|passwd|token|secret|api[_-]?key|authorization|host|user(?:name|info)?)\s*[=:]|bearer\s|BEGIN [A-Z ]*PRIVATE KEY|[a-z][a-z0-9+.-]*:\/\/|(?:gh[pousr]_|github_pat_|sk-(?:proj-)?|xox[baprs]-)[A-Za-z0-9_-]{16,}|AKIA[A-Z0-9]{16}/i
+
+function publicEvidenceReference(value: string): string {
+  const trimmed = value.trim()
+  return trimmed.length <= 128
+    && V1_PUBLIC_REFERENCE.test(trimmed)
+    && !V1_SENSITIVE_REFERENCE.test(trimmed)
+    ? trimmed
+    : NIRMANA_V1_PUBLIC_EVIDENCE_REFERENCE
+}
 
 function statusText(value: string | null | undefined): string {
   if (!value) return 'Unknown'
@@ -136,7 +149,10 @@ function AssetLedger({ snapshot }: { snapshot: NirmanaElevationSnapshotV1 }) {
         <td className="px-3 py-3"><p className="flex items-center gap-1 text-brand-text-1"><StatusMark state={asset.lifecycle_state} />{statusText(asset.lifecycle_state)}</p><p className="mt-1 text-brand-text-3">Readiness: {statusText(asset.readiness_state)}</p><p className="mt-1 text-brand-text-3">Run: {statusText(asset.current_run_state)}</p></td>
         <td className="px-3 py-3 text-brand-text-2">{asset.progress_mode === 'determinate' && asset.work_committed !== null && asset.work_total !== null ? `${asset.work_committed} / ${asset.work_total} ${asset.current_unit_label ?? 'units'}` : asset.progress_mode === 'indeterminate' ? `Indeterminate — ${asset.current_unit_label ?? 'stage not instrumented'}` : 'Not applicable'}{asset.blocker && <p className="mt-1 flex max-w-48 items-start gap-1 text-brand-err"><AlertTriangle aria-hidden="true" className="mt-0.5 size-3 shrink-0" />{NIRMANA_V1_PUBLIC_ASSET_BLOCKER}</p>}</td>
         <td className="px-3 py-3 text-brand-text-2"><p>Baseline: {formatSeconds(asset.baseline_duration_seconds)}</p><p className="mt-1">Final: {formatSeconds(asset.final_duration_seconds)}</p><p className="mt-1">Improvement: {asset.improvement_percent === null ? 'Unknown' : `${asset.improvement_percent} points`}</p></td>
-        <td className="px-3 py-3"><details><summary className="cursor-pointer text-brand-gold-2 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">Evidence ({asset.evidence_refs.length})</summary><ul className="mt-2 space-y-1 font-mono text-brand-text-3">{asset.evidence_refs.length ? asset.evidence_refs.map((ref) => <li key={ref}>{ref}</li>) : <li>No evidence references recorded</li>}</ul></details></td>
+        <td className="px-3 py-3"><details><summary className="cursor-pointer text-brand-gold-2 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">Evidence ({asset.evidence_refs.length})</summary><ul className="mt-2 space-y-1 font-mono text-brand-text-3">{asset.evidence_refs.length ? asset.evidence_refs.map((ref, index) => {
+          const publicRef = publicEvidenceReference(ref)
+          return <li key={`${publicRef}:${index}`}>{publicRef}</li>
+        }) : <li>No evidence references recorded</li>}</ul></details></td>
       </tr>)}</tbody>
     </table></div>
   </section>

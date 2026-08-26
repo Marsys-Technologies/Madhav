@@ -210,6 +210,7 @@ type NirmanaStageId = (typeof NIRMANA_STAGE_IDS)[number]
 function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_events']): {
   currentStage: NirmanaStageId | null
   enteredAt: Map<NirmanaStageId, string | null>
+  enteredReceiptTime: Map<NirmanaStageId, number>
   exitedAt: Map<NirmanaStageId, string | null>
   contradictions: string[]
 } {
@@ -222,6 +223,7 @@ function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_event
     ...canonical.contradictions,
   ]
   const enteredAt = new Map<NirmanaStageId, string | null>()
+  const enteredReceiptTime = new Map<NirmanaStageId, number>()
   const exitedAt = new Map<NirmanaStageId, string | null>()
   let currentStage: NirmanaStageId | null = null
   let nextIndex = 0
@@ -231,13 +233,14 @@ function contiguousStageSpine(events: NirmanaElevationRawSources['campaign_event
     if (transition.from === expectedFrom && transition.to === expectedTo) {
       currentStage = transition.to
       enteredAt.set(transition.to, asIso(transition.event.observed_at))
+      enteredReceiptTime.set(transition.to, timestamp(transition.event.recorded_at))
       if (transition.from !== null) exitedAt.set(transition.from, asIso(transition.event.observed_at))
       nextIndex += 1
       continue
     }
     contradictions.push(`Campaign-stage receipts do not form a contiguous canonical chain at ${transition.from ?? 'null'} -> ${transition.to}.`)
   }
-  return { currentStage, enteredAt, exitedAt, contradictions }
+  return { currentStage, enteredAt, enteredReceiptTime, exitedAt, contradictions }
 }
 
 function validManifest(definition: NirmanaElevationRawSources['campaign_definitions'][number] | undefined, registryById: Map<string, NirmanaElevationRawSources['asset_registry'][number]>): NirmanaElevationManifest | null {
@@ -364,17 +367,19 @@ type RunAuthorization = { layer: (typeof LAYERS)[number][0]; waveIndex: number; 
 function orderedFrozenAssets(
   manifestAssets: NirmanaElevationManifest['assets'],
   lifecycleFrozenAssetIds: Set<string>,
-  freezeReceiptAssetIds: Set<string>,
-  currentStageIndex: number,
+  freezeReceiptTimesByAsset: Map<string, number[]>,
+  stageEntryReceiptTimes: Map<NirmanaStageId, number>,
 ): { accepted: Set<string>; outOfOrder: Set<string> } {
   const accepted = new Set<string>()
   const outOfOrder = new Set<string>()
   let priorLayerComplete: boolean = true
+  let priorLayerCompletedAt = 0
 
   for (const [layerId] of LAYERS) {
     const layerAssets = manifestAssets.filter((asset) => asset.layer === layerId)
-    const layerEntered = currentStageIndex >= NIRMANA_STAGE_IDS.indexOf(layerId)
-    let priorWaveComplete: boolean = priorLayerComplete && layerEntered
+    const layerEnteredAt = stageEntryReceiptTimes.get(layerId)
+    let priorWaveComplete: boolean = priorLayerComplete && layerEnteredAt !== undefined
+    let priorWaveCompletedAt = Math.max(priorLayerCompletedAt, layerEnteredAt ?? 0)
     const waveIndexes = [...new Set(layerAssets
       .map((asset) => asset.wave_index)
       .filter((waveIndex): waveIndex is number => waveIndex !== undefined))]
@@ -382,23 +387,36 @@ function orderedFrozenAssets(
 
     for (const waveIndex of waveIndexes) {
       const waveAssets = layerAssets.filter((asset) => asset.wave_index === waveIndex)
+      const acceptedReceiptTimes: number[] = []
       for (const asset of waveAssets) {
-        if (freezeReceiptAssetIds.has(asset.asset_id) && !priorWaveComplete) {
+        const receiptTimes = freezeReceiptTimesByAsset.get(asset.asset_id) ?? []
+        const hasPrematureReceipt = receiptTimes.some((receiptTime) => !priorWaveComplete
+          || receiptTime <= priorWaveCompletedAt)
+        if (hasPrematureReceipt) {
           outOfOrder.add(asset.asset_id)
         }
-        if (priorWaveComplete && lifecycleFrozenAssetIds.has(asset.asset_id)) {
+        const validReceiptTime = receiptTimes.find((receiptTime) => receiptTime > priorWaveCompletedAt)
+        if (!hasPrematureReceipt
+          && priorWaveComplete
+          && lifecycleFrozenAssetIds.has(asset.asset_id)
+          && validReceiptTime !== undefined) {
           accepted.add(asset.asset_id)
+          acceptedReceiptTimes.push(validReceiptTime)
         }
       }
       priorWaveComplete = priorWaveComplete
         && waveAssets.every((asset) => accepted.has(asset.asset_id))
+      if (priorWaveComplete && acceptedReceiptTimes.length > 0) {
+        priorWaveCompletedAt = Math.max(priorWaveCompletedAt, ...acceptedReceiptTimes)
+      }
     }
 
     for (const asset of layerAssets.filter((candidate) => candidate.wave_index === undefined)) {
-      if (freezeReceiptAssetIds.has(asset.asset_id)) outOfOrder.add(asset.asset_id)
+      if ((freezeReceiptTimesByAsset.get(asset.asset_id)?.length ?? 0) > 0) outOfOrder.add(asset.asset_id)
     }
     priorLayerComplete = priorWaveComplete
       && layerAssets.every((asset) => accepted.has(asset.asset_id))
+    if (priorLayerComplete) priorLayerCompletedAt = priorWaveCompletedAt
   }
 
   return { accepted, outOfOrder }
@@ -670,11 +688,21 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const stageSpine = contiguousStageSpine(campaignEvents)
   const currentStage = stageSpine.currentStage
   const currentStageIndex = currentStage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(currentStage)
-  const freezeReceiptAssetIds = new Set((manifestAssets ?? []).filter((asset) =>
-    milestoneProjectionById.get(asset.asset_id)?.milestones.find((milestone) =>
-      milestone.milestone_id === 'frozen')?.state === 'earned').map((asset) => asset.asset_id))
+  const freezeReceiptTimesByAsset = new Map<string, number[]>()
+  for (const event of acceptedMilestoneEvents) {
+    const asset = manifestById.get(event.entity_id)
+    if (event.event_type !== 'asset_frozen'
+      || event.entity_type !== 'asset'
+      || asset?.layer !== event.layer
+      || timestamp(event.observed_at) <= 0
+      || timestamp(event.recorded_at) <= 0) continue
+    const receiptTimes = freezeReceiptTimesByAsset.get(event.entity_id) ?? []
+    receiptTimes.push(timestamp(event.recorded_at))
+    receiptTimes.sort((left, right) => left - right)
+    freezeReceiptTimesByAsset.set(event.entity_id, receiptTimes)
+  }
   const orderedFreeze = orderedFrozenAssets(
-    manifestAssets ?? [], lifecycleFrozenAssetIds, freezeReceiptAssetIds, currentStageIndex,
+    manifestAssets ?? [], lifecycleFrozenAssetIds, freezeReceiptTimesByAsset, stageSpine.enteredReceiptTime,
   )
   const frozenAssetIds = orderedFreeze.accepted
   const outOfOrderFreezeAssetIds = orderedFreeze.outOfOrder

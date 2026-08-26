@@ -132,6 +132,34 @@ describe('NirmanaElevationTracker', () => {
     expect(document.body).not.toHaveTextContent('99999999-9999-4999-8999-999999999999')
   })
 
+  it('renders only bounded public references for arbitrary schema-v1 evidence refs', () => {
+    const unsafeSnapshot = structuredClone(snapshotV1)
+    unsafeSnapshot.assets[0].evidence_refs = [
+      'run:42',
+      'postgresql://tracker_admin:secret-password@db.private.internal/nirmana',
+      'https://tracker_admin@db.private.internal/evidence?token=private-token',
+      'authorization=Bearer private-token',
+      'password=secret-password host=db.private.internal user=tracker_admin',
+      '-----BEGIN PRIVATE KEY----- private-key-material -----END PRIVATE KEY-----',
+      'ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD',
+      'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890',
+      `sha:${'a'.repeat(600)}`,
+    ]
+
+    render(<NirmanaElevationTrackerView snapshot={unsafeSnapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
+
+    expect(screen.getByText('run:42')).toBeInTheDocument()
+    expect(screen.getAllByText('redacted:unsafe-reference')).toHaveLength(8)
+    expect(document.body).not.toHaveTextContent('secret-password')
+    expect(document.body).not.toHaveTextContent('db.private.internal')
+    expect(document.body).not.toHaveTextContent('tracker_admin')
+    expect(document.body).not.toHaveTextContent('private-token')
+    expect(document.body).not.toHaveTextContent('PRIVATE KEY')
+    expect(document.body).not.toHaveTextContent('ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD')
+    expect(document.body).not.toHaveTextContent('sk-proj-abcdefghijklmnopqrstuvwxyz1234567890')
+    expect(document.body).not.toHaveTextContent('a'.repeat(600))
+  })
+
   it('does not copy a credential-bearing v1 source error into the unavailable banner', async () => {
     const unsafeSnapshot = structuredClone(snapshotV1)
     unsafeSnapshot.sources[0] = {

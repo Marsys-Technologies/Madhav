@@ -10,6 +10,7 @@ import {
 import { canonicalManifestDigest, canonicalRegistryContractDigest } from '../definitions'
 
 const observedAt = '2026-08-25T09:00:00.000Z'
+const milestoneAt = '2026-08-25T09:01:00.000Z'
 const canonicalChartId = '482012f1-710e-4a25-994a-93821f5871aa'
 const runOne = '10101010-1010-4010-8010-101010101010'
 const runTwo = '20202020-2020-4020-8020-202020202020'
@@ -152,6 +153,7 @@ function assetMilestoneEvents(
   runId: string,
   { includeImplementation = true }: { includeImplementation?: boolean } = {},
 ) {
+  const eventAt = new Date(Date.parse(milestoneAt) + Number(layer.slice(1)) * 60_000).toISOString()
   const eventTypes = [
     'asset_analysis_accepted', 'optimization_verdict_accepted',
     ...(includeImplementation ? ['implementation_accepted'] : []),
@@ -163,7 +165,7 @@ function assetMilestoneEvents(
     evidence_payload: event_type === 'optimization_verdict_accepted' ? { change_required: true } : {},
     source_kind: 'campaign_evidence',
     source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runId}` : `event:${assetId}:${event_type}`,
-    observed_at: observedAt, recorded_at: observedAt,
+    observed_at: eventAt, recorded_at: eventAt,
   }))
 }
 
@@ -484,7 +486,7 @@ describe('projectNirmanaElevationSnapshot', () => {
     ].map((event_type) => ({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'bg_prashna_rules',
       layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runOne}` : `event:${event_type}`,
-      observed_at: observedAt, recorded_at: observedAt,
+      observed_at: milestoneAt, recorded_at: milestoneAt,
     }))
     const snapshot = projectNirmanaElevationSnapshot(sources({
       asset_registry: assetRegistry,
@@ -571,8 +573,8 @@ describe('projectNirmanaElevationSnapshot', () => {
       evidence_payload: {},
       source_kind: 'campaign_evidence',
       source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runOne}` : `event:${event_type}`,
-      observed_at: observedAt,
-      recorded_at: observedAt,
+      observed_at: milestoneAt,
+      recorded_at: milestoneAt,
     }))
     const snapshot = projectNirmanaElevationSnapshot(sources({
       campaign_definitions: [{
@@ -678,12 +680,13 @@ describe('projectNirmanaElevationSnapshot', () => {
   })
 
   it('allows an active non-writer asset to freeze only through its frozen formal non-build disposition', () => {
+    const lifecycleAt = new Date(Date.parse(milestoneAt) + 5 * 60_000).toISOString()
     const lifecycleEvents = [
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'source_accepted', 'integrity_verified', 'asset_frozen',
     ].map((event_type) => ({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'lel_events',
       layer: 'L5', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}`,
-      observed_at: observedAt, recorded_at: observedAt,
+      observed_at: lifecycleAt, recorded_at: lifecycleAt,
     }))
     const assetRegistry = [registryAsset({
       asset_id: 'lel_events', english_name: 'Life Events', layer: 'mimamsa', sort_order: 0,
@@ -723,6 +726,9 @@ describe('projectNirmanaElevationSnapshot', () => {
       { asset_id: 'bg_transit_rules', execution_obligation: 'build', covered_asset_ids: ['bg_transit_engine'] },
       { asset_id: 'bg_transit_engine', execution_obligation: 'producer_covered', producer_id: 'bg_transit_rules' },
     ])
+    const lifecycleAt = (assetId: string) => assetId === 'lel_events'
+      ? new Date(Date.parse(milestoneAt) + 5 * 60_000).toISOString()
+      : milestoneAt
     const lifecycleEvents = assetIds.flatMap((asset_id) => [
       'asset_analysis_accepted', 'optimization_verdict_accepted',
       ...(asset_id === 'bg_transit_rules' ? ['implementation_accepted'] : []),
@@ -730,19 +736,19 @@ describe('projectNirmanaElevationSnapshot', () => {
     ].map((event_type) => ({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: asset_id,
       layer: asset_id === 'lel_events' ? 'L5' : 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}:${asset_id}`,
-      observed_at: observedAt, recorded_at: observedAt,
+      observed_at: lifecycleAt(asset_id), recorded_at: lifecycleAt(asset_id),
     }))).concat([
       {
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'source_accepted', entity_type: 'asset', entity_id: 'lel_events',
-        layer: 'L5', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'source:canonical', observed_at: observedAt, recorded_at: observedAt,
+        layer: 'L5', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'source:canonical', observed_at: lifecycleAt('lel_events'), recorded_at: lifecycleAt('lel_events'),
       },
       {
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_transit_rules',
-        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: observedAt, recorded_at: observedAt,
+        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: lifecycleAt('bg_transit_rules'), recorded_at: lifecycleAt('bg_transit_rules'),
       },
       {
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'producer_covered', entity_type: 'asset', entity_id: 'bg_transit_engine',
-        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: observedAt, recorded_at: observedAt,
+        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: lifecycleAt('bg_transit_engine'), recorded_at: lifecycleAt('bg_transit_engine'),
       },
     ])
     const rawSources = sources({
@@ -1446,6 +1452,118 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(earlyWave?.state).not.toBe('completed')
     expect(earlyWave?.completed_asset_ids).toEqual([])
     expect(snapshot.data_quality.contradictions).toEqual(expect.arrayContaining([
+      expect.stringMatching(/bg_second.*freeze evidence.*governed stage\/wave order/i),
+    ]))
+  })
+
+  it('never retroactively credits a time-skewed freeze recorded before its layer stage entry', () => {
+    const manifest = defaultManifest()
+    const prematureFreezeEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne).map((event) =>
+      event.event_type === 'asset_frozen'
+        ? {
+            ...event,
+            observed_at: '2026-08-25T10:00:00.000Z',
+            recorded_at: '2026-08-25T09:00:04.500Z',
+          }
+        : event)
+    const commonSources = {
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen' as const, manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      build_runs: [{
+        id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
+        created_at: observedAt, started_at: observedAt,
+      }],
+      build_run_assets: [{
+        run_id: runOne, asset_id: 'bg_prashna_rules', position: 1, state: 'complete',
+        started_at: observedAt, ended_at: milestoneAt, error: null,
+      }],
+    }
+    const projectAt = (stage: 'F0_FOUNDATION' | 'L0') => projectNirmanaElevationSnapshot(sourcesWithLabels({
+      ...commonSources,
+      campaign_events: [
+        ...foundationLaneEvents(), ...stageEventsThrough(stage), ...prematureFreezeEvents,
+      ],
+    }, []), { generatedAt: '2026-08-25T10:01:00.000Z' })
+
+    const beforeStageEntry = projectAt('F0_FOUNDATION')
+    const afterStageEntry = projectAt('L0')
+
+    for (const snapshot of [beforeStageEntry, afterStageEntry]) {
+      const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')
+      const wave = snapshot.layers[0].waves.find((candidate) => candidate.wave_index === 0)
+      expect(snapshot.progress).toMatchObject({ assets_frozen: 0, layers_frozen: 0 })
+      expect(snapshot.layers[0]).toMatchObject({ frozen: 0 })
+      expect(snapshot.layers[0].state).not.toBe('frozen')
+      expect(asset?.campaign_state).not.toBe('completed')
+      expect(asset?.milestones.at(-1)?.state).not.toBe('earned')
+      expect(wave?.state).not.toBe('completed')
+      expect(wave?.completed_asset_ids).toEqual([])
+      expect(snapshot.data_quality.contradictions).toEqual(expect.arrayContaining([
+        expect.stringMatching(/bg_prashna_rules.*freeze evidence.*governed stage\/wave order/i),
+      ]))
+    }
+  })
+
+  it('does not let a later prior-wave freeze validate an already-premature next-wave receipt', () => {
+    const assetRegistry = [
+      registryAsset({ asset_id: 'bg_first', english_name: 'First Asset', sort_order: 1, target_table: 'bg_first', count_sql: 'SELECT count(*) FROM bg_first' }),
+      registryAsset({ asset_id: 'bg_second', english_name: 'Second Asset', sort_order: 2, depends_on: ['bg_first'], target_table: 'bg_second', count_sql: 'SELECT count(*) FROM bg_second' }),
+    ]
+    const manifest = manifestFor(assetRegistry, [
+      { asset_id: 'bg_first', wave_index: 0, execution_obligation: 'build' },
+      { asset_id: 'bg_second', wave_index: 1, execution_obligation: 'build' },
+    ])
+    const secondWaveEvents = assetMilestoneEvents('bg_second', 'L0', runTwo).map((event) =>
+      event.event_type === 'asset_frozen'
+        ? { ...event, observed_at: '2026-08-25T10:00:00.000Z', recorded_at: '2026-08-25T09:00:10.000Z' }
+        : event)
+    const firstWaveEvents = assetMilestoneEvents('bg_first', 'L0', runOne).map((event) =>
+      event.event_type === 'asset_frozen'
+        ? { ...event, observed_at: '2026-08-25T09:02:00.000Z', recorded_at: '2026-08-25T09:02:00.000Z' }
+        : event)
+    const commonSources = {
+      asset_registry: assetRegistry,
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen' as const, manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+    }
+    const beforePriorWaveCompletes = projectNirmanaElevationSnapshot(sources({
+      ...commonSources,
+      campaign_events: [
+        ...foundationLaneEvents(), ...stageEventsThrough('L0'), ...secondWaveEvents,
+      ],
+      build_runs: [{ id: runTwo, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: runTwo, asset_id: 'bg_second', position: 1, state: 'complete', started_at: observedAt, ended_at: milestoneAt, error: null }],
+    }), { generatedAt: '2026-08-25T09:01:30.000Z' })
+    const afterPriorWaveCompletes = projectNirmanaElevationSnapshot(sources({
+      ...commonSources,
+      campaign_events: [
+        ...foundationLaneEvents(), ...stageEventsThrough('L0'), ...secondWaveEvents, ...firstWaveEvents,
+      ],
+      build_runs: [
+        { id: runTwo, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt },
+        { id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt },
+      ],
+      build_run_assets: [
+        { run_id: runTwo, asset_id: 'bg_second', position: 1, state: 'complete', started_at: observedAt, ended_at: milestoneAt, error: null },
+        { run_id: runOne, asset_id: 'bg_first', position: 1, state: 'complete', started_at: observedAt, ended_at: '2026-08-25T09:02:00.000Z', error: null },
+      ],
+    }), { generatedAt: '2026-08-25T09:03:00.000Z' })
+
+    expect(beforePriorWaveCompletes.progress).toMatchObject({ assets_frozen: 0, layers_frozen: 0 })
+    const secondAsset = afterPriorWaveCompletes.assets.find((asset) => asset.asset_id === 'bg_second')
+    const secondWave = afterPriorWaveCompletes.layers[0].waves.find((wave) => wave.wave_index === 1)
+    expect(afterPriorWaveCompletes.progress).toMatchObject({ assets_frozen: 1, layers_frozen: 0 })
+    expect(afterPriorWaveCompletes.layers[0]).toMatchObject({ frozen: 1 })
+    expect(afterPriorWaveCompletes.layers[0].state).not.toBe('frozen')
+    expect(secondAsset?.campaign_state).not.toBe('completed')
+    expect(secondAsset?.milestones.at(-1)?.state).not.toBe('earned')
+    expect(secondWave?.state).not.toBe('completed')
+    expect(secondWave?.completed_asset_ids).toEqual([])
+    expect(afterPriorWaveCompletes.data_quality.contradictions).toEqual(expect.arrayContaining([
       expect.stringMatching(/bg_second.*freeze evidence.*governed stage\/wave order/i),
     ]))
   })

@@ -177,7 +177,7 @@ function stageEvents() {
   })
 }
 
-function assetEvents(assetId: string, eventTypes: string[], runId?: string) {
+function assetEvents(assetId: string, eventTypes: string[], runId?: string, startOffsetSeconds = 10) {
   return eventTypes.map((eventType, index) => ({
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: eventType,
     entity_type: 'asset', entity_id: assetId, layer: assetId === 'ka_smriti' ? 'L3' : 'L0',
@@ -185,8 +185,8 @@ function assetEvents(assetId: string, eventTypes: string[], runId?: string) {
     source_kind: 'campaign_evidence',
     source_ref: eventType === 'accepted_rebuild_observed' || eventType === 'producer_covered'
       ? `build_run:${runId}` : `event:${assetId}:${eventType}`,
-    observed_at: new Date(Date.parse(observedAt) + 10_000 + index * 1_000).toISOString(),
-    recorded_at: new Date(Date.parse(observedAt) + 10_000 + index * 1_000).toISOString(),
+    observed_at: new Date(Date.parse(observedAt) + startOffsetSeconds * 1_000 + index * 1_000).toISOString(),
+    recorded_at: new Date(Date.parse(observedAt) + startOffsetSeconds * 1_000 + index * 1_000).toISOString(),
   }))
 }
 
@@ -207,13 +207,13 @@ const campaignEvents = [
   ...assetEvents('bg_sign_medical', [
     'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered',
     'integrity_verified', 'asset_frozen',
-  ], producerRunId),
+  ], producerRunId, 20),
   ...assetEvents('bg_nakshatra_medical', [
     'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered',
     'integrity_verified', 'asset_frozen',
-  ], producerRunId),
-  ...assetEvents('bg_prashna_rules', ['asset_analysis_accepted', 'optimization_verdict_accepted']),
-  ...assetEvents('ka_smriti', ['asset_analysis_accepted']),
+  ], producerRunId, 20),
+  ...assetEvents('bg_prashna_rules', ['asset_analysis_accepted', 'optimization_verdict_accepted'], undefined, 30),
+  ...assetEvents('ka_smriti', ['asset_analysis_accepted'], undefined, 30),
   {
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'build_run_authorized',
     entity_type: 'build_run', entity_id: activeRunId, layer: 'L0',
