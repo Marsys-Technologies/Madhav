@@ -32,9 +32,23 @@ describe('LayerStage', () => {
       expect(within(legend).getByText(label)).toBeVisible()
     }
     expect(screen.getByText(/eligible-next preview/i)).toBeVisible()
-    expect(within(screen.getByLabelText(/eligible-next preview/i)).getByText('bg_prashna_rules')).toBeVisible()
+    expect(within(screen.getByLabelText(/eligible-next preview/i)).getByText('(bg_prashna_rules)')).toBeVisible()
     const completedSummary = screen.getByText(/Wave 0.*completed/i)
     expect(completedSummary.closest('details')).not.toHaveAttribute('open')
+  })
+
+  it('keeps locked waves collapsed and limits a wave to two parallel asset columns', () => {
+    const snapshot = snapshotFixture()
+    const layer = layerFixture(snapshot)
+
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+
+    const lockedSummary = screen.getByText(/Wave 0.*locked/i)
+    expect(lockedSummary.closest('details')).not.toHaveAttribute('open')
+    fireEvent.click(lockedSummary)
+    const wave = screen.getByRole('group', { name: 'Wave 0' })
+    expect(wave.querySelector('.xl\\:grid-cols-3')).not.toBeInTheDocument()
+    expect(wave.querySelector('.lg\\:grid-cols-2')).toBeInTheDocument()
   })
 
   it('stacks waves in numeric order and keeps parallel assets within their labelled wave', () => {
@@ -57,11 +71,12 @@ describe('LayerStage', () => {
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
 
     fireEvent.click(screen.getByText(/Wave 1.*completed/i))
+    fireEvent.click(screen.getByText(/Wave 3.*locked/i))
     expect(screen.getAllByRole('group', { name: /wave [123]/i }).map((element) => element.getAttribute('aria-label'))).toEqual(['Wave 1', 'Wave 2', 'Wave 3'])
     const waveTwoGroup = screen.getByRole('group', { name: 'Wave 2' })
-    expect(within(waveTwoGroup).getByText('ka_wave_two_a')).toBeVisible()
-    expect(within(waveTwoGroup).getByText('ka_wave_two_b')).toBeVisible()
-    expect(within(waveTwoGroup).queryByText('ka_wave_three')).not.toBeInTheDocument()
+    expect(within(waveTwoGroup).getByText('System ID: ka_wave_two_a')).toBeVisible()
+    expect(within(waveTwoGroup).getByText('System ID: ka_wave_two_b')).toBeVisible()
+    expect(within(waveTwoGroup).queryByText('System ID: ka_wave_three')).not.toBeInTheDocument()
     expect(within(screen.getByRole('group', { name: 'Wave 3' })).getByText(`Locked by: ${layer.required_gate}`)).toBeVisible()
   })
 
@@ -78,12 +93,12 @@ describe('LayerStage', () => {
 
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} />)
 
-    expect(screen.getByText('ka_smriti')).toBeVisible()
-    expect(screen.getByText('Kāla Smṛti')).toBeVisible()
+    expect(screen.getByText('System ID: ka_smriti')).toBeVisible()
+    expect(screen.getByRole('heading', { name: /A22 · Kāla Smṛti/i })).toBeVisible()
     expect(screen.getByText('Kala Smriti')).toBeVisible()
     expect(screen.getByText('Per-varsha digest')).toBeVisible()
     expect(screen.getByText(/year-by-year digest/i)).toBeVisible()
-    expect(within(screen.getByText('ka_uncatalogued').closest('article')!).getAllByText('Not yet catalogued').length).toBeGreaterThan(0)
+    expect(within(screen.getByText('System ID: ka_uncatalogued').closest('article')!).getAllByText('Additional human-facing identity is not yet catalogued')).toHaveLength(1)
     expect(screen.queryByText('Kāla Uncatalogued')).not.toBeInTheDocument()
     const legacyLabel = screen.getByText('Legacy alias')
     const legacyId = screen.getByText('A22')
@@ -129,13 +144,13 @@ describe('LayerStage', () => {
 
     render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
 
-    const card = screen.getByText('ka_disclosure').closest('article')!
+    const card = screen.getByText('System ID: ka_disclosure').closest('article')!
     expect(within(card).getAllByRole('listitem', { name: /^(analysed|decision accepted|built or dispositioned|deployed and executed|verified|frozen):/i })).toHaveLength(6)
     expect(within(card).getByText('5 of 5 required milestones')).toBeVisible()
     expect(within(card).getByLabelText(/built or dispositioned: not applicable/i)).toBeVisible()
     expect(within(card).getByText('not applicable')).toBeVisible()
     expect(within(card).queryByText(/^\d+%$/)).not.toBeInTheDocument()
-    expect(within(screen.getByText('ka_five_of_six').closest('article')!).getByText('5 of 6 required milestones')).toBeVisible()
+    expect(within(screen.getByText('System ID: ka_five_of_six').closest('article')!).getByText('5 of 6 required milestones')).toBeVisible()
 
     fireEvent.click(within(card).getByRole('button', { name: /show details for ka_disclosure/i }))
     expect(screen.getByText('Confirm inherited execution evidence')).toBeVisible()

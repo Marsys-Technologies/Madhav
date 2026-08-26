@@ -1,4 +1,5 @@
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
+import { assetCompactLabel } from './vocab'
 
 const MILESTONE_LABELS: Record<NirmanaElevationSnapshotV2['assets'][number]['milestones'][number]['milestone_id'], string> = {
   analysed: 'Analysed',
@@ -22,9 +23,28 @@ function segmentClass(state: NirmanaElevationSnapshotV2['assets'][number]['miles
 }
 
 export function MilestoneBar({ asset }: { asset: NirmanaElevationSnapshotV2['assets'][number] }) {
-  const hasCounters = asset.milestones_earned !== null && asset.milestones_required !== null
+  const earned = asset.milestones_earned
+  const required = asset.milestones_required
+  const hasCounters = earned !== null && required !== null
+  const progressText = hasCounters
+    ? `${earned} of ${required} required milestones earned`
+    : 'Asset completion is not yet evidenced'
+  const progressWidth = hasCounters && required > 0
+    ? `${Math.min(100, (earned / required) * 100)}%`
+    : '0%'
 
   return <div className="space-y-1.5">
+    <div
+      role="progressbar"
+      aria-label={`${assetCompactLabel(asset)} asset completion`}
+      aria-valuemin={0}
+      aria-valuenow={earned ?? undefined}
+      aria-valuemax={required ?? undefined}
+      aria-valuetext={progressText}
+      className="h-2 overflow-hidden rounded-full bg-brand-border"
+    >
+      <span className="block h-full rounded-full bg-brand-gold-2" style={{ width: progressWidth }} />
+    </div>
     <ol className="grid grid-cols-6 gap-1" aria-label={`Milestones for ${asset.asset_id}`}>
       {asset.milestones.map((milestone) => {
         const label = MILESTONE_LABELS[milestone.milestone_id]

@@ -43,8 +43,36 @@ describe('CampaignSpine', () => {
     render(<CampaignSurface snapshot={snapshot} />)
 
     expect(screen.getByText('Reconciling — no percentage')).toBeVisible()
-    expect(screen.getByText('Current position unknown')).toBeVisible()
-    expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getAllByText('Execution not yet evidenced')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('withholds a frozen numeric denominator until the accepted campaign spine exists', () => {
+    const snapshot = snapshotFixture()
+    snapshot.progress.denominator_status = 'frozen'
+    snapshot.progress.assets_frozen = 0
+    snapshot.progress.assets_total = 128
+    snapshot.campaign.current_stage = 'BOOTSTRAP'
+    snapshot.campaign.current_layer = null
+    snapshot.campaign.current_wave = null
+    const denominatorStage = snapshot.stages.find((stage) => stage.stage_id === 'DENOMINATOR_FROZEN')
+    if (!denominatorStage) throw new Error('Fixture must include the denominator stage.')
+    denominatorStage.state = 'locked'
+    denominatorStage.completed_at = null
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    expect(screen.getByText('Accepted denominator unavailable')).toBeVisible()
+    expect(screen.queryByText('0 / 128')).not.toBeInTheDocument()
+  })
+
+  it('uses human plan labels for T0 and F0 while retaining exact stage ids as secondary metadata', () => {
+    render(<CampaignSurface snapshot={snapshotFixture()} />)
+
+    expect(screen.getByRole('button', { name: /T0 · Asset and DAG census/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /F0 · Foundation readiness/i })).toBeVisible()
+    expect(screen.getByText('Stage ID: T0_CENSUS')).toBeVisible()
+    expect(screen.getByText('Stage ID: F0_FOUNDATION')).toBeVisible()
   })
 
   it('distinguishes a not-yet-observed synchronization state from source failure', () => {
@@ -227,7 +255,7 @@ describe('CampaignSpine', () => {
     const rail = screen.getByLabelText('Now, next, then campaign rail')
     const now = within(rail).getByText('Now').closest('section')
     if (!now) throw new Error('Now rail section is missing.')
-    expect(within(now).getByText('F0_FOUNDATION')).toBeVisible()
+    expect(within(now).getByText('F0 · Foundation readiness')).toBeVisible()
     expect(within(now).queryByText('Unknown current stage')).not.toBeInTheDocument()
   })
 

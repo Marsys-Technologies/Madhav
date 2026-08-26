@@ -1,5 +1,5 @@
 import axe from 'axe-core'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import {
@@ -74,9 +74,10 @@ describe('NirmanaElevationTracker responsive structure', () => {
   it('stacks wave assets on mobile and adds columns only at desktop breakpoints', () => {
     renderTracker()
 
-    const assetGrid = screen.getByRole('heading', { name: 'bg_prashna_rules' }).closest('div.grid')
+    const assetGrid = screen.getByRole('heading', { name: 'Praśna Rules' }).closest('div.grid')
     if (!assetGrid) throw new Error('Wave asset grid is missing.')
-    expect(assetGrid).toHaveClass('grid', 'gap-3', 'lg:grid-cols-2', 'xl:grid-cols-3')
+    expect(assetGrid).toHaveClass('grid', 'gap-3', 'lg:grid-cols-2')
+    expect(assetGrid).not.toHaveClass('xl:grid-cols-3')
     expect([...assetGrid.classList].filter((className) => /^grid-cols-/.test(className))).toEqual([])
   })
 
@@ -96,7 +97,9 @@ describe('NirmanaElevationTracker responsive structure', () => {
     const { container } = renderTracker()
     await user.click(screen.getByRole('button', { name: /show details for bg_prashna_rules/i }))
 
-    for (const name of [screen.getByText('Praśna Rules'), screen.getByText('Prashna Rules')]) {
+    const assetCard = screen.getByRole('heading', { name: 'Praśna Rules' }).closest('article')
+    if (!assetCard) throw new Error('Praśna Rules asset card is missing.')
+    for (const name of [within(assetCard).getByText('Praśna Rules'), within(assetCard).getByText('Prashna Rules')]) {
       expect(name).not.toHaveClass('truncate', 'overflow-hidden', 'text-ellipsis', 'whitespace-nowrap')
       expect(name.parentElement).toHaveClass('min-w-0')
     }

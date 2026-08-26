@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Radio } from 'lucide-react'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
+import { stageDisplayName } from './vocab'
 
 type ProgramSyncStatus = NirmanaElevationSnapshotV2['program_sync']['status']
 
@@ -33,8 +34,8 @@ function formatObservedAt(value: string): string {
 
 function stagePosition(snapshot: NirmanaElevationSnapshotV2): string {
   const stageId = snapshot.campaign.current_stage
-  if (!stageId) return 'Current position unknown'
-  if (!/^L[0-5]$/.test(stageId)) return stageId
+  if (!stageId) return 'Execution not yet evidenced'
+  if (!/^L[0-5]$/.test(stageId)) return stageDisplayName(stageId, snapshot)
 
   const layer = snapshot.layers.find((candidate) => candidate.layer_id === stageId)
   const wave = snapshot.campaign.current_wave
@@ -69,10 +70,16 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
     ? snapshot.layers.find((layer) => layer.layer_id === snapshot.campaign.current_stage)
     : undefined
   const activeAssets = activeAssetCount(snapshot)
+  const denominatorStageAccepted = snapshot.stages.some((stage) => (
+    stage.stage_id === 'DENOMINATOR_FROZEN' && stage.state === 'completed'
+  ))
   const denominator = snapshot.progress.denominator_status === 'frozen'
     && snapshot.progress.assets_total !== null
+    && denominatorStageAccepted
     ? `${snapshot.progress.assets_frozen} / ${snapshot.progress.assets_total}`
-    : 'Reconciling — no percentage'
+    : snapshot.progress.denominator_status === 'frozen'
+      ? 'Accepted denominator unavailable'
+      : 'Reconciling — no percentage'
   const caveats = [...snapshot.data_quality.gaps, ...snapshot.data_quality.contradictions]
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
   const staleProgramObservation = monitor?.state === 'stale'

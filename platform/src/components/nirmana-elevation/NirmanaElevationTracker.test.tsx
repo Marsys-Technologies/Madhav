@@ -93,7 +93,7 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByLabelText(/now, next, then campaign rail/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    expect(screen.getByText('Prashna Rules')).toBeVisible()
+    expect(screen.getAllByText('Prashna Rules').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /audit evidence.*degraded/i })).toBeVisible()
     expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /sequential layer rail/i })).not.toBeInTheDocument()
@@ -120,7 +120,7 @@ describe('NirmanaElevationTracker', () => {
     expect(within(synchronization).getByText('Affected assets: 2')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    expect(screen.getByText('Prashna Rules')).toBeVisible()
+    expect(screen.getAllByText('Prashna Rules').length).toBeGreaterThan(0)
   })
 
   it('keeps synchronization definition hashes secondary in the audit drawer', () => {
@@ -329,7 +329,7 @@ describe('NirmanaElevationTracker', () => {
 
     render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
 
-    const card = screen.getByRole('heading', { name: asset.asset_id }).closest('article')
+    const card = screen.getByText(`System ID: ${asset.asset_id}`).closest('article')
     if (!card) throw new Error('Current asset card is missing.')
     expect(within(card).getByText('Milestone count unavailable')).toBeVisible()
     expect(within(card).queryByText(/\d+ of \d+ required milestones/i)).not.toBeInTheDocument()
