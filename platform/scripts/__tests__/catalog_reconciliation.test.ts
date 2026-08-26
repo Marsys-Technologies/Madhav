@@ -83,8 +83,11 @@ describe('asset_registry_seed — catalog reconciliation', () => {
     expect(textIndex?.target_floor).toBe(361)
     expect(textIndex?.volume_explanation).toContain('achieved')
 
-    expect(concordance?.target_floor).toBe(720)
-    expect(concordance?.volume_explanation).toContain('achieved')
+    expect(concordance?.target_floor).toBe(721)
+    expect(concordance?.volume_explanation).toContain('convergent rebuild')
+    expect(concordance?.depends_on).toEqual([
+      'bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules',
+    ])
   })
 
   it('measures only the 11 tables owned by bg_reference', () => {

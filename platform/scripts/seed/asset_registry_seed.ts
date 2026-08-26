@@ -321,13 +321,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'classical_attributions',
     count_sql: 'SELECT count(*) FROM classical_attributions',
     size_sql: "SELECT pg_total_relation_size('classical_attributions')",
-    // Migration 231 ratified the achieved 720-row corpus after direct
-    // production measurement. Keep replay aligned with that durable contract.
-    target_floor: 720,
+    // Migration 619 ratifies the complete canonical projection after the
+    // convergent rebuild exposed one row omitted by the historical no-op
+    // conflict path.
+    target_floor: 721,
     expected_volume_formula: 'ACTUAL(bg_rules) * CONCORDANCE_DENSITY',
     expected_volume_inputs: null,
-    volume_explanation: '720 achieved topic×school concordance rows, measured in production and ratified by migration 231. Cross-product metric: cardinality is topic_count × school_count, not chunk-proportional. Raise the floor only after a verified corpus expansion.',
-    depends_on: ['bg_rules'],
+    volume_explanation: '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 3,002-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.',
+    depends_on: ['bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {

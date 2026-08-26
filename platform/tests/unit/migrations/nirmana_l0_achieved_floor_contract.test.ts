@@ -9,6 +9,10 @@ const migration = fs.readFileSync(
   path.resolve(process.cwd(), 'supabase/migrations/602_nirmana_l0_achieved_floor_contract.sql'),
   'utf8',
 )
+const concordanceMigration = fs.readFileSync(
+  path.resolve(process.cwd(), 'supabase/migrations/619_nirmana_l0_concordance_integrity_contract.sql'),
+  'utf8',
+)
 
 describe('migration 602 — Nirmāṇa L0 achieved-floor contract', () => {
   it('fails closed on missing and unknown contracts', () => {
@@ -22,13 +26,21 @@ describe('migration 602 — Nirmāṇa L0 achieved-floor contract', () => {
 
   it.each([
     ['bg_text_index', 361],
-    ['bg_concordance', 720],
   ])('keeps migration and replay seed aligned for %s', (assetId, achievedFloor) => {
     const asset = ASSETS.find((candidate) => candidate.asset_id === assetId)
     expect(asset?.target_floor).toBe(achievedFloor)
     expect(migration).toMatch(
       new RegExp(`SET target_floor = ${achievedFloor}[\\s\\S]*WHERE asset_id = '${assetId}'`),
     )
+  })
+
+  it('keeps migration 602 immutable while migration 619 supersedes the concordance floor', () => {
+    const concordance = ASSETS.find((candidate) => candidate.asset_id === 'bg_concordance')
+    expect(migration).toMatch(
+      /SET target_floor = 720[\s\S]*WHERE asset_id = 'bg_concordance'/,
+    )
+    expect(concordanceMigration).toContain('SET target_floor = 721')
+    expect(concordance?.target_floor).toBe(721)
   })
 
   it('records the ratified floor provenance and anti-fabrication boundary', () => {
