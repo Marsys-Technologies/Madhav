@@ -1,3 +1,4 @@
+import datetime as dt
 import tempfile
 import threading
 import time
@@ -12,7 +13,7 @@ import sys
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from elevation import AdapterRunner, ElevationStore, InvariantViolation
+from elevation import AdapterRunner, ElevationStore, InvariantViolation, parse_time
 from elevation_operations import ShadowOperations, cutover_guard
 from elevation_server import handler_factory
 from elevation_worker import ShadowSyncWorker
@@ -194,11 +195,18 @@ class ElevationStoreTests(unittest.TestCase):
 
         runtime = Path(self.tmp.name) / "runtime"
         release = Path(self.tmp.name) / "release"
-        plist = plistlib.loads(build_sync_launchd_plist(release, runtime, runtime / "probes.json", interval_seconds=60))
+        source_repo = Path(self.tmp.name) / "repo"
+        plist = plistlib.loads(build_sync_launchd_plist(release, runtime, source_repo, "http://127.0.0.1:8787/api/service-identity", interval_seconds=60))
         self.assertEqual(plist["Label"], "com.marsys.pariprashna-assurance.shadow.sync")
         self.assertEqual(plist["StartInterval"], 60)
-        self.assertIn("--probe-config", plist["ProgramArguments"])
-        self.assertIn(str(runtime / "probes.json"), plist["ProgramArguments"])
+        self.assertIn("--source-repo", plist["ProgramArguments"])
+        self.assertIn(str(source_repo), plist["ProgramArguments"])
+        self.assertIn("--accepted-identity-url", plist["ProgramArguments"])
+        self.assertIn("--once", plist["ProgramArguments"])
+        self.assertNotIn("--probe-config", plist["ProgramArguments"])
+        plist_with_config = plistlib.loads(build_sync_launchd_plist(release, runtime, source_repo, "http://127.0.0.1:8787/api/service-identity", interval_seconds=60, probe_config=runtime / "probes.json"))
+        self.assertIn("--probe-config", plist_with_config["ProgramArguments"])
+        self.assertIn(str(runtime / "probes.json"), plist_with_config["ProgramArguments"])
 
     def test_builtin_probes_record_github_git_and_runtime_as_observations(self):
         """Break caught: autonomous polling has no concrete sources and only emits stale placeholders."""
@@ -222,6 +230,23 @@ class ElevationStoreTests(unittest.TestCase):
         self.assertEqual(probes["edir"](None)["payload"]["state"], "NOT_YET_OPENED")
         edir_path.write_text("# EDIR V3\n", encoding="utf-8")
         self.assertEqual(probes["edir"](None)["payload"]["state"], "OPEN")
+
+    def test_adapter_runner_honors_a_distinct_freshness_budget_per_source(self):
+        """Break caught (elevation §5.4): a single global freshness value cannot express
+        the per-source budgets (git/GitHub 15min, runtime 30min, tests/evidence + EDIR
+        60min) -- each adapter's own budget must reach the stored source row and drive
+        an independent stale/fresh verdict, not one value shared by every source."""
+        runner = AdapterRunner(self.store, probes={
+            "github": lambda _cursor: {"cursor": "c1", "payload": {"ok": True}},
+            "edir": lambda _cursor: {"cursor": "c2", "payload": {"ok": True}},
+        }, fresh_after_seconds={"github": 5, "edir": 600})
+        runner.collect_all()
+        self.assertEqual(self.store.source_state("github")["fresh_after_seconds"], 5)
+        self.assertEqual(self.store.source_state("edir")["fresh_after_seconds"], 600)
+        observed_at = self.store.source_state("github")["observed_at"]
+        dashboard = self.store.dashboard(now=(parse_time(observed_at) + dt.timedelta(seconds=30)).isoformat().replace("+00:00", "Z"))
+        self.assertEqual(dashboard["source_states"]["github"]["freshness"], "STALE")
+        self.assertEqual(dashboard["source_states"]["edir"]["freshness"], "FRESH")
 
     def test_worker_advances_source_freshness_autonomously_with_no_manual_api_call(self):
         """Break caught (elevation §5.1): the deployed worker must keep every configured

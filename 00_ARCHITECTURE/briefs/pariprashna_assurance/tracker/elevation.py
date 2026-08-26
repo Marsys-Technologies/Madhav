@@ -364,13 +364,19 @@ class AdapterRunner:
         "tests_evidence": "TEST_EVIDENCE", "edir": "EDIR",
     }
 
-    def __init__(self, store: ElevationStore, *, probes: dict[str, Any], fresh_after_seconds: int = 300):
+    def __init__(self, store: ElevationStore, *, probes: dict[str, Any], fresh_after_seconds: int | dict[str, int] = 300):
         unknown = set(probes) - set(self.REQUIRED_ADAPTERS)
         if unknown:
             raise InvariantViolation("ADAPTER_UNKNOWN", f"unsupported adapters: {', '.join(sorted(unknown))}")
         self.store = store
         self.probes = probes
-        self.fresh_after_seconds = fresh_after_seconds
+        if isinstance(fresh_after_seconds, dict):
+            unknown_budget = set(fresh_after_seconds) - set(self.REQUIRED_ADAPTERS)
+            if unknown_budget:
+                raise InvariantViolation("ADAPTER_UNKNOWN", f"unsupported adapters in freshness budget: {', '.join(sorted(unknown_budget))}")
+            self.fresh_after_seconds = {adapter: fresh_after_seconds.get(adapter, 300) for adapter in self.REQUIRED_ADAPTERS}
+        else:
+            self.fresh_after_seconds = {adapter: fresh_after_seconds for adapter in self.REQUIRED_ADAPTERS}
 
     def collect(self, adapter: str) -> dict[str, Any]:
         if adapter not in self.REQUIRED_ADAPTERS:
@@ -387,7 +393,7 @@ class AdapterRunner:
             result = probe(previous)
             if not isinstance(result, dict) or not isinstance(result.get("payload"), dict) or "cursor" not in result:
                 raise InvariantViolation("ADAPTER_PAYLOAD", "adapter result must contain cursor and object payload")
-            return self.store.observe({"source_id": adapter, "kind": self._KINDS[adapter], "fresh_after_seconds": self.fresh_after_seconds}, cursor=str(result["cursor"]), idempotency_key=f"{adapter}:{result['cursor']}", payload=result["payload"])
+            return self.store.observe({"source_id": adapter, "kind": self._KINDS[adapter], "fresh_after_seconds": self.fresh_after_seconds[adapter]}, cursor=str(result["cursor"]), idempotency_key=f"{adapter}:{result['cursor']}", payload=result["payload"])
         except Exception as exc:
             return {"status": "UNKNOWN", "reason": str(exc), "cursor": previous}
 

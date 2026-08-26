@@ -20,6 +20,15 @@ from urllib.parse import urlsplit
 
 from elevation import AdapterRunner, ElevationStore
 
+DEFAULT_FRESHNESS_BUDGET_SECONDS = {
+    "github": 15 * 60,
+    "git_worktrees": 15 * 60,
+    "codex_tasks": 15 * 60,
+    "runtime": 30 * 60,
+    "tests_evidence": 60 * 60,
+    "edir": 60 * 60,
+}
+
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
@@ -161,17 +170,27 @@ def load_command_probes(path: Path) -> dict[str, Callable[[str | None], dict[str
     return command_probes(configuration)
 
 
-def build_sync_launchd_plist(release_dir: Path, runtime: Path, probe_config: Path, *, interval_seconds: int) -> bytes:
-    """Build the runnable shadow-only synchronization LaunchAgent definition."""
+def build_sync_launchd_plist(release_dir: Path, runtime: Path, source_repo: Path, accepted_identity_url: str, *, interval_seconds: int, probe_config: Path | None = None) -> bytes:
+    """Build the runnable shadow-only synchronization LaunchAgent definition.
+
+    launchd's own ``StartInterval`` is the scheduler -- each invocation runs a single
+    ``--once`` tick against every built-in adapter (git/GitHub/runtime/codex/tests/EDIR),
+    never the in-process ``run_forever`` loop, so a crashed tick cannot wedge the job.
+    """
     if interval_seconds < 30:
         raise ValueError("sync interval must be at least thirty seconds")
+    arguments = [
+        sys.executable, str(release_dir / "elevation_worker.py"),
+        "--shadow-db", str(runtime / "elevation.sqlite3"),
+        "--source-repo", str(source_repo),
+        "--accepted-identity-url", accepted_identity_url,
+        "--once",
+    ]
+    if probe_config is not None:
+        arguments.extend(("--probe-config", str(probe_config)))
     return plistlib.dumps({
         "Label": "com.marsys.pariprashna-assurance.shadow.sync",
-        "ProgramArguments": [
-            sys.executable, str(release_dir / "elevation_worker.py"),
-            "--shadow-db", str(runtime / "elevation.sqlite3"),
-            "--probe-config", str(probe_config), "--once",
-        ],
+        "ProgramArguments": arguments,
         "StartInterval": interval_seconds,
         "RunAtLoad": True,
         "ProcessType": "Background",
@@ -182,7 +201,7 @@ def build_sync_launchd_plist(release_dir: Path, runtime: Path, probe_config: Pat
 
 
 class ShadowSyncWorker:
-    def __init__(self, store: ElevationStore, *, probes: dict[str, Callable[[str | None], dict[str, Any]]], fresh_after_seconds: int = 300):
+    def __init__(self, store: ElevationStore, *, probes: dict[str, Callable[[str | None], dict[str, Any]]], fresh_after_seconds: int | dict[str, int] = 300):
         self.runner = AdapterRunner(store, probes=probes, fresh_after_seconds=fresh_after_seconds)
 
     def sync_once(self) -> dict[str, dict[str, Any]]:
@@ -221,7 +240,7 @@ def main() -> None:
         probes.update(configured)
     if not probes:
         raise SystemExit("at least one built-in or configured probe is required")
-    worker = ShadowSyncWorker(ElevationStore(args.shadow_db), probes=probes)
+    worker = ShadowSyncWorker(ElevationStore(args.shadow_db), probes=probes, fresh_after_seconds=DEFAULT_FRESHNESS_BUDGET_SECONDS)
     if args.once:
         print(json.dumps(worker.sync_once(), sort_keys=True))
         return
