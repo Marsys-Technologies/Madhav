@@ -6,7 +6,7 @@ import { Pool } from 'pg'
 
 const databaseUrl = process.env.NIRMANA_MONITOR_TEST_DATABASE_URL
 const run = databaseUrl ? describe : describe.skip
-const migrationPath = resolve(process.cwd(), 'supabase/migrations/629_nirmana_elevation_monitor_observations.sql')
+const migrationPath = resolve(process.cwd(), 'migrations/629_nirmana_elevation_monitor_observations.sql')
 const migrationSql = readFileSync(migrationPath, 'utf8')
 const digest = 'a'.repeat(64)
 
