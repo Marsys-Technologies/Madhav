@@ -339,12 +339,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical yoga definitions — formation rules, significations, classical citations',
     storage_type: 'postgres_table',
     target_table: 'brahma_yoga_catalog',
-    count_sql: 'SELECT count(*) FROM brahma_yoga_catalog',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_yoga_catalog) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +
+  (SELECT count(*) FROM reference_yogas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_yoga_catalog')",
-    target_floor: 250,
+    target_floor: 699,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Catalog of named yoga patterns from BPHS / Saravali / Phaladeepika / Jaimini per design §3.9. Floor 250 (contingent on 8,193-chunk extraction yield; corrects seed value of 200).',
+    volume_explanation: '699 owned rows = 233 deterministic yoga definitions × 3 reconciled projections (catalog + yoga ontology partition + reference_yogas). Source definition count is 144 inline core + 4 detector-registry identities + 85 corpus-extracted rows.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },

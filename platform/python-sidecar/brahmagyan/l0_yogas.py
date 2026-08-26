@@ -6,7 +6,7 @@ Populates brahma_yoga_catalog, brahma_ontology (entity_class='yoga'), and
 reference_yogas with classical yoga definitions from BPHS, Saravali,
 Phaladeepika, and related texts.
 
-Volume floor: >= 81 inline core rows (strict)
+Volume floor: 144 inline core rows + 4 detector-registry rows
               + corpus-verse structured extraction from Saravali/BPHS/Phaladeepika
 
 Floor policy (floors-are-aspirational, Tier 1 campaign 2026-06-09):
@@ -18,8 +18,8 @@ classical_text_chunks with verbatim verse clauses.
 
 Per brief §0.1 cross-contract:
   1. catalog row first (brahma_yoga_catalog)
-  2. ontology row with ON CONFLICT (entity_class, canonical_id) DO NOTHING
-  3. reference_yogas pointer with ON CONFLICT (canonical_id) DO NOTHING
+  2. matching ontology row
+  3. matching reference_yogas pointer
 """
 from __future__ import annotations
 
@@ -1579,6 +1579,123 @@ YOGAS_CORE: list[dict] = [
      "rare": False, "source_citation": SARAVALI_CH34},
 ]
 
+# Migration 434 introduced four catalog identities for the Lane-3 detector
+# registry without adding their ontology/reference projections. They are
+# current product identities, so the writer owns them here rather than relying
+# on an historical migration side effect that a clean rebuild would erase.
+DETECTOR_YOGAS: list[dict] = [
+    {
+        "canonical_id": "dhana_yoga_house_lords",
+        "name_sa": "Dhana (Gṛhādhipati) Yoga",
+        "name_en": "Dhana Yoga (House-Lord Family)",
+        "category": "dhana",
+        "school": "parashari",
+        "formation_rule_jsonb": {"detector": "dhana_yoga_house_lords"},
+        "formation_text": (
+            "Any association (conjunction, mutual Parashari aspect, or parivartana) "
+            "among the lords of houses 1/2/5/9/11 where the pair includes the 2nd "
+            "or 11th lord, and the meeting house is not a dusthana (6/8/12)."
+        ),
+        "significations_jsonb": {},
+        "significations_text": (
+            "Wealth accumulation, resource command; strength/demotion depends on "
+            "the constituent lords' freedom from combustion/uncancelled debility."
+        ),
+        "cancellation_conditions": {
+            "rule": "lord_combust_or_debilitated_without_nbry_demotes_or_cancels"
+        },
+        "classical_citations": [
+            {"text_id": "bphs", "chapter": "Ch.41 Dhana Yoga adhyaya"}
+        ],
+        "rare": False,
+        "source_citation": BPHS_CH41,
+    },
+    {
+        "canonical_id": "raja_yoga_kendra_trikona",
+        "name_sa": "Kendra-Trikoṇa (Detector) Rāja Yoga",
+        "name_en": "Raja Yoga (Kendra-Trikona Detector)",
+        "category": "raja",
+        "school": "parashari",
+        "formation_rule_jsonb": {"detector": "raja_yoga_kendra_trikona"},
+        "formation_text": (
+            "Any kendra lord (1/4/7/10) associated (conjunction/mutual "
+            "aspect/parivartana) with any trikona lord (1/5/9), with a mandatory "
+            "affliction check on both lords."
+        ),
+        "significations_jsonb": {},
+        "significations_text": (
+            "Authority, status, sustained rise — subject to demotion if either "
+            "lord is combust or uncancelled-debilitated."
+        ),
+        "cancellation_conditions": {
+            "rule": "lord_combust_or_debilitated_without_nbry_demotes_or_cancels"
+        },
+        "classical_citations": [
+            {"text_id": "bphs", "chapter": "Ch.39 Raja Yoga adhyaya"}
+        ],
+        "rare": False,
+        "source_citation": BPHS_CH39,
+    },
+    {
+        "canonical_id": "sarasvati_yoga",
+        "name_sa": "Sarasvatī (Detector) Yoga",
+        "name_en": "Sarasvati Yoga (Detector)",
+        "category": "other",
+        "school": "parashari",
+        "formation_rule_jsonb": {"detector": "sarasvati_yoga"},
+        "formation_text": (
+            "Jupiter, Venus, and Mercury each placed in a kendra, trikona, or "
+            "the 2nd house, with Jupiter in its own or exaltation sign. (The "
+            "classical \"or friendly sign\" disjunct on Jupiter's dignity is not "
+            "evaluated here — no ratified planetary-friendship table exists in "
+            "this writer; honest floor, not fabrication.)"
+        ),
+        "significations_jsonb": {},
+        "significations_text": (
+            "Learning, eloquence, the arts — cancelled if any constituent graha "
+            "is debilitated or combust."
+        ),
+        "cancellation_conditions": {
+            "rule": "any_constituent_debilitated_or_combust_cancels"
+        },
+        "classical_citations": [
+            {"text_id": "bphs", "chapter": "Ch.75 (Nabhasa/compound yoga treatment)"}
+        ],
+        "rare": False,
+        "source_citation": BPHS_CH75,
+    },
+    {
+        "canonical_id": "vipareeta_raja_yoga",
+        "name_sa": "Viparīta Rāja (Detector) Yoga",
+        "name_en": "Vipareeta Raja Yoga (Detector)",
+        "category": "raja",
+        "school": "parashari",
+        "formation_rule_jsonb": {"detector": "vipareeta_raja_yoga"},
+        "formation_text": (
+            "A dusthana lord (6th/8th/12th) placed in a dusthana (own house "
+            "included), with a mandatory dilution check: conjunction/aspect by "
+            "a non-dusthana lord, or an exalted-in-dusthana nuance, dilutes "
+            "(does not silently cancel) the effect."
+        ),
+        "significations_jsonb": {},
+        "significations_text": (
+            '"Poison cures poison" — reversal fortune from affliction; diluted, '
+            "not voided, when a non-dusthana lord associates with the dusthana lord."
+        ),
+        "cancellation_conditions": {
+            "rule": (
+                "conjunct_or_aspected_by_non_dusthana_lord_or_"
+                "exalted_in_dusthana_dilutes"
+            )
+        },
+        "classical_citations": [
+            {"text_id": "phaladeepika", "chapter": "Ch.7 Raja Yoga"}
+        ],
+        "rare": False,
+        "source_citation": "Phaladeepika Ch.7 (Raja Yoga)",
+    },
+]
+
 # ── §3.9a — Saravali lookup table (20 named yogas with structured templates) ───
 
 SARAVALI_YOGA_LOOKUP: dict[str, tuple[str, str, dict]] = {
@@ -1798,7 +1915,9 @@ NAMED_YOGA_RE = re.compile(r'\b([A-Z][a-zA-Z]+(?:[ \-][A-Z][a-zA-Z]+)*)\s+[Yy]og
 YOGA_CHAPTERS: dict[str, list[int]] = {}
 
 # Canonical IDs of inline core — these names are already covered
-_INLINE_IDS: set[str] = {y["canonical_id"] for y in YOGAS_CORE}
+_INLINE_IDS: set[str] = {
+    y["canonical_id"] for y in YOGAS_CORE + DETECTOR_YOGAS
+}
 
 
 def _snake(name: str) -> str:
@@ -1967,7 +2086,8 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
             if cid in _INLINE_IDS:
                 continue
 
-            # Skip if already extracted (ON CONFLICT handles DB-level; dict handles in-memory)
+            # Deduplicate in source so the fail-loud replacement INSERT never
+            # receives two rows with the same canonical identity.
             if cid in extracted:
                 continue
 
@@ -2056,13 +2176,14 @@ def seed_yogas(conn, build_id: str | None = None,
     """
     if dry_run:
         extracted_dry = extract_yogas_from_corpus(conn)
-        total = len(YOGAS_CORE) + len(extracted_dry)
+        total = len(YOGAS_CORE) + len(DETECTOR_YOGAS) + len(extracted_dry)
         return {
             "catalog_inserted": total,
             "ontology_inserted": total,
             "ref_inserted": total,
             "total_rows": total,
             "inline_count": len(YOGAS_CORE),
+            "detector_count": len(DETECTOR_YOGAS),
             "extracted_count": len(extracted_dry),
             "warnings": [],
         }
@@ -2074,10 +2195,23 @@ def seed_yogas(conn, build_id: str | None = None,
 
     # Corpus extraction
     extracted = extract_yogas_from_corpus(conn)
-    all_yogas = YOGAS_CORE + extracted
+    all_yogas = YOGAS_CORE + DETECTOR_YOGAS + extracted
 
-    logger.info("[l0_yogas] seeding %d yogas (%d inline + %d extracted)",
-                len(all_yogas), len(YOGAS_CORE), len(extracted))
+    logger.info(
+        "[l0_yogas] seeding %d yogas (%d inline + %d detector + %d extracted)",
+        len(all_yogas), len(YOGAS_CORE), len(DETECTOR_YOGAS), len(extracted),
+    )
+
+    # All three projections are wholly owned by bg_yogas (the ontology delete
+    # is scoped to its entity class). Desired source is computed first; the
+    # replacement then shares the orchestrator-owned transaction/savepoint.
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM reference_yogas")
+        ref_replaced = cur.rowcount
+        cur.execute("DELETE FROM brahma_yoga_catalog")
+        catalog_replaced = cur.rowcount
+        cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'yoga'")
+        ontology_replaced = cur.rowcount
 
     with conn.cursor() as cur:
         for i, y in enumerate(all_yogas):
@@ -2093,7 +2227,6 @@ def seed_yogas(conn, build_id: str | None = None,
                        school, rare, computed_strength_formula)
                     VALUES (%s,%s,%s,%s,%s::jsonb,%s,%s::jsonb,%s,%s::jsonb,%s::jsonb,
                             %s,%s,%s,%s)
-                    ON CONFLICT (canonical_id) DO NOTHING
                 """, (
                     cid,
                     y["name_sa"],
@@ -2113,9 +2246,9 @@ def seed_yogas(conn, build_id: str | None = None,
                 if cur.rowcount > 0:
                     catalog_inserted += 1
             except Exception as exc:
-                warnings.append(f"catalog insert failed for {cid}: {exc}")
-                logger.warning("[l0_yogas] catalog insert failed for %s: %s", cid, exc)
-                continue  # skip ontology + ref for this yoga
+                raise RuntimeError(
+                    f"bg_yogas catalog insert failed for {cid}: {exc}"
+                ) from exc
 
             # ── 2. brahma_ontology (entity_class='yoga') ────────────────────
             try:
@@ -2124,7 +2257,6 @@ def seed_yogas(conn, build_id: str | None = None,
                       (entity_class, canonical_id, canonical_name_en, canonical_name_sa,
                        synonyms, description, source_citation)
                     VALUES ('yoga', %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (entity_class, canonical_id) DO NOTHING
                 """, (
                     cid,
                     y["name_en"],
@@ -2136,21 +2268,22 @@ def seed_yogas(conn, build_id: str | None = None,
                 if cur.rowcount > 0:
                     ontology_inserted += 1
             except Exception as exc:
-                warnings.append(f"ontology insert failed for {cid}: {exc}")
-                logger.warning("[l0_yogas] ontology insert failed for %s: %s", cid, exc)
+                raise RuntimeError(
+                    f"bg_yogas ontology insert failed for {cid}: {exc}"
+                ) from exc
 
             # ── 3. reference_yogas pointer ──────────────────────────────────
             try:
                 cur.execute("""
                     INSERT INTO reference_yogas (canonical_id, name_en, category)
                     VALUES (%s, %s, %s)
-                    ON CONFLICT (canonical_id) DO NOTHING
                 """, (cid, y["name_en"], y["category"]))
                 if cur.rowcount > 0:
                     ref_inserted += 1
             except Exception as exc:
-                warnings.append(f"reference_yogas insert failed for {cid}: {exc}")
-                logger.warning("[l0_yogas] reference_yogas insert failed for %s: %s", cid, exc)
+                raise RuntimeError(
+                    f"bg_yogas reference insert failed for {cid}: {exc}"
+                ) from exc
 
             if (i + 1) % 50 == 0:
                 logger.info("[l0_yogas] progress: %d/%d yogas processed", i + 1, len(all_yogas))
@@ -2158,9 +2291,9 @@ def seed_yogas(conn, build_id: str | None = None,
     if autocommit:
         conn.commit()
 
-    logger.info("[l0_yogas] DONE: catalog=%d ontology=%d ref=%d (inline=%d extracted=%d) warnings=%d",
+    logger.info("[l0_yogas] DONE: catalog=%d ontology=%d ref=%d (inline=%d detector=%d extracted=%d) warnings=%d",
                 catalog_inserted, ontology_inserted, ref_inserted,
-                len(YOGAS_CORE), len(extracted), len(warnings))
+                len(YOGAS_CORE), len(DETECTOR_YOGAS), len(extracted), len(warnings))
 
     return {
         "catalog_inserted": catalog_inserted,
@@ -2168,7 +2301,11 @@ def seed_yogas(conn, build_id: str | None = None,
         "ref_inserted": ref_inserted,
         "total_rows": catalog_inserted,
         "inline_count": len(YOGAS_CORE),
+        "detector_count": len(DETECTOR_YOGAS),
         "extracted_count": len(extracted),
+        "catalog_replaced": catalog_replaced,
+        "ontology_replaced": ontology_replaced,
+        "ref_replaced": ref_replaced,
         "warnings": warnings,
     }
 

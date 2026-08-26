@@ -2,8 +2,9 @@
 bg_yogas writer — populates brahma_yoga_catalog, brahma_ontology (yoga class),
 and reference_yogas with classical yoga definitions.
 
-Source data: brahmagyan.l0_yogas — 81 inline core yogas + corpus-verse
-structured extraction from classical_text_chunks (Saravali/BPHS/Phaladeepika).
+Source data: brahmagyan.l0_yogas — 144 inline core yogas + 4 governed
+detector-registry yogas + corpus-verse structured extraction from
+classical_text_chunks (Saravali/BPHS/Phaladeepika).
 
 Per holistic design v1.1: ZERO LLM use.
 Floor policy (Tier 1 campaign 2026-06-09): target_floor set to ACHIEVED count.
@@ -31,14 +32,21 @@ class YogasWriter(WriterBase):
             dry_run=ctx.dry_run,
             autocommit=False,  # caller (asset_runner) owns the transaction boundary
         )
-        total_inserted = counts.get("catalog_inserted", 0)
+        catalog_inserted = counts.get("catalog_inserted", 0)
+        ontology_inserted = counts.get("ontology_inserted", 0)
+        ref_inserted = counts.get("ref_inserted", 0)
+        total_inserted = catalog_inserted + ontology_inserted + ref_inserted
         warnings = counts.get("warnings", [])
         notes = (
-            f"brahma_yoga_catalog: {total_inserted} rows "
+            f"brahma_yoga_catalog: {catalog_inserted} rows "
             f"(inline={counts.get('inline_count', 0)}, "
+            f"detector={counts.get('detector_count', 0)}, "
             f"extracted={counts.get('extracted_count', 0)}); "
-            f"ontology={counts.get('ontology_inserted', 0)}; "
-            f"ref={counts.get('ref_inserted', 0)}"
+            f"ontology={ontology_inserted}; "
+            f"ref={ref_inserted}; total_owned={total_inserted}; "
+            f"replaced={counts.get('catalog_replaced', 0)}/"
+            f"{counts.get('ontology_replaced', 0)}/"
+            f"{counts.get('ref_replaced', 0)}"
         )
         if warnings:
             notes += f"; WARNINGS({len(warnings)}): {warnings[:3]}"
