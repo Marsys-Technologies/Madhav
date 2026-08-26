@@ -79,6 +79,24 @@ function registryRowsFor(candidate: typeof manifest | typeof reconciledT0Manifes
   }))
 }
 
+function useEvidenceTransaction({
+  existing = [],
+  current = true,
+}: {
+  existing?: unknown[]
+  current?: boolean
+} = {}) {
+  transactionQueryMock.mockImplementation((sql: string, params?: unknown[]) => {
+    const statement = String(sql)
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) {
+      return Promise.resolve({ rows: [] })
+    }
+    if (statement.includes('SELECT campaign_id, definition_revision')) return Promise.resolve({ rows: existing })
+    if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current }] })
+    return queryMock(sql, params)
+  })
+}
+
 describe('Nirmana elevation definition repository', () => {
   beforeEach(() => {
     queryMock.mockReset()
@@ -227,6 +245,7 @@ describe('Nirmana elevation definition repository', () => {
     transactionQueryMock
       .mockResolvedValueOnce({}) // BEGIN
       .mockResolvedValueOnce({}) // SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+      .mockResolvedValueOnce({}) // campaign/revision advisory lock
       .mockResolvedValueOnce({ rows: [{
         definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
         manifest, created_by: 'admin-0', superseded_at: null,
@@ -251,10 +270,11 @@ describe('Nirmana elevation definition repository', () => {
 
     expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')))
       .toEqual([
-        'BEGIN', 'SET TRANSACTION', 'SELECT definition_revision,', 'SELECT pg_advisory_xact_lock(hashtextextended($1,',
+        'BEGIN', 'SET TRANSACTION', 'SELECT pg_advisory_xact_lock(hashtextextended($1,', 'SELECT definition_revision,', 'SELECT pg_advisory_xact_lock(hashtextextended($1,',
         'LOCK TABLE', 'SELECT (SELECT', 'SELECT asset_id,', 'UPDATE nirmana_elevation_campaign_definitions', 'INSERT INTO', 'COMMIT',
       ])
-    expect(transactionQueryMock.mock.calls[3][1]).toEqual(['nirmana-elevation:v1:L0:wave-0'])
+    expect(transactionQueryMock.mock.calls[2][1]).toEqual(['nirmana-elevation:nirmana-elevation:v1'])
+    expect(transactionQueryMock.mock.calls[4][1]).toEqual(['nirmana-elevation:v1:L0:wave-0'])
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
@@ -262,6 +282,7 @@ describe('Nirmana elevation definition repository', () => {
     const oldDigest = 'c'.repeat(64)
     const newDigest = canonicalManifestDigest(manifest)
     transactionQueryMock
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [
@@ -274,13 +295,14 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
       new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: newDigest, created_by: 'admin-2',
     })).resolves.toBe('idempotent')
-    expect(transactionQueryMock).toHaveBeenCalledTimes(4)
-    expect(String(transactionQueryMock.mock.calls[3][0])).toBe('COMMIT')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(5)
+    expect(String(transactionQueryMock.mock.calls[4][0])).toBe('COMMIT')
   })
 
   it('rolls back and leaves the old definition current when the replacement insert fails', async () => {
     const oldDigest = 'c'.repeat(64)
     transactionQueryMock
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
@@ -308,6 +330,7 @@ describe('Nirmana elevation definition repository', () => {
     transactionQueryMock
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
         definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
         manifest, created_by: 'admin-0', superseded_at: null,
@@ -329,6 +352,7 @@ describe('Nirmana elevation definition repository', () => {
     transactionQueryMock
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
         definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
         manifest, created_by: 'admin-0', superseded_at: null,
@@ -342,7 +366,7 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
       new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
     })).rejects.toThrow(/already has build runs/i)
-    const preconditionCall = transactionQueryMock.mock.calls[5]
+    const preconditionCall = transactionQueryMock.mock.calls[6]
     expect(String(preconditionCall[0])).toContain("plan_manifest #>> '{campaign_control,campaign_id}'")
     expect(String(preconditionCall[0])).toContain("plan_manifest #>> '{campaign_control,definition_revision}'")
     expect(preconditionCall[1]).toEqual(['nirmana-elevation', 'v1'])
@@ -352,6 +376,7 @@ describe('Nirmana elevation definition repository', () => {
   it('allows supersession when build runs belong to another campaign definition', async () => {
     const oldDigest = 'c'.repeat(64)
     transactionQueryMock
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
@@ -377,6 +402,7 @@ describe('Nirmana elevation definition repository', () => {
     transactionQueryMock
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [
         {
           definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
@@ -393,8 +419,8 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
       new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
     })).rejects.toThrow(/revision already exists/i)
-    expect(transactionQueryMock).toHaveBeenCalledTimes(4)
-    expect(String(transactionQueryMock.mock.calls[3][0])).toBe('ROLLBACK')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(5)
+    expect(String(transactionQueryMock.mock.calls[4][0])).toBe('ROLLBACK')
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
@@ -410,8 +436,16 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
-  it('records evidence idempotently within its campaign definition revision', async () => {
-    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+  it('locks the campaign revision before validation and records evidence on one dedicated connection', async () => {
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement === 'BEGIN' || statement === 'COMMIT') return Promise.resolve({})
+      if (statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT campaign_id, definition_revision')) return Promise.resolve({ rows: [] })
+      if (statement.includes('definition_status = \'frozen\'')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'event-1' }] })
+      return Promise.resolve({ rows: [] })
+    })
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
@@ -427,10 +461,33 @@ describe('Nirmana elevation definition repository', () => {
       recorded_by: 'admin-1',
     })).resolves.toBe('created')
 
-    expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING')
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')))
+      .toEqual(['BEGIN', 'SELECT pg_advisory_xact_lock(hashtextextended($1,', 'SELECT campaign_id,', 'SELECT EXISTS', 'INSERT INTO', 'COMMIT'])
+    expect(transactionQueryMock.mock.calls[1][1]).toEqual(['nirmana-elevation:nirmana-elevation:v1'])
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rolls back and releases the evidence transaction when validation fails', async () => {
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ current: false }] })
+      .mockResolvedValueOnce({})
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:stale',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'test' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/current frozen definition/i)
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
   it('rejects a syntactically valid asset-analysis digest that is not the deployed canonical receipt', async () => {
+    useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: registryRowsFor(manifest) })
       if (String(sql).includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
@@ -481,6 +538,7 @@ describe('Nirmana elevation definition repository', () => {
   it('rejects an optimization verdict unless an exact accepted analysis binds the current contract', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
       if (String(sql).includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
@@ -509,6 +567,7 @@ describe('Nirmana elevation definition repository', () => {
   it('records a strict optimization verdict when it binds the exact current accepted analysis', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       const statement = String(sql)
       if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
@@ -541,6 +600,7 @@ describe('Nirmana elevation definition repository', () => {
   it('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       const statement = String(sql)
       if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
@@ -576,6 +636,7 @@ describe('Nirmana elevation definition repository', () => {
   ])('rejects an optimization verdict with a stale or mismatched %s', async (_caseName, registryFingerprint, digestOverride) => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const currentDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
       return Promise.resolve({ rows: [] })
@@ -600,6 +661,7 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('admits accepted rebuild evidence only after an exact completed run/asset and matching proven content receipt', async () => {
+    useEvidenceTransaction()
     queryMock
       .mockResolvedValueOnce({ rows: [{ proven: true }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
@@ -616,6 +678,7 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('fails closed when the completed run has no matching proven receipt', async () => {
+    useEvidenceTransaction()
     queryMock.mockResolvedValueOnce({ rows: [{ proven: false }] })
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:missing',
@@ -633,6 +696,7 @@ describe('Nirmana elevation definition repository', () => {
     ['asset outside the frozen manifest', "manifest_asset.value ->> 'asset_id' = $2"],
     ['non-build manifest asset', "manifest_asset.value ->> 'execution_obligation' = 'build'"],
   ])('rejects accepted rebuild evidence for %s', async (_caseName, requiredGuard) => {
+    useEvidenceTransaction()
     queryMock.mockResolvedValueOnce({ rows: [{ proven: false }] })
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `asset:bg_prashna_rules:rebuild:${_caseName}`,
@@ -646,6 +710,7 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('rejects legacy or malformed rebuild evidence before it can query or append an event', async () => {
+    useEvidenceTransaction()
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:legacy',
       event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
@@ -656,14 +721,14 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('rejects a reused evidence idempotency key whose immutable receipt differs', async () => {
-    queryMock
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rows: [{
+    useEvidenceTransaction({
+      existing: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
         event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
         evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
         observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
-      }] })
+      }],
+    })
 
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
@@ -680,9 +745,14 @@ describe('Nirmana elevation definition repository', () => {
       evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     }
-    queryMock
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [input] })
+      .mockResolvedValueOnce({})
     await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(4)
+    expect(String(transactionQueryMock.mock.calls[3][0])).toBe('COMMIT')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 })

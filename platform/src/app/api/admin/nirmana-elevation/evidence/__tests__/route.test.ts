@@ -49,6 +49,24 @@ function superAdmin() {
   authMock.mockResolvedValue({ user: { uid: 'admin-1' }, profile: { id: 'admin-1', role: 'super_admin', status: 'active' } })
 }
 
+function useEvidenceTransaction({
+  existing = [],
+  current = true,
+}: {
+  existing?: unknown[]
+  current?: boolean
+} = {}) {
+  transactionQueryMock.mockImplementation((sql: string, params?: unknown[]) => {
+    const statement = String(sql)
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) {
+      return Promise.resolve({ rows: [] })
+    }
+    if (statement.includes('SELECT campaign_id, definition_revision')) return Promise.resolve({ rows: existing })
+    if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current }] })
+    return queryMock(sql, params)
+  })
+}
+
 describe('POST /api/admin/nirmana-elevation/evidence', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -69,6 +87,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
 
   it('records a typed build receipt with actor attribution', async () => {
     superAdmin()
+    useEvidenceTransaction()
     queryMock
       .mockResolvedValueOnce({ rows: [{ proven: true }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
@@ -79,7 +98,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       evidence_payload: { output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
-    const insertCall = queryMock.mock.calls.find(([sql]) =>
+    const insertCall = transactionQueryMock.mock.calls.find(([sql]) =>
       String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
     expect(insertCall?.[1]).toContain('admin-1')
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'created' }))
@@ -93,6 +112,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     'retired_with_disposition',
   ])('records the permitted non-build disposition receipt %s', async (event_type) => {
     superAdmin()
+    useEvidenceTransaction()
     queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
     const { POST } = await import('../route')
     const response = await POST(request({
@@ -122,6 +142,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
   it('accepts a typed atomic definition-supersession command', async () => {
     superAdmin()
     transactionQueryMock
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
@@ -233,9 +254,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
 
   it('records asset analysis only after the server re-derives the pinned current registry fingerprint', async () => {
     superAdmin()
+    useEvidenceTransaction()
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', registryRows[0], manifestAsset)
     queryMock
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: registryRows })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
     const { POST } = await import('../route')
@@ -246,16 +267,15 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
-    expect(queryMock.mock.calls[0][0]).toContain('FROM nirmana_elevation_campaign_events')
-    expect(queryMock.mock.calls[1][0]).toContain('FROM asset_registry registry')
-    expect(queryMock.mock.calls[2][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
+    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(queryMock.mock.calls[0][0]).toContain('FROM asset_registry registry')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(true)
   })
 
   it('rejects a stale asset-analysis fingerprint without appending evidence', async () => {
     superAdmin()
-    queryMock
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: registryRows })
+    useEvidenceTransaction()
+    queryMock.mockResolvedValueOnce({ rows: registryRows })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
@@ -265,7 +285,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     }))
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ error: 'asset_analysis_accepted registry fingerprint does not match the current live contract.' })
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
   it('keeps an exact asset-analysis retry idempotent after the live registry contract evolves', async () => {
@@ -277,7 +297,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     }
-    queryMock.mockResolvedValueOnce({ rows: [priorReceipt] })
+    useEvidenceTransaction({ existing: [priorReceipt] })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'record_evidence', ...priorReceipt,
@@ -285,22 +305,21 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ outcome: 'idempotent' })
-    expect(queryMock).toHaveBeenCalledTimes(1)
-    expect(queryMock.mock.calls[0][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_elevation_campaign_events')
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'idempotent' }))
   })
 
   it('maps a conflicting immutable evidence replay to 409 rather than reporting idempotent success', async () => {
     superAdmin()
-    queryMock
-      .mockResolvedValueOnce({ rows: [{ proven: true }] })
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rows: [{
+    useEvidenceTransaction({
+      existing: [{
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'bg:test:run-1',
         event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
         evidence_payload: { output_digest: 'c'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
         observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
-      }] })
+      }],
+    })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',

@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
+import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { getPool, query } from '@/lib/db/client'
 import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
@@ -357,6 +358,20 @@ export class NirmanaElevationEvidenceConflictError extends Error {
 
 export class NirmanaElevationEvidenceValidationError extends Error {}
 
+function nirmanaRevisionLockKey(campaignId: string, definitionRevision: string): string {
+  return `nirmana-elevation:${campaignId}:${definitionRevision}`
+}
+
+async function acquireNirmanaRevisionLock(
+  client: PoolClient,
+  campaignId: string,
+  definitionRevision: string,
+): Promise<void> {
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+    nirmanaRevisionLockKey(campaignId, definitionRevision),
+  ])
+}
+
 export function assertNirmanaGitCommitMatchesDeployment(
   sourceRef: string,
   runtime: { nodeEnv?: string; deployedSha?: string } = {
@@ -507,6 +522,7 @@ export async function supersedeNirmanaElevationDefinition(
   try {
     await client.query('BEGIN')
     await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+    await acquireNirmanaRevisionLock(client, input.campaign_id, input.expected_current_revision)
     const stored = await client.query<StoredNirmanaDefinition>(
       `SELECT definition_revision, definition_status, manifest, manifest_sha256,
               created_by, superseded_at
@@ -548,12 +564,11 @@ export async function supersedeNirmanaElevationDefinition(
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [lockKey])
     }
 
-    // The dispatcher takes the same per-wave advisory locks before it reads the
-    // definition, so a dispatch already in flight finishes before this absence
-    // check and a later dispatch observes the superseded revision. Table locks
-    // also stabilize the count against ordinary concurrent inserts while this
-    // transaction runs. Writers that do not participate in either protocol
-    // still require a future DB trigger/FK to eliminate every post-check race.
+    // The evidence ingress takes the same revision lock before any provenance
+    // read or insert. The dispatcher takes the per-wave locks before reading the
+    // definition. Together these close races within the governed ingresses;
+    // table locks also stabilize the count while this transaction runs. Direct
+    // writers outside these protocols still require a future DB trigger/FK.
     await client.query('LOCK TABLE nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
     const usage = await client.query<{ event_count: number; build_run_count: number }>(
       `SELECT (SELECT count(*)::int
@@ -744,12 +759,15 @@ interface CurrentAssetAnalysisContext {
   analysisDigest: string
 }
 
-async function loadCurrentAssetAnalysisContext(input: RecordNirmanaElevationEvidenceInput): Promise<CurrentAssetAnalysisContext> {
+async function loadCurrentAssetAnalysisContext(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<CurrentAssetAnalysisContext> {
   const receiptBase = getNirmanaL0AnalysisReceiptBase(input.entity_id)
   if (!receiptBase || input.layer !== 'L0') {
     throw new NirmanaElevationEvidenceValidationError('Evidence requires a reconstructable deployed analysis receipt for the frozen asset.')
   }
-  const registry = await query<NirmanaRegistryContractRow & { frozen_manifest_asset: unknown }>(
+  const registry = await client.query<NirmanaRegistryContractRow & { frozen_manifest_asset: unknown }>(
     `SELECT registry.asset_id, registry.layer, COALESCE(registry.depends_on, '{}') AS depends_on,
             registry.sort_order, registry.scope, registry.asset_kind, registry.catalog_status,
             registry.is_active, registry.has_writer, registry.target_table, registry.count_sql,
@@ -779,13 +797,16 @@ async function loadCurrentAssetAnalysisContext(input: RecordNirmanaElevationEvid
   }
 }
 
-async function requireAcceptedAssetAnalysisProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+async function requireAcceptedAssetAnalysisProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
   const payload = NirmanaAssetAnalysisEvidenceSchema.safeParse(input.evidence_payload)
   if (!payload.success || input.source_kind !== 'git_commit') {
     throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires exact registry/analysis SHA-256 evidence and a Git commit source.')
   }
   assertNirmanaGitCommitMatchesDeployment(input.source_ref)
-  const current = await loadCurrentAssetAnalysisContext(input)
+  const current = await loadCurrentAssetAnalysisContext(client, input)
   if (payload.data.registry_fingerprint_sha256 !== current.registryFingerprint) {
     throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted registry fingerprint does not match the current live contract.')
   }
@@ -794,20 +815,23 @@ async function requireAcceptedAssetAnalysisProvenance(input: RecordNirmanaElevat
   }
 }
 
-async function requireAcceptedOptimizationVerdictProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+async function requireAcceptedOptimizationVerdictProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
   const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(input.evidence_payload)
   if (!payload.success || input.source_kind !== 'git_commit') {
     throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted requires a strict typed verdict bound to a Git commit source.')
   }
   assertNirmanaGitCommitMatchesDeployment(input.source_ref)
-  const current = await loadCurrentAssetAnalysisContext(input)
+  const current = await loadCurrentAssetAnalysisContext(client, input)
   if (payload.data.registry_fingerprint_sha256 !== current.registryFingerprint) {
     throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted registry fingerprint does not match the current live contract.')
   }
   if (payload.data.analysis_digest !== current.analysisDigest) {
     throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted analysis digest does not match the canonical deployed analysis receipt.')
   }
-  const accepted = await query<{ accepted_count: number }>(
+  const accepted = await client.query<{ accepted_count: number }>(
     `SELECT count(*)::int AS accepted_count
        FROM nirmana_elevation_campaign_events
       WHERE campaign_id = $1
@@ -834,13 +858,16 @@ async function requireAcceptedOptimizationVerdictProvenance(input: RecordNirmana
   }
 }
 
-async function requireAcceptedRebuildProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+async function requireAcceptedRebuildProvenance(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
   const sourceMatch = buildRunSourceRef.exec(input.source_ref)
   const payload = OutputDigestEvidenceSchema.safeParse(input.evidence_payload)
   if (!sourceMatch || !payload.success) {
     throw new Error('accepted_rebuild_observed requires an exact build_run UUID and output digest/spec SHA-256 evidence.')
   }
-  const verified = await query<{ proven: boolean }>(
+  const verified = await client.query<{ proven: boolean }>(
     `SELECT EXISTS (
        SELECT 1
          FROM build_runs run
@@ -881,8 +908,11 @@ async function requireAcceptedRebuildProvenance(input: RecordNirmanaElevationEvi
   }
 }
 
-async function findExistingEvidenceReceipt(input: RecordNirmanaElevationEvidenceInput): Promise<RecordNirmanaElevationEvidenceInput | undefined> {
-  const existing = await query<RecordNirmanaElevationEvidenceInput>(
+async function findExistingEvidenceReceipt(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<RecordNirmanaElevationEvidenceInput | undefined> {
+  const existing = await client.query<RecordNirmanaElevationEvidenceInput>(
     `SELECT campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
             layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by
        FROM nirmana_elevation_campaign_events
@@ -908,47 +938,86 @@ function isExactEvidenceReceipt(
     && receipt.recorded_by === input.recorded_by)
 }
 
+async function requireCurrentFrozenDefinition(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<void> {
+  const definition = await client.query<{ current: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM nirmana_elevation_campaign_definitions
+        WHERE campaign_id = $1
+          AND definition_revision = $2
+          AND definition_status = 'frozen'
+          AND superseded_at IS NULL
+     ) AS current`,
+    [input.campaign_id, input.definition_revision],
+  )
+  if (definition.rows[0]?.current !== true) {
+    throw new NirmanaElevationEvidenceValidationError('Evidence requires the current frozen definition revision.')
+  }
+}
+
 /** Appends a receipt; an idempotent retry deliberately leaves the first receipt intact. */
 export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevationEvidenceInput): Promise<'created' | 'idempotent'> {
   if (Number.isNaN(Date.parse(input.observed_at))) {
     throw new Error('Evidence observed_at must be an ISO-8601 timestamp.')
   }
-  if (input.event_type === 'accepted_rebuild_observed') {
-    await requireAcceptedRebuildProvenance(input)
-  }
-  if (input.event_type === 'asset_analysis_accepted' || input.event_type === 'optimization_verdict_accepted') {
-    if (input.source_kind !== 'git_commit') {
-      throw new NirmanaElevationEvidenceValidationError(`${input.event_type} requires source_kind=git_commit.`)
-    }
-    assertNirmanaGitCommitMatchesDeployment(input.source_ref)
-    const existing = await findExistingEvidenceReceipt(input)
+  const pool = await getPool()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await acquireNirmanaRevisionLock(client, input.campaign_id, input.definition_revision)
+
+    const existing = await findExistingEvidenceReceipt(client, input)
     if (existing) {
-      if (isExactEvidenceReceipt(existing, input)) return 'idempotent'
-      throw new NirmanaElevationEvidenceConflictError()
+      if (!isExactEvidenceReceipt(existing, input)) throw new NirmanaElevationEvidenceConflictError()
+      await client.query('COMMIT')
+      return 'idempotent'
     }
+
+    await requireCurrentFrozenDefinition(client, input)
+    if (input.event_type === 'accepted_rebuild_observed') {
+      await requireAcceptedRebuildProvenance(client, input)
+    }
+    if (input.event_type === 'asset_analysis_accepted' || input.event_type === 'optimization_verdict_accepted') {
+      if (input.source_kind !== 'git_commit') {
+        throw new NirmanaElevationEvidenceValidationError(`${input.event_type} requires source_kind=git_commit.`)
+      }
+      assertNirmanaGitCommitMatchesDeployment(input.source_ref)
+    }
+    if (input.event_type === 'asset_analysis_accepted') {
+      await requireAcceptedAssetAnalysisProvenance(client, input)
+    }
+    if (input.event_type === 'optimization_verdict_accepted') {
+      await requireAcceptedOptimizationVerdictProvenance(client, input)
+    }
+    const inserted = await client.query(
+      `INSERT INTO nirmana_elevation_campaign_events
+         (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
+          layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
+       ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING
+       RETURNING event_id`,
+      [
+        input.campaign_id, input.definition_revision, input.idempotency_key,
+        input.event_type, input.entity_type, input.entity_id, input.layer,
+        JSON.stringify(input.evidence_payload), input.source_kind, input.source_ref,
+        input.observed_at, input.recorded_by,
+      ],
+    )
+    if (inserted.rowCount === 1) {
+      await client.query('COMMIT')
+      return 'created'
+    }
+    const receipt = await findExistingEvidenceReceipt(client, input)
+    if (!isExactEvidenceReceipt(receipt, input)) throw new NirmanaElevationEvidenceConflictError()
+    await client.query('COMMIT')
+    return 'idempotent'
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
   }
-  if (input.event_type === 'asset_analysis_accepted') {
-    await requireAcceptedAssetAnalysisProvenance(input)
-  }
-  if (input.event_type === 'optimization_verdict_accepted') {
-    await requireAcceptedOptimizationVerdictProvenance(input)
-  }
-  const inserted = await query(
-    `INSERT INTO nirmana_elevation_campaign_events
-       (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
-        layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
-     ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING
-     RETURNING event_id`,
-    [
-      input.campaign_id, input.definition_revision, input.idempotency_key,
-      input.event_type, input.entity_type, input.entity_id, input.layer,
-      JSON.stringify(input.evidence_payload), input.source_kind, input.source_ref,
-      input.observed_at, input.recorded_by,
-    ],
-  )
-  if (inserted.rowCount === 1) return 'created'
-  const receipt = await findExistingEvidenceReceipt(input)
-  if (isExactEvidenceReceipt(receipt, input)) return 'idempotent'
-  throw new NirmanaElevationEvidenceConflictError()
 }
