@@ -208,6 +208,23 @@ class ElevationStoreTests(unittest.TestCase):
         self.assertIn("--probe-config", plist_with_config["ProgramArguments"])
         self.assertIn(str(runtime / "probes.json"), plist_with_config["ProgramArguments"])
 
+    def test_sync_launchd_plist_carries_a_path_the_github_probe_can_find_gh_on(self):
+        """Break caught: launchd's minimal default environment has no PATH, so the
+        github adapter's `gh` subprocess call fails every tick with ENOENT and that
+        source silently stays UNKNOWN forever -- the plist must set an explicit PATH
+        covering common gh install locations."""
+        import plistlib
+
+        runtime = Path(self.tmp.name) / "runtime"
+        release = Path(self.tmp.name) / "release"
+        source_repo = Path(self.tmp.name) / "repo"
+        plist = plistlib.loads(build_sync_launchd_plist(release, runtime, source_repo, "http://127.0.0.1:8787/api/service-identity", interval_seconds=60))
+        env = plist["EnvironmentVariables"]
+        path_entries = env["PATH"].split(":")
+        self.assertIn("/opt/homebrew/bin", path_entries)
+        self.assertIn("/usr/local/bin", path_entries)
+        self.assertIn("/usr/bin", path_entries)
+
     def test_builtin_probes_record_github_git_and_runtime_as_observations(self):
         """Break caught: autonomous polling has no concrete sources and only emits stale placeholders."""
         repo_dir = Path(self.tmp.name) / "fixture-repo"; repo_dir.mkdir()
