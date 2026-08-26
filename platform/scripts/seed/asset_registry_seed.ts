@@ -379,12 +379,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical dosha definitions — formation rules, effects, severity, cancellation conditions',
     storage_type: 'postgres_table',
     target_table: 'brahma_dosha_catalog',
-    count_sql: 'SELECT count(*) FROM brahma_dosha_catalog',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_dosha_catalog) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +
+  (SELECT count(*) FROM reference_doshas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dosha_catalog')",
-    target_floor: 50,
+    target_floor: 237,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Catalog of named dosha patterns (Manglik, Kala-sarpa, Kemadruma, etc.) per design §3.11',
+    volume_explanation: '237 owned rows = 79 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Production and clean-source replay were byte-identical before convergence hardening.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
