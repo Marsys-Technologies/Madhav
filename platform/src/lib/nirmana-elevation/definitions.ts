@@ -69,6 +69,9 @@ export interface NirmanaRegistryContractRow {
   asset_id: string
   layer: keyof typeof registryLayers
   depends_on: string[] | null
+  sanskrit_name?: string | null
+  english_name?: string | null
+  english_description?: string | null
   sort_order: number
   scope: 'global' | 'per_chart'
   asset_kind: 'data' | 'service' | 'artifact'
@@ -83,6 +86,47 @@ export interface NirmanaRegistryContractRow {
   superseded_by: string | null
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
+}
+
+export type NirmanaExecutionObligation = Exclude<
+  NirmanaElevationManifest['assets'][number]['execution_obligation'],
+  undefined
+>
+
+/**
+ * Applies the same source-audited non-build and producer-coverage decisions
+ * enforced by assertFreezableManifest. Unknown shapes remain unresolved so a
+ * baseline candidate cannot silently invent an execution disposition.
+ */
+export function nirmanaExecutionContractForRegistryRow(row: NirmanaRegistryContractRow): {
+  execution_obligation: NirmanaExecutionObligation
+  producer_id?: string
+  covered_asset_ids?: string[]
+} {
+  const fixedDisposition = fixedNonBuildDispositions.get(row.asset_id)
+  if (fixedDisposition) return { execution_obligation: fixedDisposition as NirmanaExecutionObligation }
+
+  const producerId = fixedProducerCoverage.get(row.asset_id)
+  if (producerId) return { execution_obligation: 'producer_covered', producer_id: producerId }
+
+  const coveredAssetIds = [...fixedProducerCoverage.entries()]
+    .filter(([, candidateProducerId]) => candidateProducerId === row.asset_id)
+    .map(([coveredAssetId]) => coveredAssetId)
+    .sort()
+
+  if (row.catalog_status === 'RETIRED') {
+    return { execution_obligation: 'retired_with_disposition' }
+  }
+  if (row.asset_kind === 'service' && (row.has_writer || row.health_probe)) {
+    return { execution_obligation: 'probe' }
+  }
+  if (row.is_active && row.has_writer && row.asset_kind !== 'service') {
+    return {
+      execution_obligation: 'build',
+      ...(coveredAssetIds.length > 0 ? { covered_asset_ids: coveredAssetIds } : {}),
+    }
+  }
+  return { execution_obligation: 'unresolved' }
 }
 
 export function registryContractFingerprintInput(row: NirmanaRegistryContractRow) {
