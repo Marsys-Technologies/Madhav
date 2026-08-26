@@ -359,12 +359,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical dasha system definitions — sequence rules, computation methods, conditions for use',
     storage_type: 'postgres_table',
     target_table: 'brahma_dasha_systems',
-    count_sql: 'SELECT count(*) FROM brahma_dasha_systems',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_dasha_systems) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dasha_system') +
+  (SELECT count(*) FROM reference_dasha_systems) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dasha_systems')",
-    target_floor: 18,
+    target_floor: 60,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '18 named dasha systems (Vimshottari, Yogini, Chara, Kalachakra, etc.) per actual build count.',
+    volume_explanation: '60 owned rows = 20 deterministic dasha-system definitions × 3 reconciled projections (catalog + dasha-system ontology partition + reference_dasha_systems), including the governed KP subdivision identity.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },

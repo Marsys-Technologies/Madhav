@@ -7,8 +7,8 @@ Populates three tables per §0.1 contract (Doc 12 brief):
   2. brahma_ontology       — entity_class='dasha_system' pointer row
   3. reference_dasha_systems — thin pointer row (FK → brahma_dasha_systems)
 
-19 classical dasha systems embedded as hardcoded source-cited data (18
-original + narayana, CR-104 / D-2 Lane V-6 addition, 2026-07-16).
+20 classical dasha systems embedded as hardcoded source-cited data (18
+original + Narayana + governed KP subdivision identity).
 ZERO LLM. All period lengths / sequences are attested classical values.
 
 Sources:
@@ -84,6 +84,7 @@ _SYNONYMS: dict[str, list[str]] = {
     "brahma_dasha":       ["brahma dasha", "jaimini brahma", "brahma graha dasha"],
     "yogardha_dasha":     ["yogardha dasha", "108-year average dasha", "vimshottari ashtottari mean"],
     "narayana":           ["narayana dasha", "narayan dasha", "jaimini narayana", "rashi dasha (narayana)"],
+    "kp":                 ["kp", "krishnamurti paddhati", "vimshottari kp", "kp sub-period system"],
 }
 
 
@@ -615,11 +616,71 @@ DASHA_SYSTEMS: list[dict[str, Any]] = [
         "source_citation": JAIMINI_CH1,
         "python_impl_module": "ga_writers.ga_dashas_writer.compute_narayana_system",
     },
+    {
+        "canonical_id": "kp",
+        "name_sa": "Kṛṣṇamūrti Paddhati",
+        "name_en": "KP (Krishnamurti Paddhati) Sub-Period System",
+        "total_cycle_years": 120,
+        "base_unit": "nakshatra_lord",
+        "school": "kp",
+        "sequence_jsonb": VIMSHOTTARI_SEQ,
+        "computation_method": "vimshottari_proportional_subdivision",
+        "computation_pseudocode": (
+            "1. KP uses the SAME Vimshottari mahadasha/antardasha windows as the "
+            "Parashari default — it does not compute a different clock. "
+            "2. Each classical window is subdivided further in the same fixed "
+            "Vimshottari order and proportion (sub, sub-sub), giving chart_dashas "
+            "rows under system_id='vimshottari_kp' with kp_sub_lord / "
+            "kp_sub_sub_lord populated (ga_dashas_writer.py, KP_SYSTEM_ID). "
+            "3. The same proportional rule applied to ARC instead of TIME gives "
+            "the 249-fold sub-lord division of the zodiac "
+            "(bg_kp_sublord_division). 4. KP's VERDICT rule — \"does the running "
+            "dasha lord match this house's KP significator?\" "
+            "(chart_facts.kp_house_significators / kp_planet_significations) — "
+            "is the part with no Parashari analogue."
+        ),
+        "conditions_for_use": (
+            "NOT AN INDEPENDENT TIMING GENERATOR. KP sub/sub-sub periods are "
+            "proportional subdivisions of the SAME Vimshottari windows already "
+            "counted once, which is why services/gochara_intensity/permission.py "
+            "deliberately EXCLUDES system_id='vimshottari_kp' from DR-14's "
+            "timing-system-plurality PERMISSION count — counting it there would "
+            "double-count one clock. KP's independence is a JUDGMENT-METHOD "
+            "independence (a significator-matching verdict rule Parashari does "
+            "not use), and it must earn concurrence through Law-1 applicability "
+            "like every other system, never be privileged. House frame is "
+            "Placidus cusps, not whole-sign — the divergence from the project "
+            "default is served as data, never reconciled."
+        ),
+        "classical_citations": [
+            {
+                "text_id": "bphs",
+                "chapter": 46,
+                "note": (
+                    "proportional constants (Vimshottari year table + fixed "
+                    "order) — TIER-I, ingested"
+                ),
+            },
+            {
+                "text_id": None,
+                "source": "K. S. Krishnamurti, KP Reader I-III (Stellar Astrology)",
+                "note": (
+                    "the KP-specific conventions — TIER-III, NOT ingested in "
+                    "this corpus; corpus gap FILED"
+                ),
+            },
+        ],
+        "source_citation": (
+            "BPHS Ch.46 proportional constants; K. S. Krishnamurti, "
+            "KP Reader I-III (KP conventions not ingested)"
+        ),
+        "python_impl_module": "brahmagyan.l0_kp_sublord_division",
+    },
 ]
 
 # ── Sanity check at import time ────────────────────────────────────────────────
 
-assert len(DASHA_SYSTEMS) == 19, f"Expected 19 systems, got {len(DASHA_SYSTEMS)}"
+assert len(DASHA_SYSTEMS) == 20, f"Expected 20 systems, got {len(DASHA_SYSTEMS)}"
 
 
 # ── Main seed function ─────────────────────────────────────────────────────────
@@ -635,7 +696,7 @@ def seed_dasha_systems(
     reference_dasha_systems pointer rows from the embedded DASHA_SYSTEMS list.
 
     Per §0.1 contract: catalog row first (FK target), then ontology, then pointer.
-    All three use ON CONFLICT DO NOTHING for idempotency.
+    All three projections are replaced in the orchestrator-owned transaction.
 
     Returns dict with keys:
       brahma_dasha_systems, brahma_ontology, reference_dasha_systems
@@ -661,6 +722,10 @@ def seed_dasha_systems(
     }
 
     with conn.cursor() as cur:
+        cur.execute("DELETE FROM reference_dasha_systems")
+        cur.execute("DELETE FROM brahma_dasha_systems")
+        cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dasha_system'")
+
         for d in DASHA_SYSTEMS:
             cid = d["canonical_id"]
 
@@ -673,7 +738,6 @@ def seed_dasha_systems(
                    conditions_for_use, school, classical_citations,
                    python_impl_module)
                 VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s::jsonb, %s)
-                ON CONFLICT (canonical_id) DO NOTHING
                 """,
                 (
                     cid,
@@ -704,7 +768,6 @@ def seed_dasha_systems(
                   (entity_class, canonical_id, canonical_name_en, canonical_name_sa,
                    synonyms, description, source_citation)
                 VALUES ('dasha_system', %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (entity_class, canonical_id) DO NOTHING
                 """,
                 (
                     cid,
@@ -722,7 +785,6 @@ def seed_dasha_systems(
                 """
                 INSERT INTO reference_dasha_systems (canonical_id, name_en, school)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (canonical_id) DO NOTHING
                 """,
                 (cid, d["name_en"], d["school"]),
             )

@@ -21,11 +21,10 @@ class DashaSystemsWriter(WriterBase):
         # autocommit=False: caller (asset_runner) owns the transaction boundary
         counts = seed_dasha_systems(ctx.db_conn, ctx.build_id, dry_run=ctx.dry_run, autocommit=False)
         # counts is a dict: {brahma_dasha_systems, brahma_ontology, reference_dasha_systems}
-        catalog_inserted = counts.get("brahma_dasha_systems", 0)
         total_inserted = sum(counts.values()) if isinstance(counts, dict) else int(counts or 0)
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=catalog_inserted,  # rows_inserted = catalog rows (the asset's primary table)
+            rows_inserted=total_inserted,
             duration_seconds=time.time() - t0,
             notes=f'3 tables: {counts}',
         )
