@@ -3,6 +3,7 @@
 // Cloud Scheduler jobs (IaC):
 //   amjis-mv-refresh             — every 6h, refreshes materialized views.
 //   amjis-pending-stream-reaper  — every 10m, fails orphaned pending streams.
+//   amjis-nirmana-elevation-monitor — every 5m, records NTAP program observations.
 
 terraform {
   required_version = ">= 1.5.0"
@@ -126,9 +127,47 @@ resource "google_cloud_scheduler_job" "pending_stream_reaper" {
   }
 }
 
+// ── Job: Nirmana elevation monitor (every 5 minutes UTC) ────────────────────
+
+resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
+  name             = "amjis-nirmana-elevation-monitor"
+  description      = "Record a read-only Nirmana elevation program-monitor observation every five minutes."
+  schedule         = "*/5 * * * *"
+  time_zone        = "Etc/UTC"
+  region           = var.gcp_region
+  attempt_deadline = "120s"
+
+  retry_config {
+    retry_count          = 2
+    min_backoff_duration = "30s"
+    max_backoff_duration = "120s"
+    max_doublings        = 2
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "${var.amjis_web_url}/api/admin/internal/nirmana-elevation-monitor"
+    headers = {
+      "Content-Type" = "application/json"
+      # x-marsys-cron-secret is deliberately not stored in Terraform or state.
+      # After protected-main apply, configure the existing MARSYS_CRON_SECRET as
+      # the X-Marsys-Cron-Secret header using the established Scheduler secret-
+      # header procedure. It must not use Authorization: OIDC occupies that
+      # header on Cloud Scheduler's Cloud Run dispatch.
+    }
+    body = base64encode("{}")
+
+    oidc_token {
+      service_account_email = var.scheduler_invoker_sa
+      audience              = var.amjis_web_url
+    }
+  }
+}
+
 output "scheduler_jobs" {
   value = [
     google_cloud_scheduler_job.mv_refresh.name,
     google_cloud_scheduler_job.pending_stream_reaper.name,
+    google_cloud_scheduler_job.nirmana_elevation_monitor.name,
   ]
 }
