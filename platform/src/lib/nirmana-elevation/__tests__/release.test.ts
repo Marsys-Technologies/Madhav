@@ -88,11 +88,14 @@ describe('loadNirmanaReleaseStatus', () => {
       error_message: 'Authoritative release source is unavailable.',
     })]))
     expect(JSON.stringify(result)).not.toContain('ADC unavailable')
-    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', expect.objectContaining({ source_id: 'cloud_run_web', cause: expect.any(Error) }))
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', {
+      source_id: 'cloud_run_web',
+      error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+    })
     expect(result.gaps).toContain('Authoritative Cloud Run serving revision is unavailable; release sync is withheld.')
   })
 
-  it('logs immutable provenance failures while keeping their causes out of the public source contract', async () => {
+  it('keeps secret-looking immutable provenance failures out of public output and logger arguments', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const cloudRunClient = cloudRun()
     cloudRunClient.getRevision.mockRejectedValue(new Error('authorization=Bearer super-secret'))
@@ -109,9 +112,12 @@ describe('loadNirmanaReleaseStatus', () => {
       error_message: 'Immutable serving-revision commit provenance is unavailable.',
     })]))
     expect(JSON.stringify(result)).not.toContain('super-secret')
-    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', expect.objectContaining({
-      source_id: 'artifact_registry_commit', cause: expect.any(Error),
-    }))
+    expect(JSON.stringify(log.mock.calls)).not.toContain('super-secret')
+    expect(JSON.stringify(log.mock.calls)).not.toContain('authorization=Bearer')
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', {
+      source_id: 'artifact_registry_commit',
+      error_code: 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+    })
   })
 
   it('treats split serving traffic as unavailable instead of choosing a revision arbitrarily', async () => {

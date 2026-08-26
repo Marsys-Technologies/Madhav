@@ -61,6 +61,7 @@ export function AuditDrawer({ snapshot, assetId, open, onOpenChange, finalFocus 
   const evidence = evidenceFor(snapshot, assetId)
   const receipts = receiptsFor(snapshot, assetId)
   const ledgerReferences = ledgerReferencesFor(snapshot, assetId, receipts)
+  const programMonitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
 
   return <Sheet open={open} onOpenChange={onOpenChange}>
     <div className="flex justify-end">
@@ -100,6 +101,27 @@ export function AuditDrawer({ snapshot, assetId, open, onOpenChange, finalFocus 
             <div><dt className="text-xs text-brand-text-3">Production / main</dt><dd className="mt-1 text-brand-text-1">{snapshot.release.production_in_sync === true ? 'In sync' : snapshot.release.production_in_sync === false ? 'Out of sync' : 'Unknown'}</dd></div>
             <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Observed</dt><dd className="mt-1 text-brand-text-1"><time dateTime={snapshot.release.observed_at ?? undefined}>{formatTime(snapshot.release.observed_at)}</time></dd></div>
           </dl>
+        </section>
+
+        <section aria-labelledby="audit-program-sync-heading">
+          <h3 id="audit-program-sync-heading" className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-text-1">Program synchronization observation</h3>
+          <dl className="mt-2 grid gap-2 rounded-lg border border-brand-border bg-brand-surface p-3 sm:grid-cols-2">
+            <div><dt className="text-xs text-brand-text-3">Projected status</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.status}</dd></div>
+            <div><dt className="text-xs text-brand-text-3">Monitor source</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{programMonitor?.source_id ?? 'Unknown'}</dd></div>
+            <div><dt className="text-xs text-brand-text-3">Observed</dt><dd className="mt-1 text-xs text-brand-text-1"><time dateTime={snapshot.program_sync.observed_at ?? undefined}>{formatTime(snapshot.program_sync.observed_at)}</time></dd></div>
+            <div><dt className="text-xs text-brand-text-3">Observation age</dt><dd className="mt-1 text-xs text-brand-text-1">{snapshot.program_sync.age_seconds === null ? 'Unknown' : `${snapshot.program_sync.age_seconds}s old`}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Source provenance</dt><dd className="mt-1 text-xs text-brand-text-1">{programMonitor?.provenance ?? 'Unknown'}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Source observation UUID</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.source_observation_id ?? 'Not available'}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Current definition SHA-256</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.current_definition_sha256 ?? 'Unknown'}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-brand-text-3">Candidate definition SHA-256</dt><dd className="mt-1 break-all font-mono text-xs text-brand-text-1">{snapshot.program_sync.candidate_definition_sha256 ?? 'Unknown'}</dd></div>
+          </dl>
+          <p className="mt-2 break-all font-mono text-xs text-brand-text-1">Candidate label catalogue: {snapshot.program_sync.candidate_catalogue_sha256 ?? 'Not available'}</p>
+          <div className="mt-2 rounded-lg border border-brand-border bg-brand-surface p-3">
+            <p className="text-xs text-brand-text-3">Affected assets · {snapshot.program_sync.affected_asset_ids.length}</p>
+            {snapshot.program_sync.affected_asset_ids.length > 0
+              ? <ul className="mt-1 space-y-1">{snapshot.program_sync.affected_asset_ids.map((affectedAssetId) => <li key={affectedAssetId} className="break-all font-mono text-xs text-brand-text-1">{affectedAssetId}</li>)}</ul>
+              : <p className="mt-1 text-xs text-brand-text-1">None reported.</p>}
+          </div>
         </section>
 
         <section aria-labelledby="audit-contradictions-heading">

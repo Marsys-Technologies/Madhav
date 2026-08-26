@@ -1,6 +1,30 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Radio } from 'lucide-react'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 
+type ProgramSyncStatus = NirmanaElevationSnapshotV2['program_sync']['status']
+
+const PROGRAM_SYNC_COPY: Record<ProgramSyncStatus, string> = {
+  unknown: 'Synchronization not yet observed',
+  baseline_missing: 'Baseline awaiting acceptance',
+  plan_adaptation_required: 'Plan adaptation required',
+  evidence_refresh_required: 'Evidence refresh required',
+  label_refresh_required: 'Label catalogue refresh required',
+  in_sync: 'In sync',
+  release_attention: 'Release reconciliation required',
+  source_unavailable: 'Source unavailable',
+}
+
+const PROGRAM_SYNC_DETAIL: Record<ProgramSyncStatus, string> = {
+  unknown: 'No synchronization observation is available.',
+  baseline_missing: 'No accepted frozen program denominator is available.',
+  plan_adaptation_required: 'Program membership or dependencies changed.',
+  evidence_refresh_required: 'Accepted registry evidence changed.',
+  label_refresh_required: 'Governed program labels changed.',
+  in_sync: 'No program change detected.',
+  release_attention: 'Release evidence requires attention.',
+  source_unavailable: 'The authoritative program monitor cannot be reached.',
+}
+
 function formatObservedAt(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return 'Unknown'
@@ -21,6 +45,18 @@ function activeAssetCount(snapshot: NirmanaElevationSnapshotV2): number {
   return new Set(snapshot.active_runs.flatMap((run) => run.active_asset_ids)).size
 }
 
+function formatAge(ageSeconds: number | null): string {
+  if (ageSeconds === null) return 'Unknown'
+  if (ageSeconds < 60) return `${ageSeconds} ${ageSeconds === 1 ? 'second' : 'seconds'}`
+  if (ageSeconds < 3_600) {
+    const minutes = Math.floor(ageSeconds / 60)
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+  }
+  const hours = Math.floor(ageSeconds / 3_600)
+  const minutes = Math.floor((ageSeconds % 3_600) / 60)
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'}${minutes === 0 ? '' : ` ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`}`
+}
+
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="min-w-0 rounded-lg border border-brand-border bg-brand-bg px-3 py-3">
     <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-text-3">{label}</dt>
@@ -38,6 +74,11 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
     ? `${snapshot.progress.assets_frozen} / ${snapshot.progress.assets_total}`
     : 'Reconciling — no percentage'
   const caveats = [...snapshot.data_quality.gaps, ...snapshot.data_quality.contradictions]
+  const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+  const staleProgramObservation = monitor?.state === 'stale'
+  const programNeedsAttention = staleProgramObservation
+    || !['baseline_missing', 'in_sync'].includes(snapshot.program_sync.status)
+  const programUnavailable = snapshot.program_sync.status === 'source_unavailable'
 
   return <section aria-labelledby="campaign-snapshot-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
     <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-brand-border pb-3">
@@ -55,7 +96,27 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
       <Metric label="Eligible now">{currentLayer
         ? <><span className="block">{currentLayer.eligible_next_asset_ids.length === 1 ? '1 asset eligible now' : `${currentLayer.eligible_next_asset_ids.length} assets eligible now`}</span><span className="mt-1 block text-xs font-normal text-brand-text-3">Completion prerequisite: {currentLayer.required_gate}</span></>
         : 'Unknown — no active layer'}</Metric>
-      <Metric label="Freshness"><time dateTime={snapshot.generated_at}>{formatObservedAt(snapshot.generated_at)}</time></Metric>
+      <div
+        className={`min-w-0 rounded-lg border px-3 py-3 ${programUnavailable
+          ? 'border-brand-err/60 bg-brand-err/10'
+          : programNeedsAttention
+            ? 'border-brand-warn/70 bg-brand-warn/10'
+            : snapshot.program_sync.status === 'in_sync'
+              ? 'border-brand-ok/50 bg-brand-ok/10'
+              : 'border-brand-border bg-brand-bg'}`}
+      >
+        <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-text-3">Program synchronization</dt>
+        <dd className="mt-1 text-brand-text-1">
+          <div role={programNeedsAttention ? 'alert' : 'status'} aria-live={programNeedsAttention ? 'assertive' : 'polite'}>
+            <span className="block text-sm font-medium">{PROGRAM_SYNC_COPY[snapshot.program_sync.status]}</span>
+            <span className="mt-1 block text-xs font-normal text-brand-text-2">{staleProgramObservation
+              ? 'Observation stale — synchronization may be outdated.'
+              : PROGRAM_SYNC_DETAIL[snapshot.program_sync.status]}</span>
+            <span className="mt-1 block text-xs font-normal text-brand-text-3">Observation age: {formatAge(snapshot.program_sync.age_seconds)}</span>
+            <span className="block text-xs font-normal text-brand-text-3">Affected assets: {snapshot.program_sync.affected_asset_ids.length}</span>
+          </div>
+        </dd>
+      </div>
     </dl>
 
     {(snapshot.data_quality.verdict !== 'reliable' || caveats.length > 0 || snapshot.release.production_in_sync === false) && (

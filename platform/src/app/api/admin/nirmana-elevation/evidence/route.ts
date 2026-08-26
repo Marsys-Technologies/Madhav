@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { writeAuditLog } from '@/lib/admin/audit'
 import {
+  acceptNirmanaBaselineCandidate,
   createNirmanaElevationDefinition,
   NirmanaElevationDefinitionConflictError,
   NirmanaElevationEvidenceConflictError,
@@ -20,6 +21,7 @@ import {
   NirmanaLabelCatalogueInputSchema,
   recordNirmanaElevationLabelCatalogue,
 } from '@/lib/nirmana-elevation/labels'
+import { checkRateLimit } from '@/lib/mcp/rate_limiter'
 import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 const campaignId = z.literal('nirmana-elevation')
@@ -181,8 +183,15 @@ const supersede = z.object({
 const labelCatalogue = NirmanaLabelCatalogueInputSchema
   .omit({ recorded_by: true })
   .extend({ command: z.literal('record_label_catalogue') })
+const baselineCandidateAcceptance = z.object({
+  command: z.literal('accept_baseline_candidate'),
+  source_observation_id: z.string().uuid(),
+  definition_revision: revision,
+  expected_candidate_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
 
-const command = z.union([definition, freeze, supersede, labelCatalogue, receipt])
+const command = z.union([definition, freeze, supersede, labelCatalogue, baselineCandidateAcceptance, receipt])
 
 export const dynamic = 'force-dynamic'
 
@@ -202,6 +211,34 @@ export async function POST(request: Request) {
   const parsed = command.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid Nirmana evidence command', issues: parsed.error.issues }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+  }
+
+  if (parsed.data.command === 'accept_baseline_candidate') {
+    let rateLimit
+    try {
+      rateLimit = await checkRateLimit(`admin:nirmana_accept_baseline_candidate:${auth.user.uid}`)
+    } catch {
+      // This explicit mutation fails closed when the shared limiter is
+      // unavailable. Never open the acceptance transaction without a decision,
+      // and never log a raw database error from this boundary.
+      console.error('[api/admin/nirmana-elevation/evidence] baseline acceptance rate limiter unavailable')
+      return NextResponse.json(
+        { error: 'baseline acceptance rate limiter unavailable' },
+        { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } },
+      )
+    }
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'baseline acceptance rate limit exceeded' },
+        {
+          status: 429,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': String(rateLimit.retry_after_seconds ?? 60),
+          },
+        },
+      )
+    }
   }
 
   try {
@@ -258,6 +295,32 @@ export async function POST(request: Request) {
         catalogue_revision: parsed.data.catalogue_revision,
         catalogue_sha256: parsed.data.catalogue_sha256,
         asset_count: parsed.data.labels.length,
+        outcome,
+      })
+      return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    if (parsed.data.command === 'accept_baseline_candidate') {
+      const outcome = await acceptNirmanaBaselineCandidate({
+        campaign_id: 'nirmana-elevation',
+        source_observation_id: parsed.data.source_observation_id,
+        definition_revision: parsed.data.definition_revision,
+        expected_candidate_sha256: parsed.data.expected_candidate_sha256,
+        expected_candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
+        created_by: auth.user.uid,
+      })
+      // Normative audit provenance is the append-only
+      // asset_label_catalogue_accepted campaign receipt committed by the same
+      // serializable transaction as the frozen definition and labels. This
+      // admin audit row is intentionally secondary/operator-facing and remains
+      // best-effort; acceptance never depends on the unrelated admin table.
+      await writeAuditLog(auth.user.uid, 'nirmana_definition_recorded', null, {
+        command: 'accept_baseline_candidate',
+        campaign_id: 'nirmana-elevation',
+        source_observation_id: parsed.data.source_observation_id,
+        definition_revision: parsed.data.definition_revision,
+        candidate_manifest_sha256: parsed.data.expected_candidate_sha256,
+        candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
         outcome,
       })
       return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })

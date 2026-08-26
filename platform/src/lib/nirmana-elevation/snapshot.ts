@@ -31,7 +31,7 @@ const LAYERS = [
 const EXECUTION_PERMITTING_OBLIGATIONS = new Set(['build', 'probe'])
 
 type RawSourceId = keyof NirmanaElevationRawSources
-type SourceId = Exclude<RawSourceId, 'asset_labels'> | 'asset_label_catalogue'
+type SourceId = Exclude<RawSourceId, 'asset_labels' | 'monitor_observations'> | 'asset_label_catalogue' | 'program_monitor'
 
 const SOURCE_PROVENANCE: Record<SourceId, string> = {
   asset_registry: 'Cloud SQL asset_registry',
@@ -42,6 +42,25 @@ const SOURCE_PROVENANCE: Record<SourceId, string> = {
   campaign_definitions: 'Cloud SQL nirmana_elevation_campaign_definitions',
   campaign_events: 'Cloud SQL nirmana_elevation_campaign_events',
   asset_label_catalogue: 'Cloud SQL nirmana_elevation_asset_labels',
+  program_monitor: 'Cloud SQL nirmana_elevation_monitor_observations',
+}
+
+type NirmanaProgramSyncStatus = NirmanaElevationSnapshotV2['program_sync']['status']
+
+interface NirmanaMonitorObservationRow {
+  id: string
+  observed_at: string
+  status: Exclude<NirmanaProgramSyncStatus, 'unknown'>
+  affected_asset_ids: string[]
+  current_definition_sha256: string | null
+  candidate_definition_sha256: string | null
+  candidate_catalogue_sha256: string | null
+  source_state: 'available' | 'unavailable'
+  source_observed_at: string | null
+  freshness_state: 'fresh' | 'stale' | 'unavailable'
+  freshness_deadline_at: string | null
+  source_error_code: string | null
+  runtime_liveness: 'active' | 'quiet' | 'unavailable'
 }
 
 export interface NirmanaElevationRawSources {
@@ -65,14 +84,15 @@ export interface NirmanaElevationRawSources {
     label_digest: string
     recorded_at: string
   }>
+  monitor_observations?: NirmanaMonitorObservationRow[]
 }
 
 export class NirmanaElevationSourceError extends Error {
   readonly publicCode = 'NIRMANA_SOURCE_UNAVAILABLE' as const
   readonly publicMessage = 'Authoritative source is unavailable.'
 
-  constructor(readonly sourceId: SourceId, options?: { cause?: unknown }) {
-    super('Authoritative Nirmana source query failed.', options)
+  constructor(readonly sourceId: SourceId) {
+    super('Authoritative Nirmana source query failed.')
     this.name = 'NirmanaElevationSourceError'
   }
 }
@@ -81,10 +101,15 @@ async function loadSource<K extends RawSourceId>(sourceId: K, sql: string): Prom
   try {
     const { rows } = await query(sql)
     return { [sourceId]: rows } as Pick<NirmanaElevationRawSources, K>
-  } catch (cause) {
-    const publicSourceId: SourceId = sourceId === 'asset_labels' ? 'asset_label_catalogue' : sourceId as SourceId
-    console.error('[nirmana-elevation] authoritative source query failed', { source_id: publicSourceId, cause })
-    throw new NirmanaElevationSourceError(publicSourceId, { cause })
+  } catch {
+    const publicSourceId: SourceId = sourceId === 'asset_labels' ? 'asset_label_catalogue'
+      : sourceId === 'monitor_observations' ? 'program_monitor'
+        : sourceId as SourceId
+    console.error('[nirmana-elevation] authoritative source query failed', {
+      source_id: publicSourceId,
+      error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+    })
+    throw new NirmanaElevationSourceError(publicSourceId)
   }
 }
 
@@ -107,7 +132,14 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
   FROM nirmana_elevation_asset_labels
  WHERE campaign_id = 'nirmana-elevation'
  ORDER BY catalogue_revision, asset_id`)
-  return { ...registry, ...throughput, ...runs, ...runAssets, ...substeps, ...definitions, ...events, ...labels }
+  const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,
+       current_definition_sha256, candidate_definition_sha256, candidate_catalogue_sha256,
+       source_state, source_observed_at, freshness_state, freshness_deadline_at,
+       source_error_code, runtime_liveness
+  FROM nirmana_elevation_monitor_observations
+ ORDER BY observed_at DESC, id DESC
+ LIMIT 1`)
+  return { ...registry, ...throughput, ...runs, ...runAssets, ...substeps, ...definitions, ...events, ...labels, ...monitor }
 }
 
 function stableJson(value: unknown): string {
@@ -132,6 +164,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function timestamp(value: string): number {
   const parsed = Date.parse(value)
   return Number.isNaN(parsed) ? 0 : parsed
+}
+
+const PROGRAM_SYNC_GAPS: Partial<Record<NirmanaProgramSyncStatus, string>> = {
+  unknown: 'No program synchronization observation is available.',
+  baseline_missing: 'No accepted frozen program denominator is available.',
+  plan_adaptation_required: 'Plan adaptation is required before the program denominator can change.',
+  evidence_refresh_required: 'Accepted program evidence must be refreshed before synchronization can be restored.',
+  label_refresh_required: 'The governed program label catalogue must be refreshed before synchronization can be restored.',
+  release_attention: 'Program release reconciliation requires attention.',
+  source_unavailable: 'The authoritative program monitor source is unavailable.',
+}
+
+function projectProgramSync(
+  rows: NonNullable<NirmanaElevationRawSources['monitor_observations']>,
+  generatedAt: string,
+): {
+  programSync: NirmanaElevationSnapshotV2['program_sync']
+  source: NirmanaElevationSnapshotV2['sources'][number]
+  gaps: string[]
+} {
+  const latest = [...rows].sort((left, right) => timestamp(right.observed_at) - timestamp(left.observed_at)
+    || right.id.localeCompare(left.id))[0]
+  if (!latest) {
+    return {
+      programSync: {
+        status: 'unknown', source_observation_id: null, observed_at: null, age_seconds: null, affected_asset_ids: [],
+        current_definition_sha256: null, candidate_definition_sha256: null, candidate_catalogue_sha256: null,
+      },
+      source: {
+        source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
+        state: 'unknown', observed_at: null, age_seconds: null, error_code: null, error_message: null,
+      },
+      gaps: [PROGRAM_SYNC_GAPS.unknown!],
+    }
+  }
+
+  const sourceObservedAt = asIso(latest.source_observed_at)
+  const freshnessDeadlineAt = asIso(latest.freshness_deadline_at)
+  const ageSeconds = sourceObservedAt === null ? null : Math.max(
+    0,
+    Math.floor((Date.parse(generatedAt) - Date.parse(sourceObservedAt)) / 1000),
+  )
+  const unavailable = latest.status === 'source_unavailable' || latest.source_state === 'unavailable'
+  const status: NirmanaProgramSyncStatus = unavailable ? 'source_unavailable' : latest.status
+  const state = unavailable ? 'unavailable' as const
+    : latest.freshness_state === 'fresh'
+      && freshnessDeadlineAt !== null
+      && Date.parse(generatedAt) <= Date.parse(freshnessDeadlineAt)
+      ? 'fresh' as const : 'stale' as const
+  const gaps = [
+    ...(PROGRAM_SYNC_GAPS[status] ? [PROGRAM_SYNC_GAPS[status]!] : []),
+    ...(state === 'stale' ? ['The program monitor observation is stale; synchronization status may be outdated.'] : []),
+  ]
+  return {
+    programSync: {
+      status,
+      source_observation_id: unavailable ? null : latest.id,
+      observed_at: sourceObservedAt,
+      age_seconds: ageSeconds,
+      affected_asset_ids: [...new Set(latest.affected_asset_ids)].sort(),
+      current_definition_sha256: latest.current_definition_sha256,
+      candidate_definition_sha256: latest.candidate_definition_sha256,
+      candidate_catalogue_sha256: unavailable ? null : latest.candidate_catalogue_sha256,
+    },
+    source: {
+      source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
+      state, observed_at: sourceObservedAt, age_seconds: ageSeconds,
+      error_code: unavailable ? 'NIRMANA_SOURCE_UNAVAILABLE' : null,
+      error_message: unavailable ? 'Authoritative source is unavailable.' : null,
+    },
+    gaps,
+  }
 }
 
 function layerIdForRegistry(layer: string): (typeof LAYERS)[number][0] | null {
@@ -543,6 +647,7 @@ function projectAudit(
 
 export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString(), releaseStatus = null }: { generatedAt?: string; releaseStatus?: NirmanaReleaseStatus | null } = {}): NirmanaElevationSnapshotV2 {
   const generated_at = new Date(generatedAt).toISOString()
+  const programProjection = projectProgramSync(raw.monitor_observations ?? [], generated_at)
   const definition = raw.campaign_definitions[0]
   const rawWithLabels = raw.asset_labels ? raw : { ...raw, asset_labels: [] }
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
@@ -982,12 +1087,16 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     ...(currentStage === null ? ['No contiguous accepted campaign-stage spine is available; current position is withheld.'] : []),
     ...(unversionedIdentityCount > 0 ? [`${unversionedIdentityCount} asset identities use unversioned asset_registry fallback because no matching accepted catalogue label is available.`] : []),
     ...(releaseStatus?.gaps ?? ['Release reconciliation is not yet connected to an authoritative deployment source.']),
+    ...programProjection.gaps,
   ]
   const sources = [
-    ...(Object.entries(SOURCE_PROVENANCE) as Array<[SourceId, string]>).map(([source_id, provenance]) => ({
+    ...(Object.entries(SOURCE_PROVENANCE) as Array<[SourceId, string]>)
+      .filter(([source_id]) => source_id !== 'program_monitor')
+      .map(([source_id, provenance]) => ({
       source_id, provenance, state: 'fresh' as const, observed_at: generated_at, age_seconds: 0,
       error_code: null, error_message: null,
-    })),
+      })),
+    programProjection.source,
     ...(releaseStatus?.sources ?? []),
   ]
   const contradictions = [
@@ -1021,12 +1130,13 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   }
   const data_quality = { verdict: contradictions.length || gaps.length ? 'degraded' as const : 'reliable' as const, gaps, contradictions }
   const generation = digest({
-    campaign, progress, stages, layers, assets, active_runs,
+    campaign, progress, stages, layers, assets, active_runs, program_sync: programProjection.programSync,
     audit: { accepted_label_catalogue_revision: labelSelection.acceptedCatalogueRevision, release, sources, data_quality, receipts: audit.receipts, raw_ledger_refs: audit.raw_ledger_refs },
   })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
-    campaign, progress, stages, layers, assets, active_runs, release, sources, data_quality, audit,
+    campaign, progress, stages, layers, assets, active_runs, release, sources,
+    program_sync: programProjection.programSync, data_quality, audit,
   })
 }
 
@@ -1064,14 +1174,24 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     contradictions: [],
   }
   const audit = { receipts: [], raw_ledger_refs: [] }
-  const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, data_quality, audit })
+  const program_sync: NirmanaElevationSnapshotV2['program_sync'] = {
+    status: error.sourceId === 'program_monitor' ? 'source_unavailable' : 'unknown',
+    source_observation_id: null,
+    observed_at: null,
+    age_seconds: null,
+    affected_asset_ids: [],
+    current_definition_sha256: null,
+    candidate_definition_sha256: null,
+    candidate_catalogue_sha256: null,
+  }
+  const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
     campaign: { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling', campaign_status: 'unknown', current_stage: null, current_layer: null, current_wave: null },
     progress: { denominator_status: 'reconciling', assets_total: null, assets_frozen: 0, layers_total: 6, layers_frozen: 0, buildable_assets_total: null, accepted_rebuilds: 0 },
     stages, layers, assets: [], active_runs: [],
     release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
-    sources, data_quality, audit,
+    sources, program_sync, data_quality, audit,
   })
 }
 

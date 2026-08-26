@@ -94,10 +94,56 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Praśna Rules')).toBeVisible()
     expect(screen.getByText('Prashna Rules')).toBeVisible()
-    expect(screen.getByRole('button', { name: /audit evidence.*reliable/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /audit evidence.*degraded/i })).toBeVisible()
     expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /sequential layer rail/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /asset evidence ledger/i })).not.toBeInTheDocument()
+  })
+
+  it('shows plan adaptation with observation age and affected assets without replacing the campaign spine', () => {
+    const snapshot = snapshotV2()
+    snapshot.program_sync = {
+      ...snapshot.program_sync,
+      status: 'plan_adaptation_required',
+      observed_at: '2026-08-26T00:00:00.000Z',
+      age_seconds: 180,
+      affected_asset_ids: ['bg_prashna_rules', 'ka_smriti'],
+    }
+
+    render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
+
+    expect(screen.getByText('Program synchronization')).toBeVisible()
+    const synchronization = screen.getByText('Plan adaptation required').closest<HTMLElement>('[role="alert"]')
+    if (!synchronization) throw new Error('Program synchronization alert is missing.')
+    expect(within(synchronization).getByText('Plan adaptation required')).toBeVisible()
+    expect(within(synchronization).getByText('Observation age: 3 minutes')).toBeVisible()
+    expect(within(synchronization).getByText('Affected assets: 2')).toBeVisible()
+    expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Praśna Rules')).toBeVisible()
+    expect(screen.getByText('Prashna Rules')).toBeVisible()
+  })
+
+  it('keeps synchronization definition hashes secondary in the audit drawer', () => {
+    const snapshot = snapshotV2()
+    const currentHash = 'b'.repeat(64)
+    const candidateHash = 'c'.repeat(64)
+    snapshot.program_sync = {
+      ...snapshot.program_sync,
+      status: 'plan_adaptation_required',
+      current_definition_sha256: currentHash,
+      candidate_definition_sha256: candidateHash,
+    }
+
+    render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
+
+    expect(document.body).not.toHaveTextContent(currentHash)
+    expect(document.body).not.toHaveTextContent(candidateHash)
+    fireEvent.click(screen.getByRole('button', { name: /audit evidence/i }))
+
+    const drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })
+    expect(within(drawer).getByRole('heading', { name: /program synchronization observation/i })).toBeVisible()
+    expect(within(drawer).getByText(currentHash)).toBeVisible()
+    expect(within(drawer).getByText(candidateHash)).toBeVisible()
   })
 
   it('selects the temporary v1 evidence view for a schema v1 payload', async () => {
@@ -236,10 +282,11 @@ describe('NirmanaElevationTracker', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 500 })
 
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    expect(screen.getByRole('alert')).toHaveTextContent(/current state unknown/i)
-    expect(screen.getByRole('alert')).toHaveTextContent(error)
-    expect(screen.getByRole('alert')).toHaveTextContent(/failure observed/i)
-    expect(within(screen.getByRole('alert')).getByRole('time')).toBeVisible()
+    const retainedSnapshotAlert = screen.getByText(/current state unknown/i).closest<HTMLElement>('[role="alert"]')
+    if (!retainedSnapshotAlert) throw new Error('Retained-snapshot alert is missing.')
+    expect(retainedSnapshotAlert).toHaveTextContent(error)
+    expect(retainedSnapshotAlert).toHaveTextContent(/failure observed/i)
+    expect(within(retainedSnapshotAlert).getByRole('time')).toBeVisible()
   })
 
   it('refreshes on focus and reconnect', async () => {
@@ -325,7 +372,7 @@ describe('NirmanaElevationTracker', () => {
   it('opens the global audit by keyboard, contains Tab focus, and restores focus after Escape', async () => {
     const user = userEvent.setup()
     render(<NirmanaElevationTrackerView snapshot={snapshotV2()} fetchedAt={new Date('2026-08-26T00:03:00.000Z')} />)
-    const trigger = screen.getByRole('button', { name: /audit evidence.*reliable/i })
+    const trigger = screen.getByRole('button', { name: /audit evidence.*degraded/i })
 
     trigger.focus()
     await user.keyboard('{Enter}')
@@ -362,7 +409,7 @@ describe('NirmanaElevationTracker', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument())
     expect(assetTrigger).toHaveFocus()
 
-    const globalTrigger = screen.getByRole('button', { name: /audit evidence.*reliable/i })
+    const globalTrigger = screen.getByRole('button', { name: /audit evidence.*degraded/i })
     globalTrigger.focus()
     await user.keyboard('{Enter}')
     drawer = screen.getByRole('dialog', { name: /campaign evidence audit/i })

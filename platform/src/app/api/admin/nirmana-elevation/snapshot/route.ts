@@ -23,11 +23,13 @@ export async function GET() {
   try {
     const [raw, releaseStatus] = await Promise.all([loadNirmanaElevationRawSources(), loadNirmanaReleaseStatus()])
     return snapshotResponse(projectNirmanaElevationSnapshot(raw, { releaseStatus }))
-  } catch (error) {
-    if (error instanceof NirmanaElevationSourceError) {
-      return snapshotResponse(unavailableNirmanaElevationSnapshot(error), 503)
+  } catch (caught) {
+    if (caught instanceof NirmanaElevationSourceError) {
+      return snapshotResponse(unavailableNirmanaElevationSnapshot(caught), 503)
     }
-    console.error('[api/admin/nirmana-elevation/snapshot] unexpected failure', error)
-    return snapshotResponse(unavailableNirmanaElevationSnapshot(new NirmanaElevationSourceError('asset_registry', { cause: error })), 503)
+    console.error('[api/admin/nirmana-elevation/snapshot] unexpected failure', {
+      error_code: 'NIRMANA_SNAPSHOT_UNEXPECTED',
+    })
+    return snapshotResponse(unavailableNirmanaElevationSnapshot(new NirmanaElevationSourceError('asset_registry')), 503)
   }
 }

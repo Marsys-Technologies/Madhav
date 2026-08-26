@@ -59,6 +59,15 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery).toHaveBeenNthCalledWith(2,
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       ['nirmana-elevation:r1:labels-v1'])
+    const receiptCall = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+    expect(receiptCall).toBeDefined()
+    expect(JSON.parse(receiptCall![1][4])).toEqual({
+      catalogue_sha256: digest,
+      asset_count: 1,
+      audit_provenance: 'normative',
+    })
+    expect(receiptCall![1][6]).toBe('admin-1')
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
   })
@@ -72,7 +81,12 @@ describe('Nirmana label catalogue', () => {
         rowCount: 1,
         rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
       })
-      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: digest, asset_count: 1 } }] })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1, audit_provenance: 'normative' },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
       .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })
       .mockResolvedValueOnce(undefined)
 
@@ -81,6 +95,85 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('treats an exact pre-provenance receipt with matching persisted label digests as idempotent', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .resolves.toBe('idempotent')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('rejects an exact pre-provenance receipt when its persisted label digests do not match', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: false }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+  })
+
+  it('rejects a matching payload and key owned by a different immutable event type', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('FROM nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({
+          rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+        })
+      }
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_frozen', entity_type: 'label_catalogue', entity_id: 'labels-v1', layer: null,
+          evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rows: [{ label_count: 1, digest_matches: true }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
   it('takes a revision transaction lock before rejecting a concurrent-shape digest conflict without inserts', async () => {

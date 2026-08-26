@@ -71,6 +71,9 @@ export interface NirmanaRegistryContractRow {
   asset_id: string
   layer: keyof typeof registryLayers
   depends_on: string[] | null
+  sanskrit_name?: string | null
+  english_name?: string | null
+  english_description?: string | null
   sort_order: number
   scope: 'global' | 'per_chart'
   asset_kind: 'data' | 'service' | 'artifact'
@@ -85,6 +88,47 @@ export interface NirmanaRegistryContractRow {
   superseded_by: string | null
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
+}
+
+export type NirmanaExecutionObligation = Exclude<
+  NirmanaElevationManifest['assets'][number]['execution_obligation'],
+  undefined
+>
+
+/**
+ * Applies the same source-audited non-build and producer-coverage decisions
+ * enforced by assertFreezableManifest. Unknown shapes remain unresolved so a
+ * baseline candidate cannot silently invent an execution disposition.
+ */
+export function nirmanaExecutionContractForRegistryRow(row: NirmanaRegistryContractRow): {
+  execution_obligation: NirmanaExecutionObligation
+  producer_id?: string
+  covered_asset_ids?: string[]
+} {
+  const fixedDisposition = fixedNonBuildDispositions.get(row.asset_id)
+  if (fixedDisposition) return { execution_obligation: fixedDisposition as NirmanaExecutionObligation }
+
+  const producerId = fixedProducerCoverage.get(row.asset_id)
+  if (producerId) return { execution_obligation: 'producer_covered', producer_id: producerId }
+
+  const coveredAssetIds = [...fixedProducerCoverage.entries()]
+    .filter(([, candidateProducerId]) => candidateProducerId === row.asset_id)
+    .map(([coveredAssetId]) => coveredAssetId)
+    .sort()
+
+  if (row.catalog_status === 'RETIRED') {
+    return { execution_obligation: 'retired_with_disposition' }
+  }
+  if (row.asset_kind === 'service' && (row.has_writer || row.health_probe)) {
+    return { execution_obligation: 'probe' }
+  }
+  if (row.is_active && row.has_writer && row.asset_kind !== 'service') {
+    return {
+      execution_obligation: 'build',
+      ...(coveredAssetIds.length > 0 ? { covered_asset_ids: coveredAssetIds } : {}),
+    }
+  }
+  return { execution_obligation: 'unresolved' }
 }
 
 export function registryContractFingerprintInput(row: NirmanaRegistryContractRow) {
@@ -447,6 +491,221 @@ export interface SupersedeNirmanaElevationDefinitionInput {
   new_manifest: unknown
   new_manifest_sha256: string
   created_by: string
+}
+
+export interface AcceptNirmanaBaselineCandidateInput {
+  campaign_id: 'nirmana-elevation'
+  source_observation_id: string
+  definition_revision: string
+  expected_candidate_sha256: string
+  expected_candidate_catalogue_sha256: string
+  created_by: string
+}
+
+interface StoredNirmanaBaselineObservation {
+  id: string
+  observed_at: string | Date
+  status: string
+  current_definition_sha256: string | null
+  candidate_definition_sha256: string | null
+  registry_identity_sha256: string | null
+  registry_contract_sha256: string | null
+  candidate_catalogue_sha256: string | null
+  source_state: string
+  source_observed_at: string | Date | null
+  freshness_state: string
+  freshness_deadline_at: string | Date | null
+  source_error_code: string | null
+  currently_fresh: boolean
+}
+
+function canonicalObservationInstant(value: string | Date | null): string | null {
+  if (value === null) return null
+  const instant = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(instant.getTime()) ? null : instant.toISOString()
+}
+
+/**
+ * Accepts the exact live-registry baseline candidate, its frozen definition,
+ * and its governed label catalogue as one serializable transaction. This path
+ * records no stage transition or asset-lifecycle receipt.
+ */
+export async function acceptNirmanaBaselineCandidate(
+  input: AcceptNirmanaBaselineCandidateInput,
+): Promise<'created' | 'idempotent'> {
+  if (!z.string().uuid().safeParse(input.source_observation_id).success
+    || !/^[A-Za-z0-9._-]{1,128}$/.test(input.definition_revision)
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_sha256)
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_catalogue_sha256)) {
+    throw new NirmanaElevationDefinitionConflictError('Baseline candidate acceptance input is invalid.')
+  }
+
+  const client = await (await getPool()).connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+      `nirmana-elevation:${input.campaign_id}:baseline-acceptance`,
+    ])
+
+    const stored = await client.query<StoredNirmanaDefinition>(
+      `SELECT definition_revision, definition_status, manifest, manifest_sha256,
+              created_by, superseded_at
+         FROM nirmana_elevation_campaign_definitions
+        WHERE campaign_id = $1
+        ORDER BY definition_revision
+        FOR UPDATE`,
+      [input.campaign_id],
+    )
+    const observations = await client.query<StoredNirmanaBaselineObservation>(
+      `SELECT id::text, observed_at, status, current_definition_sha256,
+              candidate_definition_sha256, registry_identity_sha256,
+              registry_contract_sha256, candidate_catalogue_sha256,
+              source_state, source_observed_at, freshness_state,
+              freshness_deadline_at, source_error_code,
+              (freshness_state = 'fresh'
+                AND freshness_deadline_at >= transaction_timestamp()) AS currently_fresh
+         FROM nirmana_elevation_monitor_observations
+        WHERE id = $1
+        FOR SHARE`,
+      [input.source_observation_id],
+    )
+    const sourceObservation = observations.rows[0]
+    const registry = await client.query<NirmanaRegistryContractRow>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
+              sanskrit_name, english_name, english_description,
+              sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
+              target_table, count_sql, integrity_check_sql, health_probe,
+              natural_key_partition, superseded_by, data_disposition, dead_flag
+         FROM asset_registry
+        ORDER BY asset_id
+        FOR SHARE`,
+    )
+
+    let candidate: Awaited<ReturnType<typeof import('./monitor')['buildNirmanaBaselineCandidate']>>
+    try {
+      const { buildNirmanaBaselineCandidate } = await import('./monitor')
+      candidate = buildNirmanaBaselineCandidate(registry.rows)
+    } catch {
+      throw new NirmanaElevationDefinitionConflictError('Live registry cannot produce a freezable baseline candidate.')
+    }
+    if (candidate.manifest_sha256 !== input.expected_candidate_sha256
+      || candidate.catalogue_sha256 !== input.expected_candidate_catalogue_sha256) {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate changed; refresh both candidate digests before acceptance.')
+    }
+
+    const observationObservedAt = canonicalObservationInstant(sourceObservation?.observed_at ?? null)
+    const sourceObservedAt = canonicalObservationInstant(sourceObservation?.source_observed_at ?? null)
+    const freshnessDeadlineAt = canonicalObservationInstant(sourceObservation?.freshness_deadline_at ?? null)
+    const exactSourceObservation = sourceObservation !== undefined
+      && sourceObservation.id === input.source_observation_id
+      && sourceObservation.status === 'baseline_missing'
+      && sourceObservation.current_definition_sha256 === null
+      && sourceObservation.source_state === 'available'
+      && sourceObservation.source_error_code === null
+      && sourceObservation.freshness_state === 'fresh'
+      && observationObservedAt !== null
+      && sourceObservedAt !== null
+      && freshnessDeadlineAt !== null
+      && sourceObservation.candidate_definition_sha256 === input.expected_candidate_sha256
+      && sourceObservation.candidate_definition_sha256 === candidate.manifest_sha256
+      && sourceObservation.candidate_catalogue_sha256 === input.expected_candidate_catalogue_sha256
+      && sourceObservation.candidate_catalogue_sha256 === candidate.catalogue_sha256
+      && sourceObservation.registry_identity_sha256 === candidate.registry_identity_sha256
+      && sourceObservation.registry_contract_sha256 === candidate.registry_contract_sha256
+    if (!exactSourceObservation) {
+      throw new NirmanaElevationDefinitionConflictError('Baseline acceptance requires the exact source-available baseline_missing monitor observation and its candidate digests.')
+    }
+
+    const target = stored.rows.find((row) => row.definition_revision === input.definition_revision)
+    const current = stored.rows.find((row) => row.superseded_at === null)
+    const exactDefinitionRetry = target !== undefined
+      && target === current
+      && target.definition_status === 'frozen'
+      && target.manifest_sha256 === candidate.manifest_sha256
+      && stableJson(target.manifest) === stableJson(candidate.manifest)
+
+    const { recordNirmanaElevationLabelCatalogueInTransaction } = await import('./labels')
+    const catalogueInput = {
+      campaign_id: input.campaign_id,
+      definition_revision: input.definition_revision,
+      catalogue_revision: input.definition_revision,
+      labels: candidate.labels,
+      catalogue_sha256: candidate.catalogue_sha256,
+      recorded_by: input.created_by,
+    }
+    const receiptProvenance = {
+      source_observation_id: input.source_observation_id,
+      source_observation_observed_at: observationObservedAt,
+      source_snapshot_observed_at: sourceObservedAt,
+      source_freshness_deadline_at: freshnessDeadlineAt,
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+    }
+
+    if (exactDefinitionRetry) {
+      let catalogueOutcome: 'created' | 'idempotent'
+      try {
+        catalogueOutcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, catalogueInput, receiptProvenance)
+      } catch {
+        throw new NirmanaElevationDefinitionConflictError('Frozen baseline candidate does not have the exact accepted label catalogue.')
+      }
+      if (catalogueOutcome !== 'idempotent') {
+        throw new NirmanaElevationDefinitionConflictError('Frozen baseline candidate does not have the exact accepted label catalogue.')
+      }
+      await client.query('COMMIT')
+      return 'idempotent'
+    }
+
+    if (target !== undefined || current !== undefined) {
+      throw new NirmanaElevationDefinitionConflictError('A different current campaign definition already exists.')
+    }
+    if (sourceObservation.currently_fresh !== true) {
+      throw new NirmanaElevationDefinitionConflictError('Baseline monitor observation is no longer fresh; refresh the proposal before acceptance.')
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO nirmana_elevation_campaign_definitions
+         (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+       VALUES ($1, $2, 'reconciling', $3::jsonb, $4, $5)
+       RETURNING definition_revision`,
+      [input.campaign_id, input.definition_revision, JSON.stringify(candidate.manifest),
+        candidate.manifest_sha256, input.created_by],
+    )
+    if (inserted.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+
+    const frozen = await client.query(
+      `UPDATE nirmana_elevation_campaign_definitions
+          SET definition_status = 'frozen'
+        WHERE campaign_id = $1
+          AND definition_revision = $2
+          AND definition_status = 'reconciling'
+          AND manifest_sha256 = $3
+      RETURNING definition_revision`,
+      [input.campaign_id, input.definition_revision, candidate.manifest_sha256],
+    )
+    if (frozen.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+
+    let catalogueOutcome: 'created' | 'idempotent'
+    try {
+      catalogueOutcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, catalogueInput, receiptProvenance)
+    } catch {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate label catalogue is not acceptable.')
+    }
+    if (catalogueOutcome !== 'created') {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate label catalogue conflicts with existing evidence.')
+    }
+
+    await client.query('COMMIT')
+    return 'created'
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 /** Freezes only the exact previously recorded reconciling definition revision. */

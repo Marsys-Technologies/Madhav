@@ -541,6 +541,23 @@ jobs:
           npx vitest run tests/unit/migrations/nirmana_l0_wave0_remaining_integrity_contract.test.ts --reporter=verbose
           python -m pytest python-sidecar/tests/test_l0_ontology.py -q
 
+      - name: NTAP monitor — provision the dedicated migration 629 contract DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The contract test also refuses any non-loopback host or any database
+        # name other than nirmana_monitor_test, so this path cannot target
+        # production accidentally. The local service credential stays in the
+        # step environment and is never printed.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_monitor_test;"
+
+      - name: NTAP monitor — migration 629 append-only contract against real Postgres
+        env:
+          NIRMANA_MONITOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_monitor_test
+        run: npx vitest run src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/migration-contract.db.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
