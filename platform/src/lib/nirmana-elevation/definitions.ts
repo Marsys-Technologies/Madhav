@@ -344,8 +344,8 @@ export interface CreateNirmanaElevationDefinitionInput {
 }
 
 export class NirmanaElevationDefinitionConflictError extends Error {
-  constructor() {
-    super('Campaign definition revision already exists with different immutable contents.')
+  constructor(message = 'Campaign definition revision already exists with different immutable contents.') {
+    super(message)
   }
 }
 
@@ -506,6 +506,7 @@ export async function supersedeNirmanaElevationDefinition(
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
     const stored = await client.query<StoredNirmanaDefinition>(
       `SELECT definition_revision, definition_status, manifest, manifest_sha256,
               created_by, superseded_at
@@ -536,6 +537,39 @@ export async function supersedeNirmanaElevationDefinition(
       || current.superseded_at !== null
       || current.manifest_sha256 !== input.expected_current_manifest_sha256) {
       throw new NirmanaElevationDefinitionConflictError()
+    }
+
+    const currentManifest = NirmanaElevationManifestSchema.parse(current.manifest)
+    const dispatcherWaveLocks = [...new Set(currentManifest.assets
+      .filter((asset) => asset.execution_obligation === 'build' && asset.wave_index !== undefined)
+      .map((asset) => `${input.campaign_id}:${input.expected_current_revision}:${asset.layer}:wave-${asset.wave_index}`))]
+      .sort()
+    for (const lockKey of dispatcherWaveLocks) {
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [lockKey])
+    }
+
+    // The dispatcher takes the same per-wave advisory locks before it reads the
+    // definition, so a dispatch already in flight finishes before this absence
+    // check and a later dispatch observes the superseded revision. Table locks
+    // also stabilize the count against ordinary concurrent inserts while this
+    // transaction runs. Writers that do not participate in either protocol
+    // still require a future DB trigger/FK to eliminate every post-check race.
+    await client.query('LOCK TABLE nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
+    const usage = await client.query<{ event_count: number; build_run_count: number }>(
+      `SELECT (SELECT count(*)::int
+                 FROM nirmana_elevation_campaign_events
+                WHERE campaign_id = $1 AND definition_revision = $2) AS event_count,
+              (SELECT count(*)::int
+                 FROM build_runs
+                WHERE plan_manifest #>> '{campaign_control,campaign_id}' = $1
+                  AND plan_manifest #>> '{campaign_control,definition_revision}' = $2) AS build_run_count`,
+      [input.campaign_id, input.expected_current_revision],
+    )
+    if ((usage.rows[0]?.event_count ?? 0) !== 0) {
+      throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has campaign events and cannot be superseded.')
+    }
+    if ((usage.rows[0]?.build_run_count ?? 0) !== 0) {
+      throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has build runs and cannot be superseded.')
     }
 
     const registry = await client.query<NirmanaRegistryContractRow>(

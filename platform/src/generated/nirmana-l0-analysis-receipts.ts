@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto'
 import writerDigestInventory from './nirmana-writer-digests.json'
 
 export const NIRMANA_L0_CONVERGENCE_COMMIT = '5f47906bce9148563cc57764b21a2c06415d9f49' as const
 export const NIRMANA_L0_ANALYSIS_RECEIPT_COUNT = 40 as const
+export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '6c4962804c0c6a6973b7107f7662c75eae69e982e278453be6b07b097b5a85f2' as const
 
 export interface NirmanaL0AnalysisReceiptBase {
   schema_version: 'nirmana-asset-analysis-receipt-base/v1'
@@ -15,7 +17,24 @@ export interface NirmanaL0AnalysisReceiptBase {
   }
 }
 
-const writerDigests = writerDigestInventory.writers as Record<string, string>
+export function assertNirmanaL0WriterInventoryMatchesConvergence(inventory: unknown): asserts inventory is Record<string, string> {
+  if (inventory === null || typeof inventory !== 'object' || Array.isArray(inventory)) {
+    throw new Error('Nirmana L0 writer inventory does not match the pinned convergence inventory.')
+  }
+  const l0Inventory = Object.fromEntries(Object.entries(inventory)
+    .filter(([assetId]) => assetId.startsWith('bg_'))
+    .sort(([left], [right]) => left.localeCompare(right)))
+  if (Object.values(l0Inventory).some((digest) => typeof digest !== 'string' || !/^[a-f0-9]{64}$/.test(digest))) {
+    throw new Error('Nirmana L0 writer inventory does not match the pinned convergence inventory.')
+  }
+  const digest = createHash('sha256').update(JSON.stringify(l0Inventory)).digest('hex')
+  if (digest !== NIRMANA_L0_WRITER_INVENTORY_SHA256) {
+    throw new Error('Nirmana L0 writer inventory does not match the pinned convergence inventory.')
+  }
+}
+
+const writerDigests = writerDigestInventory.writers as unknown
+assertNirmanaL0WriterInventoryMatchesConvergence(writerDigests)
 const nonWriterAssets = [
   'bg_ephemeris_engine',
   'bg_gochara_citation_resolution',

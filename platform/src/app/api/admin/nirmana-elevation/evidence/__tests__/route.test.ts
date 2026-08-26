@@ -123,10 +123,14 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     superAdmin()
     transactionQueryMock
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{
         definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: 'c'.repeat(64),
         manifest, created_by: 'admin-0', superseded_at: null,
       }] })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
       .mockResolvedValueOnce({ rows: registryRows })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
