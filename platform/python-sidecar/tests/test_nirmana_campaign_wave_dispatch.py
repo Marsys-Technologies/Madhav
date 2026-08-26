@@ -107,6 +107,65 @@ def _digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _registry_fingerprint(candidate: dict) -> str:
+    return _digest({
+        "asset_id": candidate["asset_id"],
+        "layer": "L0",
+        "depends_on": candidate["depends_on"],
+        "registry_contract": {
+            field: candidate[field]
+            for field in (
+                "sort_order", "scope", "asset_kind", "catalog_status",
+                "is_active", "has_writer", "target_table", "count_sql",
+                "integrity_check_sql", "health_probe", "natural_key_partition",
+                "superseded_by", "data_disposition", "dead_flag",
+            )
+        },
+    })
+
+
+def _evidence_row(
+    *,
+    event_id: int,
+    asset_id: str,
+    event_type: str,
+    registry_fingerprint_sha256: str,
+    analysis_digest: str,
+    verdict: str = "examined_and_already_efficient",
+) -> dict:
+    payload = {
+        "registry_fingerprint_sha256": registry_fingerprint_sha256,
+        "analysis_digest": analysis_digest,
+    }
+    if event_type == "optimization_verdict_accepted":
+        payload.update({
+            "verdict": verdict,
+            "basis": {
+                "measurement": {
+                    "status": "measured",
+                    "sample_count": 10,
+                    "p50_ms": 2.0,
+                    "p90_ms": 3.0,
+                    "hotspot": None,
+                },
+                "evidence_refs": ["artifact:analysis"],
+            },
+            "proposal": {
+                "action": "no_change",
+                "summary": "Measured and already efficient.",
+                "output_contract": "digest_identical",
+            },
+        })
+    return {
+        "event_id": event_id,
+        "entity_id": asset_id,
+        "event_type": event_type,
+        "evidence_payload": payload,
+        "source_kind": "git_commit",
+        "source_ref": "git:" + "a" * 40,
+    }
+
+
 def test_builds_exact_build_obligation_wave_in_frozen_manifest_order() -> None:
     module = _load_dispatch_module()
     assert module is not None, "the governed campaign-wave dispatcher is missing"
@@ -140,6 +199,13 @@ def test_builds_exact_build_obligation_wave_in_frozen_manifest_order() -> None:
                 "natural_key_partition": None,
                 "has_cowriters": False,
                 "expected_code_digest": "a" * 64,
+                "registry_contract": _contract(
+                    sort_order=20,
+                    target_table="bg_reference",
+                ),
+                "registry_fingerprint_sha256": _registry_fingerprint(
+                    _candidate(selected[0]),
+                ),
             },
             {
                 "asset_id": "bg_formula_constants",
@@ -148,6 +214,13 @@ def test_builds_exact_build_obligation_wave_in_frozen_manifest_order() -> None:
                 "natural_key_partition": None,
                 "has_cowriters": False,
                 "expected_code_digest": "b" * 64,
+                "registry_contract": _contract(
+                    sort_order=10,
+                    target_table="bg_formula_constants",
+                ),
+                "registry_fingerprint_sha256": _registry_fingerprint(
+                    _candidate(selected[1]),
+                ),
             },
         ],
     }
@@ -160,7 +233,9 @@ def test_builds_exact_build_obligation_wave_in_frozen_manifest_order() -> None:
         ("wrong_chart", "approved chart"),
         ("missing_revision", "definition revision"),
         ("bad_definition_digest", "definition manifest digest"),
-        ("registry_drift", "live registry contract"),
+        ("dependency_drift", "depends_on"),
+        ("layer_drift", "layer"),
+        ("unbuildable_live_contract", "not buildable"),
         ("missing_candidate", "live registry row"),
         ("missing_writer_digest", "writer digest"),
     ],
@@ -186,8 +261,12 @@ def test_refuses_identity_definition_registry_or_code_drift(mutation: str, messa
         kwargs["definition_revision"] = ""
     elif mutation == "bad_definition_digest":
         kwargs["definition_manifest_digest"] = "0" * 64
-    elif mutation == "registry_drift":
-        kwargs["candidates"][0]["count_sql"] = "SELECT 0"
+    elif mutation == "dependency_drift":
+        kwargs["candidates"][0]["depends_on"] = ["bg_formula_constants"]
+    elif mutation == "layer_drift":
+        kwargs["candidates"][0]["layer"] = "ganita"
+    elif mutation == "unbuildable_live_contract":
+        kwargs["candidates"][0]["is_active"] = False
     elif mutation == "missing_candidate":
         kwargs["candidates"] = kwargs["candidates"][:-1]
     elif mutation == "missing_writer_digest":
@@ -195,6 +274,197 @@ def test_refuses_identity_definition_registry_or_code_drift(mutation: str, messa
 
     with pytest.raises(ValueError, match=message):
         module.build_campaign_wave_manifest(**kwargs)
+
+
+def test_uses_reviewed_live_registry_contract_after_t0_without_changing_frozen_identity() -> None:
+    """Catches restoring operational fields from frozen T0 instead of the reviewed live row."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    selected = [definition["assets"][0], definition["assets"][1]]
+    candidates = [_candidate(asset) for asset in selected]
+    candidates[0]["count_sql"] = "SELECT count(*) FROM bg_reference WHERE enabled"
+    candidates[0]["integrity_check_sql"] = "SELECT bool_and(enabled) FROM bg_reference"
+
+    manifest, _, _ = module.build_campaign_wave_manifest(
+        chart_id=CHART_ID,
+        definition_revision=REVISION,
+        definition_manifest=definition,
+        definition_manifest_digest=_digest(definition),
+        layer="L0",
+        wave_index=0,
+        candidates=candidates,
+        writer_digests={"bg_reference": "a" * 64, "bg_formula_constants": "b" * 64},
+    )
+
+    first = manifest["assets"][0]
+    assert first["depends_on"] == []
+    assert first["registry_contract"]["count_sql"] == candidates[0]["count_sql"]
+    assert first["registry_contract"]["integrity_check_sql"] == candidates[0]["integrity_check_sql"]
+    assert first["registry_fingerprint_sha256"] == _registry_fingerprint(candidates[0])
+
+
+def test_accepts_only_one_exact_current_analysis_and_bound_verdict_per_asset() -> None:
+    """Catches accepting any event names without binding them to the current contract pair."""
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    analysis_digest = "2" * 64
+
+    bindings = module.validate_wave_evidence_bindings(
+        asset_ids=["bg_reference"],
+        live_registry_fingerprints={"bg_reference": current_fingerprint},
+        evidence_rows=[
+            _evidence_row(
+                event_id=1,
+                asset_id="bg_reference",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=analysis_digest,
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="bg_reference",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=analysis_digest,
+            ),
+        ],
+    )
+
+    assert bindings == {
+        "bg_reference": {
+            "registry_fingerprint_sha256": current_fingerprint,
+            "analysis_digest": analysis_digest,
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    ("rows", "message"),
+    [
+        (
+            [
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="3" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="3" * 64,
+                    analysis_digest="2" * 64,
+                ),
+            ],
+            "current live registry contract",
+        ),
+        (
+            [
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="4" * 64,
+                ),
+            ],
+            "same accepted analysis",
+        ),
+        (
+            [
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=3,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+            ],
+            "ambiguous asset analysis",
+        ),
+        (
+            [
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=3,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+            ],
+            "ambiguous optimization verdict",
+        ),
+        (
+            [
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                    verdict="non_build_disposition",
+                ),
+            ],
+            "does not authorize a build",
+        ),
+    ],
+)
+def test_rejects_stale_unbound_or_multiple_wave_evidence(rows: list[dict], message: str) -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+
+    with pytest.raises(RuntimeError, match=message):
+        module.validate_wave_evidence_bindings(
+            asset_ids=["bg_reference"],
+            live_registry_fingerprints={"bg_reference": "1" * 64},
+            evidence_rows=rows,
+        )
 
 
 def test_refuses_empty_or_nonbuild_only_wave() -> None:
