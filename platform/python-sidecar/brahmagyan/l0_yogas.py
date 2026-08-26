@@ -27,6 +27,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -2161,6 +2162,17 @@ def _yoga_citation(y: dict) -> str:
     return y.get("source_citation", CLASSICAL)
 
 
+def _validated_source_chunk_ids(yoga: dict) -> list[str]:
+    """Return exact corpus UUIDs suitable for the normalized FK link table."""
+    raw = yoga.get("_chunk_id_str")
+    if not raw:
+        return []
+    try:
+        return [str(uuid.UUID(str(raw)))]
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise ValueError(f"invalid yoga source chunk identifier: {raw!r}") from exc
+
+
 # ── Main seeder ────────────────────────────────────────────────────────────────
 
 def seed_yogas(conn, build_id: str | None = None,
@@ -2170,18 +2182,22 @@ def seed_yogas(conn, build_id: str | None = None,
     and reference_yogas.
 
     Returns dict with: catalog_inserted, ontology_inserted, ref_inserted,
-                       total_rows, inline_count, extracted_count, warnings.
+                       source_links_inserted, total_rows, inline_count,
+                       extracted_count, warnings.
 
     Transaction ownership: caller owns commit when autocommit=False.
     """
     if dry_run:
         extracted_dry = extract_yogas_from_corpus(conn)
-        total = len(YOGAS_CORE) + len(DETECTOR_YOGAS) + len(extracted_dry)
+        all_yogas_dry = YOGAS_CORE + DETECTOR_YOGAS + extracted_dry
+        total = len(all_yogas_dry)
+        source_links = sum(len(_validated_source_chunk_ids(y)) for y in all_yogas_dry)
         return {
             "catalog_inserted": total,
             "ontology_inserted": total,
             "ref_inserted": total,
-            "total_rows": total,
+            "source_links_inserted": source_links,
+            "total_rows": total * 3 + source_links,
             "inline_count": len(YOGAS_CORE),
             "detector_count": len(DETECTOR_YOGAS),
             "extracted_count": len(extracted_dry),
@@ -2196,6 +2212,7 @@ def seed_yogas(conn, build_id: str | None = None,
     # Corpus extraction
     extracted = extract_yogas_from_corpus(conn)
     all_yogas = YOGAS_CORE + DETECTOR_YOGAS + extracted
+    expected_source_links = sum(len(_validated_source_chunk_ids(y)) for y in all_yogas)
 
     logger.info(
         "[l0_yogas] seeding %d yogas (%d inline + %d detector + %d extracted)",
@@ -2206,6 +2223,7 @@ def seed_yogas(conn, build_id: str | None = None,
     # is scoped to its entity class). Desired source is computed first; the
     # replacement then shares the orchestrator-owned transaction/savepoint.
     with conn.cursor() as cur:
+        cur.execute("DELETE FROM brahma_yoga_source_chunks")
         cur.execute("DELETE FROM reference_yogas")
         ref_replaced = cur.rowcount
         cur.execute("DELETE FROM brahma_yoga_catalog")
@@ -2250,6 +2268,15 @@ def seed_yogas(conn, build_id: str | None = None,
                     f"bg_yogas catalog insert failed for {cid}: {exc}"
                 ) from exc
 
+            for source_chunk_id in _validated_source_chunk_ids(y):
+                cur.execute(
+                    """
+                    INSERT INTO brahma_yoga_source_chunks (canonical_id, source_chunk_id)
+                    VALUES (%s, %s::uuid)
+                    """,
+                    (cid, source_chunk_id),
+                )
+
             # ── 2. brahma_ontology (entity_class='yoga') ────────────────────
             try:
                 cur.execute("""
@@ -2288,6 +2315,26 @@ def seed_yogas(conn, build_id: str | None = None,
             if (i + 1) % 50 == 0:
                 logger.info("[l0_yogas] progress: %d/%d yogas processed", i + 1, len(all_yogas))
 
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM brahma_yoga_catalog) AS catalog_count,
+              (SELECT count(*) FROM brahma_ontology WHERE entity_class='yoga') AS ontology_count,
+              (SELECT count(*) FROM reference_yogas) AS reference_count,
+              (SELECT count(*) FROM brahma_yoga_source_chunks) AS source_link_count
+            """
+        )
+        postflight = cur.fetchone()
+        actual = (
+            (postflight["catalog_count"], postflight["ontology_count"],
+             postflight["reference_count"], postflight["source_link_count"])
+            if isinstance(postflight, dict)
+            else tuple(postflight)
+        )
+        expected = (len(all_yogas), len(all_yogas), len(all_yogas), expected_source_links)
+        if actual != expected:
+            raise RuntimeError(f"bg_yogas exact postflight failed: expected {expected}, got {actual}")
+
     if autocommit:
         conn.commit()
 
@@ -2299,7 +2346,8 @@ def seed_yogas(conn, build_id: str | None = None,
         "catalog_inserted": catalog_inserted,
         "ontology_inserted": ontology_inserted,
         "ref_inserted": ref_inserted,
-        "total_rows": catalog_inserted,
+        "source_links_inserted": expected_source_links,
+        "total_rows": catalog_inserted + ontology_inserted + ref_inserted + expected_source_links,
         "inline_count": len(YOGAS_CORE),
         "detector_count": len(DETECTOR_YOGAS),
         "extracted_count": len(extracted),

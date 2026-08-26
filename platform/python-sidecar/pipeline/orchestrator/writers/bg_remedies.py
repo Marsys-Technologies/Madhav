@@ -78,6 +78,32 @@ class RemediesWriter(WriterBase):
         tantric_inserted = tantric_counts['inserted']
         tantric_queued = tantric_counts['review_queued']
 
+        with ctx.db_conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                  (SELECT count(*) FROM brahma_remedy_corpus) AS corpus_count,
+                  (SELECT count(*) FROM remedy_review_queue
+                   WHERE category = 'tantric') AS review_count
+                """
+            )
+            observed = cur.fetchone()
+        corpus_count = (
+            int(observed['corpus_count']) if isinstance(observed, dict)
+            else int(observed[0])
+        )
+        review_count = (
+            int(observed['review_count']) if isinstance(observed, dict)
+            else int(observed[1])
+        )
+        expected_corpus = total_built + tantric_inserted
+        if (corpus_count, review_count) != (expected_corpus, tantric_queued):
+            raise RuntimeError(
+                "bg_remedies postflight mismatch: "
+                f"expected corpus/review=({expected_corpus},{tantric_queued}), "
+                f"found ({corpus_count},{review_count})"
+            )
+
         logger.info(
             "[bg_remedies] inserted=%d skipped=%d live=%d total_built=%d "
             "tantric_inserted=%d tantric_queued=%d",

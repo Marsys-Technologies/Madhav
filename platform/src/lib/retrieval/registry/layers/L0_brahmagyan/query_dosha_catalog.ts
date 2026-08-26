@@ -11,13 +11,13 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
   layer: 'L0',
   name: 'query_dosha_catalog',
   description:
-    'Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 50 canonical doshas with ' +
+    'Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 79 canonical doshas with ' +
     'classical activation rules, severity tiers, cancellation conditions, and classical sources. ' +
     'Use to look up what a dosha means, how it is cancelled (neechabhanga-style conditions), ' +
     'and which text defines it. ' +
     'Covers Manglik dosha, Kala Sarpa dosha, Pitra dosha, Guru Chandala, Grahan dosha, ' +
-    'Kemdruma, Daridra, and 43 more. ' +
-    'Returns all 50 entries with no truncation.',
+    'Kemdruma, Daridra, and 72 more. ' +
+    'Returns all 79 entries with no truncation.',
   input_schema: {
     dosha_name:   { type: 'string', description: 'Partial match on dosha name.' },
     severity:     { type: 'string', description: 'Filter to doshas that define a given severity grade key in severity_grades (e.g. mild | moderate | severe).' },

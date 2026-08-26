@@ -27,7 +27,7 @@ describe('migration 618 — rules integrity contract', () => {
       target_table: 'sutravali_rules',
       target_floor: 3002,
       volume_explanation: CANONICAL_EXPLANATION,
-      depends_on: ['bg_texts'],
+      depends_on: ['bg_texts', 'bg_yogas', 'bg_dasha_systems'],
     })
   })
 })

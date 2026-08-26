@@ -167,6 +167,45 @@ def test_seed_halts_when_reference_cross_check_is_unverified(monkeypatch):
         seed_kp_sublord_division(object(), dry_run=True)
 
 
+def test_seed_removes_stale_versions_and_checks_exact_partition(monkeypatch):
+    monkeypatch.setattr(
+        "brahmagyan.l0_kp_sublord_division.verify_star_lords_against_reference",
+        lambda _conn: {"checked": 249, "mismatches": [], "status": "two_pass_verified"},
+    )
+
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self, owner):
+            self.owner = owner
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def execute(self, sql, params=None):
+            self.owner.statements.append((" ".join(sql.split()), params))
+
+        def fetchone(self):
+            return {"row_count": 249, "min_index": 1, "max_index": 249,
+                    "version_count": 1, "total_span": 360.0}
+
+    class Conn:
+        def __init__(self):
+            self.statements = []
+
+        def cursor(self):
+            return Cursor(self)
+
+    conn = Conn()
+    seed_kp_sublord_division(conn, autocommit=False)
+
+    assert any(sql.startswith("DELETE FROM bg_kp_sublord_division") for sql, _ in conn.statements)
+    assert any("AS version_count" in sql and "AS total_span" in sql for sql, _ in conn.statements)
+
+
 @pytest.mark.parametrize("step_deg", [0.01])
 def test_table_lookup_agrees_with_compute_kp_lords_across_the_whole_circle(
     divisions, step_deg,

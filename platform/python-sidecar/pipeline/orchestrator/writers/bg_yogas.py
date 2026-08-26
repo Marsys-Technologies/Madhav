@@ -35,7 +35,10 @@ class YogasWriter(WriterBase):
         catalog_inserted = counts.get("catalog_inserted", 0)
         ontology_inserted = counts.get("ontology_inserted", 0)
         ref_inserted = counts.get("ref_inserted", 0)
-        total_inserted = catalog_inserted + ontology_inserted + ref_inserted
+        source_links_inserted = counts.get("source_links_inserted", 0)
+        total_inserted = (
+            catalog_inserted + ontology_inserted + ref_inserted + source_links_inserted
+        )
         warnings = counts.get("warnings", [])
         notes = (
             f"brahma_yoga_catalog: {catalog_inserted} rows "
@@ -43,7 +46,8 @@ class YogasWriter(WriterBase):
             f"detector={counts.get('detector_count', 0)}, "
             f"extracted={counts.get('extracted_count', 0)}); "
             f"ontology={ontology_inserted}; "
-            f"ref={ref_inserted}; total_owned={total_inserted}; "
+            f"ref={ref_inserted}; source_links={source_links_inserted}; "
+            f"total_owned={total_inserted}; "
             f"replaced={counts.get('catalog_replaced', 0)}/"
             f"{counts.get('ontology_replaced', 0)}/"
             f"{counts.get('ref_replaced', 0)}"

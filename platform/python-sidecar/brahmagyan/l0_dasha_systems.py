@@ -790,6 +790,30 @@ def seed_dasha_systems(
             )
             counts["reference_dasha_systems"] += cur.rowcount
 
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM brahma_dasha_systems) AS catalog_count,
+              (SELECT count(*) FROM brahma_ontology WHERE entity_class='dasha_system') AS ontology_count,
+              (SELECT count(*) FROM reference_dasha_systems) AS reference_count
+            """
+        )
+        postflight = cur.fetchone()
+        actual = (
+            (
+                postflight["catalog_count"],
+                postflight["ontology_count"],
+                postflight["reference_count"],
+            )
+            if isinstance(postflight, dict)
+            else tuple(postflight)
+        )
+        expected = (len(DASHA_SYSTEMS),) * 3
+        if actual != expected:
+            raise RuntimeError(
+                f"bg_dasha_systems exact postflight failed: expected {expected}, got {actual}"
+            )
+
     if autocommit:
         conn.commit()
 

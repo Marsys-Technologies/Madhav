@@ -276,7 +276,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '361 distinct topic_tag values is the achieved deterministic-classifier coverage ratified by migrations 196 and 231. Raise this floor only with an evidence-backed classifier or corpus expansion; never fabricate assignments to meet the former aspirational 400.',
-    depends_on: ['bg_texts'],
+    depends_on: ['bg_texts', 'bg_reference'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -293,7 +293,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '3,002 deterministic regex-extracted rules from the frozen 10,651-chunk corpus after canonicalizing Pattern 27 planet order and duplicate suppression across Python hash seeds.',
-    depends_on: ['bg_texts'],
+    depends_on: ['bg_texts', 'bg_yogas', 'bg_dasha_systems'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -347,13 +347,14 @@ export const ASSETS: AssetDef[] = [
     count_sql: `SELECT
   (SELECT count(*) FROM brahma_yoga_catalog) +
   (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +
-  (SELECT count(*) FROM reference_yogas) AS count`,
+  (SELECT count(*) FROM reference_yogas) +
+  (SELECT count(*) FROM brahma_yoga_source_chunks) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_yoga_catalog')",
-    target_floor: 699,
+    target_floor: 784,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '699 owned rows = 233 deterministic yoga definitions × 3 reconciled projections (catalog + yoga ontology partition + reference_yogas). Source definition count is 144 inline core + 4 detector-registry identities + 85 corpus-extracted rows.',
-    depends_on: ['bg_ontology'],
+    volume_explanation: '784 owned rows = 233 deterministic yoga definitions × 3 reconciled projections plus 85 typed UUID source-chunk links for the corpus-extracted definitions.',
+    depends_on: ['bg_texts', 'bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -809,12 +810,14 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Per-intent-class acharya floor + machine band header + ordered floor items — the compiled scope_tuple->contract input (D-2 Lane V-1).',
     storage_type: 'postgres_table',
     target_table: 'vidhi_floor_items',
-    count_sql: '(SELECT COUNT(*) FROM vidhi_floor_items)',
+    count_sql: `SELECT
+  (SELECT count(*) FROM vidhi_intent_floors) +
+  (SELECT count(*) FROM vidhi_floor_items) AS count`,
     size_sql: null,
-    target_floor: 11,
+    target_floor: 423,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '11 intent-floor rows — deterministic count from the D-2 Lane V-1 writer.',
+    volume_explanation: '423 owned rows = 14 current intent floors + 409 ordered floor items from the canonical Vidhi registry.',
     depends_on: ['bg_vidhi_primitives'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -1025,10 +1028,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'bg_gochara_citation_resolution',
     count_sql: 'SELECT COUNT(*) FROM bg_gochara_citation_resolution',
     size_sql: "SELECT pg_total_relation_size('bg_gochara_citation_resolution')",
-    target_floor: 4,
+    target_floor: 14,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: null,
+    volume_explanation: '14 governed citation mappings: 3 exact resolved chunk links and 11 honest corpus gaps. Same-chapter proximity is never treated as source evidence.',
     depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',

@@ -2019,6 +2019,30 @@ def seed_doshas(
             if cur.rowcount > 0:
                 ref_inserted += 1
 
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM brahma_dosha_catalog) AS catalog_count,
+              (SELECT count(*) FROM brahma_ontology WHERE entity_class='dosha') AS ontology_count,
+              (SELECT count(*) FROM reference_doshas) AS reference_count
+            """
+        )
+        postflight = cur.fetchone()
+        actual = (
+            (
+                postflight["catalog_count"],
+                postflight["ontology_count"],
+                postflight["reference_count"],
+            )
+            if isinstance(postflight, dict)
+            else tuple(postflight)
+        )
+        expected = (len(DOSHAS),) * 3
+        if actual != expected:
+            raise RuntimeError(
+                f"bg_doshas exact postflight failed: expected {expected}, got {actual}"
+            )
+
         logger.info(
             "[L0/doshas] catalog: +%d inserted / %d skipped; ontology: +%d; ref: +%d",
             catalog_inserted, catalog_skipped, ontology_inserted, ref_inserted,
