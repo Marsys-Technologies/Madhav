@@ -146,7 +146,7 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('SELECT definition_status, manifest')) {
         return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
       }
-      if (statement.includes('SELECT evidence_payload')) return Promise.resolve({ rows: [] })
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
       if (statement.includes('SELECT count(*)::int AS label_count')) {
         return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
       }
@@ -233,10 +233,15 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('SELECT definition_status, manifest')) {
         return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
       }
-      if (statement.includes('SELECT evidence_payload')) {
-        return Promise.resolve({ rows: [{ evidence_payload: {
-          catalogue_sha256: candidate.catalogue_sha256, asset_count: candidate.labels.length,
-        } }] })
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+          entity_id: 'ntap-v1', layer: null,
+          evidence_payload: {
+            catalogue_sha256: candidate.catalogue_sha256, asset_count: candidate.labels.length,
+          },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:ntap-v1',
+        }] })
       }
       if (statement.includes('SELECT count(*)::int AS label_count')) {
         return Promise.resolve({ rows: [{ label_count: candidate.labels.length, digest_matches: true }] })

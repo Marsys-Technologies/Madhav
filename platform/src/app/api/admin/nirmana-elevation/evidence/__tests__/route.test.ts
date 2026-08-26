@@ -148,7 +148,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       if (statement.includes('SELECT definition_status, manifest')) {
         return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
       }
-      if (statement.includes('SELECT evidence_payload')) return Promise.resolve({ rows: [] })
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
       if (statement.includes('SELECT count(*)::int AS label_count')) {
         return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
       }

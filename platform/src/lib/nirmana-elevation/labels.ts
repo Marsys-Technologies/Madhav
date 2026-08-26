@@ -57,6 +57,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
 
   const revisionIdentity = `${input.campaign_id}:${input.definition_revision}:${input.catalogue_revision}`
   const receiptIdempotencyKey = `asset-label-catalogue:${input.catalogue_revision}`
+  const receiptSourceRef = `label_catalogue:${input.catalogue_revision}`
   await client.query(
     'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
     [revisionIdentity],
@@ -77,16 +78,32 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
   }
 
   const existingReceipt = await client.query(
-    `SELECT evidence_payload
+    `SELECT event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref
        FROM nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND idempotency_key = $3
       FOR SHARE`,
     [input.campaign_id, input.definition_revision, receiptIdempotencyKey],
   )
-  const existingPayload = existingReceipt.rows[0]?.evidence_payload as Record<string, unknown> | undefined
-  if (existingPayload
-    && (existingPayload.catalogue_sha256 !== digest || existingPayload.asset_count !== input.labels.length)) {
+  const existingReceiptRow = existingReceipt.rows[0] as {
+    event_type: string
+    entity_type: string
+    entity_id: string
+    layer: string | null
+    evidence_payload: Record<string, unknown>
+    source_kind: string
+    source_ref: string
+  } | undefined
+  const exactReceiptIdentity = existingReceiptRow?.event_type === 'asset_label_catalogue_accepted'
+    && existingReceiptRow.entity_type === 'label_catalogue'
+    && existingReceiptRow.entity_id === input.catalogue_revision
+    && existingReceiptRow.layer === null
+    && existingReceiptRow.source_kind === 'governed_catalogue'
+    && existingReceiptRow.source_ref === receiptSourceRef
+  if (existingReceiptRow
+    && (!exactReceiptIdentity
+      || existingReceiptRow.evidence_payload.catalogue_sha256 !== digest
+      || existingReceiptRow.evidence_payload.asset_count !== input.labels.length)) {
     throw new Error('Label catalogue revision conflicts with an existing receipt.')
   }
   const existingLabels = await client.query(
@@ -96,7 +113,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
       WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
     [input.campaign_id, input.definition_revision, input.catalogue_revision, digest],
   )
-  if (existingPayload) {
+  if (existingReceiptRow) {
     if (existingLabels.rows[0]?.label_count === input.labels.length
       && existingLabels.rows[0]?.digest_matches === true) {
       return 'idempotent'
@@ -133,7 +150,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     [input.campaign_id, input.definition_revision,
       receiptIdempotencyKey,
       input.catalogue_revision, JSON.stringify({ catalogue_sha256: digest, asset_count: input.labels.length }),
-      `label_catalogue:${input.catalogue_revision}`, input.recorded_by],
+      receiptSourceRef, input.recorded_by],
   )
   if (inserted.rowCount === input.labels.length && receipt.rowCount === 1) {
     return 'created'
