@@ -1,17 +1,27 @@
+import datetime as dt
 import tempfile
+import threading
+import time
 import unittest
 import gc
 import http.client
 import json
 import warnings
 from pathlib import Path
+from typing import Any
 import sys
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from elevation import AdapterRunner, ElevationStore, InvariantViolation
+from elevation import AdapterRunner, ElevationStore, InvariantViolation, parse_time
 from elevation_operations import ShadowOperations, cutover_guard
 from elevation_server import handler_factory
+from elevation_worker import ShadowSyncWorker
+from elevation_worker import command_probe
+from elevation_worker import command_probes
+from elevation_worker import load_command_probes
+from elevation_worker import build_sync_launchd_plist
+from elevation_worker import builtin_probes
 
 
 PLAN_V1 = {
@@ -139,6 +149,131 @@ class ElevationStoreTests(unittest.TestCase):
         dashboard = self.store.dashboard()
         self.assertEqual(dashboard["source_states"]["github"]["payload"]["pr"], 1540)
         self.assertEqual(self.store.reconcile()["accepted_evidence"], [])
+
+    def test_shadow_sync_worker_runs_a_full_adapter_tick_without_accepting_evidence(self):
+        """Break caught: the deployed dashboard starts but never refreshes its source ledger."""
+        worker = ShadowSyncWorker(self.store, probes={
+            "codex_tasks": lambda _cursor: {"cursor": "task-1", "payload": {"state": "ACTIVE"}},
+            "github": lambda _cursor: {"cursor": "pr-1550", "payload": {"state": "MERGED"}},
+            "git_worktrees": lambda _cursor: {"cursor": "main-5f07", "payload": {"main": "5f07"}},
+            "runtime": lambda _cursor: {"cursor": "runtime-8788", "payload": {"listener": "127.0.0.1:8788"}},
+            "tests_evidence": lambda _cursor: {"cursor": "tests-1", "payload": {"result": "PASS"}},
+            "edir": lambda _cursor: {"cursor": "edir-unknown", "payload": {"state": "UNKNOWN"}},
+        })
+        result = worker.sync_once()
+        self.assertEqual(set(result), {"codex_tasks", "github", "git_worktrees", "runtime", "tests_evidence", "edir"})
+        self.assertEqual(self.store.dashboard()["source_states"]["github"]["freshness"], "FRESH")
+        self.assertEqual(self.store.reconcile()["accepted_evidence"], [])
+
+    def test_command_probe_requires_a_cursor_and_object_payload(self):
+        """Break caught: an autonomous adapter accepts malformed command output as fresh source data."""
+        probe = command_probe([sys.executable, "-c", "import json; print(json.dumps({'cursor':'runtime-1','payload':{'ok':True}}))"])
+        self.assertEqual(probe(None), {"cursor": "runtime-1", "payload": {"ok": True}})
+        malformed = command_probe([sys.executable, "-c", "print('not-json')"])
+        with self.assertRaises(ValueError):
+            malformed(None)
+
+    def test_command_probes_only_accept_required_adapter_names(self):
+        """Break caught: deployment configuration can inject an ungoverned adapter name."""
+        command = [sys.executable, "-c", "import json; print(json.dumps({'cursor':'1','payload':{'state':'ok'}}))"]
+        self.assertEqual(command_probes({"github": command})["github"](None)["cursor"], "1")
+        with self.assertRaises(ValueError):
+            command_probes({"unapproved": command})
+
+    def test_worker_configuration_is_an_exact_probe_map(self):
+        """Break caught: a mutable worker config carries settings outside governed adapter commands."""
+        config = Path(self.tmp.name) / "probes.json"
+        config.write_text(json.dumps({"github": [sys.executable, "-c", "import json; print(json.dumps({'cursor':'1','payload':{}}))"]}), encoding="utf-8")
+        self.assertEqual(load_command_probes(config)["github"](None)["cursor"], "1")
+        config.write_text(json.dumps({"github": [], "extra": []}), encoding="utf-8")
+        with self.assertRaises(ValueError):
+            load_command_probes(config)
+
+    def test_sync_launchd_plist_runs_the_shadow_worker_on_a_bounded_interval(self):
+        """Break caught: automation is represented as metadata rather than a runnable, isolated job."""
+        import plistlib
+
+        runtime = Path(self.tmp.name) / "runtime"
+        release = Path(self.tmp.name) / "release"
+        source_repo = Path(self.tmp.name) / "repo"
+        plist = plistlib.loads(build_sync_launchd_plist(release, runtime, source_repo, "http://127.0.0.1:8787/api/service-identity", interval_seconds=60))
+        self.assertEqual(plist["Label"], "com.marsys.pariprashna-assurance.shadow.sync")
+        self.assertEqual(plist["StartInterval"], 60)
+        self.assertIn("--source-repo", plist["ProgramArguments"])
+        self.assertIn(str(source_repo), plist["ProgramArguments"])
+        self.assertIn("--accepted-identity-url", plist["ProgramArguments"])
+        self.assertIn("--once", plist["ProgramArguments"])
+        self.assertNotIn("--probe-config", plist["ProgramArguments"])
+        plist_with_config = plistlib.loads(build_sync_launchd_plist(release, runtime, source_repo, "http://127.0.0.1:8787/api/service-identity", interval_seconds=60, probe_config=runtime / "probes.json"))
+        self.assertIn("--probe-config", plist_with_config["ProgramArguments"])
+        self.assertIn(str(runtime / "probes.json"), plist_with_config["ProgramArguments"])
+
+    def test_builtin_probes_record_github_git_and_runtime_as_observations(self):
+        """Break caught: autonomous polling has no concrete sources and only emits stale placeholders."""
+        repo_dir = Path(self.tmp.name) / "fixture-repo"; repo_dir.mkdir()
+        commands = {
+            ("gh", "api", "repos/Marsys-Technologies/Madhav/pulls?state=open&per_page=100"): '[{"number":1550,"state":"open"}]',
+            ("git", "-C", str(repo_dir), "worktree", "list", "--porcelain"): "worktree /repo\nHEAD 5f07\nbranch refs/heads/main\n",
+            ("git", "-C", str(repo_dir), "rev-parse", "origin/main"): "5f07\n",
+        }
+        def run(argv):
+            return commands[tuple(argv)]
+        tests_dir = Path(self.tmp.name) / "fixture-tests"; tests_dir.mkdir()
+        (tests_dir / "test_trivial.py").write_text("def test_ok():\n    assert True\n", encoding="utf-8")
+        edir_path = Path(self.tmp.name) / "EDIR_V3_REGISTER_v1_0.md"
+        probes = builtin_probes(repo_dir, "http://127.0.0.1:8787", run_command=run, fetch_json=lambda _url: {"source_sha": "58e9", "ok": True}, tests_dir=tests_dir, edir_path=edir_path)
+        self.assertEqual(set(probes), {"github", "git_worktrees", "runtime", "codex_tasks", "tests_evidence", "edir"})
+        self.assertEqual(probes["runtime"](None)["payload"]["source_sha"], "58e9")
+        self.assertEqual(probes["git_worktrees"](None)["payload"]["origin_main"], "5f07")
+        self.assertIn(probes["codex_tasks"](None)["payload"]["state"], {"ACTIVE", "IDLE"})
+        self.assertEqual(probes["tests_evidence"](None)["payload"]["returncode"], 0)
+        self.assertEqual(probes["edir"](None)["payload"]["state"], "NOT_YET_OPENED")
+        edir_path.write_text("# EDIR V3\n", encoding="utf-8")
+        self.assertEqual(probes["edir"](None)["payload"]["state"], "OPEN")
+
+    def test_adapter_runner_honors_a_distinct_freshness_budget_per_source(self):
+        """Break caught (elevation §5.4): a single global freshness value cannot express
+        the per-source budgets (git/GitHub 15min, runtime 30min, tests/evidence + EDIR
+        60min) -- each adapter's own budget must reach the stored source row and drive
+        an independent stale/fresh verdict, not one value shared by every source."""
+        runner = AdapterRunner(self.store, probes={
+            "github": lambda _cursor: {"cursor": "c1", "payload": {"ok": True}},
+            "edir": lambda _cursor: {"cursor": "c2", "payload": {"ok": True}},
+        }, fresh_after_seconds={"github": 5, "edir": 600})
+        runner.collect_all()
+        self.assertEqual(self.store.source_state("github")["fresh_after_seconds"], 5)
+        self.assertEqual(self.store.source_state("edir")["fresh_after_seconds"], 600)
+        observed_at = self.store.source_state("github")["observed_at"]
+        dashboard = self.store.dashboard(now=(parse_time(observed_at) + dt.timedelta(seconds=30)).isoformat().replace("+00:00", "Z"))
+        self.assertEqual(dashboard["source_states"]["github"]["freshness"], "STALE")
+        self.assertEqual(dashboard["source_states"]["edir"]["freshness"], "FRESH")
+
+    def test_worker_advances_source_freshness_autonomously_with_no_manual_api_call(self):
+        """Break caught (elevation §5.1): the deployed worker must keep every configured
+        source's observed_at advancing purely from its own background loop over real
+        elapsed time -- proving autonomy means never calling sync_once()/an adapter by
+        hand, only starting run_forever() and watching it work unattended."""
+        calls = {"n": 0}
+
+        def probe(_cursor: str | None) -> dict[str, Any]:
+            calls["n"] += 1
+            return {"cursor": f"tick-{calls['n']}", "payload": {"tick": calls["n"]}}
+
+        worker = ShadowSyncWorker(self.store, probes={name: probe for name in AdapterRunner.REQUIRED_ADAPTERS}, fresh_after_seconds=1)
+        stop = threading.Event()
+        thread = threading.Thread(target=worker.run_forever, kwargs={"stop": stop, "interval_seconds": 0.05}, daemon=True)
+        thread.start()
+        try:
+            deadline = time.time() + 3.0
+            while calls["n"] < 3 and time.time() < deadline:
+                time.sleep(0.05)
+        finally:
+            stop.set()
+            thread.join(timeout=2)
+        self.assertGreaterEqual(calls["n"], 3, "worker did not tick autonomously without a manual call")
+        dashboard = self.store.dashboard()
+        for source in AdapterRunner.REQUIRED_ADAPTERS:
+            self.assertEqual(dashboard["source_states"][source]["freshness"], "FRESH")
 
     def test_shadow_operations_schedule_recovery_but_never_targets_accepted_service(self):
         """Break caught: automation targets the accepted service or omits a required recovery control."""

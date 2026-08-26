@@ -1074,6 +1074,7 @@ def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[
         presence = by_session.get(session["id"]); age = None if not presence else max(0, now - (parse_time(presence["observed_at"]) or 0))
         lifecycle = session["lifecycle"]
         if not integrity_ok: health = "INTEGRITY_DEGRADED"
+        elif presence is not None and presence["state"] == "COMPLETED": health = "COMPLETED"
         elif lifecycle in {"RUNNING", "IN_VERIFICATION"}: health = "STALE" if age is None or age > 300 else "HEALTHY"
         elif lifecycle in {"PAUSED", "BLOCKED", "FAILED"}: health = "ATTENTION_REQUIRED"
         else: health = "UNKNOWN"
