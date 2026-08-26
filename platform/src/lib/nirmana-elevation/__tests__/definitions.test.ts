@@ -690,6 +690,7 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('authorizes build runs only for execution-permitting manifest obligations', async () => {
+    useEvidenceTransaction()
     queryMock
       .mockResolvedValueOnce({ rows: [{ authorized: true }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
