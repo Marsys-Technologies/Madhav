@@ -91,7 +91,7 @@ describe('Nirmana elevation monitor baseline', () => {
     expect(reversed).toEqual(forward)
   })
 
-  it('keeps every absent human label null instead of synthesizing catalogue copy', () => {
+  it('renders the governed placeholder when every human label is absent', () => {
     const candidate = buildNirmanaBaselineCandidate([
       registryRow('bg_uncatalogued', { sort_order: 1 }),
     ])
@@ -100,9 +100,10 @@ describe('Nirmana elevation monitor baseline', () => {
       asset_id: 'bg_uncatalogued',
       sanskrit_name: null,
       english_name: null,
-      description: null,
+      description: 'Not yet catalogued',
+      source_ref: 'asset_registry:bg_uncatalogued',
     })])
-    expect(candidate.catalogue_sha256).toMatch(/^[a-f0-9]{64}$/)
+    expect(candidate.catalogue_sha256).toBe(canonicalLabelCatalogueDigest(candidate.labels))
   })
 })
 

@@ -180,6 +180,60 @@ describe('Nirmana elevation definition repository', () => {
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
+  it('accepts an all-null registry label using the deterministic catalogue placeholder', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      sanskrit_name: null,
+      english_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    const labelInsert = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))
+    expect(labelInsert?.[1]).toEqual(expect.arrayContaining([
+      expect.stringContaining('Not yet catalogued'),
+    ]))
+  })
+
   it('rejects a stale baseline candidate digest after re-reading the live registry', async () => {
     const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
       ...row,

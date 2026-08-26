@@ -230,14 +230,21 @@ export function buildNirmanaBaselineCandidate(rows: NirmanaRegistryContractRow[]
   })
   assertFreezableManifest(manifest)
 
-  const labels = orderedRows.map((row) => NirmanaBaselineLabelSchema.parse({
-    asset_id: row.asset_id,
-    sanskrit_name: row.sanskrit_name ?? null,
-    english_name: row.english_name ?? null,
-    description: row.english_description ?? null,
-    legacy_aliases: [],
-    source_ref: `asset_registry:${row.asset_id}`,
-  }))
+  const labels = orderedRows.map((row) => {
+    const sanskritName = row.sanskrit_name ?? null
+    const englishName = row.english_name ?? null
+    const englishDescription = row.english_description ?? null
+    return NirmanaBaselineLabelSchema.parse({
+      asset_id: row.asset_id,
+      sanskrit_name: sanskritName,
+      english_name: englishName,
+      description: sanskritName === null && englishName === null && englishDescription === null
+        ? 'Not yet catalogued'
+        : englishDescription,
+      legacy_aliases: [],
+      source_ref: `asset_registry:${row.asset_id}`,
+    })
+  })
   const identity = manifest.assets.map((asset) => ({
     asset_id: asset.asset_id,
     layer: asset.layer,
