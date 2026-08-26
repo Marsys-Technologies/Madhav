@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const sql = readFileSync(join(process.cwd(), 'migrations/599_nirmana_elevation_asset_labels.sql'), 'utf8')
+const sql = readFileSync(join(process.cwd(), 'migrations/627_nirmana_elevation_asset_labels.sql'), 'utf8')
 
-describe('migration 599: Nirmana elevation asset labels', () => {
+describe('migration 627: Nirmana elevation asset labels', () => {
   it('creates a definition-scoped append-only label catalogue', () => {
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS nirmana_elevation_asset_labels')
     expect(sql).toContain('PRIMARY KEY (campaign_id, definition_revision, catalogue_revision, asset_id)')

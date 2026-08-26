@@ -30,7 +30,7 @@
 ### Task 1: Append-only asset-label catalogue migration
 
 **Files:**
-- Create: `platform/migrations/599_nirmana_elevation_asset_labels.sql`
+- Create: `platform/migrations/627_nirmana_elevation_asset_labels.sql`
 - Create: `platform/tests/unit/migrations/nirmana_elevation_asset_labels.test.ts`
 
 **Interfaces:**
@@ -48,7 +48,7 @@ npm ci
 
 Expected: exit 0 and `platform/node_modules/.bin/vitest` exists.
 
-- [ ] **Step 2: Verify and reserve migration 599**
+- [ ] **Step 2: Verify and reserve migration 627**
 
 Run:
 
@@ -58,7 +58,7 @@ npm run guard:migration-numbers
 npm run migration:next
 ```
 
-Expected: the guard passes and the second command prints `599`. If it does not, follow the migration-number constraint above before continuing.
+Expected: the guard passes and the second command prints `627`. If it does not, follow the migration-number constraint above before continuing.
 
 - [ ] **Step 3: Write the failing migration-contract test**
 
@@ -69,9 +69,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const sql = readFileSync(join(process.cwd(), 'migrations/599_nirmana_elevation_asset_labels.sql'), 'utf8')
+const sql = readFileSync(join(process.cwd(), 'migrations/627_nirmana_elevation_asset_labels.sql'), 'utf8')
 
-describe('migration 599: Nirmana elevation asset labels', () => {
+describe('migration 627: Nirmana elevation asset labels', () => {
   it('creates a definition-scoped append-only label catalogue', () => {
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS nirmana_elevation_asset_labels')
     expect(sql).toContain('PRIMARY KEY (campaign_id, definition_revision, catalogue_revision, asset_id)')
@@ -93,14 +93,14 @@ cd platform
 npx vitest run tests/unit/migrations/nirmana_elevation_asset_labels.test.ts
 ```
 
-Expected: FAIL because migration 599 does not exist.
+Expected: FAIL because migration 627 does not exist.
 
 - [ ] **Step 5: Create the migration**
 
-Create `platform/migrations/599_nirmana_elevation_asset_labels.sql` with this structure:
+Create `platform/migrations/627_nirmana_elevation_asset_labels.sql` with this structure:
 
 ```sql
--- Migration 599: immutable bilingual labels for the Nirmana elevation tracker
+-- Migration 627: immutable bilingual labels for the Nirmana elevation tracker
 -- Created: 2026-08-25
 
 BEGIN;
@@ -167,7 +167,7 @@ Expected: both commands pass.
 - [ ] **Step 7: Commit Task 1**
 
 ```bash
-git add platform/migrations/599_nirmana_elevation_asset_labels.sql platform/tests/unit/migrations/nirmana_elevation_asset_labels.test.ts
+git add platform/migrations/627_nirmana_elevation_asset_labels.sql platform/tests/unit/migrations/nirmana_elevation_asset_labels.test.ts
 git commit -m "feat(nirmana): add immutable asset label catalogue"
 ```
 
@@ -1312,7 +1312,7 @@ Use the repository `pr-description` skill, then:
 
 ```bash
 git push -u origin HEAD
-gh pr create --base main --title "feat(nirmana): redesign elevation tracker as campaign spine" --body "Summary: vertical governed campaign spine, snapshot v2, bilingual asset identities, obligation-aware progress, and secondary audit detail. Includes append-only migration 599. No campaign execution or evidence backfill. Verification evidence is listed in the commits and PR checks."
+gh pr create --base main --title "feat(nirmana): redesign elevation tracker as campaign spine" --body "Summary: vertical governed campaign spine, snapshot v2, bilingual asset identities, obligation-aware progress, and secondary audit detail. Includes append-only migration 627. No campaign execution or evidence backfill. Verification evidence is listed in the commits and PR checks."
 ```
 
 - [ ] **Step 4: Monitor required checks and stop on an exact failure**

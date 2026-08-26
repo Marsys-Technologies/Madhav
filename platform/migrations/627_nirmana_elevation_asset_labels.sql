@@ -1,4 +1,4 @@
--- Migration 599: immutable bilingual labels for the Nirmana elevation tracker
+-- Migration 627: immutable bilingual labels for the Nirmana elevation tracker
 -- Created: 2026-08-25
 
 BEGIN;

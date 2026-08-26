@@ -24,7 +24,7 @@ const MIGRATION_592_PATH = resolve(
 )
 const MIGRATION_599_PATH = resolve(
   __dirname,
-  '../../migrations/599_nirmana_elevation_asset_labels.sql'
+  '../../migrations/627_nirmana_elevation_asset_labels.sql'
 )
 
 let pool: Pool
