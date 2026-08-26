@@ -8,7 +8,7 @@ import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
 
 const migrationPath = path.resolve(
   process.cwd(),
-  'supabase/migrations/629_nirmana_l0_wave1_correctness_contract.sql',
+  'supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql',
 )
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
 
@@ -36,7 +36,7 @@ const OLD_YOGA_SPEC_JSON = migration.match(
   /old_spec constant jsonb :=\s*'([^']+)'::jsonb;/,
 )?.[1]
 
-describe('migration 629 — Nirmana L0 wave-1 correctness contract', () => {
+describe('migration 630 — Nirmana L0 wave-1 correctness contract', () => {
   it('is runner-owned, fail-closed, and installs typed yoga provenance', () => {
     expect(migration).not.toBe('')
     expect(migration).not.toMatch(/^BEGIN;/m)
@@ -44,7 +44,7 @@ describe('migration 629 — Nirmana L0 wave-1 correctness contract', () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS brahma_yoga_source_chunks')
     expect(migration).toContain('source_chunk_id UUID NOT NULL')
     expect(migration).toContain('REFERENCES classical_text_chunks(id)')
-    expect(migration).toContain('migration 629 refuses unknown')
+    expect(migration).toContain('migration 630 refuses unknown')
   })
 
   it('corrects only evidence-backed dependency edges in the bootstrap registry', () => {
@@ -86,7 +86,7 @@ if (TEST_DATABASE_URL) {
   }
 }
 
-describe.skipIf(!TEST_DATABASE_URL)('migration 629 — real PostgreSQL behavior', () => {
+describe.skipIf(!TEST_DATABASE_URL)('migration 630 — real PostgreSQL behavior', () => {
   async function connectPrepared(): Promise<Client> {
     const client = new Client({ connectionString: TEST_DATABASE_URL })
     await client.connect()
@@ -325,7 +325,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 629 — real PostgreSQL behavior'
       )
       await client.query('BEGIN')
       await expect(client.query(fixtureMigration)).rejects.toThrow(
-        'migration 629 refuses unknown bg_rules registry contract',
+        'migration 630 refuses unknown bg_rules registry contract',
       )
       await client.query('ROLLBACK')
       const typedTable = await client.query(
