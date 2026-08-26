@@ -1,7 +1,8 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
+import type { PoolClient } from 'pg'
 import { z } from 'zod'
-import { query } from '@/lib/db/client'
+import { getPool, query } from '@/lib/db/client'
 import {
   assertFreezableManifest,
   assertManifestMatchesRegistry,
@@ -18,7 +19,7 @@ import {
 import {
   NirmanaLegacyAliasSchema,
 } from './label-contract'
-import { loadNirmanaReleaseStatus } from './release'
+import { loadNirmanaReleaseStatus, type NirmanaReleaseStatus } from './release'
 
 const layerIds = {
   brahmagyan: 'L0',
@@ -123,6 +124,15 @@ export interface NirmanaMonitorObservation {
   selected_catalogue_sha256: string | null
   runtime_sha256: string | null
   release_sha256: string | null
+  source_state: 'available' | 'unavailable'
+  source_observed_at: string | null
+  source_age_seconds: number | null
+  freshness_state: 'fresh' | 'stale' | 'unavailable'
+  freshness_deadline_at: string | null
+  runtime_liveness: 'active' | 'quiet' | 'unavailable'
+  release_state: 'in_sync' | 'out_of_sync' | 'unknown' | 'unavailable'
+  release_observed_at: string | null
+  release_age_seconds: number | null
   public_detail: string
   source_error_code: string | null
 }
@@ -160,6 +170,8 @@ const MONITOR_PUBLIC_DETAIL: Record<NirmanaMonitorStatusCode, string> = {
 }
 
 const SOURCE_UNAVAILABLE_CODE = 'NIRMANA_SOURCE_UNAVAILABLE'
+const FRESHNESS_WINDOW_SECONDS = 15 * 60
+const EMPTY_CATALOGUE_SHA256 = digest([])
 
 function orderedRegistryRows(rows: NirmanaRegistryContractRow[]): NirmanaRegistryContractRow[] {
   return [...rows].sort((left, right) => {
@@ -370,17 +382,27 @@ export function classifyNirmanaDivergence(input: {
   return statusResult('in_sync', candidate, currentDigest)
 }
 
-async function loadMonitorInputs(): Promise<{
+type MonitorReadClient = Pick<PoolClient, 'query'>
+
+async function loadMonitorInputs(client: MonitorReadClient): Promise<{
   candidate: NirmanaBaselineCandidate
   definition: StoredFrozenDefinition | null
   selectedCatalogueSha256: string | null
   selectedCatalogueAssetIds: string[]
   incompleteLabelAssetIds: string[]
   runtimeSha256: string
-  releaseSha256: string
-  releaseInSync: boolean | null
+  runtimeLiveness: 'active' | 'quiet'
+  sourceObservedAt: string
 }> {
-  const registry = await query<NirmanaRegistryContractRow>(
+  const clock = await client.query<{ source_observed_at: string }>(
+    'SELECT transaction_timestamp() AS source_observed_at',
+  )
+  const sourceObservedAt = clock.rows[0]?.source_observed_at
+  if (!sourceObservedAt || Number.isNaN(Date.parse(sourceObservedAt))) {
+    throw new Error('Monitor read transaction has no valid observation timestamp.')
+  }
+
+  const registry = await client.query<NirmanaRegistryContractRow>(
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
@@ -391,7 +413,7 @@ async function loadMonitorInputs(): Promise<{
   )
   const candidate = buildNirmanaBaselineCandidate(registry.rows)
 
-  const definitions = await query<StoredFrozenDefinition>(
+  const definitions = await client.query<StoredFrozenDefinition>(
     `SELECT definition_revision, definition_status, manifest, manifest_sha256
        FROM nirmana_elevation_campaign_definitions
       WHERE campaign_id = 'nirmana-elevation'
@@ -402,7 +424,7 @@ async function loadMonitorInputs(): Promise<{
   )
   const definition = definitions.rows[0] ?? null
 
-  const receipts = await query<AcceptedCatalogueReceipt>(
+  const receipts = await client.query<AcceptedCatalogueReceipt>(
     `SELECT entity_id AS catalogue_revision,
             evidence_payload ->> 'catalogue_sha256' AS catalogue_sha256
        FROM nirmana_elevation_campaign_events
@@ -415,7 +437,7 @@ async function loadMonitorInputs(): Promise<{
     [definition?.definition_revision ?? null],
   )
   const receipt = receipts.rows[0] ?? null
-  const labels = await query<SelectedLabelRow>(
+  const labels = await client.query<SelectedLabelRow>(
     `SELECT asset_id, sanskrit_name, english_name, description, legacy_aliases,
             source_ref, label_digest
        FROM nirmana_elevation_asset_labels
@@ -447,14 +469,14 @@ async function loadMonitorInputs(): Promise<{
     ...(!receiptDigestValid && receipt !== null ? candidate.labels.map((label) => label.asset_id) : []),
   ])].sort()
 
-  const throughput = await query(
+  const throughput = await client.query(
     `SELECT asset_id, chart_id, state, last_built_at
        FROM asset_throughput
       WHERE chart_id = $1 OR chart_id IS NULL
       ORDER BY asset_id, chart_id NULLS FIRST, last_built_at DESC NULLS LAST`,
     [CANONICAL_NIRMANA_CHART_ID],
   )
-  const runs = await query(
+  const runs = await client.query(
     `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at
        FROM build_runs
       WHERE chart_id = $1
@@ -462,7 +484,7 @@ async function loadMonitorInputs(): Promise<{
       ORDER BY created_at, id`,
     [CANONICAL_NIRMANA_CHART_ID],
   )
-  const runAssets = await query(
+  const runAssets = await client.query(
     `SELECT bra.run_id, bra.asset_id, bra.position, bra.state,
             bra.started_at, bra.ended_at, bra.error
        FROM build_run_assets bra
@@ -472,7 +494,7 @@ async function loadMonitorInputs(): Promise<{
       ORDER BY bra.run_id, bra.position, bra.asset_id`,
     [CANONICAL_NIRMANA_CHART_ID],
   )
-  const substeps = await query(
+  const substeps = await client.query(
     `SELECT bsp.chart_id, bsp.asset_id, bsp.substep_key, bsp.build_fingerprint,
             bsp.rows_written, bsp.completed_at
        FROM build_substep_progress bsp
@@ -492,14 +514,6 @@ async function loadMonitorInputs(): Promise<{
     build_substep_progress: substeps.rows,
   })
 
-  const release = await loadNirmanaReleaseStatus()
-  const releaseSha256 = digest({
-    main_sha: release.release.main_sha,
-    deployed_sha: release.release.deployed_sha,
-    deployed_revision: release.release.deployed_revision,
-    production_in_sync: release.release.production_in_sync,
-  })
-
   return {
     candidate,
     definition,
@@ -507,9 +521,38 @@ async function loadMonitorInputs(): Promise<{
     selectedCatalogueAssetIds,
     incompleteLabelAssetIds,
     runtimeSha256,
-    releaseSha256,
-    releaseInSync: release.release.production_in_sync,
+    runtimeLiveness: runs.rows.length > 0 ? 'active' : 'quiet',
+    sourceObservedAt,
   }
+}
+
+async function readMonitorInputs(): Promise<Awaited<ReturnType<typeof loadMonitorInputs>>> {
+  const client = await (await getPool()).connect()
+  try {
+    await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+    const inputs = await loadMonitorInputs(client)
+    await client.query('COMMIT')
+    return inputs
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+function releaseState(release: NirmanaReleaseStatus): NirmanaMonitorObservation['release_state'] {
+  if (release.release.production_in_sync === true) return 'in_sync'
+  if (release.release.production_in_sync === false) return 'out_of_sync'
+  if (release.sources.some((source) => source.state === 'unavailable')) return 'unavailable'
+  return 'unknown'
+}
+
+function releaseAgeSeconds(release: NirmanaReleaseStatus): number {
+  const ages = release.sources
+    .map((source) => source.age_seconds)
+    .filter((age): age is number => typeof age === 'number' && Number.isFinite(age) && age >= 0)
+  return ages.length > 0 ? Math.floor(Math.max(...ages)) : 0
 }
 
 async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>): Promise<NirmanaMonitorObservation> {
@@ -520,13 +563,20 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
         candidate_definition_sha256, registry_identity_sha256,
         registry_contract_sha256, candidate_catalogue_sha256,
         selected_catalogue_sha256, runtime_sha256, release_sha256,
+        source_state, source_observed_at, source_age_seconds,
+        freshness_state, freshness_deadline_at, runtime_liveness,
+        release_state, release_observed_at, release_age_seconds,
         public_detail, source_error_code)
-     VALUES ($1, $2::text[], $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     VALUES ($1, $2::text[], $3, $4, $5, $6, $7, $8, $9, $10,
+             $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
      RETURNING id, observed_at, status, affected_asset_ids,
                current_definition_sha256, candidate_definition_sha256,
                registry_identity_sha256, registry_contract_sha256,
                candidate_catalogue_sha256, selected_catalogue_sha256,
-               runtime_sha256, release_sha256, public_detail, source_error_code`,
+               runtime_sha256, release_sha256, source_state, source_observed_at,
+               source_age_seconds, freshness_state, freshness_deadline_at,
+               runtime_liveness, release_state, release_observed_at,
+               release_age_seconds, public_detail, source_error_code`,
     [
       input.status,
       affectedAssetIds,
@@ -538,6 +588,15 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
       input.selected_catalogue_sha256,
       input.runtime_sha256,
       input.release_sha256,
+      input.source_state,
+      input.source_observed_at,
+      input.source_age_seconds,
+      input.freshness_state,
+      input.freshness_deadline_at,
+      input.runtime_liveness,
+      input.release_state,
+      input.release_observed_at,
+      input.release_age_seconds,
       input.public_detail,
       input.source_error_code,
     ],
@@ -550,7 +609,25 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
 export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObservation> {
   let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>
   try {
-    const inputs = await loadMonitorInputs()
+    const inputs = await readMonitorInputs()
+    const release = await loadNirmanaReleaseStatus()
+    const releaseObservedAt = release.release.observed_at
+    if (!releaseObservedAt || Number.isNaN(Date.parse(releaseObservedAt))) {
+      throw new Error('Release reconciliation has no valid observation timestamp.')
+    }
+    const releaseSha256 = digest({
+      main_sha: release.release.main_sha,
+      deployed_sha: release.release.deployed_sha,
+      deployed_revision: release.release.deployed_revision,
+      production_in_sync: release.release.production_in_sync,
+    })
+    const freshnessDeadlineAt = new Date(
+      Date.parse(inputs.sourceObservedAt) + FRESHNESS_WINDOW_SECONDS * 1000,
+    ).toISOString()
+    const sourceAgeSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - Date.parse(inputs.sourceObservedAt)) / 1000),
+    )
     const comparison = classifyNirmanaDivergence({
       definition: inputs.definition,
       candidate: inputs.candidate,
@@ -558,21 +635,30 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
         selected_catalogue_sha256: inputs.selectedCatalogueSha256,
         selected_catalogue_asset_ids: inputs.selectedCatalogueAssetIds,
         incomplete_label_asset_ids: inputs.incompleteLabelAssetIds,
-        release_in_sync: inputs.releaseInSync,
+        release_in_sync: release.release.production_in_sync,
       },
     })
     observation = {
       ...comparison,
-      candidate_definition_sha256: comparison.candidate_definition_sha256,
-      candidate_catalogue_sha256: comparison.candidate_catalogue_sha256,
-      selected_catalogue_sha256: inputs.selectedCatalogueSha256,
+      selected_catalogue_sha256: inputs.selectedCatalogueSha256 ?? EMPTY_CATALOGUE_SHA256,
       runtime_sha256: inputs.runtimeSha256,
-      release_sha256: inputs.releaseSha256,
+      release_sha256: releaseSha256,
+      source_state: 'available',
+      source_observed_at: inputs.sourceObservedAt,
+      source_age_seconds: sourceAgeSeconds,
+      freshness_state: sourceAgeSeconds <= FRESHNESS_WINDOW_SECONDS ? 'fresh' : 'stale',
+      freshness_deadline_at: freshnessDeadlineAt,
+      runtime_liveness: inputs.runtimeLiveness,
+      release_state: releaseState(release),
+      release_observed_at: releaseObservedAt,
+      release_age_seconds: releaseAgeSeconds(release),
       public_detail: MONITOR_PUBLIC_DETAIL[comparison.status],
       source_error_code: null,
     }
-  } catch (cause) {
-    console.error('[nirmana-elevation] monitor source read failed', { cause })
+  } catch {
+    console.error('[nirmana-elevation] monitor source read failed', {
+      error_code: SOURCE_UNAVAILABLE_CODE,
+    })
     observation = {
       status: 'source_unavailable',
       affected_asset_ids: [],
@@ -584,6 +670,15 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
       selected_catalogue_sha256: null,
       runtime_sha256: null,
       release_sha256: null,
+      source_state: 'unavailable',
+      source_observed_at: null,
+      source_age_seconds: null,
+      freshness_state: 'unavailable',
+      freshness_deadline_at: null,
+      runtime_liveness: 'unavailable',
+      release_state: 'unavailable',
+      release_observed_at: null,
+      release_age_seconds: null,
       public_detail: MONITOR_PUBLIC_DETAIL.source_unavailable,
       source_error_code: SOURCE_UNAVAILABLE_CODE,
     }
