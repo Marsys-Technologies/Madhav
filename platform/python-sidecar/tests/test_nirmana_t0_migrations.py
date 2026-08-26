@@ -41,7 +41,7 @@ def test_sky_calendar_contract_repair_targets_the_existing_relation():
 
 def test_manifest_producer_coverage_matches_multi_registered_writer_classes():
     manifest = json.loads(
-        (PLATFORM_ROOT.parent / "00_ARCHITECTURE" / "control" / "NIRMANA_T0_MANIFEST_v1_0.json").read_text()
+        (PLATFORM_ROOT.parent / "00_ARCHITECTURE" / "control" / "NIRMANA_T0_MANIFEST_v1_1.json").read_text()
     )
     declared = {
         asset["asset_id"]: asset["producer_id"]

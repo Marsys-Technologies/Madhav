@@ -318,7 +318,7 @@ def test_every_frozen_l0_wave0_build_has_a_reviewed_canonical_digest_spec():
     ))
 
     manifest = json.loads(
-        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json").read_text()
+        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_1.json").read_text()
     )
     wave0_builds = {
         asset["asset_id"]
@@ -429,7 +429,7 @@ def test_migration_601_completes_every_frozen_l0_build_digest_spec():
         seeded.update(_migration_specs(platform_root / "supabase/migrations" / filename))
 
     manifest = json.loads(
-        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json").read_text()
+        (repo_root / "00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_1.json").read_text()
     )
     l0_builds = {
         asset["asset_id"]
