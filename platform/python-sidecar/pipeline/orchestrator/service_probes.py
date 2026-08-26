@@ -92,24 +92,87 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
 
 # ── bg_panchanga probe ────────────────────────────────────────────────────────
 
-_FORENSIC_BIRTH = {
-    "instant": "1984-02-05T10:43:00",
-    "lat": 20.27,
-    "lon": 85.84,
-    "tz_offset": 330,
-    "expected": {
-        "tithi": "Shukla Tritiya",
-        "nakshatra": "Purva Bhadrapada",
-        "yoga": "Shiva",
-        "karana": "Garaja",
-        "vara": "Ravivara",
-    },
-}
+_PANCHANGA_EXPECTED_FIELDS = ("tithi", "nakshatra", "yoga", "karana", "vara")
+_PANCHANGA_EXPECTED_FIELD_SET = frozenset(_PANCHANGA_EXPECTED_FIELDS)
+
+
+def _validated_panchanga_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import datetime
+
+    required = {
+        "forensic_instant",
+        "forensic_lat",
+        "forensic_lon",
+        "forensic_tz_offset",
+        "forensic_expected",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_instant = probe_spec["forensic_instant"]
+    if not isinstance(raw_instant, str):
+        raise ValueError("forensic_instant must be an ISO-8601 string")
+    try:
+        instant = datetime.fromisoformat(raw_instant)
+    except ValueError as exc:
+        raise ValueError("forensic_instant must be valid ISO-8601") from exc
+    if instant.tzinfo is not None:
+        raise ValueError("forensic_instant must be local wall time without an embedded offset")
+
+    lat = probe_spec["forensic_lat"]
+    lon = probe_spec["forensic_lon"]
+    tz_offset = probe_spec["forensic_tz_offset"]
+    if isinstance(lat, bool) or not isinstance(lat, (int, float)) or not -90 <= lat <= 90:
+        raise ValueError("forensic_lat must be a number in [-90, 90]")
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) or not -180 <= lon <= 180:
+        raise ValueError("forensic_lon must be a number in [-180, 180]")
+    if isinstance(tz_offset, bool) or not isinstance(tz_offset, int) or not -840 <= tz_offset <= 840:
+        raise ValueError("forensic_tz_offset must be integer minutes in [-840, 840]")
+
+    expected = probe_spec["forensic_expected"]
+    if not isinstance(expected, dict):
+        raise ValueError("forensic_expected must be an object")
+    missing_expected = sorted(_PANCHANGA_EXPECTED_FIELD_SET - expected.keys())
+    if missing_expected:
+        raise ValueError(f"forensic_expected is missing: {', '.join(missing_expected)}")
+    invalid_expected = sorted(
+        field for field in _PANCHANGA_EXPECTED_FIELDS
+        if not isinstance(expected[field], str) or not expected[field].strip()
+    )
+    if invalid_expected:
+        raise ValueError(
+            "forensic_expected values must be non-empty strings: "
+            + ", ".join(invalid_expected)
+        )
+
+    return {
+        "instant": instant,
+        "lat": float(lat),
+        "lon": float(lon),
+        "tz_offset": tz_offset,
+        "expected": {field: expected[field] for field in _PANCHANGA_EXPECTED_FIELDS},
+    }
 
 
 def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_panchanga_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid panchanga health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: single canonical implementation importable
     try:
@@ -121,12 +184,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 
     # Check 2: deterministic FORENSIC smoke — panchanga_instant at birth
     try:
-        from datetime import datetime
         from panchang_engine import panchanga_instant
-        instant = datetime.fromisoformat(_FORENSIC_BIRTH["instant"])
-        result = panchanga_instant(instant, _FORENSIC_BIRTH["lat"], _FORENSIC_BIRTH["lon"],
-                                   _FORENSIC_BIRTH["tz_offset"])
-        expected = _FORENSIC_BIRTH["expected"]
+        result = panchanga_instant(
+            config["instant"], config["lat"], config["lon"], config["tz_offset"]
+        )
+        expected = config["expected"]
         mismatches = []
         for field, exp_val in expected.items():
             actual = getattr(result, field, None)
@@ -154,20 +216,20 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     # the angas ruling at SUNRISE on the same date — a different code path through the
     # engine with a different reference instant. Karana is instant-only and is therefore
     # not asserted here.
-    _DAY_EXPECTED = {"vara": "Ravivara", "tithi": "Shukla Tritiya",
-                     "nakshatra": "Purva Bhadrapada", "yoga": "Shiva"}
+    _DAY_EXPECTED_FIELDS = ("vara", "tithi", "nakshatra", "yoga")
     try:
-        from datetime import date
         from panchang_engine import panchanga_day
-        birth_date = date(1984, 2, 5)
-        result = panchanga_day(birth_date, _FORENSIC_BIRTH["lat"],
-                               _FORENSIC_BIRTH["lon"], _FORENSIC_BIRTH["tz_offset"])
+        birth_date = config["instant"].date()
+        result = panchanga_day(
+            birth_date, config["lat"], config["lon"], config["tz_offset"]
+        )
         day_mismatches: list[str] = []
         if getattr(result, "date", None) != birth_date:
             day_mismatches.append(
                 f"date: got {getattr(result, 'date', None)!r}, expected {birth_date!r}"
             )
-        for field, exp_val in _DAY_EXPECTED.items():
+        day_expected = {field: config["expected"][field] for field in _DAY_EXPECTED_FIELDS}
+        for field, exp_val in day_expected.items():
             actual = getattr(result, field, None)
             actual_name = getattr(actual, "name", actual) if actual is not None else None
             if actual_name != exp_val:

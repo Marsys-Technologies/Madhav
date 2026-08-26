@@ -35,8 +35,25 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from pipeline.orchestrator import service_probes as sp  # noqa: E402
 
 
+_PANCHANGA_SPEC = {
+    "probe_type": "panchanga_engine",
+    "forensic_instant": "1984-02-05T10:43:00",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset": 330,
+    "forensic_expected": {
+        "tithi": "Shukla Tritiya",
+        "nakshatra": "Purva Bhadrapada",
+        "yoga": "Shiva",
+        "karana": "Garaja",
+        "vara": "Ravivara",
+    },
+}
+
+
 def _probe(kind: str) -> dict:
-    return sp.run_health_probe("bg_x", {"probe_type": kind})
+    spec = _PANCHANGA_SPEC if kind == "panchanga_engine" else {"probe_type": kind}
+    return sp.run_health_probe("bg_x", spec)
 
 
 def _check(res: dict, name: str) -> dict:
@@ -112,6 +129,22 @@ def test_ephemeris_reports_which_ephemeris_backend_served_the_position():
 
 def test_panchanga_probe_returns_green():
     assert _probe("panchanga_engine")["status"] == "GREEN"
+
+
+def test_panchanga_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("bg_panchanga", {"probe_type": "panchanga_engine"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_panchanga_probe_executes_the_registered_forensic_instant():
+    wrong_instant = dict(_PANCHANGA_SPEC, forensic_instant="1984-02-06T10:43:00")
+    res = sp.run_health_probe("bg_panchanga", wrong_instant)
+    assert res["status"] != "GREEN", (
+        "the registered forensic instant must drive execution; a hard-coded substitute "
+        "would incorrectly preserve GREEN"
+    )
+    assert _check(res, "forensic_birth_smoke")["passed"] is False
 
 
 def test_panchanga_day_check_asserts_the_sunrise_forensic_angas(monkeypatch):

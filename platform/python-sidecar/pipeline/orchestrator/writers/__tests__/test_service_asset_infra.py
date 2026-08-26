@@ -186,6 +186,7 @@ def test_run_service_health_probe_green_writes_asset_registry():
     conn, cur = _mock_conn_cur()
 
     with patch.object(asset_runner, "emit_event") as mock_emit, \
+         patch.object(asset_runner, "_persist_probe_receipt") as mock_receipt, \
          patch("pipeline.orchestrator.service_probes.run_health_probe",
                return_value={"status": "GREEN", "message": "All checks passed", "checks": []}):
 
@@ -195,6 +196,7 @@ def test_run_service_health_probe_green_writes_asset_registry():
 
     # conn.commit should be called (orchestrator commits for service probes)
     assert conn.commit.called
+    mock_receipt.assert_called_once()
 
     # The execute calls should include UPDATE asset_registry SET service_health=...
     all_sql_calls = [str(c) for c in cur.execute.call_args_list]
