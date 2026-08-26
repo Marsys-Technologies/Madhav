@@ -77,12 +77,53 @@ function unavailableV2(): NirmanaElevationSnapshotV2 {
   return snapshot
 }
 
+function baselineMissingV2(): NirmanaElevationSnapshotV2 {
+  const snapshot = snapshotV2()
+  snapshot.program_sync = {
+    status: 'baseline_missing',
+    source_observation_id: '77777777-7777-4777-8777-777777777777',
+    observed_at: '2026-08-27T05:00:00.000Z',
+    age_seconds: 120,
+    affected_asset_ids: [],
+    current_definition_sha256: null,
+    candidate_definition_sha256: 'd'.repeat(64),
+    candidate_catalogue_sha256: 'e'.repeat(64),
+  }
+  const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+  if (!monitor) throw new Error('Fixture must include the program monitor source.')
+  Object.assign(monitor, {
+    state: 'fresh', observed_at: '2026-08-27T05:00:00.000Z', age_seconds: 120,
+    error_code: null, error_message: null,
+  })
+  return snapshot
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
 describe('NirmanaElevationTracker', () => {
+  it('refreshes the tracker after guarded baseline acceptance succeeds', async () => {
+    const baselineMissing = baselineMissingV2()
+    const synchronized = snapshotV2()
+    let snapshotLoads = 0
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/evidence')) {
+        return Promise.resolve(jsonResponse({ outcome: 'created' }, 201))
+      }
+      snapshotLoads += 1
+      return Promise.resolve(jsonResponse(snapshotLoads === 1 ? baselineMissing : synchronized))
+    }))
+
+    render(<NirmanaElevationTracker />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept current baseline' }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    expect(screen.queryByRole('button', { name: 'Accept current baseline' })).not.toBeInTheDocument()
+  })
+
   it('renders the v2 campaign spine and keeps the audit surface secondary by default', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(snapshotV2())))
 

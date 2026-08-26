@@ -8,6 +8,7 @@ import {
   type NirmanaElevationSnapshotV2,
 } from '@/lib/nirmana-elevation/types'
 import { AuditDrawer } from './AuditDrawer'
+import { BaselineAcceptancePanel } from './BaselineAcceptancePanel'
 import { CampaignSnapshotStrip } from './CampaignSnapshotStrip'
 import { CampaignSpine } from './CampaignSpine'
 import {
@@ -53,7 +54,10 @@ function failureMessage(snapshot: NirmanaElevationSnapshot): string {
   return unavailable?.error_message ?? 'The snapshot source is unavailable.'
 }
 
-function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
+function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
+  snapshot: NirmanaElevationSnapshotV2
+  onBaselineAccepted?: () => void | Promise<void>
+}) {
   const [auditAssetId, setAuditAssetId] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState(false)
   const auditOpener = useRef<HTMLElement | null>(null)
@@ -78,6 +82,11 @@ function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevatio
 
   return <main className="space-y-4">
     <CampaignSnapshotStrip snapshot={snapshot} />
+    <BaselineAcceptancePanel
+      key={snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}
+      snapshot={snapshot}
+      onAccepted={onBaselineAccepted}
+    />
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
       <CampaignSpine snapshot={snapshot} onOpenAudit={openAudit} />
       <NowNextRail snapshot={snapshot} />
@@ -92,14 +101,15 @@ function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevatio
   </main>
 }
 
-export function NirmanaElevationTrackerView({ snapshot, fetchedAt }: {
+export function NirmanaElevationTrackerView({ snapshot, fetchedAt, onBaselineAccepted }: {
   snapshot: NirmanaElevationSnapshot
   fetchedAt: Date
+  onBaselineAccepted?: () => void | Promise<void>
 }) {
   if (snapshot.schema_version === '1.0') {
     return <NirmanaElevationTrackerV1 snapshot={snapshot} fetchedAt={fetchedAt} />
   }
-  return <NirmanaElevationTrackerV2View snapshot={snapshot} />
+  return <NirmanaElevationTrackerV2View snapshot={snapshot} onBaselineAccepted={onBaselineAccepted} />
 }
 
 export function NirmanaElevationTracker({
@@ -197,7 +207,7 @@ export function NirmanaElevationTracker({
         </div>
       </div>
     </aside>}
-    <NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={fetchedAt ?? new Date()} />
-    <p className="flex items-center gap-2 text-xs text-brand-text-3"><ShieldCheck aria-hidden="true" className="size-4" /> Read-only evidence projection · automatic refresh while this page remains open.</p>
+    <NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={fetchedAt ?? new Date()} onBaselineAccepted={refresh} />
+    <p className="flex items-center gap-2 text-xs text-brand-text-3"><ShieldCheck aria-hidden="true" className="size-4" /> Evidence-backed tracker · automatic refresh while this page remains open.</p>
   </div>
 }
