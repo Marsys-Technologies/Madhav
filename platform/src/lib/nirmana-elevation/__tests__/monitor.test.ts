@@ -156,6 +156,30 @@ describe('Nirmana elevation monitor divergence', () => {
     })
   })
 
+  it('treats dependency-array order alone as the same DAG and registry contract', () => {
+    const dependencyRows = [
+      registryRow('bg_alpha', { sort_order: 1, english_name: 'Alpha' }),
+      registryRow('bg_beta', { sort_order: 2, english_name: 'Beta' }),
+      registryRow('bg_target', {
+        depends_on: ['bg_alpha', 'bg_beta'],
+        sort_order: 3,
+        english_name: 'Target',
+      }),
+    ]
+    const current = buildNirmanaBaselineCandidate(dependencyRows)
+    const reordered = buildNirmanaBaselineCandidate(dependencyRows.map((row) => row.asset_id === 'bg_target'
+      ? { ...row, depends_on: ['bg_beta', 'bg_alpha'] }
+      : row))
+
+    expect(classifyNirmanaDivergence({
+      definition: frozenDefinition(current),
+      candidate: reordered,
+      observation: null,
+    })).toMatchObject({ status: 'in_sync', affected_asset_ids: [] })
+    expect(reordered.manifest_sha256).toBe(current.manifest_sha256)
+    expect(reordered.registry_contract_sha256).toBe(current.registry_contract_sha256)
+  })
+
   it('reports an unchanged definition and registry as in sync', () => {
     const candidate = buildNirmanaBaselineCandidate(rows)
 

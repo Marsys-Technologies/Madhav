@@ -143,7 +143,7 @@ export function buildNirmanaBaselineCandidate(rows: NirmanaRegistryContractRow[]
   const manifestWithoutWaves = NirmanaElevationManifestSchema.parse({
     chart_id: CANONICAL_NIRMANA_CHART_ID,
     assets: orderedRows.map((row) => {
-      const dependsOn = [...(row.depends_on ?? [])]
+      const dependsOn = [...(row.depends_on ?? [])].sort()
       const registryFingerprintInput = registryContractFingerprintInput({ ...row, depends_on: dependsOn })
       return {
         asset_id: row.asset_id,
