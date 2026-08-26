@@ -7,17 +7,18 @@
 -- converges all 16 yogas. Read-only production hashes were reproduced by a
 -- clean local writer replay on 2026-08-26.
 --
+-- This logical asset owns five physical tables and deliberately has no single
+-- asset_registry.target_table. natural_key_partition therefore remains NULL:
+-- the registry invariant permits a partition declaration only when one target
+-- table exists, while the exact multi-table keys live in the integrity and
+-- output-digest component contracts.
+--
 -- Registry metadata only; transaction ownership belongs to migrate.ts.
 
 DO $$
 DECLARE
   registry_row asset_registry%ROWTYPE;
   changed_rows integer := 0;
-  partition_contract constant text :=
-    'bg_prashna_lagna_methods.method_id; bg_prashna_tajik_yogas.yoga_id; '
-    'bg_prashna_significators.question_class; '
-    'bg_prashna_fructification_rules.rule_id; '
-    'bg_prashna_special_techniques.technique_id';
   canonical_explanation constant text :=
     '41 rows across 5 prashna sub-tables (5 lagna methods + 16 Tajik yogas + '
     '12 significators + 5 fructification rules + 3 special techniques).';
@@ -95,7 +96,7 @@ BEGIN
       ) OR (
         registry_row.target_floor = 41
         AND registry_row.volume_explanation = canonical_explanation
-        AND registry_row.natural_key_partition = partition_contract
+        AND registry_row.natural_key_partition IS NULL
         AND registry_row.data_disposition IS NULL
         AND registry_row.integrity_check_sql = corpus_check
       )
@@ -107,7 +108,7 @@ BEGIN
   UPDATE asset_registry
   SET target_floor = 41,
       volume_explanation = canonical_explanation,
-      natural_key_partition = partition_contract,
+      natural_key_partition = NULL,
       data_disposition = NULL,
       integrity_check_sql = corpus_check
   WHERE asset_id = 'bg_prashna_rules';
@@ -121,7 +122,7 @@ BEGIN
     WHERE asset_id = 'bg_prashna_rules'
       AND target_floor = 41
       AND volume_explanation = canonical_explanation
-      AND natural_key_partition = partition_contract
+      AND natural_key_partition IS NULL
       AND data_disposition IS NULL
       AND integrity_check_sql = corpus_check
   ) THEN
