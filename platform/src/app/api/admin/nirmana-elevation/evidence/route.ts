@@ -7,9 +7,12 @@ import {
   NirmanaElevationDefinitionConflictError,
   NirmanaElevationEvidenceConflictError,
   NirmanaElevationEvidenceValidationError,
+  NirmanaAssetAnalysisEvidenceSchema,
   NirmanaElevationManifestSchema,
+  NirmanaOptimizationVerdictEvidenceSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
+  supersedeNirmanaElevationDefinition,
 } from '@/lib/nirmana-elevation/definitions'
 
 const campaignId = z.literal('nirmana-elevation')
@@ -56,10 +59,7 @@ const receipt = z.object({
     }
   }
   if (value.event_type === 'asset_analysis_accepted') {
-    const payload = z.object({
-      registry_fingerprint_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-      analysis_digest: z.string().regex(/^[a-f0-9]{64}$/),
-    }).strict().safeParse(value.evidence_payload)
+    const payload = NirmanaAssetAnalysisEvidenceSchema.safeParse(value.evidence_payload)
     if (!payload.success) {
       context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'asset_analysis_accepted requires only registry_fingerprint_sha256 and analysis_digest SHA-256 fields.' })
     }
@@ -68,6 +68,18 @@ const receipt = z.object({
     }
     if (value.layer === null) {
       context.addIssue({ code: 'custom', path: ['layer'], message: 'asset_analysis_accepted requires the asset layer.' })
+    }
+  }
+  if (value.event_type === 'optimization_verdict_accepted') {
+    const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(value.evidence_payload)
+    if (!payload.success) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'optimization_verdict_accepted requires a strict registry/analysis-bound verdict, basis, and proposal.' })
+    }
+    if (value.source_kind !== 'git_commit' || !/^git:[0-9a-f]{40}$/.test(value.source_ref)) {
+      context.addIssue({ code: 'custom', path: ['source_ref'], message: 'optimization_verdict_accepted requires source_kind=git_commit and an exact git:<40-hex> source reference.' })
+    }
+    if (value.layer === null) {
+      context.addIssue({ code: 'custom', path: ['layer'], message: 'optimization_verdict_accepted requires the asset layer.' })
     }
   }
 })
@@ -81,8 +93,17 @@ const definition = z.object({
   manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 })
 const freeze = definition.omit({ command: true, definition_status: true }).extend({ command: z.literal('freeze_definition') })
+const supersede = z.object({
+  command: z.literal('supersede_definition'),
+  campaign_id: campaignId,
+  expected_current_revision: revision,
+  expected_current_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  new_definition_revision: revision,
+  new_manifest: NirmanaElevationManifestSchema,
+  new_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+})
 
-const command = z.discriminatedUnion('command', [definition, freeze, receipt])
+const command = z.discriminatedUnion('command', [definition, freeze, supersede, receipt])
 
 export const dynamic = 'force-dynamic'
 
@@ -124,6 +145,20 @@ export async function POST(request: Request) {
         outcome,
       })
       return NextResponse.json({ outcome }, { status: outcome === 'frozen' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    if (parsed.data.command === 'supersede_definition') {
+      const outcome = await supersedeNirmanaElevationDefinition({ ...parsed.data, created_by: auth.user.uid })
+      await writeAuditLog(auth.user.uid, 'nirmana_definition_recorded', null, {
+        command: 'supersede_definition',
+        campaign_id: parsed.data.campaign_id,
+        expected_current_revision: parsed.data.expected_current_revision,
+        expected_current_manifest_sha256: parsed.data.expected_current_manifest_sha256,
+        new_definition_revision: parsed.data.new_definition_revision,
+        new_manifest_sha256: parsed.data.new_manifest_sha256,
+        outcome,
+      })
+      return NextResponse.json({ outcome }, { status: outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
     }
 
     const outcome = await recordNirmanaElevationEvidence({ ...parsed.data, recorded_by: auth.user.uid })
