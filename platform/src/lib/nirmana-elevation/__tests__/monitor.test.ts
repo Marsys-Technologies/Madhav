@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import type { NirmanaRegistryContractRow } from '../definitions'
+import { canonicalManifestDigest, type NirmanaRegistryContractRow } from '../definitions'
 import { canonicalLabelCatalogueDigest } from '../labels'
 import {
   buildNirmanaBaselineCandidate,
+  canonicalNirmanaRuntimeDigest,
   classifyNirmanaDivergence,
 } from '../monitor'
 
@@ -157,6 +158,29 @@ describe('Nirmana elevation monitor divergence', () => {
     })
   })
 
+  it('reports execution-plan semantic changes as plan adaptation with the exact affected asset', () => {
+    const candidate = buildNirmanaBaselineCandidate(rows)
+    const changedManifest = {
+      ...candidate.manifest,
+      assets: candidate.manifest.assets.map((asset) => asset.asset_id === 'bg_texts'
+        ? { ...asset, execution_obligation: 'probe' as const }
+        : asset),
+    }
+
+    expect(classifyNirmanaDivergence({
+      definition: {
+        definition_status: 'frozen',
+        manifest: changedManifest,
+        manifest_sha256: canonicalManifestDigest(changedManifest),
+      },
+      candidate,
+      observation: null,
+    })).toMatchObject({
+      status: 'plan_adaptation_required',
+      affected_asset_ids: ['bg_texts'],
+    })
+  })
+
   it('treats dependency-array order alone as the same DAG and registry contract', () => {
     const dependencyRows = [
       registryRow('bg_alpha', { sort_order: 1, english_name: 'Alpha' }),
@@ -223,5 +247,22 @@ describe('Nirmana elevation monitor divergence', () => {
       candidate,
       observation: { release_in_sync: false },
     })).toMatchObject({ status: 'release_attention', affected_asset_ids: [] })
+  })
+})
+
+describe('Nirmana elevation monitor runtime digest', () => {
+  it('canonicalizes Date values as ISO instants while preserving timestamp changes', () => {
+    const equivalentInstant = canonicalNirmanaRuntimeDigest({
+      asset_throughput: [{ asset_id: 'bg_texts', last_built_at: new Date('2026-08-26T10:30:00+05:30') }],
+    })
+    const sameInstant = canonicalNirmanaRuntimeDigest({
+      asset_throughput: [{ asset_id: 'bg_texts', last_built_at: new Date('2026-08-26T05:00:00.000Z') }],
+    })
+    const changedInstant = canonicalNirmanaRuntimeDigest({
+      asset_throughput: [{ asset_id: 'bg_texts', last_built_at: new Date('2026-08-26T05:00:01.000Z') }],
+    })
+
+    expect(equivalentInstant).toBe(sameInstant)
+    expect(changedInstant).not.toBe(equivalentInstant)
   })
 })

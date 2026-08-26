@@ -88,8 +88,8 @@ export class NirmanaElevationSourceError extends Error {
   readonly publicCode = 'NIRMANA_SOURCE_UNAVAILABLE' as const
   readonly publicMessage = 'Authoritative source is unavailable.'
 
-  constructor(readonly sourceId: SourceId, options?: { cause?: unknown }) {
-    super('Authoritative Nirmana source query failed.', options)
+  constructor(readonly sourceId: SourceId) {
+    super('Authoritative Nirmana source query failed.')
     this.name = 'NirmanaElevationSourceError'
   }
 }
@@ -98,12 +98,15 @@ async function loadSource<K extends RawSourceId>(sourceId: K, sql: string): Prom
   try {
     const { rows } = await query(sql)
     return { [sourceId]: rows } as Pick<NirmanaElevationRawSources, K>
-  } catch (cause) {
+  } catch {
     const publicSourceId: SourceId = sourceId === 'asset_labels' ? 'asset_label_catalogue'
       : sourceId === 'monitor_observations' ? 'program_monitor'
         : sourceId as SourceId
-    console.error('[nirmana-elevation] authoritative source query failed', { source_id: publicSourceId, cause })
-    throw new NirmanaElevationSourceError(publicSourceId, { cause })
+    console.error('[nirmana-elevation] authoritative source query failed', {
+      source_id: publicSourceId,
+      error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+    })
+    throw new NirmanaElevationSourceError(publicSourceId)
   }
 }
 

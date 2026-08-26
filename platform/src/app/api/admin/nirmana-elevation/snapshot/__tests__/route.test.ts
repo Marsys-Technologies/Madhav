@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextResponse } from 'next/server'
 
 vi.mock('server-only', () => ({}))
@@ -47,6 +47,8 @@ function sourceRows({
 }
 
 describe('GET /api/admin/nirmana-elevation/snapshot', () => {
+  afterEach(() => vi.restoreAllMocks())
+
   beforeEach(() => {
     vi.resetModules()
     queryMock.mockReset()
@@ -161,10 +163,47 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(JSON.stringify(body)).not.toContain('private-db.internal')
     expect(log).toHaveBeenCalledWith(
       '[nirmana-elevation] authoritative source query failed',
-      expect.objectContaining({ source_id: 'asset_registry', cause: expect.any(Error) }),
+      { source_id: 'asset_registry', error_code: 'NIRMANA_SOURCE_UNAVAILABLE' },
     )
+    expect(JSON.stringify(log.mock.calls)).not.toContain('super-secret')
+    expect(JSON.stringify(log.mock.calls)).not.toContain('private-db.internal')
     expect(body.progress.assets_total).toBeNull()
     expect(body.assets).toEqual([])
+  })
+
+  it('sanitizes a secret-shaped program-monitor query failure in both response and logs', async () => {
+    superAdmin()
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(new Error('password=monitor-secret host=monitor-db.internal'))
+    const { GET } = await import('../route')
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source_id: 'program_monitor', state: 'unavailable',
+        error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+        error_message: 'Authoritative source is unavailable.',
+      }),
+    ]))
+    expect(log).toHaveBeenCalledWith(
+      '[nirmana-elevation] authoritative source query failed',
+      { source_id: 'program_monitor', error_code: 'NIRMANA_SOURCE_UNAVAILABLE' },
+    )
+    const exposed = `${JSON.stringify(body)}\n${JSON.stringify(log.mock.calls)}`
+    expect(exposed).not.toContain('monitor-secret')
+    expect(exposed).not.toContain('monitor-db.internal')
   })
 
   it('returns the label catalogue as an explicit unavailable authoritative source before migration application', async () => {

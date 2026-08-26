@@ -84,7 +84,7 @@ describe('Nirmana label catalogue', () => {
       .mockResolvedValueOnce({ rows: [{
         event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
         entity_id: 'labels-v1', layer: null,
-        evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1, audit_provenance: 'normative' },
         source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
       }] })
       .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })

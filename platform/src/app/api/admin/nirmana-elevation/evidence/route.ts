@@ -193,6 +193,7 @@ const labelCatalogue = NirmanaLabelCatalogueInputSchema
   .extend({ command: z.literal('record_label_catalogue') })
 const baselineCandidateAcceptance = z.object({
   command: z.literal('accept_baseline_candidate'),
+  source_observation_id: z.string().uuid(),
   definition_revision: revision,
   expected_candidate_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -310,6 +311,7 @@ export async function POST(request: Request) {
     if (parsed.data.command === 'accept_baseline_candidate') {
       const outcome = await acceptNirmanaBaselineCandidate({
         campaign_id: 'nirmana-elevation',
+        source_observation_id: parsed.data.source_observation_id,
         definition_revision: parsed.data.definition_revision,
         expected_candidate_sha256: parsed.data.expected_candidate_sha256,
         expected_candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
@@ -323,6 +325,7 @@ export async function POST(request: Request) {
       await writeAuditLog(auth.user.uid, 'nirmana_definition_recorded', null, {
         command: 'accept_baseline_candidate',
         campaign_id: 'nirmana-elevation',
+        source_observation_id: parsed.data.source_observation_id,
         definition_revision: parsed.data.definition_revision,
         candidate_manifest_sha256: parsed.data.expected_candidate_sha256,
         candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,

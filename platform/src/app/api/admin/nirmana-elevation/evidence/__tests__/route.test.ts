@@ -51,6 +51,7 @@ const manifestAsset = {
 }
 const manifest = { chart_id: '482012f1-710e-4a25-994a-93821f5871aa', assets: [manifestAsset] }
 const manifest_sha256 = canonicalManifestDigest(manifest)
+const baselineObservationId = '30303030-3030-4030-8030-303030303030'
 const registryRows = [{
   asset_id: manifestAsset.asset_id, layer: 'brahmagyan' as const, depends_on: [], frozen_manifest_asset: manifestAsset,
   sanskrit_name: 'Prashna Niyama', english_name: 'Prashna rules', english_description: 'Governed horary rules.',
@@ -145,6 +146,24 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
         return Promise.resolve({ rows: [] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [{
+          id: baselineObservationId,
+          observed_at: '2026-08-26T05:00:01.000Z',
+          status: 'baseline_missing',
+          current_definition_sha256: null,
+          candidate_definition_sha256: candidate.manifest_sha256,
+          registry_identity_sha256: candidate.registry_identity_sha256,
+          registry_contract_sha256: candidate.registry_contract_sha256,
+          candidate_catalogue_sha256: candidate.catalogue_sha256,
+          source_state: 'available',
+          source_observed_at: '2026-08-26T05:00:00.000Z',
+          freshness_state: 'fresh',
+          freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+          source_error_code: null,
+          currently_fresh: true,
+        }] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: registryRows })
       if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
         return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
@@ -170,6 +189,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'accept_baseline_candidate', definition_revision: 'ntap-v1',
+      source_observation_id: baselineObservationId,
       expected_candidate_sha256: candidate.manifest_sha256,
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
     }))
@@ -187,6 +207,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, {
       command: 'accept_baseline_candidate',
       campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',
+      source_observation_id: baselineObservationId,
       candidate_manifest_sha256: candidate.manifest_sha256,
       candidate_catalogue_sha256: candidate.catalogue_sha256,
       outcome: 'created',
@@ -201,6 +222,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'accept_baseline_candidate', definition_revision: 'ntap-v1',
+      source_observation_id: baselineObservationId,
       expected_candidate_sha256: 'a'.repeat(64),
       expected_candidate_catalogue_sha256: 'b'.repeat(64),
     }))
@@ -212,6 +234,20 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(mutationRateLimitMock).toHaveBeenCalledWith('admin:nirmana_accept_baseline_candidate:admin-1')
     expect(transactionQueryMock).not.toHaveBeenCalled()
     expect(auditMock).not.toHaveBeenCalled()
+  })
+
+  it('requires the exact monitor observation identity for baseline acceptance', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'accept_baseline_candidate', definition_revision: 'ntap-v1',
+      expected_candidate_sha256: 'a'.repeat(64),
+      expected_candidate_catalogue_sha256: 'b'.repeat(64),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(mutationRateLimitMock).not.toHaveBeenCalled()
+    expect(transactionQueryMock).not.toHaveBeenCalled()
   })
 
   it('does not record a label catalogue for a non-super-admin request', async () => {

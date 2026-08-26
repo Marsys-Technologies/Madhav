@@ -28,6 +28,17 @@ export const NirmanaLabelCatalogueInputSchema = z.object({
   recorded_by: z.string().min(1),
 }).strict()
 
+const NirmanaBaselineReceiptProvenanceSchema = z.object({
+  source_observation_id: z.string().uuid(),
+  source_observation_observed_at: z.string().datetime(),
+  source_snapshot_observed_at: z.string().datetime(),
+  source_freshness_deadline_at: z.string().datetime(),
+  candidate_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  registry_identity_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  registry_contract_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
+
 function stableJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
@@ -50,14 +61,24 @@ export function canonicalLabelCatalogueDigest(labels: z.infer<typeof NirmanaAsse
 export async function recordNirmanaElevationLabelCatalogueInTransaction(
   client: PoolClient,
   raw: z.input<typeof NirmanaLabelCatalogueInputSchema>,
+  rawBaselineProvenance?: z.input<typeof NirmanaBaselineReceiptProvenanceSchema>,
 ): Promise<'created' | 'idempotent'> {
   const input = NirmanaLabelCatalogueInputSchema.parse(raw)
+  const baselineProvenance = rawBaselineProvenance === undefined
+    ? undefined
+    : NirmanaBaselineReceiptProvenanceSchema.parse(rawBaselineProvenance)
   const digest = canonicalLabelCatalogueDigest(input.labels)
   if (digest !== input.catalogue_sha256) throw new Error('Label catalogue digest mismatch.')
 
   const revisionIdentity = `${input.campaign_id}:${input.definition_revision}:${input.catalogue_revision}`
   const receiptIdempotencyKey = `asset-label-catalogue:${input.catalogue_revision}`
   const receiptSourceRef = `label_catalogue:${input.catalogue_revision}`
+  const receiptEvidencePayload = {
+    catalogue_sha256: digest,
+    asset_count: input.labels.length,
+    audit_provenance: 'normative',
+    ...baselineProvenance,
+  }
   await client.query(
     'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
     [revisionIdentity],
@@ -102,8 +123,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     && existingReceiptRow.source_ref === receiptSourceRef
   if (existingReceiptRow
     && (!exactReceiptIdentity
-      || existingReceiptRow.evidence_payload.catalogue_sha256 !== digest
-      || existingReceiptRow.evidence_payload.asset_count !== input.labels.length)) {
+      || stableJson(existingReceiptRow.evidence_payload) !== stableJson(receiptEvidencePayload))) {
     throw new Error('Label catalogue revision conflicts with an existing receipt.')
   }
   const existingLabels = await client.query(
@@ -150,13 +170,11 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     [input.campaign_id, input.definition_revision,
       receiptIdempotencyKey,
       input.catalogue_revision, JSON.stringify({
-        catalogue_sha256: digest,
-        asset_count: input.labels.length,
+        ...receiptEvidencePayload,
         // This append-only campaign receipt is the normative acceptance audit:
         // it is actor-attributed and commits atomically with the frozen
         // definition and label rows. admin_audit_log is only a best-effort
         // operator index and is not part of this transaction.
-        audit_provenance: 'normative',
       }),
       receiptSourceRef, input.recorded_by],
   )

@@ -89,6 +89,31 @@ function registryRowsFor(candidate: typeof manifest | typeof reconciledT0Manifes
   }))
 }
 
+const baselineObservationId = '30303030-3030-4030-8030-303030303030'
+
+function baselineObservationFor(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: baselineObservationId,
+    observed_at: '2026-08-26T05:00:01.000Z',
+    status: 'baseline_missing',
+    current_definition_sha256: null,
+    candidate_definition_sha256: candidate.manifest_sha256,
+    registry_identity_sha256: candidate.registry_identity_sha256,
+    registry_contract_sha256: candidate.registry_contract_sha256,
+    candidate_catalogue_sha256: candidate.catalogue_sha256,
+    source_state: 'available',
+    source_observed_at: '2026-08-26T05:00:00.000Z',
+    freshness_state: 'fresh',
+    freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+    source_error_code: null,
+    currently_fresh: true,
+    ...overrides,
+  }
+}
+
 function useEvidenceTransaction({
   existing = [],
   current = true,
@@ -136,6 +161,9 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
         return Promise.resolve({ rows: [] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
       if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
         return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
@@ -161,6 +189,7 @@ describe('Nirmana elevation definition repository', () => {
 
     await expect(acceptNirmanaBaselineCandidate({
       campaign_id: 'nirmana-elevation',
+      source_observation_id: baselineObservationId,
       definition_revision: 'ntap-v1',
       expected_candidate_sha256: candidate.manifest_sha256,
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
@@ -170,6 +199,7 @@ describe('Nirmana elevation definition repository', () => {
     const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
     expect(transactionSql).toEqual(expect.arrayContaining([
       expect.stringContaining('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE'),
+      expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
       expect.stringContaining('INSERT INTO nirmana_elevation_campaign_definitions'),
       expect.stringContaining("SET definition_status = 'frozen'"),
       expect.stringContaining('INSERT INTO nirmana_elevation_asset_labels'),
@@ -177,6 +207,21 @@ describe('Nirmana elevation definition repository', () => {
     ]))
     expect(transactionSql.join('\n')).not.toContain('stage_transition_accepted')
     expect(transactionSql.join('\n')).not.toContain('asset_frozen')
+    const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+    expect(JSON.parse(String(receiptCall?.[1]?.[4]))).toEqual({
+      catalogue_sha256: candidate.catalogue_sha256,
+      asset_count: candidate.labels.length,
+      audit_provenance: 'normative',
+      source_observation_id: baselineObservationId,
+      source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+      source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+      source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+    })
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
@@ -196,6 +241,9 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
         return Promise.resolve({ rows: [] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
       if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
         return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
@@ -221,6 +269,7 @@ describe('Nirmana elevation definition repository', () => {
 
     await expect(acceptNirmanaBaselineCandidate({
       campaign_id: 'nirmana-elevation',
+      source_observation_id: baselineObservationId,
       definition_revision: 'ntap-v1',
       expected_candidate_sha256: candidate.manifest_sha256,
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
@@ -250,17 +299,72 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
         return Promise.resolve({ rows: [] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
       throw new Error(`Unexpected SQL: ${statement}`)
     })
 
     await expect(acceptNirmanaBaselineCandidate({
-      campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
       expected_candidate_sha256: 'f'.repeat(64),
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
       created_by: 'admin-1',
     })).rejects.toThrow(/candidate changed/i)
     expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql))).toContain('ROLLBACK')
+  })
+
+  it('rejects a baseline candidate sourced from an observation that is no longer fresh', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules',
+      sanskrit_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate, { currently_fresh: false })] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1', expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256, created_by: 'admin-1',
+    })).rejects.toThrow(/fresh/i)
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_elevation_campaign_definitions')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_elevation_asset_labels')
   })
 
   it('returns idempotent only for an exact frozen candidate and exact accepted catalogue receipt', async () => {
@@ -283,6 +387,9 @@ describe('Nirmana elevation definition repository', () => {
           created_by: 'admin-1', superseded_at: null,
         }] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
       if (statement.includes('SELECT definition_status, manifest')) {
         return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
@@ -292,7 +399,17 @@ describe('Nirmana elevation definition repository', () => {
           event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
           entity_id: 'ntap-v1', layer: null,
           evidence_payload: {
-            catalogue_sha256: candidate.catalogue_sha256, asset_count: candidate.labels.length,
+            catalogue_sha256: candidate.catalogue_sha256,
+            asset_count: candidate.labels.length,
+            audit_provenance: 'normative',
+            source_observation_id: baselineObservationId,
+            source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+            source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+            source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+            candidate_manifest_sha256: candidate.manifest_sha256,
+            registry_identity_sha256: candidate.registry_identity_sha256,
+            registry_contract_sha256: candidate.registry_contract_sha256,
+            candidate_catalogue_sha256: candidate.catalogue_sha256,
           },
           source_kind: 'governed_catalogue', source_ref: 'label_catalogue:ntap-v1',
         }] })
@@ -304,7 +421,7 @@ describe('Nirmana elevation definition repository', () => {
     })
 
     await expect(acceptNirmanaBaselineCandidate({
-      campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
       expected_candidate_sha256: candidate.manifest_sha256,
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
       created_by: 'admin-1',
@@ -312,6 +429,65 @@ describe('Nirmana elevation definition repository', () => {
     const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql)).join('\n')
     expect(transactionSql).not.toContain('INSERT INTO nirmana_elevation_campaign_definitions')
     expect(transactionSql).not.toContain('INSERT INTO nirmana_elevation_asset_labels')
+  })
+
+  it('rejects an idempotency replay when the normative receipt names a different source observation', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules', sanskrit_name: null, english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [{
+          definition_revision: 'ntap-v1', definition_status: 'frozen',
+          manifest: candidate.manifest, manifest_sha256: candidate.manifest_sha256,
+          created_by: 'admin-1', superseded_at: null,
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+          entity_id: 'ntap-v1', layer: null,
+          evidence_payload: {
+            catalogue_sha256: candidate.catalogue_sha256,
+            asset_count: candidate.labels.length,
+            audit_provenance: 'normative',
+            source_observation_id: '40404040-4040-4040-8040-404040404040',
+            source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+            source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+            source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+            candidate_manifest_sha256: candidate.manifest_sha256,
+            registry_identity_sha256: candidate.registry_identity_sha256,
+            registry_contract_sha256: candidate.registry_contract_sha256,
+            candidate_catalogue_sha256: candidate.catalogue_sha256,
+          },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:ntap-v1',
+        }] })
+      }
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: candidate.labels.length, digest_matches: true }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1', expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256, created_by: 'admin-1',
+    })).rejects.toThrow(/exact accepted label catalogue/i)
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql))).toContain('ROLLBACK')
   })
 
   it('loses a competing-current-definition race as a conflict without creating baseline state', async () => {
@@ -331,12 +507,15 @@ describe('Nirmana elevation definition repository', () => {
           manifest_sha256: canonicalManifestDigest(manifest), created_by: 'other-admin', superseded_at: null,
         }] })
       }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
       throw new Error(`Unexpected SQL: ${statement}`)
     })
 
     await expect(acceptNirmanaBaselineCandidate({
-      campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
       expected_candidate_sha256: candidate.manifest_sha256,
       expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
       created_by: 'admin-1',

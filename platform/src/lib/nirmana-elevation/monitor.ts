@@ -41,6 +41,7 @@ const layerRanks = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4, L5: 5 } as const
 
 function stableJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (value instanceof Date) return JSON.stringify(value.toISOString())
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
   const object = value as Record<string, unknown>
   return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`).join(',')}}`
@@ -48,6 +49,10 @@ function stableJson(value: unknown): string {
 
 function digest(value: unknown): string {
   return createHash('sha256').update(stableJson(value)).digest('hex')
+}
+
+export function canonicalNirmanaRuntimeDigest(value: unknown): string {
+  return digest(value)
 }
 
 const NirmanaBaselineLabelSchema = z.object({
@@ -303,6 +308,26 @@ function affectedContractAssets(
     .sort()
 }
 
+function affectedPlanAssets(
+  current: NirmanaElevationManifest,
+  candidate: NirmanaElevationManifest,
+): string[] {
+  const planById = (manifest: NirmanaElevationManifest) => new Map(manifest.assets.map((asset) => [
+    asset.asset_id,
+    stableJson({
+      wave_index: asset.wave_index ?? null,
+      execution_obligation: asset.execution_obligation ?? null,
+      producer_id: asset.producer_id ?? null,
+      covered_asset_ids: [...(asset.covered_asset_ids ?? [])].sort(),
+    }),
+  ]))
+  const currentById = planById(current)
+  const candidateById = planById(candidate)
+  return [...new Set([...currentById.keys(), ...candidateById.keys()])]
+    .filter((assetId) => currentById.get(assetId) !== candidateById.get(assetId))
+    .sort()
+}
+
 function statusResult(
   status: NirmanaMonitorStatusCode,
   candidate: NirmanaBaselineCandidate,
@@ -358,6 +383,11 @@ export function classifyNirmanaDivergence(input: {
       currentDigest,
       affectedContractAssets(currentManifest, candidate.manifest),
     )
+  }
+
+  const planDrift = affectedPlanAssets(currentManifest, candidate.manifest)
+  if (planDrift.length > 0) {
+    return statusResult('plan_adaptation_required', candidate, currentDigest, planDrift)
   }
 
   const candidateLabelAssetIds = candidate.labels.map((label) => label.asset_id)
@@ -514,7 +544,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
       ORDER BY bsp.asset_id, bsp.substep_key`,
     [CANONICAL_NIRMANA_CHART_ID],
   )
-  const runtimeSha256 = digest({
+  const runtimeSha256 = canonicalNirmanaRuntimeDigest({
     asset_throughput: throughput.rows,
     build_runs: runs.rows,
     build_run_assets: runAssets.rows,
