@@ -1,6 +1,6 @@
 ---
 artifact: PARIPRASHNA_AUTONOMOUS_EXECUTION_ELEVATION
-version: 1.0
+version: 1.1
 status: CURRENT — the execution layer over the CURRENT master test plan
   (PARIPRASHNA_EXPERIENCE_ASSURANCE_TEST_PLAN_v2_1.md). Governs HOW the
   campaign runs (autonomy, swarm roles, sessions, tracker integration,
@@ -26,6 +26,21 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/templates/STREAM_RESULT_PACKET_TEMPLATE.md
   - /Users/Dev/Documents/Pariprashna-Handoff/PARIPRASHNA_CODEX_TO_CLAUDE_CODE_HANDOFF_v1_0.md
 changelog:
+  - "1.1 (2026-08-27, Claude Code wrap-up session): sequencing decision — the
+    tracker-elevation build (originally scoped as Session A's own Phase A1,
+    §5.1/§7) is pulled OUT of Session A and run instead as its own dedicated
+    session BEFORE Session A opens, per native direction 2026-08-27: a clean
+    go/no-go checkpoint before committing to an 8h autonomous Session A run,
+    rather than discovering a tracker-build failure partway through it. §7's
+    phase table now states this as a precondition Session A's A0 VERIFIES
+    (PR merge SHA, launchd job confirmation, freshness-proof timestamp,
+    plan-revision-2 registration) rather than performs; §5.1 and §5.3.2
+    reworded to match (the precondition session registers plan revision 2 for
+    its own scope change; Session A's A0 registers plan revision 3 for the
+    elevation-onto-registry mapping previously called revision 2); §11.3's
+    Session A kickoff prompt gains a 'Tracker precondition' block with
+    placeholders for the evidence, to be filled once the precondition session
+    closes and hands its result to Session A."
   - "1.0 (2026-08-27, Claude Code / Fable): initial elevation, authored from a
     line-by-line review of test plan v2.1 (§1 findings) under the native's
     autonomy directive."
@@ -172,16 +187,21 @@ The rules:
 
 ### 5.1 The tracker comes first, not alongside
 
-Session A's Phase A1 (before ANY campaign work item) completes the tracker's
-autonomous synchronization: replay the `elevation_worker.py` candidate
-(`codex/pariprashna-shadow-sync` @ `5f30acf4d` — 2 files, ~260 lines, zero
-drift against current main in its directory as verified 2026-08-27) onto
-fresh main; failing integration test first (source age must advance with NO
-manual API call); protected PR; attested release; shadow-scoped launchd
-worker; then a no-manual-refresh observation window in which every configured
-source (codex/github/git-worktree/runtime/tests, EDIR) stays inside its
-freshness budget or visibly degrades. Only when the tracker demonstrably
-cannot go stale on its own does campaign work begin. This is the direct
+A dedicated tracker-elevation precondition session, run BEFORE Session A
+opens (2026-08-27 sequencing decision — this was originally scoped as
+Session A's own Phase A1; native direction pulled it out as a standalone
+go/no-go checkpoint ahead of the 8h autonomous run; see §7 and §12
+changelog), completes the tracker's autonomous synchronization: replay the
+`elevation_worker.py` candidate (`codex/pariprashna-shadow-sync` @
+`5f30acf4d` — 2 files, ~260 lines, zero drift against current main in its
+directory as verified 2026-08-27) onto fresh main; failing integration test
+first (source age must advance with NO manual API call); protected PR;
+attested release; shadow-scoped launchd worker; then a no-manual-refresh
+observation window in which every configured source
+(codex/github/git-worktree/runtime/tests, EDIR) stays inside its freshness
+budget or visibly degrades. Only when the tracker demonstrably cannot go
+stale on its own does campaign work begin — Session A's A0 phase VERIFIES
+this evidence (§7) rather than re-performing the build. This is the direct
 answer to "the tracker generally diverges."
 
 ### 5.2 Every lifecycle transition is an event
@@ -204,11 +224,15 @@ The adapt-to-change requirement, made mechanical:
    revision via the tracker's plan registry (the E4 engine the merged
    foundation already contains), THEN executed. Work against an unregistered
    scope change is invalid work.
-2. Session A registers **plan revision 2** at its open: mapping this
-   elevation onto the registry — the P2 blocker denominator as work items,
-   S1–S6 charters as stream scopes, the P-PIPE/P-PORTAL/P-GUIDED catalogues
-   flipped from `historical-observation-only` to `current-assurance`, G5
-   split into G5a/G5b, and the G→CG crosswalk of §4.
+2. The tracker-elevation precondition session (§5.1, §7) registers **plan
+   revision 2** at its own open, covering its own scope change (the A1
+   sequencing pull-out itself, plus the tracker-fix work). Session A's A0
+   VERIFIES revision 2 is live (§7) and then registers **plan revision 3** at
+   its own open: mapping this elevation onto the registry — the P2 blocker
+   denominator as work items, S1–S6 charters as stream scopes, the
+   P-PIPE/P-PORTAL/P-GUIDED catalogues flipped from
+   `historical-observation-only` to `current-assurance`, G5 split into
+   G5a/G5b, and the G→CG crosswalk of §4.
 3. Displayed completion is allowed to DROP when a revision honestly grows the
    denominator; hiding that is the named anti-pattern.
 4. Old revisions stay replayable; no revision rewrites history.
@@ -283,12 +307,24 @@ with `provenance: E-nnn`.
 ## 7 — Session A: the autonomous pre-stream campaign session
 
 One session, model per §Model table, running the swarm internally with
-parallel lanes where dependencies allow. No human gates. Phases:
+parallel lanes where dependencies allow. No human gates. Session A opens
+only after the precondition below is satisfied.
+
+**Precondition — tracker-elevation build (satisfied by a separate, dedicated
+session run BEFORE Session A opens; originally scoped as this session's own
+Phase A1, pulled out 2026-08-27 as a standalone go/no-go checkpoint ahead of
+the 8h autonomous run — see §5.1, §5.3.2, §12 changelog):** §5.1 in full —
+worker replay → failing test → PR → CI → merge → attested release → launchd
+worker → no-manual-refresh freshness proof → completed-session liveness
+defect fixed → snapshot/restore re-proof; E7 packet assembled; cutover
+decision per §3.1 (either way, recorded); plan revision 2 registered
+(§5.3.2). Exit evidence Session A's A0 must confirm: a PR merge SHA, launchd
+job (`com.marsys.pariprashna-assurance-control`) confirmation, a
+freshness-proof timestamp, and the plan-revision-2 registration.
 
 | Phase | Content | Exit |
 |---|---|---|
-| **A0 — Open** | Repo session law (fresh worktree from origin/main; AGENTS.md + CLAUDE.md handshake; may_touch/must_not_touch declared). Re-derive live truth: main SHA, both tracker states, worktree/branch inventory, deployed revision. Register tracker plan revision 2 (§5.3.2). Emit session-open event. | Truth re-derived and evented; revision 2 live. |
-| **A1 — Tracker autonomy** | §5.1 in full: worker replay → failing test → PR → CI → merge → attested release → launchd worker → no-manual-refresh freshness proof → completed-session liveness defect fixed → snapshot/restore re-proof. E7 packet assembled; cutover decision per §3.1 (either way, recorded). | Tracker demonstrably self-synchronizing; all sources within budget. |
+| **A0 — Open** | Repo session law (fresh worktree from origin/main; AGENTS.md + CLAUDE.md handshake; may_touch/must_not_touch declared). Re-derive live truth: main SHA, both tracker states, worktree/branch inventory, deployed revision. **Verify the tracker-elevation precondition** (above): confirm the PR merge SHA, launchd job confirmation, freshness-proof timestamp, and plan-revision-2 registration are all live and consistent with what this session observes; if any is missing, stale, or contradicted, self-pause (§10) rather than proceed — do NOT perform the tracker build inline. Register tracker plan revision 3, mapping this elevation onto the registry (§5.3.2). Emit session-open event. | Precondition verified (not built); truth re-derived and evented; revision 3 live. |
 | **A2 — CRED** | R-1 credential lane: attempt self-provisioning via existing infra; scope-prove with cross-chart denial; else file the named native input and mark P-PORTAL lanes degraded-honest. | Credential working+scope-proven, or honestly degraded with the single ask documented. |
 | **A3 — ABSORB** | §6 census and dispositions; SALVAGE lanes landed through PRs; EDIR_V3 opened and seeded. | Every branch dispositioned in tracker; V3 register live. |
 | **A4 — P2 clearance** | `work_started` on P2. Freeze blocker denominator (intake's B-001..B-006 ± absorption-surfaced additions via plan revision). Per blocker: reproduce on current artifact → smallest governed fix → independent verify at named rung → PR/CI/merge → deployed re-proof. B-006 stays parked to P6 per its own boundary. Exposure/authz/consent first (B-001, B-002), then B-003/B-004/B-005. | Every required blocker independently accepted. |
@@ -296,9 +332,10 @@ parallel lanes where dependencies allow. No human gates. Phases:
 | **A6 — Stop + prompt emission** | Fill the six §11.2 prompt templates with pinned values. Emit session-close + handoff packet. **STOP. Do not dispatch streams.** | Six ready-to-paste prompts delivered to the native. |
 
 Ceilings: 8h wall-clock (historical precedent), self-pause per §10 if hit.
-Sequencing note: A1 blocks everything (tracker first); A2/A3 may run as
-parallel lanes after A1; A4 consumes A3's P2-relevant dispositions; A5–A6
-are sequential.
+Sequencing note: the tracker-elevation precondition blocks Session A from
+opening at all (tracker first, now outside the session, verified not built
+at A0); within Session A, A2/A3 may run as parallel lanes once A0 clears;
+A4 consumes A3's P2-relevant dispositions; A5–A6 are sequential.
 
 ## 8 — The six stream sessions (P3)
 
@@ -471,16 +508,29 @@ Governing documents — read IN FULL, in order, before any substantive action:
 5. /Users/Dev/Documents/Pariprashna-Handoff/PARIPRASHNA_CODEX_TO_CLAUDE_CODE_HANDOFF_v1_0.md
    (state map; its authority boundaries are superseded ONLY where elevation §2/§3 says so).
 
+Tracker precondition (2026-08-27 sequencing decision, elevation §5.1/§7/§12) — verify this at
+A0 BEFORE proceeding to A2; do NOT perform the tracker build yourself, it runs as its own
+dedicated session before this one:
+- PR merge SHA (tracker worker landing): {{tracker_precondition_pr_merge_sha}}
+- launchd job confirmation (com.marsys.pariprashna-assurance-control loaded and running):
+  {{tracker_precondition_launchd_confirmation}}
+- Freshness-proof timestamp (no-manual-refresh observation window result):
+  {{tracker_precondition_freshness_proof_timestamp}}
+- Plan-revision-2 registration id (tracker plan registry):
+  {{tracker_precondition_plan_revision_2_id}}
+If any placeholder above is unfilled, missing, or contradicted by what you observe live at A0,
+self-pause per elevation §10 (packet, event, STOP) rather than proceeding or attempting the
+build inline.
+
 Hard frame:
 - Work exclusively in fresh worktrees cut from current origin/main. Never build in
   /Users/Dev/Vibe-Coding/Apps/Madhav's shared checkout, campaign/nirmana-autonomous, or any
-  historical Paripraśna worktree. Two clean prepped worktrees exist and may be fast-forwarded
-  and reused: .clone/worktrees/pariprashna-tracker-elevation-worker (Phase A1) and
-  .clone/worktrees/pariprashna-assurance-p2 (Phase A4); their .claude/KICKOFF_BRIEF.md files
-  carry verified context.
-- Tracker first (elevation §5.1): Phase A1 makes the tracker self-synchronizing before ANY
-  campaign work. The accepted tracker is 127.0.0.1:8787; shadow is 127.0.0.1:8788; the worker
-  candidate is codex/pariprashna-shadow-sync @ 5f30acf4d.
+  historical Paripraśna worktree. A clean prepped worktree exists and may be fast-forwarded and
+  reused: .clone/worktrees/pariprashna-assurance-p2 (Phase A4); its .claude/KICKOFF_BRIEF.md
+  carries verified context. (.clone/worktrees/pariprashna-tracker-elevation-worker was the
+  precondition session's own worktree, not Session A's — do not build in it.)
+- Tracker precondition already satisfied (above) — verify, do not rebuild. The accepted tracker
+  is 127.0.0.1:8787; shadow is 127.0.0.1:8788.
 - Spawn the swarm per elevation §11.1 (Native Surrogate on Opus/high for all decisions the
   elevation delegates; verifiers independent of finders/fixers; Haiku for mechanical lanes).
   Register distinct tracker actors per role.
