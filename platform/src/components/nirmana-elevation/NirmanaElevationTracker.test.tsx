@@ -134,8 +134,22 @@ describe('NirmanaElevationTracker', () => {
 
   it('renders only bounded public references for arbitrary schema-v1 evidence refs', () => {
     const unsafeSnapshot = structuredClone(snapshotV1)
+    const buildRunId = '11111111-1111-4111-8111-111111111111'
+    const digest = 'a'.repeat(64)
     unsafeSnapshot.assets[0].evidence_refs = [
-      'run:42',
+      `run:${buildRunId}`,
+      `build_run:${buildRunId}`,
+      `sha:${digest}`,
+      'stage:T0_CENSUS',
+      'foundation:A',
+      'event:asset_frozen',
+      `receipt:asset_frozen:${buildRunId}`,
+      `campaign_event:${buildRunId}`,
+      'source:db.private.internal:5432',
+      'run:10.0.0.8:5432',
+      'sha:not-a-hash',
+      'event:tracker_admin',
+      'receipt:asset_frozen:private-token',
       'postgresql://tracker_admin:secret-password@db.private.internal/nirmana',
       'https://tracker_admin@db.private.internal/evidence?token=private-token',
       'authorization=Bearer private-token',
@@ -148,8 +162,17 @@ describe('NirmanaElevationTracker', () => {
 
     render(<NirmanaElevationTrackerView snapshot={unsafeSnapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
 
-    expect(screen.getByText('run:42')).toBeInTheDocument()
-    expect(screen.getAllByText('redacted:unsafe-reference')).toHaveLength(8)
+    for (const reference of [
+      `run:${buildRunId}`,
+      `build_run:${buildRunId}`,
+      `sha:${digest}`,
+      'stage:T0_CENSUS',
+      'foundation:A',
+      'event:asset_frozen',
+      `receipt:asset_frozen:${buildRunId}`,
+      `campaign_event:${buildRunId}`,
+    ]) expect(screen.getByText(reference)).toBeInTheDocument()
+    expect(screen.getAllByText('redacted:unsafe-reference')).toHaveLength(13)
     expect(document.body).not.toHaveTextContent('secret-password')
     expect(document.body).not.toHaveTextContent('db.private.internal')
     expect(document.body).not.toHaveTextContent('tracker_admin')
@@ -158,6 +181,8 @@ describe('NirmanaElevationTracker', () => {
     expect(document.body).not.toHaveTextContent('ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD')
     expect(document.body).not.toHaveTextContent('sk-proj-abcdefghijklmnopqrstuvwxyz1234567890')
     expect(document.body).not.toHaveTextContent('a'.repeat(600))
+    expect(document.body).not.toHaveTextContent('10.0.0.8')
+    expect(document.body).not.toHaveTextContent('not-a-hash')
   })
 
   it('does not copy a credential-bearing v1 source error into the unavailable banner', async () => {

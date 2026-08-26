@@ -1,18 +1,36 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, XCircle } from 'lucide-react'
 import type { NirmanaElevationSnapshotV1 } from '@/lib/nirmana-elevation/types'
+import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 export const NIRMANA_V1_PUBLIC_SOURCE_ERROR = 'Authoritative source is unavailable.'
 export const NIRMANA_V1_PUBLIC_ASSET_BLOCKER = 'Accepted asset execution requires attention.'
 export const NIRMANA_V1_PUBLIC_EVIDENCE_REFERENCE = 'redacted:unsafe-reference'
 
-const V1_PUBLIC_REFERENCE = /^(?:run|sha|event|build_run|stage|foundation|source|catalogue|label_catalogue|release|receipt):[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$/
-const V1_SENSITIVE_REFERENCE = /(?:password|passwd|token|secret|api[_-]?key|authorization|host|user(?:name|info)?)\s*[=:]|bearer\s|BEGIN [A-Z ]*PRIVATE KEY|[a-z][a-z0-9+.-]*:\/\/|(?:gh[pousr]_|github_pat_|sk-(?:proj-)?|xox[baprs]-)[A-Za-z0-9_-]{16,}|AKIA[A-Z0-9]{16}/i
+const V1_UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+const V1_PUBLIC_BUILD_RUN_REFERENCE = new RegExp(`^(?:run|build_run):${V1_UUID}$`)
+const V1_PUBLIC_SHA_REFERENCE = /^sha:[a-f0-9]{64}$/
+const V1_PUBLIC_STAGE_REFERENCES = new Set(NIRMANA_STAGE_IDS.map((stage) => `stage:${stage}`))
+const V1_PUBLIC_FOUNDATION_REFERENCES = new Set(['A', 'B', 'C', 'D', 'E'].map((lane) => `foundation:${lane}`))
+const V1_PUBLIC_EVENT_TYPES = new Set([
+  'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+  'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen', 'probe_accepted',
+  'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition',
+  'producer_covered', 'stage_transition_accepted', 'foundation_lane_accepted',
+  'asset_label_catalogue_accepted', 'build_run_authorized',
+])
+const V1_PUBLIC_EVENT_REFERENCES = new Set([...V1_PUBLIC_EVENT_TYPES].map((eventType) => `event:${eventType}`))
+const V1_PUBLIC_RECEIPT_REFERENCE = new RegExp(`^receipt:(${[...V1_PUBLIC_EVENT_TYPES].join('|')}):${V1_UUID}$`)
+const V1_PUBLIC_CAMPAIGN_EVENT_REFERENCE = new RegExp(`^campaign_event:${V1_UUID}$`)
 
 function publicEvidenceReference(value: string): string {
   const trimmed = value.trim()
-  return trimmed.length <= 128
-    && V1_PUBLIC_REFERENCE.test(trimmed)
-    && !V1_SENSITIVE_REFERENCE.test(trimmed)
+  return (V1_PUBLIC_BUILD_RUN_REFERENCE.test(trimmed)
+    || V1_PUBLIC_SHA_REFERENCE.test(trimmed)
+    || V1_PUBLIC_STAGE_REFERENCES.has(trimmed)
+    || V1_PUBLIC_FOUNDATION_REFERENCES.has(trimmed)
+    || V1_PUBLIC_EVENT_REFERENCES.has(trimmed)
+    || V1_PUBLIC_RECEIPT_REFERENCE.test(trimmed)
+    || V1_PUBLIC_CAMPAIGN_EVENT_REFERENCE.test(trimmed))
     ? trimmed
     : NIRMANA_V1_PUBLIC_EVIDENCE_REFERENCE
 }
