@@ -48,6 +48,14 @@ REGISTRY_CONTRACT_FIELDS = (
     "data_disposition",
     "dead_flag",
 )
+BUILD_AUTHORIZING_VERDICTS = frozenset(
+    {
+        "optimize",
+        "correct",
+        "optimize_and_correct",
+        "examined_and_already_efficient",
+    }
+)
 WRITER_DIGESTS_PATH = (
     Path(__file__).resolve().parents[1]
     / "src"
@@ -77,6 +85,133 @@ def _valid_sha256(value: object) -> bool:
         and len(value) == 64
         and all(char in "0123456789abcdef" for char in value)
     )
+
+
+def _valid_git_commit_source(row: Mapping[str, Any]) -> bool:
+    source_ref = row.get("source_ref")
+    return (
+        row.get("source_kind") == "git_commit"
+        and isinstance(source_ref, str)
+        and source_ref.startswith("git:")
+        and len(source_ref) == 44
+        and all(char in "0123456789abcdef" for char in source_ref[4:])
+    )
+
+
+def _live_registry_contract(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    return {field: candidate.get(field) for field in REGISTRY_CONTRACT_FIELDS}
+
+
+def _live_registry_fingerprint(
+    candidate: Mapping[str, Any],
+    *,
+    campaign_layer: str,
+) -> str:
+    asset_id = candidate.get("asset_id")
+    if not isinstance(asset_id, str) or not asset_id:
+        raise ValueError("live registry row has an invalid asset ID")
+    if campaign_layer not in LAYERS or candidate.get("layer") != REGISTRY_LAYER[campaign_layer]:
+        raise ValueError(f"live registry contract changed for {asset_id}: layer")
+    dependencies = candidate.get("depends_on") or []
+    if not isinstance(dependencies, list) or any(
+        not isinstance(dependency, str) for dependency in dependencies
+    ):
+        raise ValueError(f"live dependencies are invalid for {asset_id}")
+    return _sha256_json(
+        {
+            "asset_id": asset_id,
+            "layer": campaign_layer,
+            "depends_on": dependencies,
+            "registry_contract": _live_registry_contract(candidate),
+        },
+        ensure_ascii=False,
+    )
+
+
+def validate_wave_evidence_bindings(
+    *,
+    asset_ids: Sequence[str],
+    live_registry_fingerprints: Mapping[str, str],
+    evidence_rows: Sequence[Mapping[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """Require one exact current analysis and one verdict bound to it per asset."""
+    expected_assets = set(asset_ids)
+    if len(expected_assets) != len(asset_ids):
+        raise RuntimeError("frozen wave contains duplicate asset identities")
+    if set(live_registry_fingerprints) != expected_assets or any(
+        not _valid_sha256(fingerprint)
+        for fingerprint in live_registry_fingerprints.values()
+    ):
+        raise RuntimeError("live registry fingerprints are incomplete or invalid")
+
+    rows_by_asset: dict[str, list[Mapping[str, Any]]] = {
+        asset_id: [] for asset_id in asset_ids
+    }
+    for row in evidence_rows:
+        entity_id = row.get("entity_id")
+        event_type = row.get("event_type")
+        if entity_id not in expected_assets or event_type not in {
+            "asset_analysis_accepted",
+            "optimization_verdict_accepted",
+        }:
+            raise RuntimeError("campaign evidence query returned an unexpected receipt")
+        rows_by_asset[entity_id].append(row)
+
+    bindings: dict[str, dict[str, str]] = {}
+    for asset_id in asset_ids:
+        current_fingerprint = live_registry_fingerprints[asset_id]
+        current_rows: dict[str, list[tuple[Mapping[str, Any], str]]] = {
+            "asset_analysis_accepted": [],
+            "optimization_verdict_accepted": [],
+        }
+        for row in rows_by_asset[asset_id]:
+            payload = row.get("evidence_payload")
+            if not isinstance(payload, Mapping):
+                continue
+            if payload.get("registry_fingerprint_sha256") != current_fingerprint:
+                continue
+            analysis_digest = payload.get("analysis_digest")
+            if not _valid_sha256(analysis_digest) or not _valid_git_commit_source(row):
+                raise RuntimeError(
+                    f"current campaign evidence has invalid provenance for {asset_id}"
+                )
+            current_rows[row["event_type"]].append((row, analysis_digest))
+
+        analyses = current_rows["asset_analysis_accepted"]
+        if not analyses:
+            raise RuntimeError(
+                "accepted asset analysis does not match the current live "
+                f"registry contract for {asset_id}"
+            )
+        if len(analyses) != 1:
+            raise RuntimeError(f"ambiguous asset analysis evidence for {asset_id}")
+        analysis_digest = analyses[0][1]
+
+        verdicts = current_rows["optimization_verdict_accepted"]
+        if not verdicts:
+            raise RuntimeError(
+                "optimization verdict does not match the current live "
+                f"registry contract for {asset_id}"
+            )
+        if len(verdicts) != 1:
+            raise RuntimeError(f"ambiguous optimization verdict evidence for {asset_id}")
+        if verdicts[0][1] != analysis_digest:
+            raise RuntimeError(
+                f"optimization verdict is not bound to the same accepted analysis for {asset_id}"
+            )
+        verdict_payload = verdicts[0][0].get("evidence_payload")
+        if (
+            not isinstance(verdict_payload, Mapping)
+            or verdict_payload.get("verdict") not in BUILD_AUTHORIZING_VERDICTS
+        ):
+            raise RuntimeError(
+                f"optimization verdict does not authorize a build for {asset_id}"
+            )
+        bindings[asset_id] = {
+            "registry_fingerprint_sha256": current_fingerprint,
+            "analysis_digest": analysis_digest,
+        }
+    return bindings
 
 
 def _select_frozen_build_assets(
@@ -177,6 +312,8 @@ def build_campaign_wave_manifest(
         for candidate in candidates
         if isinstance(candidate.get("asset_id"), str)
     }
+    if len(candidate_by_id) != len(candidates):
+        raise ValueError("live registry query returned duplicate or invalid asset rows")
     asset_ids: list[str] = []
     manifest_assets: list[dict[str, Any]] = []
     for frozen_asset in selected:
@@ -193,14 +330,29 @@ def build_campaign_wave_manifest(
             not isinstance(dependency, str) for dependency in frozen_dependencies
         ):
             raise ValueError(f"frozen dependencies are invalid for {asset_id}")
-        if list(candidate.get("depends_on") or []) != frozen_dependencies:
+        live_dependencies = candidate.get("depends_on") or []
+        if (
+            not isinstance(live_dependencies, list)
+            or len(set(live_dependencies)) != len(live_dependencies)
+            or len(set(frozen_dependencies)) != len(frozen_dependencies)
+            or sorted(live_dependencies) != sorted(frozen_dependencies)
+        ):
             raise ValueError(f"live registry contract changed for {asset_id}: depends_on")
         frozen_contract = frozen_asset.get("registry_contract")
         if not isinstance(frozen_contract, dict):
             raise ValueError(f"frozen registry contract missing for {asset_id}")
-        live_contract = {field: candidate.get(field) for field in REGISTRY_CONTRACT_FIELDS}
-        if live_contract != frozen_contract:
-            raise ValueError(f"live registry contract changed for {asset_id}")
+        live_contract = _live_registry_contract(candidate)
+        if (
+            live_contract["is_active"] is not True
+            or live_contract["has_writer"] is not True
+            or live_contract["catalog_status"] == "RETIRED"
+            or live_contract["asset_kind"] == "service"
+        ):
+            raise ValueError(f"live registry asset is not buildable: {asset_id}")
+        live_fingerprint = _live_registry_fingerprint(
+            candidate,
+            campaign_layer=layer,
+        )
         expected_code_digest = writer_digests.get(asset_id)
         if not _valid_sha256(expected_code_digest):
             raise ValueError(f"writer digest missing or invalid for {asset_id}")
@@ -208,11 +360,13 @@ def build_campaign_wave_manifest(
         manifest_assets.append(
             {
                 "asset_id": asset_id,
-                "scope": frozen_contract["scope"],
+                "scope": live_contract["scope"],
                 "depends_on": list(frozen_dependencies),
-                "natural_key_partition": frozen_contract["natural_key_partition"],
+                "natural_key_partition": live_contract["natural_key_partition"],
                 "has_cowriters": bool(candidate.get("has_cowriters")),
                 "expected_code_digest": expected_code_digest,
+                "registry_contract": live_contract,
+                "registry_fingerprint_sha256": live_fingerprint,
             }
         )
     if set(candidate_by_id) != set(asset_ids):
@@ -338,38 +492,49 @@ def create_campaign_run(
         )
         asset_ids = [asset["asset_id"] for asset in selected]
 
+        candidates = _load_candidates(cur, asset_ids)
+        candidate_by_id = {
+            candidate.get("asset_id"): candidate
+            for candidate in candidates
+            if isinstance(candidate.get("asset_id"), str)
+        }
+        if set(candidate_by_id) != set(asset_ids) or len(candidate_by_id) != len(candidates):
+            raise RuntimeError("live registry rows do not exactly match the frozen build wave")
+        live_registry_fingerprints = {
+            asset_id: _live_registry_fingerprint(
+                candidate_by_id[asset_id],
+                campaign_layer=layer,
+            )
+            for asset_id in asset_ids
+        }
+
         required_evidence_types = (
             "asset_analysis_accepted",
             "optimization_verdict_accepted",
         )
         cur.execute(
             """
-            SELECT entity_id, event_type
+            SELECT event_id, entity_id, event_type, evidence_payload,
+                   source_kind, source_ref
               FROM nirmana_elevation_campaign_events
              WHERE campaign_id=%s AND definition_revision=%s
+               AND entity_type='asset' AND layer=%s
                AND entity_id = ANY(%s) AND event_type = ANY(%s)
+             ORDER BY event_id
             """,
             (
                 CAMPAIGN_ID,
                 definition_revision,
+                layer,
                 asset_ids,
                 list(required_evidence_types),
             ),
         )
-        observed_evidence = {
-            (row["entity_id"], row["event_type"]) for row in cur.fetchall()
-        }
-        missing_evidence = [
-            f"{asset_id}:{event_type}"
-            for asset_id in asset_ids
-            for event_type in required_evidence_types
-            if (asset_id, event_type) not in observed_evidence
-        ]
-        if missing_evidence:
-            raise RuntimeError(
-                "campaign analysis/verdict evidence is incomplete for the wave "
-                f"({len(missing_evidence)} missing events)"
-            )
+        validate_wave_evidence_bindings(
+            asset_ids=asset_ids,
+            live_registry_fingerprints=live_registry_fingerprints,
+            evidence_rows=cur.fetchall(),
+        )
 
         prerequisites = campaign_prerequisite_asset_ids(
             definition_manifest=definition["manifest"],
@@ -445,7 +610,6 @@ def create_campaign_run(
                 f"campaign wave contains protected assets: {','.join(protected)}"
             )
 
-        candidates = _load_candidates(cur, asset_ids)
         manifest, manifest_digest, asset_ids = build_campaign_wave_manifest(
             chart_id=chart_id,
             definition_revision=definition_revision,
