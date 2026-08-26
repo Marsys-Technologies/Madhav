@@ -505,6 +505,17 @@ jobs:
           NIRMANA_L0_PRASHNA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_prashna_integrity_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_prashna_integrity_contract.test.ts --reporter=verbose
 
+      - name: Nirmāṇa L0 — provision the migration 617 text-index integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_text_index_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 617 text-index contract against real Postgres
+        env:
+          NIRMANA_L0_TEXT_INDEX_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_text_index_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_text_index_integrity_contract.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
