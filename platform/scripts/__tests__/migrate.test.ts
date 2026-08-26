@@ -127,6 +127,20 @@ describe('collectMigrationFiles', () => {
     }
   })
 
+  it('replays the wave-one provenance contract after its active text-table creator', () => {
+    const migrationNames = collectMigrationFiles([
+      path.resolve(process.cwd(), 'migrations'),
+      path.resolve(process.cwd(), 'supabase/migrations'),
+    ]).map(file => file.name)
+    const prerequisiteIndex = migrationNames.indexOf('ws2_l0_texts.sql')
+    const targetIndex = migrationNames.indexOf(
+      '630_nirmana_l0_wave1_correctness_contract.sql'
+    )
+
+    expect(prerequisiteIndex).toBeGreaterThanOrEqual(0)
+    expect(targetIndex).toBe(prerequisiteIndex + 1)
+  })
+
   it('skips non-existent dirs', () => {
     const files = collectMigrationFiles(['/no/such/dir'])
     expect(files).toHaveLength(0)
