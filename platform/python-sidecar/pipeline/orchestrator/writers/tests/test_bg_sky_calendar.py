@@ -502,6 +502,10 @@ def test_flush_batch_targets_the_post_migration_canonical_table():
     assert written == 1
     assert "INSERT INTO bg_sky_calendar" in cursor.sql
     assert "INSERT INTO bg_sky_events" not in cursor.sql
+    assert "DO UPDATE SET" in cursor.sql
+    assert "event_datetime_utc = EXCLUDED.event_datetime_utc" in cursor.sql
+    assert "bg_sky_calendar.source_citation" in cursor.sql
+    assert "IS DISTINCT FROM" in cursor.sql
 
 
 # ── Live tests (require DATABASE_URL; skipped otherwise) ─────────────────────

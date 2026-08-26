@@ -36,6 +36,28 @@ CHUNK_MAX_CHARS = 1_500      # ~300 words; well within model 2048-token limit
 MIN_CHUNK_CHARS = 50         # discard near-empty chunks (headers, page artifacts)
 SMALLINT_MAX = 32_767        # PostgreSQL SMALLINT ceiling
 
+# Immutable accepted corpus distribution from migration 610. Additive mode may
+# create an absent text, but an already-present canonical text must match this
+# reviewed row count exactly; otherwise skipping it would turn partial data into
+# a false-success build.
+ACCEPTED_CHUNK_COUNTS_BY_TEXT: dict[str, int] = {
+    "bhrigu_nandi_nadi": 608,
+    "bphs": 1459,
+    "bphs_jaimini": 264,
+    "brihat_jataka": 607,
+    "brihat_samhita": 1171,
+    "hora_sara": 460,
+    "jataka_parijata": 704,
+    "muhurta_chintamani": 274,
+    "nadi_navamsa_patel": 1850,
+    "phaladeepika": 564,
+    "saravali": 471,
+    "sarvartha_chintamani": 342,
+    "tajaka_neelakanthi": 290,
+    "uttara_kalamrita": 289,
+    "yavana_jataka": 1298,
+}
+
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "madhav-astrology")
 VERTEX_LOCATION = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
 
@@ -435,15 +457,29 @@ class TextsWriter(WriterBase):
         conditional: list[str] = []
         per_text_counts: dict[str, int] = {}
 
-        # Pre-build the set of text_ids that already have chunks (for additive skip)
+        # Pre-build exact per-text counts so a partially surviving text cannot
+        # be mistaken for a complete text merely because one row exists.
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT DISTINCT text_id FROM classical_text_chunks"
+                """
+                SELECT text_id, count(*) AS row_count
+                FROM classical_text_chunks
+                GROUP BY text_id
+                """
             )
-            _already_present: set[str] = {row["text_id"] for row in cur.fetchall()}
+            existing_counts = {
+                row["text_id"]: int(row["row_count"]) for row in cur.fetchall()
+            }
+        canonical_ids = {text["text_id"] for text in TEXTS}
+        unknown_ids = sorted(set(existing_counts) - canonical_ids)
+        if unknown_ids:
+            raise RuntimeError(
+                "bg_texts found non-canonical chunk owners and refuses destructive cleanup: "
+                + ", ".join(unknown_ids)
+            )
         logger.info(
             "[bg_texts] additive mode: %d text_ids already have chunks → will skip them",
-            len(_already_present),
+            len(existing_counts),
         )
 
         for text in TEXTS:
@@ -454,19 +490,19 @@ class TextsWriter(WriterBase):
                 gcs_paths.append(text["gcs_path_vol2"])
 
             # ── 2a-pre. Additive skip: skip texts already present in DB ───────
-            if rebuild_mode == "additive" and text_id in _already_present:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT COUNT(*) FROM classical_text_chunks WHERE text_id = %s",
-                        (text_id,),
+            existing_n = existing_counts.get(text_id, 0)
+            if rebuild_mode == "additive" and existing_n:
+                expected_n = ACCEPTED_CHUNK_COUNTS_BY_TEXT.get(text_id)
+                if expected_n is None or existing_n != expected_n:
+                    raise RuntimeError(
+                        "bg_texts partial canonical text cannot be skipped safely: "
+                        f"{text_id} has {existing_n} chunks; accepted count is {expected_n}"
                     )
-                    existing_n = cur.fetchone()["count"]
                 logger.info(
                     "[bg_texts] additive: skipping %s (%d chunks already present)",
                     text_id, existing_n,
                 )
                 per_text_counts[text_id] = existing_n
-                total_chunks += existing_n
                 continue
 
             # ── 2a. Download PDF(s) from GCS ─────────────────────────────────
@@ -658,9 +694,12 @@ class TextsWriter(WriterBase):
 
         # ── Summary ───────────────────────────────────────────────────────────
         duration = time.time() - t0
-        notes_parts = [f"{tid}:{n}" for tid, n in per_text_counts.items()]
         if conditional:
-            notes_parts.append(f"CONDITIONAL={conditional}")
+            raise RuntimeError(
+                "bg_texts required inputs or quality gates were unavailable: "
+                + ", ".join(conditional)
+            )
+        notes_parts = [f"{tid}:{n}" for tid, n in per_text_counts.items()]
 
         logger.info(
             "[bg_texts] COMPLETE: total_chunks=%d texts=%d duration=%.1fs conditional=%s",

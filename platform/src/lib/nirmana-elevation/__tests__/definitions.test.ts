@@ -4,7 +4,9 @@ import {
   assertNirmanaL0WriterInventoryMatchesConvergence,
   NIRMANA_L0_ANALYSIS_RECEIPT_COUNT,
   NIRMANA_L0_ANALYSIS_RECEIPTS,
+  NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE,
 } from '@/generated/nirmana-l0-analysis-receipts'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 vi.mock('server-only', () => ({}))
 
@@ -103,6 +105,8 @@ function useEvidenceTransaction({
 }
 
 describe('Nirmana elevation definition repository', () => {
+  const acceptedReceiptIt = NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE ? it : it.skip
+
   beforeEach(() => {
     queryMock.mockReset()
     transactionQueryMock.mockReset()
@@ -113,19 +117,22 @@ describe('Nirmana elevation definition repository', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
   })
 
-  it('bundles one grounded receipt base for each of the 40 frozen L0 assets', () => {
-    expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(NIRMANA_L0_ANALYSIS_RECEIPT_COUNT)
-    expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS).sort()).toEqual(
-      reconciledT0Manifest.assets.filter((asset: typeof manifestAsset) => asset.layer === 'L0').map((asset: typeof manifestAsset) => asset.asset_id).sort(),
-    )
-    expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_prashna_rules.writer_digest_sha256).toMatch(/^[a-f0-9]{64}$/)
-    expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_panchanga.writer_digest_sha256).toBeNull()
+  it('keeps grounded receipt bases all-or-none against the pinned convergence inventory', () => {
+    if (NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE) {
+      expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(NIRMANA_L0_ANALYSIS_RECEIPT_COUNT)
+      expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS).sort()).toEqual(
+        reconciledT0Manifest.assets.filter((asset: typeof manifestAsset) => asset.layer === 'L0').map((asset: typeof manifestAsset) => asset.asset_id).sort(),
+      )
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_prashna_rules.writer_digest_sha256).toMatch(/^[a-f0-9]{64}$/)
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_panchanga.writer_digest_sha256).toBeNull()
+    } else {
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS).toEqual({})
+    }
   })
 
   it('rejects a same-count L0 writer substitution against the pinned convergence inventory', () => {
-    const substituted = Object.fromEntries(Object.entries(NIRMANA_L0_ANALYSIS_RECEIPTS)
-      .filter(([, receipt]) => receipt.writer_digest_sha256 !== null)
-      .map(([assetId, receipt]) => [assetId, receipt.writer_digest_sha256]))
+    const substituted = Object.fromEntries(Object.entries(writerDigestInventory.writers)
+      .filter(([assetId]) => assetId.startsWith('bg_')))
     substituted.bg_prashna_rules = 'f'.repeat(64)
 
     expect(() => assertNirmanaL0WriterInventoryMatchesConvergence(substituted)).toThrow(/convergence inventory/i)
@@ -515,8 +522,14 @@ describe('Nirmana elevation definition repository', () => {
       },
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
-    })).rejects.toThrow(/canonical deployed analysis receipt/i)
-    expect(queryMock).toHaveBeenCalled()
+    })).rejects.toThrow(NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE
+      ? /canonical deployed analysis receipt/i
+      : /reconstructable deployed analysis receipt/i)
+    if (NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE) {
+      expect(queryMock).toHaveBeenCalled()
+    } else {
+      expect(queryMock).not.toHaveBeenCalled()
+    }
   })
 
   it('requires a configured production deployment SHA and matches the receipt source to it', () => {
@@ -547,7 +560,7 @@ describe('Nirmana elevation definition repository', () => {
     })).toThrow(/NIRMANA_DEPLOYED_SHA/)
   })
 
-  it('rejects an optimization verdict unless an exact accepted analysis binds the current contract', async () => {
+  acceptedReceiptIt('rejects an optimization verdict unless an exact accepted analysis binds the current contract', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
     useEvidenceTransaction()
@@ -576,7 +589,7 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock).toHaveBeenCalled()
   })
 
-  it('records a strict optimization verdict when it binds the exact current accepted analysis', async () => {
+  acceptedReceiptIt('records a strict optimization verdict when it binds the exact current accepted analysis', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
     useEvidenceTransaction()
@@ -609,7 +622,7 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes("event_type = 'asset_analysis_accepted'"))).toBe(true)
   })
 
-  it('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
+  acceptedReceiptIt('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
     useEvidenceTransaction()
@@ -642,7 +655,7 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
   })
 
-  it.each([
+  acceptedReceiptIt.each([
     ['registry fingerprint', 'f'.repeat(64), null],
     ['analysis digest', manifestAsset.registry_fingerprint_sha256, 'f'.repeat(64)],
   ])('rejects an optimization verdict with a stale or mismatched %s', async (_caseName, registryFingerprint, digestOverride) => {

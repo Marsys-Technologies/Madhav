@@ -34,7 +34,7 @@ class GhatanaWriter(WriterBase):
         activities = counts.get("brahma_activity_ontology", 0)
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=events,
+            rows_inserted=events + activities,
             duration_seconds=time.time() - t0,
             notes=f"brahma_event_ontology: {events} events; brahma_activity_ontology: {activities} activities",
         )

@@ -132,6 +132,7 @@ def _evidence_row(
     registry_fingerprint_sha256: str,
     analysis_digest: str,
     verdict: str = "examined_and_already_efficient",
+    source_ref: str = "git:" + "a" * 40,
 ) -> dict:
     payload = {
         "registry_fingerprint_sha256": registry_fingerprint_sha256,
@@ -162,7 +163,7 @@ def _evidence_row(
         "event_type": event_type,
         "evidence_payload": payload,
         "source_kind": "git_commit",
-        "source_ref": "git:" + "a" * 40,
+        "source_ref": source_ref,
     }
 
 
@@ -467,6 +468,123 @@ def test_rejects_stale_unbound_or_multiple_wave_evidence(rows: list[dict], messa
         )
 
 
+def test_l0_dispatch_receipt_binding_accepts_current_deployment_and_excludes_history(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Receipt grounding M and deployed source P are distinct, append-only pins."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    selected = [definition["assets"][0], definition["assets"][1]]
+    candidates = {_candidate(asset)["asset_id"]: _candidate(asset) for asset in selected}
+    writer_digests = {"bg_reference": "a" * 64, "bg_formula_constants": "b" * 64}
+    convergence_sha = "c" * 40
+    deployed_sha = "d" * 40
+    receipts_path = tmp_path / "nirmana-l0-analysis-receipts.ts"
+    receipts_path.write_text(
+        "\n".join(
+            [
+                f"export const NIRMANA_L0_CONVERGENCE_COMMIT = '{convergence_sha}' as const",
+                "export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = "
+                f"'{_digest(writer_digests)}' as const",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "L0_ANALYSIS_RECEIPTS_PATH", receipts_path)
+
+    receipt_digests, receipt_convergence_sha = module._current_l0_analysis_receipt_digests(
+        selected_assets=selected,
+        candidates_by_id=candidates,
+        writer_digests=writer_digests,
+    )
+    assert receipt_convergence_sha == convergence_sha
+    assert receipt_convergence_sha != deployed_sha
+    module.validate_wave_evidence_bindings(
+        asset_ids=["bg_reference"],
+        live_registry_fingerprints={"bg_reference": _registry_fingerprint(candidates["bg_reference"])},
+        canonical_analysis_digests={"bg_reference": receipt_digests["bg_reference"]},
+        reviewed_deployment_sha=deployed_sha,
+        evidence_rows=[
+            # Valid historical receipt pair from M: retain it, but do not
+            # let it make the current P-bound pair ambiguous.
+            _evidence_row(
+                event_id=1,
+                asset_id="bg_reference",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest="e" * 64,
+                source_ref=f"git:{convergence_sha}",
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="bg_reference",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest="e" * 64,
+                source_ref=f"git:{convergence_sha}",
+            ),
+            _evidence_row(
+                event_id=3,
+                asset_id="bg_reference",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest=receipt_digests["bg_reference"],
+                source_ref=f"git:{deployed_sha}",
+            ),
+            _evidence_row(
+                event_id=4,
+                asset_id="bg_reference",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=_registry_fingerprint(candidates["bg_reference"]),
+                analysis_digest=receipt_digests["bg_reference"],
+                source_ref=f"git:{deployed_sha}",
+            ),
+        ],
+    )
+
+    drifted_digests = {**writer_digests, "bg_reference": "d" * 64}
+    with pytest.raises(RuntimeError, match="writer inventory.*convergence"):
+        module._current_l0_analysis_receipt_digests(
+            selected_assets=selected,
+            candidates_by_id=candidates,
+            writer_digests=drifted_digests,
+        )
+
+
+def test_l0_dispatch_receipt_binding_rejects_stale_convergence_source() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+    convergence_sha = "c" * 40
+    deployed_sha = "d" * 40
+    with pytest.raises(RuntimeError, match="current live registry contract"):
+        module.validate_wave_evidence_bindings(
+            asset_ids=["bg_reference"],
+            live_registry_fingerprints={"bg_reference": "1" * 64},
+            canonical_analysis_digests={"bg_reference": "2" * 64},
+            reviewed_deployment_sha=deployed_sha,
+            evidence_rows=[
+                _evidence_row(
+                    event_id=1,
+                    asset_id="bg_reference",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                    source_ref=f"git:{convergence_sha}",
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="bg_reference",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256="1" * 64,
+                    analysis_digest="2" * 64,
+                    source_ref=f"git:{convergence_sha}",
+                ),
+            ],
+        )
+
+
 def test_refuses_empty_or_nonbuild_only_wave() -> None:
     module = _load_dispatch_module()
     assert module is not None
@@ -576,6 +694,21 @@ def test_direct_commit_cannot_bypass_snapshot_or_reviewed_preview(
             commit=True,
             snapshot_ref=snapshot_ref,
             expected_manifest_digest=expected_digest,
+        )
+
+
+def test_l0_dispatch_requires_explicit_current_deployment_pin() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+
+    with pytest.raises(ValueError, match="reviewed deployed commit SHA"):
+        module.create_campaign_run(
+            database_url="must-not-be-opened",
+            chart_id=CHART_ID,
+            definition_revision=REVISION,
+            layer="L0",
+            wave_index=0,
+            commit=False,
         )
 
 

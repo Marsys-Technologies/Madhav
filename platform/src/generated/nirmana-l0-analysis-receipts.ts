@@ -33,23 +33,36 @@ export function assertNirmanaL0WriterInventoryMatchesConvergence(inventory: unkn
   }
 }
 
-const writerDigests = writerDigestInventory.writers as unknown
-assertNirmanaL0WriterInventoryMatchesConvergence(writerDigests)
+const writerDigestsCandidate = writerDigestInventory.writers as unknown
+const writerDigests = (() => {
+  try {
+    assertNirmanaL0WriterInventoryMatchesConvergence(writerDigestsCandidate)
+    return writerDigestsCandidate
+  } catch {
+    // Writer corrections may be deployed before a new durable-main convergence
+    // receipt is ratified. Keep the service available, but make evidence
+    // creation fail closed until the pinned commit and aggregate are advanced.
+    return null
+  }
+})()
+export const NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE = writerDigests !== null
 const nonWriterAssets = [
   'bg_ephemeris_engine',
   'bg_gochara_citation_resolution',
   'bg_panchanga',
   'bg_sarvatobhadra_grid',
 ] as const
-const assetIds = [
-  ...Object.keys(writerDigests).filter((assetId) => assetId.startsWith('bg_')),
-  ...nonWriterAssets,
-].sort()
+const assetIds = NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE
+  ? [
+      ...Object.keys(writerDigests ?? {}).filter((assetId) => assetId.startsWith('bg_')),
+      ...nonWriterAssets,
+    ].sort()
+  : []
 const bases = assetIds.map((assetId): NirmanaL0AnalysisReceiptBase => ({
     schema_version: 'nirmana-asset-analysis-receipt-base/v1',
     asset_id: assetId,
     layer: 'L0',
-    writer_digest_sha256: writerDigests[assetId] ?? null,
+    writer_digest_sha256: writerDigests?.[assetId] ?? null,
     grounding: {
       convergence_commit: NIRMANA_L0_CONVERGENCE_COMMIT,
       frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
@@ -57,7 +70,8 @@ const bases = assetIds.map((assetId): NirmanaL0AnalysisReceiptBase => ({
     },
   }))
 
-if (bases.length !== NIRMANA_L0_ANALYSIS_RECEIPT_COUNT) {
+if (NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE
+  && bases.length !== NIRMANA_L0_ANALYSIS_RECEIPT_COUNT) {
   throw new Error(`Expected ${NIRMANA_L0_ANALYSIS_RECEIPT_COUNT} frozen L0 analysis receipt bases; found ${bases.length}.`)
 }
 

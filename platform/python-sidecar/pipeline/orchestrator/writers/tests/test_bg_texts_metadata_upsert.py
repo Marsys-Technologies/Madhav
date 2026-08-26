@@ -42,6 +42,22 @@ class _ModeCursor(_RecordingCursor):
         return self.next_row
 
 
+class _PartialCorpusCursor(_ModeCursor):
+    def __init__(self, rows):
+        super().__init__()
+        self.rows = rows
+
+    def execute(self, sql: str, params: tuple | None = None) -> None:
+        super().execute(sql, params)
+        if "SELECT count(*) AS n" in sql:
+            self.next_row = {"n": sum(row.get("row_count", 0) for row in self.rows)}
+        elif "WHERE text_id = %s" in sql and "COUNT" in sql:
+            self.next_row = {"count": self.rows[0]["row_count"]}
+
+    def fetchall(self):
+        return self.rows
+
+
 class _RecordingConnection:
     def __init__(self, cursor=None) -> None:
         self.cursor_instance = cursor or _RecordingCursor()
@@ -118,3 +134,53 @@ def test_metadata_only_repairs_registry_without_reading_or_deleting_chunks(monke
     assert sum("INSERT INTO classical_texts" in sql for sql in statements) == 15
     assert not any("DELETE FROM classical_text_chunks" in sql for sql in statements)
     assert not any("SELECT DISTINCT text_id FROM classical_text_chunks" in sql for sql in statements)
+
+
+def test_additive_mode_rejects_partial_existing_text_instead_of_skipping_it(monkeypatch):
+    """One surviving chunk must not make an incomplete canonical text look complete."""
+    cursor = _PartialCorpusCursor([{"text_id": "bphs", "row_count": 1}])
+    conn = _RecordingConnection(cursor)
+    monkeypatch.setattr("pipeline.orchestrator.writers.bg_texts.TEXTS", [TEXTS[0]])
+
+    with pytest.raises(RuntimeError, match="partial canonical text.*bphs"):
+        TextsWriter().run(ContextSpec(
+            asset_id="bg_texts",
+            build_id="partial-text",
+            db_conn=conn,
+            config={"rebuild_mode": "additive"},
+        ))
+
+
+def test_additive_mode_fails_when_a_required_source_is_unavailable(monkeypatch):
+    """A missing immutable source must roll back, not return CONDITIONAL success."""
+    cursor = _PartialCorpusCursor([])
+    conn = _RecordingConnection(cursor)
+    monkeypatch.setattr("pipeline.orchestrator.writers.bg_texts.TEXTS", [TEXTS[0]])
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.bg_texts._download_gcs", lambda _path: None
+    )
+
+    with pytest.raises(RuntimeError, match="AWAITING_MANUAL_UPLOAD:bphs"):
+        TextsWriter().run(ContextSpec(
+            asset_id="bg_texts",
+            build_id="missing-source",
+            db_conn=conn,
+            config={"rebuild_mode": "additive"},
+        ))
+
+
+def test_additive_mode_reports_zero_writes_for_an_exact_existing_text(monkeypatch):
+    """Preserved rows are not newly inserted rows in build telemetry."""
+    cursor = _PartialCorpusCursor([{"text_id": "bphs", "row_count": 1459}])
+    conn = _RecordingConnection(cursor)
+    monkeypatch.setattr("pipeline.orchestrator.writers.bg_texts.TEXTS", [TEXTS[0]])
+
+    result = TextsWriter().run(ContextSpec(
+        asset_id="bg_texts",
+        build_id="exact-existing-text",
+        db_conn=conn,
+        config={"rebuild_mode": "additive"},
+    ))
+
+    assert result.rows_inserted == 0
+    assert "bphs:1459" in result.notes

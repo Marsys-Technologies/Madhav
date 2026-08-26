@@ -157,17 +157,48 @@ class VidhiPrimitivesWriter(WriterBase):
                         mandatory_tags  = EXCLUDED.mandatory_tags,
                         cr27_prevents   = EXCLUDED.cr27_prevents,
                         updated_at      = now()
+                    WHERE ROW(
+                        vidhi_primitives.version,
+                        vidhi_primitives.definition,
+                        vidhi_primitives.category,
+                        vidhi_primitives.live_tool,
+                        vidhi_primitives.tool_args,
+                        vidhi_primitives.fallback_face,
+                        vidhi_primitives.known_gap,
+                        vidhi_primitives.mandatory_tags,
+                        vidhi_primitives.cr27_prevents
+                    ) IS DISTINCT FROM ROW(
+                        EXCLUDED.version,
+                        EXCLUDED.definition,
+                        EXCLUDED.category,
+                        EXCLUDED.live_tool,
+                        EXCLUDED.tool_args,
+                        EXCLUDED.fallback_face,
+                        EXCLUDED.known_gap,
+                        EXCLUDED.mandatory_tags,
+                        EXCLUDED.cr27_prevents
+                    )
                     """,
                     (pid, version, definition, category, live_tool, json.dumps(tool_args),
                      fallback_face, known_gap, mandatory_tags, cr27_prevents),
                 )
-                upserted += 1
+                upserted += cur.rowcount
+
+            primitive_ids = [row[0] for row in PRIMITIVE_ROWS]
+            cur.execute(
+                "DELETE FROM vidhi_primitives WHERE NOT (primitive_id = ANY(%s))",
+                (primitive_ids,),
+            )
+            deleted = cur.rowcount
 
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=upserted,
+            rows_inserted=upserted + deleted,
             duration_seconds=time.time() - t0,
-            notes=f"vidhi_primitives: {upserted} rows ({len(PRIMITIVE_ROWS)} defined atoms)",
+            notes=(
+                f"vidhi_primitives: {upserted} inserted/updated, {deleted} stale deleted "
+                f"({len(PRIMITIVE_ROWS)} defined atoms)"
+            ),
         )
 
 

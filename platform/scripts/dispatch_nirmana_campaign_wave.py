@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -62,6 +63,12 @@ WRITER_DIGESTS_PATH = (
     / "generated"
     / "nirmana-writer-digests.json"
 )
+L0_ANALYSIS_RECEIPTS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "generated"
+    / "nirmana-l0-analysis-receipts.ts"
+)
 
 
 def _stable_json(value: object, *, ensure_ascii: bool) -> str:
@@ -96,6 +103,140 @@ def _valid_git_commit_source(row: Mapping[str, Any]) -> bool:
         and len(source_ref) == 44
         and all(char in "0123456789abcdef" for char in source_ref[4:])
     )
+
+
+def _valid_git_commit_sha(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def _load_l0_canonical_receipt_contract() -> dict[str, str]:
+    """Read the checked-in L0 receipt grounding contract or fail closed.
+
+    The TypeScript receipt module is the existing canonical source used when
+    evidence is accepted.  This dispatcher deliberately reads its exported
+    pins rather than duplicating them, so a changed writer inventory cannot
+    authorize a rebuild until the receipt convergence is explicitly reviewed.
+    """
+    try:
+        source = L0_ANALYSIS_RECEIPTS_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError("canonical L0 analysis receipt contract is unavailable") from exc
+
+    def exported_sha(name: str) -> str:
+        match = re.search(
+            rf"export const {name} = '([0-9a-f]{{64}})' as const",
+            source,
+        )
+        if match is None:
+            raise RuntimeError(f"canonical L0 analysis receipt contract is invalid: {name}")
+        return match.group(1)
+
+    match = re.search(
+        r"export const NIRMANA_L0_CONVERGENCE_COMMIT = '([0-9a-f]{40})' as const",
+        source,
+    )
+    if match is None:
+        raise RuntimeError("canonical L0 analysis receipt contract is invalid: convergence commit")
+    return {
+        "convergence_commit": match.group(1),
+        "writer_inventory_sha256": exported_sha(
+            "NIRMANA_L0_WRITER_INVENTORY_SHA256"
+        ),
+    }
+
+
+def _validated_l0_writer_inventory(
+    writer_digests: Mapping[str, str],
+    *,
+    expected_aggregate: str,
+) -> dict[str, str]:
+    """Require the complete current L0 inventory to equal the receipt pin."""
+    l0_inventory = {
+        asset_id: digest
+        for asset_id, digest in writer_digests.items()
+        if isinstance(asset_id, str) and asset_id.startswith("bg_")
+    }
+    if not l0_inventory or any(not _valid_sha256(digest) for digest in l0_inventory.values()):
+        raise RuntimeError("current L0 writer inventory is incomplete or invalid")
+    aggregate = _sha256_json(l0_inventory, ensure_ascii=True)
+    if aggregate != expected_aggregate:
+        raise RuntimeError(
+            "current L0 writer inventory does not match the reviewed canonical receipt convergence"
+        )
+    return l0_inventory
+
+
+def _canonical_l0_analysis_digest(
+    *,
+    frozen_manifest_asset: Mapping[str, Any],
+    current_registry_contract: Mapping[str, Any],
+    writer_digest: str,
+    convergence_commit: str,
+) -> str:
+    """Match canonicalNirmanaAssetAnalysisDigestForRegistryRow exactly."""
+    asset_id = frozen_manifest_asset.get("asset_id")
+    if not isinstance(asset_id, str) or frozen_manifest_asset.get("layer") != "L0":
+        raise RuntimeError("canonical L0 analysis receipt has an invalid frozen asset")
+    return _sha256_json(
+        {
+            "schema_version": "nirmana-asset-analysis-receipt/v1",
+            "base": {
+                "schema_version": "nirmana-asset-analysis-receipt-base/v1",
+                "asset_id": asset_id,
+                "layer": "L0",
+                "writer_digest_sha256": writer_digest,
+                "grounding": {
+                    "convergence_commit": convergence_commit,
+                    "frozen_manifest_source": "nirmana_elevation_campaign_definitions.manifest",
+                    "writer_digest_ref": "platform/src/generated/nirmana-writer-digests.json",
+                },
+            },
+            "frozen_manifest_asset": dict(frozen_manifest_asset),
+            "current_registry_contract": dict(current_registry_contract),
+        },
+        ensure_ascii=False,
+    )
+
+
+def _current_l0_analysis_receipt_digests(
+    *,
+    selected_assets: Sequence[Mapping[str, Any]],
+    candidates_by_id: Mapping[str, Mapping[str, Any]],
+    writer_digests: Mapping[str, str],
+) -> tuple[dict[str, str], str]:
+    """Reconstruct L0 evidence receipts from current code and live contracts."""
+    contract = _load_l0_canonical_receipt_contract()
+    l0_inventory = _validated_l0_writer_inventory(
+        writer_digests,
+        expected_aggregate=contract["writer_inventory_sha256"],
+    )
+    digests: dict[str, str] = {}
+    for frozen_asset in selected_assets:
+        asset_id = frozen_asset.get("asset_id")
+        if not isinstance(asset_id, str):
+            raise RuntimeError("frozen L0 wave contains an invalid asset ID")
+        candidate = candidates_by_id.get(asset_id)
+        writer_digest = l0_inventory.get(asset_id)
+        if candidate is None or writer_digest is None:
+            raise RuntimeError(
+                f"canonical L0 analysis receipt is unavailable for {asset_id}"
+            )
+        digests[asset_id] = _canonical_l0_analysis_digest(
+            frozen_manifest_asset=frozen_asset,
+            current_registry_contract={
+                "asset_id": asset_id,
+                "layer": "L0",
+                "depends_on": candidate.get("depends_on") or [],
+                "registry_contract": _live_registry_contract(candidate),
+            },
+            writer_digest=writer_digest,
+            convergence_commit=contract["convergence_commit"],
+        )
+    return digests, contract["convergence_commit"]
 
 
 def _live_registry_contract(candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -133,6 +274,8 @@ def validate_wave_evidence_bindings(
     asset_ids: Sequence[str],
     live_registry_fingerprints: Mapping[str, str],
     evidence_rows: Sequence[Mapping[str, Any]],
+    canonical_analysis_digests: Mapping[str, str] | None = None,
+    reviewed_deployment_sha: str | None = None,
 ) -> dict[str, dict[str, str]]:
     """Require one exact current analysis and one verdict bound to it per asset."""
     expected_assets = set(asset_ids)
@@ -143,6 +286,17 @@ def validate_wave_evidence_bindings(
         for fingerprint in live_registry_fingerprints.values()
     ):
         raise RuntimeError("live registry fingerprints are incomplete or invalid")
+    if (canonical_analysis_digests is None) != (reviewed_deployment_sha is None):
+        raise RuntimeError("canonical L0 receipt and reviewed deployment binding must be supplied together")
+    if canonical_analysis_digests is not None:
+        if set(canonical_analysis_digests) != expected_assets or any(
+            not _valid_sha256(digest) for digest in canonical_analysis_digests.values()
+        ):
+            raise RuntimeError("canonical L0 analysis receipts are incomplete or invalid")
+        if not isinstance(reviewed_deployment_sha, str) or len(reviewed_deployment_sha) != 40 or any(
+            char not in "0123456789abcdef" for char in reviewed_deployment_sha
+        ):
+            raise RuntimeError("reviewed deployment convergence SHA is invalid")
 
     rows_by_asset: dict[str, list[Mapping[str, Any]]] = {
         asset_id: [] for asset_id in asset_ids
@@ -175,6 +329,16 @@ def validate_wave_evidence_bindings(
                 raise RuntimeError(
                     f"current campaign evidence has invalid provenance for {asset_id}"
                 )
+            if canonical_analysis_digests is not None:
+                # Evidence is append-only.  A prior valid receipt may retain
+                # the same registry fingerprint while an explicitly reviewed
+                # deployment advances the canonical receipt/source pair.  It
+                # remains auditable history, not current dispatch authority.
+                if (
+                    analysis_digest != canonical_analysis_digests[asset_id]
+                    or row["source_ref"] != f"git:{reviewed_deployment_sha}"
+                ):
+                    continue
             current_rows[row["event_type"]].append((row, analysis_digest))
 
         analyses = current_rows["asset_analysis_accepted"]
@@ -464,11 +628,16 @@ def create_campaign_run(
     commit: bool,
     snapshot_ref: str | None = None,
     expected_manifest_digest: str | None = None,
+    reviewed_deployment_sha: str | None = None,
 ) -> dict[str, Any]:
     if commit and not snapshot_ref:
         raise ValueError("committed campaign wave requires a recovery snapshot reference")
     if commit and not expected_manifest_digest:
         raise ValueError("committed campaign wave requires the reviewed preview manifest digest")
+    if layer == "L0" and not _valid_git_commit_sha(reviewed_deployment_sha):
+        raise ValueError(
+            "L0 campaign dispatch requires an exact reviewed deployed commit SHA"
+        )
     import psycopg
     import psycopg.rows
 
@@ -507,6 +676,16 @@ def create_campaign_run(
             )
             for asset_id in asset_ids
         }
+        writer_digests = _load_writer_digests()
+        canonical_analysis_digests: Mapping[str, str] | None = None
+        if layer == "L0":
+            canonical_analysis_digests, _convergence_commit = (
+                _current_l0_analysis_receipt_digests(
+                    selected_assets=selected,
+                    candidates_by_id=candidate_by_id,
+                    writer_digests=writer_digests,
+                )
+            )
 
         required_evidence_types = (
             "asset_analysis_accepted",
@@ -534,6 +713,8 @@ def create_campaign_run(
             asset_ids=asset_ids,
             live_registry_fingerprints=live_registry_fingerprints,
             evidence_rows=cur.fetchall(),
+            canonical_analysis_digests=canonical_analysis_digests,
+            reviewed_deployment_sha=reviewed_deployment_sha,
         )
 
         prerequisites = campaign_prerequisite_asset_ids(
@@ -618,7 +799,7 @@ def create_campaign_run(
             layer=layer,
             wave_index=wave_index,
             candidates=candidates,
-            writer_digests=_load_writer_digests(),
+            writer_digests=writer_digests,
             snapshot_ref=snapshot_ref,
         )
         if expected_manifest_digest is not None:
@@ -756,6 +937,14 @@ def main() -> int:
         help="Required with --commit; must equal the prior dry-run preview digest",
     )
     parser.add_argument(
+        "--reviewed-deployment-sha",
+        default=os.environ.get("NIRMANA_DEPLOYED_SHA"),
+        help=(
+            "Exact current deployed commit SHA for L0 evidence; defaults to "
+            "NIRMANA_DEPLOYED_SHA when configured"
+        ),
+    )
+    parser.add_argument(
         "--commit",
         action="store_true",
         help="Commit and dispatch the run; omission is a rollback-only dry run",
@@ -769,6 +958,10 @@ def main() -> int:
         parser.error("--commit requires --snapshot-ref")
     if args.commit and not args.expected_manifest_digest:
         parser.error("--commit requires --expected-manifest-digest from a reviewed dry run")
+    if args.layer == "L0" and not _valid_git_commit_sha(args.reviewed_deployment_sha):
+        parser.error(
+            "L0 requires --reviewed-deployment-sha (or configured NIRMANA_DEPLOYED_SHA)"
+        )
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print(
@@ -786,6 +979,7 @@ def main() -> int:
             commit=args.commit,
             snapshot_ref=args.snapshot_ref,
             expected_manifest_digest=args.expected_manifest_digest,
+            reviewed_deployment_sha=args.reviewed_deployment_sha,
         )
     except Exception as exc:
         print(f"ERROR: campaign wave run not created: {exc}", file=sys.stderr)

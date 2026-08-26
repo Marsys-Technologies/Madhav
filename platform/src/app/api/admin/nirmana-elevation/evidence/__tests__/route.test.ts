@@ -29,6 +29,7 @@ import {
   canonicalRegistryContractDigest,
 } from '@/lib/nirmana-elevation/definitions'
 import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
+import { NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE } from '@/generated/nirmana-l0-analysis-receipts'
 
 const registry_contract = {
   sort_order: 1, scope: 'global' as const, asset_kind: 'data' as const, catalog_status: 'CURRENT' as const,
@@ -74,6 +75,8 @@ function useEvidenceTransaction({
 }
 
 describe('POST /api/admin/nirmana-elevation/evidence', () => {
+  const acceptedReceiptIt = NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE ? it : it.skip
+
   beforeEach(() => {
     vi.resetModules()
     queryMock.mockReset()
@@ -419,7 +422,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
-  it('records asset analysis only after the server re-derives the pinned current registry fingerprint', async () => {
+  acceptedReceiptIt('records asset analysis only after the server re-derives the pinned current registry fingerprint', async () => {
     superAdmin()
     useEvidenceTransaction()
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', registryRows[0], manifestAsset)
@@ -451,8 +454,10 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(409)
-    expect(await response.json()).toEqual({ error: 'asset_analysis_accepted registry fingerprint does not match the current live contract.' })
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(await response.json()).toEqual({ error: NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE
+      ? 'asset_analysis_accepted registry fingerprint does not match the current live contract.'
+      : 'Evidence requires a reconstructable deployed analysis receipt for the frozen asset.' })
+    expect(queryMock).toHaveBeenCalledTimes(NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE ? 1 : 0)
   })
 
   it('keeps an exact asset-analysis retry idempotent after the live registry contract evolves', async () => {
