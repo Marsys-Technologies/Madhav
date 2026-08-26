@@ -20,8 +20,9 @@ The legacy MV-refresh and pending-stream-reaper jobs retain their existing
 `scheduler_invoker_sa` configuration. Only the Nirmana monitor uses the dedicated
 `amjis-nirmana-monitor` service account. Terraform grants that account only
 `roles/run.invoker` on the single `amjis-web` Cloud Run service; it grants the
-Cloud Scheduler service agent `roles/iam.serviceAccountTokenCreator` only on that
-dedicated service account so Scheduler can mint its OIDC token.
+Cloud Scheduler service agent `roles/iam.serviceAccountOpenIdTokenCreator` only on
+that dedicated service account so Scheduler can mint its OIDC token without broader
+access-token or signing permissions.
 
 The Nirmana monitor has a 120-second deadline and at most two retries. Its route
 also validates `MARSYS_CRON_SECRET` through `X-Marsys-Cron-Secret`; configure that

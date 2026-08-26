@@ -150,11 +150,11 @@ resource "google_cloud_run_v2_service_iam_member" "nirmana_elevation_monitor_inv
   member   = "serviceAccount:${google_service_account.nirmana_elevation_monitor.email}"
 }
 
-// Cloud Scheduler's Google-managed service agent mints the job's OIDC token.
-// Scope the standard token-mint role to this one dedicated service account.
+// Cloud Scheduler's Google-managed service agent mints only the job's OIDC token.
+// Scope that OIDC-only role to this one dedicated service account.
 resource "google_service_account_iam_member" "cloud_scheduler_mints_nirmana_monitor_oidc" {
   service_account_id = google_service_account.nirmana_elevation_monitor.name
-  role               = "roles/iam.serviceAccountTokenCreator"
+  role               = "roles/iam.serviceAccountOpenIdTokenCreator"
   member             = "serviceAccount:service-${data.google_project.scheduler.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 }
 

@@ -51,7 +51,12 @@ function sourceRows({
       status: monitorStatus, affected_asset_ids: ['bg_prashna_rules'],
       current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: candidateDefinitionSha256,
       candidate_catalogue_sha256: candidateCatalogueSha256,
-      source_state: monitorSourceState, source_error_code: null, runtime_liveness: 'quiet',
+      source_state: monitorSourceState,
+      source_observed_at: monitorSourceState === 'available' ? monitorObservedAt : null,
+      freshness_state: monitorSourceState === 'available' ? 'fresh' : 'unavailable',
+      freshness_deadline_at: monitorSourceState === 'available'
+        ? new Date(Date.parse(monitorObservedAt) + 15 * 60_000).toISOString() : null,
+      source_error_code: null, runtime_liveness: 'quiet',
     }] : [] })
 }
 
@@ -131,6 +136,9 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
       expect(sql).toContain('build_substep_progress')
       expect(sql).toContain('nirmana_elevation_asset_labels')
       expect(sql).toContain('nirmana_elevation_monitor_observations')
+      expect(sql).toContain('source_observed_at')
+      expect(sql).toContain('freshness_state')
+      expect(sql).toContain('freshness_deadline_at')
       expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM build_runs br')
     } finally {
       vi.useRealTimers()

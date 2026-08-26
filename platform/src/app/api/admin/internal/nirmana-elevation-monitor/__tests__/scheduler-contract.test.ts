@@ -31,7 +31,8 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(invokerBinding).toContain('role     = "roles/run.invoker"')
     expect(invokerBinding).toContain('member   = "serviceAccount:${google_service_account.nirmana_elevation_monitor.email}"')
     expect(tokenMintBinding).toContain('service_account_id = google_service_account.nirmana_elevation_monitor.name')
-    expect(tokenMintBinding).toContain('role               = "roles/iam.serviceAccountTokenCreator"')
+    expect(tokenMintBinding).toContain('role               = "roles/iam.serviceAccountOpenIdTokenCreator"')
+    expect(tokenMintBinding).not.toContain('roles/iam.serviceAccountTokenCreator')
     expect(tokenMintBinding).toContain('service-${data.google_project.scheduler.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com')
 
     expect(monitorJob).toContain('name             = "amjis-nirmana-elevation-monitor"')

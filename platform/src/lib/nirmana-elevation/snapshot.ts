@@ -56,6 +56,9 @@ interface NirmanaMonitorObservationRow {
   candidate_definition_sha256: string | null
   candidate_catalogue_sha256: string | null
   source_state: 'available' | 'unavailable'
+  source_observed_at: string | null
+  freshness_state: 'fresh' | 'stale' | 'unavailable'
+  freshness_deadline_at: string | null
   source_error_code: string | null
   runtime_liveness: 'active' | 'quiet' | 'unavailable'
 }
@@ -131,7 +134,8 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
  ORDER BY catalogue_revision, asset_id`)
   const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,
        current_definition_sha256, candidate_definition_sha256, candidate_catalogue_sha256,
-       source_state, source_error_code, runtime_liveness
+       source_state, source_observed_at, freshness_state, freshness_deadline_at,
+       source_error_code, runtime_liveness
   FROM nirmana_elevation_monitor_observations
  ORDER BY observed_at DESC, id DESC
  LIMIT 1`)
@@ -162,7 +166,6 @@ function timestamp(value: string): number {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
-const PROGRAM_MONITOR_FRESH_SECONDS = 5 * 60 + 10 * 60
 const PROGRAM_SYNC_GAPS: Partial<Record<NirmanaProgramSyncStatus, string>> = {
   unknown: 'No program synchronization observation is available.',
   baseline_missing: 'No accepted frozen program denominator is available.',
@@ -197,15 +200,19 @@ function projectProgramSync(
     }
   }
 
-  const observedAt = asIso(latest.observed_at)
-  const ageSeconds = observedAt === null ? null : Math.max(
+  const sourceObservedAt = asIso(latest.source_observed_at)
+  const freshnessDeadlineAt = asIso(latest.freshness_deadline_at)
+  const ageSeconds = sourceObservedAt === null ? null : Math.max(
     0,
-    Math.floor((Date.parse(generatedAt) - Date.parse(observedAt)) / 1000),
+    Math.floor((Date.parse(generatedAt) - Date.parse(sourceObservedAt)) / 1000),
   )
   const unavailable = latest.status === 'source_unavailable' || latest.source_state === 'unavailable'
   const status: NirmanaProgramSyncStatus = unavailable ? 'source_unavailable' : latest.status
   const state = unavailable ? 'unavailable' as const
-    : ageSeconds !== null && ageSeconds <= PROGRAM_MONITOR_FRESH_SECONDS ? 'fresh' as const : 'stale' as const
+    : latest.freshness_state === 'fresh'
+      && freshnessDeadlineAt !== null
+      && Date.parse(generatedAt) <= Date.parse(freshnessDeadlineAt)
+      ? 'fresh' as const : 'stale' as const
   const gaps = [
     ...(PROGRAM_SYNC_GAPS[status] ? [PROGRAM_SYNC_GAPS[status]!] : []),
     ...(state === 'stale' ? ['The program monitor observation is stale; synchronization status may be outdated.'] : []),
@@ -214,7 +221,7 @@ function projectProgramSync(
     programSync: {
       status,
       source_observation_id: unavailable ? null : latest.id,
-      observed_at: observedAt,
+      observed_at: sourceObservedAt,
       age_seconds: ageSeconds,
       affected_asset_ids: [...new Set(latest.affected_asset_ids)].sort(),
       current_definition_sha256: latest.current_definition_sha256,
@@ -223,7 +230,7 @@ function projectProgramSync(
     },
     source: {
       source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
-      state, observed_at: observedAt, age_seconds: ageSeconds,
+      state, observed_at: sourceObservedAt, age_seconds: ageSeconds,
       error_code: unavailable ? 'NIRMANA_SOURCE_UNAVAILABLE' : null,
       error_message: unavailable ? 'Authoritative source is unavailable.' : null,
     },

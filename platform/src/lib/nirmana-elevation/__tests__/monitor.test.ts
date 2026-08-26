@@ -106,6 +106,32 @@ describe('Nirmana elevation monitor baseline', () => {
     })])
     expect(candidate.catalogue_sha256).toBe(canonicalLabelCatalogueDigest(candidate.labels))
   })
+
+  it.each([
+    {
+      name: 'Sanskrit-only',
+      fields: { sanskrit_name: 'Grantha' },
+      expected: { sanskrit_name: 'Grantha', english_name: null, description: null },
+    },
+    {
+      name: 'English-only',
+      fields: { english_name: 'Texts' },
+      expected: { sanskrit_name: null, english_name: 'Texts', description: null },
+    },
+    {
+      name: 'description-only',
+      fields: { english_description: 'Authoritative reference values.' },
+      expected: { sanskrit_name: null, english_name: null, description: 'Authoritative reference values.' },
+    },
+  ])('preserves an authoritative $name registry label without adding the placeholder', ({ fields, expected }) => {
+    const candidate = buildNirmanaBaselineCandidate([
+      registryRow('bg_single_label', { sort_order: 1, ...fields }),
+    ])
+
+    expect(candidate.labels).toEqual([expect.objectContaining(expected)])
+    expect(candidate.labels[0]?.description).not.toBe('Not yet catalogued')
+    expect(candidate.catalogue_sha256).toBe(canonicalLabelCatalogueDigest(candidate.labels))
+  })
 })
 
 describe('Nirmana elevation monitor divergence', () => {

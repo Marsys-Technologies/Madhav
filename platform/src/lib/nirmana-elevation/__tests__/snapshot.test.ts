@@ -119,6 +119,9 @@ function monitorObservation(overrides: Partial<MonitorObservationRow> = {}): Mon
     candidate_definition_sha256: 'a'.repeat(64),
     candidate_catalogue_sha256: 'b'.repeat(64),
     source_state: 'available',
+    source_observed_at: observedAt,
+    freshness_state: 'fresh',
+    freshness_deadline_at: '2026-08-25T09:15:00.000Z',
     runtime_liveness: 'quiet',
     source_error_code: null,
     ...overrides,
@@ -454,6 +457,25 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(atBoundary.sources.find((source) => source.source_id === 'program_monitor')?.state).toBe('fresh')
     expect(afterBoundary.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
       state: 'stale', observed_at: observedAt, age_seconds: 901,
+    })
+  })
+
+  it('uses the persisted source deadline when a newly inserted monitor row already represents stale source data', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      monitor_observations: [monitorObservation({
+        observed_at: '2026-08-25T09:20:00.000Z',
+        source_observed_at: observedAt,
+        freshness_state: 'stale',
+        freshness_deadline_at: '2026-08-25T09:15:00.000Z',
+      })],
+    }), { generatedAt: '2026-08-25T09:20:01.000Z' })
+
+    expect(snapshot.program_sync).toMatchObject({
+      observed_at: observedAt,
+      age_seconds: 1_201,
+    })
+    expect(snapshot.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
+      state: 'stale', observed_at: observedAt, age_seconds: 1_201,
     })
   })
 

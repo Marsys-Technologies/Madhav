@@ -291,6 +291,9 @@ const inSyncObservation = {
   candidate_definition_sha256: definitionSha256,
   candidate_catalogue_sha256: labelDigest,
   source_state: 'available' as const,
+  source_observed_at: '2026-08-26T00:02:00.000Z',
+  freshness_state: 'fresh' as const,
+  freshness_deadline_at: '2026-08-26T00:17:00.000Z',
   source_error_code: null,
   runtime_liveness: 'quiet' as const,
 }

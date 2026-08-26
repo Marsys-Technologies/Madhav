@@ -121,9 +121,16 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     && existingReceiptRow.layer === null
     && existingReceiptRow.source_kind === 'governed_catalogue'
     && existingReceiptRow.source_ref === receiptSourceRef
+  const exactReceiptPayload = existingReceiptRow
+    && stableJson(existingReceiptRow.evidence_payload) === stableJson(receiptEvidencePayload)
+  const exactLegacyReceiptPayload = existingReceiptRow
+    && stableJson(existingReceiptRow.evidence_payload) === stableJson({
+      catalogue_sha256: digest,
+      asset_count: input.labels.length,
+    })
   if (existingReceiptRow
     && (!exactReceiptIdentity
-      || stableJson(existingReceiptRow.evidence_payload) !== stableJson(receiptEvidencePayload))) {
+      || (!exactReceiptPayload && !exactLegacyReceiptPayload))) {
     throw new Error('Label catalogue revision conflicts with an existing receipt.')
   }
   const existingLabels = await client.query(
