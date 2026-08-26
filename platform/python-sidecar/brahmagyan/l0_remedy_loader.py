@@ -262,6 +262,23 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
         raise
 
 
+def _converge_tantric_review_queue(
+    conn,
+    *,
+    rejected_remedy_ids: set[str],
+) -> None:
+    """Remove obsolete tantric review rows after processing the source snapshot."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            DELETE FROM remedy_review_queue
+            WHERE category = 'tantric'
+              AND NOT (remedy_id = ANY(%(rejected_remedy_ids)s))
+            """,
+            {"rejected_remedy_ids": sorted(rejected_remedy_ids)},
+        )
+
+
 def load_remedies(
     yaml_dir: Path,
     conn=None,
@@ -287,9 +304,12 @@ def load_remedies(
     errors = 0
     files_processed = 0
     category_counts: dict[str, int] = {}
+    rejected_tantric_ids: set[str] = set()
+    selected_paths = sorted(yaml_dir.glob(file_glob))
+    manages_tantric_projection = any(path.name == 'tantric.yaml' for path in selected_paths)
 
     try:
-        for yaml_path in sorted(yaml_dir.glob(file_glob)):
+        for yaml_path in selected_paths:
             files_processed += 1
             logger.info('[loader] processing %s', yaml_path.name)
 
@@ -310,6 +330,7 @@ def load_remedies(
                 if category == 'tantric':
                     source_text = row.get('source_text', '')
                     if not is_acceptable_tantric_source(source_text):
+                        rejected_tantric_ids.add(str(row.get('remedy_id', '')))
                         reason = f'tantric source not in acceptable list: {source_text!r}'
                         if not dry_run:
                             insert_to_review_queue(conn, row, reason)
@@ -325,6 +346,7 @@ def load_remedies(
                         if not row.get(k)
                     ]
                     if missing:
+                        rejected_tantric_ids.add(str(row.get('remedy_id', '')))
                         reason = f'tantric row missing source columns: {missing}'
                         if not dry_run:
                             insert_to_review_queue(conn, row, reason)
@@ -354,6 +376,12 @@ def load_remedies(
 
                 # Track category counts
                 category_counts[category] = category_counts.get(category, 0) + 1
+
+        if not dry_run and manages_tantric_projection:
+            _converge_tantric_review_queue(
+                conn,
+                rejected_remedy_ids=rejected_tantric_ids,
+            )
 
     finally:
         if close_conn:

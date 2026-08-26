@@ -19,6 +19,12 @@ const CANONICAL_COUNT_SQL = `SELECT
   (SELECT count(*) FROM brahma_yoga_catalog) +
   (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +
   (SELECT count(*) FROM reference_yogas) AS count`
+const CURRENT_EXPLANATION = '784 owned rows = 233 deterministic yoga definitions × 3 reconciled projections plus 85 typed UUID source-chunk links for the corpus-extracted definitions.'
+const CURRENT_COUNT_SQL = `SELECT
+  (SELECT count(*) FROM brahma_yoga_catalog) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +
+  (SELECT count(*) FROM reference_yogas) +
+  (SELECT count(*) FROM brahma_yoga_source_chunks) AS count`
 const LEGACY_EXPLANATION = 'Catalog of named yoga patterns from BPHS / Saravali / Phaladeepika / Jaimini per design §3.9. Floor 250 (contingent on 8,193-chunk extraction yield; corrects seed value of 200).'
 
 describe('migration 620 — yoga integrity contract', () => {
@@ -33,10 +39,10 @@ describe('migration 620 — yoga integrity contract', () => {
     expect(ASSETS.find(asset => asset.asset_id === 'bg_yogas')).toMatchObject({
       sort_order: 9,
       target_table: 'brahma_yoga_catalog',
-      target_floor: 699,
-      count_sql: CANONICAL_COUNT_SQL,
-      volume_explanation: CANONICAL_EXPLANATION,
-      depends_on: ['bg_ontology'],
+      target_floor: 784,
+      count_sql: CURRENT_COUNT_SQL,
+      volume_explanation: CURRENT_EXPLANATION,
+      depends_on: ['bg_texts', 'bg_ontology'],
     })
   })
 })

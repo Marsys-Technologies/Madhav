@@ -8,6 +8,10 @@ import { queryDashaSystemsCapability } from '../query_dasha_systems'
 describe('queryDashaSystemsCapability', () => {
   beforeEach(() => { mockQuery.mockReset() })
 
+  it('documents the current 20-row catalog', () => {
+    expect(queryDashaSystemsCapability.description).toContain('20 rows')
+  })
+
   it('no filter: queries all 18 rows', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ canonical_id: 'vimshottari', school: 'parashari' }] })
     const result = await queryDashaSystemsCapability.handler({}, undefined)

@@ -2,7 +2,7 @@
  * query_dasha_systems — L0 Brahmagyan classical dasha-system reference
  * =========================================================================
  * W2b dark-set wiring, Batch 2 (TABLE_CONCEPT_DISPOSITIONS_v2_0.md
- * SERVE-gap set, `brahma_dasha_systems`, 18 rows). Serves the classical
+ * SERVE-gap set, `brahma_dasha_systems`, now 20 rows). Serves the classical
  * dasha-system definitions (computation_pseudocode, classical_citations,
  * school — 176_l0_phase_alpha_new_content_tables.sql §3.10). Only prior
  * reference was a design-comment in parity_check.ts (proposed, not live) —
@@ -20,7 +20,7 @@ export const queryDashaSystemsCapability: CapabilityDescriptor = {
   name:  'query_dasha_systems',
 
   description: [
-    'Query the classical dasha-system definitions reference (brahma_dasha_systems, 18',
+    'Query the classical dasha-system definitions reference (brahma_dasha_systems, 20',
     'rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit',
     '(nakshatra_lord|sign_lord|special), sequence_jsonb, computation_method,',
     'computation_pseudocode, conditions_for_use, school, classical_citations. Filter by',
