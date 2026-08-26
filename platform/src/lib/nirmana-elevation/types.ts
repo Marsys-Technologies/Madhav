@@ -296,6 +296,7 @@ const ProgramSyncSchema = z.object({
   affected_asset_ids: z.array(z.string()),
   current_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   candidate_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
 })
 
 /** Version 2 adds governed campaign stages and display identities without changing v1. */

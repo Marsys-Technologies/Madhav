@@ -117,6 +117,7 @@ function monitorObservation(overrides: Partial<MonitorObservationRow> = {}): Mon
     affected_asset_ids: [],
     current_definition_sha256: 'a'.repeat(64),
     candidate_definition_sha256: 'a'.repeat(64),
+    candidate_catalogue_sha256: 'b'.repeat(64),
     source_state: 'available',
     runtime_liveness: 'quiet',
     source_error_code: null,
@@ -437,6 +438,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       current_definition_sha256: canonicalManifestDigest(manifest),
       candidate_definition_sha256: '9'.repeat(64),
     })
+    expect(snapshot.program_sync.candidate_catalogue_sha256).toMatch(/^[a-f0-9]{64}$/)
     expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
     expect(snapshot.data_quality.gaps).toContain('Plan adaptation is required before the program denominator can change.')
   })
@@ -492,7 +494,7 @@ describe('projectNirmanaElevationSnapshot', () => {
 
     expect(unknown.program_sync).toMatchObject({
       status: 'unknown', observed_at: null, age_seconds: null, affected_asset_ids: [],
-      current_definition_sha256: null, candidate_definition_sha256: null,
+      current_definition_sha256: null, candidate_definition_sha256: null, candidate_catalogue_sha256: null,
     })
     expect(unknown.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
       state: 'unknown', observed_at: null, age_seconds: null,

@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { fixtureV2 } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
@@ -5,6 +6,7 @@ import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import { CampaignSnapshotStrip } from './CampaignSnapshotStrip'
 import { CampaignSpine } from './CampaignSpine'
 import { NowNextRail } from './NowNextRail'
+import { AuditDrawer } from './AuditDrawer'
 
 function snapshotFixture(): NirmanaElevationSnapshotV2 {
   return structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
@@ -54,6 +56,7 @@ describe('CampaignSpine', () => {
       affected_asset_ids: [],
       current_definition_sha256: null,
       candidate_definition_sha256: null,
+      candidate_catalogue_sha256: null,
     }
     const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
     if (!monitor) throw new Error('Fixture must include the program monitor source.')
@@ -84,6 +87,7 @@ describe('CampaignSpine', () => {
       affected_asset_ids: [],
       current_definition_sha256: definitionHash,
       candidate_definition_sha256: definitionHash,
+      candidate_catalogue_sha256: null,
     }
     snapshot.release = {
       main_sha: 'a'.repeat(40),
@@ -114,6 +118,19 @@ describe('CampaignSpine', () => {
     expect(within(synchronization).getByText('Observation age: 1 minute')).toBeVisible()
     expect(within(synchronization).getByText('Affected assets: 0')).toBeVisible()
     expect(within(synchronization).queryByText('Evidence refresh required')).not.toBeInTheDocument()
+  })
+
+  it('shows the candidate label catalogue digest in the audit drawer only', () => {
+    const snapshot = snapshotFixture()
+    const candidateDigest = 'c'.repeat(64)
+    snapshot.program_sync = {
+      ...snapshot.program_sync,
+      candidate_catalogue_sha256: candidateDigest,
+    }
+
+    render(<AuditDrawer snapshot={snapshot} assetId={null} open onOpenChange={() => {}} finalFocus={createRef<HTMLElement>()} />)
+
+    expect(screen.getByText(`Candidate label catalogue: ${candidateDigest}`)).toBeInTheDocument()
   })
 
   it.each([

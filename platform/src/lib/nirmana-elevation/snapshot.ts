@@ -54,6 +54,7 @@ interface NirmanaMonitorObservationRow {
   affected_asset_ids: string[]
   current_definition_sha256: string | null
   candidate_definition_sha256: string | null
+  candidate_catalogue_sha256: string | null
   source_state: 'available' | 'unavailable'
   source_error_code: string | null
   runtime_liveness: 'active' | 'quiet' | 'unavailable'
@@ -126,7 +127,7 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
  WHERE campaign_id = 'nirmana-elevation'
  ORDER BY catalogue_revision, asset_id`)
   const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,
-       current_definition_sha256, candidate_definition_sha256,
+       current_definition_sha256, candidate_definition_sha256, candidate_catalogue_sha256,
        source_state, source_error_code, runtime_liveness
   FROM nirmana_elevation_monitor_observations
  ORDER BY observed_at DESC, id DESC
@@ -183,7 +184,7 @@ function projectProgramSync(
     return {
       programSync: {
         status: 'unknown', observed_at: null, age_seconds: null, affected_asset_ids: [],
-        current_definition_sha256: null, candidate_definition_sha256: null,
+        current_definition_sha256: null, candidate_definition_sha256: null, candidate_catalogue_sha256: null,
       },
       source: {
         source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
@@ -214,6 +215,7 @@ function projectProgramSync(
       affected_asset_ids: [...new Set(latest.affected_asset_ids)].sort(),
       current_definition_sha256: latest.current_definition_sha256,
       candidate_definition_sha256: latest.candidate_definition_sha256,
+      candidate_catalogue_sha256: latest.candidate_catalogue_sha256,
     },
     source: {
       source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
@@ -1168,6 +1170,7 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     affected_asset_ids: [],
     current_definition_sha256: null,
     candidate_definition_sha256: null,
+    candidate_catalogue_sha256: null,
   }
   const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit })
   return NirmanaElevationSnapshotV2Schema.parse({
