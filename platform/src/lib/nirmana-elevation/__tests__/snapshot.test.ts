@@ -102,6 +102,24 @@ function sources(overrides: Partial<NirmanaElevationRawSources> = {}): NirmanaEl
     campaign_definitions: [],
     campaign_events: [],
     asset_labels: [],
+    monitor_observations: [],
+    ...overrides,
+  } as NirmanaElevationRawSources
+}
+
+type MonitorObservationRow = NonNullable<NirmanaElevationRawSources['monitor_observations']>[number]
+
+function monitorObservation(overrides: Partial<MonitorObservationRow> = {}): MonitorObservationRow {
+  return {
+    id: '30303030-3030-4030-8030-303030303030',
+    observed_at: observedAt,
+    status: 'in_sync',
+    affected_asset_ids: [],
+    current_definition_sha256: 'a'.repeat(64),
+    candidate_definition_sha256: 'a'.repeat(64),
+    source_state: 'available',
+    runtime_liveness: 'quiet',
+    source_error_code: null,
     ...overrides,
   }
 }
@@ -394,6 +412,96 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.campaign).toMatchObject({ current_stage: null, current_layer: null, current_wave: null })
     expect(snapshot.layers[0]?.state).not.toBe('open')
     expect(snapshot.layers[0]?.eligible_next_asset_ids).toEqual([])
+  })
+
+  it('projects plan adaptation without changing the accepted denominator', () => {
+    const manifest = defaultManifest()
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      monitor_observations: [monitorObservation({
+        status: 'plan_adaptation_required',
+        affected_asset_ids: ['bg_new_asset', 'bg_prashna_rules'],
+        current_definition_sha256: canonicalManifestDigest(manifest),
+        candidate_definition_sha256: '9'.repeat(64),
+      })],
+    }), { generatedAt: '2026-08-25T09:05:00.000Z' })
+
+    expect(snapshot.program_sync.status).toBe('plan_adaptation_required')
+    expect(snapshot.program_sync).toMatchObject({
+      observed_at: observedAt,
+      age_seconds: 300,
+      affected_asset_ids: ['bg_new_asset', 'bg_prashna_rules'],
+      current_definition_sha256: canonicalManifestDigest(manifest),
+      candidate_definition_sha256: '9'.repeat(64),
+    })
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
+    expect(snapshot.data_quality.gaps).toContain('Plan adaptation is required before the program denominator can change.')
+  })
+
+  it('marks the monitor stale only after the five-minute window plus ten-minute grace', () => {
+    const atBoundary = projectNirmanaElevationSnapshot(sources({
+      monitor_observations: [monitorObservation()],
+    }), { generatedAt: '2026-08-25T09:15:00.000Z' })
+    const afterBoundary = projectNirmanaElevationSnapshot(sources({
+      monitor_observations: [monitorObservation()],
+    }), { generatedAt: '2026-08-25T09:15:01.000Z' })
+
+    expect(atBoundary.sources.find((source) => source.source_id === 'program_monitor')?.state).toBe('fresh')
+    expect(afterBoundary.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
+      state: 'stale', observed_at: observedAt, age_seconds: 901,
+    })
+  })
+
+  it('keeps an in-sync frozen baseline at null stage and treats quiet runtime as fresh synchronization', () => {
+    const manifest = defaultManifest()
+    const manifestSha256 = canonicalManifestDigest(manifest)
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: manifestSha256, created_at: observedAt,
+      }],
+      monitor_observations: [monitorObservation({
+        current_definition_sha256: manifestSha256,
+        candidate_definition_sha256: manifestSha256,
+        runtime_liveness: 'quiet',
+      })],
+    }), { generatedAt: '2026-08-25T09:05:00.000Z' })
+
+    expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
+    expect(snapshot.campaign).toMatchObject({ current_stage: null, current_layer: null, current_wave: null })
+    expect(snapshot.program_sync).toMatchObject({ status: 'in_sync', age_seconds: 300 })
+    expect(snapshot.sources.find((source) => source.source_id === 'program_monitor')?.state).toBe('fresh')
+  })
+
+  it('projects unknown and unavailable monitor source states without stale-green carryover', () => {
+    const unknown = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+    const unavailable = projectNirmanaElevationSnapshot(sources({
+      monitor_observations: [monitorObservation({
+        status: 'source_unavailable',
+        affected_asset_ids: [],
+        current_definition_sha256: null,
+        candidate_definition_sha256: null,
+        source_state: 'unavailable',
+        runtime_liveness: 'unavailable',
+        source_error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+      })],
+    }), { generatedAt: '2026-08-25T09:01:00.000Z' })
+
+    expect(unknown.program_sync).toMatchObject({
+      status: 'unknown', observed_at: null, age_seconds: null, affected_asset_ids: [],
+      current_definition_sha256: null, candidate_definition_sha256: null,
+    })
+    expect(unknown.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
+      state: 'unknown', observed_at: null, age_seconds: null,
+    })
+    expect(unavailable.program_sync.status).toBe('source_unavailable')
+    expect(unavailable.sources.find((source) => source.source_id === 'program_monitor')).toMatchObject({
+      state: 'unavailable', error_code: 'NIRMANA_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative source is unavailable.',
+    })
   })
 
   it('retains the latest terminal asset error when no active retry has replaced it', () => {

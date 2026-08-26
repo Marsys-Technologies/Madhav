@@ -20,6 +20,7 @@ function superAdmin() {
 }
 
 function sourceRows() {
+  const monitorObservedAt = new Date(Date.now() - 16 * 60 * 1000).toISOString()
   queryMock
     .mockResolvedValueOnce({ rows: [{ asset_id: 'bg_prashna_rules', english_name: 'Prashna Rules', layer: 'brahmagyan', sort_order: 1, has_writer: true, asset_type: 'data', asset_kind: 'data', is_active: true, depends_on: [] }] })
     .mockResolvedValueOnce({ rows: [{ asset_id: 'bg_prashna_rules', state: 'lit', last_built_at: '2026-08-25T09:00:00.000Z' }] })
@@ -29,6 +30,12 @@ function sourceRows() {
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [] })
+    .mockResolvedValueOnce({ rows: [{
+      id: '30303030-3030-4030-8030-303030303030', observed_at: monitorObservedAt,
+      status: 'plan_adaptation_required', affected_asset_ids: ['bg_prashna_rules'],
+      current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: 'b'.repeat(64),
+      source_state: 'available', source_error_code: null, runtime_liveness: 'quiet',
+    }] })
 }
 
 describe('GET /api/admin/nirmana-elevation/snapshot', () => {
@@ -76,6 +83,13 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(body.progress.assets_total).toBeNull()
     expect(body.release).toMatchObject({ main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
     expect(body.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'fresh' })]))
+    expect(body.program_sync).toMatchObject({
+      status: 'plan_adaptation_required', affected_asset_ids: ['bg_prashna_rules'],
+      current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: 'b'.repeat(64),
+    })
+    expect(body.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'program_monitor', state: 'stale' }),
+    ]))
     // The primary build evidence is fresh, but the denominator and release
     // reconciliation are intentionally not frozen in the takeover baseline.
     expect(body.data_quality.verdict).toBe('degraded')
@@ -86,6 +100,7 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(sql).toContain('build_run_assets')
     expect(sql).toContain('build_substep_progress')
     expect(sql).toContain('nirmana_elevation_asset_labels')
+    expect(sql).toContain('nirmana_elevation_monitor_observations')
     expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM build_runs br')
   })
 

@@ -280,6 +280,24 @@ const AuditLedgerRefSchema = z.object({
   ledger_ref: z.string().min(1).max(256),
 })
 
+const ProgramSyncSchema = z.object({
+  status: z.enum([
+    'unknown',
+    'in_sync',
+    'baseline_missing',
+    'plan_adaptation_required',
+    'evidence_refresh_required',
+    'label_refresh_required',
+    'release_attention',
+    'source_unavailable',
+  ]),
+  observed_at: nullableIso,
+  age_seconds: z.number().int().nonnegative().nullable(),
+  affected_asset_ids: z.array(z.string()),
+  current_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  candidate_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+})
+
 /** Version 2 adds governed campaign stages and display identities without changing v1. */
 export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema.extend({
   schema_version: z.literal('2.0'),
@@ -290,6 +308,7 @@ export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema
   layers: z.array(V2LayerSchema),
   assets: z.array(V2AssetSchema),
   sources: z.array(V2SourceSchema),
+  program_sync: ProgramSyncSchema,
   audit: z.object({
     receipts: z.array(AuditReceiptSchema),
     raw_ledger_refs: z.array(AuditLedgerRefSchema),
