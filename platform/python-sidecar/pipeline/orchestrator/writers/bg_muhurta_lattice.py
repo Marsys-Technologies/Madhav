@@ -8,7 +8,7 @@ writer `bg_muhurta_lattice.py` — "global boundary/factor lattice tables, rolli
 horizon (~5y), incl. Agnivāsa states, combination-yoga spans, kālams, ghaṭīs
 (chart-independent parts only; per-chart contact joins live in `ka_kshetra` stage 1)".
 
-WHAT THIS WRITER BUILDS (four chart-independent factor families)
+WHAT THIS WRITER BUILDS (nine chart-independent factor families)
 ──────────────────────────────────────────────────────────────────
 A single chart-INDEPENDENT lattice of muhūrta-relevant classical factors, all
 computed via `panchang_engine` (REUSED wholesale — no astronomical/classical-rule
@@ -49,16 +49,17 @@ math is reimplemented here, exactly the `bg_sky_calendar` precedent):
      boundaries computed relative to this approximated midpoint, not the
      chart's true sunset — disclosed here rather than silently assumed.
 
+  5. HORĀ — 24 planetary hours over sunrise→next sunrise.
+  6. VĀRA — the weekday prevailing for that Hindu day.
+  7. NAKṢATRA — true nakṣatra atoms clipped to the Hindu-day span.
+  8. TITHI — true tithi atoms clipped to the Hindu-day span.
+  9. LAGNA — rising-sign spans at the reference location, carrying facts for
+     query-time evaluation but no duplicated dignity judgment.
+
 WHAT THIS WRITER DOES NOT BUILD:
-  - The base pañcāṅga aṅgas (tithi/vāra/nakṣatra/yoga/karaṇa) as their own factor
-    family — those are read here only as INPUTS to the four families above (e.g.
-    a combination-yoga span's start/end IS the underlying aṅga's window), not
-    re-served as a fifth family. A global pañcāṅga almanac, if ever needed, is a
-    separate future asset.
-  - Any per-chart/per-querent-location computation. Item 6 (activity-specific
-    muhūrta rule tables) and item 7 (muhūrta-lagna) are W3-owned, not this
-    writer's job. Per-chart CONTACT joins (e.g. "is this window good for THIS
-    native") are `ka_kshetra`'s job (brief §2, explicit).
+  - Nityayoga and karaṇa as standalone lattice families. Viṣṭi/Bhadra remains
+    searchable through the combination-yoga family.
+  - Per-chart contact joins; those remain `ka_kshetra`'s responsibility.
 
 REFERENCE LOCATION (explicit scope decision — mirrors bg_sky_calendar's own
 documented boundary-drawing style): Agnivāsa/combination-yoga membership is a pure
@@ -144,7 +145,14 @@ logger = logging.getLogger(__name__)
 # ── Horizon (rolling forward only; see module docstring) ────────────────────
 
 FORWARD_HORIZON_YEARS = 5
-SAMPLING_METHOD_VERSION = "muhurta_lattice_agnivasa_yoga_kalam_ghati_v1"
+SAMPLING_METHOD_VERSION = (
+    "muhurta_lattice_agnivasa_yoga_kalam_ghati_"
+    "hora_vara_nakshatra_tithi_lagna_v2"
+)
+FACTOR_FAMILIES: tuple[str, ...] = (
+    "agnivasa", "combination_yoga", "kalam", "ghati_muhurta",
+    "hora", "vara", "nakshatra", "tithi", "lagna",
+)
 
 # ── Reference location (see module docstring "REFERENCE LOCATION") ──────────
 REFERENCE_LOCATION_KEY = "bhubaneswar"
@@ -324,6 +332,42 @@ GHATI_MUHURTA_CITATION = (
     "computed_uncited_convention",
 )
 
+HORA_CITATION = (
+    "panchang_engine.timings.compute_hora — 24 planetary hours over the "
+    "sunrise→next-sunrise cycle, Chaldean sequence, first hora lord = the vāra "
+    "lord. Source: Viṣṇu Smṛti; Horā Sāra (Pṛthuyaśas).",
+    "computed_cited",
+)
+VARA_CITATION = (
+    "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES "
+    "(1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day convention). "
+    "Source: Viṣṇu Smṛti; Muhūrta Chintāmaṇi §1.",
+    "computed_cited",
+)
+NAKSHATRA_CITATION = (
+    "panchang_engine.angas.compute_nakshatra + shastra_tables.NAKSHATRA_NAMES "
+    "(1=Aśvinī … 27=Revatī). Source: Bṛhat Saṃhitā §2; Muhūrta Chintāmaṇi §3.",
+    "computed_cited",
+)
+TITHI_CITATION = (
+    "panchang_engine.angas.compute_tithi + shastra_tables.TITHI_NAMES "
+    "(1..15 Śukla, 16..30 Kṛṣṇa). Source: Muhūrta Chintāmaṇi §1; Bṛhat Saṃhitā §2.",
+    "computed_cited",
+)
+LAGNA_CITATION = (
+    "panchang_engine.lagna.compute_lagna (swisseph Placidus cusps, sidereal "
+    "Lahiri) — astronomical rising-sign spans found by bisection. The sign-lord "
+    "map is cited to Bṛhat Saṃhitā §1 / Bṛhat Parāśara Horā Śāstra; this codebase "
+    "has no verse-grain muhūrta-lagna doctrine, so no strength verdict is stored here.",
+    "computed_uncited_convention",
+)
+_LAGNA_BISECTION_TOLERANCE_SECONDS = 1.0
+_LAGNA_COARSE_STEP_MINUTES = 5
+
+
+def _slug(name: str) -> str:
+    return "_".join(name.strip().lower().split())
+
 
 @dataclass
 class _Row:
@@ -361,6 +405,7 @@ def compute_day_factors(day: date) -> list[_Row]:
     from panchang_engine.rich_topics import compute_vasa_family
     from panchang_engine.special_yogas import detect_all_special_yogas
     from panchang_engine.ayanamsha import set_ayanamsha
+    from panchang_engine.shastra_tables import VARA_HORA_START, VARA_NAMES
     import swisseph as swe
 
     set_ayanamsha(AYANAMSHA_KEY)
@@ -527,15 +572,251 @@ def compute_day_factors(day: date) -> list[_Row]:
             source_citation=citation, corpus_status=corpus_status,
         ))
 
+    # ── Family 5: horā (24 planetary hours) ──────────────────────────────────
+    from panchang_engine.timings import compute_hora
+
+    citation, corpus_status = HORA_CITATION
+    for index, timing in enumerate(
+        compute_hora(sunrise_utc, next_sunrise_utc, vara.id), start=1,
+    ):
+        lord = timing.label.split("_", 1)[1]
+        rows.append(_Row(
+            factor_family="hora",
+            factor_key=timing.label,
+            start_utc=timing.start_utc,
+            end_utc=timing.end_utc,
+            detail={
+                "lord": lord.capitalize(),
+                "hora_index": index,
+                "vara_id": vara.id,
+                "vara_lord": VARA_HORA_START[vara.id],
+            },
+            source_citation=citation,
+            corpus_status=corpus_status,
+        ))
+
+    # ── Families 6–8: sunrise aṅgas over the Hindu-day span ─────────────────
+    citation, corpus_status = VARA_CITATION
+    vara_info = VARA_NAMES[vara.id]
+    rows.append(_Row(
+        factor_family="vara",
+        factor_key=_slug(vara.name),
+        start_utc=sunrise_utc,
+        end_utc=next_sunrise_utc,
+        detail={
+            "factor_id": vara.id,
+            "name_sanskrit": vara_info["name_sanskrit"],
+            "name_english": vara_info["name_english"],
+            "lord": vara_info["lord"],
+            "span_convention": "hindu_day_sunrise_to_next_sunrise",
+        },
+        source_citation=citation,
+        corpus_status=corpus_status,
+    ))
+
+    def anga_at(family: str, instant_utc: datetime):
+        jd = swe.julday(
+            instant_utc.year, instant_utc.month, instant_utc.day,
+            instant_utc.hour + instant_utc.minute / 60.0
+            + (instant_utc.second + instant_utc.microsecond / 1_000_000) / 3600.0,
+        )
+        instant_planets = compute_all_grahas(jd)
+        instant_sun = next(p.longitude_sidereal for p in instant_planets if p.name == "Sun")
+        instant_moon = next(p.longitude_sidereal for p in instant_planets if p.name == "Moon")
+        if family == "tithi":
+            return compute_tithi(instant_sun, instant_moon, instant_utc)
+        return compute_nakshatra(instant_moon, instant_utc)
+
+    for family, initial_anga, family_citation in (
+        ("nakshatra", nakshatra, NAKSHATRA_CITATION),
+        ("tithi", tithi, TITHI_CITATION),
+    ):
+        current = initial_anga
+        atom_start = sunrise_utc
+        citation, corpus_status = family_citation
+        while atom_start < next_sunrise_utc:
+            atom_end = min(current.end_utc, next_sunrise_utc)
+            if atom_end <= atom_start:
+                raise RuntimeError(
+                    f"{family} boundary did not advance: {atom_start.isoformat()} -> "
+                    f"{atom_end.isoformat()}"
+                )
+            detail = {
+                "factor_id": current.id,
+                "name": current.name,
+                "anga_true_end_utc": current.end_utc.isoformat(),
+                "span_convention": "true_anga_interval_clipped_to_hindu_day",
+            }
+            if family == "tithi":
+                detail["paksha"] = "shukla" if current.id <= 15 else "krishna"
+            rows.append(_Row(
+                factor_family=family,
+                factor_key=_slug(current.name),
+                start_utc=atom_start,
+                end_utc=atom_end,
+                detail=detail,
+                source_citation=citation,
+                corpus_status=corpus_status,
+            ))
+            if atom_end >= next_sunrise_utc:
+                break
+            successor = anga_at(family, atom_end + timedelta(seconds=2))
+            if successor.id == current.id:
+                raise RuntimeError(
+                    f"{family} boundary at {atom_end.isoformat()} did not yield a successor"
+                )
+            current = successor
+            atom_start = atom_end
+
+    # ── Family 9: lagna spans ────────────────────────────────────────────────
+    citation, corpus_status = LAGNA_CITATION
+    for span in compute_lagna_spans(sunrise_utc, next_sunrise_utc, planets):
+        rows.append(_Row(
+            factor_family="lagna",
+            factor_key=_slug(span["sign_name"]),
+            start_utc=span["start_utc"],
+            end_utc=span["end_utc"],
+            detail=span["detail"],
+            source_citation=citation,
+            corpus_status=corpus_status,
+        ))
+
     return rows
+
+
+def _ascendant_sign_id_at(instant_utc: datetime) -> int:
+    """Return the sidereal rising sign at the fixed reference location."""
+    from panchang_engine.lagna import compute_lagna
+
+    local_naive = (
+        instant_utc + timedelta(minutes=REFERENCE_TZ_OFFSET_MINUTES)
+    ).replace(tzinfo=None)
+    return compute_lagna(
+        local_naive, REFERENCE_LAT, REFERENCE_LON,
+        REFERENCE_TZ_OFFSET_MINUTES,
+    ).ascendant_sign_id
+
+
+def _bisect_sign_change(lo: datetime, hi: datetime, sign_lo: int) -> datetime:
+    """Locate a rising-sign boundary without assuming equal sign durations."""
+    while (hi - lo).total_seconds() > _LAGNA_BISECTION_TOLERANCE_SECONDS:
+        mid = lo + (hi - lo) / 2
+        if _ascendant_sign_id_at(mid) == sign_lo:
+            lo = mid
+        else:
+            hi = mid
+    return hi.replace(microsecond=0)
+
+
+def compute_lagna_spans(
+    sunrise_utc: datetime,
+    next_sunrise_utc: datetime,
+    planets: list[Any],
+) -> list[dict[str, Any]]:
+    """Partition a Hindu day into rising-sign spans and carry only facts."""
+    from panchang_engine.planets import compute_all_grahas
+    from panchang_engine.shastra_tables import SIGN_LORDS, SIGN_NAMES
+    import swisseph as swe
+
+    def graha_sign_ids(
+        instant_utc: datetime,
+        precomputed: list[Any] | None = None,
+    ) -> tuple[dict[str, int], list[Any]]:
+        if precomputed is None:
+            jd = swe.julday(
+                instant_utc.year, instant_utc.month, instant_utc.day,
+                instant_utc.hour
+                + instant_utc.minute / 60.0
+                + instant_utc.second / 3600.0,
+            )
+            planet_states = compute_all_grahas(jd)
+        else:
+            planet_states = precomputed
+        return {p.name: p.sign_id for p in planet_states}, planet_states
+
+    spans: list[dict[str, Any]] = []
+    cursor = sunrise_utc
+    current_sign = _ascendant_sign_id_at(cursor)
+    first = True
+
+    while cursor < next_sunrise_utc:
+        probe = min(
+            cursor + timedelta(minutes=_LAGNA_COARSE_STEP_MINUTES),
+            next_sunrise_utc,
+        )
+        while (
+            probe < next_sunrise_utc
+            and _ascendant_sign_id_at(probe) == current_sign
+        ):
+            probe = min(
+                probe + timedelta(minutes=_LAGNA_COARSE_STEP_MINUTES),
+                next_sunrise_utc,
+            )
+
+        if (
+            probe >= next_sunrise_utc
+            and _ascendant_sign_id_at(next_sunrise_utc) == current_sign
+        ):
+            span_end = next_sunrise_utc
+            next_sign = None
+        else:
+            span_end = _bisect_sign_change(
+                probe - timedelta(minutes=_LAGNA_COARSE_STEP_MINUTES),
+                probe,
+                current_sign,
+            )
+            if span_end >= next_sunrise_utc:
+                span_end = next_sunrise_utc
+                next_sign = None
+            else:
+                next_sign = _ascendant_sign_id_at(span_end)
+
+        sign_ids, planet_states = graha_sign_ids(
+            cursor, planets if first else None,
+        )
+        lord = SIGN_LORDS[current_sign - 1]
+        lord_state = next(
+            (planet for planet in planet_states if planet.name == lord), None,
+        )
+        spans.append({
+            "sign_name": SIGN_NAMES[current_sign - 1],
+            "start_utc": cursor,
+            "end_utc": span_end,
+            "detail": {
+                "sign_id": current_sign,
+                "sign_name": SIGN_NAMES[current_sign - 1],
+                "lord": lord,
+                "lord_sign_id": sign_ids.get(lord),
+                "lord_retrograde": (
+                    bool(getattr(lord_state, "retrograde", False))
+                    if lord_state else None
+                ),
+                "graha_sign_ids": sign_ids,
+                "graha_positions_at": cursor.isoformat(),
+                "strength_verdict": None,
+                "strength_verdict_note": (
+                    "Deliberately null (§N.5). Resolve dignity at query time "
+                    "against bg_dignity_reference and dṛṣṭi against BPHS Ch.26."
+                ),
+            },
+        })
+
+        if span_end >= next_sunrise_utc or next_sign is None:
+            break
+        cursor = span_end
+        current_sign = next_sign
+        first = False
+
+    return spans
 
 
 @register("bg_muhurta_lattice")
 class BgMuhurtaLatticeWriter(WriterBase):
     """
     Seeds bg_muhurta_lattice — a chart-independent global muhūrta boundary/factor
-    lattice (Agnivāsa, combination-yoga spans, kālam periods, ghaṭī-muhūrtas), at a
-    fixed Bhubaneswar/IST reference location, over a rolling ~5y forward horizon.
+    lattice (Agnivāsa, combination-yoga spans, kālam periods, ghaṭī-muhūrtas,
+    horā, vāra, nakṣatra, tithi, and lagna), at a fixed Bhubaneswar/IST reference
+    location, over a rolling ~5y forward horizon.
     See module docstring for full methodology and scope boundaries.
 
     HEAVY writer: one sub-step per calendar year in the horizon.
