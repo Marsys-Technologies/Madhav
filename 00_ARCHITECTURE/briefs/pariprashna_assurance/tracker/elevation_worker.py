@@ -195,6 +195,7 @@ def build_sync_launchd_plist(release_dir: Path, runtime: Path, source_repo: Path
         "RunAtLoad": True,
         "ProcessType": "Background",
         "WorkingDirectory": str(release_dir),
+        "EnvironmentVariables": {"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"},
         "StandardOutPath": str(runtime / "sync.log"),
         "StandardErrorPath": str(runtime / "sync.error.log"),
     }, fmt=plistlib.FMT_XML, sort_keys=True)
