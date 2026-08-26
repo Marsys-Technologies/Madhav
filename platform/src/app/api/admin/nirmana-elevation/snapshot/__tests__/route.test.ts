@@ -19,8 +19,15 @@ function superAdmin() {
   })
 }
 
-function sourceRows() {
-  const monitorObservedAt = new Date(Date.now() - 16 * 60 * 1000).toISOString()
+function sourceRows({
+  candidateDefinitionSha256 = 'b'.repeat(64),
+  candidateCatalogueSha256 = 'c'.repeat(64),
+  monitorObservedAt = '2026-08-25T08:44:00.000Z',
+}: {
+  candidateDefinitionSha256?: string
+  candidateCatalogueSha256?: string
+  monitorObservedAt?: string
+} = {}) {
   queryMock
     .mockResolvedValueOnce({ rows: [{ asset_id: 'bg_prashna_rules', english_name: 'Prashna Rules', layer: 'brahmagyan', sort_order: 1, has_writer: true, asset_type: 'data', asset_kind: 'data', is_active: true, depends_on: [] }] })
     .mockResolvedValueOnce({ rows: [{ asset_id: 'bg_prashna_rules', state: 'lit', last_built_at: '2026-08-25T09:00:00.000Z' }] })
@@ -33,8 +40,8 @@ function sourceRows() {
     .mockResolvedValueOnce({ rows: [{
       id: '30303030-3030-4030-8030-303030303030', observed_at: monitorObservedAt,
       status: 'plan_adaptation_required', affected_asset_ids: ['bg_prashna_rules'],
-      current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: 'b'.repeat(64),
-      candidate_catalogue_sha256: 'c'.repeat(64),
+      current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: candidateDefinitionSha256,
+      candidate_catalogue_sha256: candidateCatalogueSha256,
       source_state: 'available', source_error_code: null, runtime_liveness: 'quiet',
     }] })
 }
@@ -104,6 +111,28 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(sql).toContain('nirmana_elevation_asset_labels')
     expect(sql).toContain('nirmana_elevation_monitor_observations')
     expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM build_runs br')
+  })
+
+  it('changes the ETag when the program-sync observation candidate digests change', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-25T09:00:00.000Z'))
+    try {
+      superAdmin()
+      sourceRows({ candidateDefinitionSha256: 'b'.repeat(64), candidateCatalogueSha256: 'c'.repeat(64) })
+      sourceRows({ candidateDefinitionSha256: 'd'.repeat(64), candidateCatalogueSha256: 'e'.repeat(64) })
+      const { GET } = await import('../route')
+
+      const first = await GET()
+      const second = await GET()
+
+      expect(first.status).toBe(200)
+      expect(second.status).toBe(200)
+      expect(first.headers.get('ETag')).toMatch(/^"[a-f0-9]{64}"$/)
+      expect(second.headers.get('ETag')).toMatch(/^"[a-f0-9]{64}"$/)
+      expect(second.headers.get('ETag')).not.toBe(first.headers.get('ETag'))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns an explicit degraded 503 snapshot when any authoritative source fails', async () => {

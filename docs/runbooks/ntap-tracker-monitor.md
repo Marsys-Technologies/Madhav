@@ -20,12 +20,11 @@ alternate acceptance paths.
 1. In the authenticated dashboard Audit Drawer, or from the authenticated snapshot
    API, check `program_sync.status`. Continue only when it is `baseline_missing`
    and the latest observation is fresh (the `program_monitor` source is `fresh`).
-   Record the displayed `candidate_definition_sha256` from that exact observation.
-   The current snapshot contract does **not** expose
-   `candidate_catalogue_sha256`, which the acceptance boundary also requires. Do
-   not calculate, infer, or retrieve that digest through the scheduler-only
-   internal endpoint. Halt baseline acceptance until an authenticated candidate
-   detail surface provides both exact current digests.
+   From that same fresh authenticated Audit Drawer observation, record both the
+   displayed `candidate_definition_sha256` and
+   `candidate_catalogue_sha256`. Do not combine digests from different
+   observations, calculate or infer either digest, or retrieve a substitute
+   through the scheduler-only internal endpoint.
 2. Choose a new, unique definition revision, for example `ntap-v1`. Submit the
    evidence command with the exact two current candidate digests:
 
@@ -38,17 +37,22 @@ alternate acceptance paths.
    }
    ```
 
-   Once the authenticated candidate detail surface provides both digests, send it
-   only to `POST /api/admin/nirmana-elevation/evidence` while authenticated as
-   `super_admin`. The server re-reads the live registry serializably; a `409` means
-   the candidate changed or another current definition exists. Refresh the
-   authenticated view and restart the review—never substitute a digest by hand.
+   Send it only to `POST /api/admin/nirmana-elevation/evidence` while authenticated
+   as `super_admin`. The server re-reads the live registry serializably; a `409`
+   means the candidate changed or another current definition exists. A `429`
+   means the per-actor mutation limit was reached; wait for `Retry-After`, then
+   re-read one fresh Audit Drawer observation before retrying. Never substitute a
+   digest by hand.
 3. Confirm the result is `created` (or the exact safe retry is `idempotent`), then
    refresh the snapshot after the next monitor observation. Verify that the
    definition is frozen and synchronization reflects the new observation. Baseline
    acceptance establishes program identity and its label catalogue only: stage,
    layer, wave, asset lifecycle, and progress remain unknown until their separate
-   typed acceptance receipts exist.
+   typed acceptance receipts exist. The actor-attributed, append-only
+   `asset_label_catalogue_accepted` campaign receipt committed by the acceptance
+   transaction is the normative audit provenance. `admin_audit_log` is a
+   best-effort operator index only; its absence neither creates nor erases an
+   acceptance.
 
 ## Plan-adaptation review and adoption
 

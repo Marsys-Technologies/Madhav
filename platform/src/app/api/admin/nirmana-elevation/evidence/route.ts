@@ -19,6 +19,7 @@ import {
   NirmanaLabelCatalogueInputSchema,
   recordNirmanaElevationLabelCatalogue,
 } from '@/lib/nirmana-elevation/labels'
+import { checkRateLimit } from '@/lib/mcp/rate_limiter'
 import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 const campaignId = z.literal('nirmana-elevation')
@@ -219,6 +220,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid Nirmana evidence command', issues: parsed.error.issues }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
   }
 
+  if (parsed.data.command === 'accept_baseline_candidate') {
+    let rateLimit
+    try {
+      rateLimit = await checkRateLimit(`admin:nirmana_accept_baseline_candidate:${auth.user.uid}`)
+    } catch {
+      // This explicit mutation fails closed when the shared limiter is
+      // unavailable. Never open the acceptance transaction without a decision,
+      // and never log a raw database error from this boundary.
+      console.error('[api/admin/nirmana-elevation/evidence] baseline acceptance rate limiter unavailable')
+      return NextResponse.json(
+        { error: 'baseline acceptance rate limiter unavailable' },
+        { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } },
+      )
+    }
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'baseline acceptance rate limit exceeded' },
+        {
+          status: 429,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': String(rateLimit.retry_after_seconds ?? 60),
+          },
+        },
+      )
+    }
+  }
+
   try {
     if (parsed.data.command === 'record_definition') {
       const outcome = await createNirmanaElevationDefinition({ ...parsed.data, created_by: auth.user.uid })
@@ -286,6 +315,11 @@ export async function POST(request: Request) {
         expected_candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
         created_by: auth.user.uid,
       })
+      // Normative audit provenance is the append-only
+      // asset_label_catalogue_accepted campaign receipt committed by the same
+      // serializable transaction as the frozen definition and labels. This
+      // admin audit row is intentionally secondary/operator-facing and remains
+      // best-effort; acceptance never depends on the unrelated admin table.
       await writeAuditLog(auth.user.uid, 'nirmana_definition_recorded', null, {
         command: 'accept_baseline_candidate',
         campaign_id: 'nirmana-elevation',

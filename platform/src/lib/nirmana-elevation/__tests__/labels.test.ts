@@ -59,6 +59,15 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery).toHaveBeenNthCalledWith(2,
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       ['nirmana-elevation:r1:labels-v1'])
+    const receiptCall = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+    expect(receiptCall).toBeDefined()
+    expect(JSON.parse(receiptCall![1][4])).toEqual({
+      catalogue_sha256: digest,
+      asset_count: 1,
+      audit_provenance: 'normative',
+    })
+    expect(receiptCall![1][6]).toBe('admin-1')
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
   })

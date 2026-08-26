@@ -17,6 +17,10 @@ const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
 const auditMock = vi.fn()
 vi.mock('@/lib/admin/audit', () => ({ writeAuditLog: (...args: unknown[]) => auditMock(...args) }))
+const mutationRateLimitMock = vi.fn()
+vi.mock('@/lib/mcp/rate_limiter', () => ({
+  checkRateLimit: (...args: unknown[]) => mutationRateLimitMock(...args),
+}))
 const labelCatalogueRecorderMock = vi.fn()
 vi.mock('@/lib/nirmana-elevation/labels', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/lib/nirmana-elevation/labels')>(),
@@ -89,6 +93,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     transactionReleaseMock.mockReset()
     authMock.mockReset()
     auditMock.mockReset().mockResolvedValue(undefined)
+    mutationRateLimitMock.mockReset().mockResolvedValue({
+      allowed: true,
+    })
     labelCatalogueRecorderMock.mockReset()
   })
 
@@ -184,6 +191,27 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       candidate_catalogue_sha256: candidate.catalogue_sha256,
       outcome: 'created',
     })
+  })
+
+  it('rate-limits baseline acceptance per authenticated actor before opening its transaction', async () => {
+    superAdmin()
+    mutationRateLimitMock.mockResolvedValue({
+      allowed: false, reason: 'rpm_exceeded', retry_after_seconds: 42,
+    })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'accept_baseline_candidate', definition_revision: 'ntap-v1',
+      expected_candidate_sha256: 'a'.repeat(64),
+      expected_candidate_catalogue_sha256: 'b'.repeat(64),
+    }))
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(response.headers.get('Retry-After')).toBe('42')
+    expect(await response.json()).toEqual({ error: 'baseline acceptance rate limit exceeded' })
+    expect(mutationRateLimitMock).toHaveBeenCalledWith('admin:nirmana_accept_baseline_candidate:admin-1')
+    expect(transactionQueryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
   })
 
   it('does not record a label catalogue for a non-super-admin request', async () => {

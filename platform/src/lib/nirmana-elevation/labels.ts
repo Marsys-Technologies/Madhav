@@ -149,7 +149,15 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
      RETURNING event_id`,
     [input.campaign_id, input.definition_revision,
       receiptIdempotencyKey,
-      input.catalogue_revision, JSON.stringify({ catalogue_sha256: digest, asset_count: input.labels.length }),
+      input.catalogue_revision, JSON.stringify({
+        catalogue_sha256: digest,
+        asset_count: input.labels.length,
+        // This append-only campaign receipt is the normative acceptance audit:
+        // it is actor-attributed and commits atomically with the frozen
+        // definition and label rows. admin_audit_log is only a best-effort
+        // operator index and is not part of this transaction.
+        audit_provenance: 'normative',
+      }),
       receiptSourceRef, input.recorded_by],
   )
   if (inserted.rowCount === input.labels.length && receipt.rowCount === 1) {
