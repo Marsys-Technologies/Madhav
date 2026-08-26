@@ -516,6 +516,22 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as ctx: self.emit("surrogate", "gate_closed", {"gate_id": "CG-6"}, "P6")
         self.assertEqual(ctx.exception.code, "ROLE_FORBIDDEN")
 
+    def test_completed_session_presence_does_not_render_as_stale_running(self):
+        """Break caught: a durably COMPLETED session with an old presence row must never
+        surface as a stale running-presence warning (handoff §3: 'P1 presence is COMPLETED
+        but old; dashboard warning says stale running presence' is a liveness defect, not
+        evidence the phase reopened)."""
+        self.emit("integrator", "dependency_resolved", {"from": "P0", "to": "P1"}, "P1")
+        self.emit("lead-p1", "work_started", {"session_id": "p1-takeover", "assignment": "takeover reconciliation"}, "P1")
+        old = "2020-01-01T00:00:00Z"
+        self.store.record_presence("lead-p1", "p1-takeover", "P1", "COMPLETED", observed_at=old)
+        projection = self.store.projection(as_of="2026-01-01T00:00:00Z")
+        cell = next(c for c in projection["liveness"]["cells"] if c["session_id"] == "p1-takeover")
+        self.assertNotEqual(cell["health"], "STALE")
+        self.assertEqual(cell["health"], "COMPLETED")
+        self.assertNotIn("P1", projection["liveness"]["stale_stream_ids"])
+        self.assertNotEqual(projection["liveness"]["warning"], "STALE RUNNING PRESENCE — do not treat stream as healthy")
+
     def test_running_presence_stales_but_paused_does_not(self):
         self.emit("lead-s1", "work_started", {"session_id": "live", "planned_scenarios": 1}, "S1")
         old = "2020-01-01T00:00:00Z"; self.store.record_presence("lead-s1", "live", "S1", "ACTIVE", observed_at=old)
