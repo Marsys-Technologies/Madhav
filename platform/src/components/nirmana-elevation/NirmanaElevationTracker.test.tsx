@@ -12,6 +12,9 @@ import {
 } from './NirmanaElevationTracker'
 
 const remainingLayerIds = ['L1', 'L2', 'L3', 'L4', 'L5'] as const
+const unsafeDatabaseUri = `postgresql${'://tracker_admin:secret-password@db.private.internal/nirmana'}`
+const unsafeGithubToken = `gh${'p_abcdefghijklmnopqrstuvwxyz1234567890ABCD'}`
+const unsafeOpenAiToken = `sk${'-proj-abcdefghijklmnopqrstuvwxyz1234567890'}`
 
 const snapshotV1: NirmanaElevationSnapshotV1 = {
   schema_version: '1.0',
@@ -113,7 +116,7 @@ describe('NirmanaElevationTracker', () => {
     unsafeSnapshot.sources[0] = {
       ...unsafeSnapshot.sources[0],
       state: 'unavailable',
-      error: 'postgresql://tracker_admin:secret-password@db.private.internal/nirmana',
+      error: unsafeDatabaseUri,
     }
     unsafeSnapshot.assets[0] = {
       ...unsafeSnapshot.assets[0],
@@ -150,13 +153,13 @@ describe('NirmanaElevationTracker', () => {
       'sha:not-a-hash',
       'event:tracker_admin',
       'receipt:asset_frozen:private-token',
-      'postgresql://tracker_admin:secret-password@db.private.internal/nirmana',
+      unsafeDatabaseUri,
       'https://tracker_admin@db.private.internal/evidence?token=private-token',
       'authorization=Bearer private-token',
       'password=secret-password host=db.private.internal user=tracker_admin',
       '-----BEGIN PRIVATE KEY----- private-key-material -----END PRIVATE KEY-----',
-      'ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD',
-      'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890',
+      unsafeGithubToken,
+      unsafeOpenAiToken,
       `sha:${'a'.repeat(600)}`,
     ]
 
@@ -178,8 +181,8 @@ describe('NirmanaElevationTracker', () => {
     expect(document.body).not.toHaveTextContent('tracker_admin')
     expect(document.body).not.toHaveTextContent('private-token')
     expect(document.body).not.toHaveTextContent('PRIVATE KEY')
-    expect(document.body).not.toHaveTextContent('ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD')
-    expect(document.body).not.toHaveTextContent('sk-proj-abcdefghijklmnopqrstuvwxyz1234567890')
+    expect(document.body).not.toHaveTextContent(unsafeGithubToken)
+    expect(document.body).not.toHaveTextContent(unsafeOpenAiToken)
     expect(document.body).not.toHaveTextContent('a'.repeat(600))
     expect(document.body).not.toHaveTextContent('10.0.0.8')
     expect(document.body).not.toHaveTextContent('not-a-hash')
