@@ -4,7 +4,10 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const schedulerMain = resolve(process.cwd(), '../infra/scheduler/main.tf')
-const schedulerReadme = resolve(process.cwd(), '../infra/scheduler/README.md')
+const monitorBackend = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/backend.tf')
+const monitorMain = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/main.tf')
+const monitorApply = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/apply.sh')
+const monitorReadme = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/README.md')
 
 function resourceBlock(terraform: string, resourceStart: string): string {
   const start = terraform.indexOf(resourceStart)
@@ -15,8 +18,16 @@ function resourceBlock(terraform: string, resourceStart: string): string {
 
 describe('Nirmana elevation monitor scheduler contract', () => {
   it('uses a dedicated least-privilege OIDC principal and bounded monitor job', () => {
-    const terraform = readFileSync(schedulerMain, 'utf8')
-    const readme = readFileSync(schedulerReadme, 'utf8')
+    const schedulerTerraform = readFileSync(schedulerMain, 'utf8')
+    const backend = readFileSync(monitorBackend, 'utf8')
+    const terraform = readFileSync(monitorMain, 'utf8')
+    const applyScript = readFileSync(monitorApply, 'utf8')
+    const readme = readFileSync(monitorReadme, 'utf8')
+
+    expect(schedulerTerraform).not.toContain('nirmana_elevation_monitor')
+    expect(schedulerTerraform).not.toContain('amjis-nirmana-elevation-monitor')
+    expect(backend).toContain('backend "gcs"')
+    expect(applyScript).toContain('STATE_PREFIX="scheduler/nirmana-elevation-monitor"')
     const schedulerIdentity = resourceBlock(terraform, 'resource "google_service_account" "nirmana_elevation_monitor"')
     const invokerBinding = resourceBlock(terraform, 'resource "google_cloud_run_v2_service_iam_member" "nirmana_elevation_monitor_invokes_web"')
     const tokenMintBinding = resourceBlock(terraform, 'resource "google_service_account_iam_member" "cloud_scheduler_mints_nirmana_monitor_oidc"')
@@ -33,7 +44,7 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(tokenMintBinding).toContain('service_account_id = google_service_account.nirmana_elevation_monitor.name')
     expect(tokenMintBinding).toContain('role               = "roles/iam.serviceAccountOpenIdTokenCreator"')
     expect(tokenMintBinding).not.toContain('roles/iam.serviceAccountTokenCreator')
-    expect(tokenMintBinding).toContain('service-${data.google_project.scheduler.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com')
+    expect(tokenMintBinding).toContain('service-${data.google_project.nirmana_elevation_monitor.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com')
 
     expect(monitorJob).toContain('name             = "amjis-nirmana-elevation-monitor"')
     expect(monitorJob).toContain('schedule         = "*/5 * * * *"')

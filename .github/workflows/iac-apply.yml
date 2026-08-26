@@ -16,6 +16,7 @@ on:
           - iam
           - logging
           - scheduler
+          - nirmana_elevation_monitor
       action:
         description: 'plan (safe, default) or apply'
         required: true
