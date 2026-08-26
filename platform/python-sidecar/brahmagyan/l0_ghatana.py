@@ -465,36 +465,37 @@ EVENT_CLASSES: list[dict] = [
     },
     # ── DR-13 additions: 5 new classes (migration 456, 2026-07-19) ────────────
     {
-        # G9 (SAMPURTI L0e, 2026-08-10): provisional/inherited_from removed;
-        # signature_model reconciled with ratified KaryatvaMap (R21+R22, G8).
+        # Exact post-migration-555 representation. The long-form citations live
+        # inside signature_model; the top-level citations remain the DR-13
+        # provenance carried by migration 456.
         "event_class_id": "achievement_recognition",
         "name_en": "Achievement / Recognition",
         "domain": "general",
         "lel_category": "creative",
         "signature_model": {
-            "houses": ["5", "10", "11"], "lords": ["5L", "10L", "11L"],
-            "karakas": ["Mercury", "Sun"], "vargas": ["D10"],
-            "dasha_rules": "benefic 5/10/11 dasha (Mercury/Sun period, Jupiter transit)",
-            "transit_triggers": "Jupiter transit to 5th/10th/11th; Sun dasha conferring rajya/kirti",
+            "houses": ["10", "11", "5"], "lords": ["10L", "11L", "5L"],
+            "karakas": ["Sun", "Mercury"], "vargas": ["D10"],
+            "dasha_rules": "benefic 10/11/5 dasha",
+            "transit_triggers": "Jupiter transit to 10th/11th/5th",
+            "citations": [
+                "BPHS ch.16 (putra-bhava: vidya-buddhi-chitta; 5th as the seat of intellect whose public recognition is kirti — fame accrued from works)",
+                "BPHS ch.10 (karma-bhava: rajya, pratigya — the public career stage on which recognition lands) + ch.11 (labha-bhava: the fruit of public deeds including title, honour, and prize)",
+                "BPHS ch.3 (graha-karakatva: Budha/Mercury = vidya, kala, vakya — the planet whose dasha confers recognition for intellectual and communicative achievement)",
+                "BPHS ch.28 (karaka-adhyaya: Ravi/Sun = rajya, mana, kirti — natural significator of public honour, prestige, and recognition by authority)",
+                "BPHS ch.6 (varga-prakarana: dashamsha — all karma/career/public-domain events, including their fruits such as award and title, manifest through D10)",
+            ],
         },
         "magnitude_floor": "moderate",
         "adjacency": ["career_advancement"],
         "base_rate_by_age": {"band_0_12": 0.02, "band_13_25": 0.30, "band_26_40": 0.40, "band_41_60": 0.20, "band_60_plus": 0.05},
-        "citations": [
-            "BPHS ch.16 (putra-bhava: vidya-buddhi-chitta; 5th as seat of intellect whose public recognition is kirti)",
-            "BPHS ch.10 (karma-bhava: rajya, pratigya) + ch.11 (labha-bhava: title, honour, prize)",
-            "BPHS ch.3 (graha-karakatva: Budha/Mercury = vidya, kala, vakya — recognition for intellectual achievement)",
-            "BPHS ch.28 (karaka-adhyaya: Ravi/Sun = rajya, mana, kirti — public honour and recognition by authority)",
-            "BPHS ch.6 (varga-prakarana: dashamsha — public-domain events including award and title manifest through D10)",
-        ],
+        "citations": ["BPHS ch.10 (karma-bhava)", "Phaladeepika ch.10 (inherited — provisional pending dedicated sourcing)"],
         "temporal_shape": "point",
         "duration_prior": None,
         "milestone_template": None,
         "irreversibility_milestone": None,
     },
     {
-        # G9 (SAMPURTI L0e, 2026-08-10): provisional/inherited_from removed;
-        # signature_model reconciled with ratified KaryatvaMap (R21+R22, G8).
+        # Exact post-migration-555 representation; see note above.
         "event_class_id": "financial_deception",
         "name_en": "Financial Deception / Fraud Loss",
         "domain": "wealth",
@@ -502,60 +503,59 @@ EVENT_CLASSES: list[dict] = [
         "signature_model": {
             "houses": ["2", "11", "12"], "lords": ["2L/11L afflicted", "12L active"],
             "karakas": ["Rahu", "Saturn"], "vargas": ["D2"],
-            "dasha_rules": "adverse dasha for 2nd/11th with active 12L and Rahu involvement (dusthana required)",
-            "transit_triggers": "adverse Rahu/Saturn transit to 2nd or 11th; 12L simultaneously active",
+            "dasha_rules": "adverse dasha for 2nd/11th with Rahu involvement",
+            "transit_triggers": "adverse Rahu/Saturn transit to 2nd or 11th",
+            "citations": [
+                "BPHS ch.3 (dhana-bhava: the 2nd holds sanchita-dhana — accumulated savings; its affliction by the 12L/8L chain is the classical mechanism for involuntary wealth-destruction through hidden agency)",
+                "BPHS ch.11 (labha-bhava: income and anticipated gains; Rahu in or aspecting 11th produces earnings that fail to materialise or are misdirected — labha-nasha through vyajakarana)",
+                "BPHS ch.12 (vyaya-bhava: the 12th represents loss through cheating (chhala), hidden enemies, and clandestine activity — dhrohana distinguishes this from ordinary market loss)",
+                "BPHS ch.28 (karaka-adhyaya: Rahu = maya, chala, apasavya — the planet of illusion and deception; its involvement converts a financial-loss event from market-driven to fraud-driven)",
+                "BPHS ch.12 (dusthana-viveka: the 12th and 8th must be active structural connectors — a deception without 12th/8th involvement is mere market loss, not a classified fraud event)",
+            ],
         },
         "magnitude_floor": "significant",
         "adjacency": ["major_loss"],
         "base_rate_by_age": {"band_0_12": 0.00, "band_13_25": 0.10, "band_26_40": 0.35, "band_41_60": 0.35, "band_60_plus": 0.20},
-        "citations": [
-            "BPHS ch.3 (dhana-bhava: 2nd holds sanchita-dhana; 12L/8L chain = involuntary wealth-destruction through hidden agency)",
-            "BPHS ch.11 (labha-bhava: Rahu in/aspecting 11th = labha-nasha through vyajakarana/fraudulent means)",
-            "BPHS ch.12 (vyaya-bhava: loss through chhala/dhrohana — treachery/fraud; distinguishes from ordinary market loss)",
-            "BPHS ch.28 (karaka-adhyaya: Rahu = maya, chala, apasavya — deception karaka; converts loss to fraud-class)",
-            "BPHS ch.12 (dusthana-viveka: 12th/8th must be active structural connectors; without them, event is major_loss not financial_deception)",
-        ],
+        "citations": ["BPHS ch.12 (vyaya) — inherited from major_loss, provisional pending dedicated sourcing"],
         "temporal_shape": "interval",
         "duration_prior": {"min_days": 1, "typical_days": 60, "max_days": 365},
         "milestone_template": None,
         "irreversibility_milestone": None,
     },
     {
-        # G9 (SAMPURTI L0e, 2026-08-10): provisional/inherited_from removed;
-        # signature_model reconciled with ratified KaryatvaMap (R21+R22, G8).
+        # Exact post-migration-555 representation; see note above.
         "event_class_id": "psychological_arc",
         "name_en": "Psychological / Speech-Pattern Arc",
         "domain": "character",
         "lel_category": "psychological",
         "signature_model": {
-            "houses": ["1", "6", "12"], "lords": ["1L", "6L", "12L"],
-            "karakas": ["Mercury", "Moon", "Saturn"], "vargas": ["D1"],
-            "dasha_rules": "Saturn/Moon-afflicted dasha (triple-karaka involvement: Mercury/Moon/Saturn)",
-            "transit_triggers": "adverse Saturn or Moon transit to lagna; Mercury affliction activating speech-pattern dimension",
+            "houses": ["1", "6", "12"], "lords": ["1L", "6L"],
+            "karakas": ["Moon", "Mercury", "Saturn"], "vargas": ["D1"],
+            "dasha_rules": "Saturn/Moon-afflicted dasha",
+            "transit_triggers": "adverse Saturn/Moon transit to lagna",
+            "citations": [
+                "BPHS ch.1 (lagna-bhava: the 1st is the svarupa — temperament, constitution, and manas-shakti; psychological arcs are lagna-centred because they modify the subject's fundamental self-expression)",
+                "BPHS ch.6 (ari-bhava/roga-bhava: the 6th governs roga in all forms including unmada (mental disorder) and vakya-dosha (speech defect); a psychological arc begins when 6L activates against lagna or Moon)",
+                "BPHS ch.12 (vyaya-bhava: the 12th governs sayana, bandha, and sukha-nasha — classical descriptors of a psychological crisis period)",
+                "BPHS ch.28 (karaka-adhyaya: Chandra/Moon = manas, chitta, manasika-roga — the natural karaka of the mind; its affliction is the primary classical trigger for psychological disturbance)",
+                "BPHS ch.28 (karaka-adhyaya: Budha/Mercury = buddhi, vakya, smriti — karaka of cognitive function and speech; distinguishes speech-pattern/cognitive dimension from purely emotional Moon-affliction)",
+                "BPHS ch.28 (karaka-adhyaya: Shani/Saturn = ayus, roga-sthiti — governs chronic disease; its involvement converts an acute episode into a long-duration psychological arc)",
+                "BPHS ch.6 (varga-prakarana: D1/rashi chart — the fundamental chart is the appropriate varga for psychological arcs; manasika conditions read from D1 Moon/lagna configurations)",
+            ],
         },
         "magnitude_floor": "moderate",
         "adjacency": ["chronic_onset"],
         "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.20, "band_26_40": 0.25, "band_41_60": 0.25, "band_60_plus": 0.20},
-        "citations": [
-            "BPHS ch.1 (lagna-bhava: svarupa — temperament and manas-shakti; psychological arcs are lagna-centred, modifying fundamental self-expression)",
-            "BPHS ch.6 (ari-bhava/roga-bhava: governs roga including unmada/mental disorder and vakya-dosha/speech defect; 6L activation triggers psychological arc)",
-            "BPHS ch.12 (vyaya-bhava: sayana, bandha, sukha-nasha — confinement and loss of wellbeing; classical descriptors of a psychological crisis period)",
-            "BPHS ch.28 (karaka-adhyaya: Chandra/Moon = manas, chitta, manasika-roga — primary karaka of the mind; Moon affliction is the primary trigger for psychological disturbance)",
-            "BPHS ch.28 (karaka-adhyaya: Budha/Mercury = buddhi, vakya, smriti — cognitive function and speech; Mercury affliction targets speech-pattern/cognitive dimension)",
-            "BPHS ch.28 (karaka-adhyaya: Shani/Saturn = ayus, roga-sthiti — governs chronic disease; Saturn converts acute episode to long-duration psychological arc)",
-            "BPHS ch.6 (varga-prakarana: D1/rashi chart — manasika conditions read from D1 Moon/lagna; no specialised divisional isolates mental-constitution events)",
-        ],
+        "citations": ["BPHS ch.1 (lagna, temperament) — inherited from chronic_onset, provisional pending dedicated sourcing"],
         "temporal_shape": "interval",
         "duration_prior": {"min_days": 14, "typical_days": 180, "max_days": 1825},
         "milestone_template": None,
         "irreversibility_milestone": None,
     },
     {
-        # G9 (SAMPURTI L0e, 2026-08-10): provisional/inherited_from removed;
-        # signature_model reconciled with ratified KaryatvaMap (R21+R22, G8).
-        # birth_anchor is the chart-epoch definitional anchor; kill_switch
-        # excludes it from lambda_e scoring (epoch_tautology). No dasha_rules/
-        # transit_triggers: this is not a predicted event, it defines time-zero.
+        # Exact post-migration-555 representation. The epoch_tautology control
+        # remains in the migration-owned kill_switch_criteria column, not in
+        # this signature object.
         "event_class_id": "birth_anchor",
         "name_en": "Birth (Subject's Own, Chart Epoch)",
         "domain": "transition",
@@ -565,24 +565,23 @@ EVENT_CLASSES: list[dict] = [
             "karakas": ["Sun"], "vargas": ["D1"],
             "dasha_rules": None,
             "transit_triggers": None,
-            "kill_switch": "epoch_tautology",
+            "citations": [
+                "BPHS ch.1 (lagna-bhava: the 1st bhava IS the birth moment — the rising sign at the first breath is the definitional anchor of the natal chart; this class marks that epoch, not a predicted event)",
+                "BPHS ch.28 (karaka-adhyaya: Ravi/Sun = atma, jiva, bala — natural significator of the self, life-force, and vitality; the Sun's placement at birth defines the chart's fundamental strength axis)",
+                "BPHS ch.1 (lagna-pida: Saturn and Rahu in the 12th and 2nd from lagna form papakartari yoga — the condition axis assesses lagna affliction quality, not the prediction of birth itself)",
+            ],
         },
         "magnitude_floor": "life_altering",
         "adjacency": [],
         "base_rate_by_age": {"band_0_12": 1.00, "band_13_25": 0.00, "band_26_40": 0.00, "band_41_60": 0.00, "band_60_plus": 0.00},
-        "citations": [
-            "BPHS ch.1 (lagna-bhava: the 1st bhava IS the birth moment — rising sign at the first breath defines the natal chart; this class marks that epoch, not a predicted event)",
-            "BPHS ch.28 (karaka-adhyaya: Ravi/Sun = atma, jiva, bala — natural significator of the self and life-force; Sun placement at birth defines the chart's fundamental strength axis)",
-            "BPHS ch.1 (lagna-pida: Saturn and Rahu in 12th/2nd from lagna = papakartari yoga — condition axis assesses lagna affliction quality, diagnostic not predictive)",
-        ],
+        "citations": ["n/a — defines the natal epoch, not a classically-timed event"],
         "temporal_shape": "point",
         "duration_prior": None,
         "milestone_template": None,
         "irreversibility_milestone": None,
     },
     {
-        # G9 (SAMPURTI L0e, 2026-08-10): provisional/inherited_from removed;
-        # signature_model reconciled with ratified KaryatvaMap (R21+R22, G8).
+        # Exact post-migration-555 representation; see note above.
         "event_class_id": "travel_event",
         "name_en": "Discrete Travel Event",
         "domain": "travel",
@@ -590,19 +589,20 @@ EVENT_CLASSES: list[dict] = [
         "signature_model": {
             "houses": ["3", "9", "12"], "lords": ["3L", "9L"],
             "karakas": ["Moon"], "vargas": ["D1"],
-            "dasha_rules": "benefic 3/9/12 transit-dasha (Moon alone; Rahu is foreign-residency-specific, not required for discrete trip)",
-            "transit_triggers": "benefic transit to 3rd, 9th, or 12th; Moon dasha/antardasha period",
+            "dasha_rules": "benefic 3/9/12 transit-dasha",
+            "transit_triggers": "benefic transit to 3rd, 9th, or 12th",
+            "citations": [
+                "BPHS ch.3 (parakrama-bhava: the 3rd governs parakrama and yatra to nearby/domestic destinations; primary bhava for a discrete short or medium trip as distinct from durable residence change)",
+                "BPHS ch.9 (dharma/bhagya-bhava: the 9th governs tirthayyatra, desha-antara, and pravasa; Jupiter-activated 9th confers auspicious foreign travel; Rahu-activated 9th produces sudden overseas journeys)",
+                "BPHS ch.12 (vyaya-bhava: the 12th is the bhava of expenditure in distant lands and sayanasthana — activated during any non-local journey involving lodging away from home)",
+                "BPHS ch.28 (karaka-adhyaya: Chandra/Moon = chara (movable), natural significator of journeys and change of place; the Moon alone governs discrete trips; Rahu governs foreign-residency-specific uprooting)",
+                "BPHS ch.6 (varga-prakarana: D1/rashi chart — a discrete trip is a D1 event; unlike foreign_settlement which involves D9/D12 soul-level relocation, travel_event manifests in the rashi chart)",
+            ],
         },
         "magnitude_floor": "trivial",
         "adjacency": ["foreign_settlement", "relocation"],
         "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.35, "band_26_40": 0.35, "band_41_60": 0.15, "band_60_plus": 0.05},
-        "citations": [
-            "BPHS ch.3 (parakrama-bhava: the 3rd governs yatra to nearby/domestic destinations; primary bhava for a discrete short or medium trip)",
-            "BPHS ch.9 (dharma/bhagya-bhava: governs tirthayyatra, desha-antara, and pravasa; Jupiter-activated = auspicious foreign travel; Rahu-activated = sudden overseas journey)",
-            "BPHS ch.12 (vyaya-bhava: expenditure in distant lands and sayanasthana — lodging away from home; activated during any non-local journey)",
-            "BPHS ch.28 (karaka-adhyaya: Chandra/Moon = chara (movable), natural significator of journeys and change of place; Moon governs discrete trips; Rahu governs foreign-residency uprooting)",
-            "BPHS ch.6 (varga-prakarana: D1/rashi chart — a discrete trip is a D1 event; unlike foreign_settlement which involves D9/D12 soul-level relocation)",
-        ],
+        "citations": ["BPHS ch.12 (videsh) — inherited from foreign_settlement, provisional pending dedicated sourcing"],
         "temporal_shape": "point",
         "duration_prior": None,
         "milestone_template": None,
@@ -886,12 +886,19 @@ def seed_ghatana(
                         %s, %s::jsonb, %s::jsonb, %s)
                 ON CONFLICT (event_class_id)
                 DO UPDATE SET
-                    signature_model  = EXCLUDED.signature_model,
-                    magnitude_floor  = EXCLUDED.magnitude_floor,
-                    adjacency        = EXCLUDED.adjacency,
-                    base_rate_by_age = EXCLUDED.base_rate_by_age,
-                    citations        = EXCLUDED.citations,
-                    version          = EXCLUDED.version
+                    name_en                   = EXCLUDED.name_en,
+                    domain                    = EXCLUDED.domain,
+                    lel_category              = EXCLUDED.lel_category,
+                    signature_model           = EXCLUDED.signature_model,
+                    magnitude_floor           = EXCLUDED.magnitude_floor,
+                    adjacency                 = EXCLUDED.adjacency,
+                    base_rate_by_age          = EXCLUDED.base_rate_by_age,
+                    citations                 = EXCLUDED.citations,
+                    version                   = EXCLUDED.version,
+                    temporal_shape            = EXCLUDED.temporal_shape,
+                    duration_prior             = EXCLUDED.duration_prior,
+                    milestone_template        = EXCLUDED.milestone_template,
+                    irreversibility_milestone = EXCLUDED.irreversibility_milestone
                 """,
                 (
                     ec["event_class_id"],
@@ -920,9 +927,12 @@ def seed_ghatana(
                 VALUES (%s, %s, %s::jsonb, %s::jsonb, %s, %s, '1.0')
                 ON CONFLICT (activity_class_id)
                 DO UPDATE SET
+                    name_en               = EXCLUDED.name_en,
                     significators        = EXCLUDED.significators,
                     fructification_rules = EXCLUDED.fructification_rules,
-                    citations            = EXCLUDED.citations
+                    related_event_class  = EXCLUDED.related_event_class,
+                    citations            = EXCLUDED.citations,
+                    version              = EXCLUDED.version
                 """,
                 (
                     ac["activity_class_id"],

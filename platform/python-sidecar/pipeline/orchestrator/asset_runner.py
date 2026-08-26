@@ -670,6 +670,7 @@ def _drive_substeps(
     writer: WriterBase,
     ctx: ContextSpec,
     completed_keys: set[str] | None = None,
+    defer_commits: bool = False,
 ) -> tuple[int, int]:
     """
     Drive a writer's sub-steps, each as its own SAVEPOINT + heartbeat + commit.
@@ -682,7 +683,9 @@ def _drive_substeps(
       marks the asset errored) — prior committed sub-steps stay durable.
     - After each successful sub-step: refresh `asset_throughput.last_built_at`
       (the reaper heartbeat — see watchdog/route.ts) + cumulative `rows_written`,
-      commit, and emit an `asset.substep` event (granular SSE).
+      commit, and emit an `asset.substep` event (granular SSE). When
+      `defer_commits` is true, every sub-step remains in the caller's transaction
+      so post-write integrity and provenance can gate the complete output.
     - `completed_keys` (optional) lets a resumed run SKIP already-finished chunks;
       omitted on a fresh run, where writer idempotency (replace-not-accrete,
       scoped to `step.key`) makes an accidental re-run safe anyway.
@@ -729,7 +732,8 @@ def _drive_substeps(
                WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
             (rows_inserted + rows_updated, chart_id, asset_id),
         )
-        conn.commit()
+        if not defer_commits:
+            conn.commit()
 
         emit_event({
             "type": "asset.substep",
@@ -887,13 +891,49 @@ def _run_data_writer(
     except Exception as exc:
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
         return False
+    cur.execute(
+        "SELECT integrity_check_sql FROM asset_registry WHERE asset_id = %s",
+        (asset_id,),
+    )
+    integrity_row = cur.fetchone() or {}
+    has_integrity_check = bool(integrity_row.get("integrity_check_sql"))
+    # Light writers are one transaction and can be rolled back atomically when
+    # their detector fails. Heavy writers intentionally keep their established
+    # per-substep commits: those commits make heartbeats visible to the watchdog
+    # and preserve resumable work. Their detector still gates final success and
+    # provenance, while an error state prevents partial output being accepted.
+    defer_writer_commits = has_integrity_check and not writer.has_substeps
     try:
-        rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)
+        rows_inserted, rows_updated = _drive_substeps(
+            conn, cur, run_id, chart_id, asset_id, writer, ctx,
+            defer_commits=defer_writer_commits,
+        )
     except Exception as exc:
         err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
         logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
+        # Never let mark_asset_error's own commit capture an open writer
+        # transaction. For heavy writers, earlier substep commits remain the
+        # documented resumable output; only the failing substep is rolled back.
+        conn.rollback()
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
         return False
+
+    # A writer completing is not proof that its output is correct. When the
+    # registry declares integrity SQL, run it before final success/provenance.
+    # Light-writer output remains in this transaction and rolls back atomically;
+    # heavy-writer substeps remain durable/resumable but cannot be accepted while
+    # the detector is red. This applies even when rebuild_on_probe_fail=false:
+    # that flag controls the preflight skip/regenerate policy, not whether a
+    # freshly written result must satisfy its detector.
+    if has_integrity_check:
+        ok, message = _probe_asset(conn, cur, asset_id, integrity_row, False)
+        if not ok:
+            conn.rollback()
+            mark_asset_error(
+                conn, cur, run_id, chart_id, asset_id,
+                f"post-write integrity check failed: {message}",
+            )
+            return False
 
     rows_written = int((rows_inserted + rows_updated) or 0)
 

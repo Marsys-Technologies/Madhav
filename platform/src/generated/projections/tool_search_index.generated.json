@@ -2060,8 +2060,8 @@
       "family": "flat_fact",
       "tool_role": "leaf",
       "short_label": "Query Formula Constants",
-      "one_line": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
-      "description": "Query the formula-constants registry (brahma_formula_constants, 18 rows).",
+      "one_line": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
+      "description": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows).",
       "keywords": [
         "assets",
         "bounds",
@@ -2297,8 +2297,8 @@
       "family": "flat_fact",
       "tool_role": "leaf",
       "short_label": "Query Medical Mappings",
-      "one_line": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
-      "description": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
+      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
+      "description": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
       "keywords": [
         "applies",
         "ashtanga",

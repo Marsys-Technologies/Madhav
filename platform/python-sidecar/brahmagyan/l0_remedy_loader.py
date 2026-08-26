@@ -188,20 +188,35 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                 """
                 INSERT INTO brahma_remedy_corpus (
                     remedy_id, planet, domain, remedy_type,
-                    prescription_text, mantra_text,
+                    prescription_text, mantra_text, gemstone, charity_action,
+                    day_of_week, color_associated,
                     confidence, source_canonical_id, source_citation, classical_ref,
                     category, deity, mantra_sanskrit, mantra_transliteration,
                     ingredients_jsonb, timing_rules_jsonb, cost_tier,
-                    contraindications, classical_attestation_text
+                    contraindications, classical_attestation_text, scaffold_status
                 ) VALUES (
                     %(remedy_id)s, %(planet)s, %(domain)s, %(remedy_type)s,
-                    %(prescription_text)s, %(mantra_text)s,
+                    %(prescription_text)s, %(mantra_text)s, %(gemstone)s,
+                    %(charity_action)s, %(day_of_week)s, %(color_associated)s,
                     %(confidence)s, %(source_canonical_id)s, %(source_citation)s, %(classical_ref)s,
                     %(category)s, %(deity)s, %(mantra_sanskrit)s, %(mantra_transliteration)s,
                     %(ingredients_jsonb)s::jsonb, %(timing_rules_jsonb)s::jsonb, %(cost_tier)s,
-                    %(contraindications)s, %(classical_attestation_text)s
+                    %(contraindications)s, %(classical_attestation_text)s, %(scaffold_status)s
                 )
                 ON CONFLICT (remedy_id) DO UPDATE SET
+                    planet = EXCLUDED.planet,
+                    domain = EXCLUDED.domain,
+                    remedy_type = EXCLUDED.remedy_type,
+                    prescription_text = EXCLUDED.prescription_text,
+                    mantra_text = EXCLUDED.mantra_text,
+                    gemstone = EXCLUDED.gemstone,
+                    charity_action = EXCLUDED.charity_action,
+                    day_of_week = EXCLUDED.day_of_week,
+                    color_associated = EXCLUDED.color_associated,
+                    confidence = EXCLUDED.confidence,
+                    source_canonical_id = EXCLUDED.source_canonical_id,
+                    source_citation = EXCLUDED.source_citation,
+                    classical_ref = EXCLUDED.classical_ref,
                     category = EXCLUDED.category,
                     deity = EXCLUDED.deity,
                     mantra_sanskrit = EXCLUDED.mantra_sanskrit,
@@ -211,30 +226,19 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                     cost_tier = EXCLUDED.cost_tier,
                     contraindications = EXCLUDED.contraindications,
                     classical_attestation_text = EXCLUDED.classical_attestation_text,
-                    prescription_text = EXCLUDED.prescription_text,
-                    -- PARIŚEṢA-V4 F-183 (gap 1): the citation columns were absent
-                    -- from this list, so a correction to an ALREADY-SEEDED row's
-                    -- attribution — the exact class of fix the R-1/R-2/R-3 wave
-                    -- (#1429, #1436) has been making — reloaded silently as a
-                    -- no-op while the loader reported the row as inserted.
-                    source_canonical_id = EXCLUDED.source_canonical_id,
-                    source_citation = EXCLUDED.source_citation,
-                    classical_ref = EXCLUDED.classical_ref,
-                    -- Same defect class, one step removed: both of these are fed
-                    -- from a YAML field whose SIBLING column already updates
-                    -- (mantra_text ← mantra_transliteration, remedy_type ←
-                    -- category), so omitting them left the corrected and the
-                    -- stale copy of the same source value in one row.
-                    mantra_text = EXCLUDED.mantra_text,
-                    remedy_type = EXCLUDED.remedy_type
+                    scaffold_status = EXCLUDED.scaffold_status
                 """,
                 {
                     'remedy_id': row['remedy_id'],
-                    'planet': row['planet'],
+                    'planet': row['planet'].strip().lower(),
                     'domain': row.get('domain', 'general'),
                     'remedy_type': row.get('category', 'unknown'),
                     'prescription_text': row.get('remedy_text', row.get('prescription_text', '')),
                     'mantra_text': row.get('mantra_transliteration', row.get('mantra_text')),
+                    'gemstone': row.get('gemstone'),
+                    'charity_action': row.get('charity_action'),
+                    'day_of_week': row.get('day_of_week'),
+                    'color_associated': row.get('color_associated'),
                     'confidence': 0.85,
                     'source_canonical_id': row.get('source_text', 'BPHS'),
                     'source_citation': _citation_excerpt(row.get('classical_attestation_text')),
@@ -250,6 +254,7 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                     'cost_tier': _map_cost_tier(row.get('cost_tier', 'accessible')),
                     'contraindications': row.get('contraindications', ''),
                     'classical_attestation_text': row.get('classical_attestation_text', ''),
+                    'scaffold_status': 'live',
                 },
             )
     except Exception as exc:

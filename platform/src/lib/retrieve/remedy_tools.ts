@@ -59,6 +59,12 @@ async function queryDb(sql: string, params: unknown[]): Promise<Record<string, u
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
+const LIVE_REMEDY_CONDITION = "scaffold_status = 'live'"
+
+function normalizePlanet(planet: string): string {
+  return planet.trim().toLowerCase()
+}
+
 function makeBundle(
   toolName: string,
   version: string,
@@ -103,12 +109,12 @@ export const queryRemedies: RetrievalTool = {
     const category = params?.category as string | undefined
     const topK = Number(params?.top_k ?? 10)
 
-    const conditions: string[] = []
+    const conditions: string[] = [LIVE_REMEDY_CONDITION]
     const values: unknown[] = []
 
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
     if (domain) {
       values.push(domain)
@@ -119,7 +125,7 @@ export const queryRemedies: RetrievalTool = {
       conditions.push(`category = $${values.length}`)
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const where = `WHERE ${conditions.join(' AND ')}`
     values.push(topK)
     const sql = `
       SELECT remedy_id, planet, domain, category, deity,
@@ -162,7 +168,7 @@ export const queryRemediesForChart: RetrievalTool = {
              cost_tier, contraindications, source_canonical_id, source_citation,
              classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE planet ILIKE $1 OR domain ILIKE $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND (planet ILIKE $1 OR domain ILIKE $1)
       ORDER BY confidence DESC NULLS LAST, cost_tier ASC
       LIMIT $2
     `
@@ -187,7 +193,7 @@ export const listRemediesByCategory: RetrievalTool = {
              prescription_text, mantra_text, mantra_sanskrit,
              cost_tier, source_canonical_id, classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE category = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND category = $1
       ORDER BY planet, remedy_id
     `
     const rows = await queryDb(sql, [category])
@@ -209,7 +215,7 @@ export const readRemedy: RetrievalTool = {
     const sql = `
       SELECT *
       FROM brahma_remedy_corpus
-      WHERE remedy_id = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND remedy_id = $1
     `
     const rows = await queryDb(sql, [remedyId])
     return makeBundle('read_remedy', '1.0.0', params ?? {}, rows, Date.now() - t0)
@@ -229,7 +235,7 @@ export const queryTantricRemedies: RetrievalTool = {
     const deity = params?.deity as string | undefined
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = ["category = 'tantric'"]
+    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'tantric'"]
     const values: unknown[] = []
 
     if (deity) {
@@ -237,8 +243,8 @@ export const queryTantricRemedies: RetrievalTool = {
       conditions.push(`deity ILIKE $${values.length}`)
     }
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
 
     const sql = `
@@ -271,10 +277,10 @@ export const queryRemediesByPlanet: RetrievalTool = {
              prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
              cost_tier, contraindications, source_canonical_id, classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE planet = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND LOWER(planet) = $1
       ORDER BY category, remedy_id
     `
-    const rows = await queryDb(sql, [planet])
+    const rows = await queryDb(sql, [normalizePlanet(planet)])
     return makeBundle('query_remedies_by_planet', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -291,12 +297,12 @@ export const queryMantras: RetrievalTool = {
     const t0 = Date.now()
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = ["category = 'mantras'"]
+    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'mantras'"]
     const values: unknown[] = []
 
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
 
     const sql = `

@@ -45,6 +45,71 @@ def _columns(component: dict[str, Any], field: str) -> list[str]:
     return columns
 
 
+def _where_equals(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
+    """Compose an optional reviewed equality filter without embedding values."""
+    raw = component.get("where_equals")
+    if raw is None:
+        return "", ()
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("output digest spec component requires non-empty where_equals")
+    predicates: list[str] = []
+    values: list[object] = []
+    for raw_column in sorted(raw):
+        column = _identifier(raw_column, field="where_equals")
+        value = raw[raw_column]
+        if value is None or not isinstance(value, (str, bool, int, float)):
+            raise ValueError("output digest spec where_equals values must be non-null scalars")
+        predicates.append(f"source.{_quoted(column)} = %s")
+        values.append(value)
+    return " AND ".join(predicates), tuple(values)
+
+
+def _where_is_null(component: dict[str, Any]) -> str:
+    raw = component.get("where_is_null")
+    if raw is None:
+        return ""
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("output digest spec component requires non-empty where_is_null")
+    columns = [_identifier(value, field="where_is_null") for value in raw]
+    if len(set(columns)) != len(columns):
+        raise ValueError("output digest spec component repeats a where_is_null value")
+    return " AND ".join(f"source.{_quoted(column)} IS NULL" for column in columns)
+
+
+def _where_in(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
+    """Compose reviewed finite-set filters as parameterized PostgreSQL arrays."""
+    raw = component.get("where_in")
+    if raw is None:
+        return "", ()
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("output digest spec component requires non-empty where_in")
+    predicates: list[str] = []
+    params: list[object] = []
+    for raw_column in sorted(raw):
+        column = _identifier(raw_column, field="where_in")
+        values = raw[raw_column]
+        if not isinstance(values, list) or not values:
+            raise ValueError("output digest spec where_in values must be non-empty lists")
+        value_type = type(values[0])
+        if value_type not in (str, bool, int, float) or any(type(value) is not value_type for value in values):
+            raise ValueError("output digest spec where_in values must be same-type scalars")
+        if len(set(values)) != len(values) or values != sorted(values):
+            raise ValueError("output digest spec where_in values must be unique and sorted")
+        predicates.append(f"source.{_quoted(column)} = ANY(%s)")
+        params.append(values)
+    return " AND ".join(predicates), tuple(params)
+
+
+def _where_filter(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
+    equals_sql, equals_values = _where_equals(component)
+    in_sql, in_values = _where_in(component)
+    null_sql = _where_is_null(component)
+    return (
+        " AND ".join(part for part in (equals_sql, in_sql, null_sql) if part),
+        equals_values + in_values,
+    )
+
+
 def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDigestSpec:
     if not isinstance(raw, dict) or raw.get("version") != "nirmana-output-digest-spec-v1":
         raise ValueError("output digest spec has unsupported version")
@@ -55,7 +120,7 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
     if not isinstance(components, list) or not components:
         raise ValueError("output digest spec requires components")
     seen_names: set[str] = set()
-    seen_relations: set[str] = set()
+    seen_scopes: set[str] = set()
     for component in components:
         if not isinstance(component, dict):
             raise ValueError("output digest spec component must be an object")
@@ -63,10 +128,17 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
         relation = _identifier(component.get("relation"), field="relation")
         _columns(component, "key_columns")
         _columns(component, "value_columns")
-        if name in seen_names or relation in seen_relations:
+        _where_filter(component)
+        scope = canonical_digest({
+            "relation": relation,
+            "where_equals": component.get("where_equals"),
+            "where_in": component.get("where_in"),
+            "where_is_null": component.get("where_is_null"),
+        })
+        if name in seen_names or scope in seen_scopes:
             raise ValueError("output digest spec repeats a component")
         seen_names.add(name)
-        seen_relations.add(relation)
+        seen_scopes.add(scope)
     return OutputDigestSpec(asset_id=asset_id, spec_sha256=actual_sha, spec=raw)
 
 
@@ -100,12 +172,15 @@ def _component_statement(component: dict[str, Any]) -> str:
         pairs.extend([f"'{column}'", f"source.{_quoted(column)}"])
     row_json = f"jsonb_build_object({', '.join(pairs)})::text"
     order = ", ".join(f"source.{_quoted(column)}" for column in key_columns)
+    filter_sql, _ = _where_filter(component)
+    where = f" WHERE {filter_sql}" if filter_sql else ""
     # Reviewed keys are backed by unique indexes and NULL is rejected before
     # scanning. Ordering by the native columns lets PostgreSQL use those indexes
     # for large relations instead of sorting a JSON projection of every row.
     return (
         f"SELECT {row_json} AS row_json "
         f"FROM public.{_quoted(relation)} AS source "
+        f"{where} "
         f"ORDER BY {order}"
     )
 
@@ -116,10 +191,12 @@ def _component_key_preflight(component: dict[str, Any]) -> str:
     null_predicate = " OR ".join(
         f"source.{_quoted(column)} IS NULL" for column in key_columns
     )
+    filter_sql, _ = _where_filter(component)
+    where = f"({filter_sql}) AND ({null_predicate})" if filter_sql else null_predicate
     return (
         "SELECT 1 AS invalid_key "
         f"FROM public.{_quoted(relation)} AS source "
-        f"WHERE {null_predicate} LIMIT 1"
+        f"WHERE {where} LIMIT 1"
     )
 
 
@@ -152,12 +229,13 @@ def compute_output_digest(cur, *, asset_id: str) -> tuple[str | None, str | None
         name = _identifier(component.get("name"), field="component name")
         digest.update(name.encode("ascii"))
         digest.update(b"\\0")
-        cur.execute(_component_key_preflight(component))
+        _, filter_params = _where_filter(component)
+        cur.execute(_component_key_preflight(component), filter_params or None)
         if cur.fetchone():
             raise ValueError(f"output digest component {name} has a NULL reviewed key")
         row_count = 0
         with _streaming_cursor(cur) as stream:
-            stream.execute(_component_statement(component))
+            stream.execute(_component_statement(component), filter_params or None)
             while rows := stream.fetchmany(_BATCH_SIZE):
                 for row in rows:
                     value = row.get("row_json")

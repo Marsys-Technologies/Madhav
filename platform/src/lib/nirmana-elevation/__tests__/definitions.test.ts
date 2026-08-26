@@ -110,7 +110,12 @@ describe('Nirmana elevation definition repository', () => {
 
   it('validates the full 128-asset T0 manifest, exact DAG waves, and registry fingerprints', async () => {
     expect(reconciledT0Manifest.assets).toHaveLength(128)
-    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('c0097895ab6b5318e8b9a2c34de34f7fe685eedfe9b8fb2293abe78593a5a3c4')
+    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('ef81829b177c3226197cd0cb93b8a2c91f21e64ae4d6b0da85448157d880e42d')
+
+    const exactAssets = new Map(reconciledT0Manifest.assets.map((asset: typeof manifestAsset) => [asset.asset_id, asset]))
+    expect(exactAssets.get('bg_gochara_arcs')).toMatchObject({ wave_index: 1, depends_on: ['bg_ephemeris'] })
+    expect(exactAssets.get('bg_kp_sublord_division')).toMatchObject({ wave_index: 1, depends_on: ['bg_nakshatra'] })
+    expect(exactAssets.get('bg_parihara_rules')).toMatchObject({ wave_index: 2, depends_on: ['bg_doshas', 'bg_texts'] })
 
     queryMock
       .mockResolvedValueOnce({ rows: registryRowsFor(reconciledT0Manifest) })

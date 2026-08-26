@@ -130,11 +130,11 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
 })
 
 describe('L0 registry metadata', () => {
-  it('matches the tested 36-row Prashna corpus', () => {
+  it('matches the tested 41-row Prashna corpus', () => {
     const prashna = ASSETS.find(asset => asset.asset_id === 'bg_prashna_rules')
     expect(prashna).toMatchObject({
-      target_floor: 36,
-      volume_explanation: '36 rows across 5 prashna sub-tables (5 lagna methods + 11 Tajik yogas + 12 significators + 5 fructification rules + 3 special techniques).',
+      target_floor: 41,
+      volume_explanation: '41 rows across 5 prashna sub-tables (5 lagna methods + 16 Tajik yogas + 12 significators + 5 fructification rules + 3 special techniques).',
     })
   })
 

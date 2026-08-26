@@ -63,7 +63,7 @@
         "catalog_status": "CURRENT",
         "is_active": true,
         "has_writer": true,
-        "target_table": "reference_nakshatras",
+        "target_table": "reference_planets",
         "count_sql": "SELECT\n  (SELECT count(*) FROM reference_planets) +\n  (SELECT count(*) FROM reference_signs) +\n  (SELECT count(*) FROM reference_aspects) +\n  (SELECT count(*) FROM reference_vargas) +\n  (SELECT count(*) FROM reference_houses) +\n  (SELECT count(*) FROM reference_strength_systems) +\n  (SELECT count(*) FROM reference_karakas) +\n  (SELECT count(*) FROM reference_upagrahas) +\n  (SELECT count(*) FROM reference_constants) +\n  (SELECT count(*) FROM reference_topic_tags) +\n  (SELECT count(*) FROM reference_glossary) AS count",
         "integrity_check_sql": null,
         "health_probe": null,
@@ -72,7 +72,7 @@
         "data_disposition": null,
         "dead_flag": null
       },
-      "registry_fingerprint_sha256": "91f1e57e4a004a13abcb18476c521e1778f1d518e0f3e17d4b52f4177ba21b1c"
+      "registry_fingerprint_sha256": "926301c1b1aeb4490ab291011b992325f2e352e716f3666fb9ace8f2eea82553"
     },
     {
       "asset_id": "bg_texts",
@@ -608,9 +608,12 @@
     {
       "asset_id": "bg_parihara_rules",
       "layer": "L0",
-      "wave_index": 0,
+      "wave_index": 2,
       "execution_obligation": "build",
-      "depends_on": [],
+      "depends_on": [
+        "bg_doshas",
+        "bg_texts"
+      ],
       "registry_contract": {
         "sort_order": 71,
         "scope": "global",
@@ -627,7 +630,7 @@
         "data_disposition": null,
         "dead_flag": null
       },
-      "registry_fingerprint_sha256": "3bc098602c55b13a1d5a4be4bb53c4abfdc3cf03784cbdc2b71b83b30052c8f5"
+      "registry_fingerprint_sha256": "527a9ec99137fd2eaa3fc06d45ee956d638c99d5bf3b9895a6074250ba6a17bc"
     },
     {
       "asset_id": "bg_kota_chakra_rings",
@@ -728,9 +731,11 @@
     {
       "asset_id": "bg_kp_sublord_division",
       "layer": "L0",
-      "wave_index": 0,
+      "wave_index": 1,
       "execution_obligation": "build",
-      "depends_on": [],
+      "depends_on": [
+        "bg_nakshatra"
+      ],
       "registry_contract": {
         "sort_order": 76,
         "scope": "global",
@@ -747,14 +752,16 @@
         "data_disposition": null,
         "dead_flag": null
       },
-      "registry_fingerprint_sha256": "eef0debdafd122609ba4d2218dde4c3f5a68029092cd372dc097abcda15baf16"
+      "registry_fingerprint_sha256": "8d01b7abd8c28db4e668a9b54e87145819c48d5244adbd7ba7f7866e58261058"
     },
     {
       "asset_id": "bg_gochara_arcs",
       "layer": "L0",
-      "wave_index": 0,
+      "wave_index": 1,
       "execution_obligation": "build",
-      "depends_on": [],
+      "depends_on": [
+        "bg_ephemeris"
+      ],
       "registry_contract": {
         "sort_order": 77,
         "scope": "global",
@@ -771,7 +778,7 @@
         "data_disposition": null,
         "dead_flag": null
       },
-      "registry_fingerprint_sha256": "5e1b020414d100c471edc4cf94f6eb3acafa05437c3d7f6aad3ad81007e9c303"
+      "registry_fingerprint_sha256": "eb22d69f9d60347f029672bcddf3a982a3b08b258101b5f343d517a2898fd3e2"
     },
     {
       "asset_id": "bg_text_index",

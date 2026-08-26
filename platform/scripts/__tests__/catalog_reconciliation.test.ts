@@ -22,6 +22,14 @@ describe('asset_registry_seed — catalog reconciliation', () => {
     expect(bad).toEqual([])
   })
 
+  it('declares the hidden L0 writer inputs as exact build-order dependencies', () => {
+    const dependencies = new Map(ASSETS.map(asset => [asset.asset_id, asset.depends_on]))
+
+    expect(dependencies.get('bg_gochara_arcs')).toEqual(['bg_ephemeris'])
+    expect(dependencies.get('bg_kp_sublord_division')).toEqual(['bg_nakshatra'])
+    expect(dependencies.get('bg_parihara_rules')).toEqual(['bg_doshas', 'bg_texts'])
+  })
+
   it('every data asset has a non-empty count_sql', () => {
     const bad: string[] = []
     for (const asset of ASSETS) {
@@ -66,6 +74,35 @@ describe('asset_registry_seed — catalog reconciliation', () => {
 
   it('ga_pyjhora_engine is not in the seed (retired)', () => {
     expect(assetIds.has('ga_pyjhora_engine')).toBe(false)
+  })
+
+  it('preserves ratified achieved floors for exhausted L0 corpus assets', () => {
+    const textIndex = ASSETS.find((asset) => asset.asset_id === 'bg_text_index')
+    const concordance = ASSETS.find((asset) => asset.asset_id === 'bg_concordance')
+
+    expect(textIndex?.target_floor).toBe(361)
+    expect(textIndex?.volume_explanation).toContain('achieved')
+
+    expect(concordance?.target_floor).toBe(721)
+    expect(concordance?.volume_explanation).toContain('convergent rebuild')
+    expect(concordance?.depends_on).toEqual([
+      'bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules',
+    ])
+  })
+
+  it('measures only the 11 tables owned by bg_reference', () => {
+    const reference = ASSETS.find((asset) => asset.asset_id === 'bg_reference')
+
+    expect(reference).toMatchObject({
+      target_table: 'reference_planets',
+      size_sql: "SELECT pg_total_relation_size('reference_planets')",
+      target_floor: 1242,
+    })
+    expect(reference?.count_sql).not.toContain('reference_yogas')
+    expect(reference?.count_sql).not.toContain('reference_doshas')
+    expect(reference?.count_sql).not.toContain('reference_dasha_systems')
+    expect(reference?.count_sql).not.toContain('reference_nakshatras')
+    expect(reference?.volume_explanation).toContain('11 tables owned by bg_reference')
   })
 
   // ṢAḌ-DARŚANA Lane K / Gate W3K close: `ga_sensitive`'s count_sql carries a

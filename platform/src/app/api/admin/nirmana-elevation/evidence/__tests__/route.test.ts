@@ -141,6 +141,76 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
+  it('rejects asset-analysis evidence that does not pin the current registry contract and analysis artifact', async () => {
+    superAdmin()
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:analysis', event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {}, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('records asset analysis only after the server re-derives the pinned current registry fingerprint', async () => {
+    superAdmin()
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: registryRows })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:analysis', event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256, analysis_digest: 'b'.repeat(64) },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(201)
+    expect(queryMock.mock.calls[0][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(queryMock.mock.calls[1][0]).toContain('FROM asset_registry registry')
+    expect(queryMock.mock.calls[2][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
+  })
+
+  it('rejects a stale asset-analysis fingerprint without appending evidence', async () => {
+    superAdmin()
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: registryRows })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', campaign_id: 'nirmana-elevation', definition_revision: 'v1',
+      idempotency_key: 'bg:test:analysis-stale', event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'c'.repeat(64), analysis_digest: 'b'.repeat(64) },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
+    }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'asset_analysis_accepted registry fingerprint does not match the current live contract.' })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps an exact asset-analysis retry idempotent after the live registry contract evolves', async () => {
+    superAdmin()
+    const priorReceipt = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'bg:test:analysis-retry',
+      event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256, analysis_digest: 'b'.repeat(64) },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    queryMock.mockResolvedValueOnce({ rows: [priorReceipt] })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'record_evidence', ...priorReceipt,
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ outcome: 'idempotent' })
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock.mock.calls[0][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'idempotent' }))
+  })
+
   it('maps a conflicting immutable evidence replay to 409 rather than reporting idempotent success', async () => {
     superAdmin()
     queryMock

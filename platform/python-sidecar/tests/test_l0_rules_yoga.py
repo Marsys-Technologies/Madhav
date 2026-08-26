@@ -18,6 +18,11 @@ Tests:
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+
 
 def _get_module():
     from brahmagyan import l0_rules as mod
@@ -159,3 +164,24 @@ class TestExtractRulesWiring:
         assert rows
         for r in rows:
             assert r.get("yoga_canonical_id") is None
+
+
+class TestNadiTripleDeterminism:
+    def test_planet_order_is_canonical_across_python_hash_seeds(self):
+        script = (
+            "import json; from brahmagyan import l0_rules as m; "
+            "text='Mars, Ketu and Venus in Cancer. So, the native will take up a job'; "
+            "match=m._P27.search(text); "
+            "print(json.dumps([a['planet'] for a in m._p27_extract(match,text)['antecedent']]))"
+        )
+        observed = []
+        for seed in ("0", "3"):
+            env = {**os.environ, "PYTHONHASHSEED": seed}
+            output = subprocess.check_output(
+                [sys.executable, "-c", script],
+                text=True,
+                env=env,
+            )
+            observed.append(json.loads(output))
+
+        assert observed == [["mars", "ketu"], ["mars", "ketu"]]

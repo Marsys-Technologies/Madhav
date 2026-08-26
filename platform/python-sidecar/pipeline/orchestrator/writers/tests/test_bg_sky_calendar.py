@@ -233,6 +233,262 @@ def test_writer_dry_run_no_db_needed():
     assert result.notes == "dry_run"
 
 
+def test_writer_fails_closed_before_scanning_without_swiss_ephemeris_files(monkeypatch):
+    """Removing the production .se1 path must raise, not compute with Moshier
+    while persisting rows that still claim Swiss-file provenance."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: None)
+
+    def scan_must_not_run(*_args, **_kwargs):
+        raise AssertionError("sky scan reached after the required .se1 path was absent")
+
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", scan_must_not_run)
+
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match=r"Swiss Ephemeris .*\.se1"):
+        BgSkyCalendarWriter().run(ctx)
+
+
+def test_writer_fails_closed_when_swisseph_reports_moshier_fallback(monkeypatch):
+    """A directory name is not provenance: the position probe must confirm
+    that Swiss files, rather than the silent Moshier fallback, served it."""
+    import sys
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    class MoshierSwe:
+        SIDM_LAHIRI = 1
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SIDEREAL = 64 * 1024
+        FLG_SPEED = 256
+        SUN = 0
+
+        version = "test"
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def set_sid_mode(_mode):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2_451_544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 1.0, 1.0, 0.0, 0.0), MoshierSwe.FLG_MOSEPH)
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
+    monkeypatch.setitem(sys.modules, "swisseph", MoshierSwe)
+
+    def scan_must_not_run(*_args, **_kwargs):
+        raise AssertionError("sky scan reached after Moshier served the backend probe")
+
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", scan_must_not_run)
+
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match="Moshier"):
+        BgSkyCalendarWriter().run(ctx)
+
+
+def test_writer_fails_closed_outside_pinned_linux_x86_runtime(monkeypatch):
+    """Station roots differ by one persisted quantum between arm64/macOS and
+    the production runtime, so writes from an unpinned runtime must halt."""
+    import platform
+    import sys
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    class SwissFileSwe:
+        SIDM_LAHIRI = 1
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SIDEREAL = 64 * 1024
+        FLG_SPEED = 256
+        SUN = 0
+        version = "2.10.03"
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def set_sid_mode(_mode):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2_451_544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 1.0, 1.0, 0.0, 0.0), SwissFileSwe.FLG_SWIEPH)
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
+    monkeypatch.setitem(sys.modules, "swisseph", SwissFileSwe)
+    monkeypatch.setattr(platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(platform, "machine", lambda: "arm64")
+
+    def scan_must_not_run(*_args, **_kwargs):
+        raise AssertionError("sky scan reached outside the pinned write runtime")
+
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", scan_must_not_run)
+
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match=r"Linux/x86_64"):
+        BgSkyCalendarWriter().run(ctx)
+
+
+def test_writer_fails_closed_when_ephemeris_file_digest_drifts(monkeypatch, tmp_path):
+    """A different Swiss-file corpus must not inherit the pinned production
+    provenance merely because it uses the same three filenames."""
+    import platform
+    import sys
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    for filename in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
+        (tmp_path / filename).write_bytes(b"not-the-pinned-ephemeris")
+
+    class SwissFileSwe:
+        SIDM_LAHIRI = 1
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SIDEREAL = 64 * 1024
+        FLG_SPEED = 256
+        SUN = 0
+        version = "2.10.03"
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def set_sid_mode(_mode):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2_451_544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 1.0, 1.0, 0.0, 0.0), SwissFileSwe.FLG_SWIEPH)
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: str(tmp_path))
+    monkeypatch.setitem(sys.modules, "swisseph", SwissFileSwe)
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(platform, "machine", lambda: "x86_64")
+
+    def scan_must_not_run(*_args, **_kwargs):
+        raise AssertionError("sky scan reached with unpinned ephemeris bytes")
+
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", scan_must_not_run)
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match="digest"):
+        BgSkyCalendarWriter().run(ctx)
+
+
+def test_writer_propagates_scan_failure_to_the_orchestrator(monkeypatch):
+    """A failed global scan must not return a zero-row success result, because
+    the orchestrator classifies zero-row global writers as complete."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/verified/se1")
+    monkeypatch.setattr(sky_calendar, "_require_swiss_file_backend", lambda *_args: None)
+    monkeypatch.setattr(sky_calendar, "_require_reproducible_write_runtime", lambda: None)
+    monkeypatch.setattr(sky_calendar, "_require_pinned_ephemeris_files", lambda *_args: None)
+
+    def broken_scan(*_args, **_kwargs):
+        raise ValueError("deterministic scan exploded")
+
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", broken_scan)
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=None,
+    )
+    with pytest.raises(ValueError, match="deterministic scan exploded"):
+        BgSkyCalendarWriter().run(ctx)
+
+
+def test_writer_propagates_insert_failure_to_the_orchestrator(monkeypatch):
+    """A DB write failure must escape the writer so its savepoint is rolled
+    back and the asset is marked error instead of complete-with-partial rows."""
+    from datetime import datetime
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_sky_calendar as sky_calendar
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/verified/se1")
+    monkeypatch.setattr(sky_calendar, "_require_swiss_file_backend", lambda *_args: None)
+    monkeypatch.setattr(sky_calendar, "_require_reproducible_write_runtime", lambda: None)
+    monkeypatch.setattr(sky_calendar, "_require_pinned_ephemeris_files", lambda *_args: None)
+    one_row = sky_calendar._Row(
+        event_type="ingress",
+        primary_body="Sun",
+        secondary_body=None,
+        event_jd=2_451_544.5,
+        event_datetime_utc=datetime(2000, 1, 1),
+        sign="Capricorn",
+        nakshatra="Uttara Ashadha",
+        longitude_deg=280.0,
+        speed_dps=1.0,
+        detail={"target_sign": "Capricorn"},
+    )
+    monkeypatch.setattr(sky_calendar, "scan_ingresses", lambda *_args: [one_row])
+    monkeypatch.setattr(sky_calendar, "scan_stations", lambda *_args: [])
+    monkeypatch.setattr(sky_calendar, "scan_eclipses", lambda *_args: [])
+    monkeypatch.setattr(sky_calendar, "scan_double_transits", lambda *_args: [])
+
+    def broken_flush(*_args, **_kwargs):
+        raise RuntimeError("database insert exploded")
+
+    monkeypatch.setattr(BgSkyCalendarWriter, "_flush_batch", staticmethod(broken_flush))
+
+    class CursorContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        @staticmethod
+        def cursor():
+            return CursorContext()
+
+    ctx = ContextSpec(
+        asset_id="bg_sky_calendar",
+        build_id=str(uuid.uuid4()),
+        db_conn=Connection(),
+    )
+    with pytest.raises(RuntimeError, match="database insert exploded"):
+        BgSkyCalendarWriter().run(ctx)
+
+
 def test_flush_batch_targets_the_post_migration_canonical_table():
     class RecordingCursor:
         rowcount = 1

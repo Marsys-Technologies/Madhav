@@ -1,8 +1,8 @@
 """
 brahmagyan.l0_formula_constants — bg_formula_constants L0 global seed.
 
-Populates brahma_formula_constants with 10 canonical constants (excluding
-the _bug_* documentation sentinel, which the writer skips in its count).
+Populates brahma_formula_constants with the 10 canonical W1 operational
+constants. Documentation sentinels are deliberately excluded.
 
 Classes:
   CLASSICAL       — cite-and-encode; never tune
@@ -202,27 +202,6 @@ CONSTANTS: list[dict] = [
         "calibratable": False,
         "bounds": None,
     },
-    # CONFLATION_BUG entry — documented, not operationalized
-    {
-        "constant_id": "_bug_ka_sangam_confidence_conflation",
-        "value_jsonb": {
-            "bug": (
-                "ka_sangam stores confidence as convergence score (0-1) but this field is not "
-                "a prediction confidence — it is a dasha/transit alignment strength. "
-                "These are different quantities."
-            ),
-            "fix": "W4A: separate convergence_strength from prediction_confidence in ka_sangam output",
-            "status": "OPEN",
-        },
-        "class": "conflation_bug",
-        "consumer_assets": [],
-        "citation_or_ratification": (
-            "W1_SEED_PACKAGE_v1_0 §7 BA_MASTER C10: CONFLATION-BUG — fix at source in W4A. "
-            "Do NOT seed as a constant."
-        ),
-        "calibratable": False,
-        "bounds": None,
-    },
 ]
 
 
@@ -267,7 +246,8 @@ def seed_formula_constants(
                     consumer_assets          = EXCLUDED.consumer_assets,
                     citation_or_ratification = EXCLUDED.citation_or_ratification,
                     calibratable             = EXCLUDED.calibratable,
-                    bounds                   = EXCLUDED.bounds
+                    bounds                   = EXCLUDED.bounds,
+                    version                  = EXCLUDED.version
                 """,
                 (
                     row["constant_id"],

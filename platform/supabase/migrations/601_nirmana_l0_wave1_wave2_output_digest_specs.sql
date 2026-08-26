@@ -1,0 +1,50 @@
+-- Migration 601: reviewed content-digest specifications for L0 waves 1 and 2.
+-- Created: 2026-08-25
+-- Transaction ownership belongs to platform/scripts/migrate.ts.
+
+-- These specifications complete the L0 build-asset digest census. Shared
+-- ontology output is filtered to the owning entity class. The compendium's
+-- chapter and topic projections are separate scopes so generated index_id and
+-- timestamp columns never make an identical rebuild hash differently.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM brahma_compendium_index
+     WHERE (chapter_num IS NULL) = (topic_id IS NULL)
+  ) THEN
+    RAISE EXCEPTION 'Invalid brahma_compendium_index digest scope: exactly one of chapter_num and topic_id must be NULL';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'brahma_compendium_index_digest_scope_xor'
+       AND conrelid = 'public.brahma_compendium_index'::regclass
+  ) THEN
+    ALTER TABLE brahma_compendium_index
+      ADD CONSTRAINT brahma_compendium_index_digest_scope_xor
+      CHECK ((chapter_num IS NULL) <> (topic_id IS NULL)) NOT VALID;
+  END IF;
+END
+$$;
+
+ALTER TABLE brahma_compendium_index
+  VALIDATE CONSTRAINT brahma_compendium_index_digest_scope_xor;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES
+('bg_compendium_index','f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806','{"components":[{"key_columns":["text_id","chapter_num"],"name":"compendium_by_chapter","relation":"brahma_compendium_index","value_columns":["text_id","chapter_num","chapter_title_en","chapter_title_sa","topic_id","verse_start","verse_end","chunk_ids","summary_text","significance","classical_significance_score"],"where_is_null":["topic_id"]},{"key_columns":["text_id","topic_id"],"name":"compendium_by_topic","relation":"brahma_compendium_index","value_columns":["text_id","chapter_num","chapter_title_en","chapter_title_sa","topic_id","verse_start","verse_end","chunk_ids","summary_text","significance","classical_significance_score"],"where_is_null":["chapter_num"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_concordance','a2f996647e4c84c27fd278eeaff540e5bd5055da42f9a969b6ed27e7c3d2c94d','{"components":[{"key_columns":["topic_id","school"],"name":"classical_attributions","relation":"classical_attributions","value_columns":["topic_id","topic_canonical_name","topic_category","school","source_text_ids","source_chunk_ids","rule_ids","match_method","match_confidence"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_dasha_systems','b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593','{"components":[{"key_columns":["canonical_id"],"name":"dasha_system_catalog","relation":"brahma_dasha_systems","value_columns":["canonical_id","name_sa","name_en","total_cycle_years","base_unit","sequence_jsonb","computation_method","computation_pseudocode","conditions_for_use","school","classical_citations","source_chunk_ids","python_impl_module"]},{"key_columns":["entity_class","canonical_id"],"name":"dasha_system_ontology","relation":"brahma_ontology","value_columns":["entity_class","canonical_id","canonical_name_en","canonical_name_sa","synonyms","description","source_citation"],"where_equals":{"entity_class":"dasha_system"}},{"key_columns":["canonical_id"],"name":"reference_dasha_systems","relation":"reference_dasha_systems","value_columns":["canonical_id","name_en","school"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_doshas','c4c570057c4d29495acb44cf3eff9ea907872a0e17eaf7e8878deea987a67346','{"components":[{"key_columns":["canonical_id"],"name":"dosha_catalog","relation":"brahma_dosha_catalog","value_columns":["canonical_id","name_sa","name_en","category","formation_rule_jsonb","formation_text","effects_text","severity_grades","cancellation_conditions","classical_citations","source_chunk_ids","associated_remedies","school"]},{"key_columns":["entity_class","canonical_id"],"name":"dosha_ontology","relation":"brahma_ontology","value_columns":["entity_class","canonical_id","canonical_name_en","canonical_name_sa","synonyms","description","source_citation"],"where_equals":{"entity_class":"dosha"}},{"key_columns":["canonical_id"],"name":"reference_doshas","relation":"reference_doshas","value_columns":["canonical_id","name_en","category"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_gochara_arcs','2b826995dbdb4025e0e29ff0d23441a0c80405eacd1c76628402a9f4467a3d5f','{"components":[{"key_columns":["substrate_version","body","arc_index"],"name":"gochara_arcs","relation":"bg_gochara_arcs","value_columns":["substrate_version","body","arc_index","start_jd","end_jd","start_lon_unwrapped_deg","end_lon_unwrapped_deg","lon_lo_deg","lon_hi_deg","direction","wrap_index","arc_fingerprint","engine_version","ayanamsha_id"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_kp_sublord_division','a07d7174106f918af44de136a7efa8aecf99d954e1e565b3397223a22b18a2df','{"components":[{"key_columns":["table_version","division_index"],"name":"kp_sublord_division","relation":"bg_kp_sublord_division","value_columns":["table_version","division_index","start_longitude_deg","end_longitude_deg","span_arcmin","nakshatra_number","star_lord","sub_lord","sign_number","pada_at_start","pada_at_end","split_by_sign_boundary","source_citation"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_rules','871f55c7c657c4740e79447c3f05f94131d6aff47fe64ac2dcfe64c8a6d1bbf1','{"components":[{"key_columns":["rule_id"],"name":"sutravali_rules","relation":"sutravali_rules","value_columns":["rule_id","text_id","verse_ref","antecedent_jsonb","predicate_jsonb","prediction_jsonb","confidence","extracted_by","extraction_pass_log","quality_score","yoga_canonical_id","dasha_system_id","transit_marker"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_text_index','d64d63f85dc52de32537731121bfc696d3fcee7e9ab1d01415a019d2944c81e7','{"components":[{"key_columns":["chunk_id"],"name":"classical_text_topic_index","relation":"classical_text_chunks","value_columns":["chunk_id","topic_tag"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_vidhi_floors','d2a1b5e62fe9750076cfdac2c9f807423ef3c32f1ebbf8d35b499ed13b0cb775','{"components":[{"key_columns":["intent"],"name":"vidhi_intent_floors","relation":"vidhi_intent_floors","value_columns":["intent","version","cr27_coverage","notes"]},{"key_columns":["intent","item_order"],"name":"vidhi_floor_items","relation":"vidhi_floor_items","value_columns":["intent","primitive_id","item_order","band","args_override","hard_floor"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb),
+('bg_yogas','8a8b0f591ae397fc52198d1753e7858906dd3f30e2bef4e6cbdd33950dc57469','{"components":[{"key_columns":["canonical_id"],"name":"yoga_catalog","relation":"brahma_yoga_catalog","value_columns":["canonical_id","name_sa","name_en","category","formation_rule_jsonb","formation_text","significations_jsonb","significations_text","cancellation_conditions","classical_citations","source_chunk_ids","school","rare","computed_strength_formula","bhanga_rules_jsonb","partial_formation_threshold","strength_formula_ref","result_class"]},{"key_columns":["entity_class","canonical_id"],"name":"yoga_ontology","relation":"brahma_ontology","value_columns":["entity_class","canonical_id","canonical_name_en","canonical_name_sa","synonyms","description","source_citation"],"where_equals":{"entity_class":"yoga"}},{"key_columns":["canonical_id"],"name":"reference_yogas","relation":"reference_yogas","value_columns":["canonical_id","name_en","category"]}],"version":"nirmana-output-digest-spec-v1"}'::jsonb)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
+
+-- Forward reversal: retire these specifications only before a receipt refers
+-- to them. Once referenced, preserve the append-only evidence chain.

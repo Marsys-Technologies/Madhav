@@ -8,7 +8,7 @@ import { queryMedicalMappingsCapability } from '../query_medical_mappings'
 describe('queryMedicalMappingsCapability', () => {
   beforeEach(() => { mockQuery.mockReset() })
 
-  it('no filter: queries all 9 rows', async () => {
+  it('no filter: queries all 21 rows', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ graha: 'Sun', dosha: ['pitta'] }] })
     const result = await queryMedicalMappingsCapability.handler({}, undefined)
     expect(result.is_error).toBe(false)

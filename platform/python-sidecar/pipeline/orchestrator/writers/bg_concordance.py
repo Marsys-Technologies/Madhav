@@ -9,7 +9,7 @@ Per CLAUDECODE_BRIEF_BG_CONCORDANCE_v1_0.md (Doc 10 of 15) and holistic design v
   - source_chunk_ids: empty BIGINT[] (schema mismatch: classical_text_chunks has no BIGINT pk;
     chunk_id is TEXT; see schema note below).
   - rule_ids: UUID[] of sutravali_rules whose text_id + verse_ref overlaps any matched chunk.
-  - ON CONFLICT (topic_id, school) DO NOTHING for idempotency.
+  - Replaces the complete global projection inside the orchestrator-owned transaction.
   - Floor = actual inserted count (emergent on corpus per brief §3a).
 
 Schema note: classical_attributions.source_chunk_ids is BIGINT[] (migration 177) but
@@ -66,8 +66,7 @@ class ConcordanceWriter(WriterBase):
        Derive school from text_id via TEXT_SCHOOL map.
     3. Aggregate to (topic_id, school) groups: collect distinct text_ids and row counts.
     4. Load sutravali_rules grouped by (text_id) to find matching rule_ids per school/text.
-    5. INSERT one row per (topic_id, school) into classical_attributions.
-       ON CONFLICT (topic_id, school) DO NOTHING.
+    5. Replace classical_attributions and INSERT one row per (topic_id, school).
     6. Return WriterResult with rows_inserted = actual inserted count.
     """
 
@@ -199,9 +198,16 @@ class ConcordanceWriter(WriterBase):
             len(rule_rows), len(rules_by_text),
         )
 
-        # ── Step 5: INSERT rows into classical_attributions ───────────────────
+        # ── Step 5: Replace the complete global projection ───────────────────
+        # This table is owned wholly by bg_concordance. Computing the desired
+        # projection first keeps upstream failure non-destructive; DELETE and
+        # INSERT then share the orchestrator-owned transaction/savepoint, so a
+        # failed write restores the prior projection automatically.
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM classical_attributions")
+            rows_replaced = cur.rowcount
+
         rows_inserted = 0
-        rows_skipped = 0
         BATCH_SIZE = 100
 
         def _match_confidence(n_chunks: int) -> float:
@@ -227,7 +233,6 @@ class ConcordanceWriter(WriterBase):
                 %s,
                 %s
             )
-            ON CONFLICT (topic_id, school) DO NOTHING
         """
 
         batch: list[tuple] = []
@@ -278,7 +283,6 @@ class ConcordanceWriter(WriterBase):
             if len(batch) >= BATCH_SIZE:
                 n = _flush(batch)
                 rows_inserted += n
-                rows_skipped += len(batch) - n
                 batch.clear()
                 logger.info(
                     "[bg_concordance] progress: %d rows inserted so far...", rows_inserted
@@ -287,7 +291,6 @@ class ConcordanceWriter(WriterBase):
         if batch:
             n = _flush(batch)
             rows_inserted += n
-            rows_skipped += len(batch) - n
 
         # ── Step 6: Verify final count ────────────────────────────────────────
         with conn.cursor() as cur:
@@ -300,19 +303,19 @@ class ConcordanceWriter(WriterBase):
 
         duration = time.time() - t0
         logger.info(
-            "[bg_concordance] COMPLETE: rows_inserted=%d rows_skipped=%d "
+            "[bg_concordance] COMPLETE: rows_replaced=%d rows_inserted=%d "
             "final_count=%d distinct_topics=%d distinct_schools=%d duration=%.1fs",
-            rows_inserted, rows_skipped, final_count,
+            rows_replaced, rows_inserted, final_count,
             distinct_topics, distinct_schools, duration,
         )
 
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=rows_inserted,
-            rows_skipped=rows_skipped,
             duration_seconds=duration,
             notes=(
-                f"classical_attributions: +{rows_inserted} inserted / {rows_skipped} conflict-skipped; "
+                f"classical_attributions: {rows_replaced} prior rows replaced; "
+                f"{rows_inserted} canonical rows inserted; "
                 f"final_count={final_count}; distinct_topics={distinct_topics}; "
                 f"distinct_schools={distinct_schools}; "
                 f"tagged_chunks_upstream={tagged_chunks}; "

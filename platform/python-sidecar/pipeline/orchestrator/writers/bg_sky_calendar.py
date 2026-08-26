@@ -117,9 +117,22 @@ HORIZON (rolling; re-runnable to extend — brief §2.5.6):
   serves the staleness flag honestly if that cadence lapses. Because the
   forward bound is computed from `date.today()` at every run and idempotency
   is ON CONFLICT DO NOTHING (natural-key: event_type + bodies + rounded jd),
-  a later re-run naturally extends the calendar forward without duplicating
-  or mutating previously-computed events — this is the "re-runnable to
-  extend the horizon, not a one-shot" property the brief requires.
+  a later re-run in the pinned write runtime naturally extends the calendar
+  forward without duplicating or mutating previously-computed events — this
+  is the "re-runnable to extend the horizon, not a one-shot" property the
+  brief requires.
+
+REPRODUCIBLE WRITE RUNTIME (fail-closed): pyswisseph silently substitutes its
+  Moshier analytic fallback when configured Swiss Ephemeris files are absent.
+  It also produces a small platform-dependent station-root difference at the
+  table's five-decimal JD grain (measured macOS/arm64 versus production
+  Linux/x86_64). Therefore a DB-writing run requires all of: Linux/x86_64,
+  the file-backed Swiss backend return flag, and the exact SHA-256-pinned
+  sepl_18/semo_18/seas_18 corpus downloaded by the pipeline image. Any
+  mismatch raises through the orchestrator before a scan or INSERT; it is
+  never converted into a zero-row global success. Pure scan functions remain
+  available on other platforms for diagnosis, but their results are not write
+  evidence unless this runtime contract is satisfied.
 
 RETURNS SCOPE DECISION (explicit, for the PR record): registry item 3 lists
   "returns" among the sky-event families, but per the brief's own §2 file
@@ -142,9 +155,10 @@ Conforms to FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
   compute inside one `run()`, batching INSERTs, with no sub-step plan).
 
 L0 idempotency (CLAUDE.md §N.3): global reference table, `ON CONFLICT
-(natural key) DO NOTHING` — safe to upsert; deterministic recomputation
-of an already-covered window reproduces the same events (see natural-key
-note in the migration), so a re-run only WIDENS coverage, never duplicates.
+(natural key) DO NOTHING` — safe to upsert inside the reproducible write
+runtime above. Recomputing an already-covered window there reproduces the
+production keys (see the natural-key note in the migration), so a re-run only
+WIDENS coverage, never duplicates.
 
 ZERO LLM use. Pure deterministic pyswisseph computation via the existing
 `pipeline.transit_search` event-search layer (+ pyswisseph's native eclipse
@@ -178,6 +192,15 @@ SOURCE_CITATION = (
 )
 AYANAMSHA_KEY = "lahiri"
 
+# Immutable Swiss Ephemeris corpus downloaded by Dockerfile.pipeline and the
+# sidecar Dockerfile.  Filename checks alone cannot distinguish a changed
+# ephemeris corpus that would move persisted event keys.
+EPHEMERIS_FILE_SHA256: dict[str, str] = {
+    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+}
+
 # The 9 grahas tracked for ingress events.
 INGRESS_PLANETS: tuple[str, ...] = (
     "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu",
@@ -200,6 +223,73 @@ SIGN_NAMES = (
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
+
+
+def _require_swiss_file_backend(swe: Any, ephe_path: str) -> None:
+    """Configure the exact file-backed ephemeris contract or fail closed.
+
+    ``swe.set_ephe_path`` does not fail when files are missing: ``calc_ut``
+    silently substitutes Moshier and exposes the substitution only in its
+    return flags.  A writer that persisted those rows with the DE441/Swiss-file
+    citation would manufacture provenance, so a real position probe is part of
+    the write precondition.
+    """
+    swe.set_ephe_path(ephe_path)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    probe_jd = swe.julday(2000, 1, 1, 0.0)
+    _position, retflag = swe.calc_ut(
+        probe_jd,
+        swe.SUN,
+        swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED,
+    )
+    file_backed = bool(retflag & swe.FLG_SWIEPH)
+    moshier = bool(retflag & swe.FLG_MOSEPH)
+    if not file_backed or moshier:
+        raise RuntimeError(
+            "Swiss Ephemeris file backend was not active for bg_sky_calendar; "
+            "refusing the silent Moshier analytic fallback"
+        )
+
+
+def _require_reproducible_write_runtime() -> None:
+    """Pin writes to the runtime whose station keys reproduce production.
+
+    The same Swiss files and pyswisseph version were measured on macOS/arm64
+    and Linux/x86_64.  Forty-nine historical station roots straddled the
+    five-decimal persisted JD boundary, while Linux/x86_64 reproduced the
+    production station-set digest exactly.  Reads and pure scans may run on
+    any platform; only a DB-writing rebuild is constrained.
+    """
+    import platform
+
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    if system != "linux" or machine not in {"x86_64", "amd64"}:
+        raise RuntimeError(
+            "bg_sky_calendar writes require the reproducible Linux/x86_64 "
+            f"runtime; observed {platform.system()}/{platform.machine()}"
+        )
+
+
+def _require_pinned_ephemeris_files(ephe_path: str) -> None:
+    """Verify the exact ephemeris bytes whose provenance the rows claim."""
+    import hashlib
+    from pathlib import Path
+
+    root = Path(ephe_path)
+    for filename, expected_digest in EPHEMERIS_FILE_SHA256.items():
+        path = root / filename
+        try:
+            actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise RuntimeError(
+                f"Swiss Ephemeris file is unavailable for digest verification: {path}"
+            ) from exc
+        if actual_digest != expected_digest:
+            raise RuntimeError(
+                "Swiss Ephemeris file digest mismatch for "
+                f"{filename}: expected {expected_digest}, observed {actual_digest}"
+            )
 
 
 def compute_horizon(today: date | None = None) -> tuple[date, date]:
@@ -532,24 +622,21 @@ class BgSkyCalendarWriter(WriterBase):
 
         try:
             import swisseph as swe  # type: ignore[import]
-        except ImportError:
-            logger.warning("[bg_sky_calendar] swisseph not available — skipping computation.")
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes="skipped: swisseph unavailable",
-                duration_seconds=round(time.time() - t0, 2),
+        except ImportError as exc:
+            raise RuntimeError(
+                "bg_sky_calendar requires pyswisseph and cannot rebuild without it"
+            ) from exc
+
+        from brahmagyan.l0_ephemeris import _resolve_ephe_path
+        ephe_path = _resolve_ephe_path()
+        if not ephe_path:
+            raise RuntimeError(
+                "Swiss Ephemeris production .se1 files are required for "
+                "bg_sky_calendar; refusing the Moshier analytic fallback"
             )
-
-        try:
-            from brahmagyan.l0_ephemeris import _resolve_ephe_path
-            ephe_path = _resolve_ephe_path()
-            if ephe_path:
-                swe.set_ephe_path(ephe_path)
-        except Exception:  # pragma: no cover -- optional; Moshier fallback still works
-            pass
-
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        _require_swiss_file_backend(swe, ephe_path)
+        _require_reproducible_write_runtime()
+        _require_pinned_ephemeris_files(ephe_path)
 
         history_start, forward_end = compute_horizon()
         start_jd = swe.julday(history_start.year, history_start.month, history_start.day, 0.0)
@@ -574,13 +661,8 @@ class BgSkyCalendarWriter(WriterBase):
             all_rows.extend(scan_double_transits(swe, start_jd, end_jd))
             logger.info("[bg_sky_calendar] double-transit scan complete: %d events", len(all_rows) - n_before)
         except Exception as exc:
-            logger.error("[bg_sky_calendar] computation failed: %s", exc)
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes=f"failed: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+            logger.exception("[bg_sky_calendar] computation failed: %s", exc)
+            raise
 
         conn = ctx.db_conn
         rows_written = 0
@@ -595,13 +677,8 @@ class BgSkyCalendarWriter(WriterBase):
                 if batch:
                     rows_written += self._flush_batch(cur, batch)
         except Exception as exc:
-            logger.error("[bg_sky_calendar] insert failed after %d rows: %s", rows_written, exc)
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=rows_written,
-                notes=f"partial: {exc}",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+            logger.exception("[bg_sky_calendar] insert failed after %d rows: %s", rows_written, exc)
+            raise
 
         elapsed = round(time.time() - t0, 2)
         logger.info(

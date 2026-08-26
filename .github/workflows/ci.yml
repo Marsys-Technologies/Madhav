@@ -245,6 +245,16 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
 
+      - name: Nirmāṇa 602 — provision achieved-floor contract DB
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_floor_test;"
+
+      - name: Nirmāṇa 602 — known-state migration and drift rollback on real Postgres
+        env:
+          NIRMANA_L0_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_floor_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_achieved_floor_contract.test.ts --reporter=verbose
+
       - name: SAMĀPTI A5/G3 — provision the SAMĪKṢĀ throwaway test DB
         # Mirrors platform/tests/pariprashna/samiksha/l5_roundtrip_harness.sh's local
         # recipe: a minimal message_parts(id) stub (just enough for migration 470's FK to
@@ -310,6 +320,212 @@ jobs:
         env:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_t0_dag_test;"
+
+      - name: Nirmāṇa T0 — migration 599 source and acyclicity guards against real Postgres
+        env:
+          NIRMANA_T0_DAG_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_t0_dag_test
+        run: npx vitest run tests/integration/nirmana_t0_l0_hidden_dependencies.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 601 digest-scope test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_digest_test;"
+
+      - name: Nirmāṇa L0 — migration 601 digest-scope guards against real Postgres
+        env:
+          NIRMANA_L0_DIGEST_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_test
+        run: npx vitest run tests/integration/nirmana_l0_output_digest_scopes.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 603 formula-constants test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_formula_constants_test;"
+
+      - name: Nirmāṇa L0 — migration 603 sentinel-retirement guards against real Postgres
+        env:
+          NIRMANA_FORMULA_CONSTANTS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_formula_constants_test
+        run: npx vitest run tests/unit/migrations/nirmana_formula_constants_retire_sentinel.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 604 registry-scope test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_registry_scope_test;"
+
+      - name: Nirmāṇa L0 — migration 604 ownership-scope guards against real Postgres
+        env:
+          NIRMANA_L0_REGISTRY_SCOPE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_registry_scope_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_registry_scope_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 605 sky-calendar floor test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_sky_calendar_floor_test;"
+
+      - name: Nirmāṇa L0 — migration 605 sky-calendar provenance guards against real Postgres
+        env:
+          NIRMANA_SKY_CALENDAR_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_sky_calendar_floor_test
+        run: npx vitest run tests/unit/migrations/nirmana_sky_calendar_floor_provenance.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 606 wave-0 integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_wave0_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 606 executable integrity contracts against real Postgres
+        env:
+          NIRMANA_L0_WAVE0_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_wave0_integrity_contracts.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 607 bg_reference integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_reference_integrity_test;"
+
+      - name: Nirmāṇa L0 — install writer test runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Nirmāṇa L0 — install writer test dependencies
+        run: python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0'
+
+      - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
+        env:
+          NIRMANA_BG_REFERENCE_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_reference_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_reference_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 608 bg_remedies integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_remedies_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 608 bg_remedies contract against real Postgres
+        env:
+          NIRMANA_BG_REMEDIES_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_remedies_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_remedies_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 609 digest-revision test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_digest_revision_test;"
+
+      - name: Nirmāṇa L0 — migration 609 append-only digest revision against real Postgres
+        env:
+          NIRMANA_L0_DIGEST_REVISION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_revision_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_digest_spec_revision.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 610 bg_texts integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_texts_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 610 bg_texts contract against real Postgres
+        env:
+          NIRMANA_BG_TEXTS_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_texts_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_texts_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 611 static-table integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_static_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 611 closed static-table contracts against real Postgres
+        env:
+          NIRMANA_L0_STATIC_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_static_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_static_tables_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 612 Vastu/medical integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_vastu_medical_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 612 Vastu/medical contracts against real Postgres
+        env:
+          NIRMANA_L0_VASTU_MEDICAL_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_vastu_medical_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_vastu_medical_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 613 transit integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_transit_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 613 transit producer contracts against real Postgres
+        env:
+          NIRMANA_L0_TRANSIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_transit_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_transit_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 614 Ghaṭanā integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_ghatana_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 614 Ghaṭanā producer contract against real Postgres
+        env:
+          NIRMANA_L0_GHATANA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_ghatana_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_ghatana_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 615 governance integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_governance_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 615 scoped governance contracts against real Postgres
+        env:
+          NIRMANA_L0_GOVERNANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_governance_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_governance_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 616 Prashna integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_prashna_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 616 Prashna producer contract against real Postgres
+        env:
+          NIRMANA_L0_PRASHNA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_prashna_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_prashna_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 617 text-index integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_text_index_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 617 text-index contract against real Postgres
+        env:
+          NIRMANA_L0_TEXT_INDEX_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_text_index_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_text_index_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 618 rules integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_rules_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 618 deterministic rules contract against real Postgres
+        env:
+          NIRMANA_L0_RULES_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_rules_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_rules_integrity_contract.test.ts --reporter=verbose
 
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
@@ -1031,6 +1247,9 @@ jobs:
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \

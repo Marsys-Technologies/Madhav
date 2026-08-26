@@ -198,16 +198,16 @@ export const ASSETS: AssetDef[] = [
     layer: 'brahmagyan', sort_order: 2,
     sanskrit_name: 'Sāraṇī',
     english_name: 'Reference Library',
-    english_description: 'The holy grail of L0 — structured properties of every classical Jyotish concept across 15 specialized typed tables.',
+    english_description: 'Structured properties owned by bg_reference across 11 current typed tables; yoga, dosha, and dasha reference rows belong to their dedicated assets.',
     storage_type: 'postgres_table',
-    target_table: 'reference_nakshatras',
-    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
-    size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
-    target_floor: 1485,  // set after prod measurement 2026-06-18 (§N.4)
+    target_table: 'reference_planets',
+    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) AS count',
+    size_sql: "SELECT pg_total_relation_size('reference_planets')",
+    target_floor: 1242,  // achieved 11-table owned-output count; migration 371 ownership boundary
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Sum of 15 reference_* tables (per design §3.2). Each table is normalized + typed; ontology resolves names, reference holds properties.',
-    depends_on: [],
+    volume_explanation: '1,242 achieved rows across the 11 tables owned by bg_reference, as measured in the BA full-asset audit after migration 371 removed cross-asset double-counting. reference_yogas, reference_doshas, and reference_dasha_systems are owned by their dedicated assets; deprecated reference_nakshatras is excluded.',
+    depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -215,15 +215,24 @@ export const ASSETS: AssetDef[] = [
     layer: 'brahmagyan', sort_order: 3,
     sanskrit_name: 'Śāstrapāṭha',
     english_name: 'Classical Texts',
-    english_description: 'Indexed verse chunks from BPHS, Jaimini Sutram, KP Reader, Tajaka, Phaladeepika, etc.',
+    english_description: 'Indexed verse chunks from the 15 canonical classical texts, with immutable source-object generations and preserved supervised translations.',
     storage_type: 'postgres_table',
     target_table: 'classical_text_chunks',
     count_sql: 'SELECT count(*) FROM classical_text_chunks',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
     target_floor: 10651,
     expected_volume_formula: null, // non-parametric — target_floor = 10651 is the authoritative count
-    expected_volume_inputs: { corpus_texts: 13, actual_build_date: '2026-06-09', embedding_model: 'text-multilingual-embedding-002' },
-    volume_explanation: '10,651 chunks across 13 classical texts (deterministic rebuild from GCS PDFs, pinned text-multilingual-embedding-002). Complete corpus; honest count from actual build.',
+    expected_volume_inputs: {
+      corpus_texts: 15,
+      source_objects: 20,
+      chunk_count: 10651,
+      embedding_model: 'text-multilingual-embedding-002',
+      source_manifest: 'platform/python-sidecar/brahmagyan/bg_texts_source_manifest_v1.json',
+      source_manifest_sha256: 'bfcf536e16fb219d5f6faf1f01b6bd6a3a89830a96c997afb71d46eff32d1c36',
+      corpus_identity_sha256: '44b067b48544af32df4b2f4d8b13cc7c269aa029e236a0af3d2e8d7347d7d30e',
+      corpus_content_sha256: 'b81fb9c098847ecafc2072fd49d706f1a6bb811ab3fcc169d8753010ea6e17e2',
+    },
+    volume_explanation: '10,651 preserved chunks across 15 canonical texts. Twenty immutable GCS source-object generations are pinned by bg_texts_source_manifest_v1.json (SHA-256 bfcf536e16fb219d5f6faf1f01b6bd6a3a89830a96c997afb71d46eff32d1c36); metadata-only repair is the accepted disposition and destructive full rebuild is quarantined until staged per-text replacement exists.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -237,10 +246,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_ontology',
     count_sql: 'SELECT count(*) FROM brahma_ontology',
     size_sql: "SELECT pg_total_relation_size('brahma_ontology')",
-    target_floor: 623,  // set after prod measurement 2026-06-18 (§N.4)
+    target_floor: 737,  // achieved production corpus; migration 606
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Static vocabulary — count established at seed; used by resolve_entity retrieval tool',
+    volume_explanation: '737 achieved ontology rows in the authoritative production corpus; closed classical sets are enforced by integrity SQL while extensible classes may grow.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -254,10 +263,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'classical_text_chunks',
     count_sql: 'SELECT count(DISTINCT topic_tag) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
-    target_floor: 400,
+    // Migration 196 raised the achieved floor from 327 to 361 after the Nadi
+    // expansion; migration 231 ratified 361 again after a production census.
+    // Restoring the old aspirational 400 here would overwrite the measured
+    // contract.
+    target_floor: 361,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Distinct topic_tag count from embedded chunks. Floor 400 = topic-vocabulary coverage target; not scaled with chunk count (vocabulary size is independent of corpus depth). Per design §2.2.',
+    volume_explanation: '361 distinct topic_tag values is the achieved deterministic-classifier coverage ratified by migrations 196 and 231. Raise this floor only with an evidence-backed classifier or corpus expansion; never fabricate assignments to meet the former aspirational 400.',
     depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -271,10 +284,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'sutravali_rules',
     count_sql: 'SELECT count(*) FROM sutravali_rules',
     size_sql: "SELECT pg_total_relation_size('sutravali_rules')",
-    target_floor: 2912,
+    target_floor: 3002,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '2,912 rules = honest count from actual build against 10,651-chunk corpus.',
+    volume_explanation: '3,002 deterministic regex-extracted rules from the frozen 10,651-chunk corpus after canonicalizing Pattern 27 planet order and duplicate suppression across Python hash seeds.',
     depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -288,16 +301,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_remedy_corpus',
     count_sql: 'SELECT count(*) FROM brahma_remedy_corpus',
     size_sql: "SELECT pg_total_relation_size('brahma_remedy_corpus')",
-    // 266 = writer's designed deterministic ceiling: 108 planet-matrix + 102
-    // dosha-linked + 54 legacy + 2 net-new from corpus_sweep (migrations
-    // 192/199/231). Floor = achieved count per floors-are-aspirational
-    // policy (CLAUDE.md §N.4) — do not raise without expanding the
-    // deterministic corpus design (native-judgment decision).
-    target_floor: 266,
+    // Frozen deterministic source rebuild: 283 static + 54 bg_texts-derived
+    // sweep + 4 accepted tantric rows. Migration 608 installs the executable
+    // identity/taxonomy contract; the seed preserves its registry metadata.
+    target_floor: 341,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '266 remedies = writer\'s designed deterministic ceiling: gen_planet_matrix(108) + dosha-linked(102) + legacy(54) + corpus_sweep net-new(2). Floor = achieved count per floors-are-aspirational policy (CLAUDE.md §N.4); ZERO LLM, ZERO fabrication is a hard writer constraint, so this floor cannot be raised without a native-judgment decision to expand the deterministic corpus design.',
-    depends_on: [],
+    volume_explanation: '341 achieved remedies from the frozen deterministic build: 283 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.',
+    depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -310,11 +321,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'classical_attributions',
     count_sql: 'SELECT count(*) FROM classical_attributions',
     size_sql: "SELECT pg_total_relation_size('classical_attributions')",
-    target_floor: 800,
+    // Migration 619 ratifies the complete canonical projection after the
+    // convergent rebuild exposed one row omitted by the historical no-op
+    // conflict path.
+    target_floor: 721,
     expected_volume_formula: 'ACTUAL(bg_rules) * CONCORDANCE_DENSITY',
     expected_volume_inputs: null,
-    volume_explanation: '800 = topic×school concordance rows. Cross-product metric: cardinality is topic_count × school_count, not chunk-proportional. Chunk-pointer index per (topic, school); synthesis at L1+ query-time.',
-    depends_on: ['bg_rules'],
+    volume_explanation: '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 3,002-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.',
+    depends_on: ['bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -325,12 +339,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical yoga definitions — formation rules, significations, classical citations',
     storage_type: 'postgres_table',
     target_table: 'brahma_yoga_catalog',
-    count_sql: 'SELECT count(*) FROM brahma_yoga_catalog',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_yoga_catalog) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +
+  (SELECT count(*) FROM reference_yogas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_yoga_catalog')",
-    target_floor: 250,
+    target_floor: 699,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Catalog of named yoga patterns from BPHS / Saravali / Phaladeepika / Jaimini per design §3.9. Floor 250 (contingent on 8,193-chunk extraction yield; corrects seed value of 200).',
+    volume_explanation: '699 owned rows = 233 deterministic yoga definitions × 3 reconciled projections (catalog + yoga ontology partition + reference_yogas). Source definition count is 144 inline core + 4 detector-registry identities + 85 corpus-extracted rows.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -342,12 +359,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical dasha system definitions — sequence rules, computation methods, conditions for use',
     storage_type: 'postgres_table',
     target_table: 'brahma_dasha_systems',
-    count_sql: 'SELECT count(*) FROM brahma_dasha_systems',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_dasha_systems) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dasha_system') +
+  (SELECT count(*) FROM reference_dasha_systems) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dasha_systems')",
-    target_floor: 18,
+    target_floor: 60,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '18 named dasha systems (Vimshottari, Yogini, Chara, Kalachakra, etc.) per actual build count.',
+    volume_explanation: '60 owned rows = 20 deterministic dasha-system definitions × 3 reconciled projections (catalog + dasha-system ontology partition + reference_dasha_systems), including the governed KP subdivision identity.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -359,12 +379,15 @@ export const ASSETS: AssetDef[] = [
     english_description: 'Classical dosha definitions — formation rules, effects, severity, cancellation conditions',
     storage_type: 'postgres_table',
     target_table: 'brahma_dosha_catalog',
-    count_sql: 'SELECT count(*) FROM brahma_dosha_catalog',
+    count_sql: `SELECT
+  (SELECT count(*) FROM brahma_dosha_catalog) +
+  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +
+  (SELECT count(*) FROM reference_doshas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dosha_catalog')",
-    target_floor: 50,
+    target_floor: 237,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Catalog of named dosha patterns (Manglik, Kala-sarpa, Kemadruma, etc.) per design §3.11',
+    volume_explanation: '237 owned rows = 79 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Production and clean-source replay were byte-identical before convergence hardening.',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -378,10 +401,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_compendium_index',
     count_sql: 'SELECT count(*) FROM brahma_compendium_index',
     size_sql: "SELECT pg_total_relation_size('brahma_compendium_index')",
-    target_floor: 9538,
+    target_floor: 9571,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '9,538 index entries = honest count from actual build. Per design §3.12.',
+    volume_explanation: '9,571 deterministic index rows from the production source corpus: 7,969 per-text chapter projections + 1,602 valid per-text topic projections. Rebuild adds 33 Muhurta Chintamani topic identities and refreshes 68 stale mechanical summaries.',
     depends_on: ['bg_texts', 'bg_reference'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -437,7 +460,7 @@ export const ASSETS: AssetDef[] = [
     layer: 'brahmagyan', sort_order: 14,
     sanskrit_name: 'Druk Ephemeris',
     english_name: 'Ephemeris Engine',
-    english_description: 'Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).',
+    english_description: 'Swiss Ephemeris (pyswisseph) with the pinned SHA-256-verified sepl_18/semo_18/seas_18 corpus for file-backed sidereal planetary positions. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).',
     storage_type: 'service',
     asset_type: 'service',
     layer_name: 'Brahmagyan',
@@ -464,9 +487,18 @@ export const ASSETS: AssetDef[] = [
     ],
     health_probe: {
       probe_type: 'ephemeris_engine',
-      forensic_jd: 2445701.948264,
-      expected_sun_approximate_sign: 10,
-      note: 'JD = 1984-02-05 10:43 IST → UTC. Sun in Makara (sign 10) sidereal Lahiri.',
+      forensic_jd: 2445735.717361111,
+      expected_sun_sign: 10,
+      expected_mean_node_rahu_sign: 2,
+      ayanamsha: 'lahiri',
+      node_mode: 'mean',
+      allowed_ephemeris_backends: ['swiss_ephemeris_file'],
+      ephemeris_file_sha256: {
+        'sepl_18.se1': 'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66',
+        'semo_18.se1': '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7',
+        'seas_18.se1': 'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2',
+      },
+      note: 'JD = 1984-02-05 10:43 IST = 05:13 UTC. Sun in Makara; mean-node Rahu in Vrishabha under sidereal Lahiri.',
     },
   },
 
@@ -493,15 +525,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Ghaṭanā',
     english_name: 'Event Ontology',
-    english_description: 'Global life-event + electional-activity ontology — 22 life-event classes (brahma_event_ontology) and 12 electional activity classes (brahma_activity_ontology); source W1 seed package §5-§6.',
+    english_description: 'Global life-event + electional-activity ontology — 27 life-event classes (brahma_event_ontology) and 12 electional activity classes (brahma_activity_ontology), including DR-13 temporal-shape and evidence fields.',
     storage_type: 'postgres_table',
     target_table: 'brahma_event_ontology',
     count_sql: 'SELECT (SELECT count(*) FROM brahma_event_ontology) + (SELECT count(*) FROM brahma_activity_ontology) AS count',
     size_sql: "SELECT pg_total_relation_size('brahma_event_ontology')",
-    target_floor: 34,
+    target_floor: 39,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '22 life-event classes + 12 electional activity classes = 34 total rows, seeded verbatim from W1 seed package §5-§6.',
+    volume_explanation: '27 life-event classes + 12 electional activity classes = 39 total rows, including the five DR-13 coverage extensions.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -518,13 +550,13 @@ export const ASSETS: AssetDef[] = [
     english_description: "Synthetic (not real-person) reference population of ~10,000 birth charts' Lahiri-sidereal graha + Lagna positions (sign/nakshatra grain) — the statistical base-rate population later waves compare a real chart against for rarity scoring. ṢAḌ-DARŚANA campaign item 22.",
     storage_type: 'postgres_table',
     target_table: 'bg_synthetic_cohort',
-    count_sql: 'SELECT COUNT(*) FROM bg_synthetic_cohort',
+    count_sql: 'SELECT (SELECT COUNT(*) FROM bg_synthetic_cohort) + (SELECT COUNT(*) FROM bg_synthetic_cohort_md) AS count',
     size_sql: "SELECT pg_total_relation_size('bg_synthetic_cohort')",
-    target_floor: 10000,
-    expected_volume_formula: 'COHORT_SIZE',
-    expected_volume_inputs: { COHORT_SIZE: 10000 },
-    volume_explanation: '10,000 synthetic birth charts, uniform-random over 1900-2099, fixed RNG seed. See bg_cohort.py module docstring for full sampling methodology.',
-    depends_on: [],
+    target_floor: 110000,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: '10,000 deterministic synthetic birth charts + 100,000 Vimshottari mahadasha age-chain rows from fixed RNG seed 20260729 and the pinned Swiss Ephemeris corpus.',
+    depends_on: ['bg_ephemeris_engine'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -542,10 +574,8 @@ export const ASSETS: AssetDef[] = [
     // built" the moment migration 522 lands and BEFORE a single N_e row exists —
     // a cockpit-truth violation (§N.4) and an §N.8 signal that cannot read false.
     //
-    // `target_floor: 0` is deliberate, not a placeholder. §N.4: floors are
-    // aspirational and set to the ACHIEVED count after a build. On this asset
-    // specifically, a non-zero floor would be pressure to fabricate exactly the
-    // rows ADJUDICATION-2's hard stop forbids ("honest-empty beats fabricated-full").
+    // The achieved floor is six sourced rows. It is not a target for filling the
+    // uncovered classes: §N.4 still forbids fabricating any absent N_e row.
     asset_id: 'bg_class_lifetime_counts',
     layer: 'brahmagyan', sort_order: 21,
     catalog_status: 'CURRENT',
@@ -567,16 +597,15 @@ export const ASSETS: AssetDef[] = [
       'fabricated baseline.',
     storage_type: 'postgres_table',
     target_table: 'brahma_class_priors',
-    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'",
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='ne_v01' AND fact_kind='lifetime_count_per_100y'",
     size_sql: null,
-    target_floor: 0,
+    target_floor: 6,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation:
-      'One row per event class for which a Tier N-i (or Tier N-ii derived-identity) ' +
-      'source could actually be obtained and cited. Set to the ACHIEVED count after ' +
-      'the first build (§N.4). Unseeded classes are an honest per-class coverage gap ' +
-      'registered by name in the ledger, never a reason to invent a row.',
+      '6 achieved Tier N-i/N-ii lifetime-count rows at the writer-owned ne_v01 ' +
+      'coordinate. Unseeded event classes remain an explicit coverage gap; this ' +
+      'floor must rise only with defensible cited sources, never fabricated rows.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -594,10 +623,10 @@ export const ASSETS: AssetDef[] = [
     target_table: null,
     count_sql: 'SELECT (SELECT COUNT(*) FROM bg_prashna_lagna_methods) + (SELECT COUNT(*) FROM bg_prashna_tajik_yogas) + (SELECT COUNT(*) FROM bg_prashna_significators) + (SELECT COUNT(*) FROM bg_prashna_fructification_rules) + (SELECT COUNT(*) FROM bg_prashna_special_techniques) AS count',
     size_sql: null,
-    target_floor: 36,
+    target_floor: 41,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '36 rows across 5 prashna sub-tables (5 lagna methods + 11 Tajik yogas + 12 significators + 5 fructification rules + 3 special techniques).',
+    volume_explanation: '41 rows across 5 prashna sub-tables (5 lagna methods + 16 Tajik yogas + 12 significators + 5 fructification rules + 3 special techniques).',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -643,15 +672,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Gochara-sūtrāvalī',
     english_name: 'Classical Gochara Rules',
-    english_description: 'Classical transit rules (favourable/unfavourable/vedha houses) from BPHS Ch.29 and Phaladeepika Ch.26.',
+    english_description: '75 classical transit rules: 42 favourable, 26 unfavourable, and 7 double-transit rules from BPHS Ch.29, Phaladeepika Ch.26, Saravali, and Jataka Parijata.',
     storage_type: 'postgres_table',
     target_table: 'bg_transit_rules',
     count_sql: 'SELECT COUNT(*) FROM bg_transit_rules',
     size_sql: null,
-    target_floor: 50,
+    target_floor: 75,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '50 classical gochara transit rules per actual build count (41 base + 9 Venus gochara phala rows added Phase B).',
+    volume_explanation: '75 rows = 68 writer-owned Gochara rules (42 favourable + 26 unfavourable) plus 7 preserved migration-owned Jupiter–Saturn double-transit rules.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -661,15 +690,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Vaidya Graha Kosha',
     english_name: 'Medical Graha Mappings',
-    english_description: 'Classical Ayurvedic graha → dosha/dhatu/organ/body-part mappings per BPHS Ch.18, Ashtanga Hridayam, Charaka Samhita. 9 grahas (Sun–Ketu). L0 static reference.',
+    english_description: 'Classical Ayurvedic Jyotish mappings per BPHS Ch.18, Ashtanga Hridayam, and Charaka Samhita: 9 grahas, 6 planetary combinations, and 6 dignity modifiers. L0 static reference.',
     storage_type: 'postgres_table',
     target_table: 'bg_medical_mappings',
     count_sql: 'SELECT COUNT(*) FROM bg_medical_mappings',
     size_sql: null,
-    target_floor: 9,
+    target_floor: 21,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '9 rows = one row per classical graha (Sun through Ketu).',
+    volume_explanation: '21 deterministic medical mapping rows: 9 classical grahas + 6 planetary combinations + 6 dignity modifiers.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -715,15 +744,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Varga-pūrva',
     english_name: 'Class Priors',
-    english_description: 'Global signal-classification priors across 5 axes — signal_type_class, source_subsystem, signal_tradition, varga, graha x domain — from W1 seed package §2-§4.',
+    english_description: 'Global signal-classification priors across 5 writer-owned axes — signal_type_class, source_subsystem, signal_tradition, varga, and graha x domain — from W1 seed package §2-§4 plus ratified append-only class extensions.',
     storage_type: 'postgres_table',
     target_table: 'brahma_class_priors',
-    count_sql: 'SELECT count(*) FROM brahma_class_priors',
+    count_sql: "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='1.0'",
     size_sql: "SELECT pg_total_relation_size('brahma_class_priors')",
-    target_floor: 164,
+    target_floor: 171,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '17 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha x domain priors (per writer docstring 165; live-measured 164, 2026-07-05).',
+    volume_explanation: '24 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha x domain priors = 171 achieved writer-owned rows at prior_version 1.0.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -733,15 +762,15 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Sūtra-sthirāṅka',
     english_name: 'Formula Constants',
-    english_description: 'Canonical formula constants registry — combustion orbs, obstruction thresholds, dignity scores, house weights, attention budget, calibration constants. Classified CLASSICAL/NATIVE_JUDGMENT/ENGINEERING/CONFLATION_BUG (migration 389).',
+    english_description: 'Canonical formula constants registry — combustion orbs, obstruction thresholds, dignity scores, house weights, attention budget, and calibration constants. Current governed rows are CLASSICAL/NATIVE_JUDGMENT/ENGINEERING; unresolved defects must not be operationalized as constants.',
     storage_type: 'postgres_table',
     target_table: 'brahma_formula_constants',
     count_sql: 'SELECT count(*) FROM brahma_formula_constants',
     size_sql: "SELECT pg_total_relation_size('brahma_formula_constants')",
-    target_floor: 14,
+    target_floor: 17,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Live-measured 14 constants, 2026-07-05 (grows as new formula constants are registered, e.g. migration 408 mi_pramana_dropped_dimensions).',
+    volume_explanation: '17 governed constants after migration 603 retires the resolved non-operational ka_sangam conflation sentinel. The table remains accretive only through reviewed formula-constant migrations.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -790,9 +819,9 @@ export const ASSETS: AssetDef[] = [
     // migration 473's asset_registry INSERT exactly — a clean reseed must not
     // silently drop this asset. Global L0, super-admin-triggered only (never
     // auto-pulled into a per-chart build — brief §2.5.2). target_floor is the
-    // REAL row count from a live verification run against a real (throwaway)
-    // Postgres, 2026-07-29 — see migration 473's comment for the exact
-    // per-event-family breakdown.
+    // authoritative 2026-08-02 production baseline built with the pinned
+    // Swiss Ephemeris file corpus on Linux/x86_64. Migration 605 corrects the
+    // earlier local Moshier-fallback provenance and keeps reseeds aligned.
     asset_id: 'bg_sky_calendar',
     layer: 'brahmagyan', sort_order: 69,
     catalog_status: 'CURRENT',
@@ -803,10 +832,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'bg_sky_calendar',
     count_sql: 'SELECT COUNT(*) FROM bg_sky_calendar',
     size_sql: "SELECT pg_total_relation_size('bg_sky_calendar')",
-    target_floor: 31064,
+    target_floor: 31059,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Live-verified 2026-07-29 against a real throwaway Postgres: 28,760 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit = 31,064, over horizon 1900-01-01 -> 2036-07-29 (today+10y at verification time). A later build reads >= this count as the forward edge rolls forward (never less).',
+    volume_explanation: '31,059 achieved rows in the authoritative 2026-08-02 production build using the pinned Swiss Ephemeris file corpus on Linux/x86_64: 28,755 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit. This is an achieved baseline, not a forecast; explicit rolling-horizon rebuilds may increase it.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -845,7 +874,9 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Live-verified 2026-07-30: 60 parihara-graph condition rows (queried directly against REAL production brahma_dosha_catalog: 26 doshas carry a real, non-placeholder citation, flattening to 60 individual cancellation-condition rows) + 329 activity-rule rows (exact — sum of tithi/nakshatra/vara entries across panchang_engine\'s 8 EVENT_TABLES) + 50 census rows (exact — len(CENSUS_ROWS), updated from 37 by the Opus corpus-citation review\'s dangling-pointer fix) = 439.',
-    depends_on: [],
+    // The writer reads both authorities directly: brahma_dosha_catalog supplies
+    // cancellation conditions and classical_texts supplies citation metadata.
+    depends_on: ['bg_doshas', 'bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -902,7 +933,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'NAKSHATRAS * VIMSHOTTARI_LORDS + RASHI_BOUNDARY_SPLITS',
     expected_volume_inputs: null,
     volume_explanation: '27 nakshatras × 9 Vimshottari subs = 243 sub segments; 6 of the 12 rashi boundaries fall strictly inside a sub segment and split it (the other 6 coincide with a nakshatra start or exactly with a sub boundary) → 243 + 6 = 249.',
-    depends_on: [],
+    // The mandatory two-pass detector reads reference_nakshatra before writing.
+    depends_on: ['bg_nakshatra'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -983,12 +1015,8 @@ export const ASSETS: AssetDef[] = [
     // joins the same rows. Per-chart cost reduces to "join + score".
     //
     // Global L0, super-admin-triggered ONLY — never auto-pulled into a
-    // per-chart build (brief §2.5.2). depends_on: [] deliberately — the
-    // ephemeris rows it reads belong to bg_ephemeris, but this asset is not a
-    // build-order dependent of it in the Nirmāṇa sense any more than any other
-    // L0 reader is; the edge is added only if the DAG needs it at W2G cutover,
-    // and adding it speculatively would make a super-admin trigger drag an
-    // 825k-row rebuild behind it.
+    // per-chart build (brief §2.5.2). Its writer reads ephemeris_daily, so the
+    // frozen build DAG must place it after the bg_ephemeris authority.
     asset_id: 'bg_gochara_arcs',
     layer: 'brahmagyan', sort_order: 77,
     catalog_status: 'CURRENT',
@@ -1003,7 +1031,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: "34,553 arcs across the nine DAILY_BODIES over 1900-01-01 → 2150-12-31 (91,676 knots each, ayanamsha_id='tropical'). Per body: Saturn 503 · Jupiter 494 · Rahu 13,544 · Ketu 13,553 · Mars 376 · Sun 252 · Mercury 1,894 · Venus 580 · Moon 3,357. PROVENANCE, stated exactly: this is a REAL derivation run by the arc builder against production ephemeris_daily read-only on 2026-08-05 (whole-epoch build measured twice, 36.8s and 48.0s wall clock), NOT a post-INSERT DB count and NOT an estimate — the writer had not yet run in production when this row landed. Re-verify with count_sql after the first super-admin L0 build. The two node bodies dominate because ephemeris_daily stores the TRUE node (l0_ephemeris swe_id=11 = SE_TRUE_NODE, despite that line's '# Mean North Node' comment), which genuinely oscillates — measured retrograde stretches of median 0.71° over ~9.9 days interleaved with direct excursions of median 0.043°. Splitting there is required for monotonicity; whether such an excursion carries classical significance is a grammar question, frozen at v1.",
-    depends_on: [],
+    depends_on: ['bg_ephemeris'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },

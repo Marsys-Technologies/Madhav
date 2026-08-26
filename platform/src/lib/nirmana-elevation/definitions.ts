@@ -302,6 +302,37 @@ export function assertManifestMatchesRegistry(
   }
 }
 
+/**
+ * Revalidates the immutable denominator/DAG identity after a definition has
+ * frozen. Operational registry contracts are intentionally excluded here:
+ * the per-asset method requires reviewed correctness/integrity changes after
+ * T0, and those changes are accepted through fingerprinted analysis evidence.
+ * Adding/removing an asset, moving its layer, or changing its dependency set
+ * still invalidates the denominator globally.
+ */
+export function assertManifestMatchesRegistryIdentity(
+  manifest: NirmanaElevationManifest,
+  registryRows: NirmanaRegistryContractRow[],
+): void {
+  const manifestById = new Map(manifest.assets.map((asset) => [asset.asset_id, asset]))
+  const registryById = new Map(registryRows.map((row) => [row.asset_id, row]))
+  if (manifestById.size !== registryById.size) {
+    throw new Error(`Frozen manifest contains ${manifestById.size} assets but the live registry contains ${registryById.size}.`)
+  }
+  for (const [assetId, asset] of manifestById) {
+    const registryRow = registryById.get(assetId)
+    if (!registryRow) throw new Error(`Frozen manifest asset ${assetId} is absent from the live registry.`)
+    if (registryLayers[registryRow.layer] !== asset.layer) {
+      throw new Error(`Frozen manifest asset ${assetId} changed layer in the live registry.`)
+    }
+    const frozenDependencies = [...(asset.depends_on ?? [])].sort()
+    const liveDependencies = [...(registryRow.depends_on ?? [])].sort()
+    if (stableJson(frozenDependencies) !== stableJson(liveDependencies)) {
+      throw new Error(`Frozen manifest asset ${assetId} changed its dependency set in the live registry.`)
+    }
+  }
+}
+
 export interface CreateNirmanaElevationDefinitionInput {
   campaign_id: string
   definition_revision: string
@@ -322,6 +353,8 @@ export class NirmanaElevationEvidenceConflictError extends Error {
     super('Evidence idempotency key already exists with different immutable contents.')
   }
 }
+
+export class NirmanaElevationEvidenceValidationError extends Error {}
 
 /**
  * The sole server-side insertion seam for campaign definitions. Callers must
@@ -421,7 +454,48 @@ const OutputDigestEvidenceSchema = z.object({
   output_digest: z.string().regex(/^[a-f0-9]{64}$/),
   output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict()
+const AssetAnalysisEvidenceSchema = z.object({
+  registry_fingerprint_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  analysis_digest: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
 const buildRunSourceRef = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+const gitCommitSourceRef = /^git:[0-9a-f]{40}$/
+
+async function requireAcceptedAssetAnalysisProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
+  const payload = AssetAnalysisEvidenceSchema.safeParse(input.evidence_payload)
+  if (!payload.success || input.source_kind !== 'git_commit' || !gitCommitSourceRef.test(input.source_ref)) {
+    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires exact registry/analysis SHA-256 evidence and a git:<40-hex> commit source.')
+  }
+  const registry = await query<NirmanaRegistryContractRow>(
+    `SELECT registry.asset_id, registry.layer, COALESCE(registry.depends_on, '{}') AS depends_on,
+            registry.sort_order, registry.scope, registry.asset_kind, registry.catalog_status,
+            registry.is_active, registry.has_writer, registry.target_table, registry.count_sql,
+            registry.integrity_check_sql, registry.health_probe, registry.natural_key_partition,
+            registry.superseded_by, registry.data_disposition, registry.dead_flag
+       FROM asset_registry registry
+       JOIN nirmana_elevation_campaign_definitions definition
+         ON definition.campaign_id = $1
+        AND definition.definition_revision = $2
+        AND definition.definition_status = 'frozen'
+        AND definition.superseded_at IS NULL
+      WHERE registry.asset_id = $3
+        AND EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements(definition.manifest -> 'assets') AS manifest_asset(value)
+           WHERE manifest_asset.value ->> 'asset_id' = registry.asset_id
+             AND manifest_asset.value ->> 'layer' = $4
+        )`,
+    [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
+  )
+  const registryRow = registry.rows[0]
+  if (!registryRow) {
+    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted requires an asset in the current frozen definition and matching layer.')
+  }
+  const currentFingerprint = canonicalRegistryContractDigest(registryContractFingerprintInput(registryRow))
+  if (payload.data.registry_fingerprint_sha256 !== currentFingerprint) {
+    throw new NirmanaElevationEvidenceValidationError('asset_analysis_accepted registry fingerprint does not match the current live contract.')
+  }
+}
 
 async function requireAcceptedRebuildProvenance(input: RecordNirmanaElevationEvidenceInput): Promise<void> {
   const sourceMatch = buildRunSourceRef.exec(input.source_ref)
@@ -470,6 +544,33 @@ async function requireAcceptedRebuildProvenance(input: RecordNirmanaElevationEvi
   }
 }
 
+async function findExistingEvidenceReceipt(input: RecordNirmanaElevationEvidenceInput): Promise<RecordNirmanaElevationEvidenceInput | undefined> {
+  const existing = await query<RecordNirmanaElevationEvidenceInput>(
+    `SELECT campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
+            layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND definition_revision = $2 AND idempotency_key = $3`,
+    [input.campaign_id, input.definition_revision, input.idempotency_key],
+  )
+  return existing.rows[0]
+}
+
+function isExactEvidenceReceipt(
+  receipt: RecordNirmanaElevationEvidenceInput | undefined,
+  input: RecordNirmanaElevationEvidenceInput,
+): boolean {
+  return Boolean(receipt
+    && receipt.event_type === input.event_type
+    && receipt.entity_type === input.entity_type
+    && receipt.entity_id === input.entity_id
+    && receipt.layer === input.layer
+    && stableJson(receipt.evidence_payload) === stableJson(input.evidence_payload)
+    && receipt.source_kind === input.source_kind
+    && receipt.source_ref === input.source_ref
+    && new Date(receipt.observed_at).toISOString() === new Date(input.observed_at).toISOString()
+    && receipt.recorded_by === input.recorded_by)
+}
+
 /** Appends a receipt; an idempotent retry deliberately leaves the first receipt intact. */
 export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevationEvidenceInput): Promise<'created' | 'idempotent'> {
   if (Number.isNaN(Date.parse(input.observed_at))) {
@@ -477,6 +578,14 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
   }
   if (input.event_type === 'accepted_rebuild_observed') {
     await requireAcceptedRebuildProvenance(input)
+  }
+  if (input.event_type === 'asset_analysis_accepted') {
+    const existing = await findExistingEvidenceReceipt(input)
+    if (existing) {
+      if (isExactEvidenceReceipt(existing, input)) return 'idempotent'
+      throw new NirmanaElevationEvidenceConflictError()
+    }
+    await requireAcceptedAssetAnalysisProvenance(input)
   }
   const inserted = await query(
     `INSERT INTO nirmana_elevation_campaign_events
@@ -493,24 +602,7 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     ],
   )
   if (inserted.rowCount === 1) return 'created'
-  const existing = await query<RecordNirmanaElevationEvidenceInput>(
-    `SELECT campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
-            layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by
-       FROM nirmana_elevation_campaign_events
-      WHERE campaign_id = $1 AND definition_revision = $2 AND idempotency_key = $3`,
-    [input.campaign_id, input.definition_revision, input.idempotency_key],
-  )
-  const receipt = existing.rows[0]
-  if (receipt
-    && receipt.event_type === input.event_type
-    && receipt.entity_type === input.entity_type
-    && receipt.entity_id === input.entity_id
-    && receipt.layer === input.layer
-    && stableJson(receipt.evidence_payload) === stableJson(input.evidence_payload)
-    && receipt.source_kind === input.source_kind
-    && receipt.source_ref === input.source_ref
-    && new Date(receipt.observed_at).toISOString() === new Date(input.observed_at).toISOString()
-    && receipt.recorded_by === input.recorded_by
-  ) return 'idempotent'
+  const receipt = await findExistingEvidenceReceipt(input)
+  if (isExactEvidenceReceipt(receipt, input)) return 'idempotent'
   throw new NirmanaElevationEvidenceConflictError()
 }

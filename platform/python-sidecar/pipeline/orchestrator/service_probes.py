@@ -92,24 +92,87 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
 
 # ── bg_panchanga probe ────────────────────────────────────────────────────────
 
-_FORENSIC_BIRTH = {
-    "instant": "1984-02-05T10:43:00",
-    "lat": 20.27,
-    "lon": 85.84,
-    "tz_offset": 330,
-    "expected": {
-        "tithi": "Shukla Tritiya",
-        "nakshatra": "Purva Bhadrapada",
-        "yoga": "Shiva",
-        "karana": "Garaja",
-        "vara": "Ravivara",
-    },
-}
+_PANCHANGA_EXPECTED_FIELDS = ("tithi", "nakshatra", "yoga", "karana", "vara")
+_PANCHANGA_EXPECTED_FIELD_SET = frozenset(_PANCHANGA_EXPECTED_FIELDS)
+
+
+def _validated_panchanga_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import datetime
+
+    required = {
+        "forensic_instant",
+        "forensic_lat",
+        "forensic_lon",
+        "forensic_tz_offset",
+        "forensic_expected",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_instant = probe_spec["forensic_instant"]
+    if not isinstance(raw_instant, str):
+        raise ValueError("forensic_instant must be an ISO-8601 string")
+    try:
+        instant = datetime.fromisoformat(raw_instant)
+    except ValueError as exc:
+        raise ValueError("forensic_instant must be valid ISO-8601") from exc
+    if instant.tzinfo is not None:
+        raise ValueError("forensic_instant must be local wall time without an embedded offset")
+
+    lat = probe_spec["forensic_lat"]
+    lon = probe_spec["forensic_lon"]
+    tz_offset = probe_spec["forensic_tz_offset"]
+    if isinstance(lat, bool) or not isinstance(lat, (int, float)) or not -90 <= lat <= 90:
+        raise ValueError("forensic_lat must be a number in [-90, 90]")
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) or not -180 <= lon <= 180:
+        raise ValueError("forensic_lon must be a number in [-180, 180]")
+    if isinstance(tz_offset, bool) or not isinstance(tz_offset, int) or not -840 <= tz_offset <= 840:
+        raise ValueError("forensic_tz_offset must be integer minutes in [-840, 840]")
+
+    expected = probe_spec["forensic_expected"]
+    if not isinstance(expected, dict):
+        raise ValueError("forensic_expected must be an object")
+    missing_expected = sorted(_PANCHANGA_EXPECTED_FIELD_SET - expected.keys())
+    if missing_expected:
+        raise ValueError(f"forensic_expected is missing: {', '.join(missing_expected)}")
+    invalid_expected = sorted(
+        field for field in _PANCHANGA_EXPECTED_FIELDS
+        if not isinstance(expected[field], str) or not expected[field].strip()
+    )
+    if invalid_expected:
+        raise ValueError(
+            "forensic_expected values must be non-empty strings: "
+            + ", ".join(invalid_expected)
+        )
+
+    return {
+        "instant": instant,
+        "lat": float(lat),
+        "lon": float(lon),
+        "tz_offset": tz_offset,
+        "expected": {field: expected[field] for field in _PANCHANGA_EXPECTED_FIELDS},
+    }
 
 
 def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_panchanga_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid panchanga health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: single canonical implementation importable
     try:
@@ -121,12 +184,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 
     # Check 2: deterministic FORENSIC smoke — panchanga_instant at birth
     try:
-        from datetime import datetime
         from panchang_engine import panchanga_instant
-        instant = datetime.fromisoformat(_FORENSIC_BIRTH["instant"])
-        result = panchanga_instant(instant, _FORENSIC_BIRTH["lat"], _FORENSIC_BIRTH["lon"],
-                                   _FORENSIC_BIRTH["tz_offset"])
-        expected = _FORENSIC_BIRTH["expected"]
+        result = panchanga_instant(
+            config["instant"], config["lat"], config["lon"], config["tz_offset"]
+        )
+        expected = config["expected"]
         mismatches = []
         for field, exp_val in expected.items():
             actual = getattr(result, field, None)
@@ -154,20 +216,20 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     # the angas ruling at SUNRISE on the same date — a different code path through the
     # engine with a different reference instant. Karana is instant-only and is therefore
     # not asserted here.
-    _DAY_EXPECTED = {"vara": "Ravivara", "tithi": "Shukla Tritiya",
-                     "nakshatra": "Purva Bhadrapada", "yoga": "Shiva"}
+    _DAY_EXPECTED_FIELDS = ("vara", "tithi", "nakshatra", "yoga")
     try:
-        from datetime import date
         from panchang_engine import panchanga_day
-        birth_date = date(1984, 2, 5)
-        result = panchanga_day(birth_date, _FORENSIC_BIRTH["lat"],
-                               _FORENSIC_BIRTH["lon"], _FORENSIC_BIRTH["tz_offset"])
+        birth_date = config["instant"].date()
+        result = panchanga_day(
+            birth_date, config["lat"], config["lon"], config["tz_offset"]
+        )
         day_mismatches: list[str] = []
         if getattr(result, "date", None) != birth_date:
             day_mismatches.append(
                 f"date: got {getattr(result, 'date', None)!r}, expected {birth_date!r}"
             )
-        for field, exp_val in _DAY_EXPECTED.items():
+        day_expected = {field: config["expected"][field] for field in _DAY_EXPECTED_FIELDS}
+        for field, exp_val in day_expected.items():
             actual = getattr(result, field, None)
             actual_name = getattr(actual, "name", actual) if actual is not None else None
             if actual_name != exp_val:
@@ -210,15 +272,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 # Sign-level assertions carry ≥8° of margin to the nearest sign boundary, so they are
 # insensitive to the sub-arcsecond Swiss-file-vs-Moshier difference but WILL fail on a
 # wrong body, a wrong Julian Day, or a missing/incorrect ayanamsha — which is the point.
-_FORENSIC_POSITION = {
-    "jd": 2445735.717361111,  # 1984-02-05 10:43 IST = 05:13 UT → Julian Day (swe.julday)
-    "expected_sun_sign": 10,  # Makara (Capricorn) sidereal Lahiri
-    "expected_mean_node_rahu_sign": 2,  # Vrishabha — Rahu mean node, sidereal Lahiri
-}
-
 # Swiss Ephemeris return-flag bits (swe.FLG_*), pinned here so the backend attribution
 # below does not depend on the caller having imported swisseph.
 _EPHE_BACKENDS = ((1, "jpl_file"), (2, "swiss_ephemeris_file"), (4, "moshier_analytic_fallback"))
+_EPHE_BACKEND_NAMES = frozenset(name for _bit, name in _EPHE_BACKENDS)
+_EPHEMERIS_CORPUS_FILES = frozenset({"sepl_18.se1", "semo_18.se1", "seas_18.se1"})
 
 
 def _ephemeris_backend(retflag: int) -> str:
@@ -239,9 +297,86 @@ def _ephemeris_backend(retflag: int) -> str:
     return f"unknown (retflag={retflag})"
 
 
+def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Normalize the registry-owned ephemeris contract or fail closed."""
+    import re
+
+    required = {
+        "forensic_jd",
+        "expected_sun_sign",
+        "expected_mean_node_rahu_sign",
+        "ayanamsha",
+        "node_mode",
+        "allowed_ephemeris_backends",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    jd = probe_spec["forensic_jd"]
+    if isinstance(jd, bool) or not isinstance(jd, (int, float)) or not 1_000_000 < jd < 4_000_000:
+        raise ValueError("forensic_jd must be a plausible numeric Julian Day")
+
+    def _sign(field: str) -> int:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 12:
+            raise ValueError(f"{field} must be an integer sign number in [1, 12]")
+        return value
+
+    if probe_spec["ayanamsha"] != "lahiri":
+        raise ValueError("ayanamsha must be 'lahiri'")
+    if probe_spec["node_mode"] != "mean":
+        raise ValueError("node_mode must be 'mean'")
+
+    allowed = probe_spec["allowed_ephemeris_backends"]
+    if not isinstance(allowed, list) or not allowed or any(not isinstance(x, str) for x in allowed):
+        raise ValueError("allowed_ephemeris_backends must be a non-empty string array")
+    unknown = sorted(set(allowed) - _EPHE_BACKEND_NAMES)
+    if unknown:
+        raise ValueError(f"unknown allowed_ephemeris_backends: {', '.join(unknown)}")
+
+    file_sha256 = probe_spec.get("ephemeris_file_sha256")
+    if file_sha256 is not None:
+        if not isinstance(file_sha256, dict) or set(file_sha256) != _EPHEMERIS_CORPUS_FILES:
+            raise ValueError(
+                "ephemeris_file_sha256 must pin exactly sepl_18.se1, semo_18.se1, seas_18.se1"
+            )
+        invalid_digests = sorted(
+            name for name, digest in file_sha256.items()
+            if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+        )
+        if invalid_digests:
+            raise ValueError(
+                "ephemeris_file_sha256 contains invalid SHA-256 values: "
+                + ", ".join(invalid_digests)
+            )
+
+    return {
+        "jd": float(jd),
+        "expected_sun_sign": _sign("expected_sun_sign"),
+        "expected_mean_node_rahu_sign": _sign("expected_mean_node_rahu_sign"),
+        "allowed_ephemeris_backends": frozenset(allowed),
+        "ephemeris_file_sha256": file_sha256,
+    }
+
+
 def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_ephemeris_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid ephemeris health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: swisseph importable
     try:
@@ -260,26 +395,76 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     ephe_path = None
     try:
         import swisseph as swe
+        import hashlib
         import os
-        ephe_path = os.environ.get("SWISSEPH_PATH", "/app/ephe")
+        from pathlib import Path
+
+        ephe_path = (
+            os.environ.get("SWE_EPHE_PATH")
+            or os.environ.get("SWISSEPH_PATH")
+            or "/app/ephe"
+        )
+        expected_files = config["ephemeris_file_sha256"]
+        if expected_files is not None:
+            actual_files: dict[str, str] = {}
+            file_errors: list[str] = []
+            for filename, expected_digest in sorted(expected_files.items()):
+                source = Path(ephe_path) / filename
+                if not source.is_file():
+                    file_errors.append(f"{filename}: missing")
+                    continue
+                digest = hashlib.sha256()
+                with source.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                actual_digest = digest.hexdigest()
+                actual_files[filename] = actual_digest
+                if actual_digest != expected_digest:
+                    file_errors.append(
+                        f"{filename}: SHA-256 {actual_digest}, expected {expected_digest}"
+                    )
+            _add_check(
+                checks,
+                failures,
+                "ephemeris_corpus_sha256",
+                not file_errors,
+                "; ".join(file_errors),
+                files=actual_files,
+                ephe_path=ephe_path,
+            )
+
         swe.set_ephe_path(ephe_path)
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, retflag = swe.calc_ut(jd, swe.SUN, _SID)
         sun_lon = xx[0]
         sun_sign = int(sun_lon / 30) + 1
-        expected_sun_sign = _FORENSIC_POSITION["expected_sun_sign"]
+        expected_sun_sign = config["expected_sun_sign"]
+        backend = _ephemeris_backend(retflag)
+        backend_ok = backend in config["allowed_ephemeris_backends"]
+        sun_ok = sun_sign == expected_sun_sign
+        sun_failures = []
+        if not sun_ok:
+            sun_failures.append(
+                f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), "
+                f"expected sign {expected_sun_sign} at JD {jd}"
+            )
+        if not backend_ok:
+            sun_failures.append(
+                f"ephemeris backend={backend}, allowed="
+                f"{sorted(config['allowed_ephemeris_backends'])}"
+            )
         _add_check(
             checks, failures, "sidereal_sun_forensic_sign",
-            sun_sign == expected_sun_sign,
-            f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), expected sign "
-            f"{expected_sun_sign} (Makara) for 1984-02-05 10:43 IST",
+            sun_ok and backend_ok,
+            "; ".join(sun_failures),
             sun_lon=round(sun_lon, 4),
             sun_sign=sun_sign,
             expected_sun_sign=expected_sun_sign,
             ayanamsha="Lahiri",
-            ephemeris_backend=_ephemeris_backend(retflag),
+            ephemeris_backend=backend,
+            allowed_ephemeris_backends=sorted(config["allowed_ephemeris_backends"]),
             ephe_path=ephe_path,
         )
     except Exception as exc:
@@ -295,11 +480,11 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         import swisseph as swe
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, _retflag = swe.calc_ut(jd, swe.MEAN_NODE, _SID)
         node_lon = xx[0]
         rahu_sign = int(node_lon / 30) + 1
-        expected_rahu_sign = _FORENSIC_POSITION["expected_mean_node_rahu_sign"]  # 2
+        expected_rahu_sign = config["expected_mean_node_rahu_sign"]
         # Ketu is exactly opposite; swe.MEAN_NODE gives Rahu, Ketu = (Rahu + 180) % 360
         ketu_lon = (node_lon + 180.0) % 360.0
         ketu_sign = int(ketu_lon / 30) + 1
@@ -310,12 +495,12 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         if not rahu_ok:
             node_failures.append(
                 f"Rahu sign={rahu_sign} (lon={node_lon:.4f}°), "
-                f"expected sign {expected_rahu_sign} (Vrishabha) for 1984-02-05"
+                f"expected sign {expected_rahu_sign} at JD {jd}"
             )
         if not ketu_ok:
             node_failures.append(
                 f"Ketu sign={ketu_sign} (lon={ketu_lon:.4f}°), "
-                f"expected sign {expected_ketu_sign} (Vrischika) for 1984-02-05"
+                f"expected sign {expected_ketu_sign} at JD {jd}"
             )
         _add_check(
             checks, failures, "sidereal_mean_node_rahu_invariant",
