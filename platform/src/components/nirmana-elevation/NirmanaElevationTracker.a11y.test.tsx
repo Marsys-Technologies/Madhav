@@ -2,7 +2,10 @@ import axe from 'axe-core'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { fixtureV2 } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
+import {
+  fixtureV2,
+  planAdaptationSnapshot,
+} from '@/lib/nirmana-elevation/__tests__/fixture-v2'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import { NirmanaElevationTrackerView } from './NirmanaElevationTracker'
 
@@ -17,10 +20,10 @@ function snapshotV2(): NirmanaElevationSnapshotV2 {
   return structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
 }
 
-function renderTracker() {
+function renderTracker(snapshot = snapshotV2()) {
   return render(
     <NirmanaElevationTrackerView
-      snapshot={snapshotV2()}
+      snapshot={snapshot}
       fetchedAt={new Date('2026-08-25T09:00:00.000Z')}
     />,
   )
@@ -42,6 +45,19 @@ describe('NirmanaElevationTracker accessibility', () => {
 
     const results = await axe.run(container, wcagRunOptions)
 
+    expect(results.violations.map(({ id }) => id)).toEqual([])
+  })
+
+  it('announces plan adaptation without removing the governed campaign spine', async () => {
+    const { container } = renderTracker(planAdaptationSnapshot)
+
+    const synchronization = screen.getByText('Plan adaptation required').closest<HTMLElement>('[role="alert"]')
+    if (!synchronization) throw new Error('Plan-adaptation alert is missing.')
+    expect(synchronization).toHaveTextContent('Affected assets: 1')
+    expect(screen.getByRole('heading', { name: /campaign spine/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toBeVisible()
+
+    const results = await axe.run(container, wcagRunOptions)
     expect(results.violations.map(({ id }) => id)).toEqual([])
   })
 

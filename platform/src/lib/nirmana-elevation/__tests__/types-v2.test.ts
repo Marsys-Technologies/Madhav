@@ -5,7 +5,11 @@ import {
   NirmanaElevationSnapshotV2Schema,
   type NirmanaElevationSnapshotV2,
 } from '../types'
-import { fixtureV2 } from './fixture-v2'
+import {
+  fixtureV2,
+  frozenBaselineInSyncSnapshot,
+  planAdaptationSnapshot,
+} from './fixture-v2'
 
 const expectedStageIds = [
   'BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN', 'DENOMINATOR_FROZEN', 'F0_FOUNDATION',
@@ -43,6 +47,27 @@ describe('Nirmana elevation snapshot v2 contract', () => {
     const snapshot = copyFixture()
     snapshot.campaign.current_stage = null
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('keeps an in-sync frozen baseline without stage receipts at no current stage', () => {
+    const snapshot = frozenBaselineInSyncSnapshot
+
+    expect(snapshot.campaign.current_stage).toBeNull()
+    expect(snapshot.progress.denominator_status).toBe('frozen')
+    expect(snapshot.program_sync.status).toBe('in_sync')
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('keeps plan adaptation as a synchronization observation rather than a denominator rewrite', () => {
+    expect(planAdaptationSnapshot.program_sync).toMatchObject({
+      status: 'plan_adaptation_required',
+      affected_asset_ids: ['ga_positions'],
+    })
+    expect(planAdaptationSnapshot.progress).toMatchObject({
+      denominator_status: 'frozen',
+      assets_total: fixtureV2.progress.assets_total,
+    })
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(planAdaptationSnapshot).success).toBe(true)
   })
 
   it('rejects a bare layer without its governed layer name', () => {

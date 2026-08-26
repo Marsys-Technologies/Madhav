@@ -34,6 +34,7 @@ function sourceRows() {
       id: '30303030-3030-4030-8030-303030303030', observed_at: monitorObservedAt,
       status: 'plan_adaptation_required', affected_asset_ids: ['bg_prashna_rules'],
       current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: 'b'.repeat(64),
+      candidate_catalogue_sha256: 'c'.repeat(64),
       source_state: 'available', source_error_code: null, runtime_liveness: 'quiet',
     }] })
 }
@@ -86,6 +87,7 @@ describe('GET /api/admin/nirmana-elevation/snapshot', () => {
     expect(body.program_sync).toMatchObject({
       status: 'plan_adaptation_required', affected_asset_ids: ['bg_prashna_rules'],
       current_definition_sha256: 'a'.repeat(64), candidate_definition_sha256: 'b'.repeat(64),
+      candidate_catalogue_sha256: 'c'.repeat(64),
     })
     expect(body.sources).toEqual(expect.arrayContaining([
       expect.objectContaining({ source_id: 'program_monitor', state: 'stale' }),

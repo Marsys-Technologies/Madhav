@@ -4,6 +4,7 @@ import {
   projectNirmanaElevationSnapshot,
   type NirmanaElevationRawSources,
 } from '../snapshot'
+import type { NirmanaReleaseStatus } from '../release'
 import { NIRMANA_STAGE_IDS } from '../vocab'
 
 const observedAt = '2026-08-26T00:00:00.000Z'
@@ -260,20 +261,58 @@ const raw: NirmanaElevationRawSources = {
   asset_labels: labels,
 }
 
-export const fixtureV2 = projectNirmanaElevationSnapshot(raw, {
-  generatedAt: '2026-08-26T00:03:00.000Z',
-  releaseStatus: {
-    release: {
-      main_sha: 'a'.repeat(40), deployed_sha: 'a'.repeat(40), deployed_revision: 'amjis-web-fixture',
-      production_in_sync: true, observed_at: '2026-08-26T00:02:30.000Z',
-    },
-    sources: [
-      { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'fresh', observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
-      { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh', observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
-      { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'fresh', observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
-    ],
-    gaps: [],
+const releaseStatus: NirmanaReleaseStatus = {
+  release: {
+    main_sha: 'a'.repeat(40), deployed_sha: 'a'.repeat(40), deployed_revision: 'amjis-web-fixture',
+    production_in_sync: true, observed_at: '2026-08-26T00:02:30.000Z',
   },
+  sources: [
+    { source_id: 'github_main', provenance: 'GitHub commits API/feed', state: 'fresh' as const, observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
+    { source_id: 'cloud_run_web', provenance: 'Cloud Run Service traffic via ADC', state: 'fresh' as const, observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
+    { source_id: 'artifact_registry_commit', provenance: 'Serving revision immutable commit provenance', state: 'fresh' as const, observed_at: '2026-08-26T00:02:30.000Z', age_seconds: 30, error_code: null, error_message: null },
+  ],
+  gaps: [],
+}
+
+function makeSnapshot(overrides: Partial<NirmanaElevationRawSources> = {}) {
+  return projectNirmanaElevationSnapshot({ ...raw, ...overrides }, {
+    generatedAt: '2026-08-26T00:03:00.000Z',
+    releaseStatus,
+  })
+}
+
+const definitionSha256 = canonicalManifestDigest(manifest)
+const inSyncObservation = {
+  id: '44444444-4444-4444-8444-444444444444',
+  observed_at: '2026-08-26T00:02:00.000Z',
+  status: 'in_sync' as const,
+  affected_asset_ids: [],
+  current_definition_sha256: definitionSha256,
+  candidate_definition_sha256: definitionSha256,
+  candidate_catalogue_sha256: labelDigest,
+  source_state: 'available' as const,
+  source_error_code: null,
+  runtime_liveness: 'quiet' as const,
+}
+
+/** No monitor receipt is deliberately distinct from the complete program-sync fixtures below. */
+export const fixtureV2 = makeSnapshot()
+
+/** An identity-only frozen baseline is synchronized, not positioned in the campaign. */
+export const frozenBaselineInSyncSnapshot = makeSnapshot({
+  campaign_events: [],
+  monitor_observations: [inSyncObservation],
+})
+
+/** Drift is projected as review-required; it never mutates the accepted denominator. */
+export const planAdaptationSnapshot = makeSnapshot({
+  monitor_observations: [{
+    ...inSyncObservation,
+    id: '55555555-5555-4555-8555-555555555555',
+    status: 'plan_adaptation_required',
+    affected_asset_ids: ['ga_positions'],
+    candidate_definition_sha256: '9'.repeat(64),
+  }],
 })
 
 export const NIRMANA_ELEVATION_SNAPSHOT_V2_FIXTURE = fixtureV2
