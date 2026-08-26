@@ -477,6 +477,7 @@ _SEED_ONLY_ALLOWED = frozenset({
     # ── No writer (has_writer=false in DB) ────────────────────────────────────
     "lel_events",              # user-authored source data; has_writer=false
     "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11)
+    "bg_gochara_citation_resolution",  # migration-565-owned static reference data; has_writer=false
     # ── Migration INSERT format not detected by line extractor ────────────────
     # These all have genuine migration INSERTs but use multi-row VALUES format
     # or complex SQL not caught by the single-line pattern.
