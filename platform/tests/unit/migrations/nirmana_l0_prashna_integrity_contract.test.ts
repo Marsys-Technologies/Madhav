@@ -37,6 +37,7 @@ describe('migration 616 — Prashna producer integrity contract', () => {
       volume_explanation: canonicalExplanation,
       depends_on: [],
     })
+    expect(migration).not.toContain('natural_key_partition = partition_contract')
   })
 })
 
@@ -79,7 +80,9 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 616 — real PostgreSQL behavior'
         asset_kind text, catalog_status text, is_active boolean, has_writer boolean,
         target_table text, count_sql text, target_floor bigint, depends_on text[],
         natural_key_partition text, data_disposition text, integrity_check_sql text,
-        english_description text, volume_explanation text
+        english_description text, volume_explanation text,
+        CONSTRAINT asset_registry_natural_key_partition_needs_table
+          CHECK (natural_key_partition IS NULL OR target_table IS NOT NULL)
       );
       CREATE TABLE bg_prashna_lagna_methods (
         id serial PRIMARY KEY, method_id text UNIQUE NOT NULL, method_name text NOT NULL,
@@ -147,7 +150,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 616 — real PostgreSQL behavior'
       expect(registry.rows[0]).toEqual({
         target_floor: '41',
         volume_explanation: canonicalExplanation,
-        natural_key_partition: 'bg_prashna_lagna_methods.method_id; bg_prashna_tajik_yogas.yoga_id; bg_prashna_significators.question_class; bg_prashna_fructification_rules.rule_id; bg_prashna_special_techniques.technique_id',
+        natural_key_partition: null,
         data_disposition: null,
         has_integrity: true,
       })
