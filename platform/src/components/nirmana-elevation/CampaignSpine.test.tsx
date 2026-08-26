@@ -45,6 +45,86 @@ describe('CampaignSpine', () => {
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it.each([
+    ['unknown', 'Source unavailable'],
+    ['baseline_missing', 'Baseline awaiting acceptance'],
+    ['plan_adaptation_required', 'Plan adaptation required'],
+    ['evidence_refresh_required', 'Evidence refresh required'],
+    ['label_refresh_required', 'Label catalogue refresh required'],
+    ['in_sync', 'In sync'],
+    ['release_attention', 'Evidence refresh required'],
+    ['source_unavailable', 'Source unavailable'],
+  ] as const)('renders %s with the required plain-language synchronization copy', (status, copy) => {
+    const snapshot = snapshotFixture()
+    snapshot.data_quality = { verdict: 'reliable', gaps: [], contradictions: [] }
+    snapshot.program_sync = {
+      ...snapshot.program_sync,
+      status,
+      observed_at: '2026-08-26T00:02:00.000Z',
+      age_seconds: 60,
+      affected_asset_ids: ['bg_prashna_rules'],
+    }
+    const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+    if (!monitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(monitor, {
+      state: status === 'source_unavailable' ? 'unavailable' : 'fresh',
+      observed_at: snapshot.program_sync.observed_at,
+      age_seconds: snapshot.program_sync.age_seconds,
+    })
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    expect(screen.getByText('Program synchronization')).toBeVisible()
+    const synchronization = screen.getByText(copy).closest<HTMLElement>('[role]')
+    if (!synchronization) throw new Error('Program synchronization live region is missing.')
+    expect(within(synchronization).getByText(copy)).toBeVisible()
+    expect(within(synchronization).getByText('Observation age: 1 minute')).toBeVisible()
+    expect(within(synchronization).getByText('Affected assets: 1')).toBeVisible()
+    expect(synchronization).toHaveAttribute('role', status === 'in_sync' || status === 'baseline_missing' ? 'status' : 'alert')
+  })
+
+  it('marks a stale in-sync observation as an alert without presenting quiet execution as an error', () => {
+    const stale = snapshotFixture()
+    stale.data_quality = { verdict: 'reliable', gaps: [], contradictions: [] }
+    stale.program_sync = {
+      ...stale.program_sync,
+      status: 'in_sync',
+      observed_at: '2026-08-26T00:00:00.000Z',
+      age_seconds: 901,
+      affected_asset_ids: [],
+    }
+    const staleMonitor = stale.sources.find((source) => source.source_id === 'program_monitor')
+    if (!staleMonitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(staleMonitor, { state: 'stale', observed_at: stale.program_sync.observed_at, age_seconds: 901 })
+
+    const { rerender } = render(<CampaignSurface snapshot={stale} />)
+
+    let synchronization = screen.getByText(/observation stale/i).closest<HTMLElement>('[role="alert"]')
+    if (!synchronization) throw new Error('Stale synchronization alert is missing.')
+    expect(within(synchronization).getByText('In sync')).toBeVisible()
+    expect(within(synchronization).getByText(/observation stale/i)).toBeVisible()
+
+    const quiet = snapshotFixture()
+    quiet.data_quality = { verdict: 'reliable', gaps: [], contradictions: [] }
+    quiet.program_sync = {
+      ...quiet.program_sync,
+      status: 'in_sync',
+      observed_at: '2026-08-26T00:02:00.000Z',
+      age_seconds: 60,
+      affected_asset_ids: [],
+    }
+    const quietMonitor = quiet.sources.find((source) => source.source_id === 'program_monitor')
+    if (!quietMonitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(quietMonitor, { state: 'fresh', observed_at: quiet.program_sync.observed_at, age_seconds: 60 })
+    rerender(<CampaignSurface snapshot={quiet} />)
+
+    synchronization = screen.getByText('No program change detected.').closest<HTMLElement>('[role="status"]')
+    if (!synchronization) throw new Error('Quiet synchronization status is missing.')
+    expect(within(synchronization).getByText('In sync')).toBeVisible()
+    expect(within(synchronization).queryByText(/error|failed|stale/i)).not.toBeInTheDocument()
+    expect(within(screen.getByLabelText('Now, next, then campaign rail')).getByText('No current attention receipt')).toBeVisible()
+  })
+
   it('keeps a known F0 current stage in the rail without inventing a current layer', () => {
     const snapshot = snapshotFixture()
     snapshot.campaign.current_stage = 'F0_FOUNDATION'
