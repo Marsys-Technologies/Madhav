@@ -29,6 +29,7 @@ import {
   canonicalRegistryContractDigest,
 } from '@/lib/nirmana-elevation/definitions'
 import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
+import { buildNirmanaBaselineCandidate } from '@/lib/nirmana-elevation/monitor'
 import { NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE } from '@/generated/nirmana-l0-analysis-receipts'
 
 const registry_contract = {
@@ -46,7 +47,11 @@ const manifestAsset = {
 }
 const manifest = { chart_id: '482012f1-710e-4a25-994a-93821f5871aa', assets: [manifestAsset] }
 const manifest_sha256 = canonicalManifestDigest(manifest)
-const registryRows = [{ asset_id: manifestAsset.asset_id, layer: 'brahmagyan' as const, depends_on: [], frozen_manifest_asset: manifestAsset, ...registry_contract }]
+const registryRows = [{
+  asset_id: manifestAsset.asset_id, layer: 'brahmagyan' as const, depends_on: [], frozen_manifest_asset: manifestAsset,
+  sanskrit_name: 'Prashna Niyama', english_name: 'Prashna rules', english_description: 'Governed horary rules.',
+  ...registry_contract,
+}]
 
 function request(body: unknown) {
   return new Request('http://localhost/api/admin/nirmana-elevation/evidence', { method: 'POST', body: JSON.stringify(body) })
@@ -119,6 +124,65 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_label_catalogue_recorded', null, {
       campaign_id: 'nirmana-elevation', definition_revision: 'r1', catalogue_revision: 'labels-v1',
       catalogue_sha256: canonicalLabelCatalogueDigest(labels), asset_count: 1, outcome: 'created',
+    })
+  })
+
+  it('accepts the exact current baseline candidate atomically and audits no lifecycle progress', async () => {
+    superAdmin()
+    const candidate = buildNirmanaBaselineCandidate(registryRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: registryRows })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('SELECT evidence_payload')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'accept_baseline_candidate', definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual({ outcome: 'created' })
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+    expect(transactionSql).toEqual(expect.arrayContaining([
+      expect.stringContaining('INSERT INTO nirmana_elevation_campaign_definitions'),
+      expect.stringContaining("SET definition_status = 'frozen'"),
+      expect.stringContaining('INSERT INTO nirmana_elevation_asset_labels'),
+    ]))
+    expect(transactionSql.join('\n')).not.toContain('stage_transition_accepted')
+    expect(transactionSql.join('\n')).not.toContain('asset_frozen')
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, {
+      command: 'accept_baseline_candidate',
+      campaign_id: 'nirmana-elevation', definition_revision: 'ntap-v1',
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+      outcome: 'created',
     })
   })
 

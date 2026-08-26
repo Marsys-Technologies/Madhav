@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { writeAuditLog } from '@/lib/admin/audit'
 import {
+  acceptNirmanaBaselineCandidate,
   createNirmanaElevationDefinition,
   NirmanaElevationDefinitionConflictError,
   NirmanaElevationEvidenceConflictError,
@@ -189,8 +190,14 @@ const supersede = z.object({
 const labelCatalogue = NirmanaLabelCatalogueInputSchema
   .omit({ recorded_by: true })
   .extend({ command: z.literal('record_label_catalogue') })
+const baselineCandidateAcceptance = z.object({
+  command: z.literal('accept_baseline_candidate'),
+  definition_revision: revision,
+  expected_candidate_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
 
-const command = z.union([definition, freeze, supersede, labelCatalogue, receipt])
+const command = z.union([definition, freeze, supersede, labelCatalogue, baselineCandidateAcceptance, receipt])
 
 export const dynamic = 'force-dynamic'
 
@@ -266,6 +273,25 @@ export async function POST(request: Request) {
         catalogue_revision: parsed.data.catalogue_revision,
         catalogue_sha256: parsed.data.catalogue_sha256,
         asset_count: parsed.data.labels.length,
+        outcome,
+      })
+      return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    if (parsed.data.command === 'accept_baseline_candidate') {
+      const outcome = await acceptNirmanaBaselineCandidate({
+        campaign_id: 'nirmana-elevation',
+        definition_revision: parsed.data.definition_revision,
+        expected_candidate_sha256: parsed.data.expected_candidate_sha256,
+        expected_candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
+        created_by: auth.user.uid,
+      })
+      await writeAuditLog(auth.user.uid, 'nirmana_definition_recorded', null, {
+        command: 'accept_baseline_candidate',
+        campaign_id: 'nirmana-elevation',
+        definition_revision: parsed.data.definition_revision,
+        candidate_manifest_sha256: parsed.data.expected_candidate_sha256,
+        candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
         outcome,
       })
       return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })

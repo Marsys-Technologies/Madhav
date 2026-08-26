@@ -491,6 +491,146 @@ export interface SupersedeNirmanaElevationDefinitionInput {
   created_by: string
 }
 
+export interface AcceptNirmanaBaselineCandidateInput {
+  campaign_id: 'nirmana-elevation'
+  definition_revision: string
+  expected_candidate_sha256: string
+  expected_candidate_catalogue_sha256: string
+  created_by: string
+}
+
+/**
+ * Accepts the exact live-registry baseline candidate, its frozen definition,
+ * and its governed label catalogue as one serializable transaction. This path
+ * records no stage transition or asset-lifecycle receipt.
+ */
+export async function acceptNirmanaBaselineCandidate(
+  input: AcceptNirmanaBaselineCandidateInput,
+): Promise<'created' | 'idempotent'> {
+  if (!/^[A-Za-z0-9._-]{1,128}$/.test(input.definition_revision)
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_sha256)
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_catalogue_sha256)) {
+    throw new NirmanaElevationDefinitionConflictError('Baseline candidate acceptance input is invalid.')
+  }
+
+  const client = await (await getPool()).connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+      `nirmana-elevation:${input.campaign_id}:baseline-acceptance`,
+    ])
+
+    const stored = await client.query<StoredNirmanaDefinition>(
+      `SELECT definition_revision, definition_status, manifest, manifest_sha256,
+              created_by, superseded_at
+         FROM nirmana_elevation_campaign_definitions
+        WHERE campaign_id = $1
+        ORDER BY definition_revision
+        FOR UPDATE`,
+      [input.campaign_id],
+    )
+    const registry = await client.query<NirmanaRegistryContractRow>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
+              sanskrit_name, english_name, english_description,
+              sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
+              target_table, count_sql, integrity_check_sql, health_probe,
+              natural_key_partition, superseded_by, data_disposition, dead_flag
+         FROM asset_registry
+        ORDER BY asset_id
+        FOR SHARE`,
+    )
+
+    let candidate: Awaited<ReturnType<typeof import('./monitor')['buildNirmanaBaselineCandidate']>>
+    try {
+      const { buildNirmanaBaselineCandidate } = await import('./monitor')
+      candidate = buildNirmanaBaselineCandidate(registry.rows)
+    } catch {
+      throw new NirmanaElevationDefinitionConflictError('Live registry cannot produce a freezable baseline candidate.')
+    }
+    if (candidate.manifest_sha256 !== input.expected_candidate_sha256
+      || candidate.catalogue_sha256 !== input.expected_candidate_catalogue_sha256) {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate changed; refresh both candidate digests before acceptance.')
+    }
+
+    const target = stored.rows.find((row) => row.definition_revision === input.definition_revision)
+    const current = stored.rows.find((row) => row.superseded_at === null)
+    const exactDefinitionRetry = target !== undefined
+      && target === current
+      && target.definition_status === 'frozen'
+      && target.manifest_sha256 === candidate.manifest_sha256
+      && stableJson(target.manifest) === stableJson(candidate.manifest)
+
+    const { recordNirmanaElevationLabelCatalogueInTransaction } = await import('./labels')
+    const catalogueInput = {
+      campaign_id: input.campaign_id,
+      definition_revision: input.definition_revision,
+      catalogue_revision: input.definition_revision,
+      labels: candidate.labels,
+      catalogue_sha256: candidate.catalogue_sha256,
+      recorded_by: input.created_by,
+    }
+
+    if (exactDefinitionRetry) {
+      let catalogueOutcome: 'created' | 'idempotent'
+      try {
+        catalogueOutcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, catalogueInput)
+      } catch {
+        throw new NirmanaElevationDefinitionConflictError('Frozen baseline candidate does not have the exact accepted label catalogue.')
+      }
+      if (catalogueOutcome !== 'idempotent') {
+        throw new NirmanaElevationDefinitionConflictError('Frozen baseline candidate does not have the exact accepted label catalogue.')
+      }
+      await client.query('COMMIT')
+      return 'idempotent'
+    }
+
+    if (target !== undefined || current !== undefined) {
+      throw new NirmanaElevationDefinitionConflictError('A different current campaign definition already exists.')
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO nirmana_elevation_campaign_definitions
+         (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+       VALUES ($1, $2, 'reconciling', $3::jsonb, $4, $5)
+       RETURNING definition_revision`,
+      [input.campaign_id, input.definition_revision, JSON.stringify(candidate.manifest),
+        candidate.manifest_sha256, input.created_by],
+    )
+    if (inserted.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+
+    const frozen = await client.query(
+      `UPDATE nirmana_elevation_campaign_definitions
+          SET definition_status = 'frozen'
+        WHERE campaign_id = $1
+          AND definition_revision = $2
+          AND definition_status = 'reconciling'
+          AND manifest_sha256 = $3
+      RETURNING definition_revision`,
+      [input.campaign_id, input.definition_revision, candidate.manifest_sha256],
+    )
+    if (frozen.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+
+    let catalogueOutcome: 'created' | 'idempotent'
+    try {
+      catalogueOutcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, catalogueInput)
+    } catch {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate label catalogue is not acceptable.')
+    }
+    if (catalogueOutcome !== 'created') {
+      throw new NirmanaElevationDefinitionConflictError('Baseline candidate label catalogue conflicts with existing evidence.')
+    }
+
+    await client.query('COMMIT')
+    return 'created'
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 /** Freezes only the exact previously recorded reconciling definition revision. */
 export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaElevationDefinitionInput): Promise<'frozen' | 'idempotent'> {
   const manifest = NirmanaElevationManifestSchema.parse(input.manifest)
