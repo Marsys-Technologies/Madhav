@@ -272,15 +272,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 # Sign-level assertions carry ≥8° of margin to the nearest sign boundary, so they are
 # insensitive to the sub-arcsecond Swiss-file-vs-Moshier difference but WILL fail on a
 # wrong body, a wrong Julian Day, or a missing/incorrect ayanamsha — which is the point.
-_FORENSIC_POSITION = {
-    "jd": 2445735.717361111,  # 1984-02-05 10:43 IST = 05:13 UT → Julian Day (swe.julday)
-    "expected_sun_sign": 10,  # Makara (Capricorn) sidereal Lahiri
-    "expected_mean_node_rahu_sign": 2,  # Vrishabha — Rahu mean node, sidereal Lahiri
-}
-
 # Swiss Ephemeris return-flag bits (swe.FLG_*), pinned here so the backend attribution
 # below does not depend on the caller having imported swisseph.
 _EPHE_BACKENDS = ((1, "jpl_file"), (2, "swiss_ephemeris_file"), (4, "moshier_analytic_fallback"))
+_EPHE_BACKEND_NAMES = frozenset(name for _bit, name in _EPHE_BACKENDS)
+_EPHEMERIS_CORPUS_FILES = frozenset({"sepl_18.se1", "semo_18.se1", "seas_18.se1"})
 
 
 def _ephemeris_backend(retflag: int) -> str:
@@ -301,9 +297,86 @@ def _ephemeris_backend(retflag: int) -> str:
     return f"unknown (retflag={retflag})"
 
 
+def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Normalize the registry-owned ephemeris contract or fail closed."""
+    import re
+
+    required = {
+        "forensic_jd",
+        "expected_sun_sign",
+        "expected_mean_node_rahu_sign",
+        "ayanamsha",
+        "node_mode",
+        "allowed_ephemeris_backends",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    jd = probe_spec["forensic_jd"]
+    if isinstance(jd, bool) or not isinstance(jd, (int, float)) or not 1_000_000 < jd < 4_000_000:
+        raise ValueError("forensic_jd must be a plausible numeric Julian Day")
+
+    def _sign(field: str) -> int:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 12:
+            raise ValueError(f"{field} must be an integer sign number in [1, 12]")
+        return value
+
+    if probe_spec["ayanamsha"] != "lahiri":
+        raise ValueError("ayanamsha must be 'lahiri'")
+    if probe_spec["node_mode"] != "mean":
+        raise ValueError("node_mode must be 'mean'")
+
+    allowed = probe_spec["allowed_ephemeris_backends"]
+    if not isinstance(allowed, list) or not allowed or any(not isinstance(x, str) for x in allowed):
+        raise ValueError("allowed_ephemeris_backends must be a non-empty string array")
+    unknown = sorted(set(allowed) - _EPHE_BACKEND_NAMES)
+    if unknown:
+        raise ValueError(f"unknown allowed_ephemeris_backends: {', '.join(unknown)}")
+
+    file_sha256 = probe_spec.get("ephemeris_file_sha256")
+    if file_sha256 is not None:
+        if not isinstance(file_sha256, dict) or set(file_sha256) != _EPHEMERIS_CORPUS_FILES:
+            raise ValueError(
+                "ephemeris_file_sha256 must pin exactly sepl_18.se1, semo_18.se1, seas_18.se1"
+            )
+        invalid_digests = sorted(
+            name for name, digest in file_sha256.items()
+            if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+        )
+        if invalid_digests:
+            raise ValueError(
+                "ephemeris_file_sha256 contains invalid SHA-256 values: "
+                + ", ".join(invalid_digests)
+            )
+
+    return {
+        "jd": float(jd),
+        "expected_sun_sign": _sign("expected_sun_sign"),
+        "expected_mean_node_rahu_sign": _sign("expected_mean_node_rahu_sign"),
+        "allowed_ephemeris_backends": frozenset(allowed),
+        "ephemeris_file_sha256": file_sha256,
+    }
+
+
 def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_ephemeris_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid ephemeris health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: swisseph importable
     try:
@@ -322,26 +395,76 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     ephe_path = None
     try:
         import swisseph as swe
+        import hashlib
         import os
-        ephe_path = os.environ.get("SWISSEPH_PATH", "/app/ephe")
+        from pathlib import Path
+
+        ephe_path = (
+            os.environ.get("SWE_EPHE_PATH")
+            or os.environ.get("SWISSEPH_PATH")
+            or "/app/ephe"
+        )
+        expected_files = config["ephemeris_file_sha256"]
+        if expected_files is not None:
+            actual_files: dict[str, str] = {}
+            file_errors: list[str] = []
+            for filename, expected_digest in sorted(expected_files.items()):
+                source = Path(ephe_path) / filename
+                if not source.is_file():
+                    file_errors.append(f"{filename}: missing")
+                    continue
+                digest = hashlib.sha256()
+                with source.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                actual_digest = digest.hexdigest()
+                actual_files[filename] = actual_digest
+                if actual_digest != expected_digest:
+                    file_errors.append(
+                        f"{filename}: SHA-256 {actual_digest}, expected {expected_digest}"
+                    )
+            _add_check(
+                checks,
+                failures,
+                "ephemeris_corpus_sha256",
+                not file_errors,
+                "; ".join(file_errors),
+                files=actual_files,
+                ephe_path=ephe_path,
+            )
+
         swe.set_ephe_path(ephe_path)
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, retflag = swe.calc_ut(jd, swe.SUN, _SID)
         sun_lon = xx[0]
         sun_sign = int(sun_lon / 30) + 1
-        expected_sun_sign = _FORENSIC_POSITION["expected_sun_sign"]
+        expected_sun_sign = config["expected_sun_sign"]
+        backend = _ephemeris_backend(retflag)
+        backend_ok = backend in config["allowed_ephemeris_backends"]
+        sun_ok = sun_sign == expected_sun_sign
+        sun_failures = []
+        if not sun_ok:
+            sun_failures.append(
+                f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), "
+                f"expected sign {expected_sun_sign} at JD {jd}"
+            )
+        if not backend_ok:
+            sun_failures.append(
+                f"ephemeris backend={backend}, allowed="
+                f"{sorted(config['allowed_ephemeris_backends'])}"
+            )
         _add_check(
             checks, failures, "sidereal_sun_forensic_sign",
-            sun_sign == expected_sun_sign,
-            f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), expected sign "
-            f"{expected_sun_sign} (Makara) for 1984-02-05 10:43 IST",
+            sun_ok and backend_ok,
+            "; ".join(sun_failures),
             sun_lon=round(sun_lon, 4),
             sun_sign=sun_sign,
             expected_sun_sign=expected_sun_sign,
             ayanamsha="Lahiri",
-            ephemeris_backend=_ephemeris_backend(retflag),
+            ephemeris_backend=backend,
+            allowed_ephemeris_backends=sorted(config["allowed_ephemeris_backends"]),
             ephe_path=ephe_path,
         )
     except Exception as exc:
@@ -357,11 +480,11 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         import swisseph as swe
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, _retflag = swe.calc_ut(jd, swe.MEAN_NODE, _SID)
         node_lon = xx[0]
         rahu_sign = int(node_lon / 30) + 1
-        expected_rahu_sign = _FORENSIC_POSITION["expected_mean_node_rahu_sign"]  # 2
+        expected_rahu_sign = config["expected_mean_node_rahu_sign"]
         # Ketu is exactly opposite; swe.MEAN_NODE gives Rahu, Ketu = (Rahu + 180) % 360
         ketu_lon = (node_lon + 180.0) % 360.0
         ketu_sign = int(ketu_lon / 30) + 1
@@ -372,12 +495,12 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         if not rahu_ok:
             node_failures.append(
                 f"Rahu sign={rahu_sign} (lon={node_lon:.4f}°), "
-                f"expected sign {expected_rahu_sign} (Vrishabha) for 1984-02-05"
+                f"expected sign {expected_rahu_sign} at JD {jd}"
             )
         if not ketu_ok:
             node_failures.append(
                 f"Ketu sign={ketu_sign} (lon={ketu_lon:.4f}°), "
-                f"expected sign {expected_ketu_sign} (Vrischika) for 1984-02-05"
+                f"expected sign {expected_ketu_sign} at JD {jd}"
             )
         _add_check(
             checks, failures, "sidereal_mean_node_rahu_invariant",

@@ -50,9 +50,27 @@ _PANCHANGA_SPEC = {
     },
 }
 
+_EPHEMERIS_SPEC = {
+    "probe_type": "ephemeris_engine",
+    "forensic_jd": 2445735.717361111,
+    "expected_sun_sign": 10,
+    "expected_mean_node_rahu_sign": 2,
+    "ayanamsha": "lahiri",
+    "node_mode": "mean",
+    "allowed_ephemeris_backends": [
+        "swiss_ephemeris_file",
+        "moshier_analytic_fallback",
+    ],
+}
+
 
 def _probe(kind: str) -> dict:
-    spec = _PANCHANGA_SPEC if kind == "panchanga_engine" else {"probe_type": kind}
+    if kind == "panchanga_engine":
+        spec = _PANCHANGA_SPEC
+    elif kind == "ephemeris_engine":
+        spec = _EPHEMERIS_SPEC
+    else:
+        spec = {"probe_type": kind}
     return sp.run_health_probe("bg_x", spec)
 
 
@@ -78,9 +96,9 @@ def test_ephemeris_julian_day_decodes_to_the_forensic_birth_date():
     """The JD is a load-bearing literal: on the wrong one the Sun check passed only
     by accident. Round-trip it through swisseph rather than trusting the comment."""
     swe = pytest.importorskip("swisseph")
-    y, m, d, ut = swe.revjul(sp._FORENSIC_POSITION["jd"], swe.GREG_CAL)
+    y, m, d, ut = swe.revjul(_EPHEMERIS_SPEC["forensic_jd"], swe.GREG_CAL)
     assert (y, m, d) == (1984, 2, 5), (
-        f"_FORENSIC_POSITION['jd'] decodes to {y:04d}-{m:02d}-{d:02d}, not the FORENSIC "
+        f"registered forensic_jd decodes to {y:04d}-{m:02d}-{d:02d}, not the FORENSIC "
         f"birth date 1984-02-05 (CLAUDE.md §B)"
     )
     # 10:43 IST = 05:13 UT
@@ -98,18 +116,18 @@ def test_ephemeris_checks_assert_the_forensic_sidereal_signs():
     assert node["rahu_sign"] == 2 and node["ketu_sign"] == 8, node       # Vrishabha / Vrischika
 
 
-def test_ephemeris_sun_check_fails_on_a_wrong_julian_day(monkeypatch):
+def test_ephemeris_sun_check_fails_on_a_wrong_julian_day():
     """CAN-FAIL proof: restore the pre-fix JD literal and the probe must go red."""
-    monkeypatch.setitem(sp._FORENSIC_POSITION, "jd", 2445701.948264)  # 1984-01-02
-    res = _probe("ephemeris_engine")
+    wrong = dict(_EPHEMERIS_SPEC, forensic_jd=2445701.948264)  # 1984-01-02
+    res = sp.run_health_probe("bg_ephemeris_engine", wrong)
     assert res["status"] != "GREEN", "a 33-day-wrong Julian Day must not pass"
     assert _check(res, "sidereal_sun_forensic_sign")["passed"] is False
 
 
-def test_ephemeris_node_check_fails_on_a_wrong_expected_sign(monkeypatch):
+def test_ephemeris_node_check_fails_on_a_wrong_expected_sign():
     """CAN-FAIL proof for the node invariant, independent of the Sun check."""
-    monkeypatch.setitem(sp._FORENSIC_POSITION, "expected_mean_node_rahu_sign", 5)
-    res = _probe("ephemeris_engine")
+    wrong = dict(_EPHEMERIS_SPEC, expected_mean_node_rahu_sign=5)
+    res = sp.run_health_probe("bg_ephemeris_engine", wrong)
     assert res["status"] != "GREEN"
     assert _check(res, "sidereal_mean_node_rahu_invariant")["passed"] is False
 
@@ -123,6 +141,35 @@ def test_ephemeris_reports_which_ephemeris_backend_served_the_position():
     assert sun["ephemeris_backend"] in {
         "jpl_file", "swiss_ephemeris_file", "moshier_analytic_fallback",
     }, sun
+
+
+def test_ephemeris_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("bg_ephemeris_engine", {"probe_type": "ephemeris_engine"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_ephemeris_probe_enforces_registered_backend_allowlist():
+    wrong = dict(_EPHEMERIS_SPEC, allowed_ephemeris_backends=["jpl_file"])
+    res = sp.run_health_probe("bg_ephemeris_engine", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "sidereal_sun_forensic_sign")["passed"] is False
+
+
+def test_ephemeris_probe_fails_when_pinned_corpus_is_missing(monkeypatch, tmp_path):
+    pinned = dict(
+        _EPHEMERIS_SPEC,
+        allowed_ephemeris_backends=["swiss_ephemeris_file"],
+        ephemeris_file_sha256={
+            "sepl_18.se1": "a" * 64,
+            "semo_18.se1": "b" * 64,
+            "seas_18.se1": "c" * 64,
+        },
+    )
+    monkeypatch.setenv("SWE_EPHE_PATH", str(tmp_path))
+    res = sp.run_health_probe("bg_ephemeris_engine", pinned)
+    assert res["status"] != "GREEN"
+    assert _check(res, "ephemeris_corpus_sha256")["passed"] is False
 
 
 # ── F-06: the panchanga probe's third check and its aggregation ───────────────
