@@ -84,6 +84,28 @@ function logSourceFailure(source_id: NirmanaReleaseSource['source_id'], cause: u
   console.error('[nirmana-elevation] release source query failed', { source_id, cause })
 }
 
+/** Confirms that a named GitHub Actions run succeeded for the exact release commit. */
+export async function verifyNirmanaCiRun(
+  runId: string,
+  expectedCommitSha: string,
+  fetchFn: FetchFn = fetch,
+): Promise<void> {
+  if (!/^[1-9][0-9]{0,18}$/.test(runId) || !/^[a-f0-9]{40}$/i.test(expectedCommitSha)) {
+    throw new Error('CI evidence requires an exact GitHub Actions run ID and commit SHA.')
+  }
+  const response = await bounded(fetchFn(`https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${runId}`, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'madhav-nirmana-elevation' },
+    cache: 'no-store',
+  }))
+  if (!response.ok) throw new Error('Authoritative CI run is unavailable.')
+  const body = await bounded(response.json() as Promise<{ name?: unknown; event?: unknown; head_sha?: unknown; status?: unknown; conclusion?: unknown }>)
+  if (typeof body.head_sha !== 'string' || body.head_sha.toLowerCase() !== expectedCommitSha.toLowerCase()
+    || body.name !== 'CI — Ganga Quality Gate' || body.event !== 'push'
+    || body.status !== 'completed' || body.conclusion !== 'success') {
+    throw new Error('CI run is not a successful completed run for the exact release commit.')
+  }
+}
+
 async function loadGithubMainSha(fetchFn: FetchFn): Promise<string> {
   const apiResponse = await bounded(fetchFn(`https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/main`, {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'madhav-nirmana-elevation' },

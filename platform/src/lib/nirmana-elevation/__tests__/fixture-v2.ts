@@ -168,13 +168,23 @@ function stageEvents() {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'stage_transition_accepted',
       entity_type: 'campaign_stage', entity_id: toStage, layer: null,
       evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1',
         from_stage: index === 0 ? null : NIRMANA_STAGE_IDS[index - 1],
         to_stage: toStage,
-        prerequisites_sha256: index.toString(16).repeat(64),
+        manifest_sha256: 'a'.repeat(64),
       },
-      source_kind: 'campaign_gate', source_ref: `stage:${toStage}`, observed_at: at, recorded_at: at,
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine', observed_at: at, recorded_at: at,
     }
   })
+}
+
+function foundationPayload(laneId: string) {
+  const base = { schema_version: 'nirmana-foundation-lane-receipt/v1' as const, lane_id: laneId, manifest_sha256: 'a'.repeat(64) }
+  if (laneId === 'A') return { ...base, asset_count: 1 }
+  if (laneId === 'B') return { ...base, build_run_count: 0, terminal_build_run_count: 0 }
+  if (laneId === 'C') return { ...base, registry_fingerprint_set_sha256: 'b'.repeat(64), manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0 }
+  if (laneId === 'D') return { ...base, main_sha: 'b'.repeat(40), serving_sha: 'b'.repeat(40), serving_revision: 'amjis-web-01799-abc', ci_run_id: '123' }
+  return { ...base, migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: 'c'.repeat(64) }
 }
 
 function assetEvents(assetId: string, eventTypes: string[], runId?: string, startOffsetSeconds = 10) {
@@ -195,8 +205,8 @@ const campaignEvents = [
   ...['A', 'B', 'C', 'D', 'E'].map((laneId, index) => ({
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'foundation_lane_accepted',
     entity_type: 'foundation_lane', entity_id: laneId, layer: null,
-    evidence_payload: { acceptance_sha256: laneId.toLowerCase().repeat(64) },
-    source_kind: 'campaign_gate', source_ref: `foundation:${laneId}`,
+    evidence_payload: foundationPayload(laneId),
+    source_kind: 'server_reconstructed', source_ref: `nirmana-elevation:foundation-lane:${laneId}`,
     observed_at: new Date(Date.parse(observedAt) + 20_000 + index * 1_000).toISOString(),
     recorded_at: new Date(Date.parse(observedAt) + 20_000 + index * 1_000).toISOString(),
   })),

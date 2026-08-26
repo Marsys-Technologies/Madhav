@@ -20,6 +20,13 @@ vi.mock('@/lib/db/client', () => ({
   }),
 }))
 
+const releaseStatusMock = vi.fn()
+const ciRunMock = vi.fn()
+vi.mock('../release', () => ({
+  loadNirmanaReleaseStatus: (...args: unknown[]) => releaseStatusMock(...args),
+  verifyNirmanaCiRun: (...args: unknown[]) => ciRunMock(...args),
+}))
+
 import {
   assertFreezableManifest,
   assertNirmanaGitCommitMatchesDeployment,
@@ -111,6 +118,8 @@ describe('Nirmana elevation definition repository', () => {
     queryMock.mockReset()
     transactionQueryMock.mockReset()
     transactionReleaseMock.mockReset()
+    releaseStatusMock.mockReset()
+    ciRunMock.mockReset()
   })
 
   it('derives one canonical SHA-256 digest for the validated manifest', () => {
@@ -794,6 +803,175 @@ describe('Nirmana elevation definition repository', () => {
     await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
     expect(transactionQueryMock).toHaveBeenCalledTimes(4)
     expect(String(transactionQueryMock.mock.calls[3][0])).toBe('COMMIT')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a forged foundation census count before appending an evidence event', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:forged',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 2,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/asset count/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it.each([
+    ['stale', 'a'.repeat(40), 'a'.repeat(40), { main_sha: 'b'.repeat(40), deployed_sha: 'b'.repeat(40), deployed_revision: 'amjis-web-01799-abc', production_in_sync: true }],
+    ['divergent', 'a'.repeat(40), 'b'.repeat(40), { main_sha: 'a'.repeat(40), deployed_sha: 'a'.repeat(40), deployed_revision: 'amjis-web-01799-abc', production_in_sync: true }],
+  ])('rejects %s release identities before appending F0 release evidence', async (_caseName, main_sha, serving_sha, release) => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+    releaseStatusMock.mockResolvedValue({ release })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `f0:D:${_caseName}`,
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'D', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'D', manifest_sha256: 'a'.repeat(64), main_sha, serving_sha,
+        serving_revision: 'amjis-web-01799-abc', ci_run_id: '12345',
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:D',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/release receipt/i)
+    expect(ciRunMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing migration-ledger evidence before appending the evidence-control lane', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ applied: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:E:missing-ledger',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'E', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'E',
+        manifest_sha256: 'a'.repeat(64),
+        migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: '56a86201d15a0d91cf35455758416391e36960e71043cc84fbdb11ff3b72a53e',
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:E',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/migration-ledger/i)
+  })
+
+  it('rejects a typed stage receipt when the immediately preceding spine receipt is absent', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:T0:no-bootstrap',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', manifest_sha256: 'a'.repeat(64),
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/immediately preceding/i)
+  })
+
+  it('rejects a second logical foundation-lane receipt with a different idempotency key', async () => {
+    useEvidenceTransaction()
+    queryMock.mockResolvedValueOnce({ rows: [{ present: true }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:conflicting-replay',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: { schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 1 },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/Foundation lane already/i)
+  })
+
+  it('rejects a lane-C receipt when its current registry fingerprint set diverges', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ live_registry_asset_count: 1 }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:C:stale-contract',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'C', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: canonicalManifestDigest(manifest),
+        registry_fingerprint_set_sha256: 'f'.repeat(64), manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:C',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/hash\/invalidation census/i)
+  })
+
+  it('rejects a noncanonical migration-592 hash even when the ledger reports an applied row', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ applied: true }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:E:wrong-canonical-hash',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'E', layer: null,
+      evidence_payload: { schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'E', manifest_sha256: 'a'.repeat(64), migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: 'f'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:E',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/migration-ledger/i)
+  })
+
+  it('fails closed on an L0 exit rather than trusting asset_frozen rows alone', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-presence',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/fail-closed/i)
+  })
+
+  it('rejects BOOTSTRAP to T0 when the frozen denominator no longer has a canonical registry identity', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:T0:registry-drift',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/canonical live registry gate/i)
+  })
+
+  it('keeps an exact typed foundation receipt retry idempotent without revalidating or overwriting it', async () => {
+    const input = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:exact-retry',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 1,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    useEvidenceTransaction({ existing: [input] })
+    await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
+    expect(queryMock).not.toHaveBeenCalled()
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 })

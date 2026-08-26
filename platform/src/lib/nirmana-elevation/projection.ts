@@ -1,4 +1,4 @@
-import type { NirmanaElevationManifest } from './definitions'
+import { NirmanaFoundationLaneEvidenceSchema, type NirmanaElevationManifest } from './definitions'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from './types'
 import { NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
@@ -10,6 +10,7 @@ export interface CampaignEvent {
   entity_id: string
   layer: string | null
   evidence_payload: unknown
+  source_kind: string
   source_ref: string
   observed_at: string
   recorded_at: string
@@ -125,21 +126,24 @@ export function parseCampaignStageTransition<TEvent extends CampaignEvent>(
   if (event.event_type !== 'stage_transition_accepted'
     || event.entity_type !== 'campaign_stage'
     || event.layer !== null
+    || event.source_kind !== 'server_reconstructed'
+    || event.source_ref !== 'nirmana-elevation:stage-spine'
     || !isRecord(event.evidence_payload)
     || !validIso(event.observed_at)
     || !validIso(event.recorded_at)) return null
   const from = event.evidence_payload.from_stage
   const to = event.evidence_payload.to_stage
-  const prerequisitesSha256 = event.evidence_payload.prerequisites_sha256
+  const manifestSha256 = event.evidence_payload.manifest_sha256
   if (!isStageId(to)
     || event.entity_id !== to
-    || typeof prerequisitesSha256 !== 'string'
-    || !SHA256.test(prerequisitesSha256)) return null
+    || event.evidence_payload.schema_version !== 'nirmana-stage-transition-receipt/v1'
+    || typeof manifestSha256 !== 'string'
+    || !SHA256.test(manifestSha256)) return null
   if (from === null) {
-    return to === 'BOOTSTRAP' ? { event, from, to, prerequisitesSha256 } : null
+    return to === 'BOOTSTRAP' ? { event, from, to, prerequisitesSha256: manifestSha256 } : null
   }
   if (!isStageId(from)) return null
-  return { event, from, to, prerequisitesSha256 }
+  return { event, from, to, prerequisitesSha256: manifestSha256 }
 }
 
 function stageIndex(stage: NirmanaStageId | null): number {
@@ -184,13 +188,17 @@ export function canonicalizeCampaignStageTransitions<TEvent extends CampaignEven
 }
 
 function laneReceipt(event: CampaignEvent): boolean {
-  return event.event_type === 'foundation_lane_accepted'
-    && event.entity_type === 'foundation_lane'
-    && event.layer === null
-    && FOUNDATION_LANES.some(([laneId]) => laneId === event.entity_id)
-    && isRecord(event.evidence_payload)
-    && typeof event.evidence_payload.acceptance_sha256 === 'string'
-    && SHA256.test(event.evidence_payload.acceptance_sha256)
+  if (event.event_type !== 'foundation_lane_accepted'
+    || event.entity_type !== 'foundation_lane'
+    || event.layer !== null
+    || !FOUNDATION_LANES.some(([laneId]) => laneId === event.entity_id)
+    || !isRecord(event.evidence_payload)
+    || event.evidence_payload.schema_version !== 'nirmana-foundation-lane-receipt/v1'
+    || event.evidence_payload.lane_id !== event.entity_id
+    || event.source_kind !== 'server_reconstructed'
+    || event.source_ref !== `nirmana-elevation:foundation-lane:${event.entity_id}`) return false
+  const receipt = NirmanaFoundationLaneEvidenceSchema.safeParse(event.evidence_payload)
+  return receipt.success && receipt.data.lane_id === event.entity_id
 }
 
 export function projectCampaignStages(input: {
