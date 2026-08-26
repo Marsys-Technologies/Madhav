@@ -356,6 +356,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock.mock.calls[0][0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
     expect(queryMock.mock.calls[0][0]).toContain("execution_obligation' IN ('build', 'probe')")
     expect(queryMock.mock.calls[0][0]).toContain('FROM unnest($6::text[]) AS authorized_asset(asset_id)')
+    expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
     expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
   })
 

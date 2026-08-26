@@ -689,6 +689,21 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
   })
 
+  it('authorizes build runs only for execution-permitting manifest obligations', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ authorized: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'run:482012f1:authorization',
+      event_type: 'build_run_authorized', entity_type: 'build_run', entity_id: '482012f1-710e-4a25-994a-93821f5871aa', layer: 'L0',
+      evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: 'c'.repeat(64) },
+      source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
+  })
+
   it('fails closed when the completed run has no matching proven receipt', async () => {
     useEvidenceTransaction()
     queryMock.mockResolvedValueOnce({ rows: [{ proven: false }] })
