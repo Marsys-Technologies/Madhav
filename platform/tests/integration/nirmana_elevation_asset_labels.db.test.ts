@@ -70,14 +70,17 @@ describe('Nirmana elevation disposable database URL guard', () => {
   })
 })
 
-describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana evidence ingress CREATEROLE executor — live DB', () => {
+describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana evidence ingress production-equivalent PG15 executor — live DB', () => {
   beforeAll(async () => {
     assertDisposableTestDatabaseUrl(EXECUTOR_TEST_DB_URL!)
     executorAdminPool = new Pool({ connectionString: EXECUTOR_TEST_DB_URL })
     executorAdmin = await executorAdminPool.connect()
     const databaseName = decodeURIComponent(new URL(EXECUTOR_TEST_DB_URL!).pathname).replace(/^\/+/, '')
     await executorAdmin.query(`
-      CREATE ROLE ${quoteIdentifier(EXECUTOR_ROLE)} LOGIN INHERIT CREATEROLE;
+      -- Read-only production audit: amjis_app on PostgreSQL 15.18 is a
+      -- non-superuser with both CREATEDB and CREATEROLE, and neither
+      -- REPLICATION nor BYPASSRLS. Keep this disposable executor equivalent.
+      CREATE ROLE ${quoteIdentifier(EXECUTOR_ROLE)} LOGIN INHERIT CREATEDB CREATEROLE;
       ALTER ROLE ${quoteIdentifier(EXECUTOR_ROLE)} PASSWORD '${INGRESS_TEST_CREDENTIAL}';
       ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO ${quoteIdentifier(EXECUTOR_ROLE)};
       SET ROLE ${quoteIdentifier(EXECUTOR_ROLE)};
@@ -121,11 +124,26 @@ describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana evidence ingress CREATEROLE exec
     await executorAdminPool?.end()
   })
 
-  it('allows a non-superuser CREATEROLE executor to create and constrain a fresh ingress login', async () => {
-    const executorState = await executor.query<{ rolsuper: boolean; rolcreaterole: boolean }>(`
-      SELECT rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user
+  it('allows the production-equivalent non-superuser executor to create and constrain a fresh ingress login', async () => {
+    const serverVersion = await executor.query<{ server_version: string }>('SHOW server_version')
+    const executorState = await executor.query<{
+      rolsuper: boolean
+      rolcreatedb: boolean
+      rolcreaterole: boolean
+      rolreplication: boolean
+      rolbypassrls: boolean
+    }>(`
+      SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+        FROM pg_roles WHERE rolname = current_user
     `)
-    expect(executorState.rows[0]).toEqual({ rolsuper: false, rolcreaterole: true })
+    expect(serverVersion.rows[0]?.server_version).toMatch(/^15\./)
+    expect(executorState.rows[0]).toEqual({
+      rolsuper: false,
+      rolcreatedb: true,
+      rolcreaterole: true,
+      rolreplication: false,
+      rolbypassrls: false,
+    })
 
     await expect(executor.query(readFileSync(MIGRATION_632_PATH, 'utf8'))).resolves.toBeDefined()
     const ingress = await executor.query<{
@@ -149,6 +167,110 @@ describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana evidence ingress CREATEROLE exec
       rolreplication: false,
       rolbypassrls: false,
     })
+  })
+
+  it('replays under the restricted production-equivalent executor without broadening the ingress boundary', async () => {
+    await expect(executor.query(readFileSync(MIGRATION_632_PATH, 'utf8'))).resolves.toBeDefined()
+
+    const roleState = await executor.query<{
+      rolcanlogin: boolean
+      rolinherit: boolean
+      rolsuper: boolean
+      rolcreatedb: boolean
+      rolcreaterole: boolean
+      rolreplication: boolean
+      rolbypassrls: boolean
+    }>(`
+      SELECT rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+        FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    const memberships = await executor.query<{ membership_count: string }>(`
+      SELECT COUNT(*)::text AS membership_count
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS ingress ON ingress.oid = membership.roleid OR ingress.oid = membership.member
+       WHERE ingress.rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    const ownership = await executor.query<{ owned_count: string }>(`
+      SELECT COUNT(*)::text AS owned_count
+        FROM (
+          SELECT database.datdba AS owner_oid FROM pg_database AS database
+          UNION ALL
+          SELECT namespace.nspowner FROM pg_namespace AS namespace
+          UNION ALL
+          SELECT relation.relowner FROM pg_class AS relation
+        ) AS owners
+        JOIN pg_roles AS ingress ON ingress.oid = owners.owner_oid
+       WHERE ingress.rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    const databaseGrants = await executor.query<{ privilege_type: string }>(`
+      SELECT database_acl.privilege_type
+        FROM pg_database AS database
+        CROSS JOIN LATERAL aclexplode(database.datacl) AS database_acl
+        JOIN pg_roles AS ingress ON ingress.oid = database_acl.grantee
+       WHERE database.datname = current_database()
+         AND ingress.rolname = 'nirmana_evidence_ingress_writer'
+       ORDER BY database_acl.privilege_type
+    `)
+    const schemaGrants = await executor.query<{ privilege_type: string }>(`
+      SELECT schema_acl.privilege_type
+        FROM pg_namespace AS namespace
+        CROSS JOIN LATERAL aclexplode(namespace.nspacl) AS schema_acl
+        JOIN pg_roles AS ingress ON ingress.oid = schema_acl.grantee
+       WHERE namespace.nspname = current_schema()
+         AND ingress.rolname = 'nirmana_evidence_ingress_writer'
+       ORDER BY schema_acl.privilege_type
+    `)
+    const grants = await executor.query<{ table_name: string; privilege_type: string }>(`
+      SELECT table_name, privilege_type
+        FROM information_schema.role_table_grants
+       WHERE grantee = 'nirmana_evidence_ingress_writer'
+         AND table_schema = current_schema()
+       ORDER BY table_name, privilege_type
+    `)
+    const columnGrants = await executor.query<{ column_grant_count: string }>(`
+      SELECT COUNT(*)::text AS column_grant_count
+        FROM pg_attribute AS attribute
+        JOIN pg_class AS relation ON relation.oid = attribute.attrelid
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        CROSS JOIN LATERAL aclexplode(attribute.attacl) AS column_acl
+        JOIN pg_roles AS ingress ON ingress.oid = column_acl.grantee
+       WHERE namespace.nspname = current_schema()
+         AND ingress.rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    const triggers = await executor.query<{ trigger_count: string }>(`
+      SELECT COUNT(*)::text AS trigger_count
+        FROM pg_trigger AS trigger
+        JOIN pg_class AS relation ON relation.oid = trigger.tgrelid
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+       WHERE trigger.tgname = 'nirmana_elevation_events_server_writer'
+         AND namespace.nspname = current_schema()
+         AND relation.relname = 'nirmana_elevation_campaign_events'
+         AND NOT trigger.tgisinternal
+         AND trigger.tgenabled = 'O'
+    `)
+
+    expect(roleState.rows[0]).toEqual({
+      rolcanlogin: true,
+      rolinherit: false,
+      rolsuper: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+      rolbypassrls: false,
+    })
+    expect(memberships.rows[0]).toEqual({ membership_count: '0' })
+    expect(ownership.rows[0]).toEqual({ owned_count: '0' })
+    expect(databaseGrants.rows).toEqual([{ privilege_type: 'CONNECT' }])
+    expect(schemaGrants.rows).toEqual([{ privilege_type: 'USAGE' }])
+    expect(grants.rows).toEqual([
+      { table_name: 'asset_registry', privilege_type: 'SELECT' },
+      { table_name: 'nirmana_elevation_campaign_definitions', privilege_type: 'SELECT' },
+      { table_name: 'nirmana_elevation_campaign_events', privilege_type: 'INSERT' },
+      { table_name: 'nirmana_elevation_campaign_events', privilege_type: 'SELECT' },
+      { table_name: 'reference_planets', privilege_type: 'SELECT' },
+    ])
+    expect(columnGrants.rows[0]).toEqual({ column_grant_count: '0' })
+    expect(triggers.rows[0]).toEqual({ trigger_count: '1' })
   })
 
   it('fails closed before a CREATEROLE executor tries to normalize a pre-existing superuser', async () => {

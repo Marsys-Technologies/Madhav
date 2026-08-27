@@ -138,9 +138,11 @@ jobs:
     # Narrow exception to the usual no-service Unit Tests posture: this
     # dedicated evidence-ingress test is a security boundary and must execute
     # in the required protected context, not only in advisory DB Integration.
+    # Production's migration executor is amjis_app on PostgreSQL 15.18; pin the
+    # disposable service to that production major/minor contract.
     services:
       postgres:
-        image: postgres:16
+        image: postgres:15.18
         env:
           POSTGRES_PASSWORD: postgres
         ports:
