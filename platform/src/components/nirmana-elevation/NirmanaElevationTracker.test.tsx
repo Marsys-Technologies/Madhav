@@ -104,6 +104,15 @@ afterEach(() => {
 })
 
 describe('NirmanaElevationTracker', () => {
+  it('explains when the first program synchronization observation is missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(snapshotV2())))
+
+    render(<NirmanaElevationTracker />)
+
+    expect(await screen.findByText('Tracker awaiting first synchronization')).toBeVisible()
+    expect(screen.getByText('No program synchronization observation has been received yet. Progress and asset labels are intentionally withheld until the first governed observation is available.')).toBeVisible()
+  })
+
   it('refreshes the tracker after guarded baseline acceptance succeeds', async () => {
     const baselineMissing = baselineMissingV2()
     const synchronized = snapshotV2()
