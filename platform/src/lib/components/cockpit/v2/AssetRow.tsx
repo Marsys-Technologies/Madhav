@@ -184,13 +184,23 @@ export function rebuildScopeForAsset(asset: AssetRowType): 'asset' | 'asset_set'
     : 'asset'
 }
 
+function rebuildActionForAsset(asset: AssetRowType, state: string): 'build' | 'rebuild' {
+  // A probe is an invocation, not a row-population build. Its UI health can be
+  // dormant while the global throughput sentinel still records an older lit
+  // probe; `build` would then resolve to an empty plan. Always re-invoke the
+  // singleton probe without changing the user-facing Build/Rebuild label.
+  return isCockpitDispatchableServiceProbe(asset)
+    ? 'rebuild'
+    : state === 'dormant' ? 'build' : 'rebuild'
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()
 
   async function handleRebuildClick() {
-    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const action = rebuildActionForAsset(asset, derivedState)
     const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/plan', {
@@ -225,7 +235,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
 
   async function handleCascadeConfirm() {
     if (!pendingCascade) return
-    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const action = rebuildActionForAsset(asset, derivedState)
     const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/runs', {

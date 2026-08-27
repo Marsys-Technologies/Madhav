@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AssetRow } from '../AssetRow'
 import { LayerPanel } from '../LayerPanel'
@@ -220,6 +220,63 @@ describe('Cockpit Polish R2 — AssetRow', () => {
       expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
         scope: 'asset_set',
         scope_target: assetId,
+      })
+    }
+  })
+
+  it.each(['click', 'keyboard'] as const)('keeps a dormant panchanga control responsive via %s when its global throughput sentinel is already lit', async (activation) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(init?.body as string) as { action: string }
+      const url = String(input)
+      if (url === '/api/cockpit/plan') {
+        return {
+          ok: true,
+          json: async () => ({
+            data: {
+              status: 'ok',
+              plan_waves: request.action === 'rebuild' ? [['bg_panchanga']] : [],
+              blockers: [],
+              estimated_seconds: null,
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ data: { plan: ['bg_panchanga'] } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AssetRow
+        asset={{
+          ...SERVICE_ASSET,
+          asset_kind: 'service' as const,
+          health_probe: { probe_type: 'panchanga_engine' },
+        }}
+        stat={statOf({ asset_id: 'bg_panchanga', state: 'dormant', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+
+    const buildControl = screen.getByTitle('Build')
+    if (activation === 'click') {
+      await user.click(buildControl)
+    } else {
+      buildControl.focus()
+      await user.keyboard('{Enter}')
+    }
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Build' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
+        action: 'rebuild',
+        scope: 'asset_set',
+        scope_target: 'bg_panchanga',
       })
     }
   })
