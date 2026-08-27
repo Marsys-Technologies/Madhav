@@ -7,6 +7,7 @@ import {
   NirmanaNonBuildDispositionEvidenceSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
   NirmanaProbeEvidenceSchema,
+  NirmanaRebuildEvidenceSchema,
   canonicalNirmanaOptimizationVerdictDigest,
   type NirmanaElevationManifest,
 } from './definitions'
@@ -416,9 +417,7 @@ export function projectAssetMilestones(input: {
   const notApplicable = new Set<(typeof NIRMANA_MILESTONE_IDS)[number]>()
   const analysis = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
     NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
-      && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)
-      && (!input.asset.registry_fingerprint_sha256
-        || (event.evidence_payload as { registry_fingerprint_sha256?: unknown }).registry_fingerprint_sha256 === input.asset.registry_fingerprint_sha256))
+      && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref))
   const decision = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
     const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
     return payload.success && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)
@@ -434,9 +433,10 @@ export function projectAssetMilestones(input: {
   if (obligation === 'build') {
     const decisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision?.evidence_payload)
     const requiresChange = decisionPayload.success && ['optimize', 'correct', 'optimize_and_correct'].includes(decisionPayload.data.proposal.action)
+    let implementation: CampaignEvent | undefined
     if (decisionPayload.success && !requiresChange) notApplicable.add('built_or_dispositioned')
     else {
-      const implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+      implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
         const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
         return payload.success && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)
           && hasCurrentBinding(payload.data, analysis)
@@ -445,12 +445,17 @@ export function projectAssetMilestones(input: {
       })
       if (implementation) acceptedEvents.set('built_or_dispositioned', implementation)
     }
-    const execution = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.deployed_and_executed, (event) =>
-      isRecord(event.evidence_payload)
-        && typeof event.evidence_payload.output_digest === 'string'
-        && typeof event.evidence_payload.output_digest_spec_sha256 === 'string'
-        && /^build_run:[0-9a-f-]{36}$/i.test(event.source_ref)
-        && after(event, requiresChange ? acceptedEvents.get('built_or_dispositioned') : decision))
+    const implementationPayload = NirmanaImplementationEvidenceSchema.safeParse(implementation?.evidence_payload)
+    const execution = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.deployed_and_executed, (event) => {
+      const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
+      const runId = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(event.source_ref)?.[1]
+      return payload.success && event.source_kind === 'build_run' && runId !== undefined
+        && runId.toLowerCase() === payload.data.build_run_id.toLowerCase()
+        && hasCurrentBinding(payload.data, analysis)
+        && payload.data.decision_digest === (decisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(decisionPayload.data) : '')
+        && payload.data.implementation_digest === (requiresChange && implementationPayload.success ? implementationPayload.data.implementation_digest : null)
+        && after(event, requiresChange ? acceptedEvents.get('built_or_dispositioned') : decision)
+    })
     if (execution) acceptedEvents.set('deployed_and_executed', execution)
   } else if (obligation === 'probe') {
     const decisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision?.evidence_payload)

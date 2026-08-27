@@ -17,6 +17,7 @@ import {
   NirmanaNonBuildDispositionEvidenceSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
   NirmanaProbeEvidenceSchema,
+  NirmanaRebuildEvidenceSchema,
   NirmanaStageTransitionEvidenceSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
@@ -63,12 +64,14 @@ const assetReceipt = z.object({
     context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires an exact build_run UUID source reference.` })
   }
   if (value.event_type === 'accepted_rebuild_observed') {
-    const payload = z.object({
-      output_digest: z.string().regex(/^[a-f0-9]{64}$/),
-      output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-    }).strict().safeParse(value.evidence_payload)
+    const payload = NirmanaRebuildEvidenceSchema.safeParse(value.evidence_payload)
     if (!payload.success) {
-      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires only output_digest and output_digest_spec_sha256 SHA-256 fields.' })
+      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires a strict run, lifecycle, decision, implementation, and output-digest receipt.' })
+    } else if (buildRunSourceRef.exec(value.source_ref)?.[1].toLowerCase() !== payload.data.build_run_id.toLowerCase()) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload', 'build_run_id'], message: 'accepted_rebuild_observed build_run_id must equal the build_run source UUID.' })
+    }
+    if (value.source_kind !== 'build_run') {
+      context.addIssue({ code: 'custom', path: ['source_kind'], message: 'accepted_rebuild_observed requires source_kind=build_run.' })
     }
   }
   if (value.event_type === 'asset_analysis_accepted') {

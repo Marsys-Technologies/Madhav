@@ -112,7 +112,13 @@ function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Part
     if (eventType === 'asset_analysis_accepted') return binding
     if (eventType === 'optimization_verdict_accepted') return decision
     if (eventType === 'implementation_accepted') return { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
-    if (eventType === 'accepted_rebuild_observed') return { output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64) }
+    if (eventType === 'accepted_rebuild_observed') return {
+      ...binding,
+      build_run_id: '11111111-1111-4111-8111-111111111111',
+      decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+      implementation_digest: eventTypes.includes('implementation_accepted') ? 'c'.repeat(64) : null,
+      output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
+    }
     if (eventType === 'probe_accepted') return { ...binding, probe_contract_sha256: 'f'.repeat(64), response_digest: '0'.repeat(64) }
     if (eventType === 'integrity_verified') return { ...binding, integrity_contract_sha256: '1'.repeat(64), result_digest: '2'.repeat(64) }
     if (eventType === 'asset_frozen') return { ...binding, lifecycle_digest: '3'.repeat(64) }
@@ -132,7 +138,7 @@ function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Part
   }
   const sourceKindFor = (eventType: string) => ['probe_accepted', 'integrity_verified', 'asset_frozen'].includes(eventType)
     ? 'server_reconstructed' : ['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted', 'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(eventType)
-      ? 'git_commit' : 'test'
+      ? 'git_commit' : eventType === 'accepted_rebuild_observed' ? 'build_run' : 'test'
   return eventTypes.map((event_type, index) => event({
     event_type,
     entity_id: asset.asset_id,
@@ -350,6 +356,47 @@ describe('projectAssetMilestones', () => {
     expect(result).toMatchObject({ milestones_earned: 6, milestones_required: 6, current_action: null, next_action: null })
   })
 
+  it('allows a trusted current analysis to progress after the frozen T0 registry fingerprint has drifted', () => {
+    const asset = manifestAsset({ registry_fingerprint_sha256: 'f'.repeat(64) })
+    const events = assetEvents(asset, [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+      'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ])
+
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
+
+    expect(result.milestones.map(({ state }) => state)).toEqual(Array(6).fill('earned'))
+  })
+
+  it('does not credit a completed run whose receipt is bound to a superseded registry analysis and decision', () => {
+    const asset = manifestAsset()
+    const events = assetEvents(asset, [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+      'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ])
+    const binding = { registry_fingerprint_sha256: 'f'.repeat(64), analysis_digest: '0'.repeat(64) }
+    const decision = {
+      ...binding,
+      verdict: 'correct' as const,
+      basis: {
+        measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+        evidence_refs: ['git:current-evidence'],
+      },
+      proposal: { action: 'correct' as const, summary: 'The current contract requires correction.', output_contract: 'correctness_change' as const },
+    }
+    events[0].evidence_payload = binding
+    events[1].evidence_payload = decision
+    events[2].evidence_payload = {
+      ...binding,
+      decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+      implementation_digest: '1'.repeat(64),
+    }
+
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
+
+    expect(result.milestones.map(({ state }) => state)).toEqual(['earned', 'earned', 'earned', 'current', 'pending', 'pending'])
+  })
+
   it('makes the build implementation milestone N/A when the accepted decision requires no change', () => {
     const asset = manifestAsset()
     const events = assetEvents(asset, [
@@ -363,6 +410,15 @@ describe('projectAssetMilestones', () => {
         evidence_refs: ['git:test-evidence'],
       },
       proposal: { action: 'no_change', summary: 'No change is justified.', output_contract: 'digest_identical' },
+    }
+    const unchangedDecision = events[1].evidence_payload
+    const rebuild = events.find(({ event_type }) => event_type === 'accepted_rebuild_observed')!
+    rebuild.evidence_payload = {
+      registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+      build_run_id: '11111111-1111-4111-8111-111111111111',
+      decision_digest: canonicalNirmanaOptimizationVerdictDigest(unchangedDecision),
+      implementation_digest: null,
+      output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
     }
 
     const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })

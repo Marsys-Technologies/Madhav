@@ -207,7 +207,13 @@ function assetMilestoneEvents(
     evidence_payload: event_type === 'asset_analysis_accepted' ? binding
       : event_type === 'optimization_verdict_accepted' ? decision
         : event_type === 'implementation_accepted' ? { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
-          : event_type === 'accepted_rebuild_observed' ? { output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64) }
+          : event_type === 'accepted_rebuild_observed' ? {
+            ...binding,
+            build_run_id: runId,
+            decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+            implementation_digest: includeImplementation ? 'c'.repeat(64) : null,
+            output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
+          }
             : event_type === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'f'.repeat(64), result_digest: '0'.repeat(64) }
               : { ...binding, lifecycle_digest: '1'.repeat(64) },
     source_kind: ['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted'].includes(event_type)
