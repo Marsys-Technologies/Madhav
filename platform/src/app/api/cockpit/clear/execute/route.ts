@@ -5,6 +5,7 @@ import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 
 interface RegistryRow extends RegistryEntry {
   scope: string
@@ -44,6 +45,23 @@ export async function POST(req: NextRequest) {
 
   const role = await getUserRole(user.uid)
   const isSuperAdmin = role === 'super_admin'
+
+  // P2-B-007: per-chart authorization on the caller-supplied chart_id, BEFORE
+  // any hash check or transaction. This route used to check only "is there a
+  // logged-in user", so any authenticated caller holding a preview_hash (which
+  // the sibling preview route handed out just as freely) could run
+  // `DELETE FROM <target_table> WHERE chart_id=$1` across every build-derived
+  // table of a chart they have no relationship to. Same gate, same brain, same
+  // 'all'-not-'view' requirement as the preview route — a clear is destructive.
+  const permission = await authorizeChartAccess({
+    principal: { uid: user.uid, role: isSuperAdmin ? 'super_admin' : 'guest' },
+    chartId: chart_id,
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then(r => ({ rows: r.rows })) } as DbLike,
+  })
+  if (permission !== 'all') {
+    return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN_CHART' }, { status: 403 })
+  }
+
   const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
 
   // Authorization: non-super-admin cannot clear L0 layer or global assets
