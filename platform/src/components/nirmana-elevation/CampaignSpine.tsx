@@ -25,7 +25,9 @@ function statusIcon(state: NirmanaCampaignStage['state']) {
 }
 
 function countLabel(stage: NirmanaCampaignStage): string | null {
-  if (stage.earned === null || stage.required === null) return null
+  // A numeric counter is evidence, not a placeholder. In an unknown stage it
+  // would imply that zero of a measured total has been completed.
+  if (stage.state === 'unknown' || stage.earned === null || stage.required === null) return null
   return `${stage.earned} / ${stage.required}`
 }
 

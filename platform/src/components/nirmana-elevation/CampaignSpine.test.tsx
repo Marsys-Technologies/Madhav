@@ -47,6 +47,20 @@ describe('CampaignSpine', () => {
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('withholds stage counts when the stage itself is not evidenced', () => {
+    const snapshot = snapshotFixture()
+    const foundation = snapshot.stages.find((stage) => stage.stage_id === 'F0_FOUNDATION')
+    if (!foundation) throw new Error('Fixture must include the foundation stage.')
+    foundation.state = 'unknown'
+    foundation.earned = 0
+    foundation.required = 5
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    expect(screen.getByRole('button', { name: /F0 · Foundation readiness/i })).toBeVisible()
+    expect(screen.queryByText('0 / 5')).not.toBeInTheDocument()
+  })
+
   it('withholds a frozen numeric denominator until the accepted campaign spine exists', () => {
     const snapshot = snapshotFixture()
     snapshot.progress.denominator_status = 'frozen'
