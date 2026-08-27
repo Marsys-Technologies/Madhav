@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AssetRow } from '../AssetRow'
 import { LayerPanel } from '../LayerPanel'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
@@ -106,6 +107,10 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('mounts a service row green with no missing_table / degraded text (issue 1)', () => {
     render(
       <AssetRow
@@ -169,6 +174,51 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     const name = screen.getByText('Graha-sphuṭa')
     expect(name.className).toContain('text-[18px]')
     expect(name.className).toContain('font-medium')
+  })
+
+  it('uses the singleton asset_set contract for the Ephemeris service probe', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            status: 'ok',
+            plan_waves: [['bg_ephemeris_engine']],
+            blockers: [],
+            estimated_seconds: null,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { plan: ['bg_ephemeris_engine'] } }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AssetRow
+        asset={{
+          ...SERVICE_ASSET,
+          asset_id: 'bg_ephemeris_engine',
+          asset_kind: 'service' as const,
+          health_probe: { type: 'ephemeris' },
+        }}
+        stat={statOf({ asset_id: 'bg_ephemeris_engine', state: 'service_down', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+
+    await user.click(screen.getByTitle('Rebuild'))
+    await user.click(await screen.findByRole('button', { name: 'Build' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
+        scope: 'asset_set',
+        scope_target: 'bg_ephemeris_engine',
+      })
+    }
   })
 })
 

@@ -26,7 +26,16 @@ export async function POST(req: NextRequest) {
     const [registryResult, throughputResult, protectedResult] = await Promise.all([
       query<RegistryEntry>(
         `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-         FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
+         FROM asset_registry
+         WHERE has_writer = true
+            OR (
+              asset_id = 'bg_ephemeris_engine'
+              AND scope = 'global'
+              AND asset_kind = 'service'
+              AND asset_type = 'service'
+              AND health_probe IS NOT NULL
+            )
+         ORDER BY layer, sort_order`
       ),
       query<ThroughputEntry>(
         // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
