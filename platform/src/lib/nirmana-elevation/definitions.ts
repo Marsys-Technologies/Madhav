@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { getPool, query } from '@/lib/db/client'
 import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
+import { getNirmanaEvidenceIngressPool } from './evidence-ingress'
 import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from './release'
 import { NIRMANA_STAGE_IDS } from './vocab'
 
@@ -1397,8 +1398,8 @@ async function collectProbeObservation(assetId: string, healthProbe: Record<stri
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a current typed health_probe probe_type contract.')
   }
   const probeType = healthProbe.probe_type
-  const result = await runAuthoritativeHealthProbe(assetId, healthProbe)
-  const normalized = normalizeDetectorValue(result)
+  const execution = await runAuthoritativeHealthProbe(assetId, healthProbe)
+  const normalized = normalizeDetectorValue(execution.payload)
   const parsed = z.object({
     asset_id: z.literal(assetId),
     probe_contract_sha256: z.literal(canonicalNirmanaProbeContractDigest(healthProbe)),
@@ -1418,12 +1419,18 @@ async function collectProbeObservation(assetId: string, healthProbe: Record<stri
       runner_revision: parsed.data.runner_revision,
       probe_type: probeType,
       result: parsed.data.result,
+      request_started_at: execution.request_started_at,
+      request_ended_at: execution.request_ended_at,
     },
     observed_at: parsed.data.observed_at,
   }
 }
 
-async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<string, unknown>): Promise<unknown> {
+async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<string, unknown>): Promise<{
+  payload: unknown
+  request_started_at: string
+  request_ended_at: string
+}> {
   const runnerUrl = process.env.NIRMANA_PROBE_RUNNER_URL
   let parsedRunnerUrl: URL
   try {
@@ -1439,6 +1446,7 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires an authenticated deployed typed probe runner credential.')
   }
   const probeContractSha256 = canonicalNirmanaProbeContractDigest(healthProbe)
+  const request_started_at = new Date().toISOString()
   let response: Response
   try {
     response = await fetch(parsedRunnerUrl.toString(), {
@@ -1465,7 +1473,8 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
   if (!payload.success || payload.data.asset_id !== assetId || payload.data.probe_contract_sha256 !== probeContractSha256) {
     throw new NirmanaElevationEvidenceValidationError('authoritative typed health-probe runner response does not bind the requested asset and current contract.')
   }
-  return payload.data
+  const request_ended_at = new Date().toISOString()
+  return { payload: payload.data, request_started_at, request_ended_at }
 }
 
 async function collectIntegrityObservation(
@@ -1521,6 +1530,16 @@ async function normalizeDetectorEvidence(
   const current = await loadCurrentLifecycleContext(client, input)
   if (input.event_type === 'probe_accepted') {
     const payload = NirmanaProbeEvidenceSchema.parse(input.evidence_payload)
+    if (input.source_kind !== 'server_reconstructed' || input.source_ref !== `nirmana-elevation:health-probe:${input.entity_id}`
+      || current.manifestAsset.execution_obligation !== 'probe' || current.registryContract.health_probe === null) {
+      throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a frozen typed probe obligation and server-reconstructed source.')
+    }
+    assertLifecycleBinding(payload, current, 'probe_accepted')
+    // Validate the entire current generation before dispatch. The provenance
+    // check below additionally proves that its server observation is inside a
+    // request window which began after these receipts, so a mid-flight decision
+    // cannot be retroactively credited.
+    await loadCurrentProbePrerequisites(client, input, current)
     const observation = await collectProbeObservation(input.entity_id, current.registryContract.health_probe)
     return {
       ...input,
@@ -1545,6 +1564,70 @@ async function normalizeDetectorEvidence(
   }
 }
 
+type CurrentProbePrerequisites = {
+  analysis: { observed_at: string; recorded_at: string }
+  decision: AcceptedDecisionReceipt
+  implementation: { observed_at: string; recorded_at: string } | null
+}
+
+async function loadCurrentProbePrerequisites(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+  current: CurrentLifecycleContext,
+): Promise<CurrentProbePrerequisites> {
+  const analysis = await loadCurrentAcceptedAnalysis(client, input, current)
+  const decision = await loadCurrentAcceptedDecision(client, input, current)
+  if (!changeIsRequired(decision.payload)) return { analysis, decision, implementation: null }
+  const implementations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND definition_revision = $2
+        AND event_type = 'implementation_accepted'
+        AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
+    [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
+  )
+  const matching = implementations.rows.filter((implementation) => {
+    const parsed = NirmanaImplementationEvidenceSchema.safeParse(implementation.evidence_payload)
+    return parsed.success && implementation.source_kind === 'git_commit' && gitCommitSourceRef.test(implementation.source_ref)
+      && parsed.data.registry_fingerprint_sha256 === current.registryFingerprint
+      && parsed.data.analysis_digest === current.analysisDigest
+      && parsed.data.decision_digest === canonicalNirmanaOptimizationVerdictDigest(decision.payload)
+      && occursAfter(implementation, decision)
+  })
+  if (matching.length !== 1) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires exactly one current implementation after its change-required decision.')
+  }
+  return { analysis, decision, implementation: matching[0] }
+}
+
+function requireProbeObservationTiming(
+  input: RecordNirmanaElevationEvidenceInput,
+  prerequisites: CurrentProbePrerequisites,
+): void {
+  const observation = z.object({
+    request_started_at: z.string().datetime(),
+    request_ended_at: z.string().datetime(),
+  }).passthrough().safeParse((input.evidence_payload as { detector_observation?: unknown }).detector_observation)
+  if (!observation.success) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires persisted server request start and end timestamps.')
+  }
+  const requestStarted = Date.parse(observation.data.request_started_at)
+  const requestEnded = Date.parse(observation.data.request_ended_at)
+  const observed = Date.parse(input.observed_at)
+  if (!Number.isFinite(requestStarted) || !Number.isFinite(requestEnded)
+    || requestEnded < requestStarted || observed < requestStarted || observed > requestEnded) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted server observation must be inside its authoritative request window.')
+  }
+  for (const prerequisite of [prerequisites.analysis, prerequisites.decision, prerequisites.implementation]) {
+    if (prerequisite && (requestStarted <= Date.parse(prerequisite.observed_at)
+      || requestStarted <= Date.parse(prerequisite.recorded_at)
+      || observed <= Date.parse(prerequisite.observed_at)
+      || observed <= Date.parse(prerequisite.recorded_at))) {
+      throw new NirmanaElevationEvidenceValidationError('probe_accepted server observation must follow the current analysis, decision, and required implementation before dispatch.')
+    }
+  }
+}
+
 async function requireProbeProvenance(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -1558,32 +1641,8 @@ async function requireProbeProvenance(
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a frozen probe obligation with a registry health probe.')
   }
   assertLifecycleBinding(payload.data, current, 'probe_accepted')
-  const analysis = await loadCurrentAcceptedAnalysis(client, input, current)
-  const decision = await loadCurrentAcceptedDecision(client, input, current)
-  if (!occursAfter(input, analysis) || !occursAfter(input, decision)) {
-    throw new NirmanaElevationEvidenceValidationError('probe_accepted must follow the exact current accepted analysis and optimization decision.')
-  }
-  if (changeIsRequired(decision.payload)) {
-    const implementations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
-      `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-         FROM nirmana_elevation_campaign_events
-        WHERE campaign_id = $1 AND definition_revision = $2
-          AND event_type = 'implementation_accepted'
-          AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
-      [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
-    )
-    const matching = implementations.rows.filter((implementation) => {
-      const parsed = NirmanaImplementationEvidenceSchema.safeParse(implementation.evidence_payload)
-      return parsed.success && implementation.source_kind === 'git_commit' && gitCommitSourceRef.test(implementation.source_ref)
-        && parsed.data.registry_fingerprint_sha256 === current.registryFingerprint
-        && parsed.data.analysis_digest === current.analysisDigest
-        && parsed.data.decision_digest === canonicalNirmanaOptimizationVerdictDigest(decision.payload)
-        && occursAfter(input, implementation)
-    })
-    if (matching.length !== 1) {
-      throw new NirmanaElevationEvidenceValidationError('probe_accepted requires exactly one current implementation after its change-required decision.')
-    }
-  }
+  const prerequisites = await loadCurrentProbePrerequisites(client, input, current)
+  requireProbeObservationTiming(input, prerequisites)
   if (payload.data.probe_contract_sha256 !== canonicalNirmanaProbeContractDigest(current.registryContract.health_probe)) {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted does not bind the frozen registry health-probe contract.')
   }
@@ -2104,6 +2163,7 @@ async function requireBuildRunAuthorizationProvenance(
           AND definition.superseded_at IS NULL
         WHERE run.id = $1::uuid
           AND run.action = 'rebuild'
+          AND run.state = 'planned'
           AND run.triggered_by <> 'nirmana-f0-machinery-canary'
           AND run.chart_id = (definition.manifest ->> 'chart_id')::uuid
           AND run.started_at IS NULL
@@ -2530,7 +2590,9 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
   if (Number.isNaN(Date.parse(input.observed_at))) {
     throw new Error('Evidence observed_at must be an ISO-8601 timestamp.')
   }
-  const pool = await getPool()
+  const pool = input.source_kind === 'server_reconstructed'
+    ? await getNirmanaEvidenceIngressPool()
+    : await getPool()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -2590,12 +2652,6 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     }
     if (normalizedInput.event_type === 'asset_frozen') {
       await requireFreezeProvenance(client, normalizedInput)
-    }
-    if (normalizedInput.source_kind === 'server_reconstructed') {
-      // Migration 630 accepts server-reconstructed receipts only under this
-      // NOLOGIN role. SET LOCAL is transaction-scoped and follows all
-      // server-side reconstruction and lifecycle validation above.
-      await client.query('SET LOCAL ROLE nirmana_evidence_ingress')
     }
     const inserted = await client.query(
       `INSERT INTO nirmana_elevation_campaign_events

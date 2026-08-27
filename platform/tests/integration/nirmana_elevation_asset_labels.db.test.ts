@@ -26,9 +26,9 @@ const MIGRATION_599_PATH = resolve(
   __dirname,
   '../../migrations/627_nirmana_elevation_asset_labels.sql'
 )
-const MIGRATION_630_PATH = resolve(
+const MIGRATION_632_PATH = resolve(
   __dirname,
-  '../../migrations/630_nirmana_evidence_server_writer_guard.sql'
+  '../../migrations/632_nirmana_evidence_server_writer_guard.sql'
 )
 
 let pool: Pool
@@ -63,7 +63,7 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
     await client.query(`SET search_path TO "${SCHEMA}", public`)
     await client.query(readFileSync(MIGRATION_592_PATH, 'utf8'))
     await client.query(readFileSync(MIGRATION_599_PATH, 'utf8'))
-    await client.query(readFileSync(MIGRATION_630_PATH, 'utf8'))
+    await client.query(readFileSync(MIGRATION_632_PATH, 'utf8'))
   })
 
   afterAll(async () => {
@@ -127,33 +127,7 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
                'L0', '{}'::jsonb, 'server_reconstructed', 'nirmana-elevation:health-probe:bg_panchanga',
                now(), 'migration-integration-test')`,
       [campaignId],
-    )).rejects.toThrow(/validated evidence ingress/i)
+    )).rejects.toThrow(/dedicated evidence ingress login/i)
   })
 
-  it('permits a server-reconstructed receipt only after the validated transaction assumes its ingress role', async () => {
-    const campaignId = 'nirmana-elevation-server-ingress-test'
-    await client.query(
-      `INSERT INTO nirmana_elevation_campaign_definitions
-         (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
-       VALUES ($1, 'v1', 'frozen', '{}'::jsonb, $2, 'migration-integration-test')`,
-      [campaignId, 'd'.repeat(64)],
-    )
-    await client.query('BEGIN')
-    try {
-      await client.query('SET LOCAL ROLE nirmana_evidence_ingress')
-      await client.query(
-        `INSERT INTO nirmana_elevation_campaign_events
-           (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
-            layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
-         VALUES ($1, 'v1', 'validated-server-reconstructed', 'probe_accepted', 'asset', 'bg_panchanga',
-                 'L0', '{}'::jsonb, 'server_reconstructed', 'nirmana-elevation:health-probe:bg_panchanga',
-                 now(), 'migration-integration-test')`,
-        [campaignId],
-      )
-      await client.query('COMMIT')
-    } catch (error) {
-      await client.query('ROLLBACK')
-      throw error
-    }
-  })
 })
