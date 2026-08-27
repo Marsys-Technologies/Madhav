@@ -172,6 +172,21 @@ interface ConfirmPending {
   estimatedSeconds: number | null
 }
 
+// The dispatcher treats the Ephemeris health probe as a deliberately narrow
+// exception: it is a global service without a WriterBase implementation, and
+// may only be run as a singleton asset_set. Keep the client on that same
+// contract rather than sending an ordinary asset-scoped request that the
+// dispatcher must reject.
+export function rebuildScopeForAsset(asset: AssetRowType): 'asset' | 'asset_set' {
+  return asset.asset_id === 'bg_ephemeris_engine'
+    && asset.scope === 'global'
+    && asset.asset_kind === 'service'
+    && asset.asset_type === 'service'
+    && asset.health_probe !== null
+    ? 'asset_set'
+    : 'asset'
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
@@ -179,12 +194,13 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
 
   async function handleRebuildClick() {
     const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/plan', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart_id: chartId, scope: 'asset', scope_target: asset.asset_id, action }),
+        body: JSON.stringify({ chart_id: chartId, scope, scope_target: asset.asset_id, action }),
       })
       const body = await r.json().catch(() => null)
       if (!r.ok || !body?.data) {
@@ -213,6 +229,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
   async function handleCascadeConfirm() {
     if (!pendingCascade) return
     const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/runs', {
         method: 'POST',
@@ -220,7 +237,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chart_id: chartId,
-          scope: 'asset',
+          scope,
           scope_target: asset.asset_id,
           action,
         }),

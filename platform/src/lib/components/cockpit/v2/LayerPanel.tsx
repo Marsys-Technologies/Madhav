@@ -67,6 +67,17 @@ const LAYER_NAMES: Record<string, { sa: string; en: string }> = {
   mimamsa:    { sa: 'Mīmāṃsā',      en: 'Learning' },
 }
 
+function assetSetIncludes(scopeTarget: string | null, assetId: string): boolean {
+  return scopeTarget?.split(',').some(target => target.trim() === assetId) ?? false
+}
+
+function activeRunTargetsAsset(activeRun: ActiveRun, layer: string, assetId: string): boolean {
+  return activeRun.scope === 'global'
+    || (activeRun.scope === 'layer' && activeRun.scope_target === layer)
+    || (activeRun.scope === 'asset' && activeRun.scope_target === assetId)
+    || (activeRun.scope === 'asset_set' && assetSetIncludes(activeRun.scope_target, assetId))
+}
+
 interface Props {
   layer: string
   assets: AssetRow[]
@@ -132,10 +143,13 @@ export function LayerPanel({
     return state === 'error' || state === 'service_down'
   }).length
 
-  // Active run overlaps this layer if scope is global or scope_target matches this layer
+  // A singleton asset_set belongs only to the layer containing its selected asset.
+  // Treat it as active here so the UI cannot invite a second dispatch while the
+  // protected dispatcher is already running the probe.
   const layerRunActive = activeRun != null && (
     activeRun.scope === 'global' ||
-    (activeRun.scope === 'layer' && activeRun.scope_target === layer)
+    (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
+    (activeRun.scope === 'asset_set' && activeAssets.some(asset => assetSetIncludes(activeRun.scope_target, asset.asset_id)))
   )
   const layerRunId = layerRunActive ? activeRun!.id : null
   const layerRunPaused = layerRunActive && activeRun!.state === 'paused'
@@ -365,11 +379,7 @@ export function LayerPanel({
               const bSvc = (b.asset_type === 'service' || b.asset_kind === 'service') ? 0 : 1
               return aSvc - bSvc
             }).map((asset, i) => {
-              const assetRunActive = activeRun != null && (
-                activeRun.scope === 'global' ||
-                (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
-                (activeRun.scope === 'asset' && activeRun.scope_target === asset.asset_id)
-              )
+              const assetRunActive = activeRun != null && activeRunTargetsAsset(activeRun, layer, asset.asset_id)
               return (
                 <motion.div
                   key={asset.asset_id}
@@ -385,7 +395,10 @@ export function LayerPanel({
                     chartId={chartId}
                     activeRunId={assetRunActive ? activeRun!.id : null}
                     activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
-                    isActiveAsset={assetRunActive && stats.get(asset.asset_id)?.state === 'building'}
+                    isActiveAsset={assetRunActive && (
+                      activeRun?.current_asset_id === asset.asset_id ||
+                      stats.get(asset.asset_id)?.state === 'building'
+                    )}
                     highlighted={focusedAssetId === asset.asset_id || hoveredAssetId === asset.asset_id}
                     allAssets={allAssets}
                     substep={substepOverlay?.get(asset.asset_id) ?? null}
