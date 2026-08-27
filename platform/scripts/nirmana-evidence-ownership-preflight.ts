@@ -106,6 +106,30 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
         ) THEN
           RAISE EXCEPTION 'refusing unexpected amjis_app role membership topology';
         END IF;
+        -- A provider root is not trusted by name alone.  The database-owner
+        -- membership closure is intentionally bounded to the database owner,
+        -- the exact legacy app child, and one non-super postgres child (the
+        -- Cloud SQL topology); any further descendant is unreviewed.
+        IF EXISTS (
+          WITH RECURSIVE provider_roots(oid, depth) AS (
+            SELECT datdba, 0 FROM pg_database WHERE datname = current_database()
+            UNION ALL
+            SELECT membership.member, parent.depth + 1
+              FROM pg_auth_members membership
+              JOIN provider_roots parent ON parent.oid = membership.roleid
+          )
+          SELECT 1
+            FROM provider_roots root
+            JOIN pg_roles role ON role.oid = root.oid
+            JOIN pg_database database ON database.datname = current_database()
+           WHERE NOT (
+             root.oid = database.datdba
+             OR (root.depth = 1 AND role.rolname = 'amjis_app')
+             OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+           )
+        ) THEN
+          RAISE EXCEPTION 'refusing unbounded provider database-owner membership topology';
+        END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app' AND (rolsuper OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated generic application role'; END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner') THEN CREATE ROLE nirmana_evidence_owner NOLOGIN NOINHERIT; END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner' AND (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated evidence owner'; END IF;
@@ -359,6 +383,25 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           RAISE EXCEPTION 'refusing provider-root default ACL exemption with writer membership closure';
         END IF;
         IF EXISTS (
+          WITH RECURSIVE provider_roots(oid, depth) AS (
+            SELECT datdba, 0 FROM pg_database WHERE datname = current_database()
+            UNION ALL
+            SELECT membership.member, parent.depth + 1
+              FROM pg_auth_members membership
+              JOIN provider_roots parent ON parent.oid = membership.roleid
+          )
+          SELECT 1
+            FROM provider_roots root
+            JOIN pg_roles role ON role.oid = root.oid
+            JOIN pg_database database ON database.datname = current_database()
+           WHERE NOT (
+             root.oid = database.datdba
+             OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+           )
+        ) THEN
+          RAISE EXCEPTION 'refusing unbounded provider database-owner membership topology';
+        END IF;
+        IF EXISTS (
           SELECT 1 FROM pg_database database WHERE database.datname = current_database()
             AND (database.datdba = 'amjis_app'::regrole OR pg_has_role('amjis_app', database.datdba, 'MEMBER'))
         ) OR has_database_privilege('amjis_app', current_database(), 'CREATE')
@@ -375,8 +418,11 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           WITH protected_roles(name) AS (
             SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
           ), provider_roots(oid) AS (
-            SELECT datdba FROM pg_database WHERE datname = current_database()
-            UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
+            WITH RECURSIVE closure(oid) AS (
+              SELECT datdba FROM pg_database WHERE datname = current_database()
+              UNION
+              SELECT membership.member FROM pg_auth_members membership JOIN closure parent ON parent.oid = membership.roleid
+            ) SELECT oid FROM closure
           )
           SELECT 1
             FROM pg_default_acl defaults
@@ -406,8 +452,11 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           WITH protected_roles(name) AS (
             SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
           ), provider_roots(oid) AS (
-            SELECT datdba FROM pg_database WHERE datname = current_database()
-            UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
+            WITH RECURSIVE closure(oid) AS (
+              SELECT datdba FROM pg_database WHERE datname = current_database()
+              UNION
+              SELECT membership.member FROM pg_auth_members membership JOIN closure parent ON parent.oid = membership.roleid
+            ) SELECT oid FROM closure
           )
           SELECT 1
             FROM pg_roles grantor

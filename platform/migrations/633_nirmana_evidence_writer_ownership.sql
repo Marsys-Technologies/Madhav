@@ -98,6 +98,28 @@ BEGIN
   ) OR has_database_privilege('amjis_app', current_database(), 'CREATE') THEN
     RAISE EXCEPTION 'migration 633 requires generic application role membership and database administration cleanup';
   END IF;
+  -- Mirror the preflight's bounded provider-root classification.  A bare
+  -- role named postgres is not exempt: it must be the non-super direct child
+  -- of the current database owner, with no unreviewed provider descendant.
+  IF EXISTS (
+    WITH RECURSIVE provider_roots(oid, depth) AS (
+      SELECT datdba, 0 FROM pg_database WHERE datname = current_database()
+      UNION ALL
+      SELECT membership.member, parent.depth + 1
+        FROM pg_auth_members membership
+        JOIN provider_roots parent ON parent.oid = membership.roleid
+    )
+    SELECT 1
+      FROM provider_roots root
+      JOIN pg_roles role ON role.oid = root.oid
+      JOIN pg_database database ON database.datname = current_database()
+     WHERE NOT (
+       root.oid = database.datdba
+       OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+     )
+  ) THEN
+    RAISE EXCEPTION 'migration 633 refuses unbounded provider database-owner membership topology';
+  END IF;
   IF NOT has_schema_privilege('amjis_app', 'nirmana_evidence', 'USAGE') THEN
     RAISE EXCEPTION 'migration 633 requires generic application read schema usage';
   END IF;
@@ -269,8 +291,11 @@ BEGIN
     WITH protected_roles(name) AS (
       SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
     ), provider_roots(oid) AS (
-      SELECT datdba FROM pg_database WHERE datname = current_database()
-      UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
+      WITH RECURSIVE closure(oid) AS (
+        SELECT datdba FROM pg_database WHERE datname = current_database()
+        UNION
+        SELECT membership.member FROM pg_auth_members membership JOIN closure parent ON parent.oid = membership.roleid
+      ) SELECT oid FROM closure
     )
     SELECT 1
       FROM pg_default_acl defaults
@@ -301,8 +326,11 @@ BEGIN
     WITH protected_roles(name) AS (
       SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
     ), provider_roots(oid) AS (
-      SELECT datdba FROM pg_database WHERE datname = current_database()
-      UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
+      WITH RECURSIVE closure(oid) AS (
+        SELECT datdba FROM pg_database WHERE datname = current_database()
+        UNION
+        SELECT membership.member FROM pg_auth_members membership JOIN closure parent ON parent.oid = membership.roleid
+      ) SELECT oid FROM closure
     )
     SELECT 1
       FROM pg_roles grantor
