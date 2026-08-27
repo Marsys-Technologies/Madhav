@@ -351,7 +351,7 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByText('Praśna Rules')).toBeVisible()
     const retainedSnapshotAlert = screen.getByText(/current state unknown/i).closest<HTMLElement>('[role="alert"]')
     if (!retainedSnapshotAlert) throw new Error('Retained-snapshot alert is missing.')
-    expect(retainedSnapshotAlert).toHaveTextContent(error)
+    await waitFor(() => expect(retainedSnapshotAlert).toHaveTextContent(error))
     expect(retainedSnapshotAlert).toHaveTextContent(/failure observed/i)
     expect(within(retainedSnapshotAlert).getByRole('time')).toBeVisible()
   })
