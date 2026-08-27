@@ -1,4 +1,5 @@
 import datetime as dt
+import subprocess
 import tempfile
 import threading
 import time
@@ -300,6 +301,38 @@ class ElevationStoreTests(unittest.TestCase):
         self.assertEqual(probes["edir"](None)["payload"]["state"], "NOT_YET_OPENED")
         edir_path.write_text("# EDIR V3\n", encoding="utf-8")
         self.assertEqual(probes["edir"](None)["payload"]["state"], "OPEN")
+
+    def test_tests_evidence_probe_finds_the_real_suite_even_when_source_repo_is_on_an_unrelated_branch(self):
+        """Break caught: the worker ran pytest with cwd=source_repo, no ref pinning.
+        source_repo is the live, shared, human-mutable checkout -- whatever branch a person
+        happens to have it on when the probe fires, not necessarily a branch that carries
+        this test suite. Confirmed live in production: source_repo was checked out on a
+        branch predating this suite's merge, so pytest exited 4 ("no tests ran") and the
+        worker reported a false self-observation instead of the real suite result."""
+        repo_dir = Path(self.tmp.name) / "fixture-repo"
+        run_git = lambda *args: subprocess.run(["git", "-C", str(repo_dir), *args], check=True, capture_output=True, text=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo_dir)], check=True)
+        run_git("config", "user.email", "test@example.invalid")
+        run_git("config", "user.name", "Test")
+        run_git("commit", "-q", "--allow-empty", "-m", "root")
+        run_git("checkout", "-q", "-b", "unrelated-branch")
+        run_git("checkout", "-q", "main")
+        tests_dir_fixture = repo_dir / "tests" / "pariprashna_assurance_tracker"
+        tests_dir_fixture.mkdir(parents=True)
+        (tests_dir_fixture / "test_trivial.py").write_text("def test_ok():\n    assert True\n", encoding="utf-8")
+        run_git("add", "-A")
+        run_git("commit", "-q", "-m", "add tests")
+        main_sha = run_git("rev-parse", "HEAD").stdout.strip()
+        run_git("update-ref", "refs/remotes/origin/main", main_sha)
+        # Leave the live checkout parked on the branch that predates the tests directory --
+        # the exact state the production repo was caught in.
+        run_git("checkout", "-q", "unrelated-branch")
+        self.assertFalse((repo_dir / "tests").exists())
+
+        probes = builtin_probes(repo_dir, "http://127.0.0.1:8787", fetch_json=lambda _url: {})
+        result = probes["tests_evidence"](None)["payload"]
+        self.assertEqual(result["returncode"], 0, f"expected a real test run, got: {result}")
+        self.assertIn("passed", result["summary"])
 
     def test_adapter_runner_honors_a_distinct_freshness_budget_per_source(self):
         """Break caught (elevation §5.4): a single global freshness value cannot express

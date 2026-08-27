@@ -9,9 +9,11 @@ import argparse
 import threading
 import json
 import plistlib
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import hashlib
 import http.client
 from typing import Any, Callable
@@ -118,9 +120,34 @@ def builtin_probes(
         return {"cursor": _digest(payload), "payload": payload}
 
     def tests_evidence(_cursor: str | None) -> dict[str, Any]:
-        result = subprocess.run([sys.executable, "-m", "pytest", str(tests_path), "-q"], check=False, capture_output=True, text=True, timeout=120, cwd=repo)
+        # ``source_repo`` is the live, shared, human-mutable checkout -- whatever branch a
+        # person happens to have checked out there when this probe fires, not necessarily
+        # the branch that carries this test suite. Running pytest against that ambient
+        # checkout (the prior behaviour) silently reports a false "no tests ran" result the
+        # instant the live checkout drifts off the branch that has this directory. Pin to a
+        # detached worktree of ``origin/main`` instead, so the self-observation always
+        # reflects the actually-merged suite regardless of what a human has checked out.
+        if tests_dir is not None:
+            target = tests_dir
+            result = subprocess.run([sys.executable, "-m", "pytest", str(target), "-q"], check=False, capture_output=True, text=True, timeout=120, cwd=repo)
+            provenance = f"pytest run: {target}"
+        else:
+            pinned_sha = run_command(["git", "-C", repo, "rev-parse", "origin/main"]).strip()
+            worktree_dir = tempfile.mkdtemp(prefix="pariprashna-tests-evidence-")
+            worktree_added = False
+            try:
+                run_command(["git", "-C", repo, "worktree", "add", "--detach", worktree_dir, pinned_sha])
+                worktree_added = True
+                target = Path(worktree_dir) / "tests" / "pariprashna_assurance_tracker"
+                result = subprocess.run([sys.executable, "-m", "pytest", str(target), "-q"], check=False, capture_output=True, text=True, timeout=120, cwd=worktree_dir)
+            finally:
+                if worktree_added:
+                    run_command(["git", "-C", repo, "worktree", "remove", "--force", worktree_dir])
+                else:
+                    shutil.rmtree(worktree_dir, ignore_errors=True)
+            provenance = f"pytest run: {target} (pinned origin/main {pinned_sha})"
         lines = [line for line in result.stdout.strip().splitlines() if line.strip()]
-        payload = {"provenance": f"pytest run: {tests_path}", "returncode": result.returncode, "summary": lines[-1] if lines else ""}
+        payload = {"provenance": provenance, "returncode": result.returncode, "summary": lines[-1] if lines else ""}
         return {"cursor": _digest(payload), "payload": payload}
 
     def edir(_cursor: str | None) -> dict[str, Any]:
