@@ -66,11 +66,25 @@
 - [ ] Request a fresh code review against the task requirements. Resolve only review findings within scope and re-run affected tests.
 - [ ] Create a PR with the provided description skill, require protected CI, and merge only through the protected queue after green checks. Verify the deployed revision and tracker route after Cloud Run completes.
 
-### Task 4: Restore the scheduled observation and establish current program identity
+### Task 4: Harden and release the isolated monitor scheduler
 
-**Files:** no source edit expected; follow `docs/runbooks/ntap-tracker-monitor.md` and `infra/scheduler/README.md`.
+**Files:**
+- Modify: `.github/workflows/iac-apply.yml`
+- Modify: `infra/nirmana_elevation_monitor/apply.sh`
+- Modify: `infra/nirmana_elevation_monitor/README.md`
+- Modify: `docs/runbooks/ntap-tracker-monitor.md`
+- Modify: `platform/src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/route.test.ts`
+- Modify: `platform/src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/scheduler-contract.test.ts`
+- Modify: any direct OIDC-verifier helper test file, only if it exists or is required to cover token validation independently of route mocking.
 
-- [ ] Before any operational action, close the recorded PR #1573 review findings: prove monitor state ownership with remote plans, enforce protected-main/environment-gated applies and module serialization, apply the exact reviewed saved plan, and replace the retired cron-secret-header runbook with OIDC-only verification. Treat this as a required source/CI repair, not a documentation waiver.
+**Interfaces:** the isolated Terraform root owns exactly the monitor Scheduler job, its dedicated service account, Cloud Run invoker binding, and service-account token-creator binding. The callback accepts only a Scheduler-issued OIDC token with the fixed Cloud Run audience and dedicated principal. A reviewed saved plan is the only artifact that may be applied from protected main.
+
+- [ ] Write failing contract tests for protected-main apply guards, state-prefix serialization, exact plan-file apply, current OIDC audience/principal, and OIDC-only runbook instructions.
+- [ ] Run the focused scheduler route/contract tests and workflow/Terraform validation; verify new tests fail before implementation.
+- [ ] Implement protected-main-only, approval-environment-gated apply behavior; allow review-ref plans; serialize by monitor state prefix; save the plan and apply that same plan artifact. Update the monitor root/runbook from shared-secret header language to OIDC verification only. Do not apply resources from a worktree.
+- [ ] Add independent token-verifier tests for malformed/expired token, wrong audience, missing/wrong service-account email, and exact valid principal; route tests may continue to mock only after helper verification is covered.
+- [ ] Re-run all focused Terraform/workflow/OIDC tests and create an updated PR #1573 commit. Obtain protected CI and review before any remote plan/apply.
+- [ ] Before any operational action, prove monitor state ownership with remote plans: zero monitor destroys in the old scheduler root and exactly four intended creates or explicit imports/state moves in the isolated root. Treat this as required release evidence, not a documentation waiver.
 - [ ] Dispatch the protected-main isolated monitor Terraform **plan**, inspect that it targets only `amjis-nirmana-elevation-monitor` and its dedicated IAM resources, and record the result in the ledger.
 - [ ] Dispatch the matching protected-main Terraform **apply** only when that saved plan is clean. Do not use a local Terraform apply.
 - [ ] Verify the Scheduler job has the fixed OIDC audience and dedicated service-account identity. Do not configure or transmit a custom cron secret header; the approved route is OIDC-only.
