@@ -15,6 +15,7 @@ DECLARE
   plain_row bg_gochara_citation_resolution%ROWTYPE;
   rasi_row bg_gochara_citation_resolution%ROWTYPE;
   changed_rows integer := 0;
+  integrity_ok boolean;
   citation_check constant text := $check$
 SELECT count(*) = 14
   AND count(DISTINCT constant_name) = 14
@@ -115,17 +116,32 @@ BEGIN
     AND target_floor=14
     AND natural_key_partition='bg_gochara_citation_resolution.(citation_string,chunk_id)'
     AND data_disposition='RETAINED_AS_CAPITAL'
-    AND encode(sha256(convert_to(integrity_check_sql,'UTF8')),'hex')=
-      '6ea8c824cd9e51b258d58eea7814491372027d7356c207f62d18eb76477f5b3b';
+    AND (
+      encode(sha256(convert_to(integrity_check_sql,'UTF8')),'hex')=
+        '6ea8c824cd9e51b258d58eea7814491372027d7356c207f62d18eb76477f5b3b'
+      OR (
+        integrity_check_sql=citation_check
+        AND volume_explanation=
+          '14 governed citation mappings: 1 exact resolved chunk link and 13 honest corpus gaps. Same-chapter proximity is never treated as source evidence.'
+      )
+    );
   GET DIAGNOSTICS changed_rows = ROW_COUNT;
   IF changed_rows <> 1 THEN
     RAISE EXCEPTION 'migration 631 refuses unknown gochara citation registry contract';
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM asset_registry
-      WHERE asset_id='bg_gochara_citation_resolution'
-        AND integrity_check_sql=citation_check)
-  THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM asset_registry
+    WHERE asset_id='bg_gochara_citation_resolution'
+      AND integrity_check_sql=citation_check
+      AND volume_explanation=
+        '14 governed citation mappings: 1 exact resolved chunk link and 13 honest corpus gaps. Same-chapter proximity is never treated as source evidence.'
+  ) THEN
     RAISE EXCEPTION 'migration 631 citation-integrity contract postflight failed';
+  END IF;
+
+  EXECUTE citation_check INTO integrity_ok;
+  IF integrity_ok IS NOT TRUE THEN
+    RAISE EXCEPTION 'migration 631 citation-integrity detector postflight failed';
   END IF;
 END $$;
