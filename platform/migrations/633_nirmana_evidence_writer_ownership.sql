@@ -264,6 +264,7 @@ BEGIN
          OR (defaults.defaclobjtype <> 'n' AND EXISTS (
            SELECT 1 FROM pg_namespace namespace
             WHERE (defaults.defaclnamespace = 0 OR defaults.defaclnamespace = namespace.oid)
+              AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
               AND has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
               AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
          ))
@@ -284,7 +285,8 @@ BEGIN
      WHERE NOT grantor.rolsuper
        AND EXISTS (
        SELECT 1 FROM pg_namespace namespace
-        WHERE has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
+        WHERE namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
+          AND has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
           AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
      )
        AND (

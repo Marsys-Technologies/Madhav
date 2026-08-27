@@ -39,6 +39,7 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
   afterAll(async () => {
     if (originalControlUrl === undefined) delete process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL
     else process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL = originalControlUrl
+    await admin?.query('ALTER SCHEMA information_schema OWNER TO postgres; DROP ROLE IF EXISTS nirmana_managed_system_owner')
     await admin?.end()
   })
   it('refuses arbitrary pre-existing evidence-owner membership', async () => {
@@ -122,6 +123,8 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app IN SCHEMA public
         GRANT SELECT, REFERENCES, TRIGGER ON TABLES TO PUBLIC, nirmana_campaign_control_writer, nirmana_migrator;
       RESET ROLE`)
+    await admin.query(`CREATE ROLE nirmana_managed_system_owner NOLOGIN;
+      ALTER SCHEMA information_schema OWNER TO nirmana_managed_system_owner`)
     await expect(runNirmanaEvidenceOwnershipPreflight(legacy)).resolves.toBeUndefined()
     // Simulates an interruption after the handoff commit but before marker 633:
     // replay must validate state and return without trying to reclaim ownership.
