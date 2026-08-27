@@ -224,6 +224,45 @@ describe('POST /api/mcp/prashna_ask — auth', () => {
   })
 })
 
+/**
+ * P2-B-004 / E-119 (Paripraśna Experience Assurance): the MCP door assembles a
+ * full reading envelope (`reading`, `judgment_flags`, `completeness`) and
+ * streams it as the `final` NDJSON event, but nothing durable is ever written
+ * for it — `platform-mcp`'s `JobRegistry` is in-memory only (15-min TTL, gone
+ * on process restart) and the one durable row per turn
+ * (`pariprashna_safety_decisions`) is pre-dispatch classification only, with no
+ * `reading`/`judgment_flags`/`completeness` column. This asserts the envelope
+ * honestly discloses that gap via a `persistence` field, per the finding's own
+ * "or an explicit bounded limitation" acceptance path (CLAUDE.md §N.7 item 6 —
+ * an honest null beats a silent, invented completeness claim).
+ */
+describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004 / E-119)', () => {
+  it('discloses persistence:none on the final reading envelope — this door writes no durable record of the turn', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.event).toBe('final')
+    expect(body.persistence).toBeDefined()
+    expect((body.persistence as { status: string }).status).toBe('none')
+  })
+
+  it('discloses persistence:none on the HS-2 hard-stop safety_withheld envelope too', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.persistence).toBeDefined()
+    expect(body.persistence.status).toBe('none')
+
+    safetyFlagState.on = false
+  })
+})
+
 describe('POST /api/mcp/prashna_ask — happy path', () => {
   it('runs the engine, dispatches every planned tool, and returns a complete result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
