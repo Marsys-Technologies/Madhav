@@ -1425,7 +1425,13 @@ async function collectProbeObservation(assetId: string, healthProbe: Record<stri
 
 async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<string, unknown>): Promise<unknown> {
   const runnerUrl = process.env.NIRMANA_PROBE_RUNNER_URL
-  if (!runnerUrl || !/^https:\/\//.test(runnerUrl)) {
+  let parsedRunnerUrl: URL
+  try {
+    parsedRunnerUrl = new URL(runnerUrl ?? '')
+  } catch {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a configured HTTPS deployed typed probe runner.')
+  }
+  if (parsedRunnerUrl.protocol !== 'https:' || parsedRunnerUrl.pathname !== '/internal/nirmana/probe') {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a configured HTTPS deployed typed probe runner.')
   }
   const apiKey = process.env.NIRMANA_PROBE_RUNNER_API_KEY ?? process.env.PYTHON_SIDECAR_API_KEY
@@ -1435,7 +1441,7 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
   const probeContractSha256 = canonicalNirmanaProbeContractDigest(healthProbe)
   let response: Response
   try {
-    response = await fetch(runnerUrl, {
+    response = await fetch(parsedRunnerUrl.toString(), {
       method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15_000),
       headers: {
         'content-type': 'application/json',

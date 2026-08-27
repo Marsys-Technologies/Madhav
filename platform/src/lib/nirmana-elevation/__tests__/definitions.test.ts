@@ -241,7 +241,7 @@ describe('Nirmana elevation definition repository', () => {
     transactionReleaseMock.mockReset()
     releaseStatusMock.mockReset()
     ciRunMock.mockReset()
-    process.env.NIRMANA_PROBE_RUNNER_URL = 'https://sidecar.test/api/nirmana/health-probe'
+    process.env.NIRMANA_PROBE_RUNNER_URL = 'https://sidecar.test/internal/nirmana/probe'
     process.env.NIRMANA_PROBE_RUNNER_API_KEY = 'test-sidecar-key'
     fetchMock.mockResolvedValue({
       ok: true,
@@ -1338,7 +1338,7 @@ describe('Nirmana elevation definition repository', () => {
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     })).resolves.toBe('created')
     const [runnerUrl, runnerRequest] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(runnerUrl).toBe('https://sidecar.test/api/nirmana/health-probe')
+    expect(runnerUrl).toBe('https://sidecar.test/internal/nirmana/probe')
     expect(runnerRequest.method).toBe('POST')
     expect(JSON.parse(String(runnerRequest.body))).toMatchObject({
       asset_id: 'bg_panchanga',
