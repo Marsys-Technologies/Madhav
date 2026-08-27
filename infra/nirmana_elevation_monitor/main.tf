@@ -17,17 +17,28 @@ terraform {
 variable "gcp_project" {
   type    = string
   default = "madhav-astrology"
+
+  validation {
+    condition     = var.gcp_project == "madhav-astrology"
+    error_message = "The monitor callback accepts only the dedicated principal in madhav-astrology."
+  }
 }
 
 variable "gcp_region" {
   type    = string
   default = "asia-south1"
+
+  validation {
+    condition     = var.gcp_region == "asia-south1"
+    error_message = "The monitor callback is fixed to the asia-south1 production Cloud Run audience."
+  }
 }
 
-variable "amjis_web_url" {
-  type        = string
-  description = "Fully-qualified amjis-web Cloud Run URL (no trailing slash)."
-  default     = "https://amjis-web-938361928218.asia-south1.run.app"
+locals {
+  # This must remain identical to the route's SCHEDULER_OIDC_AUDIENCE. It is
+  # intentionally not an input: an overridable audience could issue a token
+  # that the fixed route correctly refuses.
+  monitor_oidc_audience = "https://amjis-web-938361928218.asia-south1.run.app"
 }
 
 provider "google" {
@@ -79,12 +90,12 @@ resource "google_cloud_scheduler_job" "nirmana_elevation_monitor" {
 
   http_target {
     http_method = "POST"
-    uri         = "${var.amjis_web_url}/api/admin/internal/nirmana-elevation-monitor"
+    uri         = "${local.monitor_oidc_audience}/api/admin/internal/nirmana-elevation-monitor"
     body        = base64encode("{}")
 
     oidc_token {
       service_account_email = google_service_account.nirmana_elevation_monitor.email
-      audience              = var.amjis_web_url
+      audience              = local.monitor_oidc_audience
     }
   }
 

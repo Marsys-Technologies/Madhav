@@ -47,6 +47,7 @@ alternate acceptance paths.
    re-read one fresh Audit Drawer observation before retrying. Never substitute a
    digest or observation UUID by hand, and never bypass this command through the
    scheduler endpoint.
+
 3. Confirm the result is `created` (or the exact safe retry is `idempotent`), then
    refresh the snapshot after the next monitor observation. Verify that the
    definition is frozen and synchronization reflects the new observation. Baseline
@@ -90,6 +91,7 @@ alternate acceptance paths.
    Re-read the dashboard/API, resolve the governed conflict, and resubmit only an
    exact approved replacement. Do not use `record_definition`/`freeze_definition`
    as a shortcut around explicit supersession.
+
 4. After a successful `superseded` response, wait for the next scheduler observation
    and confirm `program_sync.status` is no longer `plan_adaptation_required` before
    relying on the new denominator. The monitor still does not create acceptance
@@ -105,8 +107,10 @@ alternate acceptance paths.
   `label_refresh_required`, preserve the displayed degraded status and investigate
   the authoritative source or governed evidence path. Do not mark progress green,
   edit an observation, or treat the previous observation as current.
-- Scheduler deployment verification is a protected-main operator activity. After a
-  reviewed protected-main apply, configure the existing `MARSYS_CRON_SECRET` as
-  `X-Marsys-Cron-Secret` using the established secret-header procedure, then verify
-  authenticated observations arrive on the expected cadence. Never place the secret
-  in Terraform, source control, SQL, screenshots, or an `Authorization` header.
+- Scheduler deployment verification is a protected-main operator activity. The
+  callback accepts only a Cloud Scheduler OIDC bearer token for audience
+  `https://amjis-web-938361928218.asia-south1.run.app` and principal
+  `amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com`. Do not add,
+  configure, transmit, or troubleshoot a shared-secret header for this route.
+  After the reviewed saved-plan apply and natural cadence observation, verify the
+  authenticated dashboard records the expected OIDC-authenticated observation.
