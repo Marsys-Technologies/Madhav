@@ -6,7 +6,7 @@ import '../pariprashna/pariprashna.css'
 // .pp-prediction-card*) had no effect wherever they were used — now mounted
 // live in the right dock (dock/PredictionCard.tsx).
 import './samiksha/samiksha.css'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ThreadHeader, type ChartPin } from './ThreadHeader'
 import { Transcript } from './Transcript'
 import { EmptyState } from './EmptyState'
@@ -159,35 +159,105 @@ function PariprashnaSurface({
   const activeTurn = state.turns[state.turns.length - 1]
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
-  // History sidebar (Lane F-1, §10.1): one real, correctly-behaving entry —
-  // this session's own thread — grouped under this chart. See
-  // `history/types.ts`'s header note for why cross-session/multi-thread
-  // listing isn't wired here (no backend surface in this lane's scope).
+  // History sidebar (Lane F-1, §10.1). V3-E-012a: the live session's own
+  // thread (below) is now MERGED with real persisted history fetched once
+  // per chart via GET /api/conversations?readingsOnly=true — the receipt
+  // discriminator (lib/conversations.ts docblock) keeps legacy consume/
+  // consult rows out. Fetched ONCE at mount/chart-change, BEFORE any turn
+  // this session can possibly have written — so the live thread (added
+  // separately below, always first) can never collide with a fetched row
+  // for the same conversation; no id-matching dedup is needed or attempted.
+  // What this does NOT do (Native Surrogate ruling, decision event
+  // f3b88219-432f-4096-999c-07f6700f6406, referred to S2 as V3-E-012b):
+  // selecting a FETCHED historical row does not load its messages into the
+  // reading pane — that needs the real backend `conversation_id` threaded
+  // through `useLiveStream`'s wire decoder/reducer (S2 territory; today's
+  // `WireEvent` shape for `turn.open` drops the field the SSE payload
+  // already carries), which this shell may not touch.
   const [titleOverride, setTitleOverride] = useState<string | null>(null)
+  const [pastReadings, setPastReadings] = useState<ThreadSummary[]>([])
+  const [unavailableNotice, setUnavailableNotice] = useState(false)
   const threadId = useMemo(() => `session-${chartId}`, [chartId])
-  const threads = useMemo<ThreadSummary[]>(() => {
-    if (state.turns.length === 0) return []
-    const firstTurn = state.turns[0]
-    const lastTurn = state.turns[state.turns.length - 1]
-    const summary: ThreadSummary = {
-      id: threadId,
-      chartId,
-      chartName: chartPin.name,
-      title: titleOverride ?? autoTitle(firstTurn.userText),
-      updatedAtMs: lastTurn.openedAtMs,
-      active: true,
-      streaming,
-    }
-    return [summary]
-  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming])
 
-  const handleSidebarSelect = useCallback(() => {
-    // Single-thread reality today (see `threads` above) — selecting the
-    // only row is a no-op. Kept as a real callback (not omitted) so the
-    // component contract already matches what a multi-thread backend will
-    // need: swap the active thread in-shell, never a reload (§10.1
-    // "Selection swaps the route in the shell — never a reload").
-  }, [])
+  useEffect(() => {
+    if (isFixtureHost) return
+    let cancelled = false
+    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: {
+          conversations: {
+            id: string
+            chart_id: string
+            title: string | null
+            first_message_snippet: string | null
+            updated_at: string
+            created_at: string
+          }[]
+        } | null) => {
+          if (cancelled || !data?.conversations) return
+          setPastReadings(
+            data.conversations.map((c) => ({
+              id: c.id,
+              chartId: c.chart_id,
+              chartName: chartPin.name,
+              title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
+              updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
+              active: false,
+              streaming: false,
+            })),
+          )
+        },
+      )
+      .catch(() => {
+        // Honest absence, not a thrown error into the shell: the sidebar
+        // simply shows only the live session's own thread, same as before
+        // this fetch existed.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [chartId, isFixtureHost, chartPin.name])
+
+  const threads = useMemo<ThreadSummary[]>(() => {
+    const live: ThreadSummary[] =
+      state.turns.length === 0
+        ? []
+        : (() => {
+            const firstTurn = state.turns[0]
+            const lastTurn = state.turns[state.turns.length - 1]
+            return [
+              {
+                id: threadId,
+                chartId,
+                chartName: chartPin.name,
+                title: titleOverride ?? autoTitle(firstTurn.userText),
+                updatedAtMs: lastTurn.openedAtMs,
+                active: true,
+                streaming,
+              },
+            ]
+          })()
+    return [...live, ...pastReadings]
+  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming, pastReadings])
+
+  const handleSidebarSelect = useCallback(
+    (id: string) => {
+      if (id === threadId) return // already the live thread — no-op, as before
+      // V3-E-012a/b (surrogate ruling B4): a historical row is real and
+      // visible now, but opening its content is not yet wired (S2's,
+      // V3-E-012b) — an honest, dismissable notice, never a silent dead
+      // click implying content loaded.
+      setUnavailableNotice(true)
+    },
+    [threadId],
+  )
+
+  useEffect(() => {
+    if (!unavailableNotice) return
+    const timer = setTimeout(() => setUnavailableNotice(false), 3200)
+    return () => clearTimeout(timer)
+  }, [unavailableNotice])
 
   const handleSidebarRename = useCallback((_id: string, title: string) => {
     setTitleOverride(title)
@@ -241,7 +311,34 @@ function PariprashnaSurface({
         style={{ position: 'fixed', inset: 0, height: shellHeight }}
       >
         <div className="flex-1 flex gap-3.5 p-4 items-stretch min-h-0" style={{ maxWidth: 1220, width: '100%', margin: '0 auto' }}>
-          <Sidebar threads={threads} onSelect={handleSidebarSelect} onRename={handleSidebarRename} />
+          <div style={{ position: 'relative', display: 'flex', flex: 'none' }}>
+            <Sidebar threads={threads} onSelect={handleSidebarSelect} onRename={handleSidebarRename} />
+            {unavailableNotice && (
+              // V3-E-012b interim affordance (surrogate ruling B4): honest,
+              // not a silent dead click — opening a past reading's content
+              // is not wired yet (referred to S2).
+              <div
+                role="status"
+                data-testid="pp-sidebar-select-unavailable"
+                style={{
+                  position: 'absolute',
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  background: 'var(--pp-panel)',
+                  border: '1px solid var(--pp-rule-strong)',
+                  color: 'var(--pp-ink-dim)',
+                  fontSize: 11.5,
+                  lineHeight: 1.35,
+                  zIndex: 5,
+                }}
+              >
+                Opening a past reading isn&apos;t available yet — it&apos;s saved, just not openable in this build.
+              </div>
+            )}
+          </div>
           <div
             data-testid="pp-main-column"
             className="flex-1 min-w-0 flex flex-col rounded-[14px] overflow-hidden relative"

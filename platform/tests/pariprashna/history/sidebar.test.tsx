@@ -124,4 +124,55 @@ describe('Sidebar row selection + rename', () => {
     expect(renamed).toEqual(['t-1', 'New title'])
     expect(selected).toBeNull()
   })
+
+  it('activates a row via Enter and Space (keyboard parity with click)', () => {
+    const selections: string[] = []
+    render(<Sidebar threads={[thread({ id: 't-1' })]} onSelect={(id) => selections.push(id)} />)
+    const row = screen.getByTestId('pp-sidebar-row')
+    fireEvent.keyDown(row, { key: 'Enter' })
+    fireEvent.keyDown(row, { key: ' ' })
+    expect(selections).toEqual(['t-1', 't-1'])
+  })
+})
+
+describe('Sidebar accessibility structure', () => {
+  it('nests each chart group as an ARIA group (list > group > listitem — a bare list > div > listitem tree fails aria-required-children)', () => {
+    const threads = [thread({ id: 't-1', chartId: CHART_A, chartName: 'Abhisek Mohanty' })]
+    render(<Sidebar threads={threads} onSelect={() => {}} />)
+    const list = screen.getByRole('list', { name: /past readings/i })
+    const group = screen.getByRole('group', { name: 'Abhisek Mohanty' })
+    expect(list.contains(group)).toBe(true)
+    expect(group.contains(screen.getByTestId('pp-sidebar-row'))).toBe(true)
+  })
+
+  it('carries the full untruncated title as a tooltip on both the collapsed glyph and the expanded label, for CSS-truncated long titles', () => {
+    const longTitle = 'A'.repeat(200)
+    render(<Sidebar threads={[thread({ id: 't-1', title: longTitle })]} onSelect={() => {}} />)
+    expect(screen.getByText(longTitle)).toHaveAttribute('title', longTitle)
+  })
+})
+
+describe('Sidebar large-history-list performance (test plan §5.1 "History sidebar" row)', () => {
+  it('groups, sorts, and renders 2000 threads across 200 charts well within an interactive budget', () => {
+    const now = Date.now()
+    const threads: ThreadSummary[] = Array.from({ length: 2000 }, (_, i) => {
+      const chartIndex = i % 200
+      return thread({
+        id: `t-${i}`,
+        chartId: `chart-${chartIndex}`,
+        chartName: `Chart ${chartIndex}`,
+        title: `Question ${i}`,
+        updatedAtMs: now - i * 1000,
+      })
+    })
+    const start = performance.now()
+    render(<Sidebar threads={threads} onSelect={() => {}} />)
+    const elapsedMs = performance.now() - start
+    // Component/INTEGRATION-rung budget, not a LIVE-deployed-perf claim — this
+    // is jsdom, not a real browser paint. 500ms is a generous ceiling for
+    // 2000 rows across 200 groups; a real regression (e.g. an accidental
+    // O(n²) re-sort per row) blows well past it, which is what this guards.
+    expect(elapsedMs).toBeLessThan(500)
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2000)
+  })
 })
