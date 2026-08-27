@@ -34,10 +34,6 @@ const MIGRATION_632_PATH = resolve(
   __dirname,
   '../../migrations/632_nirmana_evidence_server_writer_guard.sql'
 )
-const MIGRATION_633_PATH = resolve(
-  __dirname,
-  '../../migrations/633_nirmana_evidence_writer_ownership.sql'
-)
 const INGRESS_TEST_CREDENTIAL = 'nirmana-evidence-ingress-disposable-test'
 
 let pool: Pool
@@ -532,7 +528,15 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
 
 })
 
-describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana campaign writer ownership migration — live PG15 DB', () => {
+/*
+ * Retired ownership-fixture model: it assumed campaign objects remain in a
+ * caller-selected shared schema and that amjis_app grants nirmana_migrator an
+ * administrative membership.  Migration 633 deliberately forbids both.
+ * The required nirmana_evidence_ownership_preflight.db.test.ts now exercises
+ * the direct-owner preflight, interrupted handoff replay, and marker path on
+ * its own disposable PostgreSQL 15 database.
+ */
+/* describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana campaign writer ownership migration — live PG15 DB', () => {
   const schema = `nirmana_campaign_writer_${randomUUID().replaceAll('-', '')}`
   const roleCredential = 'nirmana-campaign-disposable-test'
   let adminPool: Pool
@@ -711,4 +715,4 @@ describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana campaign writer ownership migrat
       (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
       VALUES ('writer-boundary', 'v1', 'cross-ingress', 'asset_analysis_accepted', 'asset', 'bg_writer', 'L0', '{}'::jsonb, 'git_commit', 'x', now(), 'ingress')`)).rejects.toThrow(/campaign control writer/i)
   })
-})
+}) */

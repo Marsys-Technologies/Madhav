@@ -67,6 +67,9 @@ describe('Nirmana campaign control writer database credentials', () => {
 
   it('requires the dedicated control secret in the serving revision without exposing migration credentials', () => {
     const deployWorkflow = readFileSync(resolve(__dirname, '../../../../../.github/workflows/deploy.yml'), 'utf8')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-preflight.ts')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-marker.ts')
+    expect(deployWorkflow).toContain('DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}')
     const webDeployment = deployWorkflow.slice(deployWorkflow.indexOf('  deploy-web:'))
     expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer')
     expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest')

@@ -9,7 +9,7 @@ BEGIN
     RAISE EXCEPTION 'migration 633 must run as nirmana_migrator';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner'
-    AND NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+    AND NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
     AND NOT rolreplication AND NOT rolbypassrls) THEN
     RAISE EXCEPTION 'migration 633 requires a normalized NOLOGIN evidence owner';
   END IF;
@@ -27,23 +27,26 @@ BEGIN
       RAISE EXCEPTION 'migration 633 refuses protected writer role memberships for %', protected_role;
     END IF;
   END LOOP;
-  IF EXISTS (SELECT 1 FROM pg_namespace namespace JOIN pg_roles owner ON owner.oid = namespace.nspowner
-    WHERE namespace.nspname = current_schema() AND owner.rolname <> 'nirmana_evidence_owner') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace namespace JOIN pg_roles owner ON owner.oid = namespace.nspowner
+    WHERE namespace.nspname = 'nirmana_evidence' AND owner.rolname = 'nirmana_evidence_owner') THEN
     RAISE EXCEPTION 'migration 633 requires evidence owner schema ownership';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+  IF (SELECT count(*) FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
     JOIN pg_roles owner ON owner.oid = relation.relowner
-    WHERE namespace.nspname = current_schema()
+    WHERE namespace.nspname = 'nirmana_evidence'
       AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
-      AND owner.rolname <> 'nirmana_evidence_owner') THEN
+      AND relation.relkind IN ('r', 'p')
+      AND owner.rolname = 'nirmana_evidence_owner') <> 3 THEN
     RAISE EXCEPTION 'migration 633 requires evidence owner campaign relations';
   END IF;
-  IF EXISTS (
+  IF (
+    SELECT count(*)
+  FROM (
     SELECT 1
       FROM pg_proc procedure
       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
       JOIN pg_roles owner ON owner.oid = procedure.proowner
-     WHERE namespace.nspname = current_schema()
+     WHERE namespace.nspname = 'nirmana_evidence'
        AND procedure.proname = ANY (ARRAY[
          'nirmana_elevation_prevent_event_mutation',
          'nirmana_elevation_guard_definition_mutation',
@@ -52,14 +55,14 @@ BEGIN
          'nirmana_elevation_guard_control_writer',
          'nirmana_elevation_prevent_campaign_truncate'
        ])
-       AND owner.rolname <> 'nirmana_evidence_owner'
-  ) THEN
+       AND owner.rolname = 'nirmana_evidence_owner'
+  ) AS owned_guards) <> 6 THEN
     RAISE EXCEPTION 'migration 633 requires evidence owner campaign guards';
   END IF;
   IF (SELECT count(*) FROM pg_trigger trigger
       JOIN pg_class relation ON relation.oid = trigger.tgrelid
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-      WHERE namespace.nspname = current_schema()
+      WHERE namespace.nspname = 'nirmana_evidence'
         AND trigger.tgname = ANY (ARRAY[
           'nirmana_elevation_events_append_only',
           'nirmana_elevation_definitions_versioned',
@@ -74,25 +77,49 @@ BEGIN
     RAISE EXCEPTION 'migration 633 requires all campaign evidence guards enabled';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app'
-    AND (rolcreatedb OR rolcreaterole OR rolsuper OR rolbypassrls))
-    OR has_schema_privilege('amjis_app', current_schema(), 'CREATE') THEN
+    AND (NOT rolcanlogin OR rolinherit OR rolcreatedb OR rolcreaterole OR rolsuper OR rolreplication OR rolbypassrls))
+    OR has_schema_privilege('amjis_app', 'nirmana_evidence', 'CREATE') THEN
     RAISE EXCEPTION 'migration 633 refuses generic application administration';
   END IF;
-  IF EXISTS (
-    SELECT 1 FROM pg_database database
-    JOIN pg_roles owner ON owner.oid = database.datdba
-    WHERE database.datname = current_database() AND owner.rolname = 'amjis_app'
-  ) THEN
-    RAISE EXCEPTION 'migration 633 refuses generic application database ownership';
+  IF NOT has_schema_privilege('amjis_app', 'nirmana_evidence', 'USAGE') THEN
+    RAISE EXCEPTION 'migration 633 requires generic application read schema usage';
   END IF;
-  IF NOT has_schema_privilege('nirmana_migrator', current_schema(), 'USAGE, CREATE') THEN
-    RAISE EXCEPTION 'migration 633 requires the deployment-only migrator schema contract';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer'
+    AND rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+    AND NOT rolreplication AND NOT rolbypassrls) THEN
+    RAISE EXCEPTION 'migration 633 requires a normalized ingress writer';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer'
+    AND rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+    AND NOT rolreplication AND NOT rolbypassrls) THEN
+    RAISE EXCEPTION 'migration 633 requires a normalized control writer';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_migrator'
+    AND rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+    AND NOT rolreplication AND NOT rolbypassrls) THEN
+    RAISE EXCEPTION 'migration 633 requires a normalized deployment-only migrator';
+  END IF;
+  IF NOT has_schema_privilege('nirmana_evidence_ingress_writer', 'nirmana_evidence', 'USAGE')
+    OR NOT has_schema_privilege('nirmana_campaign_control_writer', 'nirmana_evidence', 'USAGE')
+    OR has_schema_privilege('nirmana_evidence_ingress_writer', 'nirmana_evidence', 'CREATE')
+    OR has_schema_privilege('nirmana_campaign_control_writer', 'nirmana_evidence', 'CREATE')
+    OR has_schema_privilege('nirmana_migrator', 'nirmana_evidence', 'USAGE') THEN
+    RAISE EXCEPTION 'migration 633 requires the exact evidence schema access envelope';
+  END IF;
+  IF has_schema_privilege('nirmana_evidence_owner', 'public', 'CREATE')
+    OR has_schema_privilege('nirmana_evidence_ingress_writer', 'public', 'CREATE')
+    OR has_schema_privilege('nirmana_campaign_control_writer', 'public', 'CREATE')
+    OR has_schema_privilege('nirmana_migrator', 'public', 'CREATE')
+    OR NOT has_schema_privilege('nirmana_evidence_ingress_writer', 'public', 'USAGE')
+    OR NOT has_schema_privilege('nirmana_campaign_control_writer', 'public', 'USAGE')
+    OR NOT has_schema_privilege('nirmana_migrator', 'public', 'USAGE') THEN
+    RAISE EXCEPTION 'migration 633 requires exact shared-schema writer access';
   END IF;
   IF EXISTS (
     SELECT 1
       FROM pg_class relation
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-     WHERE namespace.nspname = current_schema()
+     WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
        AND (
          has_table_privilege('amjis_app', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')
@@ -100,6 +127,67 @@ BEGIN
        )
   ) THEN
     RAISE EXCEPTION 'migration 633 requires generic application SELECT-only campaign access';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relkind = 'S'
+  ) THEN
+    RAISE EXCEPTION 'migration 633 requires no campaign-owned sequences with unreviewed ACLs';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_class relation
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname = 'nirmana_elevation_campaign_definitions'
+       AND (NOT has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT, INSERT, UPDATE')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'DELETE, TRUNCATE'))
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname IN ('nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
+       AND (NOT has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT, INSERT')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE'))
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname = 'nirmana_elevation_campaign_definitions'
+       AND (NOT has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT')
+         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE'))
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname = 'nirmana_elevation_campaign_events'
+       AND (NOT has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT, INSERT')
+         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE'))
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname = 'nirmana_elevation_asset_labels'
+       AND has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
+       AND has_table_privilege('nirmana_migrator', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+  ) THEN
+    RAISE EXCEPTION 'migration 633 requires exact campaign table writer ACLs';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM pg_attribute attribute
+      JOIN pg_class relation ON relation.oid = attribute.attrelid
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      CROSS JOIN LATERAL aclexplode(attribute.attacl) AS column_acl
+      JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
+     WHERE namespace.nspname = 'nirmana_evidence'
+       AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
+       AND grantee.rolname IN ('amjis_app','nirmana_evidence_ingress_writer','nirmana_campaign_control_writer','nirmana_migrator')
+  ) THEN
+    RAISE EXCEPTION 'migration 633 refuses residual campaign column ACLs';
   END IF;
 END;
 $$;

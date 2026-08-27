@@ -353,20 +353,30 @@ jobs:
       - name: One-shot Nirmana evidence ownership preflight
         env:
           NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
-          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |
-          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
-            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — cannot verify the ownership handoff marker."
+          if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
             exit 1
           fi
           cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
 
-      - name: Run database migrations as deployment-only migrator
+      - name: Attest Nirmana ownership handoff as deployment-only migrator
         env:
-          DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
+          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migration 633 cannot be attested. This credential is deployment-only and must never be mounted in Cloud Run."
+            exit 1
+          else
+            cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
+          fi
+
+      - name: Run general database migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migrations NOT applied. This credential is deployment-only and must never be mounted in Cloud Run."
+            echo "::error::PROD_DATABASE_URL secret not set — general migrations NOT applied. Failing build."
             exit 1
           else
             cd platform && npx tsx scripts/migrate.ts

@@ -458,7 +458,7 @@ export async function createNirmanaElevationDefinition(input: CreateNirmanaEleva
   const client = await (await getNirmanaCampaignControlWriterPool()).connect()
   try {
   const inserted = await client.query(
-    `INSERT INTO nirmana_elevation_campaign_definitions
+    `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions
        (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
      VALUES ($1, $2, $3, $4::jsonb, $5, $6)
      ON CONFLICT (campaign_id, definition_revision) DO NOTHING
@@ -469,7 +469,7 @@ export async function createNirmanaElevationDefinition(input: CreateNirmanaEleva
 
   const existing = await client.query<{ definition_status: string; manifest_sha256: string }>(
     `SELECT definition_status, manifest_sha256
-       FROM nirmana_elevation_campaign_definitions
+       FROM nirmana_evidence.nirmana_elevation_campaign_definitions
       WHERE campaign_id = $1 AND definition_revision = $2`,
     [input.campaign_id, input.definition_revision],
   )
@@ -557,7 +557,7 @@ export async function acceptNirmanaBaselineCandidate(
     const stored = await client.query<StoredNirmanaDefinition>(
       `SELECT definition_revision, definition_status, manifest, manifest_sha256,
               created_by, superseded_at
-         FROM nirmana_elevation_campaign_definitions
+         FROM nirmana_evidence.nirmana_elevation_campaign_definitions
         WHERE campaign_id = $1
         ORDER BY definition_revision
         FOR UPDATE`,
@@ -673,7 +673,7 @@ export async function acceptNirmanaBaselineCandidate(
     }
 
     const inserted = await client.query(
-      `INSERT INTO nirmana_elevation_campaign_definitions
+      `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions
          (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
        VALUES ($1, $2, 'reconciling', $3::jsonb, $4, $5)
        RETURNING definition_revision`,
@@ -683,7 +683,7 @@ export async function acceptNirmanaBaselineCandidate(
     if (inserted.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
 
     const frozen = await client.query(
-      `UPDATE nirmana_elevation_campaign_definitions
+      `UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions
           SET definition_status = 'frozen'
         WHERE campaign_id = $1
           AND definition_revision = $2
@@ -734,7 +734,7 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   assertManifestMatchesRegistry(manifest, registry.rows)
 
   const frozen = await client.query(
-    `UPDATE nirmana_elevation_campaign_definitions
+    `UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions
         SET definition_status = 'frozen'
       WHERE campaign_id = $1
         AND definition_revision = $2
@@ -747,7 +747,7 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
 
   const existing = await client.query<{ definition_status: string; manifest_sha256: string }>(
     `SELECT definition_status, manifest_sha256
-       FROM nirmana_elevation_campaign_definitions
+       FROM nirmana_evidence.nirmana_elevation_campaign_definitions
       WHERE campaign_id = $1 AND definition_revision = $2`,
     [input.campaign_id, input.definition_revision],
   )
@@ -798,7 +798,7 @@ export async function supersedeNirmanaElevationDefinition(
     const stored = await client.query<StoredNirmanaDefinition>(
       `SELECT definition_revision, definition_status, manifest, manifest_sha256,
               created_by, superseded_at
-         FROM nirmana_elevation_campaign_definitions
+         FROM nirmana_evidence.nirmana_elevation_campaign_definitions
         WHERE campaign_id = $1
           AND definition_revision = ANY($2::text[])
         ORDER BY definition_revision
@@ -841,10 +841,10 @@ export async function supersedeNirmanaElevationDefinition(
     // definition. Together these close races within the governed ingresses;
     // table locks also stabilize the count while this transaction runs. Direct
     // writers outside these protocols still require a future DB trigger/FK.
-    await client.query('LOCK TABLE nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
+    await client.query('LOCK TABLE nirmana_evidence.nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
     const usage = await client.query<{ event_count: number; build_run_count: number }>(
       `SELECT (SELECT count(*)::int
-                 FROM nirmana_elevation_campaign_events
+                 FROM nirmana_evidence.nirmana_elevation_campaign_events
                 WHERE campaign_id = $1 AND definition_revision = $2) AS event_count,
               (SELECT count(*)::int
                  FROM build_runs
@@ -871,7 +871,7 @@ export async function supersedeNirmanaElevationDefinition(
     assertManifestMatchesRegistry(manifest, registry.rows)
 
     const superseded = await client.query(
-      `UPDATE nirmana_elevation_campaign_definitions
+      `UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions
           SET definition_status = 'superseded', superseded_at = clock_timestamp()
         WHERE campaign_id = $1
           AND definition_revision = $2
@@ -884,7 +884,7 @@ export async function supersedeNirmanaElevationDefinition(
     if (superseded.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
 
     const inserted = await client.query(
-      `INSERT INTO nirmana_elevation_campaign_definitions
+      `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions
          (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
        VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5)
        RETURNING definition_revision`,
@@ -1075,7 +1075,7 @@ const NirmanaAssetAnalysisReceiptSchema = z.object({
     writer_digest_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
     grounding: z.object({
       convergence_commit: z.string().regex(/^[a-f0-9]{40}$/),
-      frozen_manifest_source: z.literal('nirmana_elevation_campaign_definitions.manifest'),
+      frozen_manifest_source: z.literal('nirmana_evidence.nirmana_elevation_campaign_definitions.manifest'),
       writer_digest_ref: z.literal('platform/src/generated/nirmana-writer-digests.json'),
     }).strict(),
   }).strict(),
@@ -1188,7 +1188,7 @@ async function loadCurrentAssetAnalysisContext(
             registry.superseded_by, registry.data_disposition, registry.dead_flag,
             manifest_asset.value AS frozen_manifest_asset
        FROM asset_registry registry
-       JOIN nirmana_elevation_campaign_definitions definition
+       JOIN nirmana_evidence.nirmana_elevation_campaign_definitions definition
          ON definition.campaign_id = $1
         AND definition.definition_revision = $2
         AND definition.definition_status = 'frozen'
@@ -1247,7 +1247,7 @@ async function requireAcceptedOptimizationVerdictProvenance(
   }
   const accepted = await client.query<{ accepted_count: number }>(
     `SELECT count(*)::int AS accepted_count
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1
         AND definition_revision = $2
         AND event_type = 'asset_analysis_accepted'
@@ -1317,7 +1317,7 @@ async function loadCurrentAcceptedDecision(
 ): Promise<AcceptedDecisionReceipt> {
   const decisions = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'optimization_verdict_accepted'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1351,7 +1351,7 @@ async function loadCurrentAcceptedAnalysis(
 ): Promise<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }> {
   const analyses = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'asset_analysis_accepted'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1590,7 +1590,7 @@ async function loadCurrentProbePrerequisites(
   if (!changeIsRequired(decision.payload)) return { analysis, decision, implementation: null }
   const implementations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'implementation_accepted'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1770,7 +1770,7 @@ async function requireProducerCoverageProvenance(
   const producerImplementations = changeIsRequired(producerDecision.payload)
     ? await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
       `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'implementation_accepted'
           AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1779,7 +1779,7 @@ async function requireProducerCoverageProvenance(
     : { rows: [] as { evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }[] }
   const rebuilds = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'accepted_rebuild_observed'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1840,7 +1840,7 @@ async function loadCurrentProducerCoverage(
   const producerImplementations = changeIsRequired(producerDecision.payload)
     ? await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
       `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'implementation_accepted'
           AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1849,7 +1849,7 @@ async function loadCurrentProducerCoverage(
     : { rows: [] as { evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }[] }
   const coverageRows = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'producer_covered'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1857,7 +1857,7 @@ async function loadCurrentProducerCoverage(
   )
   const rebuildRows = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'accepted_rebuild_observed'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1938,7 +1938,7 @@ async function requireIntegrityProvenance(
   const implementations = obligation === 'build' && changeIsRequired(decision.payload)
     ? (await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
       `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'implementation_accepted'
           AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -1947,7 +1947,7 @@ async function requireIntegrityProvenance(
     : []
   const prerequisites = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2 AND event_type = $3
         AND entity_type = 'asset' AND entity_id = $4 AND layer = $5`,
     [input.campaign_id, input.definition_revision, operationEvent, input.entity_id, input.layer],
@@ -1973,7 +1973,7 @@ async function requireFreezeProvenance(
     ? await loadCurrentProducerCoverage(client, input, current)
     : null
   const integrity = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
-    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events
+    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2 AND event_type = 'integrity_verified'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
     [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
@@ -1996,7 +1996,7 @@ async function requireFreezeProvenance(
   }
   const lifecycle = await client.query<{ event_type: string; evidence_payload: unknown; source_kind: string; source_ref: string }>(
     `SELECT event_type, evidence_payload, source_kind, source_ref
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4
         AND event_type = ANY($5::text[])`,
@@ -2049,7 +2049,7 @@ async function requireAcceptedRebuildProvenance(
     }
     const implementations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
       `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'implementation_accepted'
           AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
@@ -2072,7 +2072,7 @@ async function requireAcceptedRebuildProvenance(
   }
   const authorizations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = 'build_run_authorized'
         AND entity_type = 'build_run' AND entity_id = $3 AND layer = $4`,
@@ -2092,7 +2092,7 @@ async function requireAcceptedRebuildProvenance(
   const verified = await client.query<{ plan_manifest: unknown; plan_manifest_digest: string | null }>(
     `SELECT run.plan_manifest, run.plan_manifest_digest
          FROM build_runs run
-         JOIN nirmana_elevation_campaign_definitions definition
+         JOIN nirmana_evidence.nirmana_elevation_campaign_definitions definition
            ON definition.campaign_id = $5
           AND definition.definition_revision = $6
           AND definition.definition_status = 'frozen'
@@ -2166,7 +2166,7 @@ async function requireBuildRunAuthorizationProvenance(
     `SELECT EXISTS (
        SELECT 1
          FROM build_runs run
-         JOIN nirmana_elevation_campaign_definitions definition
+         JOIN nirmana_evidence.nirmana_elevation_campaign_definitions definition
            ON definition.campaign_id = $2
           AND definition.definition_revision = $3
           AND definition.definition_status = 'frozen'
@@ -2222,7 +2222,7 @@ async function loadFrozenReceiptDefinition(
 ): Promise<FrozenReceiptDefinition> {
   const definition = await client.query<FrozenReceiptDefinition>(
     `SELECT manifest, manifest_sha256, jsonb_array_length(manifest -> 'assets')::int AS manifest_asset_count
-       FROM nirmana_elevation_campaign_definitions
+       FROM nirmana_evidence.nirmana_elevation_campaign_definitions
       WHERE campaign_id = $1
         AND definition_revision = $2
         AND definition_status = 'frozen'
@@ -2270,7 +2270,7 @@ async function requireFoundationLaneProvenance(
   requireTypedFoundationSource(input, receipt.lane_id)
   const existingLane = await client.query<{ present: boolean }>(
     `SELECT EXISTS (
-       SELECT 1 FROM nirmana_elevation_campaign_events
+       SELECT 1 FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'foundation_lane_accepted' AND entity_type = 'foundation_lane'
           AND entity_id = $3 AND layer IS NULL
@@ -2322,7 +2322,7 @@ async function requireFoundationLaneProvenance(
       canonicalRegistryContractDigest(registryContractFingerprintInput(row))]))
     const acceptedAnalyses = await client.query<{ entity_id: string; evidence_payload: unknown }>(
       `SELECT entity_id, evidence_payload
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'asset_analysis_accepted' AND entity_type = 'asset'`,
       [input.campaign_id, input.definition_revision],
@@ -2334,7 +2334,7 @@ async function requireFoundationLaneProvenance(
     const registry = await client.query<{ live_registry_asset_count: number }>(
       `SELECT count(*)::int AS live_registry_asset_count
          FROM asset_registry registry
-         JOIN LATERAL jsonb_array_elements((SELECT manifest FROM nirmana_elevation_campaign_definitions
+         JOIN LATERAL jsonb_array_elements((SELECT manifest FROM nirmana_evidence.nirmana_elevation_campaign_definitions
            WHERE campaign_id = $1 AND definition_revision = $2 AND definition_status = 'frozen' AND superseded_at IS NULL) -> 'assets') AS asset(value)
            ON asset.value ->> 'asset_id' = registry.asset_id
           AND asset.value ->> 'layer' = CASE registry.layer
@@ -2373,7 +2373,7 @@ async function requireFoundationLaneProvenance(
 
   const migration = await client.query<{ applied: boolean }>(
     `SELECT EXISTS (
-       SELECT 1 FROM _migrations_applied
+       SELECT 1 FROM public._migrations_applied
         WHERE filename = $1 AND sha256 = $2
      ) AS applied`,
     [receipt.migration_filename, NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256],
@@ -2405,7 +2405,7 @@ async function requireStageTransitionProvenance(
   }
   const targetExists = await client.query<{ present: boolean }>(
     `SELECT EXISTS (
-       SELECT 1 FROM nirmana_elevation_campaign_events
+       SELECT 1 FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'stage_transition_accepted' AND entity_type = 'campaign_stage'
           AND entity_id = $3 AND layer IS NULL
@@ -2419,7 +2419,7 @@ async function requireStageTransitionProvenance(
   if (expectedFrom !== null) {
     const prior = await client.query<{ present: boolean }>(
       `SELECT EXISTS (
-         SELECT 1 FROM nirmana_elevation_campaign_events
+         SELECT 1 FROM nirmana_evidence.nirmana_elevation_campaign_events
           WHERE campaign_id = $1 AND definition_revision = $2
             AND event_type = 'stage_transition_accepted' AND entity_type = 'campaign_stage'
             AND entity_id = $3 AND layer IS NULL
@@ -2451,7 +2451,7 @@ async function requireStageTransitionProvenance(
   if (receipt.to_stage === 'L0') {
     const lanes = await client.query<{ accepted_lane_count: number }>(
       `SELECT count(DISTINCT entity_id)::int AS accepted_lane_count
-         FROM nirmana_elevation_campaign_events
+         FROM nirmana_evidence.nirmana_elevation_campaign_events
         WHERE campaign_id = $1 AND definition_revision = $2
           AND event_type = 'foundation_lane_accepted' AND entity_type = 'foundation_lane' AND layer IS NULL
           AND evidence_payload ->> 'schema_version' = 'nirmana-foundation-lane-receipt/v1'`,
@@ -2470,7 +2470,7 @@ async function requireStageTransitionProvenance(
       throw new NirmanaElevationEvidenceValidationError('COMPLETE requires a current in-sync canonical release observation.')
     }
     const migration = await client.query<{ applied: boolean }>(
-      `SELECT EXISTS (SELECT 1 FROM _migrations_applied WHERE filename = $1 AND sha256 = $2) AS applied`,
+      `SELECT EXISTS (SELECT 1 FROM public._migrations_applied WHERE filename = $1 AND sha256 = $2) AS applied`,
       ['592_nirmana_elevation_campaign_evidence.sql', NIRMANA_EVIDENCE_CONTROL_MIGRATION_SHA256],
     )
     if (migration.rows[0]?.applied !== true) {
@@ -2486,7 +2486,7 @@ async function findExistingEvidenceReceipt(
   const existing = await client.query<RecordNirmanaElevationEvidenceInput>(
     `SELECT campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
             layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2 AND idempotency_key = $3`,
     [input.campaign_id, input.definition_revision, input.idempotency_key],
   )
@@ -2506,7 +2506,7 @@ async function findExistingLifecycleReceipt(
   const existing = await client.query<RecordNirmanaElevationEvidenceInput>(
     `SELECT campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
             layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND event_type = $3 AND entity_type = 'asset' AND entity_id = $4
         AND layer IS NOT DISTINCT FROM $5`,
@@ -2582,7 +2582,7 @@ async function requireCurrentFrozenDefinition(
   const definition = await client.query<{ current: boolean }>(
     `SELECT EXISTS (
        SELECT 1
-         FROM nirmana_elevation_campaign_definitions
+         FROM nirmana_evidence.nirmana_elevation_campaign_definitions
         WHERE campaign_id = $1
           AND definition_revision = $2
           AND definition_status = 'frozen'
@@ -2664,7 +2664,7 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
       await requireFreezeProvenance(client, normalizedInput)
     }
     const inserted = await client.query(
-      `INSERT INTO nirmana_elevation_campaign_events
+      `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events
          (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
           layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)

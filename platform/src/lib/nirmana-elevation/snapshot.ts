@@ -48,9 +48,9 @@ const SOURCE_PROVENANCE: Record<SourceId, string> = {
   build_runs: 'Cloud SQL build_runs',
   build_run_assets: 'Cloud SQL build_run_assets',
   build_substep_progress: 'Cloud SQL build_substep_progress',
-  campaign_definitions: 'Cloud SQL nirmana_elevation_campaign_definitions',
-  campaign_events: 'Cloud SQL nirmana_elevation_campaign_events',
-  asset_label_catalogue: 'Cloud SQL nirmana_elevation_asset_labels',
+  campaign_definitions: 'Cloud SQL nirmana_evidence.nirmana_elevation_campaign_definitions',
+  campaign_events: 'Cloud SQL nirmana_evidence.nirmana_elevation_campaign_events',
+  asset_label_catalogue: 'Cloud SQL nirmana_evidence.nirmana_elevation_asset_labels',
   program_monitor: 'Cloud SQL nirmana_elevation_monitor_observations',
 }
 
@@ -133,12 +133,12 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
   const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
-  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
-  const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at, writer_identity FROM nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
+  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_evidence.nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
+  const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at, writer_identity FROM nirmana_evidence.nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
   const labels = await loadSource('asset_labels', `SELECT campaign_id, definition_revision, catalogue_revision, asset_id,
        sanskrit_name, english_name, description, legacy_aliases,
        source_ref, label_digest, recorded_at
-  FROM nirmana_elevation_asset_labels
+  FROM nirmana_evidence.nirmana_elevation_asset_labels
  WHERE campaign_id = 'nirmana-elevation'
  ORDER BY catalogue_revision, asset_id`)
   const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,

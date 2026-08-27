@@ -166,13 +166,14 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
 
-      - name: Nirmāṇa elevation — required dedicated evidence-ingress contract
+      - name: Nirmāṇa elevation — required dedicated writer handoff contract
         # Local throwaway DB only: the test rejects a non-test DB name and
         # proves both generic-insert denial and dedicated-login detector access.
         env:
           PGPASSWORD: postgres
           NIRMANA_ELEVATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_elevation_test
           NIRMANA_EVIDENCE_EXECUTOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_executor_test
+          NIRMANA_EVIDENCE_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_preflight_test
         run: |
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
             -c "CREATE DATABASE nirmana_elevation_test;"
@@ -182,7 +183,15 @@ jobs:
             -c "CREATE DATABASE nirmana_evidence_executor_test;"
           psql -h localhost -U postgres -d nirmana_evidence_executor_test -v ON_ERROR_STOP=1 \
             -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_evidence_preflight_test;"
+          psql -h localhost -U postgres -d nirmana_evidence_preflight_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          # PostgreSQL roles are cluster-wide.  These two real suites both
+          # exercise fixed production role names, so execute them serially
+          # even though each owns a different disposable database.
           npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
+          npx vitest run tests/integration/nirmana_evidence_ownership_preflight.db.test.ts --reporter=verbose
 
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
