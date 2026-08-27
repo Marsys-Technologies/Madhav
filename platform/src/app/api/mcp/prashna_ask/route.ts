@@ -122,6 +122,50 @@ interface ToolDispatchOutcome {
   latency_ms: number
 }
 
+/**
+ * P2-B-004 / E-119 (Paripraśna Experience Assurance) — durable-record gap.
+ *
+ * This route assembles a full reading envelope (`reading`, `judgment_flags`,
+ * `completeness`) and streams it as the `final` NDJSON event / a terminal
+ * `NextResponse.json`, but nothing durable is ever written for the turn:
+ * `platform-mcp`'s `JobRegistry` (`platform-mcp/src/lib/job_registry.ts`) is a
+ * `Map<string, Job>` held IN-MEMORY ONLY (comment there: "Jobs are held in
+ * memory only — they do not survive a process restart"), 15-minute TTL,
+ * actively evicted; no `job_id` column exists in any migration. The one
+ * durable row per turn (`pariprashna_safety_decisions`, written by
+ * `recordDecision`/`appendSafetyDecision`) is pre-dispatch safety
+ * classification only — no `reading`, `judgment_flags`, or `completeness`
+ * column.
+ *
+ * Investigation for this finding also assessed reusing the Portal door's
+ * opt-in `stream_capture.ts` sink (`pariprashna_stream_capture` table): that
+ * module's `captureEvent(turnId, event: PariprashnaEvent)` requires the
+ * strictly-typed, Zod-validated Paripraśna wire union
+ * (`turn.open`/`phase`/`block.commit`/… — `protocol/events.ts`), and this
+ * route's NDJSON lines (`{event:'progress'|'final'|'error', ...}`) share no
+ * shape with that union — no `conversation_id` (this door has no multi-turn
+ * conversation concept), no per-event `seq`/`t` envelope, and a `final` shape
+ * with no `PariprashnaEvent` counterpart. Forcing a fit would mean inventing
+ * synthetic events for a byte-replay table whose downstream tooling
+ * (BRIEF_PB-2 §G-1) assumes real portal SSE frames replayed against
+ * `message_parts` — a table this route never writes at all. That is a new
+ * capture mechanism wearing an old one's name, not the "few lines of reuse"
+ * bar this finding's smaller path requires — so this route takes the smaller,
+ * honest fallback instead: every terminal envelope discloses the gap via this
+ * field, per CLAUDE.md §N.7 item 6 ("an honest null beats an invented
+ * judgment") rather than silently implying persistence through omission.
+ *
+ * `status: 'none'` is the only value ever produced today. If a durable sink is
+ * added for this door later, this must flip to a real status backed by an
+ * actual write that runs — never a broadcast "durable" with no detector
+ * behind it (§N.8 Earned-Signal Principle).
+ */
+const MCP_TURN_PERSISTENCE_NONE = {
+  status: 'none' as const,
+  detail:
+    'This MCP-door turn (reading, judgment_flags, completeness) is not durably persisted anywhere: platform-mcp\'s JobRegistry is in-memory only (15-minute TTL, does not survive a process restart), and no message_parts row is ever written for this door. Only the pre-dispatch safety classification is written durably, to pariprashna_safety_decisions. See P2-B-004 / E-119.',
+}
+
 export async function POST(request: Request) {
   // ── Layer 1: service-to-service auth (same as every other /api/mcp/* route) ──
   if (!validateServiceToken(request)) {
@@ -342,6 +386,7 @@ export async function POST(request: Request) {
         empty_result_tools: [],
         cap_tripped: null,
       },
+      persistence: MCP_TURN_PERSISTENCE_NONE,
       // Counts and the action only — never the matched text and never the rule
       // ids (gate 11 [integrity], the same discipline the web door follows).
       judgment_flags: [
@@ -462,6 +507,7 @@ export async function POST(request: Request) {
           empty_result_tools: [],
           cap_tripped: null,
         },
+        persistence: MCP_TURN_PERSISTENCE_NONE,
         judgment_flags: [
           `safety_decision:${postPlanSafety.action}`,
           'safety_reading_withheld',
@@ -736,6 +782,8 @@ export async function POST(request: Request) {
           empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
         },
+        // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
+        persistence: MCP_TURN_PERSISTENCE_NONE,
         judgment_flags: judgmentFlags,
       }
 
