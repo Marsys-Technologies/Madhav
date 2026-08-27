@@ -728,12 +728,105 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-016 — CRITICAL: deployed web door hallucinates the native's real, specific chart facts when answering an unrelated synthetic-chart factual query, and serves them with undisclosed confidence
+
+- **Class / severity:** DEFECT · S3-discovered, filed to **S4** (primary —
+  grounding/validation pipeline root cause) and **S5** (privacy/disclosure
+  angle: real, specific, sensitive personal astrological data about the
+  native surfaced in an unrelated synthetic-chart response) · **CRITICAL**
+  (reproducible, live production, factual-integrity + confidence-honesty
+  double violation, with a plausible privacy-disclosure reading)
+- **Lens / stage:** L-LIVE (deployed web door) · pipeline S9 Grounding/Safety
+  Validation (`validation_stage.ts`, `streaming_citation_validator.ts`) ·
+  overlaps S3's own dimension 1 (Factual integrity) and dimension 5
+  (Confidence honesty)
+- **Expected:** per test plan §1.3 principle 4 ("Honest absence… a gap,
+  empty state, degraded provider, or unfinished turn is stated plainly,
+  never filled with plausible-looking content") and CLAUDE.md §N.7/§B.10
+  ("Claude never invents numerical chart values"), a query against chart
+  `1c826d5a` (Abhinandan, the synthetic test chart) for its Moon's
+  nakshatra should either (a) return `1c826d5a`'s real, ground-truth L1
+  fact — **Ardra**, sign **Gemini**, longitude 73.2278°, confirmed live via
+  `ganita_positions_get(chart_id=1c826d5a, planet=Moon)` this session — or
+  (b) honestly disclose it lacks grounded data for this fact.
+- **Observed (2026-08-28, S3 stream-open, reproduced twice):** two
+  independent, freshly-authenticated live turns against the deployed web
+  door (`POST https://amjis-web-qm256lasva-el.a.run.app/api/pariprashna`,
+  via the existing `platform/scripts/probe/ask.ts` harness, `chartId:
+  "1c826d5a-41cb-4450-b4dc-59d440e5f75a"` explicitly present in both POST
+  bodies and echoed correctly in both turns' own `turn.open` SSE event) both
+  answered "the Moon in this chart is placed in **Purva Bhadrapada**
+  nakshatra… **27°02′48″** in the sign of **Aquarius**" — verbatim,
+  degree-for-degree identical across both independent runs. This is **not**
+  chart `1c826d5a`'s data (ground-truthed above as Ardra/Gemini) — it is the
+  native Abhisek Mohanty's own FORENSIC canonical Moon fact (CLAUDE.md §B:
+  "Moon = Purva Bhadrapada", chart `482012f1`), reproduced with enough
+  precision (the exact degree) that this reads as memorized real content,
+  not a generic plausible-sounding guess. The literal string `482012f1`
+  never appears anywhere in either turn's SSE stream or receipt — the leak
+  is in the *content*, not a chart-id mix-up in the request/turn-tracking
+  layer itself.
+  - **The turn's own streamed receipt (`receipt.define` SSE event) already
+    detects this dishonestly**: `evidence_grades.hallucination_count: 2`,
+    both cited facts (`NAK.PURVA_BHADRAPADA`, `PLN.MOON`) graded
+    `"unverified"` (0 primary/supporting/contextual grades). The receipt's
+    own `coverage` block discloses the root condition honestly:
+    `"served": 5, "empty": 9, "floor_item_total": 14, "channel_note": "9 of
+    14 floor items have NO web-executable retrieval tool (MCP↔web namespace
+    gap); 5 served, 9 empty, 0 dark."` — i.e. the web door lacks a real
+    retrieval path for this fact type, and rather than disclosing the gap
+    (which the receipt's own `honest_gaps` field is structurally built to
+    carry), the synthesis layer filled it with specific, confident,
+    plausible-looking — and, disturbingly, *correct-for-a-different-chart*
+    — content. The served prose shows plain, unflagged footnote markers
+    (`[1]`, `[2]`); nothing in the reader-facing text discloses
+    `unverified`/hallucinated status.
+  - `platform/src/lib/pariprashna/pipeline/validation_stage.ts` (the S9
+    grounding/safety validation stage) contains **zero** references to
+    `hallucination_count` — confirmed by direct grep this session — meaning
+    nothing in the validation stage currently gates, downgrades, or
+    discloses on this signal even though the receipt computes it correctly.
+    The detector is honest; nothing downstream acts on it.
+  - Evidence: `platform/scripts/probe/out/24ba8c23-9bde-4c27-9f69-70e6bfd1e9d4.json`,
+    `platform/scripts/probe/out/8b9486f2-dabc-469e-873b-b27afc49cbb5.json`
+    (both worktree-local, not committed — reference by path for the
+    assigned stream to pull), plus the live `ganita_positions_get` ground-
+    truth call this session.
+- **Why not fixed in S3:** root cause is either the grounding/retrieval
+  coverage gap itself (pipeline stage territory, S4) or the missing
+  validation-stage gate on `hallucination_count`/`evidence_grades` before
+  serving (S9, also S4 primarily, S5 for the disclosure angle) — both
+  outside S3's charter territory (quality corpus / rubric harness /
+  synthesis prompts). This is exactly the "collateral finding while
+  verifying something unrelated" class the shared elevated frame's §6
+  instructs surfacing, not silently fixing across a territory boundary.
+- **Proposed fix class:** (a) wire `validation_stage.ts` (or
+  `streaming_citation_validator.ts`) to gate on `evidence_grades.
+  hallucination_count > 0` — at minimum forcing an explicit low-confidence/
+  unverified disclosure into the served prose, at maximum blocking the
+  claim and falling back to the `honest_gaps` disclosure path that already
+  exists structurally in the receipt; (b) separately, investigate whether
+  this is reproducible for other fact types/charts (systemic, like
+  V3-E-011's ~30-route sweep) or specific to the MCP↔web namespace gap for
+  nakshatra-class facts.
+- **Status:** OPEN, filed to **S4** (primary) and **S5** (privacy angle),
+  flagged CRITICAL for expedited triage given the reproducible real-data
+  disclosure content. Close rung: LIVE (a seeded reproduction of this exact
+  query turning honest/gapped instead of hallucinated, against the deployed
+  route).
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 12 V3 entries (5 from the A3 census + 6 surfaced during A4's
+SALVAGE 2); 13 V3 entries (5 from the A3 census + 6 surfaced during A4's
 B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
 B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign; + 1 filed 2026-08-28 by stream
+E-011 filed to S5, V3-E-009 closed-as-benign; + 2 filed 2026-08-28 by stream
 S3 at its own session-open: V3-E-012, real-chart-grounding question on the
-quality corpus's pre-existing fixtures, filed for native ruling). No gate is
-certified by this document.*
+quality corpus's pre-existing fixtures, filed for native ruling; V3-E-016
+(originally drafted as E-013, renumbered on a live TRACKER-side
+FINDING_ID_CONFLICT — S2 had already claimed E-013..E-015 concurrently in
+this shared, cross-worktree register; see E-017's own named gap), CRITICAL
+reproducible hallucination-of-real-chart-facts defect on the deployed web
+door, filed to S4/S5). No gate is certified by this document.*

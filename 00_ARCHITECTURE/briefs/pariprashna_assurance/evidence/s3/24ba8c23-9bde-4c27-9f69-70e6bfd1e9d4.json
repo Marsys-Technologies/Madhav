@@ -1,0 +1,746 @@
+{
+  "turn_id": "24ba8c23-9bde-4c27-9f69-70e6bfd1e9d4",
+  "question": "What nakshatra is the Moon placed in for this chart?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "chart_id_explicit": false,
+  "conversation_id": "d9593cdf-49cc-42af-8bd4-b74531595730",
+  "assistant_message_id": "04baaaee-bc47-4b5d-a119-7571518765da",
+  "partial": false,
+  "terminal_status": "ok",
+  "error": null,
+  "harness_tag": {
+    "tagged": false,
+    "error": "Error: connect ECONNREFUSED 127.0.0.1:5433"
+  },
+  "total_ms": 20668,
+  "event_count": 38,
+  "blocks": [
+    {
+      "blockId": "blk-1-1",
+      "kind": "paragraph",
+      "role": "verdict"
+    }
+  ],
+  "prose": "The Moon in this chart is placed in the nakshatra of Purva Bhadrapada, specifically in Pada 3[1]. Its exact position is 27°02′48″ in the sign of Aquarius[2]. The planetary lord of Purva Bhadrapada is Jupiter[1].",
+  "events": [
+    {
+      "type": "turn.open",
+      "raw": {
+        "type": "turn.open",
+        "seq": 0,
+        "t": 1787874674784,
+        "turn_id": "bc1e9633-e3f1-4976-9e2c-144f8b3c0172",
+        "conversation_id": "d9593cdf-49cc-42af-8bd4-b74531595730",
+        "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "model_id": "gemini-3.1-pro-preview",
+        "reading_depth": "auto",
+        "length_tier": "standard",
+        "protocol_version": 2
+      },
+      "receivedAtMs": 793
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 1,
+        "t": 1787874674784,
+        "phase": "plan",
+        "status": "start"
+      },
+      "receivedAtMs": 793
+    },
+    {
+      "type": "flag",
+      "raw": {
+        "type": "flag",
+        "seq": 2,
+        "t": 1787874674810,
+        "code": "safety_decision:proceed",
+        "level": "info",
+        "detail": "no safety class detected"
+      },
+      "receivedAtMs": 815
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 3,
+        "t": 1787874676930,
+        "phase": "plan",
+        "status": "end",
+        "ms": 2115
+      },
+      "receivedAtMs": 2943
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 4,
+        "t": 1787874676930,
+        "subject": "query_class",
+        "grade": "factual",
+        "detail": "1 planned tools"
+      },
+      "receivedAtMs": 2943
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 5,
+        "t": 1787874676930,
+        "subject": "reading_depth_received",
+        "grade": "standard",
+        "detail": "scope_tuple: intent=panchanga width=standard depth=standard"
+      },
+      "receivedAtMs": 2943
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 6,
+        "t": 1787874676932,
+        "phase": "retrieve",
+        "status": "start",
+        "pass_id": 1
+      },
+      "receivedAtMs": 2943
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 7,
+        "t": 1787874676948,
+        "key": "retrieve:msr_sql",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 8,
+        "t": 1787874676948,
+        "key": "retrieve:marsys://tool/L1/get_positions",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 9,
+        "t": 1787874676948,
+        "key": "retrieve:marsys://tool/L1/get_strength",
+        "label_key": "Consulting the chart — Strengths & dignities",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 10,
+        "t": 1787874676949,
+        "key": "retrieve:marsys://tool/L2/query_signals",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 11,
+        "t": 1787874676949,
+        "key": "retrieve:marsys://tool/L1/get_sensitive_degrees",
+        "label_key": "Consulting the chart — Sensitive degrees",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 12,
+        "t": 1787874676949,
+        "key": "retrieve:get_yoga_firings",
+        "label_key": "Consulting the chart — Yogas, cross-checked",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 13,
+        "t": 1787874676949,
+        "key": "retrieve:marsys://tool/L1/chart_facts_query",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 14,
+        "t": 1787874676952,
+        "key": "retrieve:msr_sql",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 4
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 15,
+        "t": 1787874676952,
+        "key": "retrieve:marsys://tool/L2/query_signals",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 3
+      },
+      "receivedAtMs": 2961
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 16,
+        "t": 1787874676985,
+        "key": "retrieve:marsys://tool/L1/get_sensitive_degrees",
+        "label_key": "Consulting the chart — Sensitive degrees",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 36
+      },
+      "receivedAtMs": 2989
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 17,
+        "t": 1787874676992,
+        "key": "retrieve:marsys://tool/L1/get_positions",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 44
+      },
+      "receivedAtMs": 3001
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 18,
+        "t": 1787874677007,
+        "key": "retrieve:marsys://tool/L1/get_strength",
+        "label_key": "Consulting the chart — Strengths & dignities",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 58
+      },
+      "receivedAtMs": 3012
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 19,
+        "t": 1787874677041,
+        "key": "retrieve:get_yoga_firings",
+        "label_key": "Consulting the chart — Yogas, cross-checked",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 92
+      },
+      "receivedAtMs": 3051
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 20,
+        "t": 1787874677131,
+        "key": "retrieve:marsys://tool/L1/chart_facts_query",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 182
+      },
+      "receivedAtMs": 3146
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 21,
+        "t": 1787874677132,
+        "phase": "retrieve",
+        "status": "end",
+        "pass_id": 1,
+        "ms": 184
+      },
+      "receivedAtMs": 3146
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 22,
+        "t": 1787874677141,
+        "phase": "synthesize",
+        "status": "start",
+        "pass_id": 1
+      },
+      "receivedAtMs": 3160
+    },
+    {
+      "type": "block.open",
+      "raw": {
+        "type": "block.open",
+        "seq": 23,
+        "t": 1787874683447,
+        "block_id": "blk-1-1",
+        "pass_id": 1,
+        "role": "prose"
+      },
+      "receivedAtMs": 9458
+    },
+    {
+      "type": "citation.define",
+      "raw": {
+        "type": "citation.define",
+        "seq": 24,
+        "t": 1787874683449,
+        "index": 1,
+        "signal_id": "NAK.PURVA_BHADRAPADA",
+        "layer": "L2.5",
+        "snippet": "[unverified citation 1]",
+        "reader_label": "[unverified citation 1]",
+        "grade": "unverified"
+      },
+      "receivedAtMs": 9458
+    },
+    {
+      "type": "block.delta",
+      "raw": {
+        "type": "block.delta",
+        "seq": 25,
+        "t": 1787874683449,
+        "block_id": "blk-1-1",
+        "delta": "The Moon in this chart is placed in the nakshatra of Purva Bhadrapada, specifically in Pada 3[1]."
+      },
+      "receivedAtMs": 9458
+    },
+    {
+      "type": "citation.define",
+      "raw": {
+        "type": "citation.define",
+        "seq": 26,
+        "t": 1787874683557,
+        "index": 2,
+        "signal_id": "PLN.MOON",
+        "layer": "L2.5",
+        "snippet": "[unverified citation 2]",
+        "reader_label": "[unverified citation 2]",
+        "grade": "unverified"
+      },
+      "receivedAtMs": 9570
+    },
+    {
+      "type": "block.delta",
+      "raw": {
+        "type": "block.delta",
+        "seq": 27,
+        "t": 1787874683558,
+        "block_id": "blk-1-1",
+        "delta": " Its exact position is 27°02′48″ in the sign of Aquarius[2]."
+      },
+      "receivedAtMs": 9570
+    },
+    {
+      "type": "block.delta",
+      "raw": {
+        "type": "block.delta",
+        "seq": 28,
+        "t": 1787874683708,
+        "block_id": "blk-1-1",
+        "delta": " The planetary lord of Purva Bhadrapada is Jupiter[1]."
+      },
+      "receivedAtMs": 9721
+    },
+    {
+      "type": "block.commit",
+      "raw": {
+        "type": "block.commit",
+        "seq": 29,
+        "t": 1787874683710,
+        "block_id": "blk-1-1",
+        "text": "The Moon in this chart is placed in the nakshatra of Purva Bhadrapada, specifically in Pada 3[1]. Its exact position is 27°02′48″ in the sign of Aquarius[2]. The planetary lord of Purva Bhadrapada is Jupiter[1].",
+        "kind": "paragraph",
+        "role": "verdict"
+      },
+      "receivedAtMs": 9721
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 30,
+        "t": 1787874683710,
+        "phase": "synthesize",
+        "status": "end",
+        "pass_id": 1,
+        "ms": 6569
+      },
+      "receivedAtMs": 9721
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 31,
+        "t": 1787874683717,
+        "subject": "citation_gate",
+        "grade": "PASS",
+        "detail": "informational query (factual); citations not required"
+      },
+      "receivedAtMs": 9721
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 32,
+        "t": 1787874683717,
+        "phase": "finalize",
+        "status": "start"
+      },
+      "receivedAtMs": 9721
+    },
+    {
+      "type": "receipt.define",
+      "raw": {
+        "type": "receipt.define",
+        "seq": 33,
+        "t": 1787874693512,
+        "turn_id": "bc1e9633-e3f1-4976-9e2c-144f8b3c0172",
+        "receipt": {
+          "receipt_schema_version": 1,
+          "turn_id": "bc1e9633-e3f1-4976-9e2c-144f8b3c0172",
+          "conversation_id": "d9593cdf-49cc-42af-8bd4-b74531595730",
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "generated_at": "2026-08-27T23:51:33.510Z",
+          "coverage": {
+            "status": "measured",
+            "served": 5,
+            "empty": 9,
+            "dark": 0,
+            "floor_item_total": 14,
+            "channel": "web",
+            "channel_note": "9 of 14 floor items have NO web-executable retrieval tool (MCP↔web namespace gap); 5 served, 9 empty, 0 dark. A small served count reflects the namespace gap, not a fully-honored floor.",
+            "unavailable_reason": null
+          },
+          "facts_consumed": [
+            {
+              "ref": "NAK.PURVA_BHADRAPADA",
+              "layer": "L2.5",
+              "index": 1
+            },
+            {
+              "ref": "PLN.MOON",
+              "layer": "L2.5",
+              "index": 2
+            }
+          ],
+          "derivation_chains": [
+            {
+              "block_id": "blk-1-1",
+              "pass_id": 1,
+              "role": "prose",
+              "fact_refs": [
+                "NAK.PURVA_BHADRAPADA",
+                "PLN.MOON"
+              ]
+            }
+          ],
+          "cross_domain": {
+            "status": "unavailable",
+            "domains": null,
+            "unavailable_reason": "plan.domains was not populated by the planner for this turn"
+          },
+          "evidence_grades": {
+            "status": "measured",
+            "grade_counts": {
+              "primary": 0,
+              "supporting": 0,
+              "contextual": 0,
+              "unverified": 2,
+              "prior_reading": 0
+            },
+            "hallucination_count": 2,
+            "unavailable_reason": null
+          },
+          "honest_gaps": {
+            "status": "measured",
+            "gaps": [
+              {
+                "floor_item_id": "chart_digest_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"bodha_chart_digest_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "positions_snapshot",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_positions_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "dignity_scan",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "bhava_condition",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_structural_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "chara_karaka_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "karakamsa_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "arudha_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "upapada_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "divisional_facts",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              }
+            ],
+            "unavailable_reason": null
+          },
+          "safety_decision": {
+            "status": "measured",
+            "decision_id": "3638ad43-e75a-4785-9dfc-b82b9cfec2b7",
+            "enforced": true,
+            "severity": "none",
+            "action": "proceed",
+            "classes_detected": [],
+            "review_id": null,
+            "audit_written": true,
+            "unavailable_reason": null
+          },
+          "calibration_disclosure": {
+            "consulted": false,
+            "consulted_tool_names": [],
+            "disclosure_note": "No L5 Mīmāṃsā calibration capability was consulted this turn. L5 is sealed in STRUCTURAL mode (CLAUDE.md §E): empirical calibration values fill in as prediction→outcome data accrues. Predictive claims in this reading are not yet empirically calibrated."
+          },
+          "prose_binding": {
+            "blocks": [
+              {
+                "block_id": "blk-1-1",
+                "role": "prose",
+                "char_count": 211,
+                "semantic_kind": "paragraph",
+                "semantic_role": "verdict"
+              }
+            ],
+            "accumulated_text_sha256": "34b051205f92a97377c07fdb4b9ed97299e0d81a653fd6dc5061698eec2e4f97",
+            "accumulated_char_count": 211
+          },
+          "provenance": {
+            "build_id": "80886c05-dd95-474f-aada-40a314027915",
+            "priors_version": "1.2",
+            "formula_versions": {
+              "salience_formula_ver": null
+            },
+            "ranking_config": {
+              "mode": "composite_v1"
+            },
+            "now_context_date": "2026-08-27",
+            "computed_at": "2026-08-27T23:51:23.725Z"
+          },
+          "interpretation_sets": {
+            "status": "measured",
+            "interpretation_sets_schema_version": 2,
+            "detected_count": 1,
+            "covered_count": 1,
+            "truncated_count": 0,
+            "waived_count": 0,
+            "sets": [
+              {
+                "judgment_id": "sig-domain_verdict-1",
+                "category": "domain_verdict",
+                "status": "generated",
+                "detection_basis": "G2-A block role='verdict' (first prose block of its pass)",
+                "candidates": [
+                  {
+                    "reading": "The native possesses a highly analytical and philosophical mind, blending Saturn's structural thinking from Aquarius, Jupiter's higher wisdom as the Nakshatra lord, and Mercury's communicative intellect from the Gemini Navamsha of Pada 3. They likely excel in academic, technological, or research-oriented fields.",
+                    "rationale": "Focuses on the specific planetary rulerships involved: Saturn (Sign), Jupiter (Nakshatra), and Mercury (Pada/Navamsha), synthesizing them into an intellectual profile."
+                  },
+                  {
+                    "reading": "The native experiences intense emotional turbulence and a drive for radical transformation. Purva Bhadrapada is a fierce nakshatra associated with Aja Ekapada, and the Moon here indicates a restless soul that seeks to dismantle old societal structures to achieve idealistic or spiritual goals.",
+                    "rationale": "Focuses on the mythological and qualitative nature of the Nakshatra itself (ugra/fierce, transformative fire) rather than just the planetary lords."
+                  },
+                  {
+                    "reading": "The native has a highly dualistic emotional nature, often keeping their true feelings or unconventional beliefs hidden. The symbol of the two-faced man in Purva Bhadrapada, combined with the dual-sign Gemini navamsha of Pada 3, suggests they present a conventional face to the world while harboring deep, eccentric views privately.",
+                    "rationale": "Focuses on the symbolism of the Nakshatra (the two-faced man) and the modality of the Navamsha (Gemini as a dual sign) to describe emotional duality."
+                  }
+                ],
+                "selected_index": 0,
+                "selected_rationale": "Candidate 1 is the strongest because it specifically integrates the exact Pada 3 placement (Gemini Navamsha) with the sign and nakshatra lords, providing a highly specific synthesis of the astrological mechanics provided in the judgment.",
+                "falsifier": "The native shows no interest in intellectual pursuits, philosophy, or complex systems, and instead relies purely on instinct, displaying a completely transparent and non-analytical emotional nature.",
+                "waiver_reason": null
+              }
+            ],
+            "unavailable_reason": null
+          },
+          "confidence_typing": {
+            "status": "measured",
+            "entries": [
+              {
+                "ref": "NAK.PURVA_BHADRAPADA",
+                "layer": "L2.5",
+                "confidence_type": "structural_prior",
+                "basis": "l2_5_structural_signal"
+              },
+              {
+                "ref": "PLN.MOON",
+                "layer": "L2.5",
+                "confidence_type": "structural_prior",
+                "basis": "l2_5_structural_signal"
+              }
+            ],
+            "activation_gate": {
+              "gate_open": false,
+              "sample_size": null,
+              "min_sample_size_required": 30,
+              "threshold_is_placeholder": true,
+              "gate_note": "Gate CLOSED: no real calibration sample size was available this turn, or L5 Mīmāṃsā is still in STRUCTURAL mode (CLAUDE.md §E) with too few prediction→outcome matches to clear the minimum sample size. empirically_calibrated language is not earned."
+            },
+            "precision_flags": [],
+            "unavailable_reason": null
+          },
+          "receipt_hash": "b4d51caf8ede4c7be5115e47f193723cde77878dd02903abaff6ef88c7b0e310"
+        }
+      },
+      "receivedAtMs": 19527
+    },
+    {
+      "type": "turn.commit",
+      "raw": {
+        "type": "turn.commit",
+        "seq": 34,
+        "t": 1787874693565,
+        "turn_id": "bc1e9633-e3f1-4976-9e2c-144f8b3c0172",
+        "conversation_id": "d9593cdf-49cc-42af-8bd4-b74531595730",
+        "message_id": "04baaaee-bc47-4b5d-a119-7571518765da",
+        "status": "ok",
+        "assistant_chars": 211,
+        "grounding_summary": {
+          "citation_count": 2,
+          "hallucination_count": 2,
+          "grade_counts": {
+            "primary": 0,
+            "supporting": 0,
+            "contextual": 0,
+            "unverified": 2,
+            "prior_reading": 0
+          },
+          "completeness": {
+            "served": 5,
+            "floor_item_total": 14
+          },
+          "completeness_line": "5/14 floor items served"
+        }
+      },
+      "receivedAtMs": 19572
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 35,
+        "t": 1787874693567,
+        "subject": "completeness",
+        "grade": "5/14",
+        "detail": "9 of 14 floor items have NO web-executable retrieval tool (MCP↔web namespace gap); 5 served, 9 empty, 0 dark. A small served count reflects the namespace gap, not a fully-honored floor."
+      },
+      "receivedAtMs": 19572
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 36,
+        "t": 1787874693568,
+        "phase": "finalize",
+        "status": "end"
+      },
+      "receivedAtMs": 19572
+    },
+    {
+      "type": "turn.close",
+      "raw": {
+        "type": "turn.close",
+        "seq": 37,
+        "t": 1787874693568,
+        "turn_id": "bc1e9633-e3f1-4976-9e2c-144f8b3c0172",
+        "status": "ok",
+        "ms": 19103
+      },
+      "receivedAtMs": 19572
+    }
+  ],
+  "written_at": "2026-08-27T23:51:34.683Z"
+}
