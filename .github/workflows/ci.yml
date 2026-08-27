@@ -1318,6 +1318,22 @@ jobs:
             -m "not integration" \
             -q --tb=short --no-header
 
+      - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
+        # This is a production-shaped positive probe, not the ordinary fallback-only
+        # unit path: it downloads the same immutable public corpus used by the
+        # pipeline image, then requires the exact SHA-pinned Swiss backend verdict.
+        # The runner is ephemeral, so its explicitly-created temporary corpus needs
+        # no cleanup step.
+        run: |
+          nirmana_ephe_dir="$(mktemp -d)"
+          for nirmana_ephe_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$nirmana_ephe_file" \
+              --output "$nirmana_ephe_dir/$nirmana_ephe_file"
+          done
+          cd platform/python-sidecar
+          SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py -q
+
   density-census:
     # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).
     # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that

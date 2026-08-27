@@ -127,7 +127,10 @@ export function LayerPanel({
     () => activeAssets.filter(a => stats.get(a.asset_id)?.state === 'stale').length,
     [activeAssets, stats]
   )
-  const errorCount = activeAssets.filter(a => stats.get(a.asset_id)?.state === 'error').length
+  const errorCount = activeAssets.filter(a => {
+    const state = stats.get(a.asset_id)?.state
+    return state === 'error' || state === 'service_down'
+  }).length
 
   // Active run overlaps this layer if scope is global or scope_target matches this layer
   const layerRunActive = activeRun != null && (

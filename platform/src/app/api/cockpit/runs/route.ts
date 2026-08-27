@@ -22,10 +22,13 @@ async function getUserRole(uid: string): Promise<string> {
 
 interface RegistryEntryWithScope extends RegistryEntry {
   scope: string
+  has_writer: boolean
   target_table: string | null
   count_sql: string | null
   natural_key_partition: string | null
   asset_kind: 'data' | 'artifact' | 'service'
+  asset_type: 'data' | 'artifact' | 'service'
+  health_probe: Record<string, unknown> | null
 }
 
 interface FreshnessRow {
@@ -125,9 +128,11 @@ export async function POST(req: NextRequest) {
   if (!VALID_SCOPES.includes(scope)) {
     return NextResponse.json({ error: `Invalid scope: ${scope}`, code: 'INVALID_SCOPE' }, { status: 400 })
   }
+  const requestedAssetSet = scope === 'asset_set'
+    ? (scope_target ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    : []
   if (scope === 'asset_set') {
-    const setIds = (scope_target ?? '').split(',').map(s => s.trim()).filter(Boolean)
-    if (setIds.length === 0) {
+    if (requestedAssetSet.length === 0) {
       return NextResponse.json(
         { error: 'scope=asset_set requires scope_target as a non-empty comma-separated asset_id list', code: 'EMPTY_ASSET_SET' },
         { status: 400 }
@@ -203,8 +208,20 @@ export async function POST(req: NextRequest) {
   const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
     query<RegistryEntryWithScope>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-              scope, target_table, count_sql, natural_key_partition, asset_kind
-       FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
+              scope, has_writer, target_table, count_sql, natural_key_partition,
+              asset_kind, asset_type, health_probe
+       FROM asset_registry
+       WHERE is_active = true
+         AND (
+           has_writer = true
+           OR (
+             has_writer = false
+             AND asset_kind = 'service'
+             AND asset_type = 'service'
+             AND health_probe IS NOT NULL
+           )
+         )
+       ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
       // Include global (chart_id IS NULL) rows alongside chart-scoped so built L0/global
@@ -239,8 +256,50 @@ export async function POST(req: NextRequest) {
 
   const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
 
-  // Filter registry to allowed scopes — non-super-admin silently excludes L0/global assets
-  const allowedRegistry = registryResult.rows.filter(r => allowedScopes.includes(r.scope))
+  // A no-writer service has a health probe rather than a WriterBase implementation.
+  // It is eligible only as one explicit, non-destructive global asset_set selected by
+  // a super_admin. This admits the canonical ephemeris probe without making arbitrary
+  // service rows or an entire L0 layer dispatchable by accident.
+  const requestedServiceProbes = requestedAssetSet
+    .map(assetId => registryResult.rows.find(row => row.asset_id === assetId))
+    .filter((row): row is RegistryEntryWithScope => Boolean(
+      row
+      && row.scope === 'global'
+      && !row.has_writer
+      && row.asset_kind === 'service'
+      && row.asset_type === 'service'
+      && row.health_probe !== null
+    ))
+  if (requestedServiceProbes.length > 0) {
+    if (!isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'Only super_admin can run a global service health probe', code: 'FORBIDDEN_SERVICE_PROBE' },
+        { status: 403 },
+      )
+    }
+    if (requestedAssetSet.length !== 1 || requestedServiceProbes.length !== 1) {
+      return NextResponse.json(
+        { error: 'A global service health probe requires exactly one asset_set target', code: 'INVALID_SERVICE_PROBE_SCOPE' },
+        { status: 422 },
+      )
+    }
+    if (clear_before) {
+      return NextResponse.json(
+        { error: 'Service health probes cannot clear data', code: 'SERVICE_PROBE_CLEAR_FORBIDDEN' },
+        { status: 400 },
+      )
+    }
+  }
+
+  // Filter registry to allowed scopes. A service with no writer is not a general
+  // planning candidate: the only permitted exception is the single, validated
+  // service probe above. This also prevents a super_admin global/layer run from
+  // accidentally broadening into a no-writer service dispatch.
+  const requestedServiceProbeIds = new Set(requestedServiceProbes.map(row => row.asset_id))
+  const allowedRegistry = registryResult.rows.filter(r =>
+    allowedScopes.includes(r.scope)
+    && (r.has_writer !== false || requestedServiceProbeIds.has(r.asset_id))
+  )
 
   // L0 GATE (native ruling 2026-06-26): global Build/Rebuild NEVER includes L0 (brahmagyan),
   // regardless of role. L0 is built ONLY via an explicit layer='brahmagyan' trigger or

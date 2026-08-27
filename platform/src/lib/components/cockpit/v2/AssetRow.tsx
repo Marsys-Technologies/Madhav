@@ -38,7 +38,8 @@ function derivePrimaryLabel(dormant: boolean): string {
 }
 
 // Service-health pill — replaces progress bar for asset_type='service' rows.
-// state='lit' ⟹ GREEN probe passed; 'error' ⟹ probe failed; 'building' ⟹ probe running.
+// state='lit' ⟹ GREEN probe passed; 'error'/'service_down' ⟹ probe failed;
+// 'building' ⟹ probe running.
 function ServiceHealthPill({
   state,
   hasError,
@@ -54,7 +55,7 @@ function ServiceHealthPill({
 
   const isGreen = state === 'lit' || state === 'service_ok'
   const isRunning = state === 'building'
-  const isError = hasError || state === 'error'
+  const isError = hasError || state === 'error' || state === 'service_down'
 
   // Same block geometry as AssetProgressBar (full-width 28px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
@@ -125,7 +126,7 @@ function ServiceHealthPill({
 
 // Per-asset status dot — collapses the repeated "CURRENT" text chip into a
 // single colored circle. green = healthy/lit regardless of catalog status;
-// amber = building/stale/dormant; red = error / not_migrated / DRAFT·unhealthy.
+// amber = building/stale/dormant; red = error / service_down / not_migrated / DRAFT·unhealthy.
 function StatusDot({
   catalogStatus,
   state,
@@ -137,7 +138,7 @@ function StatusDot({
   const isHealthy = state === 'lit' || state === 'service_ok'
   const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
   // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
-  const isRed = state === 'error' || state === 'not_migrated' || (isDraft && !isHealthy)
+  const isRed = state === 'error' || state === 'service_down' || state === 'not_migrated' || (isDraft && !isHealthy)
 
   const color = isRed
     ? 'rgba(220,80,80,0.95)'

@@ -34,6 +34,7 @@ export interface AssetStats {
   // Service-asset health fields (populated for asset_type='service'; null for data assets)
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  last_selftest_at?: string | null
   // Populated when state === 'partial' OR state === 'incomplete': real, honest progress
   // sourced from the cross-attempt substep-resumption ledger (build_substep_progress).
   // `total` is null unless the asset's own registry row declares a computable expected
@@ -54,6 +55,7 @@ interface RegistryAsset {
   health_probe: Record<string, unknown> | null
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  last_selftest_at: string | null
   has_substeps: boolean
 }
 
@@ -81,11 +83,14 @@ async function fetchAllCounts(
         size_bytes: null,
         last_updated: now,
         error: null,
-        state: 'service_ok' as const,
+        // The final state is derived below from registry health evidence plus
+        // asset_throughput; this raw placeholder must never self-promote a service.
+        state: 'dormant' as const,
         last_built_at: null,
         build_state_stale: false,
         service_health: asset.service_health ?? null,
         last_invoked_at: asset.last_invoked_at ?? null,
+        last_selftest_at: asset.last_selftest_at ?? null,
       }
     }
 
@@ -209,6 +214,7 @@ export async function GET(req: NextRequest) {
     const registryResult = await query<RegistryAsset>(`
       SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor,
              asset_type, asset_kind, health_probe, service_health, last_invoked_at,
+             last_selftest_at,
              COALESCE(has_substeps, false) AS has_substeps
       FROM asset_registry
       WHERE is_active = true
@@ -267,6 +273,7 @@ export async function GET(req: NextRequest) {
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        last_selftest_at: null,
       }
       const substepsCommitted = substepCountMap.get(asset.asset_id) ?? null
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted)

@@ -80,6 +80,16 @@ const SEG: Record<string, SegmentColors> = {
     continuousFill: 'rgba(181,71,76,0.45)',
     trackBorder:  'rgba(181,71,76,0.30)',
   },
+  service_down: {
+    filledBg:     'rgba(181,71,76,0.38)',
+    filledBorder: 'rgba(181,71,76,0.60)',
+    activeBg:     'rgba(181,71,76,0.25)',
+    activeBorder: 'rgba(181,71,76,0.45)',
+    emptyBg:      'rgba(181,71,76,0.10)',
+    emptyBorder:  'rgba(181,71,76,0.22)',
+    continuousFill: 'rgba(181,71,76,0.45)',
+    trackBorder:  'rgba(181,71,76,0.30)',
+  },
   dormant: {
     filledBg:     'rgba(122,86,24,0.12)',
     filledBorder: 'rgba(122,86,24,0.20)',

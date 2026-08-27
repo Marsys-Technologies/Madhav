@@ -122,6 +122,22 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     expect(screen.queryByText(/degraded/)).toBeNull()
   })
 
+  it('renders service_down as an explicit failed service, not a dormant row', () => {
+    render(
+      <AssetRow
+        asset={SERVICE_ASSET}
+        stat={statOf({ asset_id: 'bg_panchanga', state: 'service_down', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    expect(screen.getByText('Service failed')).toBeTruthy()
+    expect(screen.getByText('FAILED')).toBeTruthy()
+    expect(screen.getByTitle('CURRENT · service_down')).toBeTruthy()
+  })
+
   it('renders a status dot instead of a literal CURRENT text chip (issue 5)', () => {
     const { container } = render(
       <AssetRow

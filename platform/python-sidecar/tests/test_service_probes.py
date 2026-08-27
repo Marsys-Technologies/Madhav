@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import sys
 import pathlib
+import os
 
 import pytest
 
@@ -57,11 +58,19 @@ _EPHEMERIS_SPEC = {
     "expected_mean_node_rahu_sign": 2,
     "ayanamsha": "lahiri",
     "node_mode": "mean",
-    "allowed_ephemeris_backends": [
-        "swiss_ephemeris_file",
-        "moshier_analytic_fallback",
-    ],
+    "allowed_ephemeris_backends": ["swiss_ephemeris_file"],
+    "ephemeris_file_sha256": {
+        "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+        "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+        "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+    },
 }
+
+_EPHEMERIS_CORPUS_FILES = tuple(_EPHEMERIS_SPEC["ephemeris_file_sha256"])
+_EPHEMERIS_CORPUS_PATH = pathlib.Path(os.environ.get("SWE_EPHE_PATH", "/app/ephe"))
+_HAS_PINNED_EPHEMERIS_CORPUS = all(
+    (_EPHEMERIS_CORPUS_PATH / name).is_file() for name in _EPHEMERIS_CORPUS_FILES
+)
 
 
 def _probe(kind: str) -> dict:
@@ -82,6 +91,10 @@ def _check(res: dict, name: str) -> dict:
 
 # ── F-04: the ephemeris probe must be ABLE to return GREEN ────────────────────
 
+@pytest.mark.skipif(
+    not _HAS_PINNED_EPHEMERIS_CORPUS,
+    reason="requires the production-shaped pinned Swiss Ephemeris corpus",
+)
 def test_ephemeris_probe_returns_green():
     """The headline F-04 assertion. Pre-fix this returned 'degraded' on every run
     in every environment, so `asset_runner` could only ever mark the asset error."""
@@ -147,6 +160,16 @@ def test_ephemeris_probe_fails_closed_on_missing_registry_contract_fields():
     res = sp.run_health_probe("bg_ephemeris_engine", {"probe_type": "ephemeris_engine"})
     assert res["status"] == "down"
     assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_ephemeris_probe_fails_closed_when_sha_pins_are_missing():
+    missing_pins = dict(_EPHEMERIS_SPEC)
+    del missing_pins["ephemeris_file_sha256"]
+    res = sp.run_health_probe("bg_ephemeris_engine", missing_pins)
+    assert res["status"] == "down"
+    check = _check(res, "probe_config_valid")
+    assert check["passed"] is False
+    assert "ephemeris_file_sha256" in check["error"]
 
 
 def test_ephemeris_probe_enforces_registered_backend_allowlist():

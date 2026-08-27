@@ -11,14 +11,17 @@ RUN apt-get update && apt-get install -y gcc g++ libpq-dev curl && rm -rf /var/l
 
 # Swiss Ephemeris data files — bundled at build time from GCS
 # Requires GOOGLE_APPLICATION_CREDENTIALS or workload identity at build time
-RUN mkdir -p /app/ephe
-# Download from GCS (if available) or fallback to bundled copy
-# Build-time download — fails silently if credentials unavailable (files can be mounted at runtime)
-RUN curl -sSL -o /app/ephe/sepl_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/sepl_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
-RUN curl -sSL -o /app/ephe/semo_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/semo_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
-RUN curl -sSL -o /app/ephe/seas_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/seas_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
-RUN curl -sSL -o /app/ephe/sefstars.txt "https://storage.googleapis.com/madhav-ephemeris/se1/sefstars.txt" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
-RUN curl -sSL -o /app/ephe/seleapsec.txt "https://storage.googleapis.com/madhav-ephemeris/se1/seleapsec.txt" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
+RUN set -eu; \
+    mkdir -p /app/ephe; \
+    GCS_BASE="https://storage.googleapis.com/madhav-ephemeris/se1"; \
+    curl -fsSL -o /app/ephe/sepl_18.se1 "$GCS_BASE/sepl_18.se1"; \
+    curl -fsSL -o /app/ephe/semo_18.se1 "$GCS_BASE/semo_18.se1"; \
+    curl -fsSL -o /app/ephe/seas_18.se1 "$GCS_BASE/seas_18.se1"; \
+    curl -fsSL -o /app/ephe/sefstars.txt "$GCS_BASE/sefstars.txt"; \
+    curl -fsSL -o /app/ephe/seleapsec.txt "$GCS_BASE/seleapsec.txt"; \
+    echo 'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  /app/ephe/sepl_18.se1' | sha256sum -c -; \
+    echo '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  /app/ephe/semo_18.se1' | sha256sum -c -; \
+    echo 'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  /app/ephe/seas_18.se1' | sha256sum -c -
 ENV SWE_EPHE_PATH=/app/ephe
 
 COPY platform/python-sidecar/requirements.txt .
