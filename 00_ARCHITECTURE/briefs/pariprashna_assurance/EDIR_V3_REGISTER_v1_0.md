@@ -660,6 +660,11 @@ await Native Surrogate triage.
 - **Status:** OPEN, filed to stream **S5** as its highest-priority lead. Close
   rung: every candidate route individually triaged with a cited verdict
   (fixed / confirmed-safe-with-reason), not a re-statement of this count.
+- **Addendum (2026-08-27, B-008 independent verifier):** three more confirmed
+  members of the same family: `cockpit/runs/active`, `cockpit/sse`, and
+  `cockpit/runs/[id]/assets` — auth-only, no ownership check, disclosing the
+  same build-state the now-fixed `GET /api/cockpit/runs` protects. Added to
+  this list rather than fixed in Session A, for the same bounded-scope reason.
 
 ---
 
