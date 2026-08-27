@@ -1000,6 +1000,7 @@ export const NirmanaProducerCoverageEvidenceSchema = NirmanaLifecycleBindingSche
 export const NirmanaProbeEvidenceSchema = NirmanaLifecycleBindingSchema.extend({
   probe_contract_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   response_digest: z.string().regex(/^[a-f0-9]{64}$/),
+  detector_observation: z.unknown().optional(),
 }).strict()
 
 export const NirmanaNonBuildDispositionEvidenceSchema = NirmanaLifecycleBindingSchema.extend({
@@ -1010,6 +1011,7 @@ export const NirmanaNonBuildDispositionEvidenceSchema = NirmanaLifecycleBindingS
 export const NirmanaIntegrityEvidenceSchema = NirmanaLifecycleBindingSchema.extend({
   integrity_contract_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   result_digest: z.string().regex(/^[a-f0-9]{64}$/),
+  detector_observation: z.unknown().optional(),
 }).strict()
 
 export const NirmanaFreezeEvidenceSchema = NirmanaLifecycleBindingSchema.extend({
@@ -1436,6 +1438,7 @@ async function normalizeDetectorEvidence(
       observed_at: observation.observed_at,
       evidence_payload: {
         ...payload,
+        detector_observation: observation.observation,
         response_digest: canonicalNirmanaProbeResponseDigest(current.registryContract.health_probe, observation.observation),
       },
     }
@@ -1447,6 +1450,7 @@ async function normalizeDetectorEvidence(
     observed_at: observation.observed_at,
     evidence_payload: {
       ...payload,
+      detector_observation: observation.observation,
       result_digest: canonicalNirmanaIntegrityResultDigest(current.registryContract, observation.observation),
     },
   }
@@ -1467,6 +1471,10 @@ async function requireProbeProvenance(
   assertLifecycleBinding(payload.data, current, 'probe_accepted')
   if (payload.data.probe_contract_sha256 !== canonicalNirmanaProbeContractDigest(current.registryContract.health_probe)) {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted does not bind the frozen registry health-probe contract.')
+  }
+  if (payload.data.detector_observation === undefined
+    || payload.data.response_digest !== canonicalNirmanaProbeResponseDigest(current.registryContract.health_probe, payload.data.detector_observation)) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires the persisted server detector observation and its recomputed digest.')
   }
 }
 
@@ -1612,6 +1620,10 @@ async function requireIntegrityProvenance(
   assertLifecycleBinding(payload.data, current, 'integrity_verified')
   if (payload.data.integrity_contract_sha256 !== canonicalNirmanaIntegrityContractDigest(current.registryContract)) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified does not bind the frozen registry integrity contract.')
+  }
+  if (payload.data.detector_observation === undefined
+    || payload.data.result_digest !== canonicalNirmanaIntegrityResultDigest(current.registryContract, payload.data.detector_observation)) {
+    throw new NirmanaElevationEvidenceValidationError('integrity_verified requires the persisted server detector observation and its recomputed digest.')
   }
   const obligation = current.manifestAsset.execution_obligation
   const producerCoverage = obligation === 'producer_covered'
