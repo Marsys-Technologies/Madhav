@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { Pool } from 'pg'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -11,6 +11,22 @@ const url = process.env.NIRMANA_EVIDENCE_PREFLIGHT_TEST_DATABASE_URL
 const roleAuthToken = ['nirmana', 'preflight', 'fixture', 'auth'].join('-')
 const originalControlUrl = process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL
 let admin: Pool
+let modeledProviderPostgres = false
+let servicePostgresRestore: { rolsuper: boolean; rolreplication: boolean; rolbypassrls: boolean } | undefined
+let handoffCompleted = false
+const fixtureSuperuser = 'nirmana_evidence_preflight_fixture_admin'
+const transientFixtureRoles = [
+  'unrelated_member',
+  'ingress_assumer',
+  'unexpected_app_parent',
+  'unexpected_app_assumer',
+  'unexpected_provider_child',
+  'marker_reader_denied',
+  'marker_reader',
+  'hostile_default_grantor',
+  'hardwired_default_grantor',
+  'migrator_escape',
+]
 
 function roleUrl(role: string): string {
   const roleUrl = new URL(url!)
@@ -22,10 +38,41 @@ function roleUrl(role: string): string {
 describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL', () => {
   beforeAll(async () => {
     admin = new Pool({ connectionString: url })
-    await admin.query(`CREATE ROLE amjis_app LOGIN PASSWORD '${roleAuthToken}' CREATEROLE CREATEDB; GRANT CONNECT ON DATABASE nirmana_evidence_preflight_test TO amjis_app; ALTER DATABASE nirmana_evidence_preflight_test OWNER TO amjis_app; ALTER SCHEMA public OWNER TO amjis_app; CREATE TABLE _migrations_applied (filename text PRIMARY KEY, sha256 text NOT NULL); ALTER TABLE _migrations_applied OWNER TO amjis_app;`)
+    // Match the Cloud SQL incident topology: cloudsqlsuperuser owns the DB,
+    // with postgres as its direct non-super child and amjis_app as the exact
+    // legacy direct child. A stock postgres service starts with a superuser
+    // postgres, so use a separate disposable superuser while demoting and
+    // restoring that role; the test never runs without its finally cleanup.
+    const postgres = await admin.query<{ rolsuper: boolean; rolreplication: boolean; rolbypassrls: boolean }>(
+      `SELECT rolsuper, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = 'postgres'`,
+    )
+    if (postgres.rowCount === 0) {
+      await admin.query('CREATE ROLE postgres NOLOGIN CREATEROLE CREATEDB')
+    } else {
+      const state = postgres.rows[0]!
+      if (state.rolsuper || state.rolreplication || state.rolbypassrls) {
+        if (!state.rolsuper) throw new Error('Nirmana Cloud SQL fixture cannot safely normalize a non-super postgres service role with replication or BYPASSRLS.')
+        await admin.query(`CREATE ROLE ${fixtureSuperuser} LOGIN SUPERUSER PASSWORD '${roleAuthToken}'`)
+        const fixtureAdmin = new Pool({ connectionString: roleUrl(fixtureSuperuser) })
+        try {
+          await fixtureAdmin.query('ALTER ROLE postgres NOSUPERUSER NOREPLICATION NOBYPASSRLS')
+          servicePostgresRestore = state
+        } catch (error) {
+          await fixtureAdmin.query(`ALTER ROLE postgres ${state.rolsuper ? 'SUPERUSER' : 'NOSUPERUSER'} ${state.rolreplication ? 'REPLICATION' : 'NOREPLICATION'} ${state.rolbypassrls ? 'BYPASSRLS' : 'NOBYPASSRLS'}`).catch(() => {})
+          await fixtureAdmin.end()
+          throw error
+        }
+        await admin.end()
+        admin = fixtureAdmin
+      }
+    }
+    modeledProviderPostgres = true
+    await admin.query(`CREATE ROLE cloudsqlsuperuser NOLOGIN CREATEROLE CREATEDB; GRANT cloudsqlsuperuser TO postgres; CREATE ROLE amjis_app LOGIN PASSWORD '${roleAuthToken}' CREATEROLE CREATEDB; GRANT cloudsqlsuperuser TO amjis_app; GRANT CONNECT ON DATABASE nirmana_evidence_preflight_test TO amjis_app; ALTER DATABASE nirmana_evidence_preflight_test OWNER TO cloudsqlsuperuser; ALTER SCHEMA public OWNER TO amjis_app; GRANT CREATE ON SCHEMA public TO cloudsqlsuperuser, postgres;`)
+    await admin.query(`SET ROLE amjis_app; CREATE TABLE _migrations_applied (filename text PRIMARY KEY, sha256 text NOT NULL); RESET ROLE`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/592_nirmana_elevation_campaign_evidence.sql'), 'utf8')}`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/627_nirmana_elevation_asset_labels.sql'), 'utf8')}`)
-    await admin.query(`SET ROLE amjis_app; CREATE TABLE asset_registry (asset_id text); CREATE TABLE nirmana_elevation_monitor_observations (id text); CREATE TABLE build_runs (id text); CREATE TABLE build_run_assets (id text); CREATE TABLE asset_provenance_receipts (id text); CREATE TABLE asset_output_digest_specs (id text); CREATE ROLE nirmana_evidence_ingress_writer LOGIN PASSWORD '${roleAuthToken}' NOINHERIT; CREATE ROLE nirmana_migrator LOGIN PASSWORD '${roleAuthToken}' NOINHERIT; CREATE ROLE nirmana_campaign_control_writer LOGIN PASSWORD '${roleAuthToken}' NOINHERIT;`)
+    await admin.query(`SET ROLE amjis_app; CREATE TABLE asset_registry (asset_id text); CREATE TABLE nirmana_elevation_monitor_observations (id text); CREATE TABLE build_runs (id text); CREATE TABLE build_run_assets (id text); CREATE TABLE asset_provenance_receipts (id text); CREATE TABLE asset_output_digest_specs (id text); RESET ROLE`)
+    await admin.query(`SET ROLE amjis_app; CREATE ROLE nirmana_evidence_ingress_writer LOGIN PASSWORD '${roleAuthToken}' NOINHERIT; CREATE ROLE nirmana_migrator LOGIN PASSWORD '${roleAuthToken}' NOINHERIT; CREATE ROLE nirmana_campaign_control_writer LOGIN PASSWORD '${roleAuthToken}' NOINHERIT; RESET ROLE`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/632_nirmana_evidence_server_writer_guard.sql'), 'utf8')}; INSERT INTO _migrations_applied (filename, sha256) VALUES ('632_nirmana_evidence_server_writer_guard.sql', repeat('0', 64)); RESET ROLE`)
     await admin.query(`SET ROLE amjis_app;
       CREATE TABLE public.control_acl_stale (id text);
@@ -39,8 +86,48 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
   afterAll(async () => {
     if (originalControlUrl === undefined) delete process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL
     else process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL = originalControlUrl
-    await admin?.query('ALTER SCHEMA information_schema OWNER TO postgres; DROP ROLE IF EXISTS nirmana_managed_system_owner')
-    await admin?.end()
+    try {
+      await admin?.query('ALTER SCHEMA information_schema OWNER TO postgres; DROP ROLE IF EXISTS nirmana_managed_system_owner')
+      if (servicePostgresRestore) {
+        await admin?.query(`ALTER ROLE postgres ${servicePostgresRestore.rolsuper ? 'SUPERUSER' : 'NOSUPERUSER'} ${servicePostgresRestore.rolreplication ? 'REPLICATION' : 'NOREPLICATION'} ${servicePostgresRestore.rolbypassrls ? 'BYPASSRLS' : 'NOBYPASSRLS'}`)
+      }
+    } finally {
+      await admin?.end()
+      if (servicePostgresRestore) {
+        const restoredAdmin = new Pool({ connectionString: url })
+        try { await restoredAdmin.query(`DROP ROLE ${fixtureSuperuser}`) }
+        finally { await restoredAdmin.end() }
+      }
+    }
+  })
+  afterEach(async () => {
+    if (!admin) return
+    process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL = roleUrl('nirmana_campaign_control_writer')
+    await admin.query('RESET ROLE').catch(() => {})
+    if (!handoffCompleted) {
+      await admin.query('DROP SCHEMA IF EXISTS nirmana_evidence CASCADE')
+      await admin.query('SET ROLE amjis_app; CREATE TABLE IF NOT EXISTS public.asset_provenance_receipts (id text); RESET ROLE')
+    } else {
+      await admin.query('REVOKE cloudsqlsuperuser FROM amjis_app').catch(() => {})
+    }
+    const roles = handoffCompleted ? transientFixtureRoles : [...transientFixtureRoles, 'nirmana_evidence_owner']
+    for (const role of roles) {
+      const memberships = await admin.query<{ parent: string; member: string }>(`
+        SELECT parent.rolname AS parent, member.rolname AS member
+          FROM pg_auth_members membership
+          JOIN pg_roles parent ON parent.oid = membership.roleid
+          JOIN pg_roles member ON member.oid = membership.member
+         WHERE parent.rolname = $1 OR member.rolname = $1
+      `, [role])
+      for (const membership of memberships.rows) {
+        const parent = membership.parent.replaceAll('"', '""')
+        const member = membership.member.replaceAll('"', '""')
+        await admin.query(`REVOKE "${parent}" FROM "${member}"`)
+      }
+      const identifier = role.replaceAll('"', '""')
+      await admin.query(`DROP OWNED BY "${identifier}"`).catch(() => {})
+      await admin.query(`DROP ROLE IF EXISTS "${identifier}"`).catch(() => {})
+    }
   })
   it('refuses arbitrary pre-existing evidence-owner membership', async () => {
     await admin.query(`CREATE ROLE nirmana_evidence_owner NOLOGIN; CREATE ROLE unrelated_member LOGIN; GRANT nirmana_evidence_owner TO unrelated_member`)
@@ -59,6 +146,24 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     delete process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/control writer must be secret-backed/i)
     process.env.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL = configured
+  })
+
+  it('refuses any unexpected generic application membership before mutation', async () => {
+    await admin.query('CREATE ROLE unexpected_app_parent NOLOGIN; GRANT unexpected_app_parent TO amjis_app')
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/unexpected amjis_app role membership topology/i)
+    await admin.query('REVOKE unexpected_app_parent FROM amjis_app; DROP ROLE unexpected_app_parent')
+  })
+
+  it('refuses a principal that can assume the generic application role', async () => {
+    await admin.query('CREATE ROLE unexpected_app_assumer LOGIN; GRANT amjis_app TO unexpected_app_assumer')
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/unexpected amjis_app role membership topology/i)
+    await admin.query('REVOKE amjis_app FROM unexpected_app_assumer; DROP ROLE unexpected_app_assumer')
+  })
+
+  it('refuses an unreviewed child of the provider database-owner closure', async () => {
+    await admin.query('CREATE ROLE unexpected_provider_child NOLOGIN; GRANT cloudsqlsuperuser TO unexpected_provider_child')
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/unbounded provider database-owner membership topology/i)
+    await admin.query('REVOKE cloudsqlsuperuser FROM unexpected_provider_child; DROP ROLE unexpected_provider_child')
   })
 
   it('fails closed when the generic marker probe cannot read its ledger', async () => {
@@ -108,6 +213,11 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow()
     const memberships = await admin.query(`SELECT count(*)::text AS count FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.roleid OR r.oid=m.member WHERE r.rolname='nirmana_evidence_owner'`)
     expect(memberships.rows[0]?.count).toBe('0')
+    const legacyCloudOwnerEdge = await admin.query<{ count: string }>(`SELECT count(*)::text AS count FROM pg_auth_members membership
+      JOIN pg_roles parent ON parent.oid = membership.roleid
+      JOIN pg_roles member ON member.oid = membership.member
+     WHERE parent.rolname = 'cloudsqlsuperuser' AND member.rolname = 'amjis_app'`)
+    expect(legacyCloudOwnerEdge.rows[0]?.count).toBe('1')
     await admin.query('SET ROLE amjis_app; CREATE TABLE asset_provenance_receipts (id text); RESET ROLE')
   })
 
@@ -126,6 +236,7 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     await admin.query(`CREATE ROLE nirmana_managed_system_owner NOLOGIN;
       ALTER SCHEMA information_schema OWNER TO nirmana_managed_system_owner`)
     await expect(runNirmanaEvidenceOwnershipPreflight(legacy)).resolves.toBeUndefined()
+    handoffCompleted = true
     // Simulates an interruption after the handoff commit but before marker 633:
     // replay must validate state and return without trying to reclaim ownership.
     await expect(runNirmanaEvidenceOwnershipPreflight(legacy)).resolves.toBeUndefined()
@@ -182,8 +293,35 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     ])
     const roleState = await admin.query<{ rolcreatedb: boolean; rolcreaterole: boolean }>(`SELECT rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = 'amjis_app'`)
     expect(roleState.rows[0]).toEqual({ rolcreatedb: false, rolcreaterole: false })
+    const genericFinalState = await admin.query<{ edges: string; db_owner_member: boolean; database_create: boolean; database_owner: boolean }>(`
+      SELECT
+        (SELECT count(*)::text FROM pg_auth_members membership
+          JOIN pg_roles parent ON parent.oid = membership.roleid
+          JOIN pg_roles member ON member.oid = membership.member
+         WHERE parent.rolname = 'amjis_app' OR member.rolname = 'amjis_app') AS edges,
+        pg_has_role('amjis_app', database.datdba, 'MEMBER') AS db_owner_member,
+        has_database_privilege('amjis_app', current_database(), 'CREATE') AS database_create,
+        database.datdba = 'amjis_app'::regrole AS database_owner
+      FROM pg_database database WHERE database.datname = current_database()
+    `)
+    expect(genericFinalState.rows[0]).toEqual({ edges: '0', db_owner_member: false, database_create: false, database_owner: false })
     const ownership = await admin.query<{ owner: string }>(`SELECT owner.rolname AS owner FROM pg_namespace namespace JOIN pg_roles owner ON owner.oid = namespace.nspowner WHERE namespace.nspname = 'nirmana_evidence'`)
     expect(ownership.rows[0]?.owner).toBe('nirmana_evidence_owner')
+    const providerTopology = await admin.query<{ postgres_is_low_privilege: boolean; postgres_is_provider_child: boolean; postgres_is_direct_provider_child: boolean; public_owner: string }>(`
+      SELECT NOT postgres.rolsuper AND NOT postgres.rolreplication AND NOT postgres.rolbypassrls AS postgres_is_low_privilege,
+             pg_has_role('postgres', 'cloudsqlsuperuser', 'MEMBER') AS postgres_is_provider_child,
+             EXISTS (SELECT 1 FROM pg_auth_members membership
+               WHERE membership.roleid = 'cloudsqlsuperuser'::regrole
+                 AND membership.member = postgres.oid) AS postgres_is_direct_provider_child,
+             public_owner.rolname AS public_owner
+        FROM pg_roles postgres
+        JOIN pg_namespace public_schema ON public_schema.nspname = 'public'
+        JOIN pg_roles public_owner ON public_owner.oid = public_schema.nspowner
+       WHERE postgres.rolname = 'postgres'
+    `)
+    expect(providerTopology.rows[0]?.public_owner).toBe('amjis_app')
+    expect(modeledProviderPostgres).toBe(true)
+    expect(providerTopology.rows[0]).toEqual({ postgres_is_low_privilege: true, postgres_is_provider_child: true, postgres_is_direct_provider_child: true, public_owner: 'amjis_app' })
     const sharedSchema = await admin.query<{ owner_create: boolean; ingress_create: boolean; control_create: boolean; migrator_create: boolean }>(`
       SELECT has_schema_privilege('nirmana_evidence_owner', 'public', 'CREATE') AS owner_create,
              has_schema_privilege('nirmana_evidence_ingress_writer', 'public', 'CREATE') AS ingress_create,
@@ -191,7 +329,7 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
              has_schema_privilege('nirmana_migrator', 'public', 'CREATE') AS migrator_create
     `)
     expect(sharedSchema.rows[0]).toEqual({ owner_create: false, ingress_create: false, control_create: false, migrator_create: false })
-    await admin.query('SET ROLE amjis_app; CREATE TABLE public.default_acl_after_handoff (id text); RESET ROLE')
+    await admin.query('SET ROLE cloudsqlsuperuser; CREATE TABLE public.default_acl_after_handoff (id text); RESET ROLE')
     const futurePublicAcl = await admin.query<{ control_read: boolean; control_references: boolean; control_trigger: boolean; migrator_read: boolean }>(`
       SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_handoff', 'SELECT') AS control_read,
              has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_handoff', 'REFERENCES') AS control_references,
@@ -227,7 +365,11 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     await expect(migrator.query(markerSql)).rejects.toThrow(/protected writer role memberships/i)
     await admin.query('REVOKE nirmana_migrator FROM migrator_escape; DROP ROLE migrator_escape')
     await migrator.end()
-    const beforeMarker = await readNirmanaEvidenceOwnershipStatus(url)
+    await admin.query('GRANT cloudsqlsuperuser TO amjis_app')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/generic application role membership and database administration cleanup/i)
+    await admin.query('REVOKE cloudsqlsuperuser FROM amjis_app')
+    const beforeMarker = await readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))
     expect(beforeMarker).toBe('unmarked')
     expect(requiresNirmanaEvidenceLegacyOwner(beforeMarker)).toBe(true)
     await admin.query('SET ROLE amjis_app; GRANT REFERENCES (asset_id) ON public.asset_registry TO PUBLIC; RESET ROLE')
@@ -235,16 +377,16 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       .rejects.toThrow(/non-owner writer ACLs outside the explicit envelope/i)
     await admin.query('SET ROLE amjis_app; REVOKE REFERENCES (asset_id) ON public.asset_registry FROM PUBLIC; RESET ROLE')
     await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl)).resolves.toBeUndefined()
-    const afterMarker = await readNirmanaEvidenceOwnershipStatus(url)
+    const afterMarker = await readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))
     expect(afterMarker).toBe('marked')
     expect(requiresNirmanaEvidenceLegacyOwner(afterMarker)).toBe(false)
-    await admin.query('SET ROLE amjis_app; CREATE TABLE public.default_acl_after_marker (id text); RESET ROLE')
+    await admin.query('SET ROLE cloudsqlsuperuser; CREATE TABLE public.default_acl_after_marker (id text); RESET ROLE')
     const postMarkerAcl = await admin.query<{ control_read: boolean; migrator_read: boolean }>(`
       SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_marker', 'SELECT') AS control_read,
              has_table_privilege('nirmana_migrator', 'public.default_acl_after_marker', 'SELECT') AS migrator_read
     `)
     expect(postMarkerAcl.rows[0]).toEqual({ control_read: false, migrator_read: false })
-    await admin.query(`SET ROLE amjis_app;
+    await admin.query(`SET ROLE cloudsqlsuperuser;
       CREATE FUNCTION public.default_acl_after_marker_security_definer() RETURNS text
         LANGUAGE sql SECURITY DEFINER AS 'SELECT ''safe''::text';
       CREATE TYPE public.default_acl_after_marker_type AS ENUM ('safe');
@@ -267,5 +409,12 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       owner_type_usage: false, ingress_type_usage: false, control_type_usage: false, migrator_type_usage: false,
     })
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).resolves.toBeUndefined()
+    await admin.query('GRANT cloudsqlsuperuser TO amjis_app')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/generic application role membership and database administration cleanup/i)
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app')))
+      .rejects.toThrow(/final evidence boundary no longer converges/i)
+    await admin.query('REVOKE cloudsqlsuperuser FROM amjis_app')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl)).resolves.toBeUndefined()
   })
 })

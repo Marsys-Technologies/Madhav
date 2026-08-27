@@ -383,7 +383,6 @@ jobs:
           cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
 
       - name: Attest Nirmana ownership handoff as deployment-only migrator
-        if: steps.nirmana-ownership.outputs.state == 'unmarked'
         env:
           NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |
