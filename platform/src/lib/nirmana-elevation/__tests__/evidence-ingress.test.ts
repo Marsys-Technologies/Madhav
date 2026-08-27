@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   NirmanaEvidenceIngressNotConfiguredError,
   assertNirmanaEvidenceIngressDatabaseUrl,
@@ -61,5 +63,14 @@ describe('Nirmana campaign control writer database credentials', () => {
     expect(assertNirmanaCampaignControlDatabaseUser(
       'nirmana_campaign_control_writer', 'test-credential', 'amjis_app',
     )).toEqual({ user: 'nirmana_campaign_control_writer', credential: 'test-credential' })
+  })
+
+  it('requires the dedicated control secret in the serving revision without exposing migration credentials', () => {
+    const deployWorkflow = readFileSync(resolve(__dirname, '../../../../../.github/workflows/deploy.yml'), 'utf8')
+    const webDeployment = deployWorkflow.slice(deployWorkflow.indexOf('  deploy-web:'))
+    expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer')
+    expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest')
+    expect(webDeployment).not.toContain('NIRMANA_MIGRATOR_DATABASE_URL')
+    expect(webDeployment).not.toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
   })
 })

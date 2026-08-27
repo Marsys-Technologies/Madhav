@@ -35,6 +35,12 @@ const EXECUTION_PERMITTING_OBLIGATIONS = new Set(['build', 'probe'])
 
 type RawSourceId = keyof NirmanaElevationRawSources
 type SourceId = Exclude<RawSourceId, 'asset_labels' | 'monitor_observations'> | 'asset_label_catalogue' | 'program_monitor'
+const INGRESS_WRITER = 'nirmana_evidence_ingress_writer'
+const CONTROL_WRITER = 'nirmana_campaign_control_writer'
+
+function hasTrustedCampaignWriter(event: NirmanaElevationRawSources['campaign_events'][number]): boolean {
+  return event.writer_identity === (event.source_kind === 'server_reconstructed' ? INGRESS_WRITER : CONTROL_WRITER)
+}
 
 const SOURCE_PROVENANCE: Record<SourceId, string> = {
   asset_registry: 'Cloud SQL asset_registry',
@@ -266,6 +272,7 @@ function selectAcceptedLabels(
   const receipts = raw.campaign_events
     .filter((event) => event.campaign_id === definition.campaign_id
       && event.definition_revision === definition.definition_revision
+      && hasTrustedCampaignWriter(event)
       && event.event_type === 'asset_label_catalogue_accepted'
       && event.entity_type === 'label_catalogue'
       && event.layer === null
@@ -673,7 +680,8 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
   const campaignEvents = definition ? raw.campaign_events
     .filter((event) => event.campaign_id === definition.campaign_id
-      && event.definition_revision === definition.definition_revision)
+      && event.definition_revision === definition.definition_revision
+      && hasTrustedCampaignWriter(event))
     .sort((left, right) => timestamp(left.recorded_at) - timestamp(right.recorded_at)
       || (left.event_id ?? '').localeCompare(right.event_id ?? '')) : []
   const labelSelection = selectAcceptedLabels(rawWithLabels, definition)

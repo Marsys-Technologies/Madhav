@@ -93,7 +93,7 @@ const defaultRegistry = [registryAsset()]
 const defaultManifest = () => manifestFor(defaultRegistry, [{ asset_id: 'bg_prashna_rules', execution_obligation: 'build' }])
 
 function sources(overrides: Partial<NirmanaElevationRawSources> = {}): NirmanaElevationRawSources {
-  return {
+  const raw = {
     asset_registry: defaultRegistry,
     asset_throughput: [{ asset_id: 'bg_prashna_rules', chart_id: canonicalChartId, state: 'lit', last_built_at: observedAt }],
     build_runs: [],
@@ -105,6 +105,17 @@ function sources(overrides: Partial<NirmanaElevationRawSources> = {}): NirmanaEl
     monitor_observations: [],
     ...overrides,
   } as NirmanaElevationRawSources
+  // Fixtures model receipts written after the ownership handoff.  Individual
+  // adversarial cases can provide writer_identity: null or an explicit wrong
+  // value and must then remain untrusted.
+  return {
+    ...raw,
+    campaign_events: raw.campaign_events.map((event) => Object.prototype.hasOwnProperty.call(event, 'writer_identity')
+      ? event
+      : { ...event, writer_identity: event.source_kind === 'server_reconstructed'
+        ? 'nirmana_evidence_ingress_writer'
+        : 'nirmana_campaign_control_writer' }),
+  }
 }
 
 type MonitorObservationRow = NonNullable<NirmanaElevationRawSources['monitor_observations']>[number]
@@ -442,6 +453,29 @@ describe('projectNirmanaElevationSnapshot', () => {
       }),
     ]))
     expect(NirmanaElevationSnapshotSchema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('does not let a historical or generic-writer authorization enter the snapshot authority cohort', () => {
+    const manifest = defaultManifest()
+    const authorization = {
+      ...runAuthorization(runOne),
+      writer_identity: 'amjis_app',
+    }
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+        manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [authorization],
+      build_runs: [{
+        id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'running', current_asset_id: 'bg_prashna_rules',
+        created_at: observedAt, started_at: observedAt, triggered_by: 'nirmana-campaign',
+      }],
+      build_run_assets: [{ run_id: runOne, asset_id: 'bg_prashna_rules', position: 0, state: 'building', started_at: observedAt, ended_at: null, error: null }],
+    } as Partial<NirmanaElevationRawSources>), { generatedAt: observedAt })
+
+    expect(snapshot.active_runs).toEqual([])
+    expect(snapshot.audit.receipts).toEqual([])
   })
 
   it('projects available release observations while withholding a commit-unproven sync verdict', () => {
