@@ -668,10 +668,210 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-012 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
+
+- **Class / severity:** DEFECT · S1 major (proposed — reader-visible
+  disagreement between what the composer says it asked for and what the
+  chart was actually read at; provenance: historical E-110/E-112, reproduced
+  fresh on the current build)
+- **Lens(es):** L-USER + L-WIRE
+- **Pipeline stage:** S1 (intent/scope classification) / S4 (scope
+  resolution) — NOT S2; S2's own UI component is disclosing the truth
+  correctly (see below)
+- **Journey:** J2
+- **Provenance:** historical `E-110`/`E-112` (test plan §4.1 S4 row) —
+  independently reproduced live, not re-cited from the old register.
+- **Expected:** selecting "Deep dive" in the composer (label reads
+  "acharya-grade · deep dive override") should cause the resolved
+  `scope_tuple.depth` to be `deep`/`deep_dive`, or the composer should not
+  claim an override took effect.
+- **Observed (2026-08-27, LIVE, deployed `amjis-web@cafa894ee`, chart
+  `1c826d5a`, S2-territory code at this commit is byte-identical to current
+  `origin/main` HEAD `28a157fb1` — zero S2-territory commits landed between
+  the stale deploy pin and HEAD, confirmed via
+  `git log --oneline cafa894ee..28a157fb1 -- platform/src/components/pariprashna platform/src/lib/pariprashna`
+  returning 0 commits, so this LIVE proof is representative of current main):
+  - Request body: `{"chartId":"1c826d5a-...","reading_depth":"deep_dive",...}`
+    — the composer correctly sent the override (S2's own composer→API wiring
+    is NOT the defect).
+  - Wire response `grade` event: `{"subject":"reading_depth_received","grade":"standard","detail":"scope_tuple: intent=dasha_timing width=standard depth=standard"}`
+    — the server resolved `depth=standard` regardless of the request.
+  - S2's own UI (composer chip's "Depth the last reading actually received"
+    indicator) correctly and honestly displayed "depth received: standard"
+    — this component is functioning as designed; the disagreement is real,
+    not a rendering bug.
+- **Code anchor:** `platform/src/lib/vidhi/scope_classifier.ts`
+  (`ScopeTupleSchema` resolution — test plan §4.1 S4 row); MCP-side twin
+  `platform-mcp/src/resources/vidhi/scope_resolver.ts`.
+- **Cross-reference:** test plan §4.1 S4 row; GAP-8.
+- **Proposed fix class:** owning-stream fix in the web scope resolver so an
+  explicit composer override actually reaches `scope_tuple.depth`, or (if
+  intentionally gated) the composer must not present "Deep dive" as a live
+  option / must disclose why the override didn't apply before the turn runs,
+  not only after via the small "depth received" indicator.
+- **Status:** OPEN, filed to stream **S4** (pipeline scope-resolution
+  territory) — not fixed by S2; S2's own composer/indicator component is
+  confirmed correct and not the defect.
+- **Close rung required:** REPLAY or LIVE (a fixture/turn where "Deep dive" is
+  selected and `scope_tuple.depth` resolves to `deep`).
+
+### V3-E-013 — The settle announcement claimed "Grounded" for a turn whose own receipt recorded `hallucination_count: 4` and whose own `citation_gate` fired an ERROR
+
+- **Class / severity:** DEFECT · S1 blocking (proposed — a confidence-honesty
+  violation on the single reader-facing (and screen-reader-facing) summary of
+  an entire reading)
+- **Lens(es):** L-USER + L-WIRE + L-CODE
+- **Pipeline stage:** SURFACE (S2, working-region/settle-announcement) +
+  S8/S9 (synthesis + citation-gate — S4 territory for the root generation
+  defect; S2 territory for the surface's failure to disclose it)
+- **Journey:** J2
+- **Observed (2026-08-27, LIVE, deployed `amjis-web@cafa894ee` — S2-territory
+  code confirmed byte-identical to current HEAD, see V3-E-012):** asked
+  "What does the current dasha period mean for my career, and how does it
+  interact with transiting Saturn?" (turn `ad4228a2-ec12-450e-85c3-52b5398ed2ad`).
+  Full SSE trace:
+  - `grade` event: `{"subject":"citation_gate","grade":"ERROR","detail":"prescriptive query (predictive) produced 0 citations — guidance must be grounded"}`
+    and the paired `flag` event `citation_gate_error`.
+  - `receipt.define`'s `evidence_grades`: `{"grade_counts":{"unverified":4,...all others 0},"hallucination_count":4}`.
+  - All 4 `citation.define` events carried `"grade":"unverified"` and a
+    literal placeholder `snippet`/`reader_label` of `"[unverified citation N]"`
+    (see V3-E-014).
+  - `turn.commit`: `"status":"ok"` — no degraded/error status propagated.
+  - Settled UI (`role="status"`, the one `aria-live="polite"` settle
+    announcement `GroundingRegion.tsx` documents as "the settle announcement
+    for assistive tech"): **"Reading complete. Grounded in 4 chart factors.
+    7/21 floor items served."** — no qualifier, no mention of `unverified`,
+    `hallucination_count`, or the citation_gate ERROR anywhere in the
+    surfaced text. A screen-reader user hears only "Grounded."
+  - Root cause confirmed by code read: `GroundingRegion.tsx` built its
+    summary from `turn.grounding.factorCount` (a raw, grade-blind citation
+    tally, `s1LiveAdapter.ts:286` `factorCount = citationsSeen - classicalSeen`)
+    and never read the ALREADY-COMPUTED, already-correctly-worded
+    `turn.grounding.gradeSummaryLabel` (`state/groundingRollup.ts`'s honest
+    WELL-GROUNDED / SUPPORTED / CATALOG-ONLY — UNVERIFIED / HONEST-GAP
+    rollup, purpose-built to prevent exactly this — see its own doc comment).
+    `gradeSummaryLabel` was computed and stored on every turn but had ZERO
+    production readers (the same "computed then discarded" defect class as
+    E-073's `unmappedPrimitives`/`compileFailed`, §N.8).
+  - Test plan cross-reference: §4.3 item 2 (degradation propagation
+    honesty — "never absorbed into a confident-looking answer"); §7
+    Confidence honesty ("never exceed the evidence"); test principle 4
+    (honest absence, "never filled with plausible-looking content").
+- **Proposed fix class:** additive, in-territory (S2) — read
+  `gradeSummaryLabel` in the settle announcement; only announce an
+  unqualified "Grounded in N…" when the rollup itself says WELL-GROUNDED.
+- **Fix landed (2026-08-28, S2, this session):** `GroundingRegion.tsx` now
+  branches on `gradeSummaryLabel === GRADE_SUMMARY_WELL_GROUNDED`; when not
+  well-grounded, the announcement leads with the honest rollup label instead
+  of the bare word "Grounded". Demonstrated-can-fail: new test
+  `platform/src/components/pariprashna/__tests__/GroundingRegion.test.tsx`
+  is RED against the pre-fix component (asserts the announcement discloses
+  `unverified`/`catalog-only` for a CATALOG-ONLY rollup; failed with
+  `"Reading complete. Grounded in 4 chart factors. (Estimated..." ` before
+  the fix) and GREEN after. Full territory suite
+  (`vitest run src/components/pariprashna src/lib/pariprashna`): 1523
+  passed, 0 regressions. Commit `c06d19486`.
+  **Not yet fixed in this pass:** `WorkingBand.tsx`'s compact sealed-band
+  label (`renderSealCompleteLabel`, `lexicon.ts:161`, "Grounded in N sources
+  · Ts") has the identical grade-blind-count defect and is the ONE thing a
+  sighted user sees at the moment of settle (before opening the dock) — it
+  was left unchanged this pass to keep the fix narrowly scoped and reviewable
+  in one sitting; carried forward as the next unit of this same defect class.
+- **Status:** FIXED (`GroundingRegion.tsx` only) — PR pending, independent
+  verification pending. `WorkingBand.tsx`'s sealed-band label: OPEN, same
+  stream (S2), not yet fixed. The upstream root cause (why every citation on
+  a predictive query resolves to `unverified` with placeholder content) is
+  filed separately to S4 as V3-E-014.
+- **Close rung required:** LIVE re-proof of `GroundingRegion.tsx`'s fix
+  against a deployed build once merged and synced.
+
+### V3-E-014 — `citation.define`'s `snippet`/`reader_label` for `structural_prior`-tier signals is the literal unfilled placeholder string `"[unverified citation N]"`
+
+- **Class / severity:** DEFECT · S2 major (proposed — every citation chip in
+  the dock for a query with only structural-prior signals is uninformative by
+  construction, defeating the dock's core proof requirement)
+- **Lens(es):** L-WIRE + L-USER
+- **Pipeline stage:** S8 (synthesis) / S9 (citation assembly) — S4 territory
+- **Journey:** J2
+- **Observed (2026-08-27, LIVE):** all 4 `citation.define` events on the
+  turn cited in V3-E-013 carried, verbatim: `"snippet":"[unverified citation 1]","reader_label":"[unverified citation 1]"`
+  (and 2/3/4). The dock (`GroundingCard.tsx`, confirmed by code read to
+  faithfully render `citation.title` = `reader_label` exactly as received —
+  **not itself defective**; it is displaying real wire data correctly) shows
+  each chip's primary label as the literal bracketed placeholder, twice
+  (title line + relevance line, both sourced from the same unfilled
+  string), with grade "— honest gap" on every one. Expanding the chip shows
+  only the raw internal `signal_id` (e.g. `PLN.SATURN`) and a generic
+  category ("structural signal") — no source, confidence, or caveat prose,
+  failing test plan §5.1's dock proof ("why should I trust this sentence?"
+  is unanswerable from the dock alone for this reading).
+- **Proposed fix class:** the S8/S9 citation-assembly stage must generate a
+  real human-readable snippet for `structural_prior`-tier signals (e.g. a
+  short factual restatement of what `PLN.SATURN` structurally means — "Saturn,
+  10th lord, exalted in 7th" — grade `honest_gap`/`unverified` is fine to
+  keep, but the LABEL must not be a raw template placeholder that leaked to
+  production).
+- **Status:** OPEN, filed to stream **S4**. S2's dock component
+  (`GroundingCard.tsx`) confirmed NOT to need a change — it renders whatever
+  it is given, correctly.
+- **Close rung required:** REPLAY (a fixture asserting a real, non-placeholder
+  `reader_label` for a `structural_prior` citation) or LIVE re-proof.
+
+### V3-E-015 — The `finalize`/"Sealing…" phase ran silent and frozen for 15–22 consecutive seconds in the aria-live progress region, with zero elapsed/phase signal (§4.3.5 progress-truthfulness)
+
+- **Class / severity:** DEFECT · S2 major (proposed — same defect class as
+  the historical `E-003` progress-freeze seed, reproduced fresh in a
+  different phase of the pipeline)
+- **Lens(es):** L-USER + L-WIRE
+- **Pipeline stage:** SURFACE (S2 working region) — root latency itself is
+  S11/S8 territory (receipt assembly + interpretation-set candidate
+  generation), filed jointly
+- **Journey:** J2 / §4.3.5 progress-cadence check
+- **Observed (2026-08-27/28, LIVE, 1s-cadence sampling per test plan §4.3
+  item 5, two independent turns on the deployed synthetic-chart Portal):**
+  - Turn 1 (career/dasha question): wire trace shows `phase:"finalize","status":"start"`
+    at `t=1787874184613` and `receipt.define` at `t=1787874206478` — **21.87s**
+    inside `finalize` with no intermediate wire event at all.
+  - Turn 2 (relationships/sade-sati question): 1s-cadence DOM polling of the
+    `[role="status"]` aria-live region captured the phase label **"Sealing…"
+    unchanged across 15 consecutive 1-second samples (t=7026ms through
+    t=21071ms)** — no elapsed suffix, no phase-accurate detail, no
+    percentage; the label then jumped directly to the settled
+    "Reading complete…" state at t=22074ms. `lexicon.ts`'s `seal` phase
+    entry is explicitly marked `suffixable: false`, an assumption this data
+    shows is wrong for turns where `finalize` is not near-instant (the
+    receipt's own `interpretation_sets` field shows 2 LLM-generated
+    candidate-set calls with rationale/falsifier text happening inside this
+    same window — a plausible latency source, not confirmed).
+  - Cross-reference: test plan §4.3 item 5 (canonical instance E-003,
+    `register_prashna_ask.ts:202`, MCP door) — this is the Portal-door,
+    `finalize`-phase sibling of that same defect class: "monotone,
+    phase-accurate, elapsed-accurate advancement" is not observed during a
+    real 15-22s window.
+- **Proposed fix class:** either (a) make the `seal`/finalize phase
+  suffixable with a real elapsed counter or sub-step label (e.g. "Sealing —
+  computing alternatives" while `interpretation_sets` candidates generate),
+  or (b) if the interpretation-set generation is itself the latency driver,
+  move it to its own visible band phase rather than hiding it inside
+  "Sealing".
+- **Status:** OPEN, filed to stream **S2** (surface disclosure) with a
+  cross-reference to **S4** (whether S11 receipt-assembly / interpretation-set
+  generation latency itself needs optimization is S4's §4.2 S11 metric, not
+  S2's to fix) — NOT fixed this session (requires deciding the right
+  sub-phase label taxonomy, which is a product-shape decision better made
+  with the Native Surrogate / native than as a same-session drive-by edit).
+- **Close rung required:** LIVE re-proof (1s-cadence sampling showing the
+  aria-live region changes at least once during any `finalize` window longer
+  than ~5s).
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
-B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
-document.*
+SALVAGE 2); 16 V3 entries (5 from the A3 census + 6 surfaced during A4's
+B-001/B-007/B-008 fix-and-verify chain + 5 surfaced by S2's guided-execution
+J2 pass, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes fixed
+and independently verified, V3-E-007/E-008/E-010/E-011 filed to S5,
+V3-E-009 closed-as-benign, V3-E-012/E-014/E-015 filed to S4 (with E-015 also
+S2-owned for its surface half), V3-E-013 FIXED by S2 pending independent
+verification). No gate is certified by this document.*
