@@ -2,7 +2,7 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
-import { getPool } from '@/lib/db/client'
+import { getNirmanaCampaignControlWriterPool } from './campaign-control-writer'
 import { NirmanaLegacyAliasSchema } from './label-contract'
 
 export { NirmanaLegacyAliasSchema } from './label-contract'
@@ -194,7 +194,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
 export async function recordNirmanaElevationLabelCatalogue(
   raw: z.input<typeof NirmanaLabelCatalogueInputSchema>,
 ): Promise<'created' | 'idempotent'> {
-  const client = await (await getPool()).connect()
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
   try {
     await client.query('BEGIN')
     const outcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, raw)

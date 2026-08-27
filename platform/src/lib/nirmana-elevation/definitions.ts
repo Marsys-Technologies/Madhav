@@ -2,7 +2,7 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
-import { getPool, query } from '@/lib/db/client'
+import { getNirmanaCampaignControlWriterPool } from './campaign-control-writer'
 import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
 import { getNirmanaEvidenceIngressPool } from './evidence-ingress'
 import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from './release'
@@ -455,7 +455,9 @@ export async function createNirmanaElevationDefinition(input: CreateNirmanaEleva
   if (input.manifest_sha256 !== canonicalDigest) {
     throw new Error('Campaign definition manifest digest does not match its canonical manifest.')
   }
-  const inserted = await query(
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
+  try {
+  const inserted = await client.query(
     `INSERT INTO nirmana_elevation_campaign_definitions
        (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
      VALUES ($1, $2, $3, $4::jsonb, $5, $6)
@@ -465,7 +467,7 @@ export async function createNirmanaElevationDefinition(input: CreateNirmanaEleva
   )
   if (inserted.rowCount === 1) return 'created'
 
-  const existing = await query<{ definition_status: string; manifest_sha256: string }>(
+  const existing = await client.query<{ definition_status: string; manifest_sha256: string }>(
     `SELECT definition_status, manifest_sha256
        FROM nirmana_elevation_campaign_definitions
       WHERE campaign_id = $1 AND definition_revision = $2`,
@@ -475,6 +477,9 @@ export async function createNirmanaElevationDefinition(input: CreateNirmanaEleva
     return 'idempotent'
   }
   throw new NirmanaElevationDefinitionConflictError()
+  } finally {
+    client.release()
+  }
 }
 
 export interface FreezeNirmanaElevationDefinitionInput {
@@ -541,7 +546,7 @@ export async function acceptNirmanaBaselineCandidate(
     throw new NirmanaElevationDefinitionConflictError('Baseline candidate acceptance input is invalid.')
   }
 
-  const client = await (await getPool()).connect()
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
   try {
     await client.query('BEGIN')
     await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
@@ -716,7 +721,9 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   const canonicalDigest = canonicalManifestDigest(manifest)
   if (input.manifest_sha256 !== canonicalDigest) throw new Error('Campaign definition manifest digest does not match its canonical manifest.')
 
-  const registry = await query<NirmanaRegistryContractRow>(
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
+  try {
+  const registry = await client.query<NirmanaRegistryContractRow>(
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
@@ -726,7 +733,7 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   )
   assertManifestMatchesRegistry(manifest, registry.rows)
 
-  const frozen = await query(
+  const frozen = await client.query(
     `UPDATE nirmana_elevation_campaign_definitions
         SET definition_status = 'frozen'
       WHERE campaign_id = $1
@@ -738,7 +745,7 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   )
   if (frozen.rowCount === 1) return 'frozen'
 
-  const existing = await query<{ definition_status: string; manifest_sha256: string }>(
+  const existing = await client.query<{ definition_status: string; manifest_sha256: string }>(
     `SELECT definition_status, manifest_sha256
        FROM nirmana_elevation_campaign_definitions
       WHERE campaign_id = $1 AND definition_revision = $2`,
@@ -746,6 +753,9 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
   )
   if (existing.rows[0]?.definition_status === 'frozen' && existing.rows[0]?.manifest_sha256 === canonicalDigest) return 'idempotent'
   throw new NirmanaElevationDefinitionConflictError()
+  } finally {
+    client.release()
+  }
 }
 
 interface StoredNirmanaDefinition {
@@ -779,7 +789,7 @@ export async function supersedeNirmanaElevationDefinition(
     throw new Error('Replacement campaign definition manifest digest does not match its canonical manifest.')
   }
 
-  const pool = await getPool()
+  const pool = await getNirmanaCampaignControlWriterPool()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -2592,7 +2602,7 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
   }
   const pool = input.source_kind === 'server_reconstructed'
     ? await getNirmanaEvidenceIngressPool()
-    : await getPool()
+    : await getNirmanaCampaignControlWriterPool()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')

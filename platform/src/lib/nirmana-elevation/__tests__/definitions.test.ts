@@ -52,6 +52,12 @@ vi.mock('../evidence-ingress', () => ({
   }),
 }))
 
+vi.mock('../campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
+
 const releaseStatusMock = vi.fn()
 const ciRunMock = vi.fn()
 vi.mock('../release', () => ({
@@ -818,7 +824,7 @@ describe('Nirmana elevation definition repository', () => {
     expect(exactAssets.get('bg_kp_sublord_division')).toMatchObject({ wave_index: 1, depends_on: ['bg_nakshatra'] })
     expect(exactAssets.get('bg_parihara_rules')).toMatchObject({ wave_index: 2, depends_on: ['bg_doshas', 'bg_texts'] })
 
-    queryMock
+    transactionQueryMock
       .mockResolvedValueOnce({ rows: registryRowsFor(reconciledT0Manifest) })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
     await expect(freezeNirmanaElevationDefinition({
@@ -842,7 +848,7 @@ describe('Nirmana elevation definition repository', () => {
   })
 
   it('persists only a validated definition revision', async () => {
-    queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    transactionQueryMock.mockResolvedValue({ rowCount: 1, rows: [] })
     await expect(createNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
@@ -852,12 +858,12 @@ describe('Nirmana elevation definition repository', () => {
       created_by: 'admin-1',
     })).resolves.toBe('created')
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
-    expect(queryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision) DO NOTHING')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(1)
+    expect(transactionQueryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision) DO NOTHING')
   })
 
   it('accepts an exact retried definition revision without overwriting its first receipt', async () => {
-    queryMock
+    transactionQueryMock
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rows: [{ definition_status: 'reconciling', manifest_sha256: canonicalManifestDigest(manifest) }] })
 
@@ -865,18 +871,18 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling', manifest,
       manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-2',
     })).resolves.toBe('idempotent')
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(transactionQueryMock).toHaveBeenCalledTimes(2)
   })
 
   it('freezes only the exact prior reconciling manifest and accepts an exact retry', async () => {
-    queryMock
+    transactionQueryMock
       .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
     await expect(freezeNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest, manifest_sha256: canonicalManifestDigest(manifest),
     })).resolves.toBe('frozen')
 
-    queryMock
+    transactionQueryMock
       .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rows: [{ definition_status: 'frozen', manifest_sha256: canonicalManifestDigest(manifest) }] })
@@ -1072,13 +1078,13 @@ describe('Nirmana elevation definition repository', () => {
   it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
     const driftedRows = registryRowsFor(manifest)
     driftedRows[0].count_sql = 'SELECT count(*) FROM a_different_table'
-    queryMock.mockResolvedValueOnce({ rows: driftedRows })
+    transactionQueryMock.mockResolvedValueOnce({ rows: driftedRows })
 
     await expect(freezeNirmanaElevationDefinition({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest,
       manifest_sha256: canonicalManifestDigest(manifest),
     })).rejects.toThrow(/live registry contract/i)
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(transactionQueryMock).toHaveBeenCalledTimes(1)
   })
 
   it('locks the campaign revision before validation and records evidence on one dedicated connection', async () => {

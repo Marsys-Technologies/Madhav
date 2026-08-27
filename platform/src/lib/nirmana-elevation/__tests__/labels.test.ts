@@ -7,6 +7,9 @@ const release = vi.fn()
 vi.mock('@/lib/db/client', () => ({
   getPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
 }))
+vi.mock('../campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
+}))
 
 import {
   canonicalLabelCatalogueDigest,
