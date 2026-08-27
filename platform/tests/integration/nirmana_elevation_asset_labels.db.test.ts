@@ -5,7 +5,7 @@
  * This suite is deliberately opt-in: it reads only
  * NIRMANA_ELEVATION_TEST_DATABASE_URL and never falls back to DATABASE_URL.
  * The target must be a disposable database; the suite creates and drops an
- * isolated schema while applying the real migrations 592 and 599.
+ * isolated schema while applying the real migrations 592, 627, and 632.
  *
  *   NIRMANA_ELEVATION_TEST_DATABASE_URL=postgresql://.../nirmana_elevation_test \
  *     npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts
@@ -30,6 +30,7 @@ const MIGRATION_632_PATH = resolve(
   __dirname,
   '../../migrations/632_nirmana_evidence_server_writer_guard.sql'
 )
+const INGRESS_TEST_PASSWORD = 'nirmana-evidence-ingress-disposable-test'
 
 let pool: Pool
 let client: PoolClient
@@ -63,7 +64,21 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
     await client.query(`SET search_path TO "${SCHEMA}", public`)
     await client.query(readFileSync(MIGRATION_592_PATH, 'utf8'))
     await client.query(readFileSync(MIGRATION_599_PATH, 'utf8'))
+    // Build a minimal frozen bg_reference detector contract before migration
+    // 632. The dedicated writer must be able to read every relation used by a
+    // detector, not merely asset_registry.target_table.
+    await client.query(`
+      CREATE TABLE asset_registry (asset_id text PRIMARY KEY, target_table text NOT NULL);
+      CREATE TABLE reference_planets (id integer PRIMARY KEY);
+      CREATE TABLE reference_signs (id integer PRIMARY KEY);
+      INSERT INTO asset_registry (asset_id, target_table) VALUES ('bg_reference', 'reference_planets');
+      INSERT INTO reference_planets (id) VALUES (1);
+      INSERT INTO reference_signs (id) VALUES (1);
+    `)
     await client.query(readFileSync(MIGRATION_632_PATH, 'utf8'))
+    // This password exists only on the explicitly disposable test database.
+    // Production provisioning remains a separate controlled deployment action.
+    await client.query(`ALTER ROLE nirmana_evidence_ingress_writer PASSWORD '${INGRESS_TEST_PASSWORD}'`)
   })
 
   afterAll(async () => {
@@ -128,6 +143,42 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
                now(), 'migration-integration-test')`,
       [campaignId],
     )).rejects.toThrow(/dedicated evidence ingress login/i)
+  })
+
+  it('lets the dedicated ingress login read every relation in a multi-relation frozen detector and append the receipt', async () => {
+    const ingressUrl = new URL(TEST_DB_URL!)
+    ingressUrl.username = 'nirmana_evidence_ingress_writer'
+    ingressUrl.password = INGRESS_TEST_PASSWORD
+    const ingressPool = new Pool({ connectionString: ingressUrl.toString() })
+    const ingress = await ingressPool.connect()
+    const campaignId = 'nirmana-elevation-dedicated-ingress-test'
+    try {
+      await ingress.query(`SET search_path TO "${SCHEMA}", public`)
+      const detector = await ingress.query<{ passed: boolean }>(`
+        SELECT (SELECT COUNT(*) FROM reference_planets) = 1
+           AND (SELECT COUNT(*) FROM reference_signs) = 1 AS passed
+      `)
+      expect(detector.rows[0]?.passed).toBe(true)
+
+      await client.query(
+        `INSERT INTO nirmana_elevation_campaign_definitions
+           (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+         VALUES ($1, 'v1', 'frozen', '{}'::jsonb, $2, 'migration-integration-test')`,
+        [campaignId, 'd'.repeat(64)],
+      )
+      await expect(ingress.query(
+        `INSERT INTO nirmana_elevation_campaign_events
+           (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
+            layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+         VALUES ($1, 'v1', 'dedicated-server-reconstructed', 'integrity_passed', 'asset', 'bg_reference',
+                 'L0', '{}'::jsonb, 'server_reconstructed', 'nirmana-elevation:integrity:bg_reference',
+                 now(), 'nirmana-evidence-ingress-writer')`,
+        [campaignId],
+      )).resolves.toBeDefined()
+    } finally {
+      ingress.release()
+      await ingressPool.end()
+    }
   })
 
 })

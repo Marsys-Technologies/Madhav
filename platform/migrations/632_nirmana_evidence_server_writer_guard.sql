@@ -9,13 +9,13 @@ BEGIN;
 DO $$
 DECLARE
   relation_name text;
-  target_table text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer') THEN
     CREATE ROLE nirmana_evidence_ingress_writer LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
   END IF;
 
   EXECUTE format('GRANT USAGE ON SCHEMA %I TO nirmana_evidence_ingress_writer', current_schema());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO nirmana_evidence_ingress_writer', current_database());
   FOREACH relation_name IN ARRAY ARRAY[
     'nirmana_elevation_campaign_definitions',
     'nirmana_elevation_campaign_events',
@@ -34,19 +34,41 @@ BEGIN
     EXECUTE format('GRANT INSERT ON TABLE %I.nirmana_elevation_campaign_events TO nirmana_evidence_ingress_writer', current_schema());
   END IF;
 
-  -- Integrity detectors are constrained to their current registry target
-  -- tables. Any query reaching outside this grant set fails closed.
-  IF to_regclass(format('%I.%I', current_schema(), 'asset_registry')) IS NOT NULL THEN
-    FOR target_table IN
-      SELECT registry.target_table
-        FROM asset_registry AS registry
-       WHERE registry.target_table ~ '^[a-z_][a-z0-9_]{0,62}$'
-    LOOP
-      IF to_regclass(format('%I.%I', current_schema(), target_table)) IS NOT NULL THEN
-        EXECUTE format('GRANT SELECT ON TABLE %I.%I TO nirmana_evidence_ingress_writer', current_schema(), target_table);
-      END IF;
-    END LOOP;
-  END IF;
+  -- Authoritative frozen-integrity detector read contract. This is deliberately
+  -- explicit rather than inferred from target_table or raw SQL: any future
+  -- detector relation needs a reviewed migration addition before an ingress
+  -- receipt can be earned. Missing grants fail the detector closed.
+  FOREACH relation_name IN ARRAY ARRAY[
+    'asset_output_digest_specs',
+    'bg_avastha_schemes', 'bg_combustion_orbs', 'bg_dignity_reference',
+    'bg_gochara_arcs', 'bg_gochara_citation_resolution',
+    'bg_graha_naisargika_friendship', 'bg_kota_chakra_rings',
+    'bg_kp_sublord_division', 'bg_medical_mappings',
+    'bg_motion_state_thresholds', 'bg_muhurta_lattice', 'bg_nakshatra_medical',
+    'bg_phaladeepika_latta', 'bg_prashna_fructification_rules',
+    'bg_prashna_lagna_methods', 'bg_prashna_significators',
+    'bg_prashna_special_techniques', 'bg_prashna_tajik_yogas',
+    'bg_sign_medical', 'bg_sky_calendar', 'bg_synthetic_cohort',
+    'bg_synthetic_cohort_md', 'bg_transit_engine', 'bg_transit_moorti',
+    'bg_transit_rules', 'bg_vastu_direction_remedials', 'bg_vastu_directions',
+    'bg_vedha_malefic_scale', 'brahma_activity_ontology', 'brahma_class_priors',
+    'brahma_compendium_index', 'brahma_dasha_systems', 'brahma_dosha_catalog',
+    'brahma_event_ontology', 'brahma_formula_constants', 'brahma_ontology',
+    'brahma_remedy_corpus', 'brahma_yoga_catalog', 'brahma_yoga_source_chunks',
+    'classical_attributions', 'classical_text_chunks', 'classical_texts',
+    'ephemeris_daily', 'nirmana_bg_texts_integrity_baselines',
+    'reference_aspects', 'reference_constants', 'reference_dasha_systems',
+    'reference_doshas', 'reference_glossary', 'reference_houses',
+    'reference_karakas', 'reference_nakshatra', 'reference_nakshatra_matrix',
+    'reference_nakshatra_pada', 'reference_planets', 'reference_signs',
+    'reference_strength_systems', 'reference_topic_tags', 'reference_upagrahas',
+    'reference_vargas', 'reference_yogas', 'sutravali_rules',
+    'vidhi_floor_items', 'vidhi_intent_floors', 'vidhi_primitives'
+  ] LOOP
+    IF to_regclass(format('%I.%I', current_schema(), relation_name)) IS NOT NULL THEN
+      EXECUTE format('GRANT SELECT ON TABLE %I.%I TO nirmana_evidence_ingress_writer', current_schema(), relation_name);
+    END IF;
+  END LOOP;
 END;
 $$;
 

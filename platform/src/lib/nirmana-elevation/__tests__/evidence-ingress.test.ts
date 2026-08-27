@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NirmanaEvidenceIngressNotConfiguredError,
   assertNirmanaEvidenceIngressDatabaseUrl,
+  assertNirmanaEvidenceIngressDatabaseUser,
 } from '../evidence-ingress'
 
 describe('Nirmana evidence ingress database credentials', () => {
@@ -24,5 +25,13 @@ describe('Nirmana evidence ingress database credentials', () => {
       'postgresql://amjis_app:secret@db.example/amjis',
       'amjis_app',
     )).toContain('nirmana_evidence_ingress_writer')
+  })
+
+  it('accepts the Cloud SQL connector credential only for the distinct ingress login', () => {
+    expect(assertNirmanaEvidenceIngressDatabaseUser(
+      'nirmana_evidence_ingress_writer', 'secret', 'amjis_app',
+    )).toEqual({ user: 'nirmana_evidence_ingress_writer', password: 'secret' })
+    expect(() => assertNirmanaEvidenceIngressDatabaseUser('amjis_app', 'secret', 'amjis_app'))
+      .toThrow(NirmanaEvidenceIngressNotConfiguredError)
   })
 })
