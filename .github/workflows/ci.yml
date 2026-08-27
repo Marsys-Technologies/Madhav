@@ -135,6 +135,21 @@ jobs:
         working-directory: platform
     env:
       NODE_ENV: test
+    # Narrow exception to the usual no-service Unit Tests posture: this
+    # dedicated evidence-ingress test is a security boundary and must execute
+    # in the required protected context, not only in advisory DB Integration.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       # SAMPURTI-fix (2026-08-10): citation_verify_gate.test.ts resolves historical commit SHAs via
       # `git cat-file -e`; default depth=1 (shallow clone) fails for any SHA not at HEAD. Full
@@ -148,6 +163,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+
+      - name: Nirmāṇa elevation — required dedicated evidence-ingress contract
+        # Local throwaway DB only: the test rejects a non-test DB name and
+        # proves both generic-insert denial and dedicated-login detector access.
+        env:
+          PGPASSWORD: postgres
+          NIRMANA_ELEVATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_elevation_test
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_elevation_test;"
+          psql -h localhost -U postgres -d nirmana_elevation_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
 
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:

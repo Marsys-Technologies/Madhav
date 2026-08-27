@@ -3,7 +3,10 @@ import { query } from '@/lib/db/client'
 import {
   assertManifestMatchesRegistryIdentity,
   canonicalManifestDigest,
+  canonicalNirmanaRebuildEvidenceDigest,
   canonicalRegistryContractDigest,
+  NirmanaProducerCoverageEvidenceSchema,
+  NirmanaRebuildEvidenceSchema,
   parseFreezableNirmanaElevationManifest,
   registryContractFingerprintInput,
   type NirmanaElevationManifest,
@@ -466,7 +469,12 @@ function sanitizedReference(value: string): string {
     : bounded || 'unknown:reference'
 }
 
-type RunAuthorization = { layer: (typeof LAYERS)[number][0]; waveIndex: number; assetIds: string[] }
+type RunAuthorization = {
+  layer: (typeof LAYERS)[number][0]
+  waveIndex: number
+  assetIds: string[]
+  authorizationSha256: string
+}
 
 function orderedFrozenAssets(
   manifestAssets: NirmanaElevationManifest['assets'],
@@ -572,7 +580,8 @@ function acceptedRunAuthorizations(
     if (!run
       || run.chart_id !== manifest.chart_id
       || (run.action != null && run.action !== 'rebuild')
-      || run.triggered_by === 'nirmana-f0-machinery-canary') continue
+      || run.triggered_by === 'nirmana-f0-machinery-canary'
+      || (run.started_at !== null && timestamp(event.recorded_at) >= timestamp(run.started_at))) continue
     const runAssetIds = [...new Set(raw.build_run_assets
       .filter((asset) => asset.run_id.toLowerCase() === runId)
       .map((asset) => asset.asset_id))].sort((left, right) => left.localeCompare(right))
@@ -586,11 +595,19 @@ function acceptedRunAuthorizations(
       contradictions.push(`Build run ${runId} has conflicting campaign authorization receipts.`)
       continue
     }
-    if (!existing) byRunId.set(runId, { layer: typedLayer, waveIndex: Number(waveIndex), assetIds: sortedAssetIds, signature })
+    if (!existing) byRunId.set(runId, {
+      layer: typedLayer,
+      waveIndex: Number(waveIndex),
+      assetIds: sortedAssetIds,
+      authorizationSha256,
+      signature,
+    })
   }
 
   return {
-    byRunId: new Map([...byRunId].map(([runId, { layer, waveIndex, assetIds }]) => [runId, { layer, waveIndex, assetIds }])),
+    byRunId: new Map([...byRunId].map(([runId, { layer, waveIndex, assetIds, authorizationSha256 }]) => [runId, {
+      layer, waveIndex, assetIds, authorizationSha256,
+    }])),
     contradictions,
   }
 }
@@ -728,11 +745,40 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     if (event.event_type !== 'producer_covered' || event.entity_type !== 'asset') return false
     const coveredAsset = manifestById.get(event.entity_id)
     const runId = buildRunId(event.source_ref)
+    const coverage = NirmanaProducerCoverageEvidenceSchema.safeParse(event.evidence_payload)
+    if (!coverage.success || !runId || runId !== coverage.data.producer_run_id.toLowerCase()) return false
+    const producer = coveredAsset?.producer_id ? manifestById.get(coveredAsset.producer_id) : undefined
+    const producerRebuild = producer ? campaignEvents.find((candidate) => {
+      const rebuild = NirmanaRebuildEvidenceSchema.safeParse(candidate.evidence_payload)
+      return candidate.event_type === 'accepted_rebuild_observed' && candidate.entity_type === 'asset'
+        && candidate.entity_id === producer.asset_id && candidate.layer === producer.layer
+        && candidate.source_kind === 'build_run' && candidate.source_ref.toLowerCase() === `build_run:${coverage.data.producer_run_id.toLowerCase()}`
+        && rebuild.success
+        && rebuild.data.build_run_id.toLowerCase() === coverage.data.producer_run_id.toLowerCase()
+        && canonicalNirmanaRebuildEvidenceDigest(rebuild.data) === coverage.data.producer_rebuild_digest
+        && timestamp(candidate.observed_at) < timestamp(event.observed_at)
+    }) : undefined
+    const coveredAnalysis = campaignEvents.find((candidate) => candidate.event_type === 'asset_analysis_accepted'
+      && candidate.entity_type === 'asset' && candidate.entity_id === event.entity_id
+      && NirmanaProducerCoverageEvidenceSchema.safeParse({
+        registry_fingerprint_sha256: (candidate.evidence_payload as Record<string, unknown>)?.registry_fingerprint_sha256,
+        analysis_digest: (candidate.evidence_payload as Record<string, unknown>)?.analysis_digest,
+        producer_asset_id: coverage.data.producer_asset_id,
+        producer_layer: coverage.data.producer_layer,
+        producer_run_id: coverage.data.producer_run_id,
+        producer_rebuild_digest: coverage.data.producer_rebuild_digest,
+      }).success
+      && timestamp(candidate.observed_at) < timestamp(event.observed_at))
     return Boolean(coveredAsset?.execution_obligation === 'producer_covered'
       && coveredAsset.layer === event.layer
-      && coveredAsset.producer_id
-      && runId
-      && acceptedBuildRunIdsByAsset.get(coveredAsset.producer_id)?.has(runId))
+      && producer?.execution_obligation === 'build'
+      && producer.layer === coverage.data.producer_layer
+      && producer.asset_id === coverage.data.producer_asset_id
+      && producer.covered_asset_ids?.includes(event.entity_id)
+      && coverage.data.registry_fingerprint_sha256 === acceptedAnalysisFingerprintByAsset.get(event.entity_id)
+      && coverage.data.analysis_digest === acceptedAnalysisDigestByAsset.get(event.entity_id)
+      && producerRebuild && coveredAnalysis
+      && acceptedBuildRunIdsByAsset.get(producer.asset_id)?.has(runId))
   }))
   const acceptedProducerCoverageAssetIds = new Set(
     [...acceptedProducerCoverageEvents].map((event) => event.entity_id),

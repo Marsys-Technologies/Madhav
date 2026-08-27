@@ -9,9 +9,16 @@ import {
   NirmanaElevationEvidenceConflictError,
   NirmanaElevationEvidenceValidationError,
   NirmanaAssetAnalysisEvidenceSchema,
+  NirmanaFreezeEvidenceSchema,
+  NirmanaImplementationEvidenceSchema,
+  NirmanaIntegrityEvidenceSchema,
   NirmanaFoundationLaneEvidenceSchema,
   NirmanaElevationManifestSchema,
+  NirmanaNonBuildDispositionEvidenceSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
+  NirmanaProbeEvidenceSchema,
+  NirmanaProducerCoverageEvidenceSchema,
+  NirmanaRebuildEvidenceSchema,
   NirmanaStageTransitionEvidenceSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
@@ -58,12 +65,14 @@ const assetReceipt = z.object({
     context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires an exact build_run UUID source reference.` })
   }
   if (value.event_type === 'accepted_rebuild_observed') {
-    const payload = z.object({
-      output_digest: z.string().regex(/^[a-f0-9]{64}$/),
-      output_digest_spec_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-    }).strict().safeParse(value.evidence_payload)
+    const payload = NirmanaRebuildEvidenceSchema.safeParse(value.evidence_payload)
     if (!payload.success) {
-      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires only output_digest and output_digest_spec_sha256 SHA-256 fields.' })
+      context.addIssue({ code: 'custom', path: ['evidence_payload'], message: 'accepted_rebuild_observed requires a strict run, lifecycle, decision, implementation, and output-digest receipt.' })
+    } else if (buildRunSourceRef.exec(value.source_ref)?.[1].toLowerCase() !== payload.data.build_run_id.toLowerCase()) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload', 'build_run_id'], message: 'accepted_rebuild_observed build_run_id must equal the build_run source UUID.' })
+    }
+    if (value.source_kind !== 'build_run') {
+      context.addIssue({ code: 'custom', path: ['source_kind'], message: 'accepted_rebuild_observed requires source_kind=build_run.' })
     }
   }
   if (value.event_type === 'asset_analysis_accepted') {
@@ -89,6 +98,46 @@ const assetReceipt = z.object({
     if (value.layer === null) {
       context.addIssue({ code: 'custom', path: ['layer'], message: 'optimization_verdict_accepted requires the asset layer.' })
     }
+  }
+  const typedLifecyclePayloads: Partial<Record<typeof value.event_type, z.ZodType>> = {
+    implementation_accepted: NirmanaImplementationEvidenceSchema,
+    probe_accepted: NirmanaProbeEvidenceSchema,
+    static_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    source_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    empty_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    retired_with_disposition: NirmanaNonBuildDispositionEvidenceSchema,
+    integrity_verified: NirmanaIntegrityEvidenceSchema,
+    asset_frozen: NirmanaFreezeEvidenceSchema,
+    producer_covered: NirmanaProducerCoverageEvidenceSchema,
+  }
+  const typedPayload = typedLifecyclePayloads[value.event_type]
+  if (typedPayload && !typedPayload.safeParse(value.evidence_payload).success) {
+    context.addIssue({ code: 'custom', path: ['evidence_payload'], message: `${value.event_type} requires its strict lifecycle receipt payload.` })
+  }
+  if (['implementation_accepted', 'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(value.event_type)
+    && (value.source_kind !== 'git_commit' || !/^git:[0-9a-f]{40}$/.test(value.source_ref))) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires source_kind=git_commit and an exact deployed git source reference.` })
+  }
+  if (value.event_type === 'probe_accepted'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:health-probe:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'probe_accepted requires the exact server-reconstructed health-probe source.' })
+  }
+  if (value.event_type === 'producer_covered') {
+    const payload = NirmanaProducerCoverageEvidenceSchema.safeParse(value.evidence_payload)
+    if (payload.success && buildRunSourceRef.exec(value.source_ref)?.[1].toLowerCase() !== payload.data.producer_run_id.toLowerCase()) {
+      context.addIssue({ code: 'custom', path: ['evidence_payload', 'producer_run_id'], message: 'producer_covered producer_run_id must equal the build_run source UUID.' })
+    }
+    if (value.source_kind !== 'build_run') {
+      context.addIssue({ code: 'custom', path: ['source_kind'], message: 'producer_covered requires source_kind=build_run.' })
+    }
+  }
+  if (value.event_type === 'integrity_verified'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:integrity:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'integrity_verified requires the exact server-reconstructed integrity source.' })
+  }
+  if (value.event_type === 'asset_frozen'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:freeze:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'asset_frozen requires the exact server-reconstructed freeze source.' })
   }
 })
 
