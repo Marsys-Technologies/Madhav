@@ -81,6 +81,19 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     await admin.query('DROP OWNED BY marker_reader; DROP ROLE marker_reader')
   })
 
+  it('fails closed on a third-party default ACL that could grant a protected writer future access', async () => {
+    await admin.query(`CREATE ROLE hostile_default_grantor NOLOGIN;
+      GRANT CREATE ON SCHEMA public TO hostile_default_grantor;
+      ALTER DEFAULT PRIVILEGES FOR ROLE hostile_default_grantor IN SCHEMA public
+        GRANT SELECT ON TABLES TO PUBLIC`)
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app')))
+      .rejects.toThrow(/protected-writer default ACLs/i)
+    await admin.query(`ALTER DEFAULT PRIVILEGES FOR ROLE hostile_default_grantor IN SCHEMA public
+      REVOKE ALL PRIVILEGES ON TABLES FROM PUBLIC;
+      REVOKE CREATE ON SCHEMA public FROM hostile_default_grantor;
+      DROP ROLE hostile_default_grantor`)
+  })
+
   it('rolls back a forced preflight failure and leaves no owner membership', async () => {
     await admin.query('DROP TABLE asset_provenance_receipts')
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow()
@@ -97,6 +110,10 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
 
   it('moves campaign objects into an owned schema and denies generic destructive DDL', async () => {
     const legacy = roleUrl('amjis_app')
+    await admin.query(`SET ROLE amjis_app;
+      ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app IN SCHEMA public
+        GRANT SELECT, REFERENCES, TRIGGER ON TABLES TO PUBLIC, nirmana_campaign_control_writer, nirmana_migrator;
+      RESET ROLE`)
     await expect(runNirmanaEvidenceOwnershipPreflight(legacy)).resolves.toBeUndefined()
     // Simulates an interruption after the handoff commit but before marker 633:
     // replay must validate state and return without trying to reclaim ownership.
@@ -112,12 +129,13 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     const control = new Pool({ connectionString: roleUrl('nirmana_campaign_control_writer') })
     await Promise.all([
       'asset_registry', 'nirmana_elevation_monitor_observations', 'build_runs',
-      'build_run_assets', 'asset_provenance_receipts', 'asset_output_digest_specs',
+      'build_run_assets', 'asset_provenance_receipts',
       '_migrations_applied',
     ].map((relation) => expect(control.query(`SELECT * FROM public.${relation}`)).resolves.toBeDefined()))
     await admin.query('SET ROLE amjis_app; CREATE TABLE public.control_writer_forbidden (id text); RESET ROLE')
     await expect(control.query('SELECT * FROM public.control_writer_forbidden')).rejects.toThrow(/permission denied/i)
     await expect(control.query('SELECT * FROM public.control_acl_stale')).rejects.toThrow(/permission denied/i)
+    await expect(control.query('SELECT * FROM public.asset_output_digest_specs')).rejects.toThrow(/permission denied/i)
     await control.query(`INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions
       (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
       VALUES ('nirmana-elevation', 'control-r1', 'reconciling', '{}'::jsonb, repeat('a', 64), 'control')`)
@@ -162,6 +180,14 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
              has_schema_privilege('nirmana_migrator', 'public', 'CREATE') AS migrator_create
     `)
     expect(sharedSchema.rows[0]).toEqual({ owner_create: false, ingress_create: false, control_create: false, migrator_create: false })
+    await admin.query('SET ROLE amjis_app; CREATE TABLE public.default_acl_after_handoff (id text); RESET ROLE')
+    const futurePublicAcl = await admin.query<{ control_read: boolean; control_references: boolean; control_trigger: boolean; migrator_read: boolean }>(`
+      SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_handoff', 'SELECT') AS control_read,
+             has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_handoff', 'REFERENCES') AS control_references,
+             has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_handoff', 'TRIGGER') AS control_trigger,
+             has_table_privilege('nirmana_migrator', 'public.default_acl_after_handoff', 'SELECT') AS migrator_read
+    `)
+    expect(futurePublicAcl.rows[0]).toEqual({ control_read: false, control_references: false, control_trigger: false, migrator_read: false })
     const staleAcl = await admin.query<{ control_table: boolean; migrator_table: boolean; control_sequence: boolean; migrator_sequence: boolean; control_column_clean: boolean; migrator_column_clean: boolean }>(`
       SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.control_acl_stale', 'SELECT') AS control_table,
              has_table_privilege('nirmana_migrator', 'public.control_acl_stale', 'SELECT') AS migrator_table,
@@ -193,10 +219,20 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     const beforeMarker = await readNirmanaEvidenceOwnershipStatus(url)
     expect(beforeMarker).toBe('unmarked')
     expect(requiresNirmanaEvidenceLegacyOwner(beforeMarker)).toBe(true)
+    await admin.query('SET ROLE amjis_app; GRANT REFERENCES (asset_id) ON public.asset_registry TO PUBLIC; RESET ROLE')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/non-owner writer ACLs outside the explicit envelope/i)
+    await admin.query('SET ROLE amjis_app; REVOKE REFERENCES (asset_id) ON public.asset_registry FROM PUBLIC; RESET ROLE')
     await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl)).resolves.toBeUndefined()
     const afterMarker = await readNirmanaEvidenceOwnershipStatus(url)
     expect(afterMarker).toBe('marked')
     expect(requiresNirmanaEvidenceLegacyOwner(afterMarker)).toBe(false)
+    await admin.query('SET ROLE amjis_app; CREATE TABLE public.default_acl_after_marker (id text); RESET ROLE')
+    const postMarkerAcl = await admin.query<{ control_read: boolean; migrator_read: boolean }>(`
+      SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_marker', 'SELECT') AS control_read,
+             has_table_privilege('nirmana_migrator', 'public.default_acl_after_marker', 'SELECT') AS migrator_read
+    `)
+    expect(postMarkerAcl.rows[0]).toEqual({ control_read: false, migrator_read: false })
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).resolves.toBeUndefined()
   })
 })

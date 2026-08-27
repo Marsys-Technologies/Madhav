@@ -108,6 +108,36 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           END LOOP;
         END LOOP;
       END $$;
+      -- Default ACLs are a future-object grant channel. Normalize every
+      -- default ACL made by the direct legacy owner before it loses control
+      -- of campaign objects. Defaults from another grantor are attested
+      -- below and fail closed when they could affect a protected writer.
+      DO $$
+      DECLARE default_acl record; object_kind text; scope_clause text;
+      BEGIN
+        FOR default_acl IN
+          SELECT defaults.defaclobjtype, namespace.nspname AS schema_name
+            FROM pg_default_acl defaults
+            JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
+            LEFT JOIN pg_namespace namespace ON namespace.oid = defaults.defaclnamespace
+           WHERE grantor.rolname = 'amjis_app'
+        LOOP
+          object_kind := CASE default_acl.defaclobjtype
+            WHEN 'r' THEN 'TABLES' WHEN 'S' THEN 'SEQUENCES'
+            WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES'
+            WHEN 'n' THEN 'SCHEMAS' ELSE NULL
+          END;
+          IF object_kind IS NULL THEN
+            RAISE EXCEPTION 'refusing unknown amjis_app default ACL object kind %', default_acl.defaclobjtype;
+          END IF;
+          scope_clause := CASE WHEN default_acl.schema_name IS NULL OR default_acl.defaclobjtype = 'n'
+            THEN '' ELSE format(' IN SCHEMA %I', default_acl.schema_name) END;
+          EXECUTE format(
+            'ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app%s REVOKE ALL PRIVILEGES ON %s FROM PUBLIC, nirmana_evidence_owner, nirmana_evidence_ingress_writer, nirmana_campaign_control_writer, nirmana_migrator',
+            scope_clause, object_kind
+          );
+        END LOOP;
+      END $$;
       -- The directly authenticated legacy owner needs ADMIN OPTION only long
       -- enough to remove this temporary membership before commit.  No role
       -- crossing is used by runtime writers.
@@ -123,7 +153,7 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       END $$;
       GRANT USAGE ON SCHEMA public TO nirmana_campaign_control_writer, nirmana_migrator;
       GRANT SELECT, INSERT ON public._migrations_applied TO nirmana_migrator;
-      GRANT SELECT ON public.asset_registry, public.nirmana_elevation_monitor_observations, public.build_runs, public.build_run_assets, public.asset_provenance_receipts, public.asset_output_digest_specs, public._migrations_applied TO nirmana_campaign_control_writer;
+      GRANT SELECT ON public.asset_registry, public.nirmana_elevation_monitor_observations, public.build_runs, public.build_run_assets, public.asset_provenance_receipts, public._migrations_applied TO nirmana_campaign_control_writer;
       ALTER TABLE public.nirmana_elevation_campaign_definitions OWNER TO nirmana_evidence_owner;
       ALTER TABLE public.nirmana_elevation_campaign_events OWNER TO nirmana_evidence_owner;
       ALTER TABLE public.nirmana_elevation_asset_labels OWNER TO nirmana_evidence_owner;
@@ -148,6 +178,34 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       GRANT USAGE ON SCHEMA public TO nirmana_evidence_ingress_writer, nirmana_campaign_control_writer, nirmana_migrator;
       SET LOCAL ROLE nirmana_evidence_owner;
       SET LOCAL search_path TO nirmana_evidence, public;
+      -- The incoming owner is normally fresh, but normalize its defaults too
+      -- while the temporary transaction-local owner membership still exists.
+      DO $$
+      DECLARE default_acl record; object_kind text; scope_clause text;
+      BEGIN
+        FOR default_acl IN
+          SELECT defaults.defaclobjtype, namespace.nspname AS schema_name
+            FROM pg_default_acl defaults
+            JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
+            LEFT JOIN pg_namespace namespace ON namespace.oid = defaults.defaclnamespace
+           WHERE grantor.rolname = 'nirmana_evidence_owner'
+        LOOP
+          object_kind := CASE default_acl.defaclobjtype
+            WHEN 'r' THEN 'TABLES' WHEN 'S' THEN 'SEQUENCES'
+            WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES'
+            WHEN 'n' THEN 'SCHEMAS' ELSE NULL
+          END;
+          IF object_kind IS NULL THEN
+            RAISE EXCEPTION 'refusing unknown evidence-owner default ACL object kind %', default_acl.defaclobjtype;
+          END IF;
+          scope_clause := CASE WHEN default_acl.schema_name IS NULL OR default_acl.defaclobjtype = 'n'
+            THEN '' ELSE format(' IN SCHEMA %I', default_acl.schema_name) END;
+          EXECUTE format(
+            'ALTER DEFAULT PRIVILEGES%s REVOKE ALL PRIVILEGES ON %s FROM PUBLIC, amjis_app, nirmana_evidence_ingress_writer, nirmana_campaign_control_writer, nirmana_migrator',
+            scope_clause, object_kind
+          );
+        END LOOP;
+      END $$;
       ALTER TABLE nirmana_elevation_campaign_events ADD COLUMN IF NOT EXISTS writer_identity text;
       -- Table-level REVOKE does not clear historical column grants.  Remove
       -- those explicitly before granting the three exact writer envelopes.
@@ -193,6 +251,35 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       DROP TRIGGER IF EXISTS nirmana_elevation_events_no_truncate ON nirmana_elevation_campaign_events;
       CREATE TRIGGER nirmana_elevation_events_no_truncate BEFORE TRUNCATE ON nirmana_elevation_campaign_events FOR EACH STATEMENT EXECUTE FUNCTION nirmana_elevation_prevent_campaign_truncate();
       RESET ROLE;
+      -- A default ACL owned by another role cannot be repaired by this direct
+      -- legacy-owner transaction. Reject it if its grantor can create in a
+      -- schema usable by a protected role (or can create schemas) and grants
+      -- either that role or PUBLIC any future-object privilege.
+      DO $$
+      BEGIN
+        IF EXISTS (
+          WITH protected_roles(name) AS (
+            SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+          )
+          SELECT 1
+            FROM pg_default_acl defaults
+            JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
+            CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
+            LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
+           WHERE (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
+             AND (
+               (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
+               OR (defaults.defaclobjtype <> 'n' AND EXISTS (
+                 SELECT 1 FROM pg_namespace namespace
+                  WHERE (defaults.defaclnamespace = 0 OR defaults.defaclnamespace = namespace.oid)
+                    AND has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
+                    AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
+               ))
+             )
+        ) THEN
+          RAISE EXCEPTION 'refusing relevant protected-writer default ACLs';
+        END IF;
+      END $$;
       REVOKE nirmana_evidence_owner FROM amjis_app;
       ALTER ROLE amjis_app NOINHERIT NOCREATEDB NOCREATEROLE;
     `)

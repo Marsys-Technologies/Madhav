@@ -122,7 +122,7 @@ BEGIN
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
        AND (
-         has_table_privilege('amjis_app', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')
+         has_table_privilege('amjis_app', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
          OR NOT has_table_privilege('amjis_app', relation.oid, 'SELECT')
        )
   ) THEN
@@ -144,35 +144,35 @@ BEGIN
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname = 'nirmana_elevation_campaign_definitions'
        AND (NOT has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT, INSERT, UPDATE')
-         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'DELETE, TRUNCATE'))
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'DELETE, TRUNCATE, REFERENCES, TRIGGER'))
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname IN ('nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
        AND (NOT has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT, INSERT')
-         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE'))
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'))
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname = 'nirmana_elevation_campaign_definitions'
        AND (NOT has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT')
-         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE'))
+         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'))
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname = 'nirmana_elevation_campaign_events'
        AND (NOT has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT, INSERT')
-         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE'))
+         OR has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'))
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname = 'nirmana_elevation_asset_labels'
-       AND has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+       AND has_table_privilege('nirmana_evidence_ingress_writer', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
-       AND has_table_privilege('nirmana_migrator', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+       AND has_table_privilege('nirmana_migrator', relation.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
   ) THEN
     RAISE EXCEPTION 'migration 633 requires exact campaign table writer ACLs';
   END IF;
@@ -182,10 +182,10 @@ BEGIN
       JOIN pg_class relation ON relation.oid = attribute.attrelid
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
       CROSS JOIN LATERAL aclexplode(attribute.attacl) AS column_acl
-      JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
+      LEFT JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
      WHERE namespace.nspname = 'nirmana_evidence'
        AND relation.relname IN ('nirmana_elevation_campaign_definitions','nirmana_elevation_campaign_events','nirmana_elevation_asset_labels')
-       AND grantee.rolname IN ('amjis_app','nirmana_evidence_ingress_writer','nirmana_campaign_control_writer','nirmana_migrator')
+       AND (column_acl.grantee = 0 OR grantee.rolname IN ('amjis_app','nirmana_evidence_ingress_writer','nirmana_campaign_control_writer','nirmana_migrator'))
   ) THEN
     RAISE EXCEPTION 'migration 633 refuses residual campaign column ACLs';
   END IF;
@@ -206,11 +206,13 @@ BEGIN
        AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
        AND (
          (has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT')
-           AND (namespace.nspname <> 'public' OR relation.relname <> ALL (ARRAY['asset_registry','nirmana_elevation_monitor_observations','build_runs','build_run_assets','asset_provenance_receipts','asset_output_digest_specs','_migrations_applied'])))
+           AND (namespace.nspname <> 'public' OR relation.relname <> ALL (ARRAY['asset_registry','nirmana_elevation_monitor_observations','build_runs','build_run_assets','asset_provenance_receipts','_migrations_applied'])))
          OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'INSERT')
          OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'UPDATE')
          OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'DELETE')
          OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'TRUNCATE')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'REFERENCES')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'TRIGGER')
          OR (has_table_privilege('nirmana_migrator', relation.oid, 'SELECT')
            AND (namespace.nspname <> 'public' OR relation.relname <> '_migrations_applied'))
          OR (has_table_privilege('nirmana_migrator', relation.oid, 'INSERT')
@@ -218,6 +220,8 @@ BEGIN
          OR has_table_privilege('nirmana_migrator', relation.oid, 'UPDATE')
          OR has_table_privilege('nirmana_migrator', relation.oid, 'DELETE')
          OR has_table_privilege('nirmana_migrator', relation.oid, 'TRUNCATE')
+         OR has_table_privilege('nirmana_migrator', relation.oid, 'REFERENCES')
+         OR has_table_privilege('nirmana_migrator', relation.oid, 'TRIGGER')
        )
   ) OR EXISTS (
     SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
@@ -231,13 +235,40 @@ BEGIN
       JOIN pg_class relation ON relation.oid = attribute.attrelid
       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
       CROSS JOIN LATERAL aclexplode(attribute.attacl) AS column_acl
-      JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
+      LEFT JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
      WHERE namespace.nspname <> 'nirmana_evidence'
        AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
-       AND grantee.rolname IN ('nirmana_campaign_control_writer','nirmana_migrator')
+       AND (column_acl.grantee = 0 OR grantee.rolname IN ('nirmana_campaign_control_writer','nirmana_migrator'))
   ) OR has_database_privilege('nirmana_campaign_control_writer', current_database(), 'CREATE')
     OR has_database_privilege('nirmana_migrator', current_database(), 'CREATE') THEN
     RAISE EXCEPTION 'migration 633 refuses non-owner writer ACLs outside the explicit envelope';
+  END IF;
+  -- Default privileges are a future-object ACL path, so the marker must
+  -- attest them as carefully as current relation ACLs.  PUBLIC grants count:
+  -- they are effective for every protected writer.  Only defaults whose
+  -- grantor can create in a schema a protected role can use (or can create a
+  -- schema) are relevant; unrelated isolated schemas do not block the marker.
+  IF EXISTS (
+    WITH protected_roles(name) AS (
+      SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+    )
+    SELECT 1
+      FROM pg_default_acl defaults
+      JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
+      CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
+      LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
+     WHERE (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
+       AND (
+         (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
+         OR (defaults.defaclobjtype <> 'n' AND EXISTS (
+           SELECT 1 FROM pg_namespace namespace
+            WHERE (defaults.defaclnamespace = 0 OR defaults.defaclnamespace = namespace.oid)
+              AND has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
+              AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
+         ))
+       )
+  ) THEN
+    RAISE EXCEPTION 'migration 633 refuses relevant protected-writer default ACLs';
   END IF;
 END;
 $$;
