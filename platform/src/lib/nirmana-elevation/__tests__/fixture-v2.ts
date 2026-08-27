@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalRegistryContractDigest } from '../definitions'
+import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalNirmanaRebuildEvidenceDigest, canonicalRegistryContractDigest } from '../definitions'
 import {
   projectNirmanaElevationSnapshot,
   type NirmanaElevationRawSources,
@@ -209,6 +209,7 @@ function assetEvents(assetId: string, eventTypes: string[], runId?: string, star
         : eventType === 'implementation_accepted' ? { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
           : eventType === 'accepted_rebuild_observed' ? {
             ...binding, build_run_id: runId!, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64),
+            wave_index: asset.wave_index ?? 0, authorization_sha256: '9'.repeat(64),
             output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
           }
             : eventType === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'f'.repeat(64), result_digest: '0'.repeat(64) }
@@ -224,6 +225,30 @@ function assetEvents(assetId: string, eventTypes: string[], runId?: string, star
   }))
 }
 
+const producerLifecycleEvents = assetEvents('bg_medical_mappings', [
+  'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+  'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+], producerRunId)
+const producerRebuildEvent = producerLifecycleEvents.find((event) => event.event_type === 'accepted_rebuild_observed')!
+
+function producerCoveredLifecycleEvents(assetId: 'bg_sign_medical' | 'bg_nakshatra_medical') {
+  const asset = manifest.assets.find((candidate) => candidate.asset_id === assetId)!
+  return assetEvents(assetId, [
+    'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered',
+    'integrity_verified', 'asset_frozen',
+  ], producerRunId, 20).map((event) => event.event_type !== 'producer_covered' ? event : {
+    ...event,
+    evidence_payload: {
+      registry_fingerprint_sha256: asset.registry_fingerprint_sha256,
+      analysis_digest: 'b'.repeat(64),
+      producer_asset_id: 'bg_medical_mappings',
+      producer_layer: 'L0',
+      producer_run_id: producerRunId,
+      producer_rebuild_digest: canonicalNirmanaRebuildEvidenceDigest(producerRebuildEvent.evidence_payload),
+    },
+  })
+}
+
 const campaignEvents = [
   ...stageEvents(),
   ...['A', 'B', 'C', 'D', 'E'].map((laneId, index) => ({
@@ -234,18 +259,9 @@ const campaignEvents = [
     observed_at: new Date(Date.parse(observedAt) + 20_000 + index * 1_000).toISOString(),
     recorded_at: new Date(Date.parse(observedAt) + 20_000 + index * 1_000).toISOString(),
   })),
-  ...assetEvents('bg_medical_mappings', [
-    'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
-    'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
-  ], producerRunId),
-  ...assetEvents('bg_sign_medical', [
-    'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered',
-    'integrity_verified', 'asset_frozen',
-  ], producerRunId, 20),
-  ...assetEvents('bg_nakshatra_medical', [
-    'asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered',
-    'integrity_verified', 'asset_frozen',
-  ], producerRunId, 20),
+  ...producerLifecycleEvents,
+  ...producerCoveredLifecycleEvents('bg_sign_medical'),
+  ...producerCoveredLifecycleEvents('bg_nakshatra_medical'),
   ...assetEvents('bg_prashna_rules', ['asset_analysis_accepted', 'optimization_verdict_accepted'], undefined, 30),
   ...assetEvents('ka_smriti', ['asset_analysis_accepted'], undefined, 30),
   {

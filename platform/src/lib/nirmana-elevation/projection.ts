@@ -7,8 +7,10 @@ import {
   NirmanaNonBuildDispositionEvidenceSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
   NirmanaProbeEvidenceSchema,
+  NirmanaProducerCoverageEvidenceSchema,
   NirmanaRebuildEvidenceSchema,
   canonicalNirmanaOptimizationVerdictDigest,
+  canonicalNirmanaRebuildEvidenceDigest,
   type NirmanaElevationManifest,
 } from './definitions'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from './types'
@@ -477,8 +479,37 @@ export function projectAssetMilestones(input: {
         && after(event, requiresChange ? implementation : decision))
     if (execution) acceptedEvents.set('deployed_and_executed', execution)
   } else if (obligation === 'producer_covered') {
-    const coverage = latestAssetEvent(events, input.asset, 'producer_covered')
-    const coverageRunId = coverage ? BUILD_RUN_SOURCE_REF.exec(coverage.source_ref)?.[1]?.toLowerCase() : undefined
+    const producerAnalysis = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
+      NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
+        && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)) : undefined
+    const producerDecision = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
+      const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && hasCurrentBinding(payload.data, producerAnalysis) && after(event, producerAnalysis)
+    }) : undefined
+    const producerDecisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(producerDecision?.evidence_payload)
+    const producerRequiresChange = producerDecisionPayload.success
+      && ['optimize', 'correct', 'optimize_and_correct'].includes(producerDecisionPayload.data.proposal.action)
+    const producerImplementation = validProducer && producerRequiresChange ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+      const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && event.source_kind === 'git_commit' && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && hasCurrentBinding(payload.data, producerAnalysis)
+        && payload.data.decision_digest === (producerDecisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(producerDecisionPayload.data) : '')
+        && after(event, producerDecision)
+    }) : undefined
+    const coverage = latestTrustedAssetEvent(events, input.asset, 'producer_covered', (event) => {
+      const payload = NirmanaProducerCoverageEvidenceSchema.safeParse(event.evidence_payload)
+      const runId = BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase()
+      return payload.success && event.source_kind === 'build_run' && runId !== undefined
+        && runId === payload.data.producer_run_id.toLowerCase()
+        && hasCurrentBinding(payload.data, analysis)
+        && validProducer !== null
+        && payload.data.producer_asset_id === validProducer.asset_id
+        && payload.data.producer_layer === validProducer.layer
+        && after(event, decision)
+    })
+    const coveragePayload = NirmanaProducerCoverageEvidenceSchema.safeParse(coverage?.evidence_payload)
+    const coverageRunId = coveragePayload.success ? coveragePayload.data.producer_run_id.toLowerCase() : undefined
     if (coverage && coverageRunId) acceptedEvents.set('built_or_dispositioned', coverage)
     if (coverageRunId && validProducer) {
       const producerExecution = latest(events.filter((event) => {
@@ -486,7 +517,19 @@ export function projectAssetMilestones(input: {
           || event.entity_type !== 'asset'
           || event.entity_id !== validProducer.asset_id
           || event.layer !== validProducer.layer) return false
-        return BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase() === coverageRunId
+        const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
+        return payload.success && event.source_kind === 'build_run'
+          && BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase() === coverageRunId
+          && payload.data.build_run_id.toLowerCase() === coverageRunId
+          && coveragePayload.success
+          && canonicalNirmanaRebuildEvidenceDigest(payload.data) === coveragePayload.data.producer_rebuild_digest
+          && hasCurrentBinding(payload.data, producerAnalysis)
+          && payload.data.decision_digest === (producerDecisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(producerDecisionPayload.data) : '')
+          && payload.data.implementation_digest === (producerRequiresChange
+            ? NirmanaImplementationEvidenceSchema.safeParse(producerImplementation?.evidence_payload).data?.implementation_digest ?? null
+            : null)
+          && after(event, producerRequiresChange ? producerImplementation : producerDecision)
+          && after(coverage, event)
       }))
       if (producerExecution) acceptedEvents.set('deployed_and_executed', producerExecution)
     }

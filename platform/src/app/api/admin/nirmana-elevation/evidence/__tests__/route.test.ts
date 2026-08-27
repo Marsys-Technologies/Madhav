@@ -99,6 +99,8 @@ function rebuildPayload({ output_digest = 'a'.repeat(64) }: { output_digest?: st
   return {
     ...binding,
     build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+    wave_index: 0,
+    authorization_sha256: '9'.repeat(64),
     decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
     implementation_digest: 'c'.repeat(64),
     output_digest, output_digest_spec_sha256: 'b'.repeat(64),

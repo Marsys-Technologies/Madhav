@@ -7,7 +7,7 @@ import {
   projectNirmanaElevationSnapshot,
   type NirmanaElevationRawSources,
 } from '../snapshot'
-import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalRegistryContractDigest } from '../definitions'
+import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalNirmanaRebuildEvidenceDigest, canonicalRegistryContractDigest } from '../definitions'
 
 const observedAt = '2026-08-25T09:00:00.000Z'
 const milestoneAt = '2026-08-25T09:01:00.000Z'
@@ -210,6 +210,8 @@ function assetMilestoneEvents(
           : event_type === 'accepted_rebuild_observed' ? {
             ...binding,
             build_run_id: runId,
+            wave_index: 0,
+            authorization_sha256: '9'.repeat(64),
             decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
             implementation_digest: includeImplementation ? 'c'.repeat(64) : null,
             output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
@@ -927,14 +929,28 @@ describe('projectNirmanaElevationSnapshot', () => {
       { asset_id: 'bg_transit_rules', execution_obligation: 'build', covered_asset_ids: ['bg_transit_engine'] },
       { asset_id: 'bg_transit_engine', execution_obligation: 'producer_covered', producer_id: 'bg_transit_rules' },
     ])
+    const producerLifecycle = assetMilestoneEvents('bg_transit_rules', 'L0', runOne, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_transit_rules')!.registry_fingerprint_sha256 })
+    const producerRebuild = producerLifecycle.find((event) => event.event_type === 'accepted_rebuild_observed')!
+    const coveredLifecycle = producerCoveredMilestoneEvents('bg_transit_engine', runOne, manifest.assets.find((asset) => asset.asset_id === 'bg_transit_engine')!.registry_fingerprint_sha256).map((event) => {
+      if (event.event_type !== 'producer_covered') return event
+      return {
+        ...event,
+        evidence_payload: {
+          registry_fingerprint_sha256: manifest.assets.find((asset) => asset.asset_id === 'bg_transit_engine')!.registry_fingerprint_sha256,
+          analysis_digest: 'b'.repeat(64),
+          producer_asset_id: 'bg_transit_rules', producer_layer: 'L0', producer_run_id: runOne,
+          producer_rebuild_digest: canonicalNirmanaRebuildEvidenceDigest(producerRebuild.evidence_payload),
+        },
+      }
+    })
     const lifecycleEvents = [
       ...nonBuildMilestoneEvents('lel_events', 'L5', 'source_accepted', manifest.assets.find((asset) => asset.asset_id === 'lel_events')!.registry_fingerprint_sha256).map((event) => ({
         ...event,
         observed_at: new Date(Date.parse(event.observed_at) + 180_000).toISOString(),
         recorded_at: new Date(Date.parse(event.recorded_at) + 180_000).toISOString(),
       })),
-      ...assetMilestoneEvents('bg_transit_rules', 'L0', runOne, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_transit_rules')!.registry_fingerprint_sha256 }),
-      ...producerCoveredMilestoneEvents('bg_transit_engine', runOne, manifest.assets.find((asset) => asset.asset_id === 'bg_transit_engine')!.registry_fingerprint_sha256).map((event) => ({
+      ...producerLifecycle,
+      ...coveredLifecycle.map((event) => ({
         ...event,
         observed_at: new Date(Date.parse(event.observed_at) + 60_000).toISOString(),
         recorded_at: new Date(Date.parse(event.recorded_at) + 60_000).toISOString(),
