@@ -18,8 +18,8 @@ usage() {
 }
 
 require_protected_main_apply() {
-  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != "refs/heads/main" || "${IAC_APPLY_ENVIRONMENT:-}" != "production" ]]; then
-    echo "apply is allowed only in the protected-main production workflow" >&2
+  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != "refs/heads/main" || "${GITHUB_REF_PROTECTED:-}" != "true" || "${IAC_APPLY_ENVIRONMENT:-}" != "production" ]]; then
+    echo "apply is allowed only from a protected main ref in the production workflow" >&2
     exit 2
   fi
 }
@@ -39,7 +39,7 @@ esac
 
 command -v terraform >/dev/null 2>&1 || { echo "terraform CLI not on PATH" >&2; exit 1; }
 
-terraform init \
+terraform init -lockfile=readonly \
   -backend-config="bucket=${STATE_BUCKET}" \
   -backend-config="prefix=${STATE_PREFIX}"
 

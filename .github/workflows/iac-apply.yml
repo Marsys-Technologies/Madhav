@@ -29,7 +29,7 @@ on:
 # rather than a ref, is the serialization boundary: review plans and protected
 # main apply must not race over the same state.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.module == 'nirmana_elevation_monitor' && 'scheduler-nirmana-elevation-monitor' || github.event.inputs.module }}
+  group: ${{ github.event.inputs.module == 'nirmana_elevation_monitor' && 'scheduler-nirmana-elevation-monitor' || format('module-{0}', github.event.inputs.module) }}
   cancel-in-progress: false
 
 permissions:
@@ -46,6 +46,12 @@ jobs:
     name: Terraform plan — ${{ github.event.inputs.module }}
     runs-on: ubuntu-latest
     steps:
+      - name: Reject non-main or unprotected apply before authentication
+        if: ${{ github.event.inputs.action == 'apply' && (github.ref != 'refs/heads/main' || github.ref_protected != true) }}
+        run: |
+          echo 'Apply requires the protected refs/heads/main ref.' >&2
+          exit 2
+
       - name: Reject unsupported apply targets before any Terraform operation
         if: ${{ github.event.inputs.action == 'apply' && github.event.inputs.module != 'nirmana_elevation_monitor' }}
         run: |

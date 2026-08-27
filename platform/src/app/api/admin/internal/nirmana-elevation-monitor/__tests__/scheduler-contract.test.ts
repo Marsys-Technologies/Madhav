@@ -1,12 +1,15 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 
 const schedulerMain = resolve(process.cwd(), '../infra/scheduler/main.tf')
 const monitorBackend = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/backend.tf')
 const monitorMain = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/main.tf')
 const monitorApply = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/apply.sh')
+const monitorLock = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/.terraform.lock.hcl')
 const monitorReadme = resolve(process.cwd(), '../infra/nirmana_elevation_monitor/README.md')
 const monitorRunbook = resolve(process.cwd(), '../docs/runbooks/ntap-tracker-monitor.md')
 const iacWorkflow = resolve(process.cwd(), '../.github/workflows/iac-apply.yml')
@@ -22,12 +25,27 @@ function resourceBlock(terraform: string, resourceStart: string): string {
   return terraform.slice(start, nextResource === -1 ? undefined : nextResource)
 }
 
+function invokeMonitorApply(environment: Record<string, string>) {
+  const tempDirectory = mkdtempSync(join(tmpdir(), 'nirmana-monitor-apply-'))
+  const planFile = join(tempDirectory, 'monitor.tfplan')
+  writeFileSync(planFile, 'not-a-real-terraform-plan')
+  try {
+    return spawnSync('bash', [monitorApply, 'apply', planFile], {
+      encoding: 'utf8',
+      env: { ...process.env, ...environment },
+    })
+  } finally {
+    rmSync(tempDirectory, { recursive: true, force: true })
+  }
+}
+
 describe('Nirmana elevation monitor scheduler contract', () => {
   it('uses a dedicated least-privilege OIDC principal and bounded monitor job', () => {
     const schedulerTerraform = readFileSync(schedulerMain, 'utf8')
     const backend = readFileSync(monitorBackend, 'utf8')
     const terraform = readFileSync(monitorMain, 'utf8')
     const applyScript = readFileSync(monitorApply, 'utf8')
+    const lockfile = readFileSync(monitorLock, 'utf8')
     const readme = readFileSync(monitorReadme, 'utf8')
     const runbook = readFileSync(monitorRunbook, 'utf8')
     const workflow = readFileSync(iacWorkflow, 'utf8')
@@ -44,6 +62,10 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(applyScript).toContain('GITHUB_REF:-')
     expect(applyScript).toContain('refs/heads/main')
     expect(applyScript).toContain('IAC_APPLY_ENVIRONMENT:-')
+    expect(applyScript).toContain('GITHUB_REF_PROTECTED:-')
+    expect(applyScript).toContain('terraform init -lockfile=readonly')
+    expect(lockfile).toContain('provider "registry.terraform.io/hashicorp/google"')
+    expect(lockfile).toContain('version     = "8.0.0"')
     const schedulerIdentity = resourceBlock(terraform, 'resource "google_service_account" "nirmana_elevation_monitor"')
     const invokerBinding = resourceBlock(terraform, 'resource "google_cloud_run_v2_service_iam_member" "nirmana_elevation_monitor_invokes_web"')
     const tokenMintBinding = resourceBlock(terraform, 'resource "google_service_account_iam_member" "cloud_scheduler_mints_nirmana_monitor_oidc"')
@@ -92,8 +114,13 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(workflow).toContain('bash apply.sh plan monitor.tfplan')
     expect(workflow).toContain('bash apply.sh apply monitor.tfplan')
     expect(workflow).toContain("github.ref == 'refs/heads/main'")
+    expect(workflow).toContain('github.ref_protected')
+    expect(workflow).toContain('Reject non-main or unprotected apply before authentication')
+    expect(workflow.indexOf('Reject non-main or unprotected apply before authentication')).toBeLessThan(workflow.indexOf('Authenticate to Google Cloud'))
     expect(workflow).toContain('environment: production')
     expect(workflow).toContain('scheduler-nirmana-elevation-monitor')
+    expect(workflow).not.toContain('github.workflow')
+    expect(workflow).toContain("format('module-{0}', github.event.inputs.module)")
     expect(workflow).not.toContain('bash apply.sh apply\n')
 
     expect(runbook).toContain('OIDC')
@@ -101,5 +128,34 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(runbook).toContain(schedulerPrincipal)
     expect(runbook).not.toContain('MARSYS_CRON_SECRET')
     expect(runbook).not.toContain('X-Marsys-Cron-Secret')
+  })
+
+  it('rejects non-main and unprotected apply requests before Terraform can initialize', () => {
+    const applyScript = readFileSync(monitorApply, 'utf8')
+    if (!applyScript.includes('GITHUB_REF_PROTECTED:-')) {
+      // Keep the RED run offline: the legacy wrapper would initialize the real
+      // backend when presented with a local saved-plan placeholder.
+      expect(applyScript).toContain('GITHUB_REF_PROTECTED:-')
+      return
+    }
+
+    for (const environment of [
+      {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REF: 'refs/heads/review-branch',
+        GITHUB_REF_PROTECTED: 'true',
+        IAC_APPLY_ENVIRONMENT: 'production',
+      },
+      {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REF: 'refs/heads/main',
+        GITHUB_REF_PROTECTED: 'false',
+        IAC_APPLY_ENVIRONMENT: 'production',
+      },
+    ]) {
+      const result = invokeMonitorApply(environment)
+      expect(result.status).toBe(2)
+      expect(result.stderr).toContain('protected main ref')
+    }
   })
 })
