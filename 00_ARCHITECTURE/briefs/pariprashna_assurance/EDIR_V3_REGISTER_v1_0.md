@@ -668,10 +668,72 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-012 — Quality corpus (`fixtures.ts`) grounds 11 of its 12 existing fixtures in the native's real chart, not the synthetic default
+
+- **Class / severity:** PROCESS · S3 (MEDIUM, proposed — this is a
+  test-data-law compliance question about already-committed, baseline-frozen
+  content, not a proven violation or a live-probe incident)
+- **Lens / stage:** L-CODE · S3 corpus territory
+- **Expected:** per the test plan's frontmatter `test_data_law`, "all live
+  probes default to the synthetic consented chart `1c826d5a-...`. The
+  native's real chart (`482012f1`) is used only where a scenario specifically
+  requires it AND the native has authorized that specific use." S3's own
+  launch instructions and elevation §3.2 item 2 name real-chart use as the
+  reserved residue that self-pauses a stream if introduced un-authorized.
+- **Observed (2026-08-28, S3 stream-open):** `platform/src/lib/pariprashna/corpus/fixtures.ts`
+  (committed on `origin/main`, present unmodified at this stream's baseline
+  SHA — not introduced by this session) imports `CANONICAL_CHART_ID`
+  (`= '482012f1-710e-4a25-994a-93821f5871aa'`, the native's real chart) from
+  `types.ts` and sets it as `chartId` on **11 of the corpus's 12 existing
+  fixtures** (`factual-001`, `interpretive-001`, the `timing`, `cross-domain`,
+  `remedial`, `sensitive`, `incomplete-evidence`, `returning-conversation`,
+  `disagreement`, `prediction`, and `door-parity` fixtures all use
+  `CANONICAL_CHART_ID`; only `ambiguous-001-will-i-be-successful` uses
+  `SYNTHETIC_CHART_ID`). `types.ts`'s own docblock (line 73-76) frames this as
+  intentional: the real chart is used "for anything that cites real chart
+  content," with a synthetic id reserved for "anything that must not touch
+  canonical chart data during test authoring" — i.e. the module's author
+  already drew this distinction deliberately, but no authorization citation
+  is attached to any individual fixture confirming the native specifically
+  authorized each real-chart use per the test-data law's own conjunctive
+  test ("specifically requires it AND the native has authorized that
+  specific use").
+- **Why this is not treated as a live self-pause trigger:** the precedent
+  PROCESS finding for this exact issue class, historical **E-010** ("Live
+  probe used the native's real chart without specific need"), is recorded
+  CLOSED-AS-CODIFIED (2026-08-24, via the plan v2.0 test-data law itself) —
+  its closure mechanism was writing the very rule this finding is now
+  checked against, not leaving the question open. E-010's framing is also
+  specifically about a *live probe*, not a *static, already-committed
+  fixture* grounding choice — a materially different act. This finding is
+  therefore filed for native/Native-Surrogate confirmation of the existing
+  fixtures' authorization basis, not as a blocking violation. Consistent
+  with this, S3 proceeded to open the stream and expand the corpus, with the
+  explicit constraint that **every new fixture authored this session uses
+  `SYNTHETIC_CHART_ID` (`1c826d5a-...`) exclusively, no exceptions** — the
+  question this finding raises is scoped strictly to the 11 pre-existing
+  fixtures, never to new S3 work.
+- **Proposed fix class:** either (a) the native/Surrogate confirms the
+  existing real-chart grounding was an intentional, in-scope authorization
+  (test-data-law's "specifically requires it" clause — richer/fully-built
+  L1-L5 data on the real chart vs. the synthetic chart's likely-sparser
+  build is a plausible legitimate reason), in which case this closes
+  CLOSED-AS-CODIFIED like its precedent with that rationale recorded inline
+  per-fixture; or (b) if not authorized, the 11 fixtures are re-grounded
+  against the synthetic chart as a remediation PR, filed as S3's own
+  in-territory fix (the corpus is squarely S3's file territory) once ruled.
+- **Status:** OPEN, filed to native/Native-Surrogate for the authorization
+  ruling. Close rung: STATIC (a documented ruling, or a landed
+  re-grounding PR with independent verification if ruled unauthorized).
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
+SALVAGE 2); 12 V3 entries (5 from the A3 census + 6 surfaced during A4's
 B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
 B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
-document.*
+E-011 filed to S5, V3-E-009 closed-as-benign; + 1 filed 2026-08-28 by stream
+S3 at its own session-open: V3-E-012, real-chart-grounding question on the
+quality corpus's pre-existing fixtures, filed for native ruling). No gate is
+certified by this document.*
