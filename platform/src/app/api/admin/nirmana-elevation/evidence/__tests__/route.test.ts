@@ -36,6 +36,15 @@ vi.mock('@/lib/db/client', () => ({
     connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
   }),
 }))
+// Campaign definitions and non-server receipts intentionally use their own
+// database principal.  Route behavior is still unit-tested against the same
+// transaction fixture; credential separation is covered independently.
+vi.mock('@/lib/nirmana-elevation/campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({
+    query: (...args: unknown[]) => queryMock(...args),
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
 const authMock = vi.fn()
 vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: () => authMock() }))
 const auditMock = vi.fn()
@@ -59,7 +68,6 @@ import {
 } from '@/lib/nirmana-elevation/definitions'
 import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
 import { buildNirmanaBaselineCandidate } from '@/lib/nirmana-elevation/monitor'
-import { NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE } from '@/generated/nirmana-l0-analysis-receipts'
 
 const registry_contract = {
   sort_order: 1, scope: 'global' as const, asset_kind: 'data' as const, catalog_status: 'CURRENT' as const,
@@ -167,7 +175,7 @@ function mockCurrentRebuildEvidence(proven: boolean) {
     if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:57:00.000Z', recorded_at: '2026-08-25T08:57:00.000Z' }] })
     if (statement.includes("event_type = 'build_run_authorized'")) return Promise.resolve({ rows: [{ evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: '9'.repeat(64) }, source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T08:55:00.000Z', recorded_at: '2026-08-25T08:55:00.000Z' }] })
     if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: proven ? [{ plan_manifest: planManifest, plan_manifest_digest: canonicalNirmanaRunPlanManifestDigest(planManifest) }] : [] })
-    if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
     return Promise.resolve({ rows: [] })
   })
   return payload
@@ -180,6 +188,10 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     vi.resetModules()
     queryMock.mockReset()
     transactionQueryMock.mockReset()
+    // Most commands perform their mutation through the control-writer pool.
+    // Keep legacy read fixtures reusable unless a test supplies a transaction
+    // script explicitly with useEvidenceTransaction().
+    transactionQueryMock.mockImplementation((...args: unknown[]) => queryMock(...args))
     transactionReleaseMock.mockReset()
     authMock.mockReset()
     auditMock.mockReset().mockResolvedValue(undefined)
@@ -254,7 +266,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
         }] })
       }
       if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: registryRows })
-      if (statement.includes('INSERT INTO nirmana_elevation_campaign_definitions')) {
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
         return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
       }
       if (statement.includes("SET definition_status = 'frozen'")) {
@@ -263,14 +275,14 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       if (statement.includes('SELECT definition_status, manifest')) {
         return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
       }
-      if (statement.includes('FROM nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
       if (statement.includes('SELECT count(*)::int AS label_count')) {
         return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
       }
-      if (statement.includes('INSERT INTO nirmana_elevation_asset_labels')) {
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
         return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
       }
-      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) {
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
         return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
       }
       throw new Error(`Unexpected SQL: ${statement}`)
@@ -287,9 +299,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(await response.json()).toEqual({ outcome: 'created' })
     const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
     expect(transactionSql).toEqual(expect.arrayContaining([
-      expect.stringContaining('INSERT INTO nirmana_elevation_campaign_definitions'),
+      expect.stringContaining('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'),
       expect.stringContaining("SET definition_status = 'frozen'"),
-      expect.stringContaining('INSERT INTO nirmana_elevation_asset_labels'),
+      expect.stringContaining('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'),
     ]))
     expect(transactionSql.join('\n')).not.toContain('stage_transition_accepted')
     expect(transactionSql.join('\n')).not.toContain('asset_frozen')
@@ -365,7 +377,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     }))
     expect(response.status).toBe(201)
     const insertCall = transactionQueryMock.mock.calls.find(([sql]) =>
-      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+      String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))
     expect(insertCall?.[1]).toContain('admin-1')
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'created' }))
   })
@@ -579,7 +591,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(queryMock.mock.calls[0][0]).toContain("execution_obligation' IN ('build', 'probe')")
     expect(queryMock.mock.calls[0][0]).toContain('FROM unnest($6::text[]) AS authorized_asset(asset_id)')
     expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
-    expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_elevation_campaign_events')
+    expect(queryMock.mock.calls[1][0]).toContain('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')
   })
 
   it('rejects legacy rebuild evidence without both reviewed content hashes', async () => {
@@ -656,9 +668,9 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(201)
-    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_evidence.nirmana_elevation_campaign_events')
     expect(queryMock.mock.calls[0][0]).toContain('FROM asset_registry registry')
-    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(true)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
   })
 
   it('rejects a stale asset-analysis fingerprint without appending evidence', async () => {
@@ -695,7 +707,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ outcome: 'idempotent' })
     expect(queryMock).not.toHaveBeenCalled()
-    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_elevation_campaign_events')
+    expect(transactionQueryMock.mock.calls[2][0]).toContain('FROM nirmana_evidence.nirmana_elevation_campaign_events')
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_evidence_recorded', null, expect.objectContaining({ outcome: 'idempotent' }))
   })
 

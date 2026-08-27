@@ -350,17 +350,40 @@ jobs:
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
+      - name: Inspect Nirmana evidence ownership handoff marker
+        id: nirmana-ownership
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the Nirmana ownership marker."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected Nirmana ownership marker state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
       - name: One-shot Nirmana evidence ownership preflight
+        if: steps.nirmana-ownership.outputs.state == 'unmarked'
         env:
           NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
+          NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
         run: |
           if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
             echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
             exit 1
           fi
+          if [ -z "$NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL secret not set — cannot prove the preprovisioned control writer before handoff."
+            exit 1
+          fi
           cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
 
       - name: Attest Nirmana ownership handoff as deployment-only migrator
+        if: steps.nirmana-ownership.outputs.state == 'unmarked'
         env:
           NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |

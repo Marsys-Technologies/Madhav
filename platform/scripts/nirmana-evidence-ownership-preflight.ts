@@ -2,6 +2,7 @@
 import { Pool, type PoolClient } from 'pg'
 
 const LEGACY_URL = 'NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL'
+const CONTROL_URL = 'NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL'
 const SCHEMA = 'nirmana_evidence'
 const MARKER = '633_nirmana_evidence_writer_ownership.sql'
 const TABLES = ['nirmana_elevation_campaign_definitions', 'nirmana_elevation_campaign_events', 'nirmana_elevation_asset_labels']
@@ -16,6 +17,18 @@ async function markerApplied(databaseUrl: string): Promise<boolean> {
   try {
     const result = await pool.query<{ applied: boolean }>(`SELECT EXISTS (SELECT 1 FROM public._migrations_applied WHERE filename = $1) AS applied`, [MARKER])
     return result.rows[0]?.applied === true
+  } finally { await pool.end() }
+}
+
+async function assertControlWriterAuthentication(databaseUrl = process.env[CONTROL_URL]): Promise<void> {
+  if (!databaseUrl) throw new Error(`${CONTROL_URL} is required: the campaign control writer must be secret-backed and preprovisioned before ownership handoff.`)
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 })
+  try {
+    const actor = await pool.query<{ session_user: string; current_user: string }>('SELECT session_user, current_user')
+    if (actor.rows[0]?.session_user !== 'nirmana_campaign_control_writer'
+      || actor.rows[0]?.current_user !== 'nirmana_campaign_control_writer') {
+      throw new Error(`${CONTROL_URL} must authenticate directly as nirmana_campaign_control_writer.`)
+    }
   } finally { await pool.end() }
 }
 
@@ -51,6 +64,7 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
     const state = await handoffState(client)
     if (state === 'handed_off_unmarked') return
     if (state === 'partial') throw new Error('Nirmana ownership preflight found a partial handoff without marker; refusing recovery by mutation.')
+    await assertControlWriterAuthentication()
 
     await client.query('BEGIN')
     await client.query(`
@@ -65,9 +79,34 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer') THEN RAISE EXCEPTION 'nirmana_evidence_ingress_writer must be provisioned by migration 632 before the ownership preflight'; END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer' AND (NOT rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing non-normalized evidence ingress writer'; END IF;
         IF EXISTS (SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.roleid OR role.oid = membership.member WHERE role.rolname = 'nirmana_evidence_ingress_writer') THEN RAISE EXCEPTION 'refusing evidence ingress writer with memberships'; END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer') THEN CREATE ROLE nirmana_campaign_control_writer LOGIN NOINHERIT NOCREATEDB NOCREATEROLE; END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer') THEN RAISE EXCEPTION 'nirmana_campaign_control_writer must be secret-backed and preprovisioned before the ownership preflight'; END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer' AND (NOT rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated control writer'; END IF;
         IF EXISTS (SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.roleid OR role.oid = membership.member WHERE role.rolname = 'nirmana_campaign_control_writer') THEN RAISE EXCEPTION 'refusing control writer with memberships'; END IF;
+      END $$;
+      -- Remove direct stale grants before constructing the two explicit
+      -- non-owner envelopes.  Effective grants inherited from PUBLIC are
+      -- attested below by migration 633 and fail closed rather than being
+      -- silently treated as part of either writer's contract.
+      DO $$ DECLARE target_role text; schema_name text; relation_name text; column_name text; BEGIN
+        FOREACH target_role IN ARRAY ARRAY['nirmana_campaign_control_writer', 'nirmana_migrator'] LOOP
+          EXECUTE format('REVOKE ALL PRIVILEGES ON DATABASE %I FROM %I', current_database(), target_role);
+          FOR schema_name IN SELECT nspname FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema' LOOP
+            EXECUTE format('REVOKE ALL PRIVILEGES ON SCHEMA %I FROM %I', schema_name, target_role);
+            EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I FROM %I', schema_name, target_role);
+            EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I FROM %I', schema_name, target_role);
+            FOR relation_name, column_name IN
+              SELECT relation.relname, attribute.attname
+                FROM pg_class relation
+                JOIN pg_attribute attribute ON attribute.attrelid = relation.oid
+                JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+               WHERE namespace.nspname = schema_name
+                 AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                 AND attribute.attnum > 0 AND NOT attribute.attisdropped
+            LOOP
+              EXECUTE format('REVOKE ALL PRIVILEGES (%I) ON TABLE %I.%I FROM %I', column_name, schema_name, relation_name, target_role);
+            END LOOP;
+          END LOOP;
+        END LOOP;
       END $$;
       -- The directly authenticated legacy owner needs ADMIN OPTION only long
       -- enough to remove this temporary membership before commit.  No role
@@ -79,6 +118,10 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       -- schema while changing object ownership; revoke it immediately after
       -- every campaign object has moved to the dedicated schema.
       GRANT USAGE, CREATE ON SCHEMA public TO nirmana_evidence_owner;
+      DO $$ BEGIN
+        EXECUTE format('GRANT CONNECT ON DATABASE %I TO nirmana_campaign_control_writer, nirmana_migrator', current_database());
+      END $$;
+      GRANT USAGE ON SCHEMA public TO nirmana_campaign_control_writer, nirmana_migrator;
       GRANT SELECT, INSERT ON public._migrations_applied TO nirmana_migrator;
       GRANT SELECT ON public.asset_registry, public.nirmana_elevation_monitor_observations, public.build_runs, public.build_run_assets, public.asset_provenance_receipts, public.asset_output_digest_specs, public._migrations_applied TO nirmana_campaign_control_writer;
       ALTER TABLE public.nirmana_elevation_campaign_definitions OWNER TO nirmana_evidence_owner;

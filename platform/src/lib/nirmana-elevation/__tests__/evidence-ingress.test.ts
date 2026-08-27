@@ -65,8 +65,17 @@ describe('Nirmana campaign control writer database credentials', () => {
     )).toEqual({ user: 'nirmana_campaign_control_writer', credential: 'test-credential' })
   })
 
-  it('requires the dedicated control secret in the serving revision without exposing migration credentials', () => {
+  it('uses a read-only marker probe, gates first handoff secrets, and keeps migration credentials out of serving revisions', () => {
     const deployWorkflow = readFileSync(resolve(__dirname, '../../../../../.github/workflows/deploy.yml'), 'utf8')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-status.ts')
+    expect(deployWorkflow).toContain("if: steps.nirmana-ownership.outputs.state == 'unmarked'")
+    const preflight = deployWorkflow.slice(
+      deployWorkflow.indexOf('      - name: One-shot Nirmana evidence ownership preflight'),
+      deployWorkflow.indexOf('      - name: Attest Nirmana ownership handoff as deployment-only migrator'),
+    )
+    expect(preflight).toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
+    expect(preflight).toContain('cannot inspect or perform the ownership handoff')
+    expect(deployWorkflow).toContain('NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL')
     expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-preflight.ts')
     expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-marker.ts')
     expect(deployWorkflow).toContain('DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}')

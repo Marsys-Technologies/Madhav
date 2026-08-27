@@ -26,7 +26,7 @@ vi.mock('@/generated/nirmana-l0-analysis-receipts', async (importOriginal) => {
           writer_digest_sha256: assetId === 'bg_prashna_rules' ? '1'.repeat(64) : null,
           grounding: {
             convergence_commit: actual.NIRMANA_L0_CONVERGENCE_COMMIT,
-            frozen_manifest_source: 'nirmana_evidence.nirmana_elevation_campaign_definitions.manifest' as const,
+            frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
             writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
           },
         }

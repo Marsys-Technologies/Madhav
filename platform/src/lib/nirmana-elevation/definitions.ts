@@ -1075,7 +1075,13 @@ const NirmanaAssetAnalysisReceiptSchema = z.object({
     writer_digest_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
     grounding: z.object({
       convergence_commit: z.string().regex(/^[a-f0-9]{40}$/),
-      frozen_manifest_source: z.literal('nirmana_evidence.nirmana_elevation_campaign_definitions.manifest'),
+      // The former unqualified value is a durable accepted-receipt identifier;
+      // it is not interpreted as executable SQL.  New code reads the physical
+      // relation through the qualified query paths below.
+      frozen_manifest_source: z.union([
+        z.literal('nirmana_elevation_campaign_definitions.manifest'),
+        z.literal('nirmana_evidence.nirmana_elevation_campaign_definitions.manifest'),
+      ]),
       writer_digest_ref: z.literal('platform/src/generated/nirmana-writer-digests.json'),
     }).strict(),
   }).strict(),

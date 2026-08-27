@@ -189,5 +189,55 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'migration 633 refuses residual campaign column ACLs';
   END IF;
+  -- No non-owner writer may retain an unreviewed effective surface outside
+  -- nirmana_evidence.  Control has a narrow public read allowlist; the
+  -- deployment-only marker may only maintain the public migration ledger.
+  IF EXISTS (
+    SELECT 1 FROM pg_namespace namespace
+     WHERE namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
+       AND namespace.nspname NOT IN ('public', 'nirmana_evidence')
+       AND (
+         has_schema_privilege('nirmana_campaign_control_writer', namespace.oid, 'USAGE, CREATE')
+         OR has_schema_privilege('nirmana_migrator', namespace.oid, 'USAGE, CREATE')
+       )
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname <> 'nirmana_evidence'
+       AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
+       AND (
+         (has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'SELECT')
+           AND (namespace.nspname <> 'public' OR relation.relname <> ALL (ARRAY['asset_registry','nirmana_elevation_monitor_observations','build_runs','build_run_assets','asset_provenance_receipts','asset_output_digest_specs','_migrations_applied'])))
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'INSERT')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'UPDATE')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'DELETE')
+         OR has_table_privilege('nirmana_campaign_control_writer', relation.oid, 'TRUNCATE')
+         OR (has_table_privilege('nirmana_migrator', relation.oid, 'SELECT')
+           AND (namespace.nspname <> 'public' OR relation.relname <> '_migrations_applied'))
+         OR (has_table_privilege('nirmana_migrator', relation.oid, 'INSERT')
+           AND (namespace.nspname <> 'public' OR relation.relname <> '_migrations_applied'))
+         OR has_table_privilege('nirmana_migrator', relation.oid, 'UPDATE')
+         OR has_table_privilege('nirmana_migrator', relation.oid, 'DELETE')
+         OR has_table_privilege('nirmana_migrator', relation.oid, 'TRUNCATE')
+       )
+  ) OR EXISTS (
+    SELECT 1 FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname <> 'nirmana_evidence'
+       AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
+       AND relation.relkind = 'S'
+       AND (has_sequence_privilege('nirmana_campaign_control_writer', relation.oid, 'USAGE, SELECT, UPDATE')
+         OR has_sequence_privilege('nirmana_migrator', relation.oid, 'USAGE, SELECT, UPDATE'))
+  ) OR EXISTS (
+    SELECT 1 FROM pg_attribute attribute
+      JOIN pg_class relation ON relation.oid = attribute.attrelid
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      CROSS JOIN LATERAL aclexplode(attribute.attacl) AS column_acl
+      JOIN pg_roles grantee ON grantee.oid = column_acl.grantee
+     WHERE namespace.nspname <> 'nirmana_evidence'
+       AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
+       AND grantee.rolname IN ('nirmana_campaign_control_writer','nirmana_migrator')
+  ) OR has_database_privilege('nirmana_campaign_control_writer', current_database(), 'CREATE')
+    OR has_database_privilege('nirmana_migrator', current_database(), 'CREATE') THEN
+    RAISE EXCEPTION 'migration 633 refuses non-owner writer ACLs outside the explicit envelope';
+  END IF;
 END;
 $$;
