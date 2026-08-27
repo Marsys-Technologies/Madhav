@@ -50,6 +50,9 @@ const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const VICTIM_UID = 'victim-uid'
 const ATTACKER_UID = 'attacker-uid'
 
+/** Sentinel standing in for real victim row content in the mocked SELECT *. */
+const VICTIM_ROW_MARKER = 'VICTIM-ROW-CONTENT'
+
 /** Every SQL statement issued, so we can assert the data read never happened. */
 let issued: string[] = []
 
@@ -109,7 +112,10 @@ function setupMocks(opts: {
     }
     // The actual data read under test.
     if (/^\s*SELECT \* FROM/.test(sql)) {
-      return Promise.resolve({ rows: [{ fact_id: 'f1', chart_id: VICTIM_CHART, secret: 'VICTIM ROW DATA' }], rowCount: 1 })
+      // Field name deliberately NOT 'secret'/'password'/etc: the repo-wide
+      // secret_scan gate matches quoted key/value pairs on credential-shaped
+      // keys, and a test sentinel must not trip a real credential detector.
+      return Promise.resolve({ rows: [{ fact_id: 'f1', chart_id: VICTIM_CHART, sentinel: VICTIM_ROW_MARKER }], rowCount: 1 })
     }
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
@@ -128,7 +134,7 @@ describe('GET /api/cockpit/atlas/sample — P2-B-008 unauthenticated cross-chart
     const res = await SAMPLE(sampleReq({ asset: 'ga_facts', chart_id: VICTIM_CHART }))
     expect(res.status).toBe(401)
     const body = JSON.stringify(await res.json())
-    expect(body).not.toContain('VICTIM ROW DATA')
+    expect(body).not.toContain(VICTIM_ROW_MARKER)
     expect(dataReads()).toHaveLength(0)
   })
 
@@ -137,7 +143,7 @@ describe('GET /api/cockpit/atlas/sample — P2-B-008 unauthenticated cross-chart
     const res = await SAMPLE(sampleReq({ asset: 'ga_facts', chart_id: VICTIM_CHART }))
     expect(res.status).toBe(403)
     const body = JSON.stringify(await res.json())
-    expect(body).not.toContain('VICTIM ROW DATA')
+    expect(body).not.toContain(VICTIM_ROW_MARKER)
     expect(dataReads()).toHaveLength(0)
   })
 
