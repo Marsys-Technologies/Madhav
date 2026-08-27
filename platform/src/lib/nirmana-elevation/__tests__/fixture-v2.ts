@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { canonicalManifestDigest, canonicalRegistryContractDigest } from '../definitions'
+import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalRegistryContractDigest } from '../definitions'
 import {
   projectNirmanaElevationSnapshot,
   type NirmanaElevationRawSources,
@@ -189,13 +189,36 @@ function foundationPayload(laneId: string) {
 }
 
 function assetEvents(assetId: string, eventTypes: string[], runId?: string, startOffsetSeconds = 10) {
+  const asset = manifest.assets.find((candidate) => candidate.asset_id === assetId)
+  if (!asset) throw new Error(`Missing fixture manifest asset ${assetId}.`)
+  const binding = { registry_fingerprint_sha256: asset.registry_fingerprint_sha256, analysis_digest: 'b'.repeat(64) }
+  const decision = {
+    ...binding,
+    verdict: 'optimize' as const,
+    basis: {
+      measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:fixture-evidence'],
+    },
+    proposal: { action: 'optimize' as const, summary: 'Fixture change is governed.', output_contract: 'digest_identical' as const },
+  }
   return eventTypes.map((eventType, index) => ({
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: eventType,
     entity_type: 'asset', entity_id: assetId, layer: assetId === 'ka_smriti' ? 'L3' : 'L0',
-    evidence_payload: eventType === 'optimization_verdict_accepted' ? { change_required: true } : {},
-    source_kind: 'campaign_evidence',
+    evidence_payload: eventType === 'asset_analysis_accepted' ? binding
+      : eventType === 'optimization_verdict_accepted' ? decision
+        : eventType === 'implementation_accepted' ? { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
+          : eventType === 'accepted_rebuild_observed' ? {
+            ...binding, build_run_id: runId!, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64),
+            output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64),
+          }
+            : eventType === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'f'.repeat(64), result_digest: '0'.repeat(64) }
+              : eventType === 'asset_frozen' ? { ...binding, lifecycle_digest: '1'.repeat(64) }
+                : {},
+    source_kind: ['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted'].includes(eventType)
+      ? 'git_commit' : ['integrity_verified', 'asset_frozen'].includes(eventType) ? 'server_reconstructed' : 'build_run',
     source_ref: eventType === 'accepted_rebuild_observed' || eventType === 'producer_covered'
-      ? `build_run:${runId}` : `event:${assetId}:${eventType}`,
+      ? `build_run:${runId}` : eventType === 'integrity_verified' ? `nirmana-elevation:integrity:${assetId}`
+        : eventType === 'asset_frozen' ? `nirmana-elevation:freeze:${assetId}` : `git:${'a'.repeat(40)}`,
     observed_at: new Date(Date.parse(observedAt) + startOffsetSeconds * 1_000 + index * 1_000).toISOString(),
     recorded_at: new Date(Date.parse(observedAt) + startOffsetSeconds * 1_000 + index * 1_000).toISOString(),
   }))
