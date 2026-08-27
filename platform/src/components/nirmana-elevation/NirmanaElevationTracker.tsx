@@ -54,6 +54,45 @@ function failureMessage(snapshot: NirmanaElevationSnapshot): string {
   return unavailable?.error_message ?? 'The snapshot source is unavailable.'
 }
 
+function staleStateCopy(snapshot: NirmanaElevationSnapshot): { heading: string, detail: string } {
+  if (snapshot.schema_version === '2.0') {
+    switch (snapshot.program_sync.status) {
+      case 'unknown':
+        return {
+          heading: 'Tracker awaiting first synchronization',
+          detail: 'No program synchronization observation has been received yet. Progress and asset labels are intentionally withheld until the first governed observation is available.',
+        }
+      case 'baseline_missing':
+        return {
+          heading: 'Tracker awaiting baseline approval',
+          detail: 'A synchronization observation is available, but its proposed campaign baseline has not been accepted. Progress remains withheld until an authorized review accepts it.',
+        }
+      case 'plan_adaptation_required':
+        return {
+          heading: 'Tracker awaiting plan adaptation review',
+          detail: 'The latest observation found a change to the governed plan. Displayed progress remains withheld until that change is reviewed and accepted.',
+        }
+      case 'evidence_refresh_required':
+        return {
+          heading: 'Tracker awaiting evidence refresh',
+          detail: 'Previously accepted program evidence is no longer current. Displayed progress remains withheld until refreshed evidence is reviewed.',
+        }
+      case 'label_refresh_required':
+        return {
+          heading: 'Tracker awaiting label catalogue refresh',
+          detail: 'The governed asset-label catalogue needs review before tracker labels can be treated as current.',
+        }
+      case 'in_sync':
+        break
+    }
+  }
+
+  return {
+    heading: 'Current state needs attention',
+    detail: 'One or more sources are stale, unknown, or unavailable. The rendered state is not a current conclusion.',
+  }
+}
+
 function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
   snapshot: NirmanaElevationSnapshotV2
   onBaselineAccepted?: () => Promise<boolean>
@@ -196,16 +235,19 @@ export function NirmanaElevationTracker({
       <p className="mt-2 text-sm text-brand-text-2">{failure ? `Live snapshot unavailable — ${failure.message}` : 'Obtaining the live evidence snapshot…'}</p>
     </section>
   }
+  const stateCopy = failure
+    ? { heading: 'Current state unknown', detail: 'The live snapshot could not be loaded.' }
+    : staleStateCopy(snapshot)
 
   return <div className={`relative mx-auto max-w-[1600px] space-y-5 py-6 ${stale ? 'after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:border-2 after:border-brand-warn/60' : ''}`}>
     {stale && <aside role="alert" aria-live="assertive" className="rounded-xl border-2 border-brand-warn bg-brand-warn/15 p-4 text-brand-text-1">
       <div className="flex gap-3">
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-brand-warn" />
         <div>
-          <p className="font-semibold uppercase tracking-wide">Current state unknown</p>
+          <p className="font-semibold uppercase tracking-wide">{stateCopy.heading}</p>
           {failure
             ? <><p className="mt-1 text-sm text-brand-text-2">{failure.message} Displaying the last successful snapshot from {formatTime(fetchedAt)}.</p><p className="mt-1 text-xs text-brand-text-3">Failure observed <time dateTime={failure.occurredAt.toISOString()}>{formatTime(failure.occurredAt)}</time>.</p></>
-            : <p className="mt-1 text-sm text-brand-text-2">One or more sources are stale, unknown, or unavailable. The rendered state is not a current conclusion.</p>}
+            : <p className="mt-1 text-sm text-brand-text-2">{stateCopy.detail}</p>}
         </div>
       </div>
     </aside>}
