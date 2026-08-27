@@ -602,8 +602,71 @@ await Native Surrogate triage.
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
+### V3-E-010 — Two more confirmed `chart_id`-ownership gaps outside the B-007/B-008 fix scope
+
+- **Class / severity:** DEFECT · S2 (MEDIUM, proposed — auth-gated but not
+  ownership-gated; narrower than B-007/B-008's zero-auth cases)
+- **Lens / stage:** L-CODE · CROSS
+- **Provenance:** surfaced by the B-008 fixer while sweeping `cockpit/*` for
+  the same root cause (no per-route `chart_id` ownership check) already
+  confirmed three times (B-001, B-007, B-008).
+- **Observed (2026-08-27):**
+  - `POST /api/build/rebuild-all` and `POST /api/build/rebuild` require login
+    (`requireUser`) but insert `build_events` rows for any caller-supplied
+    `chart_id` — a cross-tenant write, not read/delete.
+  - `GET /api/assets/[chart_id]/[asset_key]` requires login but returns
+    per-chart asset data for any `chart_id` in the path — a cross-tenant read.
+- **Proposed fix class:** same pattern as B-007/B-008 — gate with
+  `requireChartPermission`/`authorizeChartAccess` (the shared helper B-008
+  introduced), `'all'` for the write path, `'read'` for the asset read.
+- **Status:** OPEN, filed to stream **S5** — not fixed in Session A.
+
+### V3-E-011 — Systemic: ~30 further routes take a `chart_id` with no verified ownership check
+
+- **Class / severity:** PROCESS · S2 (MEDIUM, proposed — this is a coverage
+  gap, not itself a proven exploit; severity of any individual route within it
+  is unknown until triaged)
+- **Lens / stage:** L-CODE · CROSS
+- **Expected:** given the SAME root cause has now been independently confirmed
+  four times in one session (`charts/[id]` GET → B-001; `cockpit/clear`+
+  `execute` → B-007; `cockpit/runs`+`atlas/sample` → B-008; `build/rebuild*`+
+  `assets/[chart_id]/[asset_key]` → V3-E-010 above), a bounded per-instance
+  response is no longer proportionate — a systematic audit is needed.
+- **Observed (2026-08-27):** the B-008 fixer's broader scan (not a full triage)
+  flagged roughly 30 additional routes accepting a `chart_id` parameter with
+  no independently-confirmed ownership check. The fixer explicitly declined to
+  triage these individually within B-008's scope — "many are probably fine
+  (owner-scoped SQL, admin-gated) but I did not triage them." One claimed
+  instance (the `watchdog` route) was investigated and DISPROVEN as a gap — it
+  is correctly gated by an `x-watchdog-auth` shared secret for Cloud
+  Scheduler — demonstrating the list needs real per-route verification, not a
+  grep-count treated as a defect count.
+- **Why this is NOT fixed in Session A:** A4's mandate is the P2 blocker
+  denominator (B-001..B-006) plus severity-driven additions where a live,
+  CONFIRMED critical surfaces collaterally (B-007, B-008 both met that bar via
+  independent reproduction of a real unauthorized DELETE). An unconfirmed list
+  of ~30 candidates is exactly the open-ended "keep chasing every new lead"
+  pattern the elevation's bounded-scope discipline (§5.3: scope changes are
+  authorized and registered, not chased indefinitely) warns against — chasing
+  it further here would prevent A4 from ever closing CG-2 and starting the
+  campaign's actual six streams, which is Session A's real purpose.
+- **Proposed fix class:** a dedicated, systematic authorization audit —
+  per-route: (1) does it accept a `chart_id`; (2) is there a verified
+  ownership/grant/role check before any sensitive read or any write; (3) fix
+  or confirm-safe, one at a time, with the same TDD discipline B-001/B-007/
+  B-008 used. This is squarely stream **S5**'s mandate (§9 security/privacy/
+  data-integrity battery) — filed there as a named, evidenced work item, not
+  silently dropped.
+- **Status:** OPEN, filed to stream **S5** as its highest-priority lead. Close
+  rung: every candidate route individually triaged with a cited verdict
+  (fixed / confirmed-safe-with-reason), not a re-statement of this count.
+
+---
+
+*End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 9 V3 entries (5 from the A3 census + 4 surfaced by the B-001
-independent verifier's adversarial review, 2026-08-27: V3-E-006/B-007
-CRITICAL in remediation, V3-E-007 filed to S5, V3-E-008 informational to S5,
-V3-E-009 closed-as-benign). No gate is certified by this document.*
+SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
+B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
+B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
+E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
+document.*
