@@ -334,15 +334,19 @@ describe('NirmanaElevationTracker', () => {
       nextResponse: () => jsonResponse({ ...snapshotV2(), stages: [] }),
       error: /did not satisfy the shared evidence contract/i,
     },
-  ])('retains the last valid v2 DOM after a $label', async ({ nextResponse, error }) => {
+  ])('retains the last valid v2 DOM after a focus refresh $label', async ({ nextResponse, error }) => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse(snapshotV2()))
       .mockImplementation(() => Promise.resolve(nextResponse())))
 
-    render(<NirmanaElevationTracker pollIntervalMs={10} />)
+    render(<NirmanaElevationTracker />)
     await screen.findByText('Praśna Rules')
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 500 })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    act(() => window.dispatchEvent(new Event('focus')))
+    expect(fetch).toHaveBeenCalledTimes(2)
+
+    await screen.findByText(/current state unknown/i)
 
     expect(screen.getByText('Praśna Rules')).toBeVisible()
     const retainedSnapshotAlert = screen.getByText(/current state unknown/i).closest<HTMLElement>('[role="alert"]')
