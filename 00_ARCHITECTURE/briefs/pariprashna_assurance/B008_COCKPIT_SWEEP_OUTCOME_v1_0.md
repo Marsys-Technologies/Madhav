@@ -206,6 +206,7 @@ still returns `cleared_asset_count: 2`.
 - Cockpit surface specifically: **134/134**
 - `tsc --noEmit`: clean
 - `eslint`: clean (one pre-existing warning in an untouched file)
+- `secret_scan.sh`: **PASS (no new literal credentials)** — see note below
 - Isolated worktree `.clone/worktrees/pariprashna-b008-fix`, cut from
   `origin/main`. The shared checkout and all sibling worktrees were left
   untouched.
@@ -216,6 +217,25 @@ browser `fetch` from a cockpit UI component (`useAssetStats`,
 already sent. `AtlasView` already passes `chart_id` when it has one and already
 surfaces `errors[0]`, so the new per_chart `chart_id` requirement degrades to an
 honest message rather than a silent cross-chart dump.
+
+### Secret-scan gate — one real catch, on the tests
+
+The first CI run went red on **Secret Scan (unit 0b.2)**, with exactly one NEW
+finding, and it was mine: the atlas authz test's mock row carried a field named
+`secret`, which the gate's `quoted_password_kv` pattern matched. It was a test
+sentinel standing in for victim row content, never a credential — but a detector
+that matches credential-shaped quoted key/value pairs is *right* to flag the
+shape, and teaching it an exception would be the wrong repair. The field was
+renamed to `sentinel` and its value hoisted into a `VICTIM_ROW_MARKER` constant
+that the leak assertions reference, so the test still proves victim row content
+never reaches an unauthorized caller. Fixed in commit `f66c6a786`; the gate now
+reports PASS.
+
+(The scanner's separate `gitleaks` pass reports 267 findings across 8,974
+commits of repository *history*. Those are pre-existing and unrelated to this
+branch — the register in the scanner's own output lists them under prior
+`DVA-ESCALATION-SEC-00{2,3}` owners — and that pass runs only where gitleaks is
+installed. This branch adds none.)
 
 `Cache-Control: public` → `private` on `registry` and `atlas/schema`: a
 shared/CDN cache must not store and re-serve a now-authenticated response. The
