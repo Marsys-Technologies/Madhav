@@ -7,6 +7,7 @@ import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS, isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 async function requireUser() {
@@ -219,9 +220,11 @@ export async function POST(req: NextRequest) {
              AND asset_kind = 'service'
              AND asset_type = 'service'
              AND health_probe IS NOT NULL
+             AND asset_id = ANY($1::text[])
            )
          )
-       ORDER BY layer, sort_order`
+       ORDER BY layer, sort_order`,
+      [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
     ),
     query<ThroughputEntry>(
       // Include global (chart_id IS NULL) rows alongside chart-scoped so built L0/global
@@ -258,18 +261,12 @@ export async function POST(req: NextRequest) {
 
   // A no-writer service has a health probe rather than a WriterBase implementation.
   // It is eligible only as one explicit, non-destructive global asset_set selected by
-  // a super_admin. This admits the canonical ephemeris probe without making arbitrary
-  // service rows or an entire L0 layer dispatchable by accident.
+  // a super_admin. The fixed manifest-derived allowlist admits the frozen
+  // Ephemeris and Panchanga probes without making arbitrary service rows or an
+  // entire L0 layer dispatchable by accident.
   const requestedServiceProbes = requestedAssetSet
     .map(assetId => registryResult.rows.find(row => row.asset_id === assetId))
-    .filter((row): row is RegistryEntryWithScope => Boolean(
-      row
-      && row.scope === 'global'
-      && !row.has_writer
-      && row.asset_kind === 'service'
-      && row.asset_type === 'service'
-      && row.health_probe !== null
-    ))
+    .filter((row): row is RegistryEntryWithScope => Boolean(row && isCockpitDispatchableServiceProbe(row)))
   if (requestedServiceProbes.length > 0) {
     if (!isSuperAdmin) {
       return NextResponse.json(

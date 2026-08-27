@@ -176,7 +176,10 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     expect(name.className).toContain('font-medium')
   })
 
-  it('uses the singleton asset_set contract for the Ephemeris service probe', async () => {
+  it.each([
+    ['bg_ephemeris_engine', 'ephemeris_engine'],
+    ['bg_panchanga', 'panchanga_engine'],
+  ])('uses the singleton asset_set contract for the frozen L0 %s service probe', async (assetId, probeType) => {
     const user = userEvent.setup()
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
@@ -184,24 +187,24 @@ describe('Cockpit Polish R2 — AssetRow', () => {
         json: async () => ({
           data: {
             status: 'ok',
-            plan_waves: [['bg_ephemeris_engine']],
+            plan_waves: [[assetId]],
             blockers: [],
             estimated_seconds: null,
           },
         }),
       })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { plan: ['bg_ephemeris_engine'] } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { plan: [assetId] } }) })
     vi.stubGlobal('fetch', fetchMock)
 
     render(
       <AssetRow
         asset={{
           ...SERVICE_ASSET,
-          asset_id: 'bg_ephemeris_engine',
+          asset_id: assetId,
           asset_kind: 'service' as const,
-          health_probe: { type: 'ephemeris' },
+          health_probe: { probe_type: probeType },
         }}
-        stat={statOf({ asset_id: 'bg_ephemeris_engine', state: 'service_down', error: null })}
+        stat={statOf({ asset_id: assetId, state: 'service_down', error: null })}
         chartId="chart-1"
         activeRunId={null}
         activeRunPaused={false}
@@ -216,7 +219,7 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     for (const [, options] of fetchMock.mock.calls) {
       expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
         scope: 'asset_set',
-        scope_target: 'bg_ephemeris_engine',
+        scope_target: assetId,
       })
     }
   })

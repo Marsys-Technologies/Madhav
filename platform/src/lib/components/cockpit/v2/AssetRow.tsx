@@ -17,6 +17,7 @@ import { useUserRole } from '@/hooks/useUserRole'
 import { BuildBlockedModal } from '@/components/cockpit/BuildBlockedModal'
 import { BuildConfirmModal } from '@/components/cockpit/BuildConfirmModal'
 import type { BlockerEntry } from '@/lib/build/plan'
+import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 
 interface Props {
   asset: AssetRowType
@@ -172,17 +173,13 @@ interface ConfirmPending {
   estimatedSeconds: number | null
 }
 
-// The dispatcher treats the Ephemeris health probe as a deliberately narrow
-// exception: it is a global service without a WriterBase implementation, and
-// may only be run as a singleton asset_set. Keep the client on that same
-// contract rather than sending an ordinary asset-scoped request that the
-// dispatcher must reject.
+// The dispatcher treats the frozen L0 health probes as deliberately narrow
+// exceptions: they are global services without a WriterBase implementation and
+// may only run as singleton asset_sets. Keep the client on that same contract
+// rather than sending an ordinary asset-scoped request that the dispatcher
+// must reject.
 export function rebuildScopeForAsset(asset: AssetRowType): 'asset' | 'asset_set' {
-  return asset.asset_id === 'bg_ephemeris_engine'
-    && asset.scope === 'global'
-    && asset.asset_kind === 'service'
-    && asset.asset_type === 'service'
-    && asset.health_probe !== null
+  return isCockpitDispatchableServiceProbe(asset)
     ? 'asset_set'
     : 'asset'
 }
