@@ -1392,23 +1392,62 @@ function normalizeDetectorValue(value: unknown): unknown {
   return String(value)
 }
 
-async function collectProbeObservation(healthProbe: Record<string, unknown> | null): Promise<{ observation: unknown; observed_at: string }> {
-  const endpoint = healthProbe?.endpoint
-  if (typeof endpoint !== 'string' || !/^https?:\/\//.test(endpoint)) {
-    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a live absolute HTTP(S) endpoint in the current registry contract.')
+async function collectProbeObservation(assetId: string, healthProbe: Record<string, unknown> | null): Promise<{ observation: unknown; observed_at: string }> {
+  if (healthProbe === null || typeof healthProbe.probe_type !== 'string' || !/^[a-z][a-z0-9_]{1,127}$/.test(healthProbe.probe_type)) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a current typed health_probe probe_type contract.')
   }
-  const response = await fetch(endpoint, { method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(10_000) })
-  const body = await response.text()
-  const boundedBody = body.slice(0, 65_536)
+  const probeType = healthProbe.probe_type
+  const result = await runAuthoritativeHealthProbe(assetId, healthProbe)
+  const normalized = normalizeDetectorValue(result)
+  const parsed = z.object({
+    status: z.enum(['GREEN', 'degraded', 'down']),
+    message: z.string(),
+    checks: z.array(z.object({ check: z.string(), passed: z.boolean() }).passthrough()),
+  }).safeParse(normalized)
+  if (!parsed.success || parsed.data.status !== 'GREEN' || parsed.data.checks.length === 0 || parsed.data.checks.some((check) => !check.passed)) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a passing authoritative typed health-probe verdict.')
+  }
   return {
     observation: {
-      endpoint,
-      status: response.status,
-      ok: response.ok,
-      body_sha256: createHash('sha256').update(boundedBody).digest('hex'),
-      body_truncated: body.length > boundedBody.length,
+      runner: 'pipeline.orchestrator.service_probes.run_health_probe/v1',
+      probe_type: probeType,
+      result: normalized,
     },
     observed_at: new Date().toISOString(),
+  }
+}
+
+async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<string, unknown>): Promise<unknown> {
+  const { execFile } = await import('node:child_process')
+  const path = await import('node:path')
+  const repoRoot = process.env.MARSYS_REPO_ROOT ?? path.resolve(process.cwd(), '..')
+  const pythonPath = process.env.NIRMANA_PROBE_RUNNER_PYTHON
+    ?? process.env.LOCAL_PYTHON_PATH
+    ?? path.join(repoRoot, '.venv', 'bin', 'python')
+  const sidecarDir = path.join(repoRoot, 'platform', 'python-sidecar')
+  const runner = [
+    'import json, sys',
+    'from pipeline.orchestrator.service_probes import run_health_probe',
+    'print(json.dumps(run_health_probe(sys.argv[1], json.loads(sys.argv[2])), sort_keys=True, separators=(",", ":")))',
+  ].join('; ')
+  const stdout = await new Promise<string>((resolve, reject) => {
+    execFile(pythonPath, ['-c', runner, assetId, JSON.stringify(healthProbe)], {
+      cwd: sidecarDir,
+      env: process.env,
+      timeout: 15_000,
+      maxBuffer: 256 * 1024,
+    }, (error, output, stderr) => {
+      if (error) {
+        reject(new NirmanaElevationEvidenceValidationError(`authoritative typed health-probe runner failed: ${String(stderr).slice(0, 1000) || error.message}`))
+        return
+      }
+      resolve(output)
+    })
+  })
+  try {
+    return JSON.parse(stdout)
+  } catch {
+    throw new NirmanaElevationEvidenceValidationError('authoritative typed health-probe runner returned invalid JSON.')
   }
 }
 
@@ -1418,10 +1457,33 @@ async function collectIntegrityObservation(client: PoolClient, registryContract:
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a read-only current registry integrity detector query.')
   }
   const result = await client.query(detectorSql)
+  const verdict = integrityDetectorVerdict(result.rows, registryContract.integrity_check_sql !== null)
   return {
-    observation: { detector_sql_sha256: createHash('sha256').update(detectorSql).digest('hex'), rows: normalizeDetectorValue(result.rows) },
+    observation: { detector_sql_sha256: createHash('sha256').update(detectorSql).digest('hex'), rows: normalizeDetectorValue(result.rows), verdict },
     observed_at: new Date().toISOString(),
   }
+}
+
+function integrityDetectorVerdict(rows: unknown[], explicitIntegrityCheck: boolean): { kind: 'boolean' | 'positive_count'; value: true | number } {
+  if (rows.length !== 1 || rows[0] === null || typeof rows[0] !== 'object' || Array.isArray(rows[0])) {
+    throw new NirmanaElevationEvidenceValidationError('integrity_verified requires exactly one typed detector result row.')
+  }
+  const row = rows[0] as Record<string, unknown>
+  for (const key of ['integrity_passed', 'passed', 'ok', 'success']) {
+    if (key in row) {
+      if (row[key] !== true) throw new NirmanaElevationEvidenceValidationError('integrity_verified authoritative detector returned a failing boolean verdict.')
+      return { kind: 'boolean', value: true }
+    }
+  }
+  if (!explicitIntegrityCheck && 'count' in row) {
+    const raw = row.count
+    const count = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN
+    if (!Number.isSafeInteger(count) || count <= 0) {
+      throw new NirmanaElevationEvidenceValidationError('integrity_verified count detector must return a positive integer result.')
+    }
+    return { kind: 'positive_count', value: count }
+  }
+  throw new NirmanaElevationEvidenceValidationError('integrity_verified requires an explicit true integrity verdict or a positive count result.')
 }
 
 async function normalizeDetectorEvidence(
@@ -1432,7 +1494,7 @@ async function normalizeDetectorEvidence(
   const current = await loadCurrentLifecycleContext(client, input)
   if (input.event_type === 'probe_accepted') {
     const payload = NirmanaProbeEvidenceSchema.parse(input.evidence_payload)
-    const observation = await collectProbeObservation(current.registryContract.health_probe)
+    const observation = await collectProbeObservation(input.entity_id, current.registryContract.health_probe)
     return {
       ...input,
       observed_at: observation.observed_at,
@@ -1629,6 +1691,12 @@ async function requireIntegrityProvenance(
   const producerCoverage = obligation === 'producer_covered'
     ? await loadCurrentProducerCoverage(client, input, current)
     : null
+  if (producerCoverage) {
+    if (!occursAfter(input, producerCoverage)) {
+      throw new NirmanaElevationEvidenceValidationError('Producer-covered integrity_verified must follow the exact current coverage receipt.')
+    }
+    return
+  }
   const operationEvent = obligation === 'probe' ? 'probe_accepted'
     : obligation && obligation in dispositionEventByObligation ? dispositionEventByObligation[obligation as keyof typeof dispositionEventByObligation]
       : obligation === 'build' ? 'accepted_rebuild_observed' : null
@@ -1643,9 +1711,6 @@ async function requireIntegrityProvenance(
   )
   if (prerequisite.rows[0]?.present !== true) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a prior accepted execution or disposition receipt.')
-  }
-  if (producerCoverage && !occursAfter(input, producerCoverage)) {
-    throw new NirmanaElevationEvidenceValidationError('Producer-covered integrity_verified must follow the exact current coverage receipt.')
   }
 }
 
@@ -1662,8 +1727,8 @@ async function requireFreezeProvenance(
   const producerCoverage = current.manifestAsset.execution_obligation === 'producer_covered'
     ? await loadCurrentProducerCoverage(client, input, current)
     : null
-  const integrity = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string }>(
-    `SELECT evidence_payload, source_kind, source_ref FROM nirmana_elevation_campaign_events
+  const integrity = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2 AND event_type = 'integrity_verified'
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
     [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
@@ -1675,6 +1740,7 @@ async function requireFreezeProvenance(
       && parsed.data.integrity_contract_sha256 === canonicalNirmanaIntegrityContractDigest(current.registryContract)
       && event.source_kind === 'server_reconstructed'
       && event.source_ref === `nirmana-elevation:integrity:${input.entity_id}`
+      && (!producerCoverage || occursAfter(event, producerCoverage))
   })
   if (validIntegrity.length !== 1) {
     throw new NirmanaElevationEvidenceValidationError('asset_frozen requires exactly one current validated integrity receipt.')

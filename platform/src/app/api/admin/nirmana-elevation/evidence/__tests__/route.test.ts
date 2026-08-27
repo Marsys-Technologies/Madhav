@@ -4,6 +4,29 @@ import { NextResponse } from 'next/server'
 
 vi.mock('server-only', () => ({}))
 
+// Keep the route's lifecycle fixtures executable when this checkout lacks the
+// generated convergence inventory.  Only the definitions lookup is pinned;
+// generated-inventory coverage remains tested independently.
+vi.mock('@/generated/nirmana-l0-analysis-receipts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/generated/nirmana-l0-analysis-receipts')>()
+  return {
+    ...actual,
+    getNirmanaL0AnalysisReceiptBase: (assetId: string) => assetId.startsWith('bg_')
+      ? {
+          schema_version: 'nirmana-asset-analysis-receipt-base/v1' as const,
+          asset_id: assetId,
+          layer: 'L0' as const,
+          writer_digest_sha256: assetId === 'bg_prashna_rules' ? '1'.repeat(64) : null,
+          grounding: {
+            convergence_commit: actual.NIRMANA_L0_CONVERGENCE_COMMIT,
+            frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
+            writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
+          },
+        }
+      : undefined,
+  }
+})
+
 const queryMock = vi.fn()
 const transactionQueryMock = vi.fn()
 const transactionReleaseMock = vi.fn()
@@ -31,6 +54,7 @@ import {
   canonicalManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
   canonicalNirmanaOptimizationVerdictDigest,
+  canonicalNirmanaRunPlanManifestDigest,
   canonicalRegistryContractDigest,
 } from '@/lib/nirmana-elevation/definitions'
 import { canonicalLabelCatalogueDigest } from '@/lib/nirmana-elevation/labels'
@@ -130,13 +154,19 @@ function mockCurrentRebuildEvidence(proven: boolean) {
     authorization_sha256: '9'.repeat(64),
     output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
   }
+  const planManifest = {
+    version: 'nirmana-run-manifest/v1', chart_id: manifest.chart_id, scope: 'asset_set', scope_target: 'bg_prashna_rules', action: 'rebuild',
+    waves: [['bg_prashna_rules']], assets: [{ asset_id: 'bg_prashna_rules' }],
+    campaign_control: { campaign_id: 'nirmana-elevation', definition_revision: 'v1', layer: 'L0', wave_index: 0, snapshot_ref: 'test:snapshot' },
+  }
   queryMock.mockImplementation((sql: string) => {
     const statement = String(sql)
     if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
     if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256, manifest_asset_count: 1 }] })
-    if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}` }] })
-    if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}` }] })
-    if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: [{ proven }] })
+    if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:56:00.000Z', recorded_at: '2026-08-25T08:56:00.000Z' }] })
+    if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:57:00.000Z', recorded_at: '2026-08-25T08:57:00.000Z' }] })
+    if (statement.includes("event_type = 'build_run_authorized'")) return Promise.resolve({ rows: [{ evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: '9'.repeat(64) }, source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T08:55:00.000Z', recorded_at: '2026-08-25T08:55:00.000Z' }] })
+    if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: proven ? [{ plan_manifest: planManifest, plan_manifest_digest: canonicalNirmanaRunPlanManifestDigest(planManifest) }] : [] })
     if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
     return Promise.resolve({ rows: [] })
   })
@@ -144,7 +174,7 @@ function mockCurrentRebuildEvidence(proven: boolean) {
 }
 
 describe('POST /api/admin/nirmana-elevation/evidence', () => {
-  const acceptedReceiptIt = NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE ? it : it.skip
+  const acceptedReceiptIt = it
 
   beforeEach(() => {
     vi.resetModules()
@@ -643,10 +673,8 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T09:00:00.000Z',
     }))
     expect(response.status).toBe(409)
-    expect(await response.json()).toEqual({ error: NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE
-      ? 'asset_analysis_accepted registry fingerprint does not match the current live contract.'
-      : 'Evidence requires a reconstructable deployed analysis receipt for the frozen asset.' })
-    expect(queryMock).toHaveBeenCalledTimes(NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE ? 1 : 0)
+    expect(await response.json()).toEqual({ error: 'asset_analysis_accepted registry fingerprint does not match the current live contract.' })
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
   it('keeps an exact asset-analysis retry idempotent after the live registry contract evolves', async () => {
