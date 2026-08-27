@@ -1428,6 +1428,10 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
   if (!runnerUrl || !/^https:\/\//.test(runnerUrl)) {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a configured HTTPS deployed typed probe runner.')
   }
+  const apiKey = process.env.NIRMANA_PROBE_RUNNER_API_KEY ?? process.env.PYTHON_SIDECAR_API_KEY
+  if (!apiKey) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires an authenticated deployed typed probe runner credential.')
+  }
   const probeContractSha256 = canonicalNirmanaProbeContractDigest(healthProbe)
   let response: Response
   try {
@@ -1435,9 +1439,7 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
       method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15_000),
       headers: {
         'content-type': 'application/json',
-        ...(process.env.NIRMANA_PROBE_RUNNER_API_KEY || process.env.PYTHON_SIDECAR_API_KEY
-          ? { 'x-api-key': process.env.NIRMANA_PROBE_RUNNER_API_KEY ?? process.env.PYTHON_SIDECAR_API_KEY! }
-          : {}),
+        'x-api-key': apiKey,
       },
       body: JSON.stringify({ asset_id: assetId, probe_contract_sha256: probeContractSha256, health_probe: healthProbe }),
     })

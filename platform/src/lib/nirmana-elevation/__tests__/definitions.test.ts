@@ -242,10 +242,11 @@ describe('Nirmana elevation definition repository', () => {
     releaseStatusMock.mockReset()
     ciRunMock.mockReset()
     process.env.NIRMANA_PROBE_RUNNER_URL = 'https://sidecar.test/api/nirmana/health-probe'
+    process.env.NIRMANA_PROBE_RUNNER_API_KEY = 'test-sidecar-key'
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        asset_id: 'bg_prashna_rules', probe_contract_sha256: canonicalNirmanaProbeContractDigest({ probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' }),
+        asset_id: 'bg_panchanga', probe_contract_sha256: canonicalNirmanaProbeContractDigest({ probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' }),
         observed_at: '2026-08-25T09:00:00.000Z', runner_revision: 'service-probes/v1',
         result: { status: 'GREEN', message: 'all checks passed', checks: [{ check: 'typed_probe', passed: true }] },
       }),
@@ -1294,11 +1295,11 @@ describe('Nirmana elevation definition repository', () => {
       health_probe: { probe_type: 'panchanga_engine', path: '/health/legacy', method: 'GET' },
     }
     const frozenProbeAsset = {
-      ...manifestAsset,
+      ...manifestAsset, asset_id: 'bg_panchanga',
       execution_obligation: 'probe' as const,
       registry_contract: frozenProbeContract,
       registry_fingerprint_sha256: canonicalRegistryContractDigest({
-        asset_id: manifestAsset.asset_id, layer: 'L0', depends_on: [], registry_contract: frozenProbeContract,
+        asset_id: 'bg_panchanga', layer: 'L0', depends_on: [], registry_contract: frozenProbeContract,
       }),
     }
     const frozenProbeManifest = { ...manifest, assets: [frozenProbeAsset] }
@@ -1307,7 +1308,7 @@ describe('Nirmana elevation definition repository', () => {
     const currentFingerprint = canonicalRegistryContractDigest({
       asset_id: liveRegistryRow.asset_id, layer: 'L0', depends_on: liveRegistryRow.depends_on, registry_contract: liveProbeContract,
     })
-    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRegistryRow, frozenProbeAsset)
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_panchanga', liveRegistryRow, frozenProbeAsset)
     useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       const statement = String(sql)
@@ -1318,20 +1319,20 @@ describe('Nirmana elevation definition repository', () => {
     })
 
     await expect(recordNirmanaElevationEvidence({
-      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:probe:live-contract',
-      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:probe:live-contract',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
       evidence_payload: {
         registry_fingerprint_sha256: currentFingerprint, analysis_digest: analysisDigest,
         probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe), response_digest: 'a'.repeat(64),
       },
-      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_prashna_rules',
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga',
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     })).resolves.toBe('created')
     const [runnerUrl, runnerRequest] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(runnerUrl).toBe('https://sidecar.test/api/nirmana/health-probe')
     expect(runnerRequest.method).toBe('POST')
     expect(JSON.parse(String(runnerRequest.body))).toMatchObject({
-      asset_id: 'bg_prashna_rules',
+      asset_id: 'bg_panchanga',
       probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe),
     })
   })
