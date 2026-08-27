@@ -28,7 +28,13 @@ unrelated Nirmana deploy blocker each stream needs to re-check.
 
 - **A2 (credential):** resolved by genuine self-provisioning, no new secrets. Detail:
   `A2_CREDENTIAL_LANE_OUTCOME_v1_0.md`.
-- **A3 (absorption):** 81/81 unmerged branches dispositioned. Detail: `EDIR_V3_REGISTER_v1_0.md`.
+- **A3 (absorption):** 81/81 unmerged branches dispositioned as of the census's own
+  2026-08-28 snapshot. Detail: `EDIR_V3_REGISTER_v1_0.md` §3. A live `git branch -r`
+  count will read higher than 81 as this campaign opens more `pariprashna/*` branches
+  (87 at the verification-closeout session a few hours later, fully reconciled — see
+  EDIR_V3_REGISTER_v1_0.md §1's post-census reconciliation paragraph) — that growth is
+  expected, not a coverage gap; re-run §1's stated method rather than compare a live
+  count directly against "81".
 - **A4 (P2 blockers):** B-001, B-004, B-007, B-008 CLOSED (fixed, independently verified,
   merged; B-001 has a full LIVE deployed re-proof, B-007/B-008's deployed re-proof is
   deferred — see below). B-002's underlying finding stays **honestly OPEN** — a live fix

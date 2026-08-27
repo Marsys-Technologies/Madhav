@@ -1,6 +1,6 @@
 ---
 artifact: PARIPRASHNA_EDIR_V3_REGISTER
-version: 1.0
+version: 1.1
 status: LIVING — opened by Session A phase A3-ABSORB. Append-only; an entry
   closes only at its named verification rung with dated evidence; a RETRACTED
   entry keeps its full history; severity is assigned at triage by the Native
@@ -26,6 +26,18 @@ baseline:
   census_taken: 2026-08-28
   branches_censused: 81
 changelog:
+  - "1.1 (2026-08-28, verification-closeout session): §1 gains a
+    post-census reconciliation paragraph. An independent check found 87
+    live unmerged branches matching the census's own two patterns against
+    the census's stated 81; re-running the census's exact method confirmed
+    87 (68 pariprashna/* + 19 codex/pariprashna-*) and showed the delta is
+    fully explained — 0 of the 81 census branches were deleted/merged away,
+    and 6 new branches (the P2-B-001/B-002/B-004/B-007/B-008 fix branches
+    plus the session-a-governance-docs branch) were created after the
+    census's own stated snapshot and are already squash-merged onto main.
+    No coverage gap found; no new V3 entry opened. §3's per-branch table and
+    the 81 baseline are left as the historically accurate count at the
+    census's own timestamp, not restated as a live figure."
   - "1.0 (2026-08-28): opened by Session A phase A3-ABSORB. §0 reference-import
     of 115 historical EDIR entries; §3 census of all 81 unmerged
     origin/pariprashna/* and origin/codex/pariprashna-* branches with one
@@ -252,6 +264,45 @@ P2-B-001..B-006 (see V3-E-001), and the elevation's PR obligation in §6.3 is
 scoped to P2-relevant SALVAGE. `pariprashna/p4-g` and
 `codex/pariprashna-shadow-deploy` are recorded with their commits and deferred
 for review — explicitly **done: disposition + evidence; deferred: PR**.
+
+**Post-census reconciliation (verification-closeout session, 2026-08-28,
+later same day).** An independent check after this census counted 87
+unmerged branches matching `origin/pariprashna/*` OR
+`origin/codex/pariprashna-*` live (68 for `pariprashna/*` alone), against
+this section's 81 — reconciled here rather than left as an unexplained
+drift. **Method re-run exactly as stated above:** `git fetch origin --prune`
+against current `origin/main` (`b63abc7592233536757c5f1ffa0103f86247ee43`,
+descendant of this census's `cc6b1a55e` baseline), then the same two-pattern
+`git branch -r` match. Result: 87 (68 + 19), matching the independent
+check's own figure exactly. Diffing the live 87 against this census's named
+81 (`comm` on the sorted branch-name lists): **all 81 census branches are
+still present — zero were merged-and-deleted or otherwise disappeared.**
+The gap is entirely additive: 6 branches not in the original 81 —
+`pariprashna/p2-b001-chart-authz-fix`, `pariprashna/p2-b002-narrowed-proof`,
+`pariprashna/p2-b004-mcp-turn-record`, `pariprashna/p2-b007-cockpit-clear-authz`,
+`pariprashna/p2-b008-cockpit-authz-sweep`, `pariprashna/session-a-governance-docs`
+— were created 2026-08-28 between 00:25 and 03:03 IST, i.e. **after** this
+census's stated `census_taken: 2026-08-28` snapshot, as the P2-B-001/B-002/
+B-004/B-007/B-008 fix branches and the Session A governance-docs branch
+themselves (see B00x outcome docs and PR #1597/#1599/#1602/#1603). Per-branch
+`git diff --numstat` against current main confirms all 6 are byte-identical
+to main on every file they touch — each was squash-merged (their head
+commits are not ancestors of `origin/main` by `git merge-base
+--is-ancestor`, confirming squash rather than fast-forward/merge-commit, but
+content parity confirms the squash landed cleanly) and origin never deleted
+the source branch ref post-merge. **Arithmetic: 81 (census) − 0 (deleted
+since) + 6 (created after the census's own stated snapshot, now fully
+merged) = 87 (current), which balances exactly.** No branch that existed at
+census time was missed by the census's coverage; the discrepancy is fully
+explained by the census's own stated timestamp predating six branches this
+same campaign created afterward. **This is not filed as a V3 entry**: §4's
+threshold is a genuine, unexplained divergence, and none survives here — see
+the register's own preamble ("severity is assigned at triage," not asserted
+by the checker who merely confirms arithmetic balances). Any future reader
+comparing this section's "81" against a live `git branch -r` count should
+expect a similarly growing, fully-explained delta as further P2+ work opens
+branches — re-run the method above rather than treat "81" as a live
+invariant.
 
 ---
 
@@ -665,6 +716,73 @@ await Native Surrogate triage.
   `cockpit/runs/[id]/assets` — auth-only, no ownership check, disclosing the
   same build-state the now-fixed `GET /api/cockpit/runs` protects. Added to
   this list rather than fixed in Session A, for the same bounded-scope reason.
+
+### V3-E-012 — Two V3-E-011 candidates upgraded from code-read match to PoC-confirmed exploitable: `cockpit/runs/active`, `cockpit/sse`
+
+- **Class / severity:** DEFECT · S2 (MEDIUM, proposed — read-disclosure of
+  another user's chart build-state and live progress, not destructive; same
+  tier as V3-E-010's two members and the `GET /api/cockpit/runs` history
+  disclosure B-008 itself fixed)
+- **Lens / stage:** L-CODE · CROSS
+- **Provenance:** V3-E-011's addendum already named these two (plus
+  `cockpit/runs/[id]/assets`) as members of the same defect family, on the
+  strength of the B-008 verifier's code-reading judgment ("share the same
+  auth-only-no-ownership shape"). This entry is the independent evidence
+  upgrade the register's own §N.8-equivalent standard (a claim needs a real
+  detector behind it, not an assertion) calls for — it does not report a new
+  discovery.
+- **Observed (2026-08-28, verification-closeout session, gap-2 B-007/B-008
+  re-verification):** a freshly-briefed, context-isolated Independent-
+  Verifier subagent — given only the PR numbers/merge SHAs and the fix
+  description, with no access to the original verifier's notes or this
+  register — was tasked to try to break the merged B-007/B-008 fixes and
+  hunt for adjacent bypasses. It found no defect in the B-007/B-008 fixes
+  themselves (both independently re-reproduced pre-fix and re-confirmed
+  fixed on current main, including parameter-shape confusion, grant-record
+  edge cases, and enumeration-oracle checks — all ruled out), but
+  independently rediscovered these same two V3-E-011 candidates and, unlike
+  the original scan, verified them at PoC level:
+  - `GET /api/cockpit/runs/active` (`platform/src/app/api/cockpit/runs/active/route.ts:11-16`):
+    calls only `getServerUser()` — no `requireChartPermission`/
+    `authorizeChartAccess` call, no `charts`/`chart_grants` query anywhere in
+    the file. A written-and-executed proof-of-concept request (attacker uid,
+    no ownership/grant relationship, arbitrary `chart_id`) returned **HTTP
+    200** with the victim chart's full active-run `plan` array,
+    `current_asset_id`, and per-asset `state`/`error` strings — confirmed via
+    mock-call inspection that no ownership-scoping query ever runs. No
+    `__tests__` directory exists for this route at all, unlike every route
+    B-008 did fix. The PoC test was removed after confirming the result;
+    `git status` on the verifier's worktree showed zero residual diff.
+  - `GET /api/cockpit/sse` (`platform/src/app/api/cockpit/sse/route.ts:15-20`):
+    same pattern — only `getServerUser()`, `chart_id` taken from the query
+    string with no ownership check, streaming `run.state_change` and
+    `asset.progress` (including live `rows_written`) for that chart
+    indefinitely to any authenticated caller. Its own test file
+    (`sse/__tests__/route.test.ts`) asserts only the 401-unauthenticated and
+    400-missing-param cases — no ownership test exists, corroborating that
+    this route was never in either PR's diff.
+  Both remain live and exploitable on current `origin/main` as of this
+  entry's date. `cockpit/runs/[id]/assets` (V3-E-011's third named member)
+  was not re-examined by this session and remains at its prior evidence
+  level.
+- **Why this is NOT fixed in this session:** per this closeout session's own
+  brief, a re-verification finding is filed, not silently patched, and
+  anything touching live authorization/data-exposure triggers elevation §10
+  self-pause rather than in-session remediation — the same discipline
+  V3-E-010/E-011 were already held to when Session A found them. Fixing two
+  more routes is exactly the kind of scope growth the elevation's
+  bounded-scope discipline (§5.3) reserves for the owning stream, not an
+  ad hoc verification pass.
+- **Proposed fix class:** identical, already-proven pattern —
+  `requireChartPermission({access:'read'})` on both routes, placed after the
+  existing `getServerUser()` and required-`chart_id` checks and before any
+  DB read or stream subscription, mirroring `runs/route.ts` GET and
+  `stats/route.ts` exactly as B-008 already did for their siblings.
+- **Status:** OPEN, filed to stream **S5** (V3-E-011's existing destination —
+  this is an evidence upgrade to two of its named candidates, not a new
+  stream assignment). Close rung: both routes gated and each carrying a
+  passing DENY/ALLOW authz test, per the same bar every other cockpit route
+  in this family was held to.
 
 ---
 
