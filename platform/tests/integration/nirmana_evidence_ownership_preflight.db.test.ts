@@ -94,6 +94,14 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       DROP ROLE hostile_default_grantor`)
   })
 
+  it('fails closed on a relevant third-party grantor with no override row for hard-wired function and type defaults', async () => {
+    await admin.query(`CREATE ROLE hardwired_default_grantor NOLOGIN;
+      GRANT CREATE ON SCHEMA public TO hardwired_default_grantor`)
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app')))
+      .rejects.toThrow(/hard-wired PUBLIC function\/type defaults/i)
+    await admin.query('REVOKE CREATE ON SCHEMA public FROM hardwired_default_grantor; DROP ROLE hardwired_default_grantor')
+  })
+
   it('rolls back a forced preflight failure and leaves no owner membership', async () => {
     await admin.query('DROP TABLE asset_provenance_receipts')
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow()
@@ -233,6 +241,28 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
              has_table_privilege('nirmana_migrator', 'public.default_acl_after_marker', 'SELECT') AS migrator_read
     `)
     expect(postMarkerAcl.rows[0]).toEqual({ control_read: false, migrator_read: false })
+    await admin.query(`SET ROLE amjis_app;
+      CREATE FUNCTION public.default_acl_after_marker_security_definer() RETURNS text
+        LANGUAGE sql SECURITY DEFINER AS 'SELECT ''safe''::text';
+      CREATE TYPE public.default_acl_after_marker_type AS ENUM ('safe');
+      RESET ROLE`)
+    const postMarkerRoutineAcl = await admin.query<{
+      owner_execute: boolean; ingress_execute: boolean; control_execute: boolean; migrator_execute: boolean
+      owner_type_usage: boolean; ingress_type_usage: boolean; control_type_usage: boolean; migrator_type_usage: boolean
+    }>(`
+      SELECT has_function_privilege('nirmana_evidence_owner', 'public.default_acl_after_marker_security_definer()'::regprocedure, 'EXECUTE') AS owner_execute,
+             has_function_privilege('nirmana_evidence_ingress_writer', 'public.default_acl_after_marker_security_definer()'::regprocedure, 'EXECUTE') AS ingress_execute,
+             has_function_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_marker_security_definer()'::regprocedure, 'EXECUTE') AS control_execute,
+             has_function_privilege('nirmana_migrator', 'public.default_acl_after_marker_security_definer()'::regprocedure, 'EXECUTE') AS migrator_execute,
+             has_type_privilege('nirmana_evidence_owner', 'public.default_acl_after_marker_type'::regtype, 'USAGE') AS owner_type_usage,
+             has_type_privilege('nirmana_evidence_ingress_writer', 'public.default_acl_after_marker_type'::regtype, 'USAGE') AS ingress_type_usage,
+             has_type_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_marker_type'::regtype, 'USAGE') AS control_type_usage,
+             has_type_privilege('nirmana_migrator', 'public.default_acl_after_marker_type'::regtype, 'USAGE') AS migrator_type_usage
+    `)
+    expect(postMarkerRoutineAcl.rows[0]).toEqual({
+      owner_execute: false, ingress_execute: false, control_execute: false, migrator_execute: false,
+      owner_type_usage: false, ingress_type_usage: false, control_type_usage: false, migrator_type_usage: false,
+    })
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).resolves.toBeUndefined()
   })
 })

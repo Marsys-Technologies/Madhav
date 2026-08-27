@@ -257,7 +257,8 @@ BEGIN
       JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
       CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
       LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
-     WHERE (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
+     WHERE default_grant.grantee <> defaults.defaclrole
+       AND (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
        AND (
          (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
          OR (defaults.defaclobjtype <> 'n' AND EXISTS (
@@ -269,6 +270,43 @@ BEGIN
        )
   ) THEN
     RAISE EXCEPTION 'migration 633 refuses relevant protected-writer default ACLs';
+  END IF;
+  -- A missing pg_default_acl row is not a deny: PostgreSQL grants PUBLIC
+  -- EXECUTE on newly created functions and PUBLIC USAGE on new types.  Each
+  -- role that can create where a protected role has USAGE must explicitly
+  -- override both hard-wired defaults before this marker can attest it.
+  IF EXISTS (
+    WITH protected_roles(name) AS (
+      SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+    )
+    SELECT 1
+      FROM pg_roles grantor
+     WHERE NOT grantor.rolsuper
+       AND EXISTS (
+       SELECT 1 FROM pg_namespace namespace
+        WHERE has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
+          AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
+     )
+       AND (
+         NOT EXISTS (
+           SELECT 1 FROM pg_default_acl defaults
+            WHERE defaults.defaclrole = grantor.oid AND defaults.defaclnamespace = 0 AND defaults.defaclobjtype = 'f'
+              AND NOT EXISTS (
+                SELECT 1 FROM aclexplode(defaults.defaclacl) AS default_grant
+                 WHERE default_grant.grantee = 0 AND default_grant.privilege_type = 'EXECUTE'
+              )
+         )
+         OR NOT EXISTS (
+           SELECT 1 FROM pg_default_acl defaults
+            WHERE defaults.defaclrole = grantor.oid AND defaults.defaclnamespace = 0 AND defaults.defaclobjtype = 'T'
+              AND NOT EXISTS (
+                SELECT 1 FROM aclexplode(defaults.defaclacl) AS default_grant
+                 WHERE default_grant.grantee = 0 AND default_grant.privilege_type = 'USAGE'
+              )
+         )
+       )
+  ) THEN
+    RAISE EXCEPTION 'migration 633 refuses hard-wired PUBLIC function/type defaults for a protected-writer grantor';
   END IF;
 END;
 $$;

@@ -138,6 +138,11 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           );
         END LOOP;
       END $$;
+      -- pg_default_acl omits PostgreSQL's built-in PUBLIC EXECUTE (functions)
+      -- and PUBLIC USAGE (types) defaults. Revoke them unconditionally; doing
+      -- this only when a catalog row exists would leave fresh grantors open.
+      ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+      ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app REVOKE USAGE ON TYPES FROM PUBLIC;
       -- The directly authenticated legacy owner needs ADMIN OPTION only long
       -- enough to remove this temporary membership before commit.  No role
       -- crossing is used by runtime writers.
@@ -206,6 +211,10 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           );
         END LOOP;
       END $$;
+      -- Same hard-wired-default closure for the only future campaign-object
+      -- grantor.  This runs as the temporary NOLOGIN evidence owner.
+      ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+      ALTER DEFAULT PRIVILEGES REVOKE USAGE ON TYPES FROM PUBLIC;
       ALTER TABLE nirmana_elevation_campaign_events ADD COLUMN IF NOT EXISTS writer_identity text;
       -- Table-level REVOKE does not clear historical column grants.  Remove
       -- those explicitly before granting the three exact writer envelopes.
@@ -266,7 +275,8 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
             JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
             CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
             LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
-           WHERE (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
+           WHERE default_grant.grantee <> defaults.defaclrole
+             AND (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
              AND (
                (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
                OR (defaults.defaclobjtype <> 'n' AND EXISTS (
@@ -278,6 +288,42 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
              )
         ) THEN
           RAISE EXCEPTION 'refusing relevant protected-writer default ACLs';
+        END IF;
+        -- Missing global f/T rows are not neutral: PostgreSQL then applies
+        -- PUBLIC EXECUTE/USAGE.  Every role that can create in a schema a
+        -- protected writer can use must have explicit no-PUBLIC defaults.
+        IF EXISTS (
+          WITH protected_roles(name) AS (
+            SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+          )
+          SELECT 1
+            FROM pg_roles grantor
+           WHERE NOT grantor.rolsuper
+             AND EXISTS (
+             SELECT 1 FROM pg_namespace namespace
+              WHERE has_schema_privilege(grantor.rolname, namespace.oid, 'CREATE')
+                AND EXISTS (SELECT 1 FROM protected_roles protected WHERE has_schema_privilege(protected.name, namespace.oid, 'USAGE'))
+           )
+             AND (
+               NOT EXISTS (
+                 SELECT 1 FROM pg_default_acl defaults
+                  WHERE defaults.defaclrole = grantor.oid AND defaults.defaclnamespace = 0 AND defaults.defaclobjtype = 'f'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM aclexplode(defaults.defaclacl) AS default_grant
+                       WHERE default_grant.grantee = 0 AND default_grant.privilege_type = 'EXECUTE'
+                    )
+               )
+               OR NOT EXISTS (
+                 SELECT 1 FROM pg_default_acl defaults
+                  WHERE defaults.defaclrole = grantor.oid AND defaults.defaclnamespace = 0 AND defaults.defaclobjtype = 'T'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM aclexplode(defaults.defaclacl) AS default_grant
+                       WHERE default_grant.grantee = 0 AND default_grant.privilege_type = 'USAGE'
+                    )
+               )
+             )
+        ) THEN
+          RAISE EXCEPTION 'refusing hard-wired PUBLIC function/type defaults for a protected-writer grantor';
         END IF;
       END $$;
       REVOKE nirmana_evidence_owner FROM amjis_app;
