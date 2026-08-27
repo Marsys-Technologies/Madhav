@@ -7,6 +7,9 @@ const release = vi.fn()
 vi.mock('@/lib/db/client', () => ({
   getPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
 }))
+vi.mock('../campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
+}))
 
 import {
   canonicalLabelCatalogueDigest,
@@ -60,7 +63,7 @@ describe('Nirmana label catalogue', () => {
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       ['nirmana-elevation:r1:labels-v1'])
     const receiptCall = clientQuery.mock.calls.find(([sql]) =>
-      String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))
+      String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))
     expect(receiptCall).toBeDefined()
     expect(JSON.parse(receiptCall![1][4])).toEqual({
       catalogue_sha256: digest,
@@ -92,7 +95,7 @@ describe('Nirmana label catalogue', () => {
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .resolves.toBe('idempotent')
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
   })
@@ -117,7 +120,7 @@ describe('Nirmana label catalogue', () => {
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .resolves.toBe('idempotent')
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
     expect(release).toHaveBeenCalledOnce()
   })
@@ -142,7 +145,7 @@ describe('Nirmana label catalogue', () => {
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
@@ -152,19 +155,19 @@ describe('Nirmana label catalogue', () => {
       const statement = String(sql)
       if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
         || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
-      if (statement.includes('FROM nirmana_elevation_campaign_definitions')) {
+      if (statement.includes('nirmana_elevation_campaign_definitions')) {
         return Promise.resolve({
           rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
         })
       }
-      if (statement.includes('FROM nirmana_elevation_campaign_events')) {
+      if (statement.includes('nirmana_elevation_campaign_events')) {
         return Promise.resolve({ rows: [{
           event_type: 'asset_frozen', entity_type: 'label_catalogue', entity_id: 'labels-v1', layer: null,
           evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
           source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
         }] })
       }
-      if (statement.includes('FROM nirmana_elevation_asset_labels')) {
+      if (statement.includes('nirmana_elevation_asset_labels')) {
         return Promise.resolve({ rows: [{ label_count: 1, digest_matches: true }] })
       }
       throw new Error(`Unexpected SQL: ${statement}`)
@@ -172,7 +175,7 @@ describe('Nirmana label catalogue', () => {
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
@@ -194,8 +197,8 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery).toHaveBeenNthCalledWith(2,
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       ['nirmana-elevation:r1:labels-v1'])
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
   })
 
@@ -213,11 +216,11 @@ describe('Nirmana label catalogue', () => {
 
     await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
       .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
-    expect(clientQuery).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM nirmana_elevation_campaign_events'), [
+    expect(clientQuery).toHaveBeenNthCalledWith(4, expect.stringContaining('nirmana_elevation_campaign_events'), [
       'nirmana-elevation', 'r1', 'asset-label-catalogue:labels-v1',
     ])
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_asset_labels'))).toBe(false)
-    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
     expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
     expect(release).toHaveBeenCalledOnce()
   })

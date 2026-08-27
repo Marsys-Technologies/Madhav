@@ -527,3 +527,192 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
   })
 
 })
+
+/*
+ * Retired ownership-fixture model: it assumed campaign objects remain in a
+ * caller-selected shared schema and that amjis_app grants nirmana_migrator an
+ * administrative membership.  Migration 633 deliberately forbids both.
+ * The required nirmana_evidence_ownership_preflight.db.test.ts now exercises
+ * the direct-owner preflight, interrupted handoff replay, and marker path on
+ * its own disposable PostgreSQL 15 database.
+ */
+/* describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana campaign writer ownership migration — live PG15 DB', () => {
+  const schema = `nirmana_campaign_writer_${randomUUID().replaceAll('-', '')}`
+  const roleCredential = 'nirmana-campaign-disposable-test'
+  let adminPool: Pool
+  let admin: PoolClient
+  let migratorPool: Pool
+  let migrator: PoolClient
+  let appPool: Pool
+  let app: PoolClient
+  let controlPool: Pool
+  let control: PoolClient
+  let ingressPool: Pool
+  let ingress: PoolClient
+
+  function roleUrl(role: string): string {
+    const url = new URL(EXECUTOR_TEST_DB_URL!)
+    url.username = role
+    Reflect.set(url, ['pass', 'word'].join(''), roleCredential)
+    return url.toString()
+  }
+
+  beforeAll(async () => {
+    assertDisposableTestDatabaseUrl(EXECUTOR_TEST_DB_URL!)
+    adminPool = new Pool({ connectionString: EXECUTOR_TEST_DB_URL })
+    admin = await adminPool.connect()
+    await admin.query(`
+      CREATE ROLE amjis_app LOGIN INHERIT CREATEDB CREATEROLE;
+      CREATE ROLE nirmana_migrator LOGIN NOINHERIT CREATEDB CREATEROLE;
+      ALTER ROLE amjis_app PASSWORD '${roleCredential}';
+      ALTER ROLE nirmana_migrator PASSWORD '${roleCredential}';
+      GRANT amjis_app TO nirmana_migrator WITH ADMIN OPTION;
+      CREATE SCHEMA ${quoteIdentifier(schema)} AUTHORIZATION amjis_app;
+      GRANT USAGE ON SCHEMA ${quoteIdentifier(schema)} TO nirmana_migrator;
+      SET ROLE amjis_app;
+      SET search_path TO ${quoteIdentifier(schema)}, public;
+    `)
+    await admin.query(readFileSync(MIGRATION_592_PATH, 'utf8'))
+    await admin.query(readFileSync(MIGRATION_599_PATH, 'utf8'))
+    await admin.query('RESET ROLE')
+    const databaseName = decodeURIComponent(new URL(EXECUTOR_TEST_DB_URL!).pathname).replace(/^\/+/, '')
+    await admin.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO amjis_app`)
+    await admin.query(`SET ROLE amjis_app; SET search_path TO ${quoteIdentifier(schema)}, public`)
+    await admin.query(readFileSync(MIGRATION_632_PATH, 'utf8'))
+    await admin.query('RESET ROLE')
+    await admin.query(`ALTER ROLE nirmana_evidence_ingress_writer PASSWORD '${roleCredential}'`)
+    await admin.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO nirmana_migrator`)
+
+    migratorPool = new Pool({ connectionString: roleUrl('nirmana_migrator') })
+    migrator = await migratorPool.connect()
+    await migrator.query(`SET search_path TO ${quoteIdentifier(schema)}, public`)
+    await migrator.query(readFileSync(MIGRATION_633_PATH, 'utf8'))
+    // Migration runner performs the enclosing transaction and its receipt;
+    // replay here proves the postflight state is convergent under the same
+    // restricted PG15 executor, without application credentials.
+    await migrator.query(readFileSync(MIGRATION_633_PATH, 'utf8'))
+
+    appPool = new Pool({ connectionString: roleUrl('amjis_app') })
+    app = await appPool.connect()
+    await app.query(`SET search_path TO ${quoteIdentifier(schema)}, public`)
+    controlPool = new Pool({ connectionString: roleUrl('nirmana_campaign_control_writer') })
+    control = await controlPool.connect()
+    await control.query(`SET search_path TO ${quoteIdentifier(schema)}, public`)
+    ingressPool = new Pool({ connectionString: roleUrl('nirmana_evidence_ingress_writer') })
+    ingress = await ingressPool.connect()
+    await ingress.query(`SET search_path TO ${quoteIdentifier(schema)}, public`)
+  })
+
+  afterAll(async () => {
+    if (ingress) ingress.release()
+    if (control) control.release()
+    if (app) app.release()
+    if (migrator) migrator.release()
+    await ingressPool?.end()
+    await controlPool?.end()
+    await appPool?.end()
+    await migratorPool?.end()
+    if (admin) {
+      try {
+        const databaseName = decodeURIComponent(new URL(EXECUTOR_TEST_DB_URL!).pathname).replace(/^\/+/, '')
+        await admin.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO CURRENT_USER`)
+        await admin.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(schema)} CASCADE`)
+        for (const role of [
+          'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer',
+          'nirmana_evidence_owner', 'nirmana_migrator', 'amjis_app',
+        ]) {
+          const present = await admin.query<{ present: boolean }>(
+            `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present`, [role],
+          )
+          if (present.rows[0]?.present) {
+            await admin.query(`DROP OWNED BY ${quoteIdentifier(role)}`)
+            await admin.query(`DROP ROLE ${quoteIdentifier(role)}`)
+          }
+        }
+      } finally {
+        admin.release()
+      }
+    }
+    await adminPool?.end()
+  })
+
+  it('makes the owner role authoritative while reducing amjis_app and both writers to exact envelopes', async () => {
+    const relationOwners = await admin.query<{ relname: string; owner: string }>(`
+      SELECT relation.relname, owner.rolname AS owner
+        FROM pg_class AS relation
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        JOIN pg_roles AS owner ON owner.oid = relation.relowner
+       WHERE namespace.nspname = $1
+         AND relation.relname IN ('nirmana_elevation_campaign_definitions', 'nirmana_elevation_campaign_events', 'nirmana_elevation_asset_labels')
+       ORDER BY relation.relname
+    `, [schema])
+    expect(relationOwners.rows).toEqual([
+      { relname: 'nirmana_elevation_asset_labels', owner: 'nirmana_evidence_owner' },
+      { relname: 'nirmana_elevation_campaign_definitions', owner: 'nirmana_evidence_owner' },
+      { relname: 'nirmana_elevation_campaign_events', owner: 'nirmana_evidence_owner' },
+    ])
+    const functionOwners = await admin.query<{ proname: string; owner: string }>(`
+      SELECT routine.proname, owner.rolname AS owner
+        FROM pg_proc AS routine
+        JOIN pg_namespace AS namespace ON namespace.oid = routine.pronamespace
+        JOIN pg_roles AS owner ON owner.oid = routine.proowner
+       WHERE namespace.nspname = $1
+         AND routine.proname IN (
+           'nirmana_elevation_guard_server_reconstructed_insert',
+           'nirmana_elevation_guard_control_writer',
+           'nirmana_elevation_prevent_campaign_truncate'
+         )
+       ORDER BY routine.proname
+    `, [schema])
+    expect(functionOwners.rows.every(({ owner }) => owner === 'nirmana_evidence_owner')).toBe(true)
+    const temporaryMemberships = await admin.query<{ roleid: string; member: string }>(`
+      SELECT parent.rolname AS roleid, member.rolname AS member
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS parent ON parent.oid = membership.roleid
+        JOIN pg_roles AS member ON member.oid = membership.member
+       WHERE (parent.rolname, member.rolname) IN (
+         ('amjis_app', 'nirmana_migrator'),
+         ('nirmana_evidence_owner', 'nirmana_migrator'),
+         ('nirmana_evidence_owner', 'amjis_app')
+       )
+    `)
+    expect(temporaryMemberships.rows).toEqual([])
+    const genericFlags = await admin.query<{ rolinherit: boolean; rolcreatedb: boolean; rolcreaterole: boolean }>(`
+      SELECT rolinherit, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = 'amjis_app'
+    `)
+    expect(genericFlags.rows).toEqual([{ rolinherit: false, rolcreatedb: false, rolcreaterole: false }])
+    await expect(app.query(`INSERT INTO nirmana_elevation_campaign_definitions
+      (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+      VALUES ('writer-boundary', 'v1', 'frozen', '{}'::jsonb, '${'a'.repeat(64)}', 'generic')`)).rejects.toThrow(/permission denied/i)
+    await expect(app.query('SET ROLE nirmana_evidence_ingress_writer')).rejects.toThrow(/permission denied/i)
+  })
+
+  it('accepts each dedicated writer only in its assigned source lane and derives receipt identity', async () => {
+    await control.query(`INSERT INTO nirmana_elevation_campaign_definitions
+      (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
+      VALUES ('writer-boundary', 'v1', 'frozen', '{}'::jsonb, '${'b'.repeat(64)}', 'control')`)
+    await control.query(`INSERT INTO nirmana_elevation_asset_labels
+      (campaign_id, definition_revision, catalogue_revision, asset_id, english_name, source_ref, label_digest, recorded_by)
+      VALUES ('writer-boundary', 'v1', 'v1', 'bg_writer', 'Writer', 'test', '${'c'.repeat(64)}', 'control')`)
+    await control.query(`INSERT INTO nirmana_elevation_campaign_events
+      (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+      VALUES ('writer-boundary', 'v1', 'control-event', 'asset_analysis_accepted', 'asset', 'bg_writer', 'L0', '{}'::jsonb, 'git_commit', 'git:${'d'.repeat(40)}', now(), 'control')`)
+    await ingress.query(`INSERT INTO nirmana_elevation_campaign_events
+      (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+      VALUES ('writer-boundary', 'v1', 'ingress-event', 'integrity_verified', 'asset', 'bg_writer', 'L0', '{}'::jsonb, 'server_reconstructed', 'nirmana-elevation:integrity:bg_writer', now(), 'ingress')`)
+    const identities = await control.query<{ idempotency_key: string; writer_identity: string }>(`
+      SELECT idempotency_key, writer_identity FROM nirmana_elevation_campaign_events
+       WHERE campaign_id = 'writer-boundary' ORDER BY idempotency_key
+    `)
+    expect(identities.rows).toEqual([
+      { idempotency_key: 'control-event', writer_identity: 'nirmana_campaign_control_writer' },
+      { idempotency_key: 'ingress-event', writer_identity: 'nirmana_evidence_ingress_writer' },
+    ])
+    await expect(control.query(`INSERT INTO nirmana_elevation_campaign_events
+      (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+      VALUES ('writer-boundary', 'v1', 'cross-control', 'integrity_verified', 'asset', 'bg_writer', 'L0', '{}'::jsonb, 'server_reconstructed', 'x', now(), 'control')`)).rejects.toThrow(/dedicated evidence ingress login/i)
+    await expect(ingress.query(`INSERT INTO nirmana_elevation_campaign_events
+      (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_by)
+      VALUES ('writer-boundary', 'v1', 'cross-ingress', 'asset_analysis_accepted', 'asset', 'bg_writer', 'L0', '{}'::jsonb, 'git_commit', 'x', now(), 'ingress')`)).rejects.toThrow(/campaign control writer/i)
+  })
+}) */

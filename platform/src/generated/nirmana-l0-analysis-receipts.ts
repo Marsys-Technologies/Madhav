@@ -4,6 +4,10 @@ import writerDigestInventory from './nirmana-writer-digests.json'
 export const NIRMANA_L0_CONVERGENCE_COMMIT = '5f47906bce9148563cc57764b21a2c06415d9f49' as const
 export const NIRMANA_L0_ANALYSIS_RECEIPT_COUNT = 40 as const
 export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '6c4962804c0c6a6973b7107f7662c75eae69e982e278453be6b07b097b5a85f2' as const
+// This is a durable receipt identifier, not a SQL relation reference.  Keep
+// existing accepted L0 bases stable after the physical table moves into the
+// nirmana_evidence schema; the evidence parser resolves both identifiers.
+export const NIRMANA_L0_FROZEN_MANIFEST_SOURCE = 'nirmana_elevation_campaign_definitions.manifest' as const
 
 export interface NirmanaL0AnalysisReceiptBase {
   schema_version: 'nirmana-asset-analysis-receipt-base/v1'
@@ -12,7 +16,7 @@ export interface NirmanaL0AnalysisReceiptBase {
   writer_digest_sha256: string | null
   grounding: {
     convergence_commit: typeof NIRMANA_L0_CONVERGENCE_COMMIT
-    frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest'
+    frozen_manifest_source: typeof NIRMANA_L0_FROZEN_MANIFEST_SOURCE
     writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json'
   }
 }
@@ -65,7 +69,7 @@ const bases = assetIds.map((assetId): NirmanaL0AnalysisReceiptBase => ({
     writer_digest_sha256: writerDigests?.[assetId] ?? null,
     grounding: {
       convergence_commit: NIRMANA_L0_CONVERGENCE_COMMIT,
-      frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+      frozen_manifest_source: NIRMANA_L0_FROZEN_MANIFEST_SOURCE,
       writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
     },
   }))

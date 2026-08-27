@@ -21,7 +21,7 @@ function projectMilestones(input: Omit<Parameters<typeof projectAssetMilestones>
 }
 
 function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
-  return {
+  const merged = {
     campaign_id: 'nirmana-elevation',
     definition_revision: 'v2',
     event_type: 'asset_analysis_accepted',
@@ -34,6 +34,12 @@ function event(overrides: Partial<CampaignEvent> = {}): CampaignEvent {
     observed_at: observedAt,
     recorded_at: observedAt,
     ...overrides,
+  }
+  return {
+    ...merged,
+    writer_identity: overrides.writer_identity ?? (merged.source_kind === 'server_reconstructed'
+      ? 'nirmana_evidence_ingress_writer'
+      : 'nirmana_campaign_control_writer'),
   }
 }
 
@@ -356,6 +362,19 @@ describe('projectAssetMilestones', () => {
 
     expect(result.milestones.map(({ state }) => state)).toEqual(Array(6).fill('earned'))
     expect(result).toMatchObject({ milestones_earned: 6, milestones_required: 6, current_action: null, next_action: null })
+  })
+
+  it('does not let a generic or cross-writer receipt earn a lifecycle milestone', () => {
+    const asset = manifestAsset()
+    const events = assetEvents(asset, [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+      'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ]).map((receipt) => ({ ...receipt, writer_identity: 'amjis_app' }))
+
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
+
+    expect(result.milestones.map(({ state }) => state)).toEqual(['current', ...Array(5).fill('pending')])
+    expect(result.milestones_earned).toBe(0)
   })
 
   it('allows a trusted current analysis to progress after the frozen T0 registry fingerprint has drifted', () => {

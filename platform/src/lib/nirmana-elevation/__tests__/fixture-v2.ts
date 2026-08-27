@@ -278,7 +278,12 @@ const campaignEvents = [
     source_kind: 'governed_catalogue', source_ref: 'label_catalogue:fixture-v1',
     observed_at: '2026-08-26T00:02:00.000Z', recorded_at: '2026-08-26T00:02:01.000Z',
   },
-]
+].map((event) => ({
+  ...event,
+  writer_identity: event.source_kind === 'server_reconstructed'
+    ? 'nirmana_evidence_ingress_writer'
+    : 'nirmana_campaign_control_writer',
+}))
 
 const raw: NirmanaElevationRawSources = {
   asset_registry: registry,

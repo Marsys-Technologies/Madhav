@@ -2,7 +2,7 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
-import { getPool } from '@/lib/db/client'
+import { getNirmanaCampaignControlWriterPool } from './campaign-control-writer'
 import { NirmanaLegacyAliasSchema } from './label-contract'
 
 export { NirmanaLegacyAliasSchema } from './label-contract'
@@ -84,7 +84,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     [revisionIdentity],
   )
   const definition = await client.query(
-    `SELECT definition_status, manifest FROM nirmana_elevation_campaign_definitions
+    `SELECT definition_status, manifest FROM nirmana_evidence.nirmana_elevation_campaign_definitions
      WHERE campaign_id = $1 AND definition_revision = $2 FOR SHARE`,
     [input.campaign_id, input.definition_revision],
   )
@@ -100,7 +100,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
 
   const existingReceipt = await client.query(
     `SELECT event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
         AND idempotency_key = $3
       FOR SHARE`,
@@ -136,7 +136,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
   const existingLabels = await client.query(
     `SELECT count(*)::int AS label_count,
             COALESCE(bool_and(label_digest = $4), false) AS digest_matches
-       FROM nirmana_elevation_asset_labels
+       FROM nirmana_evidence.nirmana_elevation_asset_labels
       WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
     [input.campaign_id, input.definition_revision, input.catalogue_revision, digest],
   )
@@ -152,7 +152,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
   }
 
   const inserted = await client.query(
-    `INSERT INTO nirmana_elevation_asset_labels
+    `INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels
      (campaign_id, definition_revision, catalogue_revision, asset_id, sanskrit_name,
       english_name, description, legacy_aliases, source_ref, label_digest, recorded_by)
      SELECT $1, $2, $3, label.asset_id, label.sanskrit_name, label.english_name,
@@ -167,7 +167,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
   )
 
   const receipt = await client.query(
-    `INSERT INTO nirmana_elevation_campaign_events
+    `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events
      (campaign_id, definition_revision, idempotency_key, event_type, entity_type, entity_id,
       evidence_payload, source_kind, source_ref, observed_at, recorded_by)
      VALUES ($1, $2, $3, 'asset_label_catalogue_accepted', 'label_catalogue', $4,
@@ -194,7 +194,7 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
 export async function recordNirmanaElevationLabelCatalogue(
   raw: z.input<typeof NirmanaLabelCatalogueInputSchema>,
 ): Promise<'created' | 'idempotent'> {
-  const client = await (await getPool()).connect()
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
   try {
     await client.query('BEGIN')
     const outcome = await recordNirmanaElevationLabelCatalogueInTransaction(client, raw)

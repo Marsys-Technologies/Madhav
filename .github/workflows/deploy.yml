@@ -350,12 +350,56 @@ jobs:
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
-      - name: Run database migrations
+      - name: Inspect Nirmana evidence ownership handoff marker
+        id: nirmana-ownership
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::PROD_DATABASE_URL secret not set — migrations NOT applied. Failing build."
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the Nirmana ownership marker."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected Nirmana ownership marker state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
+      - name: One-shot Nirmana evidence ownership preflight
+        if: steps.nirmana-ownership.outputs.state == 'unmarked'
+        env:
+          NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
+          NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
+            exit 1
+          fi
+          if [ -z "$NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL secret not set — cannot prove the preprovisioned control writer before handoff."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
+
+      - name: Attest Nirmana ownership handoff as deployment-only migrator
+        if: steps.nirmana-ownership.outputs.state == 'unmarked'
+        env:
+          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migration 633 cannot be attested. This credential is deployment-only and must never be mounted in Cloud Run."
+            exit 1
+          else
+            cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
+          fi
+
+      - name: Run general database migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — general migrations NOT applied. Failing build."
             exit 1
           else
             cd platform && npx tsx scripts/migrate.ts
@@ -485,6 +529,11 @@ jobs:
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
+            # Campaign definitions, labels, and non-server receipts use this
+            # distinct Cloud-SQL principal.  Its absent secret fails those
+            # writes closed; neither the migrator nor legacy-owner credential
+            # is ever present in the serving revision.
+            NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
             GCP_PROJECT=madhav-astrology
             GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
@@ -512,6 +561,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
+            NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:1

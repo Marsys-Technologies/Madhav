@@ -452,7 +452,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
 
   const definitions = await client.query<StoredFrozenDefinition>(
     `SELECT definition_revision, definition_status, manifest, manifest_sha256
-       FROM nirmana_elevation_campaign_definitions
+       FROM nirmana_evidence.nirmana_elevation_campaign_definitions
       WHERE campaign_id = 'nirmana-elevation'
         AND definition_status = 'frozen'
         AND superseded_at IS NULL
@@ -464,7 +464,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
   const receipts = await client.query<AcceptedCatalogueReceipt>(
     `SELECT entity_id AS catalogue_revision,
             evidence_payload ->> 'catalogue_sha256' AS catalogue_sha256
-       FROM nirmana_elevation_campaign_events
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = 'nirmana-elevation'
         AND definition_revision = $1
         AND event_type = 'asset_label_catalogue_accepted'
@@ -477,7 +477,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
   const labels = await client.query<SelectedLabelRow>(
     `SELECT asset_id, sanskrit_name, english_name, description, legacy_aliases,
             source_ref, label_digest
-       FROM nirmana_elevation_asset_labels
+       FROM nirmana_evidence.nirmana_elevation_asset_labels
       WHERE campaign_id = 'nirmana-elevation'
         AND definition_revision = $1
         AND catalogue_revision = $2

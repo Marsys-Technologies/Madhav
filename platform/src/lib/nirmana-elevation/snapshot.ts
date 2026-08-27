@@ -35,6 +35,12 @@ const EXECUTION_PERMITTING_OBLIGATIONS = new Set(['build', 'probe'])
 
 type RawSourceId = keyof NirmanaElevationRawSources
 type SourceId = Exclude<RawSourceId, 'asset_labels' | 'monitor_observations'> | 'asset_label_catalogue' | 'program_monitor'
+const INGRESS_WRITER = 'nirmana_evidence_ingress_writer'
+const CONTROL_WRITER = 'nirmana_campaign_control_writer'
+
+function hasTrustedCampaignWriter(event: NirmanaElevationRawSources['campaign_events'][number]): boolean {
+  return event.writer_identity === (event.source_kind === 'server_reconstructed' ? INGRESS_WRITER : CONTROL_WRITER)
+}
 
 const SOURCE_PROVENANCE: Record<SourceId, string> = {
   asset_registry: 'Cloud SQL asset_registry',
@@ -42,9 +48,9 @@ const SOURCE_PROVENANCE: Record<SourceId, string> = {
   build_runs: 'Cloud SQL build_runs',
   build_run_assets: 'Cloud SQL build_run_assets',
   build_substep_progress: 'Cloud SQL build_substep_progress',
-  campaign_definitions: 'Cloud SQL nirmana_elevation_campaign_definitions',
-  campaign_events: 'Cloud SQL nirmana_elevation_campaign_events',
-  asset_label_catalogue: 'Cloud SQL nirmana_elevation_asset_labels',
+  campaign_definitions: 'Cloud SQL nirmana_evidence.nirmana_elevation_campaign_definitions',
+  campaign_events: 'Cloud SQL nirmana_evidence.nirmana_elevation_campaign_events',
+  asset_label_catalogue: 'Cloud SQL nirmana_evidence.nirmana_elevation_asset_labels',
   program_monitor: 'Cloud SQL nirmana_elevation_monitor_observations',
 }
 
@@ -73,7 +79,7 @@ export interface NirmanaElevationRawSources {
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
   build_substep_progress: Array<{ chart_id: string; asset_id: string; committed: string | number; last_progress_at: string | null }>
   campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
-  campaign_events: Array<{ event_id?: string; idempotency_key?: string; campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>
+  campaign_events: Array<{ event_id?: string; idempotency_key?: string; campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string; writer_identity?: string | null }>
   asset_labels: Array<{
     campaign_id: string
     definition_revision: string
@@ -127,12 +133,12 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
   const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
-  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
-  const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at FROM nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
+  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_evidence.nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
+  const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at, writer_identity FROM nirmana_evidence.nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
   const labels = await loadSource('asset_labels', `SELECT campaign_id, definition_revision, catalogue_revision, asset_id,
        sanskrit_name, english_name, description, legacy_aliases,
        source_ref, label_digest, recorded_at
-  FROM nirmana_elevation_asset_labels
+  FROM nirmana_evidence.nirmana_elevation_asset_labels
  WHERE campaign_id = 'nirmana-elevation'
  ORDER BY catalogue_revision, asset_id`)
   const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,
@@ -266,6 +272,7 @@ function selectAcceptedLabels(
   const receipts = raw.campaign_events
     .filter((event) => event.campaign_id === definition.campaign_id
       && event.definition_revision === definition.definition_revision
+      && hasTrustedCampaignWriter(event)
       && event.event_type === 'asset_label_catalogue_accepted'
       && event.entity_type === 'label_catalogue'
       && event.layer === null
@@ -673,7 +680,8 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const manifestById = new Map((manifestAssets ?? []).map((asset) => [asset.asset_id, asset]))
   const campaignEvents = definition ? raw.campaign_events
     .filter((event) => event.campaign_id === definition.campaign_id
-      && event.definition_revision === definition.definition_revision)
+      && event.definition_revision === definition.definition_revision
+      && hasTrustedCampaignWriter(event))
     .sort((left, right) => timestamp(left.recorded_at) - timestamp(right.recorded_at)
       || (left.event_id ?? '').localeCompare(right.event_id ?? '')) : []
   const labelSelection = selectAcceptedLabels(rawWithLabels, definition)

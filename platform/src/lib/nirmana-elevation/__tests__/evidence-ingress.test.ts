@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   NirmanaEvidenceIngressNotConfiguredError,
   assertNirmanaEvidenceIngressDatabaseUrl,
   assertNirmanaEvidenceIngressDatabaseUser,
 } from '../evidence-ingress'
+import {
+  NirmanaCampaignControlWriterNotConfiguredError,
+  assertNirmanaCampaignControlDatabaseUrl,
+  assertNirmanaCampaignControlDatabaseUser,
+} from '../campaign-control-writer'
 
 describe('Nirmana evidence ingress database credentials', () => {
   it('fails closed when the distinct ingress secret is absent', () => {
@@ -33,5 +40,49 @@ describe('Nirmana evidence ingress database credentials', () => {
     )).toEqual({ user: 'nirmana_evidence_ingress_writer', credential: 'test-credential' })
     expect(() => assertNirmanaEvidenceIngressDatabaseUser('amjis_app', 'test-credential', 'amjis_app'))
       .toThrow(NirmanaEvidenceIngressNotConfiguredError)
+  })
+})
+
+describe('Nirmana campaign control writer database credentials', () => {
+  it('fails closed rather than using generic application credentials', () => {
+    expect(() => assertNirmanaCampaignControlDatabaseUrl(undefined, undefined, undefined))
+      .toThrow(NirmanaCampaignControlWriterNotConfiguredError)
+    expect(() => assertNirmanaCampaignControlDatabaseUrl(
+      'postgresql://amjis_app@db.example/amjis',
+      'postgresql://amjis_app@db.example/amjis',
+      'amjis_app',
+    )).toThrow(/must authenticate as nirmana_campaign_control_writer/i)
+  })
+
+  it('accepts only a separately provisioned control writer login', () => {
+    expect(assertNirmanaCampaignControlDatabaseUrl(
+      'postgresql://nirmana_campaign_control_writer@db.example/amjis',
+      'postgresql://amjis_app@db.example/amjis',
+      'amjis_app',
+    )).toContain('nirmana_campaign_control_writer')
+    expect(assertNirmanaCampaignControlDatabaseUser(
+      'nirmana_campaign_control_writer', 'test-credential', 'amjis_app',
+    )).toEqual({ user: 'nirmana_campaign_control_writer', credential: 'test-credential' })
+  })
+
+  it('uses a read-only marker probe, gates first handoff secrets, and keeps migration credentials out of serving revisions', () => {
+    const deployWorkflow = readFileSync(resolve(__dirname, '../../../../../.github/workflows/deploy.yml'), 'utf8')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-status.ts')
+    expect(deployWorkflow).toContain("if: steps.nirmana-ownership.outputs.state == 'unmarked'")
+    const preflight = deployWorkflow.slice(
+      deployWorkflow.indexOf('      - name: One-shot Nirmana evidence ownership preflight'),
+      deployWorkflow.indexOf('      - name: Attest Nirmana ownership handoff as deployment-only migrator'),
+    )
+    expect(preflight).toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
+    expect(preflight).toContain('cannot inspect or perform the ownership handoff')
+    expect(deployWorkflow).toContain('NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-preflight.ts')
+    expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-marker.ts')
+    expect(deployWorkflow).toContain('DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}')
+    const webDeployment = deployWorkflow.slice(deployWorkflow.indexOf('  deploy-web:'))
+    expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer')
+    expect(webDeployment).toContain('NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest')
+    expect(webDeployment).not.toContain('NIRMANA_MIGRATOR_DATABASE_URL')
+    expect(webDeployment).not.toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
   })
 })
