@@ -30,30 +30,47 @@ Terraform state.
 
 ## Apply discipline and bootstrap permissions
 
-Review-ref plans may run through the dispatch-only IaC workflow with
-`module: nirmana_elevation_monitor`; they save `monitor.tfplan` as a short-lived
-artifact. Apply is permitted only on protected `main`, in the named `production`
-GitHub environment, and only by downloading and applying that exact saved plan.
-The wrapper rejects local/worktree applies, an unsaved plan, another ref, and an
-unnamed environment. Do not apply from a worktree.
+The GCP-native release path does not depend on GitHub. A named, approved GCP
+release operator creates `monitor.tfplan` with Terraform and then applies that
+exact saved plan from a trusted GCP environment. The wrapper accepts an apply
+only when `IAC_APPLY_ENVIRONMENT=production` and `GCP_RELEASE_APPROVAL` contains
+the recorded change/approval reference. Those values are traceability guards;
+GCP IAM and Cloud Audit Logs are the actual authorization and evidence boundary.
 
-Before the first protected-main operation, retain state-handoff evidence from
-remote plans: the old `infra/scheduler` root must show **zero** monitor destroys,
-and this isolated root must show exactly the four intended creates, or the review
+Use short-lived [Application Default Credentials](https://docs.cloud.google.com/docs/terraform/authentication)
+or service-account impersonation for the approved GCP release identity. The
+wrapper refuses `GOOGLE_APPLICATION_CREDENTIALS`, so static service-account key
+files cannot become an alternate release path. It also verifies that ADC is
+available before Terraform initializes an apply. Do not put credentials, tokens,
+or key material in the plan, repository, shell history, or release records.
+
+The execution sequence is deliberately two-person and saved-plan based:
+
+1. The approved GCP release operator creates a saved plan: `bash apply.sh plan monitor.tfplan`.
+2. An independent reviewer records that the plan has exactly the approved
+   resource changes and cites the approval reference.
+3. The same approved GCP release identity applies that unchanged file with
+   `IAC_APPLY_ENVIRONMENT=production` and the recorded `GCP_RELEASE_APPROVAL`.
+4. Retain the Terraform output and corresponding Cloud Audit Logs entries as the
+   release evidence. Do not use `-auto-approve`, ad-hoc console edits, or a new
+   plan in place of the reviewed saved plan.
+
+GitHub Actions has no monitor apply path; it is not a runtime or provisioning
+dependency for this monitor.
+
+Before the first GCP-native operation, retain state-handoff evidence from remote
+plans: the old `infra/scheduler` root must show **zero** monitor destroys, and
+this isolated root must show exactly the four intended creates, or the review
 must contain explicit imports/state moves that reconcile a pre-existing monitor.
-This is release evidence, not a documentation waiver. Do not dispatch an apply
-until that evidence, plan review, protected CI, and production-environment
-reviewer configuration are recorded.
+This is release evidence, not a documentation waiver. Do not apply until that
+evidence, the saved-plan review, and the GCP release-identity approval are
+recorded.
 
-The plan job authenticates as the established
-`github-actions@madhav-astrology.iam.gserviceaccount.com`. The gated apply job
-uses the separate
-`github-actions-nirmana-apply@madhav-astrology.iam.gserviceaccount.com` identity.
-Before any apply, its WIF trust must require the GitHub `production`
-environment, and any first-apply permission must be granted only to that
-identity for the approved release window. Do not add the temporary
-monitor-bootstrap permissions to the plan identity: plan runs before the GitHub
-environment approval.
+Before any apply, name the GCP operator group or dedicated release service
+account in the approval record. Grant the first-apply permissions only to that
+identity for the approved release window, and use service-account impersonation
+when a human operator prepares or applies the plan. Do not grant those bootstrap
+permissions to a broad developer, runtime, or scheduler identity.
 
 Before the first apply, confirm the Cloud Scheduler API's Google-managed service
 agent exists. The Terraform executor needs only the following first-apply

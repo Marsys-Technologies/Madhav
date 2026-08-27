@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Dedicated IaC wrapper for the Nirmana elevation monitor.
-# A local/worktree invocation may create a plan for review, but only the
-# protected-main workflow may apply the exact plan artifact it produced.
+# A reviewed GCP-native release may apply only the exact saved plan it produced.
 
 set -euo pipefail
 
@@ -17,9 +16,22 @@ usage() {
   exit 2
 }
 
-require_protected_main_apply() {
-  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != "refs/heads/main" || "${GITHUB_REF_PROTECTED:-}" != "true" || "${IAC_APPLY_ENVIRONMENT:-}" != "production" ]]; then
-    echo "apply is allowed only from a protected main ref in the production workflow" >&2
+require_gcp_native_reviewed_apply() {
+  if [[ "${IAC_APPLY_ENVIRONMENT:-}" != "production" || ! "${GCP_RELEASE_APPROVAL:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{7,127}$ ]]; then
+    echo "apply is allowed only through a GCP-native reviewed release with IAC_APPLY_ENVIRONMENT=production and a recorded GCP_RELEASE_APPROVAL" >&2
+    exit 2
+  fi
+
+  # The release must use short-lived Application Default Credentials or service
+  # account impersonation. Static key files cannot provide a trustworthy release
+  # boundary or a useful Cloud Audit Logs principal.
+  if [[ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]]; then
+    echo "GCP-native reviewed release refuses GOOGLE_APPLICATION_CREDENTIALS; use Application Default Credentials or service-account impersonation" >&2
+    exit 2
+  fi
+
+  if ! command -v gcloud >/dev/null 2>&1 || ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+    echo "GCP-native reviewed release requires valid Application Default Credentials from the approved GCP release identity" >&2
     exit 2
   fi
 }
@@ -30,7 +42,7 @@ case "$CMD" in
     ;;
   apply)
     [[ -n "$PLAN_FILE" && -f "$PLAN_FILE" ]] || { echo "apply requires the downloaded saved plan artifact" >&2; exit 2; }
-    require_protected_main_apply
+    require_gcp_native_reviewed_apply
     ;;
   *)
     usage
