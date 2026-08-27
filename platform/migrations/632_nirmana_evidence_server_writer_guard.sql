@@ -54,14 +54,28 @@ DECLARE
   ];
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer') THEN
-    CREATE ROLE nirmana_evidence_ingress_writer LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    -- The migration executor has CREATEROLE but is deliberately not a
+    -- superuser. Omit SUPERUSER/REPLICATION/BYPASSRLS attributes here: their
+    -- PostgreSQL defaults are false and explicitly setting even the negative
+    -- SUPERUSER form is rejected for this executor class.
+    CREATE ROLE nirmana_evidence_ingress_writer LOGIN NOINHERIT NOCREATEDB NOCREATEROLE;
+  ELSIF EXISTS (
+    SELECT 1 FROM pg_roles
+     WHERE rolname = 'nirmana_evidence_ingress_writer'
+       AND (rolsuper OR rolreplication OR rolbypassrls)
+  ) THEN
+    RAISE EXCEPTION
+      'migration 632 refuses a pre-existing elevated nirmana_evidence_ingress_writer role';
+  ELSE
+    -- These reductions are permitted to the CREATEROLE executor and are the
+    -- only role attributes it attempts to normalize on an existing login.
+    ALTER ROLE nirmana_evidence_ingress_writer
+      LOGIN NOINHERIT NOCREATEDB NOCREATEROLE;
   END IF;
 
   -- Replaying this migration must reduce a pre-existing role to the same least
   -- privilege boundary as a newly-created one. In particular, NOINHERIT alone
   -- is insufficient: an inherited membership can still be assumed with SET ROLE.
-  ALTER ROLE nirmana_evidence_ingress_writer
-    LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
   FOR inherited_role IN
     SELECT parent.rolname
       FROM pg_auth_members AS membership
