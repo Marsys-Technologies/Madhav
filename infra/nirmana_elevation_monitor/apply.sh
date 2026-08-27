@@ -1,14 +1,41 @@
 #!/usr/bin/env bash
 # Dedicated IaC wrapper for the Nirmana elevation monitor.
-# Invoked only from the dispatch-only workflow or by an approved protected-main operator.
+# A local/worktree invocation may create a plan for review, but only the
+# protected-main workflow may apply the exact plan artifact it produced.
 
 set -euo pipefail
 
 CMD="${1:-plan}"
+PLAN_FILE="${2:-}"
 PROJECT="${TF_VAR_gcp_project:-madhav-astrology}"
 REGION="${TF_VAR_gcp_region:-asia-south1}"
 STATE_BUCKET="${TF_STATE_BUCKET:-${PROJECT}-tf-state}"
 STATE_PREFIX="scheduler/nirmana-elevation-monitor"
+
+usage() {
+  echo "usage: $0 plan <saved-plan-file> | apply <saved-plan-file>" >&2
+  exit 2
+}
+
+require_protected_main_apply() {
+  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != "refs/heads/main" || "${IAC_APPLY_ENVIRONMENT:-}" != "production" ]]; then
+    echo "apply is allowed only in the protected-main production workflow" >&2
+    exit 2
+  fi
+}
+
+case "$CMD" in
+  plan)
+    [[ -n "$PLAN_FILE" ]] || usage
+    ;;
+  apply)
+    [[ -n "$PLAN_FILE" && -f "$PLAN_FILE" ]] || { echo "apply requires the downloaded saved plan artifact" >&2; exit 2; }
+    require_protected_main_apply
+    ;;
+  *)
+    usage
+    ;;
+esac
 
 command -v terraform >/dev/null 2>&1 || { echo "terraform CLI not on PATH" >&2; exit 1; }
 
@@ -17,8 +44,10 @@ terraform init \
   -backend-config="prefix=${STATE_PREFIX}"
 
 case "$CMD" in
-  plan) terraform plan -var "gcp_project=${PROJECT}" -var "gcp_region=${REGION}" ;;
-  apply) terraform apply -auto-approve -var "gcp_project=${PROJECT}" -var "gcp_region=${REGION}" ;;
-  destroy) terraform destroy -auto-approve -var "gcp_project=${PROJECT}" -var "gcp_region=${REGION}" ;;
-  *) echo "usage: $0 {plan|apply|destroy}" >&2; exit 2 ;;
+  plan)
+    terraform plan -out="$PLAN_FILE" -var "gcp_project=${PROJECT}" -var "gcp_region=${REGION}"
+    ;;
+  apply)
+    terraform apply "$PLAN_FILE"
+    ;;
 esac

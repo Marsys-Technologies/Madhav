@@ -125,6 +125,15 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     expect(releaseMock).not.toHaveBeenCalled()
   })
 
+  it('does not accept the retired shared-secret header in place of a Scheduler OIDC bearer token', async () => {
+    const { POST } = await import('../route')
+    const response = await POST(request({ 'X-Marsys-Cron-Secret': 'retired-secret' }))
+    expect(response.status).toBe(401)
+    expect(verifyOidcTokenMock).not.toHaveBeenCalled()
+    expect(connectMock).not.toHaveBeenCalled()
+    expect(insertQueryMock).not.toHaveBeenCalled()
+  })
+
   it('rejects an invalid OIDC token before reading or recording program state', async () => {
     verifyOidcTokenMock.mockResolvedValueOnce(null)
     const { POST } = await import('../route')
