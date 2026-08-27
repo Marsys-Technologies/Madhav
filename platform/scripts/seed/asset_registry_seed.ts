@@ -612,7 +612,7 @@ export const ASSETS: AssetDef[] = [
       '6 achieved Tier N-i/N-ii lifetime-count rows at the writer-owned ne_v01 ' +
       'coordinate. Unseeded event classes remain an explicit coverage gap; this ' +
       'floor must rise only with defensible cited sources, never fabricated rows.',
-    depends_on: [],
+    depends_on: ['bg_ghatana'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -1283,7 +1283,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one panchanga row per ayanamsha" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).',
-    depends_on: ['ga_positions'],
+    depends_on: ['ga_positions', 'bg_panchanga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1484,7 +1484,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
-    depends_on: ['ga_condition'],
+    depends_on: ['ga_condition', 'bg_vastu_directions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1522,7 +1522,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '0 for natal charts (horary only). Actual prashna count depends on number of prashna charts submitted.',
-    depends_on: ['ga_positions'],
+    depends_on: ['ga_positions', 'bg_prashna_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
