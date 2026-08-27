@@ -471,6 +471,7 @@ jobs:
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
+            NIRMANA_PROBE_RUNNER_URL=https://amjis-sidecar-938361928218.asia-south1.run.app/internal/nirmana/probe
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
             BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
             VERTEX_AI_LOCATION=asia-south1
@@ -563,6 +564,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=amjis-sidecar
 
       - name: Deploy sidecar to Cloud Run
+        id: deploy-sidecar
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-sidecar
@@ -583,6 +585,17 @@ jobs:
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
+
+      - name: Verify Nirmana probe runner is mounted and fail-closed
+        env:
+          DEPLOY_URL: ${{ steps.deploy-sidecar.outputs.url }}
+        run: |
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request POST \
+            --header 'content-type: application/json' \
+            --data '{"asset_id":"bg_panchanga","probe_contract_sha256":"0000000000000000000000000000000000000000000000000000000000000000","health_probe":{"probe_type":"panchanga_engine"}}' \
+            "$DEPLOY_URL/internal/nirmana/probe")
+          test "$status" = "401"
 
   # ── 4.edge_and_infra_hygiene ──
   # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF
