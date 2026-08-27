@@ -28,11 +28,12 @@ from service import (
 )
 
 SHADOW_RELEASE_FILES = ("elevation.py", "elevation_worker.py")
+SHADOW_DASHBOARD_RELEASE_FILES = ("elevation.py", "elevation_server.py", "elevation_dashboard.html")
 SHADOW_RELEASE_METADATA = {".source-sha", ".release-manifest.json"}
 SHADOW_RELEASE_SCHEMA = "pariprashna-shadow-sync-release@1"
 
 
-def _shadow_release_tree(release_dir: Path, *, include_metadata: bool, require_read_only: bool) -> tuple[Path, list[Path]]:
+def _shadow_release_tree(release_dir: Path, release_files: tuple[str, ...], *, include_metadata: bool, require_read_only: bool) -> tuple[Path, list[Path]]:
     release_dir = _canonical_release_dir(release_dir)
     status = release_dir.lstat()
     if stat.S_ISLNK(status.st_mode) or not stat.S_ISDIR(status.st_mode):
@@ -41,21 +42,27 @@ def _shadow_release_tree(release_dir: Path, *, include_metadata: bool, require_r
         raise ValueError("release directory is not owned by the current Dev account")
     if require_read_only and status.st_mode & 0o222:
         raise ValueError("release directory is mutable")
-    expected = set(SHADOW_RELEASE_FILES) | (SHADOW_RELEASE_METADATA if include_metadata else set())
+    expected = set(release_files) | (SHADOW_RELEASE_METADATA if include_metadata else set())
     actual = {entry.name for entry in release_dir.iterdir()}
     if actual != expected:
-        raise ValueError("release directory does not contain the exact attested shadow-sync tree")
+        raise ValueError("release directory does not contain the exact attested shadow tree")
     files = [release_dir / name for name in sorted(expected)]
     for path in files:
         _owned_regular_file(path, require_read_only=require_read_only)
     return release_dir, files
 
 
-def attest_shadow_release(release_dir: Path, source_sha: str, source_repo: Path) -> Path:
-    """Seal an exported, protected-merge shadow-sync-worker tree before install."""
+def attest_shadow_release(release_dir: Path, source_sha: str, source_repo: Path, *, release_files: tuple[str, ...] = SHADOW_RELEASE_FILES) -> Path:
+    """Seal an exported, protected-merge shadow release tree before install.
+
+    ``release_files`` scopes the attested tree to exactly the files a given shadow
+    component needs (the sync worker's two files by default; pass
+    ``SHADOW_DASHBOARD_RELEASE_FILES`` for the dashboard server instead) -- never the
+    accepted 8787 control-plane's own file set.
+    """
     if len(source_sha) not in {40, 64} or any(char not in "0123456789abcdef" for char in source_sha.lower()):
         raise ValueError("source SHA must be a 40- or 64-character hexadecimal immutable revision")
-    release_dir, source_files = _shadow_release_tree(release_dir, include_metadata=False, require_read_only=False)
+    release_dir, source_files = _shadow_release_tree(release_dir, release_files, include_metadata=False, require_read_only=False)
     origin_main, origin_remote = _assert_approved_merge_source(source_repo, source_sha, source_files)
     files = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in source_files}
     manifest = {
@@ -74,22 +81,22 @@ def attest_shadow_release(release_dir: Path, source_sha: str, source_repo: Path)
             output.write(value)
             output.flush()
             os.fsync(output.fileno())
-    _, sealed_files = _shadow_release_tree(release_dir, include_metadata=True, require_read_only=False)
+    _, sealed_files = _shadow_release_tree(release_dir, release_files, include_metadata=True, require_read_only=False)
     for path in sealed_files:
         os.chmod(path, 0o444)
     os.chmod(release_dir, 0o555)
     return release_dir / ".release-manifest.json"
 
 
-def assert_shadow_release_attestation(release_dir: Path, source_sha: str) -> Path:
-    release_dir, files = _shadow_release_tree(release_dir, include_metadata=True, require_read_only=True)
+def assert_shadow_release_attestation(release_dir: Path, source_sha: str, *, release_files: tuple[str, ...] = SHADOW_RELEASE_FILES) -> Path:
+    release_dir, files = _shadow_release_tree(release_dir, release_files, include_metadata=True, require_read_only=True)
     if (release_dir / ".source-sha").read_text(encoding="utf-8").strip() != source_sha:
         raise ValueError("release directory does not attest to the requested immutable source SHA")
     try:
         manifest = json.loads((release_dir / ".release-manifest.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError("release manifest is unreadable") from exc
-    expected_hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files if path.name in SHADOW_RELEASE_FILES}
+    expected_hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files if path.name in release_files}
     if (
         not isinstance(manifest, dict)
         or manifest.get("schema_version") != SHADOW_RELEASE_SCHEMA
@@ -106,17 +113,19 @@ def assert_shadow_release_attestation(release_dir: Path, source_sha: str) -> Pat
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description="Attest an immutable shadow-sync-worker release directory")
+    parser = argparse.ArgumentParser(description="Attest an immutable shadow release directory")
     parser.add_argument("--release-dir", type=Path, required=True)
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--source-repo", type=Path, required=True)
+    parser.add_argument("--component", choices=("worker", "dashboard"), default="worker")
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
+    release_files = SHADOW_DASHBOARD_RELEASE_FILES if args.component == "dashboard" else SHADOW_RELEASE_FILES
     if args.verify_only:
-        assert_shadow_release_attestation(args.release_dir, args.source_sha)
+        assert_shadow_release_attestation(args.release_dir, args.source_sha, release_files=release_files)
         print(f"OK: {args.release_dir} attests source_sha={args.source_sha}")
         return
-    manifest_path = attest_shadow_release(args.release_dir, args.source_sha, args.source_repo)
+    manifest_path = attest_shadow_release(args.release_dir, args.source_sha, args.source_repo, release_files=release_files)
     print(f"sealed: {manifest_path}")
 
 

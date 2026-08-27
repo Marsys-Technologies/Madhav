@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from elevation_release import SHADOW_RELEASE_FILES, attest_shadow_release, assert_shadow_release_attestation  # noqa: E402
+from elevation_release import SHADOW_RELEASE_FILES, SHADOW_DASHBOARD_RELEASE_FILES, attest_shadow_release, assert_shadow_release_attestation  # noqa: E402
 from service import CANONICAL_MADHAV_ORIGIN  # noqa: E402
 
 
@@ -17,13 +17,13 @@ class ElevationReleaseTests(unittest.TestCase):
         result = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
         return result.stdout.strip()
 
-    def _fixture(self, root: Path) -> tuple[Path, Path, str, Path]:
+    def _fixture(self, root: Path, release_files: tuple[str, ...] = SHADOW_RELEASE_FILES) -> tuple[Path, Path, str, Path]:
         source = root / "source"; source.mkdir()
         self._git(source, "init", "-b", "main")
         self._git(source, "config", "user.email", "test@example.invalid")
         self._git(source, "config", "user.name", "Tracker Test")
         tracker = source / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"; tracker.mkdir(parents=True)
-        for name in SHADOW_RELEASE_FILES:
+        for name in release_files:
             (tracker / name).write_text(f"approved:{name}\n")
         self._git(source, "add", "00_ARCHITECTURE")
         self._git(source, "commit", "-m", "approved shadow-sync release")
@@ -35,7 +35,7 @@ class ElevationReleaseTests(unittest.TestCase):
         self._git(source, "remote", "set-url", "origin", CANONICAL_MADHAV_ORIGIN)
         release_parent = root / "release-parent"; release_parent.mkdir()
         release = release_parent / "release"; release.mkdir()
-        for name in SHADOW_RELEASE_FILES:
+        for name in release_files:
             (release / name).write_bytes((tracker / name).read_bytes())
         return source, release, source_sha, remote
 
@@ -86,7 +86,28 @@ class ElevationReleaseTests(unittest.TestCase):
             with patch("service.subprocess.run", side_effect=self._fresh_remote(source_sha, local_remote)):
                 with self.assertRaises(ValueError) as extra_file:
                     attest_shadow_release(release, source_sha, source)
-                self.assertIn("exact attested shadow-sync tree", str(extra_file.exception))
+                self.assertIn("exact attested shadow tree", str(extra_file.exception))
+
+    def test_shadow_dashboard_release_files_are_attested_independently_of_the_worker(self):
+        """Break caught: the attestation helper is hard-coded to the sync-worker's own
+        file set, so the dashboard server (a different shadow component with its own
+        three files) could never be attested -- or worse, could be attested against
+        the wrong manifest scope."""
+        with tempfile.TemporaryDirectory() as root:
+            source, release, source_sha, local_remote = self._fixture(Path(root), release_files=SHADOW_DASHBOARD_RELEASE_FILES)
+            with patch("service.subprocess.run", side_effect=self._fresh_remote(source_sha, local_remote)):
+                manifest = attest_shadow_release(release, source_sha, source, release_files=SHADOW_DASHBOARD_RELEASE_FILES)
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o444)
+            canonical_release = assert_shadow_release_attestation(release, source_sha, release_files=SHADOW_DASHBOARD_RELEASE_FILES)
+            for name in SHADOW_DASHBOARD_RELEASE_FILES:
+                self.assertTrue((canonical_release / name).is_file())
+            # A worker-scoped release directory can never pass dashboard-scoped verification.
+            with tempfile.TemporaryDirectory() as worker_root:
+                worker_source, worker_release, worker_sha, worker_remote = self._fixture(Path(worker_root))
+                with patch("service.subprocess.run", side_effect=self._fresh_remote(worker_sha, worker_remote)):
+                    attest_shadow_release(worker_release, worker_sha, worker_source)
+                with self.assertRaises(ValueError):
+                    assert_shadow_release_attestation(worker_release, worker_sha, release_files=SHADOW_DASHBOARD_RELEASE_FILES)
 
 
 if __name__ == "__main__":

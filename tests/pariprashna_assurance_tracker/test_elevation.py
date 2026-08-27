@@ -241,6 +241,43 @@ class ElevationStoreTests(unittest.TestCase):
         self.assertIn("/usr/local/bin", path_entries)
         self.assertIn("/usr/bin", path_entries)
 
+    def test_github_probe_stores_a_minimal_projection_not_the_raw_api_response(self):
+        """Break caught: the github probe stored the entire raw GitHub API pull-request
+        objects (full body text, nested user/head/base/labels objects) as the shadow
+        observation payload -- 187KB for 9 real open PRs in this repo -- bloating the
+        shadow DB and every dashboard API response for no operational benefit. Only the
+        handful of fields the freshness/reconciliation model actually needs should be
+        retained."""
+        huge_body = "x" * 50_000
+        raw_pr = {
+            "number": 1550, "state": "open", "draft": False, "merged_at": None,
+            "updated_at": "2026-08-26T12:00:00Z", "mergeable_state": "clean",
+            "title": "feat(pariprashna): governed shadow tracker elevation",
+            "body": huge_body,
+            "html_url": "https://github.com/Marsys-Technologies/Madhav/pull/1550",
+            "user": {"login": "pb3-bot", "id": 12345, "avatar_url": "https://example.invalid/a.png", "extra": "x" * 5000},
+            "head": {"ref": "codex/pariprashna-shadow-sync", "sha": "5f30acf4d", "repo": {"id": 1, "name": "Madhav", "extra": "x" * 5000}},
+            "base": {"ref": "main", "sha": "5f07e085", "repo": {"id": 1, "name": "Madhav", "extra": "x" * 5000}},
+            "labels": [{"name": "lane:x", "color": "abcdef", "extra": "x" * 1000}],
+            "requested_reviewers": [], "assignees": [],
+        }
+        def run(argv):
+            return json.dumps([raw_pr])
+        probes = builtin_probes(Path("/repo"), "http://127.0.0.1:8787", run_command=run, fetch_json=lambda _url: {})
+        result = probes["github"](None)
+        encoded_size = len(json.dumps(result["payload"]))
+        self.assertLess(encoded_size, 2000, f"github payload should be a minimal projection, not {encoded_size} bytes")
+        pr = result["payload"]["open_pull_requests"][0]
+        self.assertEqual(pr["number"], 1550)
+        self.assertEqual(pr["state"], "open")
+        self.assertEqual(pr["head_ref"], "codex/pariprashna-shadow-sync")
+        self.assertEqual(pr["head_sha"], "5f30acf4d")
+        self.assertEqual(pr["updated_at"], "2026-08-26T12:00:00Z")
+        self.assertNotIn("body", pr)
+        self.assertNotIn("user", pr)
+        self.assertNotIn("head", pr)
+        self.assertNotIn("labels", pr)
+
     def test_builtin_probes_record_github_git_and_runtime_as_observations(self):
         """Break caught: autonomous polling has no concrete sources and only emits stale placeholders."""
         repo_dir = Path(self.tmp.name) / "fixture-repo"; repo_dir.mkdir()
