@@ -9,12 +9,18 @@
  *   - gate_verdict: 'passed' | 'amber' | 'failed'
  *   - sample_rows: first 3 rows
  *
- * Auth: requires authentication (any tier).
+ * Auth: requires authentication AND per-chart authorization ('read' level —
+ * owner, chart_grants 'view' grantee, or super_admin). See V3-E-010: this
+ * route used to require only "is there a logged-in user", returning any
+ * chart's asset row_count/provenance/sample_rows to ANY authenticated caller
+ * holding a chart_id — a cross-tenant read. Same root cause as B-001/B-007/
+ * B-008.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +71,12 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // V3-E-010: 'read' level (permission !== 'deny') — this endpoint discloses
+  // chart-scoped data, not a destructive/state-changing action, so a
+  // chart_grants 'view' grantee legitimately passes.
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  if (denied) return denied
 
   // Get row count and provenance from chart_facts for this asset
   const countResult = await query<{ count: string }>(
