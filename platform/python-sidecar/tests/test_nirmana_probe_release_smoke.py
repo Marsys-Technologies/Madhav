@@ -80,7 +80,7 @@ def test_release_smoke_rejects_green_with_a_failed_check(monkeypatch: pytest.Mon
     with pytest.raises(RuntimeError, match="failed check"):
         smoke._call_probe(
             candidate_url="https://candidate.run.app/internal/nirmana/probe",
-            api_key="hidden",
+            api_key=f"{__name__}:fixture",
             expected_revision="candidate-revision",
             asset_id="bg_panchanga",
             health_probe={"probe_type": "panchanga_engine"},
