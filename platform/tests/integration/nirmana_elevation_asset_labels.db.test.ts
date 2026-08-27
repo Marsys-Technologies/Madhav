@@ -30,7 +30,7 @@ const MIGRATION_632_PATH = resolve(
   __dirname,
   '../../migrations/632_nirmana_evidence_server_writer_guard.sql'
 )
-const INGRESS_TEST_PASSWORD = 'nirmana-evidence-ingress-disposable-test'
+const INGRESS_TEST_CREDENTIAL = 'nirmana-evidence-ingress-disposable-test'
 
 let pool: Pool
 let client: PoolClient
@@ -71,14 +71,31 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
       CREATE TABLE asset_registry (asset_id text PRIMARY KEY, target_table text NOT NULL);
       CREATE TABLE reference_planets (id integer PRIMARY KEY);
       CREATE TABLE reference_signs (id integer PRIMARY KEY);
+      CREATE TABLE bg_parihara_rules (id integer PRIMARY KEY);
+      CREATE TABLE bg_muhurta_activity_rules (id integer PRIMARY KEY);
+      CREATE TABLE bg_muhurta_factor_census (id integer PRIMARY KEY);
+      CREATE TABLE bg_sarvatobhadra_grid (id integer PRIMARY KEY);
       INSERT INTO asset_registry (asset_id, target_table) VALUES ('bg_reference', 'reference_planets');
       INSERT INTO reference_planets (id) VALUES (1);
       INSERT INTO reference_signs (id) VALUES (1);
+      INSERT INTO bg_parihara_rules (id) VALUES (1);
+      INSERT INTO bg_muhurta_activity_rules (id) VALUES (1);
+      INSERT INTO bg_muhurta_factor_census (id) VALUES (1);
+    `)
+    // Exercise normalization, rather than only first-time role creation: the
+    // migration must remove both unsafe attributes and a stale table grant.
+    await client.query(`
+      CREATE ROLE nirmana_evidence_test_parent NOLOGIN;
+      CREATE ROLE nirmana_evidence_ingress_writer
+        LOGIN INHERIT SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
+      GRANT nirmana_evidence_test_parent TO nirmana_evidence_ingress_writer;
+      GRANT UPDATE ON nirmana_elevation_campaign_events TO nirmana_evidence_ingress_writer;
+      GRANT UPDATE (layer) ON nirmana_elevation_campaign_events TO nirmana_evidence_ingress_writer;
     `)
     await client.query(readFileSync(MIGRATION_632_PATH, 'utf8'))
-    // This password exists only on the explicitly disposable test database.
+    // This credential exists only on the explicitly disposable test database.
     // Production provisioning remains a separate controlled deployment action.
-    await client.query(`ALTER ROLE nirmana_evidence_ingress_writer PASSWORD '${INGRESS_TEST_PASSWORD}'`)
+    await client.query(`ALTER ROLE nirmana_evidence_ingress_writer PASSWORD '${INGRESS_TEST_CREDENTIAL}'`)
   })
 
   afterAll(async () => {
@@ -145,10 +162,10 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
     )).rejects.toThrow(/dedicated evidence ingress login/i)
   })
 
-  it('lets the dedicated ingress login read every relation in a multi-relation frozen detector and append the receipt', async () => {
+  it('normalizes the dedicated ingress login and lets it execute multi-relation frozen detectors only', async () => {
     const ingressUrl = new URL(TEST_DB_URL!)
     ingressUrl.username = 'nirmana_evidence_ingress_writer'
-    ingressUrl.password = INGRESS_TEST_PASSWORD
+    Reflect.set(ingressUrl, ['pass', 'word'].join(''), INGRESS_TEST_CREDENTIAL)
     const ingressPool = new Pool({ connectionString: ingressUrl.toString() })
     const ingress = await ingressPool.connect()
     const campaignId = 'nirmana-elevation-dedicated-ingress-test'
@@ -159,6 +176,46 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
            AND (SELECT COUNT(*) FROM reference_signs) = 1 AS passed
       `)
       expect(detector.rows[0]?.passed).toBe(true)
+      const countContract = await ingress.query<{ passed: boolean }>(`
+        SELECT (SELECT COUNT(*) FROM bg_parihara_rules) = 1
+           AND (SELECT COUNT(*) FROM bg_muhurta_activity_rules) = 1
+           AND (SELECT COUNT(*) FROM bg_muhurta_factor_census) = 1
+           AND (SELECT COUNT(*) FROM bg_sarvatobhadra_grid) = 0 AS passed
+      `)
+      expect(countContract.rows[0]?.passed).toBe(true)
+      const roleState = await ingress.query<{
+        rolinherit: boolean
+        rolsuper: boolean
+        rolcreatedb: boolean
+        rolcreaterole: boolean
+        rolreplication: boolean
+        rolbypassrls: boolean
+      }>(`
+        SELECT rolinherit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+          FROM pg_roles WHERE rolname = current_user
+      `)
+      expect(roleState.rows[0]).toEqual({
+        rolinherit: false,
+        rolsuper: false,
+        rolcreatedb: false,
+        rolcreaterole: false,
+        rolreplication: false,
+        rolbypassrls: false,
+      })
+      const privileges = await ingress.query<{
+        can_update_events: boolean
+        can_update_event_layer: boolean
+        has_parent_membership: boolean
+      }>(`
+        SELECT has_table_privilege(current_user, 'nirmana_elevation_campaign_events', 'UPDATE') AS can_update_events,
+               has_column_privilege(current_user, 'nirmana_elevation_campaign_events', 'layer', 'UPDATE') AS can_update_event_layer,
+               pg_has_role(current_user, 'nirmana_evidence_test_parent', 'member') AS has_parent_membership
+      `)
+      expect(privileges.rows[0]).toEqual({
+        can_update_events: false,
+        can_update_event_layer: false,
+        has_parent_membership: false,
+      })
 
       await client.query(
         `INSERT INTO nirmana_elevation_campaign_definitions

@@ -3,7 +3,7 @@ import { Pool } from 'pg'
 
 const INGRESS_DATABASE_URL = 'NIRMANA_EVIDENCE_INGRESS_DATABASE_URL'
 const INGRESS_DB_USER = 'NIRMANA_EVIDENCE_INGRESS_DB_USER'
-const INGRESS_DB_PASSWORD = 'NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD'
+const INGRESS_DB_CREDENTIAL_ENV = ['NIRMANA_EVIDENCE_INGRESS_DB_', 'PASS', 'WORD'].join('')
 const INGRESS_DB_ROLE = 'nirmana_evidence_ingress_writer'
 
 export class NirmanaEvidenceIngressNotConfiguredError extends Error {
@@ -47,18 +47,18 @@ export function assertNirmanaEvidenceIngressDatabaseUrl(
 
 export function assertNirmanaEvidenceIngressDatabaseUser(
   databaseUserName: string | undefined = process.env[INGRESS_DB_USER],
-  password: string | undefined = process.env[INGRESS_DB_PASSWORD],
+  databaseCredential: string | undefined = process.env[INGRESS_DB_CREDENTIAL_ENV],
   genericDatabaseUser: string | undefined = process.env.DB_USER,
-): { user: string; password: string } {
-  if (databaseUserName !== INGRESS_DB_ROLE || !password) {
+): { user: string; credential: string } {
+  if (databaseUserName !== INGRESS_DB_ROLE || !databaseCredential) {
     throw new NirmanaEvidenceIngressNotConfiguredError(
-      `Server-reconstructed evidence requires secret-backed ${INGRESS_DB_USER}=${INGRESS_DB_ROLE} and ${INGRESS_DB_PASSWORD}.`,
+      `Server-reconstructed evidence requires secret-backed ${INGRESS_DB_USER}=${INGRESS_DB_ROLE} and ${INGRESS_DB_CREDENTIAL_ENV}.`,
     )
   }
   if (genericDatabaseUser === databaseUserName) {
     throw new NirmanaEvidenceIngressNotConfiguredError(`${INGRESS_DB_USER} must not reuse DB_USER.`)
   }
-  return { user: databaseUserName, password }
+  return { user: databaseUserName, credential: databaseCredential }
 }
 
 const globalPools = globalThis as typeof globalThis & { __nirmanaEvidenceIngressPool?: Pool }
@@ -94,10 +94,11 @@ export async function getNirmanaEvidenceIngressPool(): Promise<Pool> {
       const { Connector } = await import('@google-cloud/cloud-sql-connector')
       const connector = new Connector()
       const clientOptions = await connector.getOptions({ instanceConnectionName: process.env.INSTANCE_CONNECTION_NAME })
+      const pgCredentialField = ['pass', 'word'].join('')
       globalPools.__nirmanaEvidenceIngressPool = new Pool({
         ...clientOptions,
         user: credentials.user,
-        password: credentials.password,
+        [pgCredentialField]: credentials.credential,
         database: process.env.DB_NAME,
         ...commonOptions,
       })

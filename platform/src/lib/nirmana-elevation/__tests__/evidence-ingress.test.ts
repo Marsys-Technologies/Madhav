@@ -13,25 +13,25 @@ describe('Nirmana evidence ingress database credentials', () => {
 
   it('rejects a generic application principal even when passed through the ingress setting', () => {
     expect(() => assertNirmanaEvidenceIngressDatabaseUrl(
-      'postgresql://amjis_app:secret@db.example/amjis',
-      'postgresql://amjis_app:secret@db.example/amjis',
+      'postgresql://amjis_app@db.example/amjis',
+      'postgresql://amjis_app@db.example/amjis',
       'amjis_app',
     )).toThrow(/must authenticate as nirmana_evidence_ingress_writer/i)
   })
 
   it('accepts only the separately provisioned ingress login', () => {
     expect(assertNirmanaEvidenceIngressDatabaseUrl(
-      'postgresql://nirmana_evidence_ingress_writer:secret@db.example/amjis',
-      'postgresql://amjis_app:secret@db.example/amjis',
+      'postgresql://nirmana_evidence_ingress_writer@db.example/amjis',
+      'postgresql://amjis_app@db.example/amjis',
       'amjis_app',
     )).toContain('nirmana_evidence_ingress_writer')
   })
 
   it('accepts the Cloud SQL connector credential only for the distinct ingress login', () => {
     expect(assertNirmanaEvidenceIngressDatabaseUser(
-      'nirmana_evidence_ingress_writer', 'secret', 'amjis_app',
-    )).toEqual({ user: 'nirmana_evidence_ingress_writer', password: 'secret' })
-    expect(() => assertNirmanaEvidenceIngressDatabaseUser('amjis_app', 'secret', 'amjis_app'))
+      'nirmana_evidence_ingress_writer', 'test-credential', 'amjis_app',
+    )).toEqual({ user: 'nirmana_evidence_ingress_writer', credential: 'test-credential' })
+    expect(() => assertNirmanaEvidenceIngressDatabaseUser('amjis_app', 'test-credential', 'amjis_app'))
       .toThrow(NirmanaEvidenceIngressNotConfiguredError)
   })
 })

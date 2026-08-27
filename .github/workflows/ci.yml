@@ -588,6 +588,23 @@ jobs:
           NIRMANA_L0_GOCHARA_CITATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_gochara_citation_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_gochara_citation_chunk_repair.test.ts --reporter=verbose
 
+      - name: Nirmāṇa elevation — provision dedicated evidence-ingress contract DB
+        # This is a local throwaway database on the already-isolated postgres:16
+        # service. The test rejects any other database name and does not read a
+        # production URL, so its dedicated-login path is exercised on every PR.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_elevation_test;"
+          psql -h localhost -U postgres -d nirmana_elevation_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+      - name: Nirmāṇa elevation — migration 632 dedicated ingress login against real Postgres
+        env:
+          NIRMANA_ELEVATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_elevation_test
+        run: npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
