@@ -9,12 +9,22 @@ import { query } from '@/lib/db/client'
 // CockpitShell assembles LiveDependencyGraph, OverallProgress, TelemetryStrip,
 // AssetTable, and BuildControlsBar with built-in polling + SSE subscriptions.
 
+// V3-E-007: generateMetadata has no guaranteed request-scoped session by
+// default, so it must resolve access itself via the SAME
+// resolveChartPageAccess path the page body uses below — never a raw,
+// unguarded query — before it may put subject_name (PII) into the <title>.
+// An unauthenticated caller or one without build access on this chart gets a
+// generic title; the real name never reaches the response for them.
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const access = await resolveChartPageAccess(id)
+  if (!access || !access.canBuild) {
+    return { title: 'Nirmāṇa — MARSYS-JIS' }
+  }
   const { rows } = await query<{ subject_name: string | null }>(
     'SELECT subject_name FROM charts WHERE id=$1',
     [id]
