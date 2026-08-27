@@ -60,7 +60,7 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(applyScript).not.toContain('terraform apply -auto-approve')
     expect(applyScript).not.toContain('destroy)')
     expect(applyScript).toContain('IAC_APPLY_ENVIRONMENT:-')
-    expect(applyScript).toContain('GCP_RELEASE_APPROVAL:-')
+    expect(applyScript).toContain('GOOGLE_CLOUD_RELEASE_APPROVAL:-')
     expect(applyScript).toContain('gcloud auth application-default print-access-token')
     expect(applyScript).toContain('GOOGLE_APPLICATION_CREDENTIALS:-')
     expect(applyScript).not.toContain('GITHUB_REF:-')
@@ -125,25 +125,25 @@ describe('Nirmana elevation monitor scheduler contract', () => {
 
   it('rejects an unapproved GCP-native apply before Terraform can initialize', () => {
     const applyScript = readFileSync(monitorApply, 'utf8')
-    if (!applyScript.includes('GCP_RELEASE_APPROVAL:-')) {
+    if (!applyScript.includes('GOOGLE_CLOUD_RELEASE_APPROVAL:-')) {
       // Keep the RED run offline: a wrapper without the native approval guard
       // would initialize the real backend when presented with a local saved-plan
       // placeholder.
-      expect(applyScript).toContain('GCP_RELEASE_APPROVAL:-')
+      expect(applyScript).toContain('GOOGLE_CLOUD_RELEASE_APPROVAL:-')
       return
     }
 
     for (const environment of [
       {
         IAC_APPLY_ENVIRONMENT: 'staging',
-        GCP_RELEASE_APPROVAL: 'CHG-1234',
+        GOOGLE_CLOUD_RELEASE_APPROVAL: 'CHG-1234',
       },
       {
         IAC_APPLY_ENVIRONMENT: 'production',
       },
       {
         IAC_APPLY_ENVIRONMENT: 'production',
-        GCP_RELEASE_APPROVAL: 'short',
+        GOOGLE_CLOUD_RELEASE_APPROVAL: 'short',
       },
     ]) {
       const result = invokeMonitorApply(environment)

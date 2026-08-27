@@ -17,8 +17,8 @@ usage() {
 }
 
 require_gcp_native_reviewed_apply() {
-  if [[ "${IAC_APPLY_ENVIRONMENT:-}" != "production" || ! "${GCP_RELEASE_APPROVAL:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{7,127}$ ]]; then
-    echo "apply is allowed only through a GCP-native reviewed release with IAC_APPLY_ENVIRONMENT=production and a recorded GCP_RELEASE_APPROVAL" >&2
+  if [[ "${IAC_APPLY_ENVIRONMENT:-}" != "production" || ! "${GOOGLE_CLOUD_RELEASE_APPROVAL:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{7,127}$ ]]; then
+    echo "apply is allowed only through a GCP-native reviewed release with IAC_APPLY_ENVIRONMENT=production and a recorded GOOGLE_CLOUD_RELEASE_APPROVAL" >&2
     exit 2
   fi
 

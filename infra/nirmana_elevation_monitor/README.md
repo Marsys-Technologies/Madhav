@@ -33,7 +33,7 @@ Terraform state.
 The GCP-native release path does not depend on GitHub. A named, approved GCP
 release operator creates `monitor.tfplan` with Terraform and then applies that
 exact saved plan from a trusted GCP environment. The wrapper accepts an apply
-only when `IAC_APPLY_ENVIRONMENT=production` and `GCP_RELEASE_APPROVAL` contains
+only when `IAC_APPLY_ENVIRONMENT=production` and `GOOGLE_CLOUD_RELEASE_APPROVAL` contains
 the recorded change/approval reference. Those values are traceability guards;
 GCP IAM and Cloud Audit Logs are the actual authorization and evidence boundary.
 
@@ -50,7 +50,7 @@ The execution sequence is deliberately two-person and saved-plan based:
 2. An independent reviewer records that the plan has exactly the approved
    resource changes and cites the approval reference.
 3. The same approved GCP release identity applies that unchanged file with
-   `IAC_APPLY_ENVIRONMENT=production` and the recorded `GCP_RELEASE_APPROVAL`.
+   `IAC_APPLY_ENVIRONMENT=production` and the recorded `GOOGLE_CLOUD_RELEASE_APPROVAL`.
 4. Retain the Terraform output and corresponding Cloud Audit Logs entries as the
    release evidence. Do not use `-auto-approve`, ad-hoc console edits, or a new
    plan in place of the reviewed saved plan.
