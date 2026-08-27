@@ -668,7 +668,13 @@ await Native Surrogate triage.
 
 ---
 
-### V3-E-012 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
+### V3-E-021 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
+
+*(renumbered from a draft `V3-E-012` 2026-08-28: the tracker rejected that id
+with `FINDING_ID_CONFLICT` — stream S3 had independently claimed `V3-E-012`
+on its own branch, an inevitable id-collision risk of parallel streams
+appending to one register file across unmerged branches, not itself
+investigated further here.)*
 
 - **Class / severity:** DEFECT · S1 major (proposed — reader-visible
   disagreement between what the composer says it asked for and what the
@@ -726,7 +732,7 @@ await Native Surrogate triage.
   defect; S2 territory for the surface's failure to disclose it)
 - **Journey:** J2
 - **Observed (2026-08-27, LIVE, deployed `amjis-web@cafa894ee` — S2-territory
-  code confirmed byte-identical to current HEAD, see V3-E-012):** asked
+  code confirmed byte-identical to current HEAD, see V3-E-021):** asked
   "What does the current dasha period mean for my career, and how does it
   interact with transiting Saturn?" (turn `ad4228a2-ec12-450e-85c3-52b5398ed2ad`).
   Full SSE trace:
@@ -872,6 +878,6 @@ SALVAGE 2); 16 V3 entries (5 from the A3 census + 6 surfaced during A4's
 B-001/B-007/B-008 fix-and-verify chain + 5 surfaced by S2's guided-execution
 J2 pass, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes fixed
 and independently verified, V3-E-007/E-008/E-010/E-011 filed to S5,
-V3-E-009 closed-as-benign, V3-E-012/E-014/E-015 filed to S4 (with E-015 also
+V3-E-009 closed-as-benign, V3-E-021/E-014/E-015 filed to S4 (with E-015 also
 S2-owned for its surface half), V3-E-013 FIXED by S2 pending independent
 verification). No gate is certified by this document.*
