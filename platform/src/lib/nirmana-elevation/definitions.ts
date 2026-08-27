@@ -1569,10 +1569,12 @@ const dispositionEventByObligation = {
 } as const
 
 function isCurrentOperationalPrerequisite(
-  event: { evidence_payload: unknown; source_kind: string; source_ref: string },
+  event: { evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string },
   eventType: string,
   current: CurrentLifecycleContext,
   entityId: string,
+  decision: { payload: NirmanaOptimizationVerdictEvidence; observed_at: string; recorded_at: string },
+  implementations: { evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }[],
 ): boolean {
   const bindingMatches = (payload: { registry_fingerprint_sha256: string; analysis_digest: string }) =>
     payload.registry_fingerprint_sha256 === current.registryFingerprint
@@ -1582,6 +1584,19 @@ function isCurrentOperationalPrerequisite(
     return payload.success && event.source_kind === 'build_run'
       && event.source_ref.toLowerCase() === `build_run:${payload.data.build_run_id.toLowerCase()}`
       && bindingMatches(payload.data)
+      && payload.data.decision_digest === canonicalNirmanaOptimizationVerdictDigest(decision.payload)
+      && occursAfter(event, decision)
+      && (changeIsRequired(decision.payload)
+        ? payload.data.implementation_digest !== null && implementations.some((implementation) => {
+          const parsedImplementation = NirmanaImplementationEvidenceSchema.safeParse(implementation.evidence_payload)
+          return parsedImplementation.success && implementation.source_kind === 'git_commit' && gitCommitSourceRef.test(implementation.source_ref)
+            && parsedImplementation.data.registry_fingerprint_sha256 === current.registryFingerprint
+            && parsedImplementation.data.analysis_digest === current.analysisDigest
+            && parsedImplementation.data.decision_digest === payload.data.decision_digest
+            && parsedImplementation.data.implementation_digest === payload.data.implementation_digest
+            && occursAfter(event, implementation)
+        })
+        : payload.data.implementation_digest === null)
   }
   if (eventType === 'probe_accepted') {
     const payload = NirmanaProbeEvidenceSchema.safeParse(event.evidence_payload)
@@ -1594,6 +1609,9 @@ function isCurrentOperationalPrerequisite(
   return payload.success && event.source_kind === 'git_commit' && gitCommitSourceRef.test(event.source_ref)
     && bindingMatches(payload.data)
     && payload.data.disposition === current.manifestAsset.execution_obligation
+    && decision.payload.verdict === 'non_build_disposition'
+    && decision.payload.proposal.action === 'formal_disposition'
+    && occursAfter(event, decision)
 }
 
 async function requireNonBuildDispositionProvenance(
@@ -1815,6 +1833,17 @@ async function requireIntegrityProvenance(
     : obligation && obligation in dispositionEventByObligation ? dispositionEventByObligation[obligation as keyof typeof dispositionEventByObligation]
       : obligation === 'build' ? 'accepted_rebuild_observed' : null
   if (!operationEvent) throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a supported frozen execution obligation.')
+  const decision = await loadCurrentAcceptedDecision(client, input, current)
+  const implementations = obligation === 'build' && changeIsRequired(decision.payload)
+    ? (await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+      `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'implementation_accepted'
+          AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
+      [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
+    )).rows
+    : []
   const prerequisites = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
     `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
        FROM nirmana_elevation_campaign_events
@@ -1823,7 +1852,7 @@ async function requireIntegrityProvenance(
     [input.campaign_id, input.definition_revision, operationEvent, input.entity_id, input.layer],
   )
   const valid = prerequisites.rows.filter((event) =>
-    isCurrentOperationalPrerequisite(event, operationEvent, current, input.entity_id) && occursAfter(input, event))
+    isCurrentOperationalPrerequisite(event, operationEvent, current, input.entity_id, decision, implementations) && occursAfter(input, event))
   if (valid.length !== 1) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires exactly one prior current typed execution or disposition receipt.')
   }

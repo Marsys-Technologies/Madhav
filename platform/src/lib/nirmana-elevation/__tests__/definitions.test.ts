@@ -327,6 +327,15 @@ describe('Nirmana elevation definition repository', () => {
       if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [emptyRegistryRow] })
       if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: emptyManifest, manifest_sha256: canonicalManifestDigest(emptyManifest), manifest_asset_count: 1 }] })
       if (statement.includes('SELECT count(*) FROM bg_sarvatobhadra_grid')) return Promise.resolve({ rows: [{ count: 0 }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{
+        evidence_payload: {
+          ...binding, verdict: 'non_build_disposition',
+          basis: { measurement: { status: 'not_applicable', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+          proposal: { action: 'formal_disposition', summary: 'Intentional empty asset.', output_contract: 'not_applicable' },
+        },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z',
+      }] })
       if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{
         evidence_payload: { ...binding, disposition: 'empty_acceptance', disposition_digest: 'd'.repeat(64) },
         source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
