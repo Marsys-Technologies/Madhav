@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { getServerUser } from '@/lib/firebase/server'
 
-export const revalidate = 60
+// P2-B-008: reading the caller's session makes this route inherently dynamic, so
+// the previous `revalidate = 60` (a static-cache directive) no longer applies.
+// Per-response freshness is still declared via Cache-Control below.
+export const dynamic = 'force-dynamic'
 
 export interface AssetRow {
   asset_id: string
@@ -39,6 +43,20 @@ export interface AssetRow {
 }
 
 export async function GET() {
+  // P2-B-008 (LOW): this route had no authentication. Nothing it returns is
+  // chart-scoped — it is the global asset catalog — so no ownership gate applies
+  // and every authenticated caller still sees exactly what they saw before. It is
+  // gated because the rows carry `target_table`, `count_sql`, and `size_sql`: the
+  // internal table names and SQL of every asset, which is precisely the
+  // reconnaissance needed to drive the atlas/sample dump this sweep closes.
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['authentication required'] },
+      { status: 401 }
+    )
+  }
+
   try {
     const result = await query<AssetRow>(`
       SELECT
@@ -70,7 +88,10 @@ export async function GET() {
       errors: [],
     })
 
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
+    // 'private': the response is now authenticated, so a shared/CDN cache must
+    // not store and re-serve it to a different (or anonymous) caller. The 60s
+    // freshness window the cockpit relies on is preserved.
+    response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30')
     return response
   } catch (err) {
     console.error('[cockpit/registry] db error', err)

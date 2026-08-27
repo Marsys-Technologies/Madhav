@@ -101,6 +101,11 @@ function makeReq(body: object): NextRequest {
 function seedRole(role: string) {
   mockGetServerUser.mockResolvedValue(USER)
   mockQuery.mockResolvedValueOnce({ rows: [{ role }], rowCount: 1 }) // getUserRole
+  // P2-B-008: the route now gates on authorizeChartAccess before any other work.
+  // USER owns chart 'c1', so Rule 2 (owner_id match) returns 'all' on this single
+  // query and chart_grants is never consulted — one extra queued response, no more.
+  // (For role='super_admin' this same row satisfies Rule 1's chart-exists probe.)
+  mockQuery.mockResolvedValueOnce({ rows: [{ owner_id: USER.uid }], rowCount: 1 }) // SELECT owner_id FROM charts
 }
 
 /**

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { getServerUser } from '@/lib/firebase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,19 @@ async function getWhitelistedTables(): Promise<Set<string>> {
 }
 
 export async function GET(req: NextRequest) {
+  // P2-B-008 (LOW): this route had no authentication. It returns only
+  // information_schema column metadata for registry-whitelisted tables — no row
+  // data and nothing chart-scoped — so authentication is the whole gate and no
+  // ownership check applies. It is still worth closing: the column inventory is
+  // reconnaissance for the atlas/sample dump this same sweep fixes.
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: null, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['authentication required'] },
+      { status: 401 }
+    )
+  }
+
   const table = req.nextUrl.searchParams.get('table')
   if (!table) {
     return NextResponse.json(
@@ -64,7 +78,9 @@ export async function GET(req: NextRequest) {
       stale_after_seconds: 60,
       errors: [],
     })
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
+    // 'private': the response is now authenticated, so a shared/CDN cache must
+    // not store and re-serve it. Freshness window unchanged.
+    response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30')
     return response
   } catch (err) {
     console.error('[cockpit/atlas/schema] db error', err)

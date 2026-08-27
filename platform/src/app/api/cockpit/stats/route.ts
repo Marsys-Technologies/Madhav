@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { getServerUser } from '@/lib/firebase/server'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { deriveState } from './deriveState'
 import type { AssetState } from './deriveState'
 
@@ -207,6 +209,32 @@ export async function GET(req: NextRequest) {
   // Abort-aware: if client disconnects, skip the DB work
   if (req.signal?.aborted) {
     return NextResponse.json({ data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['aborted'] })
+  }
+
+  // P2-B-008: this route had NO authentication — zero getServerUser() calls —
+  // and, given a caller-supplied chart_id, returned that chart's real per-asset
+  // row counts, build states, last_built_at, live rows_written, and committed
+  // substep progress to anyone on the internet holding a chart UUID.
+  //
+  // Two gates: authentication always; ownership whenever a chart_id narrows the
+  // response to one chart. 'read' level — stats are a read, so a chart_grants
+  // 'view' grantee legitimately passes. With no chart_id the response is
+  // registry-wide with no chart scope, so there is no owner to check.
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['authentication required'] },
+      { status: 401 }
+    )
+  }
+  if (chartId) {
+    const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+    if (denied) {
+      return NextResponse.json(
+        { data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['forbidden'] },
+        { status: 403 }
+      )
+    }
   }
 
   try {

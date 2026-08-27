@@ -8,6 +8,7 @@ import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS, isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 async function requireUser() {
@@ -143,6 +144,32 @@ export async function POST(req: NextRequest) {
 
   const role = await getUserRole(user.uid)
   const isSuperAdmin = role === 'super_admin'
+
+  // P2-B-008: per-chart authorization on the caller-supplied chart_id, BEFORE any
+  // gate, transaction, or dispatch. This route used to check only "is there a
+  // logged-in user", which made it the most dangerous instance of the B-001/B-007
+  // family — and strictly worse than B-007's pre-fix state, because B-007 at least
+  // required a preview_hash round-trip before its DELETE. Here a SINGLE request
+  // with `clear_before: true` ran `DELETE FROM <target_table> WHERE chart_id=$1`
+  // across every build-derived table of an arbitrary chart, reset its
+  // asset_throughput to dormant, marked downstream stale, and then dispatched a
+  // Cloud Run build job billed against the victim's chart — with no confirmation
+  // step of any kind. The non-clearing path is a cross-tenant write too (it
+  // INSERTs build_runs / build_run_assets and invokes the job).
+  //
+  // 'write' (permission === 'all': owner or super_admin) is required, not merely
+  // non-'deny': dispatch and clear are destructive, so a chart_grants 'view'
+  // grantee must not pass. This mirrors the Nirmāṇa page guard, which already
+  // gates the cockpit UI on canBuild === (permission === 'all'), and matches the
+  // Clear routes' gate exactly (P2-B-007, PR #1602).
+  const denied = await requireChartPermission({
+    uid: user.uid,
+    role: isSuperAdmin ? 'super_admin' : 'guest',
+    chartId: chart_id,
+    access: 'write',
+  })
+  if (denied) return denied
+
   const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
 
   // Authorization: non-super-admin cannot build L0 layer
@@ -701,6 +728,14 @@ export async function GET(req: NextRequest) {
 
   const chart_id = req.nextUrl.searchParams.get('chart_id')
   if (!chart_id) return NextResponse.json({ error: 'chart_id query param required' }, { status: 400 })
+
+  // P2-B-008: this GET returned the last 20 build runs — states, timings, and
+  // last_error strings — for ANY caller-supplied chart_id to any logged-in user.
+  // 'read' (permission !== 'deny') is the right level here rather than the 'write'
+  // the POST demands: reading build history is exactly what a chart_grants 'view'
+  // grant is meant to cover.
+  const denied = await requireChartPermission({ uid: user.uid, chartId: chart_id, access: 'read' })
+  if (denied) return denied
 
   try {
     const { rows } = await query<{
