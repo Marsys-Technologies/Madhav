@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+import jcs
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,18 +57,12 @@ class ProbeResponse(BaseModel):
 
 
 def _contract_digest(health_probe: dict[str, Any]) -> str:
-    """Mirror the lifecycle client's compact, recursively key-sorted JSON bytes."""
+    """Mirror ECMAScript JSON.stringify number/string bytes with sorted keys."""
     try:
-        canonical = json.dumps(
-            {"health_probe": health_probe},
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-    except (TypeError, ValueError) as exc:
+        canonical = jcs.canonicalize({"health_probe": health_probe})
+    except (OverflowError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="Invalid health-probe contract") from exc
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _authenticate(x_api_key: str = Header(default="")) -> None:

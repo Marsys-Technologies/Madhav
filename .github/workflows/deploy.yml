@@ -122,6 +122,26 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
+      # The regular serving image is distinct from Dockerfile.pipeline. Building it
+      # on every PR that reaches this protected check prevents a sidecar-only change
+      # from first discovering packaging/import failures after merge.
+      - name: Build regular sidecar image (load, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./platform/python-sidecar
+          file: ./platform/python-sidecar/Dockerfile
+          push: false
+          load: true
+          tags: amjis-sidecar:pr-check
+          cache-from: type=gha,scope=amjis-sidecar
+
+      - name: Verify Nirmana route and release smoke are packaged
+        run: |
+          docker run --rm --entrypoint python amjis-sidecar:pr-check -c \
+            "from main import app; assert any(r.path == '/internal/nirmana/probe' for r in app.routes)"
+          docker run --rm --entrypoint python amjis-sidecar:pr-check -c \
+            "from pathlib import Path; assert Path('scripts/nirmana_probe_release_smoke.py').is_file(); assert Path('scripts/nirmana_probe_contracts.json').is_file()"
+
       # Build the orchestrator job image (no push) so a broken Dockerfile.pipeline
       # — e.g. a missing COPY for ga_writers/ — is caught at PR time. Context is the
       # repo root because Dockerfile.pipeline COPYs from repo-root paths
@@ -563,13 +583,28 @@ jobs:
           cache-from: type=gha,scope=amjis-sidecar
           cache-to: type=gha,mode=max,scope=amjis-sidecar
 
-      - name: Deploy sidecar to Cloud Run
+      - name: Define zero-traffic candidate identity
+        id: sidecar-candidate
+        env:
+          RELEASE_SHA: ${{ env.DEPLOY_SHA }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          suffix="probe-${RELEASE_SHA:0:12}-${RELEASE_RUN_ID}-${RELEASE_ATTEMPT}"
+          {
+            echo "suffix=$suffix"
+            echo "tag=$suffix"
+            echo "revision=amjis-sidecar-$suffix"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy sidecar candidate to Cloud Run (zero traffic)
         id: deploy-sidecar
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-sidecar
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }}
+          suffix: ${{ steps.sidecar-candidate.outputs.suffix }}
           labels: |
             managed-by=github-actions
             commit-sha=${{ env.DEPLOY_SHA }}
@@ -580,22 +615,67 @@ jobs:
             --cpu=2
             --memory=1Gi
             --min-instances=0
+            --no-traffic
+            --tag=${{ steps.sidecar-candidate.outputs.tag }}
             --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
 
-      - name: Verify Nirmana probe runner is mounted and fail-closed
+      - name: Resolve candidate revision URL
+        id: sidecar-candidate-url
         env:
-          DEPLOY_URL: ${{ steps.deploy-sidecar.outputs.url }}
+          CANDIDATE_TAG: ${{ steps.sidecar-candidate.outputs.tag }}
         run: |
-          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            --request POST \
-            --header 'content-type: application/json' \
-            --data '{"asset_id":"bg_panchanga","probe_contract_sha256":"0000000000000000000000000000000000000000000000000000000000000000","health_probe":{"probe_type":"panchanga_engine"}}' \
-            "$DEPLOY_URL/internal/nirmana/probe")
-          test "$status" = "401"
+          candidate_url=$(gcloud run services describe amjis-sidecar \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
+              '.status.traffic[] | select(.tag == $tag) | .url')
+          test -n "$candidate_url"
+          echo "url=$candidate_url/internal/nirmana/probe" >> "$GITHUB_OUTPUT"
+
+      # The Actions identity never reads PYTHON_SIDECAR_API_KEY. Secret Manager
+      # mounts it directly into this one-task Cloud Run Job under the existing
+      # sidecar runtime service account, which already has secretAccessor.
+      - name: Configure authenticated candidate smoke job
+        env:
+          CANDIDATE_URL: ${{ steps.sidecar-candidate-url.outputs.url }}
+          EXPECTED_REVISION: ${{ steps.sidecar-candidate.outputs.revision }}
+        run: |
+          gcloud run jobs deploy amjis-sidecar-release-smoke \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }} \
+            --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com \
+            --set-secrets=PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1 \
+            --set-env-vars=NIRMANA_PROBE_CANDIDATE_URL="$CANDIDATE_URL",NIRMANA_PROBE_EXPECTED_REVISION="$EXPECTED_REVISION" \
+            --command=python \
+            --args=scripts/nirmana_probe_release_smoke.py \
+            --task-timeout=300 \
+            --max-retries=0 \
+            --quiet
+
+      - name: Run authenticated real probes against candidate
+        run: |
+          gcloud run jobs execute amjis-sidecar-release-smoke \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --wait \
+            --quiet
+
+      # No earlier step changes service traffic. Any build, deploy, job setup, or
+      # real-probe failure stops here and leaves the previously serving revision.
+      - name: Promote verified sidecar candidate
+        env:
+          EXPECTED_REVISION: ${{ steps.sidecar-candidate.outputs.revision }}
+        run: |
+          gcloud run services update-traffic amjis-sidecar \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --to-revisions="$EXPECTED_REVISION=100" \
+            --quiet
 
   # ── 4.edge_and_infra_hygiene ──
   # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF

@@ -30,6 +30,7 @@ python-dateutil>=2.9.0
 fastapi==0.115.0
 pydantic==2.9.0
 python-dotenv==1.0.1
+jcs==0.2.1
 # starlette.testclient (test_panchanga_get.py, test_permission_curve_route.py)
 # refuses to import without httpx. NOTE: httpx is absent from requirements.txt —
 # it arrives there transitively via google-cloud-aiplatform/openai. Pinning it

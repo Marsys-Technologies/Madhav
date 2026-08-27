@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -33,6 +34,34 @@ def test_contract_digest_matches_lifecycle_clients_javascript_canonical_bytes():
         "457d0d91a9b15f1fd4c559c80419f9efa36bf5e0aaad38d63019776b73e73e87"
     )
     assert nirmana_probe._contract_digest(PANCHANGA_PROBE) == _digest(PANCHANGA_PROBE)
+
+
+@pytest.mark.parametrize(
+    ("numeric", "javascript_digest"),
+    [
+        (1e-7, "97e0cc047772047fdec8bf771848a7975a590ed3a442a2b8835cdba8919ab0f8"),
+        (1e20, "dd9ff4a80519f3f827b82e7de6bcaf660f2a480d087569f46b473514ac8df309"),
+        (-0.0, "b845bb190310b83f43e6a0f01a7002d21698a3b3d19fd616dd3724cbf9176a64"),
+    ],
+)
+def test_contract_digest_matches_javascript_numeric_edge_vectors(
+    numeric: float, javascript_digest: str
+):
+    probe = {"probe_type": "panchanga_engine", "numeric": numeric}
+    assert nirmana_probe._contract_digest(probe) == javascript_digest
+
+
+def test_full_frozen_release_contracts_match_javascript_digests():
+    contracts_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "nirmana_probe_contracts.json"
+    )
+    contracts = json.loads(contracts_path.read_text(encoding="utf-8"))
+    assert nirmana_probe._contract_digest(contracts["bg_panchanga"]) == (
+        "febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2"
+    )
+    assert nirmana_probe._contract_digest(contracts["bg_ephemeris_engine"]) == (
+        "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4"
+    )
 
 
 @pytest.fixture
