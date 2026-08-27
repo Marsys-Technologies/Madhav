@@ -1,8 +1,11 @@
 ---
 artifact: PARIPRASHNA_ASSURANCE_STATE_TRANSITIONS
-version: 1.0
+version: 1.1
 status: CURRENT
-date: 2026-08-24
+date: 2026-08-27
+changelog:
+  - "1.1 (2026-08-27): documents the P2/general-mode identity-enablement tier added alongside
+    P1_ENABLEMENT_MODE; no change to any P0B/P1 transition already specified below."
 ---
 
 # State-transition specification
@@ -72,3 +75,10 @@ A result packet is valid only after every non-closure work item in its stream is
 independent verifier has recommended stream closure. Native acceptance is valid only after
 complete P6 evidence and CG-5. Scope additions must be new, positive work items no greater
 than the full campaign denominator; a failed stream cannot receive further completion credit.
+
+A P0B runtime may additionally enable a P2/general-mode identity tier, mirroring the existing
+P1_ENABLEMENT_MODE tier one phase further down the dependency chain. Its identities are
+authenticatable only after the durable P1-to-P2 `dependency_resolved` receipt exists, hold
+distinct credentials disjoint from every P0B and P1 identity, and are scoped to phases P2-P7 and
+streams S1-S6 rather than to P0 or P1. Enabling this tier changes no P0B or P1 transition above;
+it only widens which actor identities may submit events targeting P2 and later.

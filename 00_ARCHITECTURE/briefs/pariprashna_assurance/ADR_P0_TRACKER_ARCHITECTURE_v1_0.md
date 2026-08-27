@@ -1,10 +1,13 @@
 ---
 artifact: ADR_P0_TRACKER_ARCHITECTURE
-version: 1.0
+version: 1.1
 status: ACCEPTED_FOR_LOCAL_CG0_PROOF
-date: 2026-08-24
+date: 2026-08-27
 decision_owner: SURROGATE DECISION — not native acceptance
 scope: PARIPRASHNA-ASSURANCE-P0-TRACKER
+changelog:
+  - "1.1 (2026-08-27): notes the P2/general-mode identity-enablement tier under Boundaries; no
+    change to the P0 decision, rationale, or rejected alternatives above."
 ---
 
 # ADR — event-sourced Paripraśna assurance control plane
@@ -46,3 +49,11 @@ Primary evidence remains in GitHub, CI, test artefacts, deployment records, tran
 screenshots, and database evidence. Events link to that evidence and never replace it.
 The service fails closed: stale, unknown, or integrity-degraded state never renders as
 healthy. Production hosting, credentials, and release require native authority.
+
+The same runtime may layer additional identity-enablement tiers onto the P0B ledger without
+changing its baked-in `operator_mode` or accreting a second ledger: P1_ENABLEMENT_MODE
+(`p1_actors`) and, one phase further down the dependency chain, a P2/general-mode tier
+(`p2_actors`, gated on the durable P1-to-P2 handoff receipt). Each tier is a separate credential
+namespace scoped to its own phases/streams; none of them changes the P0-tracked
+`programme_definition`, so the append-only event chain and its root hash are unaffected by
+enabling or not enabling a later tier.
