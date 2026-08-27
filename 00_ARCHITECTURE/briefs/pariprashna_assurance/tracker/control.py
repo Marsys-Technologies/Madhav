@@ -36,6 +36,9 @@ GATES = [("CG-0", "Control Plane Ready"), ("CG-1", "Takeover Reconciled"), ("CG-
 STAGE_NAMES = {stage_id: stage_name for stage_id, stage_name, _ in STAGES}
 STREAM_IDS = {stream_id for stream_id, _ in STREAMS}
 P1_F004 = "P1-F-004"
+P2_PHASE_IDS = ["P2", "P3", "P4", "P5", "P6", "P7"]
+P2_GENERAL_STREAMS = P2_PHASE_IDS + [stream_id for stream_id, _ in STREAMS]
+P2_ACTOR_IDS = {f"lead-{pid.lower()}" for pid in P2_PHASE_IDS} | {f"lead-{sid.lower()}" for sid in STREAM_IDS} | {"surrogate", "verifier", "integrator", "native"}
 
 
 class RejectedEvent(ValueError):
@@ -95,12 +98,15 @@ def contains_progress(value: Any) -> bool:
 
 
 class EventStore:
-    def __init__(self, runtime_dir: str | Path, *, p0b_only: bool = False, p1_enabled: bool = False):
+    def __init__(self, runtime_dir: str | Path, *, p0b_only: bool = False, p1_enabled: bool = False, p2_enabled: bool = False):
         if p1_enabled and not p0b_only:
             raise RejectedEvent("P1_ENABLEMENT_MODE", "P1 identity enablement is only defined for the approved P0B runtime")
+        if p2_enabled and not p0b_only:
+            raise RejectedEvent("P2_ENABLEMENT_MODE", "P2 identity enablement is only defined for the approved P0B runtime")
         self.runtime_dir = Path(runtime_dir)
         self.p0b_only = p0b_only
         self.p1_enabled = p1_enabled
+        self.p2_enabled = p2_enabled
         self.runtime_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
         self._secure_runtime_path(self.runtime_dir, 0o700)
         self.db_path = self.runtime_dir / "control-plane.sqlite3"
@@ -159,6 +165,7 @@ class EventStore:
                 CREATE TRIGGER IF NOT EXISTS rejected_no_delete BEFORE DELETE ON rejected_events BEGIN SELECT RAISE(ABORT, 'rejections are append-only'); END;
                 CREATE TABLE IF NOT EXISTS actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS p1_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
+                CREATE TABLE IF NOT EXISTS p2_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS presences (session_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, stream_id TEXT, state TEXT NOT NULL, observed_at TEXT NOT NULL, detail TEXT);
                 CREATE TABLE IF NOT EXISTS projection_state (id INTEGER PRIMARY KEY CHECK (id=1), canonical_json TEXT NOT NULL, projection_hash TEXT NOT NULL, as_of TEXT NOT NULL, event_count INTEGER NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projector_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT, lag_events INTEGER NOT NULL DEFAULT 0);
@@ -185,6 +192,10 @@ class EventStore:
                 p1_rows = (("lead-p1", "STREAM_LEAD", ["P1"]), ("surrogate-p1", "NATIVE_SURROGATE", ["P1"]), ("verifier-p1", "INDEPENDENT_VERIFIER", ["P1"]), ("integrator-p1", "PROGRAMME_INTEGRATOR", ["P1"]))
                 for actor_id, role, streams in p1_rows:
                     con.execute("INSERT OR IGNORE INTO p1_actors(actor_id,role,streams_json,token_hash) VALUES(?,?,?,?)", (actor_id, role, canonical(streams), secrets.token_hex(32)))
+            if self.p2_enabled:
+                p2_rows = *[(f"lead-{pid.lower()}", "STREAM_LEAD", [pid]) for pid in P2_PHASE_IDS], *[(f"lead-{sid.lower()}", "STREAM_LEAD", [sid]) for sid, _ in STREAMS], ("surrogate", "NATIVE_SURROGATE", P2_GENERAL_STREAMS), ("verifier", "INDEPENDENT_VERIFIER", P2_GENERAL_STREAMS), ("integrator", "PROGRAMME_INTEGRATOR", P2_GENERAL_STREAMS), ("native", "NATIVE", P2_GENERAL_STREAMS)
+                for actor_id, role, streams in p2_rows:
+                    con.execute("INSERT OR IGNORE INTO p2_actors(actor_id,role,streams_json,token_hash) VALUES(?,?,?,?)", (actor_id, role, canonical(streams), secrets.token_hex(32)))
             return
         all_streams = [sid for sid, _ in STREAMS] + ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"]
         rows = *[(f"lead-{phase_id.lower()}", "STREAM_LEAD", [phase_id]) for phase_id, _, _ in PHASES], *[(f"lead-{sid.lower()}", "STREAM_LEAD", [sid]) for sid, _ in STREAMS], ("surrogate", "NATIVE_SURROGATE", all_streams), ("verifier", "INDEPENDENT_VERIFIER", all_streams), ("integrator", "PROGRAMME_INTEGRATOR", all_streams), ("native", "NATIVE", all_streams)
@@ -252,10 +263,47 @@ class EventStore:
             raise
         return {"path": str(target), "actors": sorted(credentials)}
 
+    def provision_p2_credentials(self) -> dict[str, Any]:
+        """Issue P2/general-mode-only tokens once without exposing or rotating P0B/P1 credentials."""
+        if not self.p0b_only or not self.p2_enabled:
+            raise RejectedEvent("P2_ENABLEMENT_REQUIRED", "P2 credentials require the explicit approved P2 enablement mode")
+        target = self.runtime_dir / "p2-credentials.json"
+        try:
+            descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            raise RejectedEvent("P2_CREDENTIALS_EXIST", f"P2 credentials already exist at {target}; do not overwrite them") from None
+        credentials: dict[str, str] = {}
+        try:
+            with self._lock, self.connection() as con:
+                con.execute("BEGIN IMMEDIATE")
+                if not self._p1_to_p2_dependency_resolved(con):
+                    con.execute("ROLLBACK")
+                    raise RejectedEvent("P2_DEPENDENCY_UNRESOLVED", "P2 credentials require the durable P1-to-P2 dependency receipt")
+                rows = con.execute("SELECT actor_id FROM p2_actors ORDER BY actor_id").fetchall()
+                if {row["actor_id"] for row in rows} != P2_ACTOR_IDS:
+                    con.execute("ROLLBACK")
+                    raise RejectedEvent("P2_IDENTITIES_UNAVAILABLE", "the approved P2 identity set is incomplete")
+                for row in rows:
+                    token = secrets.token_urlsafe(32)
+                    credentials[row["actor_id"]] = token
+                    con.execute("UPDATE p2_actors SET token_hash=? WHERE actor_id=?", (hashlib.sha256(token.encode()).hexdigest(), row["actor_id"]))
+                con.execute("COMMIT")
+            with os.fdopen(descriptor, "w", encoding="utf-8") as credential_file:
+                descriptor = -1
+                credential_file.write(canonical({"schema_version": "p2-credentials@1", "created_at": now_iso(), "tokens": credentials}) + "\n")
+                credential_file.flush(); os.fsync(credential_file.fileno())
+        except Exception:
+            if descriptor >= 0: os.close(descriptor)
+            target.unlink(missing_ok=True)
+            raise
+        return {"path": str(target), "actors": sorted(credentials)}
+
     def _actor(self, con: sqlite3.Connection, actor_id: str) -> sqlite3.Row | None:
         actor = con.execute("SELECT * FROM actors WHERE actor_id=?", (actor_id,)).fetchone()
         if actor is None and self.p1_enabled:
             actor = con.execute("SELECT * FROM p1_actors WHERE actor_id=?", (actor_id,)).fetchone()
+        if actor is None and self.p2_enabled:
+            actor = con.execute("SELECT * FROM p2_actors WHERE actor_id=?", (actor_id,)).fetchone()
         return actor
 
     @staticmethod
@@ -263,6 +311,14 @@ class EventStore:
         for row in con.execute("SELECT payload_json FROM events WHERE event_type='dependency_resolved' ORDER BY ledger_seq"):
             payload = json.loads(row["payload_json"])
             if payload.get("from") == "P0" and payload.get("to") == "P1":
+                return True
+        return False
+
+    @staticmethod
+    def _p1_to_p2_dependency_resolved(con: sqlite3.Connection) -> bool:
+        for row in con.execute("SELECT payload_json FROM events WHERE event_type='dependency_resolved' ORDER BY ledger_seq"):
+            payload = json.loads(row["payload_json"])
+            if payload.get("from") == "P1" and payload.get("to") == "P2":
                 return True
         return False
 
@@ -276,6 +332,8 @@ class EventStore:
             row = con.execute("SELECT actor_id FROM actors WHERE token_hash=?", (token_hash,)).fetchone()
             if row is None and self.p1_enabled:
                 row = con.execute("SELECT actor_id FROM p1_actors WHERE token_hash=?", (token_hash,)).fetchone()
+            if row is None and self.p2_enabled:
+                row = con.execute("SELECT actor_id FROM p2_actors WHERE token_hash=?", (token_hash,)).fetchone()
         return row[0] if row else None
 
     def actor_role(self, actor_id: str) -> str | None:
