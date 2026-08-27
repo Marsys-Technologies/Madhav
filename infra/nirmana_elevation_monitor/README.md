@@ -45,14 +45,15 @@ This is release evidence, not a documentation waiver. Do not dispatch an apply
 until that evidence, plan review, protected CI, and production-environment
 reviewer configuration are recorded.
 
-The plan job authenticates as the established read-only
+The plan job authenticates as the established
 `github-actions@madhav-astrology.iam.gserviceaccount.com`. The gated apply job
 uses the separate
 `github-actions-nirmana-apply@madhav-astrology.iam.gserviceaccount.com` identity.
 Before any apply, its WIF trust must require the GitHub `production`
 environment, and any first-apply permission must be granted only to that
-identity for the approved release window. Do not add write permissions to the
-plan identity: plan runs before the GitHub environment approval.
+identity for the approved release window. Do not add the temporary
+monitor-bootstrap permissions to the plan identity: plan runs before the GitHub
+environment approval.
 
 Before the first apply, confirm the Cloud Scheduler API's Google-managed service
 agent exists. The Terraform executor needs only the following first-apply

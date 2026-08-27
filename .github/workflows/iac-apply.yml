@@ -39,7 +39,7 @@ permissions:
 env:
   GCP_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
-  # Plan remains read-only under the established general-purpose identity.
+  # Plan uses the established identity, which lacks monitor-bootstrap write permissions.
   WIF_PLAN_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
   # This identity is deliberately distinct. Its WIF trust and any temporary
   # first-apply permissions must be constrained to the production environment.
