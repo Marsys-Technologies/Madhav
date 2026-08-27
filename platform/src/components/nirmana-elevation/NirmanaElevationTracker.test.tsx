@@ -346,10 +346,12 @@ describe('NirmanaElevationTracker', () => {
     act(() => window.dispatchEvent(new Event('focus')))
     expect(fetch).toHaveBeenCalledTimes(2)
 
-    await screen.findByText(/current state unknown/i)
-
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    const retainedSnapshotAlert = screen.getByText(/current state unknown/i).closest<HTMLElement>('[role="alert"]')
+    // fixtureV2 is already degraded because its program-monitor observation is unavailable.
+    // Wait for the specific refresh failure rather than the generic degraded banner so this
+    // regression proves the failed refresh was observed and retained alongside the prior DOM.
+    const observedFailure = await screen.findByText(error)
+    const retainedSnapshotAlert = observedFailure.closest<HTMLElement>('[role="alert"]')
     if (!retainedSnapshotAlert) throw new Error('Retained-snapshot alert is missing.')
     expect(retainedSnapshotAlert).toHaveTextContent(error)
     expect(retainedSnapshotAlert).toHaveTextContent(/failure observed/i)
