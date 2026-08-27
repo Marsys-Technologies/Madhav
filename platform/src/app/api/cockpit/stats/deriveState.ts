@@ -2,7 +2,7 @@
 // export more than GET/POST/route-config — Next's build-time route-shape check forbids any
 // other export from a route.ts file, which is why this logic cannot live there directly).
 
-export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
+export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
 
 // Badge-honesty defect (pre-D-4b readiness pass, native-flagged, 2026-07-21): a HEAVY
 // (has_substeps=true) writer whose build hit its own writer_timeout_seconds mid-materialization
@@ -53,17 +53,33 @@ export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'p
 // `asset_throughput.state`. Reading that answer IS deriving from substep completeness;
 // re-deriving it here from an incomplete input would not be.
 export function deriveState(
-  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null; asset_kind?: string | null; has_substeps?: boolean },
+  asset: {
+    is_active?: boolean; target_floor?: number | null; asset_type?: string | null
+    asset_kind?: string | null; has_substeps?: boolean
+    service_health?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
+    last_invoked_at?: string | null; last_selftest_at?: string | null
+  },
   actualRows: number | null,
   error: string | null,
   throughputState: string | null,
   substepsCommitted: number | null = null
 ): AssetState {
-  // Service assets have no count_sql/target_table by design — they are healthy
-  // when registered + CURRENT. They must never fall through to the data-asset
-  // dormant/error logic below. Check both asset_type (L1/L2 legacy) and
-  // asset_kind (L3+ canonical) so new-layer service registrations are caught.
-  if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
+  // Service assets have no row count, so their status must be derived from measured
+  // probe evidence, never from registration alone. Healthy service_health plus a
+  // measured probe timestamp and a completed global throughput record is the only
+  // ready state. WriterBase services historically record last_selftest_at only;
+  // the dedicated no-writer probe records both, so either timestamp is evidence.
+  // Missing evidence stays dormant/unknown (the response retains service_health='unknown')
+  // rather than displaying a false service_ok badge.
+  if (asset.asset_type === 'service' || asset.asset_kind === 'service') {
+    if (throughputState === 'building') return 'building'
+    if (asset.service_health === 'healthy'
+      && (asset.last_invoked_at != null || asset.last_selftest_at != null)
+      && (throughputState === 'lit' || throughputState === 'service_ok')) return 'service_ok'
+    if (asset.service_health === 'degraded' || asset.service_health === 'unhealthy'
+      || throughputState === 'error' || throughputState === 'service_down') return 'service_down'
+    return 'dormant'
+  }
   if (asset.is_active === false) return 'not_migrated'
   // SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24): first-class, and FIRST — ahead of the
   // `error` block and the `actualRows > 0` fallthrough alike. 'incomplete' (migration 474)

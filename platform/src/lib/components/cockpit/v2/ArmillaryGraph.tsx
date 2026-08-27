@@ -22,6 +22,7 @@ function stateLabel(state: string): string {
   switch (state) {
     case 'lit':          return 'current'
     case 'service_ok':   return 'service healthy'
+    case 'service_down': return 'service unavailable'
     case 'building':     return 'building'
     case 'stale':        return 'stale'
     case 'error':        return 'error'
@@ -78,7 +79,7 @@ export function aggregate(assets: AssetWithState[]): LayerAgg {
   // inflate builtFrac after a clear — e.g. Kāla's 5 service assets would show
   // as "5/12 built" even when all data has been wiped. Service health is shown
   // separately via service_health field; it does not reflect data build state.
-  const dataAssets = assets.filter(a => a.state !== 'service_ok')
+  const dataAssets = assets.filter(a => a.asset_type !== 'service' && a.asset_kind !== 'service')
   const total = dataAssets.length || 1
   const building = dataAssets.some(a => a.state === 'building')
   // build_state_stale counts as built (rows are present; throughput ledger is behind, not absent).
@@ -218,7 +219,7 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     st.textContent = text.state; st.style.color = text.color
     tip.style.opacity = '1'
   }
-  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : '#7C725B'
+  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : (s === 'error' || s === 'service_down') ? '#B5474C' : '#7C725B'
   function applyAssetHover(id: string | null) {
     const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
     hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }

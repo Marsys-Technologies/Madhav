@@ -59,6 +59,11 @@ const REGISTRY_WITH_L0 = [
 
 const REGISTRY_GANITA_ONLY = REGISTRY_WITH_L0.filter(r => r.scope === 'per_chart')
 
+const REGISTRY_EPHEMERIS_SERVICE = [{
+  asset_id: 'bg_ephemeris_engine', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'ephemeris_engine' },
+}]
+
 // Bodha registry: includes bo_* assets for G4 precondition gate tests
 const REGISTRY_BODHA = [
   { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
@@ -142,6 +147,16 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     expect(body.data.plan).not.toContain('bg_ontology')
     // Per-chart L1+ assets are included as usual
     expect(body.data.plan).toContain('ga_positions')
+  })
+
+  it('does not include a no-writer service in a broad global build', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([...REGISTRY_WITH_L0, ...REGISTRY_EPHEMERIS_SERVICE] as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).not.toContain('bg_ephemeris_engine')
   })
 
   it('persists the ordered waves and registry dependency snapshot with the run', async () => {
@@ -549,6 +564,70 @@ describe('POST /api/cockpit/runs — scope=asset_set', () => {
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.code).toBe('EMPTY_ASSET_SET')
+  })
+})
+
+describe('POST /api/cockpit/runs — governed global service probes', () => {
+  it('dispatches exactly one super_admin-selected no-writer service probe without a clear', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_EPHEMERIS_SERVICE as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild', clear_before: false,
+    }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toEqual(['bg_ephemeris_engine'])
+    expect(body.data.asset_count).toBe(1)
+    expect(mockInvokeRunJob).toHaveBeenCalledTimes(1)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest.waves).toEqual([['bg_ephemeris_engine']])
+    expect(manifest.assets).toHaveLength(1)
+    expect(manifest.assets[0].asset_id).toBe('bg_ephemeris_engine')
+
+    const assetInsert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_run_assets'))
+    expect(assetInsert![1]).toContain('bg_ephemeris_engine')
+    expect(assetInsert![1]).not.toContain('ga_positions')
+  })
+
+  it('rejects a client before creating a global service-probe run', async () => {
+    seedRole('client')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_EPHEMERIS_SERVICE, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild',
+    }))
+    expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe('FORBIDDEN_SERVICE_PROBE')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO build_runs'))).toBe(false)
+  })
+
+  it('refuses clear_before for a service probe', async () => {
+    seedRole('super_admin')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_EPHEMERIS_SERVICE, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild', clear_before: true,
+    }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe('SERVICE_PROBE_CLEAR_FORBIDDEN')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 })
 

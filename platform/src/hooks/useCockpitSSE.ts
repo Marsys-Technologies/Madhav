@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react'
 //     withholds a promotion it cannot prove.
 // SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24). Consumers must treat it as terminal-but-
 // NOT-done: the asset's dispatch has ended, and it is not lit.
-type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'incomplete'
+type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'incomplete' | 'service_down'
 type RunState   = 'planned' | 'running' | 'paused' | 'completed' | 'stopped' | 'failed'
 
 export type CockpitEvent =

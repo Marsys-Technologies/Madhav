@@ -308,6 +308,7 @@ def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
         "ayanamsha",
         "node_mode",
         "allowed_ephemeris_backends",
+        "ephemeris_file_sha256",
     }
     missing = sorted(required - probe_spec.keys())
     if missing:
@@ -335,21 +336,20 @@ def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
     if unknown:
         raise ValueError(f"unknown allowed_ephemeris_backends: {', '.join(unknown)}")
 
-    file_sha256 = probe_spec.get("ephemeris_file_sha256")
-    if file_sha256 is not None:
-        if not isinstance(file_sha256, dict) or set(file_sha256) != _EPHEMERIS_CORPUS_FILES:
-            raise ValueError(
-                "ephemeris_file_sha256 must pin exactly sepl_18.se1, semo_18.se1, seas_18.se1"
-            )
-        invalid_digests = sorted(
-            name for name, digest in file_sha256.items()
-            if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+    file_sha256 = probe_spec["ephemeris_file_sha256"]
+    if not isinstance(file_sha256, dict) or set(file_sha256) != _EPHEMERIS_CORPUS_FILES:
+        raise ValueError(
+            "ephemeris_file_sha256 must pin exactly sepl_18.se1, semo_18.se1, seas_18.se1"
         )
-        if invalid_digests:
-            raise ValueError(
-                "ephemeris_file_sha256 contains invalid SHA-256 values: "
-                + ", ".join(invalid_digests)
-            )
+    invalid_digests = sorted(
+        name for name, digest in file_sha256.items()
+        if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+    )
+    if invalid_digests:
+        raise ValueError(
+            "ephemeris_file_sha256 contains invalid SHA-256 values: "
+            + ", ".join(invalid_digests)
+        )
 
     return {
         "jd": float(jd),
@@ -405,33 +405,32 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
             or "/app/ephe"
         )
         expected_files = config["ephemeris_file_sha256"]
-        if expected_files is not None:
-            actual_files: dict[str, str] = {}
-            file_errors: list[str] = []
-            for filename, expected_digest in sorted(expected_files.items()):
-                source = Path(ephe_path) / filename
-                if not source.is_file():
-                    file_errors.append(f"{filename}: missing")
-                    continue
-                digest = hashlib.sha256()
-                with source.open("rb") as handle:
-                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                        digest.update(chunk)
-                actual_digest = digest.hexdigest()
-                actual_files[filename] = actual_digest
-                if actual_digest != expected_digest:
-                    file_errors.append(
-                        f"{filename}: SHA-256 {actual_digest}, expected {expected_digest}"
-                    )
-            _add_check(
-                checks,
-                failures,
-                "ephemeris_corpus_sha256",
-                not file_errors,
-                "; ".join(file_errors),
-                files=actual_files,
-                ephe_path=ephe_path,
-            )
+        actual_files: dict[str, str] = {}
+        file_errors: list[str] = []
+        for filename, expected_digest in sorted(expected_files.items()):
+            source = Path(ephe_path) / filename
+            if not source.is_file():
+                file_errors.append(f"{filename}: missing")
+                continue
+            digest = hashlib.sha256()
+            with source.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            actual_digest = digest.hexdigest()
+            actual_files[filename] = actual_digest
+            if actual_digest != expected_digest:
+                file_errors.append(
+                    f"{filename}: SHA-256 {actual_digest}, expected {expected_digest}"
+                )
+        _add_check(
+            checks,
+            failures,
+            "ephemeris_corpus_sha256",
+            not file_errors,
+            "; ".join(file_errors),
+            files=actual_files,
+            ephe_path=ephe_path,
+        )
 
         swe.set_ephe_path(ephe_path)
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
