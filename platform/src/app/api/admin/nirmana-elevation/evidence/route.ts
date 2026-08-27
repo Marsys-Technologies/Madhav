@@ -9,9 +9,14 @@ import {
   NirmanaElevationEvidenceConflictError,
   NirmanaElevationEvidenceValidationError,
   NirmanaAssetAnalysisEvidenceSchema,
+  NirmanaFreezeEvidenceSchema,
+  NirmanaImplementationEvidenceSchema,
+  NirmanaIntegrityEvidenceSchema,
   NirmanaFoundationLaneEvidenceSchema,
   NirmanaElevationManifestSchema,
+  NirmanaNonBuildDispositionEvidenceSchema,
   NirmanaOptimizationVerdictEvidenceSchema,
+  NirmanaProbeEvidenceSchema,
   NirmanaStageTransitionEvidenceSchema,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
@@ -89,6 +94,36 @@ const assetReceipt = z.object({
     if (value.layer === null) {
       context.addIssue({ code: 'custom', path: ['layer'], message: 'optimization_verdict_accepted requires the asset layer.' })
     }
+  }
+  const typedLifecyclePayloads: Partial<Record<typeof value.event_type, z.ZodType>> = {
+    implementation_accepted: NirmanaImplementationEvidenceSchema,
+    probe_accepted: NirmanaProbeEvidenceSchema,
+    static_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    source_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    empty_accepted: NirmanaNonBuildDispositionEvidenceSchema,
+    retired_with_disposition: NirmanaNonBuildDispositionEvidenceSchema,
+    integrity_verified: NirmanaIntegrityEvidenceSchema,
+    asset_frozen: NirmanaFreezeEvidenceSchema,
+  }
+  const typedPayload = typedLifecyclePayloads[value.event_type]
+  if (typedPayload && !typedPayload.safeParse(value.evidence_payload).success) {
+    context.addIssue({ code: 'custom', path: ['evidence_payload'], message: `${value.event_type} requires its strict lifecycle receipt payload.` })
+  }
+  if (['implementation_accepted', 'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(value.event_type)
+    && (value.source_kind !== 'git_commit' || !/^git:[0-9a-f]{40}$/.test(value.source_ref))) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: `${value.event_type} requires source_kind=git_commit and an exact deployed git source reference.` })
+  }
+  if (value.event_type === 'probe_accepted'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:health-probe:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'probe_accepted requires the exact server-reconstructed health-probe source.' })
+  }
+  if (value.event_type === 'integrity_verified'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:integrity:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'integrity_verified requires the exact server-reconstructed integrity source.' })
+  }
+  if (value.event_type === 'asset_frozen'
+    && (value.source_kind !== 'server_reconstructed' || value.source_ref !== `nirmana-elevation:freeze:${value.entity_id}`)) {
+    context.addIssue({ code: 'custom', path: ['source_ref'], message: 'asset_frozen requires the exact server-reconstructed freeze source.' })
   }
 })
 

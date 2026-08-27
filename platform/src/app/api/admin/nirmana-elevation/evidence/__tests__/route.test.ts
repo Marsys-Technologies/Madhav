@@ -289,7 +289,7 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     'source_accepted',
     'empty_accepted',
     'retired_with_disposition',
-  ])('records the permitted non-build disposition receipt %s', async (event_type) => {
+  ])('rejects generic unbound lifecycle evidence for %s before a database write', async (event_type) => {
     superAdmin()
     useEvidenceTransaction()
     queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
@@ -300,10 +300,11 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       evidence_payload: { disposition: event_type }, source_kind: 'catalogue', source_ref: `catalogue:${event_type}`,
       observed_at: '2026-08-25T09:00:00.000Z',
     }))
-    expect(response.status).toBe(201)
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
   })
 
-  it('records the implementation acceptance milestone receipt', async () => {
+  it('rejects an unbound implementation acceptance milestone receipt', async () => {
     superAdmin()
     useEvidenceTransaction()
     queryMock.mockResolvedValue({ rowCount: 1, rows: [] })
@@ -315,8 +316,8 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
       source_kind: 'review', source_ref: 'review:implementation', observed_at: '2026-08-25T09:00:00.000Z',
     }))
 
-    expect(response.status).toBe(201)
-    expect(queryMock).toHaveBeenCalled()
+    expect(response.status).toBe(400)
+    expect(queryMock).not.toHaveBeenCalled()
   })
 
   it('rejects an invalid campaign-stage transition payload before any database write', async () => {

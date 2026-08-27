@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NirmanaElevationManifest } from '../definitions'
+import { canonicalNirmanaOptimizationVerdictDigest, type NirmanaElevationManifest } from '../definitions'
 import {
   deriveEligibleNextAssetIds,
   projectAssetMilestones,
@@ -98,10 +98,48 @@ function manifestAsset(overrides: Partial<ManifestAsset> = {}): ManifestAsset {
 }
 
 function assetEvents(asset: ManifestAsset, eventTypes: string[], overrides: Partial<CampaignEvent> = {}): CampaignEvent[] {
+  const binding = { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) }
+  const decision = {
+    ...binding,
+    verdict: 'optimize' as const,
+    basis: {
+      measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:test-evidence'],
+    },
+    proposal: { action: 'optimize' as const, summary: 'A governed change is required.', output_contract: 'digest_identical' as const },
+  }
+  const payloadFor = (eventType: string) => {
+    if (eventType === 'asset_analysis_accepted') return binding
+    if (eventType === 'optimization_verdict_accepted') return decision
+    if (eventType === 'implementation_accepted') return { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
+    if (eventType === 'accepted_rebuild_observed') return { output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64) }
+    if (eventType === 'probe_accepted') return { ...binding, probe_contract_sha256: 'f'.repeat(64), response_digest: '0'.repeat(64) }
+    if (eventType === 'integrity_verified') return { ...binding, integrity_contract_sha256: '1'.repeat(64), result_digest: '2'.repeat(64) }
+    if (eventType === 'asset_frozen') return { ...binding, lifecycle_digest: '3'.repeat(64) }
+    if (['static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(eventType)) {
+      const disposition = ({ static_accepted: 'static_acceptance', source_accepted: 'source_acceptance', empty_accepted: 'empty_acceptance', retired_with_disposition: 'retired_with_disposition' } as const)[eventType as 'static_accepted' | 'source_accepted' | 'empty_accepted' | 'retired_with_disposition']
+      return { ...binding, disposition, disposition_digest: '4'.repeat(64) }
+    }
+    return {}
+  }
+  const sourceFor = (eventType: string) => {
+    if (['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted', 'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(eventType)) return `git:${'a'.repeat(40)}`
+    if (eventType === 'accepted_rebuild_observed' || eventType === 'producer_covered') return 'build_run:11111111-1111-4111-8111-111111111111'
+    if (eventType === 'probe_accepted') return `nirmana-elevation:health-probe:${asset.asset_id}`
+    if (eventType === 'integrity_verified') return `nirmana-elevation:integrity:${asset.asset_id}`
+    if (eventType === 'asset_frozen') return `nirmana-elevation:freeze:${asset.asset_id}`
+    return 'event:test'
+  }
+  const sourceKindFor = (eventType: string) => ['probe_accepted', 'integrity_verified', 'asset_frozen'].includes(eventType)
+    ? 'server_reconstructed' : ['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted', 'static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(eventType)
+      ? 'git_commit' : 'test'
   return eventTypes.map((event_type, index) => event({
     event_type,
     entity_id: asset.asset_id,
     layer: asset.layer,
+    evidence_payload: payloadFor(event_type),
+    source_ref: sourceFor(event_type),
+    source_kind: sourceKindFor(event_type),
     observed_at: `2026-08-26T10:${String(index).padStart(2, '0')}:00.000Z`,
     recorded_at: `2026-08-26T10:${String(index).padStart(2, '0')}:00.000Z`,
     ...overrides,
@@ -306,8 +344,6 @@ describe('projectAssetMilestones', () => {
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
       'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
     ])
-    events[1].evidence_payload = { change_required: true }
-
     const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
     expect(result.milestones.map(({ state }) => state)).toEqual(Array(6).fill('earned'))
@@ -319,7 +355,15 @@ describe('projectAssetMilestones', () => {
     const events = assetEvents(asset, [
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
     ])
-    events[1].evidence_payload = { change_required: false }
+    events[1].evidence_payload = {
+      registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+      verdict: 'examined_and_already_efficient',
+      basis: {
+        measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+        evidence_refs: ['git:test-evidence'],
+      },
+      proposal: { action: 'no_change', summary: 'No change is justified.', output_contract: 'digest_identical' },
+    }
 
     const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
 
@@ -327,16 +371,41 @@ describe('projectAssetMilestones', () => {
     expect(result).toMatchObject({ milestones_earned: 5, milestones_required: 5 })
   })
 
+  it('withholds every downstream milestone from legacy-shaped or unbound receipts', () => {
+    const asset = manifestAsset()
+    const events = assetEvents(asset, [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted',
+      'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
+    ])
+    events[1].evidence_payload = { change_required: true }
+    const result = projectMilestones({ asset, events, activeRunState: null, producerAsset: null })
+
+    expect(result.milestones.map(({ state }) => state)).toEqual(['earned', 'current', 'pending', 'pending', 'pending', 'pending'])
+    expect(result.milestones_earned).toBe(1)
+  })
+
   it('makes probe implementation N/A unless a change receipt exists', () => {
     const asset = manifestAsset({ execution_obligation: 'probe' })
-    const baseEvents = assetEvents(asset, [
+    const unchangedEvents = assetEvents(asset, [
       'asset_analysis_accepted', 'optimization_verdict_accepted', 'probe_accepted', 'integrity_verified', 'asset_frozen',
     ])
+    unchangedEvents[1].evidence_payload = {
+      registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+      verdict: 'examined_and_already_efficient',
+      basis: {
+        measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+        evidence_refs: ['git:test-evidence'],
+      },
+      proposal: { action: 'no_change', summary: 'No change is justified.', output_contract: 'digest_identical' },
+    }
+    const changedEvents = assetEvents(asset, [
+      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted', 'probe_accepted', 'integrity_verified', 'asset_frozen',
+    ])
 
-    const unchanged = projectMilestones({ asset, events: baseEvents, activeRunState: null, producerAsset: null })
+    const unchanged = projectMilestones({ asset, events: unchangedEvents, activeRunState: null, producerAsset: null })
     const changed = projectMilestones({
       asset,
-      events: [...baseEvents, ...assetEvents(asset, ['implementation_accepted'], { recorded_at: '2026-08-26T11:00:00.000Z', observed_at: '2026-08-26T11:00:00.000Z' })],
+      events: changedEvents,
       activeRunState: null,
       producerAsset: null,
     })

@@ -887,8 +887,8 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation',
       definition_revision: 'v1',
       idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
-      event_type: 'integrity_verified',
-      entity_type: 'asset',
+      event_type: 'test_receipt',
+      entity_type: 'test',
       entity_id: 'bg_prashna_rules',
       layer: 'L0',
       evidence_payload: { receipt: 'test' },
@@ -915,7 +915,7 @@ describe('Nirmana elevation definition repository', () => {
 
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:stale',
-      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      event_type: 'test_receipt', entity_type: 'test', entity_id: 'bg_prashna_rules', layer: 'L0',
       evidence_payload: { receipt: 'test' }, source_kind: 'test', source_ref: 'test:receipt',
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     })).rejects.toThrow(/current frozen definition/i)
@@ -1195,6 +1195,28 @@ describe('Nirmana elevation definition repository', () => {
       evidence_payload: { receipt: 'second' }, source_kind: 'test', source_ref: 'test:receipt',
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     })).rejects.toThrow(/idempotency key/i)
+  })
+
+  it('rejects a conflicting lifecycle fact even when its idempotency key is different', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:first',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first, idempotency_key: 'asset:bg_prashna_rules:test:second', evidence_payload: { receipt: 'second' },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
   })
 
   it('accepts an exact retried evidence receipt without overwriting the original actor', async () => {

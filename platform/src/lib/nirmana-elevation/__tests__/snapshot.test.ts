@@ -7,7 +7,7 @@ import {
   projectNirmanaElevationSnapshot,
   type NirmanaElevationRawSources,
 } from '../snapshot'
-import { canonicalManifestDigest, canonicalRegistryContractDigest } from '../definitions'
+import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalRegistryContractDigest } from '../definitions'
 
 const observedAt = '2026-08-25T09:00:00.000Z'
 const milestoneAt = '2026-08-25T09:01:00.000Z'
@@ -183,21 +183,102 @@ function assetMilestoneEvents(
   assetId: string,
   layer: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5',
   runId: string,
-  { includeImplementation = true }: { includeImplementation?: boolean } = {},
+  { includeImplementation = true, registryFingerprint = 'a'.repeat(64) }: { includeImplementation?: boolean; registryFingerprint?: string } = {},
 ) {
-  const eventAt = new Date(Date.parse(milestoneAt) + Number(layer.slice(1)) * 60_000).toISOString()
+  const eventAt = Date.parse(milestoneAt) + Number(layer.slice(1)) * 60_000
+  const binding = { registry_fingerprint_sha256: registryFingerprint, analysis_digest: 'b'.repeat(64) }
+  const decision = {
+    ...binding,
+    verdict: 'optimize' as const,
+    basis: {
+      measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:test-evidence'],
+    },
+    proposal: { action: 'optimize' as const, summary: 'A governed change is required.', output_contract: 'digest_identical' as const },
+  }
   const eventTypes = [
     'asset_analysis_accepted', 'optimization_verdict_accepted',
     ...(includeImplementation ? ['implementation_accepted'] : []),
     'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
   ]
-  return eventTypes.map((event_type) => ({
+  return eventTypes.map((event_type, index) => ({
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type,
     entity_type: 'asset', entity_id: assetId, layer,
-    evidence_payload: event_type === 'optimization_verdict_accepted' ? { change_required: true } : {},
-    source_kind: 'campaign_evidence',
-    source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runId}` : `event:${assetId}:${event_type}`,
-    observed_at: eventAt, recorded_at: eventAt,
+    evidence_payload: event_type === 'asset_analysis_accepted' ? binding
+      : event_type === 'optimization_verdict_accepted' ? decision
+        : event_type === 'implementation_accepted' ? { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
+          : event_type === 'accepted_rebuild_observed' ? { output_digest: 'd'.repeat(64), output_digest_spec_sha256: 'e'.repeat(64) }
+            : event_type === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'f'.repeat(64), result_digest: '0'.repeat(64) }
+              : { ...binding, lifecycle_digest: '1'.repeat(64) },
+    source_kind: ['asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted'].includes(event_type)
+      ? 'git_commit' : ['integrity_verified', 'asset_frozen'].includes(event_type) ? 'server_reconstructed' : 'build_run',
+    source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runId}`
+      : event_type === 'integrity_verified' ? `nirmana-elevation:integrity:${assetId}`
+        : event_type === 'asset_frozen' ? `nirmana-elevation:freeze:${assetId}`
+          : `git:${'a'.repeat(40)}`,
+    observed_at: new Date(eventAt + index * 1_000).toISOString(), recorded_at: new Date(eventAt + index * 1_000).toISOString(),
+  }))
+}
+
+function nonBuildMilestoneEvents(
+  assetId: string,
+  layer: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5',
+  eventType: 'static_accepted' | 'source_accepted' | 'empty_accepted' | 'retired_with_disposition',
+  registryFingerprint = 'a'.repeat(64),
+) {
+  const binding = { registry_fingerprint_sha256: registryFingerprint, analysis_digest: 'b'.repeat(64) }
+  const decision = {
+    ...binding,
+    verdict: 'non_build_disposition' as const,
+    basis: {
+      measurement: { status: 'not_applicable' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:test-evidence'],
+    },
+    proposal: { action: 'formal_disposition' as const, summary: 'The formal non-build disposition is accepted.', output_contract: 'not_applicable' as const },
+  }
+  const disposition = ({ static_accepted: 'static_acceptance', source_accepted: 'source_acceptance', empty_accepted: 'empty_acceptance', retired_with_disposition: 'retired_with_disposition' } as const)[eventType]
+  const sequence = ['asset_analysis_accepted', 'optimization_verdict_accepted', eventType, 'integrity_verified', 'asset_frozen']
+  return sequence.map((currentEventType, index) => ({
+    campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: currentEventType,
+    entity_type: 'asset', entity_id: assetId, layer,
+    evidence_payload: currentEventType === 'asset_analysis_accepted' ? binding
+      : currentEventType === 'optimization_verdict_accepted' ? decision
+        : currentEventType === eventType ? { ...binding, disposition, disposition_digest: 'c'.repeat(64) }
+          : currentEventType === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'd'.repeat(64), result_digest: 'e'.repeat(64) }
+            : { ...binding, lifecycle_digest: 'f'.repeat(64) },
+    source_kind: ['asset_analysis_accepted', 'optimization_verdict_accepted', eventType].includes(currentEventType) ? 'git_commit' : 'server_reconstructed',
+    source_ref: currentEventType === 'integrity_verified' ? `nirmana-elevation:integrity:${assetId}`
+      : currentEventType === 'asset_frozen' ? `nirmana-elevation:freeze:${assetId}` : `git:${'a'.repeat(40)}`,
+    observed_at: new Date(Date.parse(milestoneAt) + index * 1_000).toISOString(),
+    recorded_at: new Date(Date.parse(milestoneAt) + index * 1_000).toISOString(),
+  }))
+}
+
+function producerCoveredMilestoneEvents(assetId: string, producerRunId: string, registryFingerprint = 'a'.repeat(64)) {
+  const binding = { registry_fingerprint_sha256: registryFingerprint, analysis_digest: 'b'.repeat(64) }
+  const decision = {
+    ...binding,
+    verdict: 'optimize' as const,
+    basis: {
+      measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:test-evidence'],
+    },
+    proposal: { action: 'optimize' as const, summary: 'Producer coverage is accepted.', output_contract: 'digest_identical' as const },
+  }
+  return ['asset_analysis_accepted', 'optimization_verdict_accepted', 'producer_covered', 'integrity_verified', 'asset_frozen'].map((eventType, index) => ({
+    campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: eventType,
+    entity_type: 'asset', entity_id: assetId, layer: 'L0',
+    evidence_payload: eventType === 'asset_analysis_accepted' ? binding
+      : eventType === 'optimization_verdict_accepted' ? decision
+        : eventType === 'integrity_verified' ? { ...binding, integrity_contract_sha256: 'c'.repeat(64), result_digest: 'd'.repeat(64) }
+          : eventType === 'asset_frozen' ? { ...binding, lifecycle_digest: 'e'.repeat(64) } : {},
+    source_kind: ['asset_analysis_accepted', 'optimization_verdict_accepted'].includes(eventType) ? 'git_commit'
+      : ['integrity_verified', 'asset_frozen'].includes(eventType) ? 'server_reconstructed' : 'build_run',
+    source_ref: eventType === 'producer_covered' ? `build_run:${producerRunId}`
+      : eventType === 'integrity_verified' ? `nirmana-elevation:integrity:${assetId}`
+        : eventType === 'asset_frozen' ? `nirmana-elevation:freeze:${assetId}` : `git:${'a'.repeat(40)}`,
+    observed_at: new Date(Date.parse(milestoneAt) + index * 1_000).toISOString(),
+    recorded_at: new Date(Date.parse(milestoneAt) + index * 1_000).toISOString(),
   }))
 }
 
@@ -254,7 +335,7 @@ describe('projectNirmanaElevationSnapshot', () => {
     const stageReceipts = [...stageEventsThrough('L0'), ...foundationLaneEvents()]
     const campaignEvents = [
       ...stageReceipts,
-      ...assetMilestoneEvents('bg_complete', 'L0', runIds.completed),
+      ...assetMilestoneEvents('bg_complete', 'L0', runIds.completed, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_complete')!.registry_fingerprint_sha256 }),
       {
         campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_analysis_accepted',
         entity_type: 'asset', entity_id: 'bg_active', layer: 'L0', evidence_payload: { decision: 'accepted' },
@@ -627,13 +708,7 @@ describe('projectNirmanaElevationSnapshot', () => {
   it('credits a global manifest asset through the mandatory canonical-chart cockpit build receipt', () => {
     const assetRegistry = [registryAsset({ scope: 'global' })]
     const manifest = manifestFor(assetRegistry, [{ asset_id: 'bg_prashna_rules', execution_obligation: 'build' }])
-    const lifecycleEvents = [
-      'asset_analysis_accepted', 'optimization_verdict_accepted', 'implementation_accepted', 'accepted_rebuild_observed', 'integrity_verified', 'asset_frozen',
-    ].map((event_type) => ({
-      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'bg_prashna_rules',
-      layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runOne}` : `event:${event_type}`,
-      observed_at: milestoneAt, recorded_at: milestoneAt,
-    }))
+    const lifecycleEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 })
     const snapshot = projectNirmanaElevationSnapshot(sources({
       asset_registry: assetRegistry,
       asset_throughput: [{ asset_id: 'bg_prashna_rules', chart_id: null, state: 'lit', last_built_at: observedAt }],
@@ -702,26 +777,7 @@ describe('projectNirmanaElevationSnapshot', () => {
 
   it('counts an asset frozen only after a frozen manifest, all lifecycle receipts, and a completed build-run receipt agree', () => {
     const manifest = defaultManifest()
-    const lifecycleEvents = [
-      'asset_analysis_accepted',
-      'optimization_verdict_accepted',
-      'implementation_accepted',
-      'accepted_rebuild_observed',
-      'integrity_verified',
-      'asset_frozen',
-    ].map((event_type) => ({
-      campaign_id: 'nirmana-elevation',
-      definition_revision: 'v1',
-      event_type,
-      entity_type: 'asset',
-      entity_id: 'bg_prashna_rules',
-      layer: 'L0',
-      evidence_payload: {},
-      source_kind: 'campaign_evidence',
-      source_ref: event_type === 'accepted_rebuild_observed' ? `build_run:${runOne}` : `event:${event_type}`,
-      observed_at: milestoneAt,
-      recorded_at: milestoneAt,
-    }))
+    const lifecycleEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 })
     const snapshot = projectNirmanaElevationSnapshot(sources({
       campaign_definitions: [{
         campaign_id: 'nirmana-elevation',
@@ -826,20 +882,13 @@ describe('projectNirmanaElevationSnapshot', () => {
   })
 
   it('allows an active non-writer asset to freeze only through its frozen formal non-build disposition', () => {
-    const lifecycleAt = new Date(Date.parse(milestoneAt) + 5 * 60_000).toISOString()
-    const lifecycleEvents = [
-      'asset_analysis_accepted', 'optimization_verdict_accepted', 'source_accepted', 'integrity_verified', 'asset_frozen',
-    ].map((event_type) => ({
-      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: 'lel_events',
-      layer: 'L5', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}`,
-      observed_at: lifecycleAt, recorded_at: lifecycleAt,
-    }))
     const assetRegistry = [registryAsset({
       asset_id: 'lel_events', english_name: 'Life Events', layer: 'mimamsa', sort_order: 0,
       has_writer: false, catalog_status: 'DRAFT', target_table: null,
       count_sql: 'SELECT count(*) FROM life_events WHERE chart_id = $1',
     })]
     const manifest = manifestFor(assetRegistry, [{ asset_id: 'lel_events', execution_obligation: 'source_acceptance' }])
+    const lifecycleEvents = nonBuildMilestoneEvents('lel_events', 'L5', 'source_accepted', manifest.assets[0].registry_fingerprint_sha256)
     const snapshot = projectNirmanaElevationSnapshot(sources({
       asset_registry: assetRegistry,
       campaign_definitions: [{
@@ -872,31 +921,19 @@ describe('projectNirmanaElevationSnapshot', () => {
       { asset_id: 'bg_transit_rules', execution_obligation: 'build', covered_asset_ids: ['bg_transit_engine'] },
       { asset_id: 'bg_transit_engine', execution_obligation: 'producer_covered', producer_id: 'bg_transit_rules' },
     ])
-    const lifecycleAt = (assetId: string) => assetId === 'lel_events'
-      ? new Date(Date.parse(milestoneAt) + 5 * 60_000).toISOString()
-      : milestoneAt
-    const lifecycleEvents = assetIds.flatMap((asset_id) => [
-      'asset_analysis_accepted', 'optimization_verdict_accepted',
-      ...(asset_id === 'bg_transit_rules' ? ['implementation_accepted'] : []),
-      'integrity_verified', 'asset_frozen',
-    ].map((event_type) => ({
-      campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type, entity_type: 'asset', entity_id: asset_id,
-      layer: asset_id === 'lel_events' ? 'L5' : 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `event:${event_type}:${asset_id}`,
-      observed_at: lifecycleAt(asset_id), recorded_at: lifecycleAt(asset_id),
-    }))).concat([
-      {
-        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'source_accepted', entity_type: 'asset', entity_id: 'lel_events',
-        layer: 'L5', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: 'source:canonical', observed_at: lifecycleAt('lel_events'), recorded_at: lifecycleAt('lel_events'),
-      },
-      {
-        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_transit_rules',
-        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: lifecycleAt('bg_transit_rules'), recorded_at: lifecycleAt('bg_transit_rules'),
-      },
-      {
-        campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'producer_covered', entity_type: 'asset', entity_id: 'bg_transit_engine',
-        layer: 'L0', evidence_payload: {}, source_kind: 'campaign_evidence', source_ref: `build_run:${runOne}`, observed_at: lifecycleAt('bg_transit_engine'), recorded_at: lifecycleAt('bg_transit_engine'),
-      },
-    ])
+    const lifecycleEvents = [
+      ...nonBuildMilestoneEvents('lel_events', 'L5', 'source_accepted', manifest.assets.find((asset) => asset.asset_id === 'lel_events')!.registry_fingerprint_sha256).map((event) => ({
+        ...event,
+        observed_at: new Date(Date.parse(event.observed_at) + 180_000).toISOString(),
+        recorded_at: new Date(Date.parse(event.recorded_at) + 180_000).toISOString(),
+      })),
+      ...assetMilestoneEvents('bg_transit_rules', 'L0', runOne, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_transit_rules')!.registry_fingerprint_sha256 }),
+      ...producerCoveredMilestoneEvents('bg_transit_engine', runOne, manifest.assets.find((asset) => asset.asset_id === 'bg_transit_engine')!.registry_fingerprint_sha256).map((event) => ({
+        ...event,
+        observed_at: new Date(Date.parse(event.observed_at) + 60_000).toISOString(),
+        recorded_at: new Date(Date.parse(event.recorded_at) + 60_000).toISOString(),
+      })),
+    ]
     const rawSources = sources({
       asset_registry: assetRegistry,
       campaign_definitions: [{
@@ -1368,8 +1405,9 @@ describe('projectNirmanaElevationSnapshot', () => {
         runAuthorization(runOne),
         {
           campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_analysis_accepted',
-          entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0', evidence_payload: {},
-          source_kind: 'review', source_ref: 'analysis:bg_prashna_rules', observed_at: observedAt, recorded_at: observedAt,
+          entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+          evidence_payload: { registry_fingerprint_sha256: manifest.assets[0].registry_fingerprint_sha256, analysis_digest: 'b'.repeat(64) },
+          source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: observedAt, recorded_at: observedAt,
         },
       ],
       build_runs: [{
@@ -1395,7 +1433,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       milestones_earned: 1, milestones_required: 6, current_action: 'Accepted campaign run: building',
       next_action: 'Accept implementation or disposition',
       evidence_refs: expect.arrayContaining([
-        'analysis:bg_prashna_rules',
+        `git:${'a'.repeat(40)}`,
         `registry:t0:${manifest.assets[0].registry_fingerprint_sha256}`,
         `registry:live:${manifest.assets[0].registry_fingerprint_sha256}`,
       ]),
@@ -1520,7 +1558,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       }],
       campaign_events: [
         ...foundationLaneEvents(), ...stageEventsThrough('L0'),
-        ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { includeImplementation: false }),
+        ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { includeImplementation: false, registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')!.registry_fingerprint_sha256 }),
       ],
       build_runs: [{
         id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
@@ -1534,7 +1572,7 @@ describe('projectNirmanaElevationSnapshot', () => {
 
     expect(snapshot.progress.assets_frozen).toBe(0)
     expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
-      lifecycle_state: 'verifying', milestones_earned: 5, current_action: 'Accept implementation or disposition',
+      lifecycle_state: 'rebuilt', milestones_earned: 2, current_action: 'Accept implementation or disposition',
     })
     expect(snapshot.campaign).toMatchObject({ current_layer: 'L0', current_wave: 0 })
     expect(snapshot.layers[0].eligible_next_asset_ids).toEqual(['bg_prashna_rules'])
@@ -1543,7 +1581,7 @@ describe('projectNirmanaElevationSnapshot', () => {
 
   it('does not count a completed build receipt whose entity layer contradicts the manifest', () => {
     const manifest = defaultManifest()
-    const campaign_events = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne).map((event) =>
+    const campaign_events = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 }).map((event) =>
       event.event_type === 'accepted_rebuild_observed' ? { ...event, layer: 'L1' } : event)
     const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
       campaign_definitions: [{
@@ -1573,7 +1611,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       }],
       campaign_events: [
         ...foundationLaneEvents(), ...stageEventsThrough('F0_FOUNDATION'),
-        ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne),
+        ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 }),
       ],
       build_runs: [{
         id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
@@ -1614,7 +1652,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       }],
       campaign_events: [
         ...foundationLaneEvents(), ...stageEventsThrough('L0'),
-        ...assetMilestoneEvents('bg_second', 'L0', runTwo),
+        ...assetMilestoneEvents('bg_second', 'L0', runTwo, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_second')!.registry_fingerprint_sha256 }),
       ],
       build_runs: [{ id: runTwo, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
       build_run_assets: [{ run_id: runTwo, asset_id: 'bg_second', position: 1, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
@@ -1635,7 +1673,7 @@ describe('projectNirmanaElevationSnapshot', () => {
 
   it('never retroactively credits a time-skewed freeze recorded before its layer stage entry', () => {
     const manifest = defaultManifest()
-    const prematureFreezeEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne).map((event) =>
+    const prematureFreezeEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 }).map((event) =>
       event.event_type === 'asset_frozen'
         ? {
             ...event,
@@ -1692,11 +1730,11 @@ describe('projectNirmanaElevationSnapshot', () => {
       { asset_id: 'bg_first', wave_index: 0, execution_obligation: 'build' },
       { asset_id: 'bg_second', wave_index: 1, execution_obligation: 'build' },
     ])
-    const secondWaveEvents = assetMilestoneEvents('bg_second', 'L0', runTwo).map((event) =>
+    const secondWaveEvents = assetMilestoneEvents('bg_second', 'L0', runTwo, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_second')!.registry_fingerprint_sha256 }).map((event) =>
       event.event_type === 'asset_frozen'
         ? { ...event, observed_at: '2026-08-25T10:00:00.000Z', recorded_at: '2026-08-25T09:00:10.000Z' }
         : event)
-    const firstWaveEvents = assetMilestoneEvents('bg_first', 'L0', runOne).map((event) =>
+    const firstWaveEvents = assetMilestoneEvents('bg_first', 'L0', runOne, { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === 'bg_first')!.registry_fingerprint_sha256 }).map((event) =>
       event.event_type === 'asset_frozen'
         ? { ...event, observed_at: '2026-08-25T09:02:00.000Z', recorded_at: '2026-08-25T09:02:00.000Z' }
         : event)
@@ -1769,7 +1807,7 @@ describe('projectNirmanaElevationSnapshot', () => {
         }],
         campaign_events: [
           ...foundationLaneEvents(), ...stageEventsThrough(currentStage),
-          ...frozenSpecs.flatMap(([layer, assetId]) => assetMilestoneEvents(assetId, layer, layerRunIds[layer])),
+          ...frozenSpecs.flatMap(([layer, assetId]) => assetMilestoneEvents(assetId, layer, layerRunIds[layer], { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === assetId)!.registry_fingerprint_sha256 })),
         ],
         build_runs: frozenSpecs.map(([layer]) => ({
           id: layerRunIds[layer], chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
