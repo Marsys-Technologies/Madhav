@@ -293,7 +293,7 @@ function producerCoveredMilestoneEvents(assetId: string, producerRunId: string, 
 function runAuthorization(
   runId: string,
   assetIds: string[] = ['bg_prashna_rules'],
-  { layer = 'L0', waveIndex = 0, at = observedAt }: {
+  { layer = 'L0', waveIndex = 0, at = '2026-08-25T08:59:00.000Z' }: {
     layer?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5'
     waveIndex?: number
     at?: string
@@ -350,10 +350,10 @@ describe('projectNirmanaElevationSnapshot', () => {
         source_kind: 'campaign_evidence', source_ref: 'https://admin:super-secret@private-db.internal/evidence',
         observed_at: '2026-08-25T09:09:00.000Z', recorded_at: '2026-08-25T09:09:01.000Z',
       },
-      authorize(runIds.active, 'bg_active', '2026-08-25T09:10:00.000Z'),
-      authorize(runIds.failed, 'bg_blocked', '2026-08-25T09:11:00.000Z'),
-      authorize(runIds.canary, 'bg_active', '2026-08-25T09:12:00.000Z'),
-      authorize(runIds.unscoped, 'bg_active', '2026-08-25T09:14:00.000Z'),
+      authorize(runIds.active, 'bg_active', '2026-08-25T09:09:59.000Z'),
+      authorize(runIds.failed, 'bg_blocked', '2026-08-25T09:10:59.000Z'),
+      authorize(runIds.canary, 'bg_active', '2026-08-25T09:11:59.000Z'),
+      authorize(runIds.unscoped, 'bg_active', '2026-08-25T09:13:59.000Z'),
     ]
     const rawSources = sources({
       asset_registry: assetRegistry,
@@ -404,7 +404,7 @@ describe('projectNirmanaElevationSnapshot', () => {
       expect.objectContaining({
         event_type: 'build_run_authorized', source_kind: 'campaign_authorization',
         source_ref: `build_run:${runIds.active}`, payload_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-        observed_at: '2026-08-25T09:10:00.000Z', recorded_at: '2026-08-25T09:10:00.000Z',
+        observed_at: '2026-08-25T09:09:59.000Z', recorded_at: '2026-08-25T09:09:59.000Z',
       }),
       expect.objectContaining({
         event_type: 'asset_analysis_accepted', entity_id: 'bg_active',
@@ -499,6 +499,26 @@ describe('projectNirmanaElevationSnapshot', () => {
         planned_assets: 1,
       }),
     ])
+  })
+
+  it('withholds runtime projection when an authorization was recorded after the run started', () => {
+    const manifest = defaultManifest()
+    const lateAuthorization = runAuthorization(runOne, ['bg_prashna_rules'], { at: '2026-08-25T09:01:00.000Z' })
+    const snapshot = projectNirmanaElevationSnapshot(
+      sources({
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+          manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        campaign_events: currentLayerRunEvidence(lateAuthorization),
+        build_runs: [{ id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'running', current_asset_id: 'bg_prashna_rules', created_at: observedAt, started_at: observedAt }],
+        build_run_assets: [{ run_id: runOne, asset_id: 'bg_prashna_rules', position: 1, state: 'building', started_at: observedAt, ended_at: null, error: null }],
+      }),
+      { generatedAt: '2026-08-25T09:02:00.000Z' },
+    )
+
+    expect(snapshot.active_runs).toEqual([])
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')).toMatchObject({ current_run_state: null })
   })
 
   it('does not infer campaign position or eligibility from an active run without valid stage evidence', () => {

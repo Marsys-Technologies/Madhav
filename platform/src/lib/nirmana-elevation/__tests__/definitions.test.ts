@@ -352,6 +352,9 @@ describe('Nirmana elevation definition repository', () => {
       source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_sarvatobhadra_grid',
       observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
     })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls).toContainEqual([
+      'SET LOCAL ROLE nirmana_evidence_ingress',
+    ])
   })
 
   it('accepts only the exact live baseline candidate and its label catalogue in one serializable transaction', async () => {
@@ -1318,11 +1321,19 @@ describe('Nirmana elevation definition repository', () => {
       asset_id: liveRegistryRow.asset_id, layer: 'L0', depends_on: liveRegistryRow.depends_on, registry_contract: liveProbeContract,
     })
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_panchanga', liveRegistryRow, frozenProbeAsset)
+    const binding = { registry_fingerprint_sha256: currentFingerprint, analysis_digest: analysisDigest }
+    const decision = {
+      ...binding, verdict: 'examined_and_already_efficient' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'no_change' as const, summary: 'No implementation is required.', output_contract: 'digest_identical' as const },
+    }
     useEvidenceTransaction()
     queryMock.mockImplementation((sql: string) => {
       const statement = String(sql)
       if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRegistryRow] })
       if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: frozenProbeManifest, manifest_sha256: canonicalManifestDigest(frozenProbeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
       if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
       return Promise.resolve({ rows: [] })
     })
@@ -1331,7 +1342,7 @@ describe('Nirmana elevation definition repository', () => {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:probe:live-contract',
       event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
       evidence_payload: {
-        registry_fingerprint_sha256: currentFingerprint, analysis_digest: analysisDigest,
+        ...binding,
         probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe), response_digest: 'a'.repeat(64),
       },
       source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga',
@@ -1344,6 +1355,25 @@ describe('Nirmana elevation definition repository', () => {
       asset_id: 'bg_panchanga',
       probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe),
     })
+
+    queryMock.mockClear()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: frozenProbeManifest, manifest_sha256: canonicalManifestDigest(frozenProbeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T10:00:00.000Z', recorded_at: '2026-08-25T10:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T11:00:00.000Z', recorded_at: '2026-08-25T11:00:00.000Z' }] })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '2' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:probe:before-generation',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
+      evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe), response_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/must follow the exact current accepted analysis and optimization decision/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
   })
 
   acceptedReceiptIt('rejects a non-passing authoritative typed probe verdict before it can append evidence', async () => {
@@ -1391,6 +1421,44 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
   })
 
+  acceptedReceiptIt('rejects a freeze receipt observed before its exact current integrity receipt', async () => {
+    const liveRow = registryRowsFor(manifest)[0]
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract,
+      }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, manifestAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'integrity_verified'")) return Promise.resolve({
+        rows: [{
+          evidence_payload: {
+            ...binding,
+            integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(registry_contract),
+            result_digest: 'a'.repeat(64),
+          },
+          source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+          observed_at: '2026-08-25T10:00:00.000Z', recorded_at: '2026-08-25T10:00:00.000Z',
+        }],
+      })
+      if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'freeze' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:freeze:before-integrity',
+      event_type: 'asset_frozen', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, lifecycle_digest: 'b'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:freeze:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/exactly one current validated integrity receipt/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
   acceptedReceiptIt('admits accepted rebuild evidence only after an exact completed run/asset and matching proven content receipt', async () => {
     useEvidenceTransaction()
     const evidence_payload = mockCurrentRebuildEvidence(true)
@@ -1423,6 +1491,7 @@ describe('Nirmana elevation definition repository', () => {
     })).resolves.toBe('created')
 
     expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
+    expect(queryMock.mock.calls[0][0]).toContain('run.started_at IS NULL')
   })
 
   acceptedReceiptIt('fails closed when the completed run has no matching proven receipt', async () => {

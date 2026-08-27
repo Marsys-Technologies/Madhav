@@ -580,7 +580,8 @@ function acceptedRunAuthorizations(
     if (!run
       || run.chart_id !== manifest.chart_id
       || (run.action != null && run.action !== 'rebuild')
-      || run.triggered_by === 'nirmana-f0-machinery-canary') continue
+      || run.triggered_by === 'nirmana-f0-machinery-canary'
+      || (run.started_at !== null && timestamp(event.recorded_at) >= timestamp(run.started_at))) continue
     const runAssetIds = [...new Set(raw.build_run_assets
       .filter((asset) => asset.run_id.toLowerCase() === runId)
       .map((asset) => asset.asset_id))].sort((left, right) => left.localeCompare(right))

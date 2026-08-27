@@ -1558,6 +1558,32 @@ async function requireProbeProvenance(
     throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a frozen probe obligation with a registry health probe.')
   }
   assertLifecycleBinding(payload.data, current, 'probe_accepted')
+  const analysis = await loadCurrentAcceptedAnalysis(client, input, current)
+  const decision = await loadCurrentAcceptedDecision(client, input, current)
+  if (!occursAfter(input, analysis) || !occursAfter(input, decision)) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted must follow the exact current accepted analysis and optimization decision.')
+  }
+  if (changeIsRequired(decision.payload)) {
+    const implementations = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+      `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
+         FROM nirmana_elevation_campaign_events
+        WHERE campaign_id = $1 AND definition_revision = $2
+          AND event_type = 'implementation_accepted'
+          AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
+      [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
+    )
+    const matching = implementations.rows.filter((implementation) => {
+      const parsed = NirmanaImplementationEvidenceSchema.safeParse(implementation.evidence_payload)
+      return parsed.success && implementation.source_kind === 'git_commit' && gitCommitSourceRef.test(implementation.source_ref)
+        && parsed.data.registry_fingerprint_sha256 === current.registryFingerprint
+        && parsed.data.analysis_digest === current.analysisDigest
+        && parsed.data.decision_digest === canonicalNirmanaOptimizationVerdictDigest(decision.payload)
+        && occursAfter(input, implementation)
+    })
+    if (matching.length !== 1) {
+      throw new NirmanaElevationEvidenceValidationError('probe_accepted requires exactly one current implementation after its change-required decision.')
+    }
+  }
   if (payload.data.probe_contract_sha256 !== canonicalNirmanaProbeContractDigest(current.registryContract.health_probe)) {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted does not bind the frozen registry health-probe contract.')
   }
@@ -1890,6 +1916,7 @@ async function requireFreezeProvenance(
       && parsed.data.integrity_contract_sha256 === canonicalNirmanaIntegrityContractDigest(current.registryContract)
       && event.source_kind === 'server_reconstructed'
       && event.source_ref === `nirmana-elevation:integrity:${input.entity_id}`
+      && occursAfter(input, event)
       && (!producerCoverage || occursAfter(event, producerCoverage.execution))
   })
   if (validIntegrity.length !== 1) {
@@ -2079,6 +2106,7 @@ async function requireBuildRunAuthorizationProvenance(
           AND run.action = 'rebuild'
           AND run.triggered_by <> 'nirmana-f0-machinery-canary'
           AND run.chart_id = (definition.manifest ->> 'chart_id')::uuid
+          AND run.started_at IS NULL
           AND EXISTS (SELECT 1 FROM build_run_assets asset WHERE asset.run_id = run.id)
           AND NOT EXISTS (
             SELECT 1
@@ -2562,6 +2590,12 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     }
     if (normalizedInput.event_type === 'asset_frozen') {
       await requireFreezeProvenance(client, normalizedInput)
+    }
+    if (normalizedInput.source_kind === 'server_reconstructed') {
+      // Migration 630 accepts server-reconstructed receipts only under this
+      // NOLOGIN role. SET LOCAL is transaction-scoped and follows all
+      // server-side reconstruction and lifecycle validation above.
+      await client.query('SET LOCAL ROLE nirmana_evidence_ingress')
     }
     const inserted = await client.query(
       `INSERT INTO nirmana_elevation_campaign_events

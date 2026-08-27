@@ -269,7 +269,7 @@ const campaignEvents = [
     entity_type: 'build_run', entity_id: activeRunId, layer: 'L0',
     evidence_payload: { wave_index: 2, asset_ids: ['bg_prashna_rules'], authorization_sha256: 'd'.repeat(64) },
     source_kind: 'campaign_authorization', source_ref: `build_run:${activeRunId}`,
-    observed_at: '2026-08-26T00:01:00.000Z', recorded_at: '2026-08-26T00:01:01.000Z',
+    observed_at: '2026-08-26T00:00:59.000Z', recorded_at: '2026-08-26T00:00:59.000Z',
   },
   {
     campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_label_catalogue_accepted',
