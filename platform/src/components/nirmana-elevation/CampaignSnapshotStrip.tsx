@@ -83,6 +83,7 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
   const caveats = [...snapshot.data_quality.gaps, ...snapshot.data_quality.contradictions]
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
   const staleProgramObservation = monitor?.state === 'stale'
+  const monitorNotObserved = snapshot.program_sync.status === 'unknown'
   const programNeedsAttention = staleProgramObservation
     || !['baseline_missing', 'in_sync'].includes(snapshot.program_sync.status)
   const programUnavailable = snapshot.program_sync.status === 'source_unavailable'
@@ -93,13 +94,13 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-gold-1">Evidence projection</p>
         <h1 id="campaign-snapshot-heading" className="font-serif text-2xl font-medium text-brand-gold-cream">Nirmāṇa campaign</h1>
       </div>
-      <p className="flex items-center gap-1.5 text-xs text-brand-text-3"><Radio aria-hidden="true" className="size-3.5" />Observed {formatObservedAt(snapshot.generated_at)}</p>
+      <p className="flex items-center gap-1.5 text-xs text-brand-text-3"><Radio aria-hidden="true" className="size-3.5" />Snapshot refreshed {formatObservedAt(snapshot.generated_at)}</p>
     </div>
 
     <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
       <Metric label="Current position">{stagePosition(snapshot)}</Metric>
       <Metric label="Overall elevation">{denominator}</Metric>
-      <Metric label="Active now">{activeAssets === 1 ? '1 asset active' : `${activeAssets} assets active`}</Metric>
+      <Metric label="Active now">{monitorNotObserved ? 'Unknown — monitor not observed' : activeAssets === 1 ? '1 asset active' : `${activeAssets} assets active`}</Metric>
       <Metric label="Eligible now">{currentLayer
         ? <><span className="block">{currentLayer.eligible_next_asset_ids.length === 1 ? '1 asset eligible now' : `${currentLayer.eligible_next_asset_ids.length} assets eligible now`}</span><span className="mt-1 block text-xs font-normal text-brand-text-3">Completion prerequisite: {currentLayer.required_gate}</span></>
         : 'Unknown — no active layer'}</Metric>
@@ -120,7 +121,7 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
               ? 'Observation stale — synchronization may be outdated.'
               : PROGRAM_SYNC_DETAIL[snapshot.program_sync.status]}</span>
             <span className="mt-1 block text-xs font-normal text-brand-text-3">Observation age: {formatAge(snapshot.program_sync.age_seconds)}</span>
-            <span className="block text-xs font-normal text-brand-text-3">Affected assets: {snapshot.program_sync.affected_asset_ids.length}</span>
+            <span className="block text-xs font-normal text-brand-text-3">Affected assets: {monitorNotObserved ? 'Unknown' : snapshot.program_sync.affected_asset_ids.length}</span>
           </div>
         </dd>
       </div>

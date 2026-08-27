@@ -113,6 +113,31 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByText('No program synchronization observation has been received yet. Progress and asset labels are intentionally withheld until the first governed observation is available.')).toBeVisible()
   })
 
+  it('turns a missing first observation into an actionable setup state without claiming progress', () => {
+    const snapshot = snapshotV2()
+    snapshot.program_sync = {
+      status: 'unknown',
+      source_observation_id: null,
+      observed_at: null,
+      age_seconds: null,
+      affected_asset_ids: [],
+      current_definition_sha256: null,
+      candidate_definition_sha256: null,
+      candidate_catalogue_sha256: null,
+    }
+    const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+    if (!monitor) throw new Error('Fixture must include the program monitor source.')
+    Object.assign(monitor, { state: 'unknown', observed_at: null, age_seconds: null })
+
+    render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-28T00:13:00.000Z')} />)
+
+    expect(screen.getByRole('heading', { name: 'Synchronization setup required' })).toBeVisible()
+    expect(screen.getByText(/no monitor observation has been recorded/i)).toBeVisible()
+    expect(screen.getByText(/verify the dedicated monitor scheduler in google cloud/i)).toBeVisible()
+    expect(screen.getByText(/wait for its natural five-minute run/i)).toBeVisible()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
   it('refreshes the tracker after guarded baseline acceptance succeeds', async () => {
     const baselineMissing = baselineMissingV2()
     const synchronized = snapshotV2()

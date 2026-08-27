@@ -37,6 +37,20 @@ describe('LayerStage', () => {
     expect(completedSummary.closest('details')).not.toHaveAttribute('open')
   })
 
+  it('uses indeterminate copy when layer progress has not been observed', () => {
+    const snapshot = snapshotFixture()
+    const layer = snapshot.layers.find((candidate) => candidate.layer_id === 'L0')
+    if (!layer) throw new Error('Fixture must include L0.')
+    Object.assign(layer, { state: 'unknown', assets_total: null, frozen: 0, waves: [] })
+
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+
+    expect(screen.getByText(`Required gate: ${layer.required_gate}`)).toBeVisible()
+    expect(screen.getByText('Progress unknown — no layer total has been observed.')).toBeVisible()
+    expect(screen.queryByText('0 assets frozen; layer total is unknown')).not.toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /L0 · Brahmagyan layer progress/i })).toHaveAttribute('aria-valuetext', 'Progress unknown — no layer total has been observed.')
+  })
+
   it('keeps locked waves collapsed and limits a wave to two parallel asset columns', () => {
     const snapshot = snapshotFixture()
     const layer = layerFixture(snapshot)

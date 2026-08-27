@@ -119,8 +119,17 @@ function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
     setAuditOpen(open)
   }
 
-  return <main className="space-y-4">
+  return <section aria-label="Nirmāṇa tracker details" className="space-y-4">
     <CampaignSnapshotStrip snapshot={snapshot} />
+    {snapshot.program_sync.status === 'unknown' && <section aria-labelledby="synchronization-setup-heading" className="rounded-xl border border-brand-warn/60 bg-brand-warn/10 p-4">
+      <h2 id="synchronization-setup-heading" className="font-serif text-lg text-brand-gold-cream">Synchronization setup required</h2>
+      <p className="mt-1 text-sm text-brand-text-2">No monitor observation has been recorded. The tracker is refreshing its available evidence, but program progress and labels remain unknown until the monitor records its first governed observation.</p>
+      <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-brand-text-2">
+        <li>First, verify the dedicated monitor scheduler in Google Cloud is provisioned and enabled.</li>
+        <li>Then wait for its natural five-minute run; do not create a manual observation.</li>
+        <li>When this tracker shows <span className="font-medium text-brand-text-1">Baseline awaiting acceptance</span>, a super-admin can review and accept that exact proposal.</li>
+      </ol>
+    </section>}
     <BaselineAcceptancePanel
       key={snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}
       snapshot={snapshot}
@@ -137,7 +146,7 @@ function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
       onOpenChange={onAuditOpenChange}
       finalFocus={auditOpener}
     />
-  </main>
+  </section>
 }
 
 export function NirmanaElevationTrackerView({ snapshot, fetchedAt, onBaselineAccepted }: {
