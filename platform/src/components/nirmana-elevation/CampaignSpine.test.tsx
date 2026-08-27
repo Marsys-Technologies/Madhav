@@ -26,7 +26,7 @@ describe('CampaignSpine', () => {
 
     expect(screen.getByText('L0 · Brahmagyan · Wave 2')).toBeVisible()
     expect(screen.getByText('3 / 5')).toBeVisible()
-    expect(screen.getByText(/1 asset active/i)).toBeVisible()
+    expect(screen.getByText('Unknown — monitor not observed')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /L1 · Ganita/i })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getAllByRole('button', { name: /BOOTSTRAP|T0_CENSUS|PLAN_FROZEN|DENOMINATOR_FROZEN|F0_FOUNDATION|L[0-5]|CLOSING|COMPLETE/ })).toHaveLength(13)
@@ -116,7 +116,7 @@ describe('CampaignSpine', () => {
     const synchronization = screen.getByText('Synchronization not yet observed').closest<HTMLElement>('[role="alert"]')
     if (!synchronization) throw new Error('Unknown synchronization live region is missing.')
     expect(within(synchronization).getByText('Observation age: Unknown')).toBeVisible()
-    expect(within(synchronization).getByText('Affected assets: 0')).toBeVisible()
+    expect(within(synchronization).getByText('Affected assets: Unknown')).toBeVisible()
     expect(within(synchronization).queryByText('Source unavailable')).not.toBeInTheDocument()
   })
 

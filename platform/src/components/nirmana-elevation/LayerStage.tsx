@@ -10,13 +10,13 @@ export function LayerStage({ layer, assets, onOpenAudit }: {
   const waves = [...layer.waves].sort((left, right) => left.wave_index - right.wave_index)
   const total = layer.assets_total
   const progressText = total === null
-    ? `${layer.frozen} assets frozen; layer total is unknown`
+    ? 'Progress unknown — no layer total has been observed.'
     : `${layer.frozen} / ${total} assets frozen`
 
   return <div className="space-y-3">
     <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-brand-text-2">
-      <p>Layer gate: {layer.required_gate}</p>
-      <p className="capitalize">{layer.state}</p>
+      <p>Required gate: {layer.required_gate}</p>
+      <p className="capitalize">{layer.state === 'unknown' ? 'No layer evidence yet' : layer.state}</p>
     </div>
     <div>
       <div
