@@ -1,5 +1,6 @@
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import { WaveLane } from './WaveLane'
+import { assetCompactLabel } from './vocab'
 
 export function LayerStage({ layer, assets, onOpenAudit }: {
   layer: NirmanaElevationSnapshotV2['layers'][number]
@@ -37,14 +38,20 @@ export function LayerStage({ layer, assets, onOpenAudit }: {
     <section aria-label="Eligible-next preview" className="rounded-lg border border-brand-border bg-brand-surface p-3">
       <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-text-2">Eligible-next preview</h4>
       {layer.eligible_next_asset_ids.length > 0
-        ? <ul className="mt-2 flex flex-wrap gap-2">{layer.eligible_next_asset_ids.map((assetId) => <li key={assetId} className="rounded border border-brand-border px-2 py-1 font-mono text-xs text-brand-gold-2">{assetId}</li>)}</ul>
+        ? <ul className="mt-2 flex flex-wrap gap-2">{layer.eligible_next_asset_ids.map((assetId) => {
+          const asset = assets.find((candidate) => candidate.asset_id === assetId)
+          return <li key={assetId} className="rounded border border-brand-border px-2 py-1 text-xs text-brand-gold-2">
+            <span>{asset ? assetCompactLabel(asset) : 'Identity unavailable'}</span>
+            <span className="ml-1 font-mono text-brand-text-3">({assetId})</span>
+          </li>
+        })}</ul>
         : <p className="mt-2 text-xs text-brand-text-3">No asset is evidenced as eligible next.</p>}
     </section>
     {waves.length > 0
-      ? <div className="space-y-3">{waves.map((wave) => wave.state === 'completed'
+      ? <div className="space-y-3">{waves.map((wave) => ['completed', 'locked', 'unknown'].includes(wave.state)
         ? <details key={wave.wave_index} className="rounded-xl border border-brand-border bg-brand-bg">
-          <summary className="cursor-pointer px-3 py-3 font-mono text-sm font-semibold text-brand-gold-2">Wave {wave.wave_index} · completed · {wave.completed_asset_ids.length} {wave.completed_asset_ids.length === 1 ? 'asset' : 'assets'}</summary>
-          <div className="px-3 pb-3"><WaveLane wave={wave} assets={assets} onOpenAudit={onOpenAudit} /></div>
+          <summary className="cursor-pointer px-3 py-3 text-sm font-semibold text-brand-gold-2">Wave {wave.wave_index} · {wave.state} · {wave.asset_ids.length} {wave.asset_ids.length === 1 ? 'asset' : 'assets'}</summary>
+          <div className="px-3 pb-3"><WaveLane wave={wave} assets={assets} onOpenAudit={onOpenAudit} lockedBy={wave.state === 'locked' ? layer.required_gate : undefined} /></div>
         </details>
         : <WaveLane key={wave.wave_index} wave={wave} assets={assets} onOpenAudit={onOpenAudit} lockedBy={wave.state === 'locked' ? layer.required_gate : undefined} />)}</div>
       : <p className="text-sm text-brand-text-3">No waves are recorded for this layer.</p>}

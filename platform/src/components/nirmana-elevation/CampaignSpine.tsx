@@ -6,11 +6,10 @@ import { FoundationStage } from './FoundationStage'
 import { LayerStage } from './LayerStage'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import type { NirmanaStageId } from '@/lib/nirmana-elevation/projection'
+import { stageDisplayName } from './vocab'
 
 function stageName(stage: NirmanaCampaignStage, snapshot: NirmanaElevationSnapshotV2): string {
-  if (!/^L[0-5]$/.test(stage.stage_id)) return stage.stage_id
-  const layer = snapshot.layers.find((candidate) => candidate.layer_id === stage.stage_id)
-  return `${stage.stage_id} · ${layer?.layer_name ?? 'Unknown'}`
+  return stageDisplayName(stage.stage_id, snapshot)
 }
 
 function statusLabel(state: NirmanaCampaignStage['state']): string {
@@ -49,7 +48,7 @@ function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignSta
 
 export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
   const [expanded, setExpanded] = useState<Set<NirmanaStageId>>(
-    () => new Set(snapshot.campaign.current_stage ? [snapshot.campaign.current_stage] : []),
+    () => new Set(snapshot.campaign.current_stage ? [snapshot.campaign.current_stage] : ['L0']),
   )
   const stages = [...snapshot.stages].sort((left, right) => left.order - right.order)
 
@@ -84,7 +83,8 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
             }} className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">
               <span className="mt-0.5 shrink-0">{open ? <ChevronDown aria-hidden="true" className="size-4 text-brand-gold-2" /> : <ChevronRight aria-hidden="true" className="size-4 text-brand-text-3" />}</span>
               <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`font-mono text-sm font-semibold ${isCurrent ? 'text-brand-gold-2' : 'text-brand-text-1'}`}>{name}</span><span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(stage.state)}{statusLabel(stage.state)}</span>{count && <span className="text-xs text-brand-text-3">{count}</span>}</span>
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`text-sm font-semibold ${isCurrent ? 'text-brand-gold-2' : 'text-brand-text-1'}`}>{name}</span><span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(stage.state)}{statusLabel(stage.state)}</span>{count && <span className="text-xs text-brand-text-3">{count}</span>}</span>
+                {!/^L[0-5]$/.test(stage.stage_id) && <span className="mt-1 block font-mono text-[10px] text-brand-text-3">Stage ID: {stage.stage_id}</span>}
                 {stage.state === 'locked' && <span className="mt-1 block text-xs text-brand-text-3">Prerequisite: {stage.required_gate}</span>}
                 {stage.state === 'blocked' && stage.blocked_reason && <span className="mt-1 block text-xs text-brand-err">Blocked: {stage.blocked_reason}</span>}
               </span>

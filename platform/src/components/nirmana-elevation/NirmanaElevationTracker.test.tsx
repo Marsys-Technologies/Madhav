@@ -77,12 +77,75 @@ function unavailableV2(): NirmanaElevationSnapshotV2 {
   return snapshot
 }
 
+function baselineMissingV2(): NirmanaElevationSnapshotV2 {
+  const snapshot = snapshotV2()
+  snapshot.program_sync = {
+    status: 'baseline_missing',
+    source_observation_id: '77777777-7777-4777-8777-777777777777',
+    observed_at: '2026-08-27T05:00:00.000Z',
+    age_seconds: 120,
+    affected_asset_ids: [],
+    current_definition_sha256: null,
+    candidate_definition_sha256: 'd'.repeat(64),
+    candidate_catalogue_sha256: 'e'.repeat(64),
+  }
+  const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
+  if (!monitor) throw new Error('Fixture must include the program monitor source.')
+  Object.assign(monitor, {
+    state: 'fresh', observed_at: '2026-08-27T05:00:00.000Z', age_seconds: 120,
+    error_code: null, error_message: null,
+  })
+  return snapshot
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
 describe('NirmanaElevationTracker', () => {
+  it('refreshes the tracker after guarded baseline acceptance succeeds', async () => {
+    const baselineMissing = baselineMissingV2()
+    const synchronized = snapshotV2()
+    let snapshotLoads = 0
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/evidence')) {
+        return Promise.resolve(jsonResponse({ outcome: 'created' }, 201))
+      }
+      snapshotLoads += 1
+      return Promise.resolve(jsonResponse(snapshotLoads === 1 ? baselineMissing : synchronized))
+    }))
+
+    render(<NirmanaElevationTracker />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept current baseline' }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    expect(screen.queryByRole('button', { name: 'Accept current baseline' })).not.toBeInTheDocument()
+  })
+
+  it('reports accepted baseline truthfully when the authoritative snapshot reload fails', async () => {
+    const baselineMissing = baselineMissingV2()
+    let snapshotLoads = 0
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/evidence')) {
+        return Promise.resolve(jsonResponse({ outcome: 'created' }, 201))
+      }
+      snapshotLoads += 1
+      return Promise.resolve(snapshotLoads === 1
+        ? jsonResponse(baselineMissing)
+        : jsonResponse(unavailableV2(), 503))
+    }))
+
+    render(<NirmanaElevationTracker />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept current baseline' }))
+
+    expect(await screen.findByText(/baseline was accepted, but current evidence could not refresh/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Baseline accepted' })).toBeDisabled()
+    expect(screen.queryByText(/refreshing the tracker from authoritative evidence/i)).not.toBeInTheDocument()
+  })
+
   it('renders the v2 campaign spine and keeps the audit surface secondary by default', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(snapshotV2())))
 
@@ -93,7 +156,7 @@ describe('NirmanaElevationTracker', () => {
     expect(screen.getByLabelText(/now, next, then campaign rail/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    expect(screen.getByText('Prashna Rules')).toBeVisible()
+    expect(screen.getAllByText('Prashna Rules').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /audit evidence.*degraded/i })).toBeVisible()
     expect(screen.queryByRole('dialog', { name: /campaign evidence audit/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /sequential layer rail/i })).not.toBeInTheDocument()
@@ -120,7 +183,7 @@ describe('NirmanaElevationTracker', () => {
     expect(within(synchronization).getByText('Affected assets: 2')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Praśna Rules')).toBeVisible()
-    expect(screen.getByText('Prashna Rules')).toBeVisible()
+    expect(screen.getAllByText('Prashna Rules').length).toBeGreaterThan(0)
   })
 
   it('keeps synchronization definition hashes secondary in the audit drawer', () => {
@@ -329,7 +392,7 @@ describe('NirmanaElevationTracker', () => {
 
     render(<NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={new Date('2026-08-26T00:00:00.000Z')} />)
 
-    const card = screen.getByRole('heading', { name: asset.asset_id }).closest('article')
+    const card = screen.getByText(`System ID: ${asset.asset_id}`).closest('article')
     if (!card) throw new Error('Current asset card is missing.')
     expect(within(card).getByText('Milestone count unavailable')).toBeVisible()
     expect(within(card).queryByText(/\d+ of \d+ required milestones/i)).not.toBeInTheDocument()

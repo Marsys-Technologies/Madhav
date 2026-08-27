@@ -8,6 +8,7 @@ import {
   type NirmanaElevationSnapshotV2,
 } from '@/lib/nirmana-elevation/types'
 import { AuditDrawer } from './AuditDrawer'
+import { BaselineAcceptancePanel } from './BaselineAcceptancePanel'
 import { CampaignSnapshotStrip } from './CampaignSnapshotStrip'
 import { CampaignSpine } from './CampaignSpine'
 import {
@@ -53,7 +54,10 @@ function failureMessage(snapshot: NirmanaElevationSnapshot): string {
   return unavailable?.error_message ?? 'The snapshot source is unavailable.'
 }
 
-function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
+function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
+  snapshot: NirmanaElevationSnapshotV2
+  onBaselineAccepted?: () => Promise<boolean>
+}) {
   const [auditAssetId, setAuditAssetId] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState(false)
   const auditOpener = useRef<HTMLElement | null>(null)
@@ -78,6 +82,11 @@ function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevatio
 
   return <main className="space-y-4">
     <CampaignSnapshotStrip snapshot={snapshot} />
+    <BaselineAcceptancePanel
+      key={snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}
+      snapshot={snapshot}
+      onAccepted={onBaselineAccepted}
+    />
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
       <CampaignSpine snapshot={snapshot} onOpenAudit={openAudit} />
       <NowNextRail snapshot={snapshot} />
@@ -92,14 +101,15 @@ function NirmanaElevationTrackerV2View({ snapshot }: { snapshot: NirmanaElevatio
   </main>
 }
 
-export function NirmanaElevationTrackerView({ snapshot, fetchedAt }: {
+export function NirmanaElevationTrackerView({ snapshot, fetchedAt, onBaselineAccepted }: {
   snapshot: NirmanaElevationSnapshot
   fetchedAt: Date
+  onBaselineAccepted?: () => Promise<boolean>
 }) {
   if (snapshot.schema_version === '1.0') {
     return <NirmanaElevationTrackerV1 snapshot={snapshot} fetchedAt={fetchedAt} />
   }
-  return <NirmanaElevationTrackerV2View snapshot={snapshot} />
+  return <NirmanaElevationTrackerV2View snapshot={snapshot} onBaselineAccepted={onBaselineAccepted} />
 }
 
 export function NirmanaElevationTracker({
@@ -115,7 +125,7 @@ export function NirmanaElevationTracker({
   const abortController = useRef<AbortController | null>(null)
   const mounted = useRef(false)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     abortController.current?.abort()
     const controller = new AbortController()
     abortController.current = controller
@@ -126,13 +136,14 @@ export function NirmanaElevationTracker({
       if (!parsed.success) throw new SnapshotUnavailableError('The snapshot response did not satisfy the shared evidence contract.')
       const body = parsed.data
       if (!response.ok) throw new SnapshotUnavailableError(failureMessage(body))
-      if (!mounted.current || currentRequest !== requestId.current) return
+      if (!mounted.current || currentRequest !== requestId.current) return false
       setSnapshot(body)
       setFetchedAt(new Date())
       setFailure(null)
       setFailures(0)
+      return true
     } catch (error) {
-      if (controller.signal.aborted || !mounted.current || currentRequest !== requestId.current) return
+      if (controller.signal.aborted || !mounted.current || currentRequest !== requestId.current) return false
       const message = error instanceof SnapshotUnavailableError
         ? error.message
         : error instanceof Error
@@ -140,6 +151,7 @@ export function NirmanaElevationTracker({
           : 'The live snapshot could not be loaded.'
       setFailure({ message, occurredAt: new Date() })
       setFailures((count) => count + 1)
+      return false
     }
   }, [])
 
@@ -197,7 +209,7 @@ export function NirmanaElevationTracker({
         </div>
       </div>
     </aside>}
-    <NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={fetchedAt ?? new Date()} />
-    <p className="flex items-center gap-2 text-xs text-brand-text-3"><ShieldCheck aria-hidden="true" className="size-4" /> Read-only evidence projection · automatic refresh while this page remains open.</p>
+    <NirmanaElevationTrackerView snapshot={snapshot} fetchedAt={fetchedAt ?? new Date()} onBaselineAccepted={refresh} />
+    <p className="flex items-center gap-2 text-xs text-brand-text-3"><ShieldCheck aria-hidden="true" className="size-4" /> Evidence-backed tracker · automatic refresh while this page remains open.</p>
   </div>
 }

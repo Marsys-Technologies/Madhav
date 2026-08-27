@@ -20,7 +20,7 @@ export function WaveLane({ wave, assets, onOpenAudit, lockedBy }: {
     </div>
     {wave.state === 'locked' && lockedBy && <p className="mb-3 text-xs text-brand-text-3">Locked by: {lockedBy}</p>}
     {waveAssets.length > 0
-      ? <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">{waveAssets.map((asset) => <AssetCard key={asset.asset_id} asset={asset} onOpenAudit={onOpenAudit} />)}</div>
+      ? <div className="grid gap-3 lg:grid-cols-2">{waveAssets.map((asset) => <AssetCard key={asset.asset_id} asset={asset} onOpenAudit={onOpenAudit} />)}</div>
       : <p className="text-sm text-brand-text-3">No assets with a valid wave assignment are available.</p>}
   </section>
 }
