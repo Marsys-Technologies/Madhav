@@ -205,6 +205,12 @@ class ElevationStore:
             if existing:
                 if existing["payload_hash"] != payload_hash:
                     raise InvariantViolation("OBSERVATION_IDEMPOTENCY_CONFLICT", "idempotency key was reused with a different payload")
+                # The observation body is append-only and unchanged, but a source whose
+                # real-world value is genuinely stable between ticks must still have its
+                # freshness clock advanced by this successful re-check -- otherwise a
+                # healthy, actively-polled source falsely alarms as stale purely from
+                # time passing rather than from any actual failure to re-verify it.
+                connection.execute("INSERT INTO source_cursors(source_id,kind,cursor,fresh_after_seconds,observed_at) VALUES(?,?,?,?,?) ON CONFLICT(source_id) DO UPDATE SET kind=excluded.kind,cursor=excluded.cursor,fresh_after_seconds=excluded.fresh_after_seconds,observed_at=excluded.observed_at", (source["source_id"], source["kind"], cursor, int(source["fresh_after_seconds"]), observed_at))
                 return {"observation_id": existing["observation_id"], "status": existing["status"], "idempotent": True}
             connection.execute("INSERT INTO observations(source_id,source_kind,cursor,idempotency_key,payload_json,authors_json,observed_at,payload_hash,status) VALUES(?,?,?,?,?,?,?,?,?)", (source["source_id"], source["kind"], cursor, idempotency_key, canonical(payload), canonical(authors), observed_at, payload_hash, "OBSERVED"))
             observation_id = connection.execute("SELECT last_insert_rowid()").fetchone()[0]
