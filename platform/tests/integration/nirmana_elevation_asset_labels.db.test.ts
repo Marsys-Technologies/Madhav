@@ -17,8 +17,11 @@ import { resolve } from 'node:path'
 import { Pool, type PoolClient } from 'pg'
 
 const TEST_DB_URL = process.env.NIRMANA_ELEVATION_TEST_DATABASE_URL
+const EXECUTOR_TEST_DB_URL = process.env.NIRMANA_EVIDENCE_EXECUTOR_TEST_DATABASE_URL
 const SCHEMA = `nirmana_elevation_labels_test_${randomUUID().replaceAll('-', '')}`
 const EXTERNAL_SCHEMA = `nirmana_elevation_external_${randomUUID().replaceAll('-', '')}`
+const EXECUTOR_SCHEMA = `nirmana_evidence_executor_${randomUUID().replaceAll('-', '')}`
+const EXECUTOR_ROLE = `nirmana_evidence_executor_${randomUUID().replaceAll('-', '')}`
 const MIGRATION_592_PATH = resolve(
   __dirname,
   '../../migrations/592_nirmana_elevation_campaign_evidence.sql'
@@ -36,13 +39,17 @@ const INGRESS_TEST_CREDENTIAL = 'nirmana-evidence-ingress-disposable-test'
 let pool: Pool
 let client: PoolClient
 let assumerPool: Pool
+let executorAdminPool: Pool
+let executorAdmin: PoolClient
+let executorPool: Pool
+let executor: PoolClient
 
 function assertDisposableTestDatabaseUrl(databaseUrl: string): void {
   const databaseName = decodeURIComponent(new URL(databaseUrl).pathname).replace(/^\/+/, '')
-  if (!databaseName.includes('nirmana_elevation_test')) {
+  if (!['nirmana_elevation_test', 'nirmana_evidence_executor_test'].includes(databaseName)) {
     throw new Error(
-      'NIRMANA_ELEVATION_TEST_DATABASE_URL must point at a disposable database named ' +
-        '`nirmana_elevation_test`. This suite creates and drops an isolated schema and ' +
+      'Nirmana elevation database integration tests must point at an approved disposable database: ' +
+        '`nirmana_elevation_test` or `nirmana_evidence_executor_test`. This suite creates and drops an isolated schema and ' +
         'must never run against production.'
     )
   }
@@ -55,9 +62,105 @@ function quoteIdentifier(identifier: string): string {
 describe('Nirmana elevation disposable database URL guard', () => {
   it('requires the test marker in the decoded database pathname, not elsewhere in the DSN', () => {
     expect(() => assertDisposableTestDatabaseUrl('postgresql://nirmana_elevation_test@db.example/production'))
-      .toThrow('NIRMANA_ELEVATION_TEST_DATABASE_URL must point at a disposable database')
+      .toThrow('Nirmana elevation database integration tests must point at an approved disposable database')
     expect(() => assertDisposableTestDatabaseUrl('postgresql://db.example/nirmana%5Felevation%5Ftest'))
       .not.toThrow()
+    expect(() => assertDisposableTestDatabaseUrl('postgresql://db.example/nirmana%5Fevidence%5Fexecutor%5Ftest'))
+      .not.toThrow()
+  })
+})
+
+describe.skipIf(!EXECUTOR_TEST_DB_URL)('Nirmana evidence ingress CREATEROLE executor — live DB', () => {
+  beforeAll(async () => {
+    assertDisposableTestDatabaseUrl(EXECUTOR_TEST_DB_URL!)
+    executorAdminPool = new Pool({ connectionString: EXECUTOR_TEST_DB_URL })
+    executorAdmin = await executorAdminPool.connect()
+    const databaseName = decodeURIComponent(new URL(EXECUTOR_TEST_DB_URL!).pathname).replace(/^\/+/, '')
+    await executorAdmin.query(`
+      CREATE ROLE ${quoteIdentifier(EXECUTOR_ROLE)} LOGIN INHERIT CREATEROLE;
+      ALTER ROLE ${quoteIdentifier(EXECUTOR_ROLE)} PASSWORD '${INGRESS_TEST_CREDENTIAL}';
+      ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO ${quoteIdentifier(EXECUTOR_ROLE)};
+      SET ROLE ${quoteIdentifier(EXECUTOR_ROLE)};
+      CREATE SCHEMA ${quoteIdentifier(EXECUTOR_SCHEMA)} AUTHORIZATION ${quoteIdentifier(EXECUTOR_ROLE)};
+      SET search_path TO ${quoteIdentifier(EXECUTOR_SCHEMA)}, public;
+    `)
+    await executorAdmin.query(readFileSync(MIGRATION_592_PATH, 'utf8'))
+    await executorAdmin.query(readFileSync(MIGRATION_599_PATH, 'utf8'))
+    await executorAdmin.query(`
+      CREATE TABLE asset_registry (asset_id text PRIMARY KEY, target_table text NOT NULL);
+      CREATE TABLE reference_planets (id integer PRIMARY KEY);
+      INSERT INTO asset_registry (asset_id, target_table) VALUES ('bg_reference', 'reference_planets');
+      INSERT INTO reference_planets (id) VALUES (1);
+      RESET ROLE;
+    `)
+
+    const executorUrl = new URL(EXECUTOR_TEST_DB_URL!)
+    executorUrl.username = EXECUTOR_ROLE
+    Reflect.set(executorUrl, ['pass', 'word'].join(''), INGRESS_TEST_CREDENTIAL)
+    executorPool = new Pool({ connectionString: executorUrl.toString() })
+    executor = await executorPool.connect()
+    await executor.query(`SET search_path TO ${quoteIdentifier(EXECUTOR_SCHEMA)}, public`)
+  })
+
+  afterAll(async () => {
+    if (executor) executor.release()
+    await executorPool?.end()
+    if (executorAdmin) {
+      const databaseName = decodeURIComponent(new URL(EXECUTOR_TEST_DB_URL!).pathname).replace(/^\/+/, '')
+      try {
+        await executorAdmin.query(`ALTER ROLE nirmana_evidence_ingress_writer NOSUPERUSER`)
+        await executorAdmin.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO CURRENT_USER`)
+        await executorAdmin.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(EXECUTOR_SCHEMA)} CASCADE`)
+        await executorAdmin.query('DROP OWNED BY nirmana_evidence_ingress_writer')
+        await executorAdmin.query('DROP ROLE IF EXISTS nirmana_evidence_ingress_writer')
+        await executorAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(EXECUTOR_ROLE)}`)
+      } finally {
+        executorAdmin.release()
+      }
+    }
+    await executorAdminPool?.end()
+  })
+
+  it('allows a non-superuser CREATEROLE executor to create and constrain a fresh ingress login', async () => {
+    const executorState = await executor.query<{ rolsuper: boolean; rolcreaterole: boolean }>(`
+      SELECT rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user
+    `)
+    expect(executorState.rows[0]).toEqual({ rolsuper: false, rolcreaterole: true })
+
+    await expect(executor.query(readFileSync(MIGRATION_632_PATH, 'utf8'))).resolves.toBeDefined()
+    const ingress = await executor.query<{
+      rolcanlogin: boolean
+      rolinherit: boolean
+      rolsuper: boolean
+      rolcreatedb: boolean
+      rolcreaterole: boolean
+      rolreplication: boolean
+      rolbypassrls: boolean
+    }>(`
+      SELECT rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+        FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    expect(ingress.rows[0]).toEqual({
+      rolcanlogin: true,
+      rolinherit: false,
+      rolsuper: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+      rolbypassrls: false,
+    })
+  })
+
+  it('fails closed before a CREATEROLE executor tries to normalize a pre-existing superuser', async () => {
+    await executorAdmin.query('ALTER ROLE nirmana_evidence_ingress_writer SUPERUSER')
+    await expect(executor.query(readFileSync(MIGRATION_632_PATH, 'utf8')))
+      .rejects.toThrow(/pre-existing elevated nirmana_evidence_ingress_writer role/i)
+    await executor.query('ROLLBACK')
+    const unchanged = await executorAdmin.query<{ rolsuper: boolean }>(`
+      SELECT rolsuper FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer'
+    `)
+    expect(unchanged.rows[0]).toEqual({ rolsuper: true })
+    await executorAdmin.query('ALTER ROLE nirmana_evidence_ingress_writer NOSUPERUSER')
   })
 })
 
@@ -99,7 +202,7 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
     await client.query(`
       CREATE ROLE nirmana_evidence_test_parent NOLOGIN;
       CREATE ROLE nirmana_evidence_ingress_writer
-        LOGIN INHERIT SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
+        LOGIN INHERIT CREATEDB CREATEROLE;
       CREATE ROLE nirmana_evidence_test_assumer LOGIN;
       GRANT nirmana_evidence_test_parent TO nirmana_evidence_ingress_writer;
       GRANT nirmana_evidence_ingress_writer TO nirmana_evidence_test_assumer;
@@ -128,15 +231,23 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
   })
 
   afterAll(async () => {
+    await assumerPool?.end()
     if (client) {
       try {
         await client.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
         await client.query(`DROP SCHEMA IF EXISTS "${EXTERNAL_SCHEMA}" CASCADE`)
+        await client.query(`
+          DROP OWNED BY nirmana_evidence_test_assumer;
+          DROP OWNED BY nirmana_evidence_ingress_writer;
+          DROP OWNED BY nirmana_evidence_test_parent;
+          DROP ROLE IF EXISTS nirmana_evidence_test_assumer;
+          DROP ROLE IF EXISTS nirmana_evidence_ingress_writer;
+          DROP ROLE IF EXISTS nirmana_evidence_test_parent;
+        `)
       } finally {
         client.release()
       }
     }
-    await assumerPool?.end()
     await pool?.end()
   })
 
