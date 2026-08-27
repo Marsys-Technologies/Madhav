@@ -522,8 +522,88 @@ await Native Surrogate triage.
 - **Status:** OPEN · close rung: Session C records the precondition in its
   cleanup checklist.
 
+### V3-E-006 — `cockpit/clear`/`clear/execute` have no chart ownership check at all (P2-B-007)
+
+- **Class / severity:** DEFECT · S1 (CRITICAL — surrogate-assigned; added to the
+  P2 blocker denominator as **B-007**, tracker decision `465a692c-f1f6-459a-
+  8974-292015ba6436`)
+- **Lens / stage:** L-CODE · A4 (P2 blocker clearance)
+- **Provenance:** surfaced as a collateral finding during the B-001/E-012
+  independent verifier's adversarial sibling-bypass search on PR #1597 — not
+  originally in the P2 intake.
+- **Expected:** a destructive, chart-scoped operation requires the caller to
+  own (or hold a grant on) the target chart before either previewing or
+  executing it.
+- **Observed (2026-08-27):** `platform/src/app/api/cockpit/clear/route.ts` and
+  `clear/execute/route.ts` gate only on `requireUser()` — no `owner_id`/grant
+  check on `chart_id` anywhere. For the `per_chart` scope tier (almost all
+  chart-scoped assets) and non-`global`/non-brahmagyan `asset`/`layer`
+  requests, any authenticated user (default `guest` role included) can preview
+  and then **execute an irreversible DELETE** of another user's — or the
+  native's real chart `482012f1`'s — build-derived data. Separately, the
+  `scope: 'global'` preview branch returns the target chart's real
+  `subject_name` to any authenticated caller regardless of ownership, and that
+  value is exactly what `typed_confirmation` needs to satisfy the one
+  confirmation gate `execute` has.
+- **Code anchor:** `clear/route.ts` (preview `requires_typed_confirmation`
+  branch), `clear/execute/route.ts:157-165,180-225` (the per-asset `DELETE`
+  transaction), `clearScopeFilter.ts` (`filterScopeAssets` narrowing a
+  non-admin's `global` request instead of rejecting it).
+- **Proposed fix class:** reuse `authorizeChartAccess` (the same helper B-001
+  uses) on `chart_id` before both routes proceed, for all non-`super_admin`
+  callers; reject non-admin `scope: 'global'` outright rather than silently
+  narrowing it.
+- **Status:** IN REMEDIATION — fix dispatched same session; independent
+  verification and PR/CI/merge pending. Close rung: LIVE deployed re-proof
+  (cross-user denial) after merge, per the same rigor as B-001/B-002.
+
+### V3-E-007 — `clients/[id]/nirmana/page.tsx`'s `generateMetadata` leaks `subject_name` with no auth guard
+
+- **Class / severity:** DEFECT · S2 (MEDIUM-HIGH, proposed)
+- **Lens / stage:** L-CODE · CROSS (no app-level `middleware.ts` exists)
+- **Observed (2026-08-27):** `generateMetadata` runs a raw
+  `SELECT subject_name FROM charts WHERE id=$1` outside the page body's
+  `resolveChartPageAccess`/`canBuild` guard. Any unauthenticated request for a
+  known `chart_id` (curl, a link-preview crawler) returns the real subject
+  name in the rendered `<title>` tag. Blast radius bounded by needing the
+  chart's UUID (not enumerable), but directly exploitable for any id an
+  attacker already holds.
+- **Proposed fix class:** move the guard check ahead of the metadata query, or
+  have `generateMetadata` return a generic title when the caller cannot be
+  authorized (metadata generation has no request-scoped session by default in
+  Next.js — needs the same session-resolution path the page body uses).
+- **Status:** OPEN, filed to stream **S5** (Security, Privacy & Data
+  Integrity) territory — not fixed in Session A. Close rung: LIVE
+  unauthenticated-denial proof.
+
+### V3-E-008 — `share/[slug]/page.tsx`: by-design unguessable-token sharing, one minor follow-up
+
+- **Class / severity:** IMPROVEMENT · S4 (proposed, informational)
+- **Observed (2026-08-27):** the share page requires a 58-bit random `slug`
+  (`crypto.getRandomValues`) and correctly checks `revoked_at`/`expires_at` —
+  the standard capability-link pattern, not a defect. Minor: no rate-limiting
+  on slug lookups was found; impractical to brute-force at 58 bits, so this is
+  a non-blocking follow-up, not a finding requiring a fix.
+- **Status:** OPEN, filed to stream **S5** as a low-priority improvement lead
+  only. No close rung required to unblock anything.
+
+### V3-E-009 — `charts/[id]/route.ts` DELETE's `client_id` check is legacy, not an escalation path
+
+- **Class / severity:** DOC · S4 (proposed, informational)
+- **Observed (2026-08-27):** DELETE checks `owner_id === uid || client_id ===
+  uid`; `client_id` is a legacy pre-081 column confirmed (via
+  `clients/create/route.ts` and migration history) to always equal `owner_id`
+  for this app's actual data model — not a third-party designation, so not an
+  exploitable privilege-escalation path. Documented for completeness given it
+  surfaced during the B-001/DELETE-vs-GET asymmetry check.
+- **Status:** CLOSED-AS-BENIGN at STATIC rung (code-read proof above) — no
+  further action; filed for the record only.
+
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 5 V3 entries open. No gate is certified by this document.*
+SALVAGE 2); 9 V3 entries (5 from the A3 census + 4 surfaced by the B-001
+independent verifier's adversarial review, 2026-08-27: V3-E-006/B-007
+CRITICAL in remediation, V3-E-007 filed to S5, V3-E-008 informational to S5,
+V3-E-009 closed-as-benign). No gate is certified by this document.*
