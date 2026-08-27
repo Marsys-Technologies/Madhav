@@ -108,8 +108,9 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
         END IF;
         -- A provider root is not trusted by name alone.  The database-owner
         -- membership closure is intentionally bounded to the database owner,
-        -- the exact legacy app child, and one non-super postgres child (the
-        -- Cloud SQL topology); any further descendant is unreviewed.
+        -- the exact legacy app child, and the observed direct Cloud SQL system
+        -- users. These system-user names are exact, not a cloudsql* wildcard;
+        -- any further descendant is unreviewed.
         IF EXISTS (
           WITH RECURSIVE provider_roots(oid, depth) AS (
             SELECT datdba, 0 FROM pg_database WHERE datname = current_database()
@@ -126,6 +127,7 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
              root.oid = database.datdba
              OR (root.depth = 1 AND role.rolname = 'amjis_app')
              OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+             OR (root.depth = 1 AND role.rolname IN ('cloudsqlagent', 'cloudsqlimportexport', 'cloudsqllogical'))
            )
         ) THEN
           RAISE EXCEPTION 'refusing unbounded provider database-owner membership topology';
@@ -369,9 +371,10 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           ALTER ROLE amjis_app NOINHERIT NOCREATEDB NOCREATEROLE;
         END IF;
       END $$;
-      -- Provider-admin roots (the current database owner and postgres) are
-      -- exempted from the future-default predicate below only after proving
-      -- they are outside every generic/protected writer membership closure.
+      -- Provider-admin roots (the current database owner and its exact Cloud
+      -- SQL system users) are exempted from the future-default predicate below
+      -- only after proving they are outside every generic/protected writer
+      -- membership closure.
       DO $$ BEGIN
         IF EXISTS (
           SELECT 1 FROM pg_auth_members membership
@@ -397,6 +400,7 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
            WHERE NOT (
              root.oid = database.datdba
              OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+             OR (root.depth = 1 AND role.rolname IN ('cloudsqlagent', 'cloudsqlimportexport', 'cloudsqllogical'))
            )
         ) THEN
           RAISE EXCEPTION 'refusing unbounded provider database-owner membership topology';
