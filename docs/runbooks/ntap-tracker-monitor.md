@@ -107,10 +107,14 @@ alternate acceptance paths.
   `label_refresh_required`, preserve the displayed degraded status and investigate
   the authoritative source or governed evidence path. Do not mark progress green,
   edit an observation, or treat the previous observation as current.
-- Scheduler deployment verification is a protected-main operator activity. The
-  callback accepts only a Cloud Scheduler OIDC bearer token for audience
+- Scheduler deployment verification is a GCP-native reviewed-release activity;
+  GitHub is not a runtime or provisioning requirement. The callback accepts only
+  a Cloud Scheduler OIDC bearer token for audience
   `https://amjis-web-938361928218.asia-south1.run.app` and principal
   `amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com`. Do not add,
   configure, transmit, or troubleshoot a shared-secret header for this route.
-  After the reviewed saved-plan apply and natural cadence observation, verify the
-  authenticated dashboard records the expected OIDC-authenticated observation.
+  After the reviewed saved-plan apply, verify the scheduler job exists and wait
+  for its natural five-minute cadence (including its configured retries); do not
+  invoke it manually. The authenticated dashboard should then show a fresh
+  `program_monitor` source. Until a super-admin accepts the first baseline, the
+  truthful synchronization state is `baseline_missing`, not `in_sync`.

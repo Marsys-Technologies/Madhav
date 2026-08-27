@@ -1,12 +1,12 @@
-name: IaC Apply (manual — reviewed plan only)
+name: IaC Plan (manual — reviewed plan only)
 
-# PA-06: Terraform is deliberately dispatch-only. Review refs may produce a
-# plan; an apply is limited to the isolated monitor root on protected main.
+# PA-06: Terraform is deliberately dispatch-only. This workflow produces plans
+# only; the Nirmana monitor uses its separate GCP-native reviewed-release path.
 on:
   workflow_dispatch:
     inputs:
       module:
-        description: "Which infra module to plan (only nirmana_elevation_monitor may apply)"
+        description: "Which infra module to plan"
         required: true
         default: cloud_scheduler
         type: choice
@@ -15,21 +15,17 @@ on:
           - iam
           - logging
           - scheduler
-          - nirmana_elevation_monitor
       action:
-        description: "plan (safe, default) or protected-main monitor apply"
+        description: "plan only"
         required: true
         default: plan
         type: choice
         options:
           - plan
-          - apply
 
-# Never cancel an infrastructure operation. The monitor's remote-state prefix,
-# rather than a ref, is the serialization boundary: review plans and protected
-# main apply must not race over the same state.
+# Never cancel an infrastructure operation.
 concurrency:
-  group: ${{ github.event.inputs.module == 'nirmana_elevation_monitor' && 'scheduler-nirmana-elevation-monitor' || format('module-{0}', github.event.inputs.module) }}
+  group: ${{ format('module-{0}', github.event.inputs.module) }}
   cancel-in-progress: false
 
 permissions:
@@ -39,28 +35,17 @@ permissions:
 env:
   GCP_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
-  # Plan uses the established identity, which lacks monitor-bootstrap write permissions.
   WIF_PLAN_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
-  # This identity is deliberately distinct. Its WIF trust and any temporary
-  # first-apply permissions must be constrained to the production environment.
-  # It is a release prerequisite, not bootstrapped by this monitor Terraform root.
-  WIF_APPLY_SERVICE_ACCOUNT: github-actions-nirmana-apply@madhav-astrology.iam.gserviceaccount.com
 
 jobs:
   plan:
     name: Terraform plan — ${{ github.event.inputs.module }}
     runs-on: ubuntu-latest
     steps:
-      - name: Reject non-main or unprotected apply before authentication
-        if: ${{ github.event.inputs.action == 'apply' && (github.ref != 'refs/heads/main' || github.ref_protected != true) }}
+      - name: Reject all applies before authentication
+        if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          echo 'Apply requires the protected refs/heads/main ref.' >&2
-          exit 2
-
-      - name: Reject unsupported apply targets before any Terraform operation
-        if: ${{ github.event.inputs.action == 'apply' && github.event.inputs.module != 'nirmana_elevation_monitor' }}
-        run: |
-          echo 'Only the isolated nirmana_elevation_monitor root supports this reviewed-plan apply workflow.' >&2
+          echo 'GitHub Actions does not apply Terraform. Use the module-specific GCP-native reviewed-release path.' >&2
           exit 2
 
       - name: Checkout
@@ -77,49 +62,4 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra/${{ github.event.inputs.module }}
-        run: |
-          if [ "${{ github.event.inputs.module }}" = 'nirmana_elevation_monitor' ]; then
-            bash apply.sh plan monitor.tfplan
-          else
-            bash apply.sh plan
-          fi
-
-      - name: Upload reviewed monitor plan
-        if: ${{ github.event.inputs.module == 'nirmana_elevation_monitor' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: nirmana-elevation-monitor-plan
-          path: infra/nirmana_elevation_monitor/monitor.tfplan
-          if-no-files-found: error
-          retention-days: 1
-
-  apply_monitor:
-    name: Terraform apply — nirmana_elevation_monitor
-    needs: plan
-    if: ${{ github.event.inputs.action == 'apply' && github.event.inputs.module == 'nirmana_elevation_monitor' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    environment: production
-    env:
-      IAC_APPLY_ENVIRONMENT: production
-    steps:
-      - name: Checkout protected main
-        uses: actions/checkout@v4
-
-      - name: Download the exact reviewed monitor plan
-        uses: actions/download-artifact@v4
-        with:
-          name: nirmana-elevation-monitor-plan
-          path: infra/nirmana_elevation_monitor
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
-          service_account: ${{ env.WIF_APPLY_SERVICE_ACCOUNT }}
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform apply the downloaded plan
-        working-directory: infra/nirmana_elevation_monitor
-        run: bash apply.sh apply monitor.tfplan
+        run: bash apply.sh plan

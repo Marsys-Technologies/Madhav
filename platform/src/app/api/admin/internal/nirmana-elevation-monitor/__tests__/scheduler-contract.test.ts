@@ -25,7 +25,7 @@ function resourceBlock(terraform: string, resourceStart: string): string {
   return terraform.slice(start, nextResource === -1 ? undefined : nextResource)
 }
 
-function invokeMonitorApply(environment: Record<string, string>) {
+function invokeMonitorApply(environment: Record<string, string | undefined>) {
   const tempDirectory = mkdtempSync(join(tmpdir(), 'nirmana-monitor-apply-'))
   const planFile = join(tempDirectory, 'monitor.tfplan')
   writeFileSync(planFile, 'not-a-real-terraform-plan')
@@ -59,10 +59,11 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(applyScript).toContain('terraform apply "$PLAN_FILE"')
     expect(applyScript).not.toContain('terraform apply -auto-approve')
     expect(applyScript).not.toContain('destroy)')
-    expect(applyScript).toContain('GITHUB_REF:-')
-    expect(applyScript).toContain('refs/heads/main')
     expect(applyScript).toContain('IAC_APPLY_ENVIRONMENT:-')
-    expect(applyScript).toContain('GITHUB_REF_PROTECTED:-')
+    expect(applyScript).toContain('GOOGLE_CLOUD_RELEASE_APPROVAL:-')
+    expect(applyScript).toContain('gcloud auth application-default print-access-token')
+    expect(applyScript).toContain('GOOGLE_APPLICATION_CREDENTIALS:-')
+    expect(applyScript).not.toContain('GITHUB_REF:-')
     expect(applyScript).toContain('terraform init -lockfile=readonly')
     expect(lockfile).toContain('provider "registry.terraform.io/hashicorp/google"')
     expect(lockfile).toContain('version     = "8.0.0"')
@@ -107,31 +108,13 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     const monitorJobPermissionRow = readme.split('\n').find((line) => line.includes('| This monitor job only'))
     expect(monitorJobPermissionRow).toContain('cloudscheduler.jobs.enable')
     expect(monitorJobPermissionRow).not.toContain('cloudscheduler.jobs.update')
-    expect(readme).toContain('github-actions-nirmana-apply@madhav-astrology.iam.gserviceaccount.com')
+    expect(readme).toContain('Application Default Credentials')
+    expect(readme).toContain('Cloud Audit Logs')
+    expect(workflow).not.toContain('nirmana_elevation_monitor')
+    expect(workflow).toContain('GitHub Actions does not apply Terraform')
 
     expect(route).toContain(`const SCHEDULER_OIDC_AUDIENCE = '${productionAudience}'`)
     expect(route).toContain(`const SCHEDULER_SERVICE_ACCOUNT = '${schedulerPrincipal}'`)
-
-    expect(workflow).toContain('nirmana-elevation-monitor-plan')
-    expect(workflow).toContain('actions/upload-artifact@v4')
-    expect(workflow).toContain('actions/download-artifact@v4')
-    expect(workflow).toContain('bash apply.sh plan monitor.tfplan')
-    expect(workflow).toContain('bash apply.sh apply monitor.tfplan')
-    expect(workflow).toContain("github.ref == 'refs/heads/main'")
-    expect(workflow).toContain('github.ref_protected')
-    expect(workflow).toContain('Reject non-main or unprotected apply before authentication')
-    expect(workflow.indexOf('Reject non-main or unprotected apply before authentication')).toBeLessThan(workflow.indexOf('Authenticate to Google Cloud'))
-    expect(workflow).toContain('environment: production')
-    expect(workflow).toContain('WIF_PLAN_SERVICE_ACCOUNT')
-    expect(workflow).toContain('WIF_APPLY_SERVICE_ACCOUNT')
-    expect(workflow).not.toContain('WIF_SERVICE_ACCOUNT:')
-    const applyWorkflow = workflow.slice(workflow.indexOf('apply_monitor:'))
-    expect(applyWorkflow).toContain('service_account: ${{ env.WIF_APPLY_SERVICE_ACCOUNT }}')
-    expect(workflow.slice(0, workflow.indexOf('apply_monitor:'))).toContain('service_account: ${{ env.WIF_PLAN_SERVICE_ACCOUNT }}')
-    expect(workflow).toContain('scheduler-nirmana-elevation-monitor')
-    expect(workflow).not.toContain('github.workflow')
-    expect(workflow).toContain("format('module-{0}', github.event.inputs.module)")
-    expect(workflow).not.toContain('bash apply.sh apply\n')
 
     expect(runbook).toContain('OIDC')
     expect(runbook).toContain(productionAudience)
@@ -140,32 +123,32 @@ describe('Nirmana elevation monitor scheduler contract', () => {
     expect(runbook).not.toContain('X-Marsys-Cron-Secret')
   })
 
-  it('rejects non-main and unprotected apply requests before Terraform can initialize', () => {
+  it('rejects an unapproved GCP-native apply before Terraform can initialize', () => {
     const applyScript = readFileSync(monitorApply, 'utf8')
-    if (!applyScript.includes('GITHUB_REF_PROTECTED:-')) {
-      // Keep the RED run offline: the legacy wrapper would initialize the real
-      // backend when presented with a local saved-plan placeholder.
-      expect(applyScript).toContain('GITHUB_REF_PROTECTED:-')
+    if (!applyScript.includes('GOOGLE_CLOUD_RELEASE_APPROVAL:-')) {
+      // Keep the RED run offline: a wrapper without the native approval guard
+      // would initialize the real backend when presented with a local saved-plan
+      // placeholder.
+      expect(applyScript).toContain('GOOGLE_CLOUD_RELEASE_APPROVAL:-')
       return
     }
 
     for (const environment of [
       {
-        GITHUB_ACTIONS: 'true',
-        GITHUB_REF: 'refs/heads/review-branch',
-        GITHUB_REF_PROTECTED: 'true',
+        IAC_APPLY_ENVIRONMENT: 'staging',
+        GOOGLE_CLOUD_RELEASE_APPROVAL: 'CHG-1234',
+      },
+      {
         IAC_APPLY_ENVIRONMENT: 'production',
       },
       {
-        GITHUB_ACTIONS: 'true',
-        GITHUB_REF: 'refs/heads/main',
-        GITHUB_REF_PROTECTED: 'false',
         IAC_APPLY_ENVIRONMENT: 'production',
+        GOOGLE_CLOUD_RELEASE_APPROVAL: 'short',
       },
     ]) {
       const result = invokeMonitorApply(environment)
       expect(result.status).toBe(2)
-      expect(result.stderr).toContain('protected main ref')
+      expect(result.stderr).toContain('GCP-native reviewed release')
     }
   })
 })
