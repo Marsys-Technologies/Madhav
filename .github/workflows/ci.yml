@@ -573,6 +573,21 @@ jobs:
           NIRMANA_L0_WAVE1_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave1_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_wave1_correctness_contract.test.ts --reporter=verbose
 
+      - name: Nirmāṇa L0 — provision the migration 631 gochara citation contract DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The test accepts only this loopback database name, so it cannot target
+        # production while exercising first apply, replay, and detector rollback.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_l0_gochara_citation_test;"
+
+      - name: Nirmāṇa L0 — migration 631 gochara citation contract against real Postgres
+        env:
+          NIRMANA_L0_GOCHARA_CITATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_gochara_citation_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_gochara_citation_chunk_repair.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
