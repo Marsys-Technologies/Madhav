@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS } from '@/lib/cockpit/serviceProbeContract'
 
 export async function POST(req: NextRequest) {
   // Plan preview is a read-only operation — any authenticated user may call it.
@@ -29,13 +30,14 @@ export async function POST(req: NextRequest) {
          FROM asset_registry
          WHERE has_writer = true
             OR (
-              asset_id = 'bg_ephemeris_engine'
+              asset_id = ANY($1::text[])
               AND scope = 'global'
               AND asset_kind = 'service'
               AND asset_type = 'service'
               AND health_probe IS NOT NULL
             )
-         ORDER BY layer, sort_order`
+         ORDER BY layer, sort_order`,
+        [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
       ),
       query<ThroughputEntry>(
         // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that

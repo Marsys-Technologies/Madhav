@@ -64,6 +64,11 @@ const REGISTRY_EPHEMERIS_SERVICE = [{
   has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'ephemeris_engine' },
 }]
 
+const REGISTRY_PANCHANGA_SERVICE = [{
+  asset_id: 'bg_panchanga', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'panchanga_engine' },
+}]
+
 // Bodha registry: includes bo_* assets for G4 precondition gate tests
 const REGISTRY_BODHA = [
   { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
@@ -149,14 +154,20 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     expect(body.data.plan).toContain('ga_positions')
   })
 
-  it('does not include a no-writer service in a broad global build', async () => {
+  it('does not include either no-writer service probe in a broad global build', async () => {
     seedRole('super_admin')
-    seedSuccessfulBuild([...REGISTRY_WITH_L0, ...REGISTRY_EPHEMERIS_SERVICE] as typeof REGISTRY_WITH_L0)
+    seedSuccessfulBuild([
+      ...REGISTRY_WITH_L0,
+      ...REGISTRY_EPHEMERIS_SERVICE,
+      ...REGISTRY_PANCHANGA_SERVICE,
+    ] as typeof REGISTRY_WITH_L0)
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
     expect(res.status).toBe(201)
-    expect((await res.json()).data.plan).not.toContain('bg_ephemeris_engine')
+    const body = await res.json()
+    expect(body.data.plan).not.toContain('bg_ephemeris_engine')
+    expect(body.data.plan).not.toContain('bg_panchanga')
   })
 
   it('persists the ordered waves and registry dependency snapshot with the run', async () => {
@@ -593,6 +604,31 @@ describe('POST /api/cockpit/runs — governed global service probes', () => {
     expect(assetInsert![1]).not.toContain('ga_positions')
   })
 
+  it('dispatches bg_panchanga as the same singleton, manifest-shaped probe contract', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_PANCHANGA_SERVICE as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_panchanga', action: 'rebuild', clear_before: false,
+    }))
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toEqual(['bg_panchanga'])
+    expect(body.data.asset_count).toBe(1)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest).toMatchObject({
+      scope: 'asset_set',
+      scope_target: 'bg_panchanga',
+      waves: [['bg_panchanga']],
+    })
+    expect(manifest.assets).toHaveLength(1)
+    expect(manifest.assets[0].asset_id).toBe('bg_panchanga')
+  })
+
   it('rejects a client before creating a global service-probe run', async () => {
     seedRole('client')
     mockQuery
@@ -629,6 +665,7 @@ describe('POST /api/cockpit/runs — governed global service probes', () => {
     expect((await res.json()).code).toBe('SERVICE_PROBE_CLEAR_FORBIDDEN')
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
+
 })
 
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
