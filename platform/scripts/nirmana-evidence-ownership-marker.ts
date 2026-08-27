@@ -25,6 +25,9 @@ export async function applyNirmanaEvidenceOwnershipMarker(databaseUrl = process.
     const existing = await client.query<{ sha256: string }>('SELECT sha256 FROM public._migrations_applied WHERE filename = $1', [FILENAME])
     if (existing.rows[0]) {
       if (existing.rows[0].sha256 !== sha256) throw new Error('Migration 633 is already recorded with a different digest.')
+      // A recorded marker is not a permanent exemption. Re-run its
+      // assertion-only SQL so a later role grant or ACL drift fails closed.
+      await client.query(sql)
       return
     }
     const prerequisite = await client.query('SELECT 1 FROM public._migrations_applied WHERE filename = $1', ['632_nirmana_evidence_server_writer_guard.sql'])

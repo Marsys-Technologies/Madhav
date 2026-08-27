@@ -81,6 +81,23 @@ BEGIN
     OR has_schema_privilege('amjis_app', 'nirmana_evidence', 'CREATE') THEN
     RAISE EXCEPTION 'migration 633 refuses generic application administration';
   END IF;
+  -- NOINHERIT does not prevent SET ROLE.  The marker is a final-state
+  -- attestation: generic application identity must have no membership edge
+  -- in either direction, including the legacy Cloud SQL database-owner edge.
+  IF EXISTS (
+    SELECT 1
+      FROM pg_auth_members membership
+      JOIN pg_roles parent ON parent.oid = membership.roleid
+      JOIN pg_roles member ON member.oid = membership.member
+     WHERE parent.rolname = 'amjis_app' OR member.rolname = 'amjis_app'
+  ) OR EXISTS (
+    SELECT 1 FROM pg_database database
+     WHERE database.datname = current_database()
+       AND (database.datdba = 'amjis_app'::regrole
+         OR pg_has_role('amjis_app', database.datdba, 'MEMBER'))
+  ) OR has_database_privilege('amjis_app', current_database(), 'CREATE') THEN
+    RAISE EXCEPTION 'migration 633 requires generic application role membership and database administration cleanup';
+  END IF;
   IF NOT has_schema_privilege('amjis_app', 'nirmana_evidence', 'USAGE') THEN
     RAISE EXCEPTION 'migration 633 requires generic application read schema usage';
   END IF;
@@ -251,13 +268,17 @@ BEGIN
   IF EXISTS (
     WITH protected_roles(name) AS (
       SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+    ), provider_roots(oid) AS (
+      SELECT datdba FROM pg_database WHERE datname = current_database()
+      UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
     )
     SELECT 1
       FROM pg_default_acl defaults
       JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
       CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
       LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
-     WHERE default_grant.grantee <> defaults.defaclrole
+     WHERE grantor.oid NOT IN (SELECT oid FROM provider_roots)
+       AND default_grant.grantee <> defaults.defaclrole
        AND (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
        AND (
          (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
@@ -279,10 +300,14 @@ BEGIN
   IF EXISTS (
     WITH protected_roles(name) AS (
       SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+    ), provider_roots(oid) AS (
+      SELECT datdba FROM pg_database WHERE datname = current_database()
+      UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
     )
     SELECT 1
       FROM pg_roles grantor
      WHERE NOT grantor.rolsuper
+       AND grantor.oid NOT IN (SELECT oid FROM provider_roots)
        AND EXISTS (
        SELECT 1 FROM pg_namespace namespace
         WHERE namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'

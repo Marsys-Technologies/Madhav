@@ -42,7 +42,23 @@ async function handoffState(client: PoolClient): Promise<HandoffState> {
       AND NOT EXISTS (SELECT 1 FROM expected_tables expected LEFT JOIN pg_class relation ON relation.relname = expected.name LEFT JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace LEFT JOIN pg_roles owner ON owner.oid = relation.relowner WHERE namespace.nspname IS DISTINCT FROM $3 OR owner.rolname IS DISTINCT FROM 'nirmana_evidence_owner')
       AND NOT EXISTS (SELECT 1 FROM expected_functions expected LEFT JOIN pg_proc procedure ON procedure.proname = expected.name LEFT JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace LEFT JOIN pg_roles owner ON owner.oid = procedure.proowner WHERE namespace.nspname IS DISTINCT FROM $3 OR owner.rolname IS DISTINCT FROM 'nirmana_evidence_owner')
       AND NOT EXISTS (SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.roleid OR role.oid = membership.member WHERE role.rolname = 'nirmana_evidence_owner')
-      AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app' AND (rolcreatedb OR rolcreaterole))
+      -- A legacy direct database-owner membership is the one exceptional
+      -- bootstrap path.  It must be gone before an unmarked handoff can be
+      -- replayed: NOINHERIT alone still permits SET ROLE.
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_auth_members membership
+          JOIN pg_roles parent ON parent.oid = membership.roleid
+          JOIN pg_roles member ON member.oid = membership.member
+         WHERE parent.rolname = 'amjis_app' OR member.rolname = 'amjis_app'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_database database
+         WHERE database.datname = current_database()
+           AND (database.datdba = 'amjis_app'::regrole
+             OR pg_has_role('amjis_app', database.datdba, 'MEMBER'))
+      )
+      AND NOT has_database_privilege('amjis_app', current_database(), 'CREATE')
+      AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app' AND (rolinherit OR rolcreatedb OR rolcreaterole OR rolsuper OR rolreplication OR rolbypassrls))
       AND NOT has_schema_privilege('amjis_app', $3, 'CREATE') AS complete,
       EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = $3)
       OR EXISTS (SELECT 1 FROM pg_class relation JOIN pg_roles owner ON owner.oid = relation.relowner WHERE relation.relname = ANY($1::text[]) AND owner.rolname = 'nirmana_evidence_owner') AS touched
@@ -53,14 +69,17 @@ async function handoffState(client: PoolClient): Promise<HandoffState> {
 
 export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process.env[LEGACY_URL]): Promise<void> {
   if (!databaseUrl) throw new Error(`${LEGACY_URL} is required for the one-shot Nirmana ownership preflight.`)
-  // A minimally provisioned marker login cannot read the tracker before this handoff.
-  if (await markerApplied(databaseUrl)) return
   const pool = new Pool({ connectionString: databaseUrl, max: 1 })
   const client = await pool.connect()
   try {
     const actor = await client.query<{ session_user: string; current_user: string }>('SELECT session_user, current_user')
     if (actor.rows[0]?.session_user !== 'amjis_app' || actor.rows[0]?.current_user !== 'amjis_app') throw new Error('Nirmana ownership preflight must authenticate directly as legacy owner amjis_app.')
-    if (await markerApplied(databaseUrl)) return
+    if (await markerApplied(databaseUrl)) {
+      if (await handoffState(client) !== 'handed_off_unmarked') {
+        throw new Error('Nirmana ownership marker exists but the final evidence boundary no longer converges.')
+      }
+      return
+    }
     const state = await handoffState(client)
     if (state === 'handed_off_unmarked') return
     if (state === 'partial') throw new Error('Nirmana ownership preflight found a partial handoff without marker; refusing recovery by mutation.')
@@ -69,6 +88,24 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
     await client.query('BEGIN')
     await client.query(`
       DO $$ BEGIN
+        -- The only allowed initial generic-role edge is a direct membership
+        -- in the current database owner.  This is the managed Cloud SQL
+        -- topology we can close transaction-locally; every other parent,
+        -- child, or indirect route is an ambiguous escalation path.
+        IF EXISTS (
+          SELECT 1
+            FROM pg_auth_members membership
+            JOIN pg_roles app ON app.oid = membership.member
+            JOIN pg_database database ON database.datname = current_database()
+           WHERE app.rolname = 'amjis_app'
+             AND NOT (membership.roleid = database.datdba)
+        ) OR EXISTS (
+          SELECT 1 FROM pg_auth_members membership
+            JOIN pg_roles app ON app.oid = membership.roleid
+           WHERE app.rolname = 'amjis_app'
+        ) THEN
+          RAISE EXCEPTION 'refusing unexpected amjis_app role membership topology';
+        END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app' AND (rolsuper OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated generic application role'; END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner') THEN CREATE ROLE nirmana_evidence_owner NOLOGIN NOINHERIT; END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner' AND (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated evidence owner'; END IF;
@@ -82,6 +119,37 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer') THEN RAISE EXCEPTION 'nirmana_campaign_control_writer must be secret-backed and preprovisioned before the ownership preflight'; END IF;
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer' AND (NOT rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN RAISE EXCEPTION 'refusing elevated control writer'; END IF;
         IF EXISTS (SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.roleid OR role.oid = membership.member WHERE role.rolname = 'nirmana_campaign_control_writer') THEN RAISE EXCEPTION 'refusing control writer with memberships'; END IF;
+      END $$;
+      -- Cloud SQL keeps the database owner/provider administrator able to
+      -- CREATE in public even after a PUBLIC revoke.  If amjis_app has the
+      -- one permitted *direct* owner membership, use it only inside this
+      -- transaction to close PostgreSQL's hard-wired PUBLIC defaults for
+      -- that owner, then reset immediately.  No membership is created here.
+      DO $$
+      DECLARE database_owner name; direct_owner_membership boolean;
+      BEGIN
+        SELECT owner.rolname,
+               EXISTS (SELECT 1 FROM pg_auth_members membership WHERE membership.roleid = database.datdba AND membership.member = app.oid)
+          INTO database_owner, direct_owner_membership
+          FROM pg_database database
+          JOIN pg_roles owner ON owner.oid = database.datdba
+          JOIN pg_roles app ON app.rolname = 'amjis_app'
+         WHERE database.datname = current_database();
+        IF direct_owner_membership THEN
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = database_owner AND rolcreatedb AND rolcreaterole) THEN
+            RAISE EXCEPTION 'refusing non-provider database owner delegation';
+          END IF;
+          EXECUTE format('SET LOCAL ROLE %I', database_owner);
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_owner') THEN
+            CREATE ROLE nirmana_evidence_owner NOLOGIN NOINHERIT;
+          END IF;
+          -- This membership exists only for the object-owner transfer below
+          -- and is explicitly revoked before the transaction can commit.
+          GRANT nirmana_evidence_owner TO amjis_app WITH ADMIN OPTION;
+          ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+          ALTER DEFAULT PRIVILEGES REVOKE USAGE ON TYPES FROM PUBLIC;
+          RESET ROLE;
+        END IF;
       END $$;
       -- Remove direct stale grants before constructing the two explicit
       -- non-owner envelopes.  Effective grants inherited from PUBLIC are
@@ -143,10 +211,6 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       -- this only when a catalog row exists would leave fresh grantors open.
       ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
       ALTER DEFAULT PRIVILEGES FOR ROLE amjis_app REVOKE USAGE ON TYPES FROM PUBLIC;
-      -- The directly authenticated legacy owner needs ADMIN OPTION only long
-      -- enough to remove this temporary membership before commit.  No role
-      -- crossing is used by runtime writers.
-      GRANT nirmana_evidence_owner TO amjis_app WITH ADMIN OPTION;
       CREATE SCHEMA nirmana_evidence AUTHORIZATION nirmana_evidence_owner;
       GRANT USAGE, CREATE ON SCHEMA nirmana_evidence TO nirmana_evidence_owner;
       -- PostgreSQL requires the incoming owner to hold CREATE on the source
@@ -260,22 +324,67 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       DROP TRIGGER IF EXISTS nirmana_elevation_events_no_truncate ON nirmana_elevation_campaign_events;
       CREATE TRIGGER nirmana_elevation_events_no_truncate BEFORE TRUNCATE ON nirmana_elevation_campaign_events FOR EACH STATEMENT EXECUTE FUNCTION nirmana_elevation_prevent_campaign_truncate();
       RESET ROLE;
-      -- A default ACL owned by another role cannot be repaired by this direct
-      -- legacy-owner transaction. Reject it if its grantor can create in a
-      -- schema usable by a protected role (or can create schemas) and grants
-      -- either that role or PUBLIC any future-object privilege.
+      REVOKE nirmana_evidence_owner FROM amjis_app;
+      -- Finish the provider-owner handoff before testing default ACLs.  The
+      -- role switch is transaction-local and the only use of the legacy
+      -- direct owner membership; its REVOKE is durable on COMMIT.
+      DO $$
+      DECLARE database_owner name; direct_owner_membership boolean;
+      BEGIN
+        SELECT owner.rolname,
+               EXISTS (SELECT 1 FROM pg_auth_members membership JOIN pg_roles app ON app.oid = membership.member WHERE membership.roleid = database.datdba AND app.rolname = 'amjis_app')
+          INTO database_owner, direct_owner_membership
+          FROM pg_database database JOIN pg_roles owner ON owner.oid = database.datdba
+         WHERE database.datname = current_database();
+        IF direct_owner_membership THEN
+          EXECUTE format('SET LOCAL ROLE %I', database_owner);
+          ALTER ROLE amjis_app NOINHERIT NOCREATEDB NOCREATEROLE;
+          EXECUTE format('REVOKE %I FROM amjis_app', database_owner);
+          RESET ROLE;
+        ELSE
+          ALTER ROLE amjis_app NOINHERIT NOCREATEDB NOCREATEROLE;
+        END IF;
+      END $$;
+      -- Provider-admin roots (the current database owner and postgres) are
+      -- exempted from the future-default predicate below only after proving
+      -- they are outside every generic/protected writer membership closure.
+      DO $$ BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_auth_members membership
+            JOIN pg_roles parent ON parent.oid = membership.roleid
+            JOIN pg_roles member ON member.oid = membership.member
+           WHERE parent.rolname IN ('amjis_app', 'nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator')
+              OR member.rolname IN ('amjis_app', 'nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator')
+        ) THEN
+          RAISE EXCEPTION 'refusing provider-root default ACL exemption with writer membership closure';
+        END IF;
+        IF EXISTS (
+          SELECT 1 FROM pg_database database WHERE database.datname = current_database()
+            AND (database.datdba = 'amjis_app'::regrole OR pg_has_role('amjis_app', database.datdba, 'MEMBER'))
+        ) OR has_database_privilege('amjis_app', current_database(), 'CREATE')
+          OR EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app' AND (rolinherit OR rolcreatedb OR rolcreaterole OR rolsuper OR rolreplication OR rolbypassrls)) THEN
+          RAISE EXCEPTION 'generic application role cleanup did not converge';
+        END IF;
+      END $$;
+      -- A default ACL owned by another role cannot be repaired by this
+      -- direct-owner transaction.  The provider roots are deliberately
+      -- excluded only after the immediately preceding closure proof.
       DO $$
       BEGIN
         IF EXISTS (
           WITH protected_roles(name) AS (
             SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+          ), provider_roots(oid) AS (
+            SELECT datdba FROM pg_database WHERE datname = current_database()
+            UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
           )
           SELECT 1
             FROM pg_default_acl defaults
             JOIN pg_roles grantor ON grantor.oid = defaults.defaclrole
             CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS default_grant
             LEFT JOIN pg_roles grantee ON grantee.oid = default_grant.grantee
-           WHERE default_grant.grantee <> defaults.defaclrole
+           WHERE grantor.oid NOT IN (SELECT oid FROM provider_roots)
+             AND default_grant.grantee <> defaults.defaclrole
              AND (default_grant.grantee = 0 OR grantee.rolname IN (SELECT name FROM protected_roles))
              AND (
                (defaults.defaclobjtype = 'n' AND has_database_privilege(grantor.rolname, current_database(), 'CREATE'))
@@ -290,16 +399,20 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
         ) THEN
           RAISE EXCEPTION 'refusing relevant protected-writer default ACLs';
         END IF;
-        -- Missing global f/T rows are not neutral: PostgreSQL then applies
-        -- PUBLIC EXECUTE/USAGE.  Every role that can create in a schema a
-        -- protected writer can use must have explicit no-PUBLIC defaults.
+        -- Missing global f/T rows are not neutral.  The preceding closure
+        -- proof is what makes the provider-root exception safe; all other
+        -- relevant grantors remain strict fail-closed checks.
         IF EXISTS (
           WITH protected_roles(name) AS (
             SELECT unnest(ARRAY['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'])
+          ), provider_roots(oid) AS (
+            SELECT datdba FROM pg_database WHERE datname = current_database()
+            UNION SELECT oid FROM pg_roles WHERE rolname = 'postgres'
           )
           SELECT 1
             FROM pg_roles grantor
            WHERE NOT grantor.rolsuper
+             AND grantor.oid NOT IN (SELECT oid FROM provider_roots)
              AND EXISTS (
              SELECT 1 FROM pg_namespace namespace
               WHERE namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
@@ -328,8 +441,6 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
           RAISE EXCEPTION 'refusing hard-wired PUBLIC function/type defaults for a protected-writer grantor';
         END IF;
       END $$;
-      REVOKE nirmana_evidence_owner FROM amjis_app;
-      ALTER ROLE amjis_app NOINHERIT NOCREATEDB NOCREATEROLE;
     `)
     const memberships = await client.query<{ count: string }>(`SELECT count(*)::text AS count FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.roleid OR role.oid = membership.member WHERE role.rolname = 'nirmana_evidence_owner'`)
     if (memberships.rows[0]?.count !== '0') throw new Error('Evidence owner membership cleanup did not converge.')
