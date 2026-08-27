@@ -134,6 +134,22 @@ class ElevationStoreTests(unittest.TestCase):
         self.assertFalse(packet["eligible"])
         self.assertIn("native decision", packet["missing"])
 
+    def test_idempotent_reobservation_still_advances_source_freshness(self):
+        """Break caught: a source whose real-world value is genuinely stable between
+        ticks (no codex process running, an unchanged runtime identity, an EDIR
+        register that doesn't exist yet) returns idempotent=True on every re-check,
+        and observe() was only updating source_cursors.observed_at on the FIRST-ever
+        insert -- so a perfectly healthy, actively-polled source falsely alarms as
+        STALE purely from time passing, never from an actual failure to re-verify it."""
+        source = {"source_id": "runtime", "kind": "DEPLOYED_RUNTIME", "fresh_after_seconds": 10}
+        first = self.store.observe(source, cursor="stable", idempotency_key="runtime:stable", payload={"release": "58e9"}, observed_at="2026-08-26T00:00:00Z")
+        self.assertFalse(first["idempotent"])
+        second = self.store.observe(source, cursor="stable", idempotency_key="runtime:stable", payload={"release": "58e9"}, observed_at="2026-08-26T00:00:20Z")
+        self.assertTrue(second["idempotent"])
+        self.assertEqual(self.store.source_state("runtime")["observed_at"], "2026-08-26T00:00:20Z")
+        dashboard = self.store.dashboard(now="2026-08-26T00:00:25Z")
+        self.assertEqual(dashboard["source_states"]["runtime"]["freshness"], "FRESH")
+
     def test_adapter_runner_records_all_required_sources_only_as_observations(self):
         """Break caught: a missing adapter disappears from the dashboard or adapter data self-accepts."""
         runner = AdapterRunner(self.store, probes={
