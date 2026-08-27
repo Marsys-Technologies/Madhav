@@ -1,26 +1,157 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paripraśna Shadow Elevation</title></head>
-  <body>
-    <main>
-      <h1>Paripraśna Shadow Elevation</h1>
-      <p id="boundary">Observations are not accepted evidence. This dashboard cannot close a gate or authorize cutover.</p>
-      <dl><dt>Active plan revision</dt><dd id="plan">UNKNOWN</dd></dl>
-      <h2>Source freshness</h2><ul id="sources"></ul>
-      <h2>Contradictions</h2><ul id="contradictions"></ul>
-    </main>
-    <script>
-      fetch('/api/elevation').then(r => r.json()).then(data => {
-        document.querySelector('#plan').textContent = data.plan_revision ?? 'NONE';
-        for (const [name, state] of Object.entries(data.source_states)) {
-          const li = document.createElement('li'); li.textContent = `${name}: ${state.freshness}`;
-          document.querySelector('#sources').append(li);
-        }
-        for (const item of data.contradictions) {
-          const li = document.createElement('li'); li.textContent = `${item.id}: ${item.detail}`;
-          document.querySelector('#contradictions').append(li);
-        }
-      });
-    </script>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Shadow observation layer for the Paripraśna assurance tracker -- source freshness, contradictions and cutover eligibility. Not accepted evidence.">
+  <link rel="icon" href="data:,">
+  <title>Paripraśna Shadow Elevation</title>
+  <style>
+    :root{--bg:#08111f;--surface:#0f1c2e;--line:#263b56;--ink:#edf4ff;--muted:#9babc0;--blue:#6aa9ff;--teal:#45d6b0;--amber:#f5bd52;--red:#ff6983;--focus:#a9cbff;--shell:1400px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;background:radial-gradient(circle at 30% -20%,#153461 0,transparent 35%),var(--bg);color:var(--ink);font:16px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .shell{width:min(calc(100% - 48px),var(--shell));margin-inline:auto}
+    header{position:sticky;top:0;z-index:10;background:rgba(8,17,31,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+    .topbar{min-height:72px;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-block:12px}
+    .brand{display:flex;gap:14px;align-items:center;min-width:0}
+    .brand-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--teal));box-shadow:0 0 32px #4c8fff55;flex:0 0 34px}
+    .eyebrow{color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+    .campaign{font-size:19px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .header-state{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:#11233a;color:var(--ink);font-size:13px;font-weight:700}
+    a:focus,button:focus{outline:3px solid var(--focus);outline-offset:3px}
+    main{padding-block:30px 56px}
+    .boundary{margin:0 0 22px;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#11233a;color:var(--muted);font-size:13px;font-weight:600}
+    .section{margin-top:28px}
+    .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+    .section-head h2{margin:0;font-size:20px;letter-spacing:-.025em}
+    .section-head p{margin:0;color:var(--muted);font-size:13px}
+    .panel{background:linear-gradient(145deg,#112039,#0d192b);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 16px 45px #0000001f}
+    .source-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+    .source-card{position:relative;overflow:hidden}
+    .source-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--muted)}
+    .source-card.FRESH::before{background:var(--teal)}
+    .source-card.STALE::before{background:var(--red)}
+    .source-card.UNKNOWN::before{background:var(--amber)}
+    .source-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .source-top>div:first-child{min-width:0}
+    .source-name{font-weight:720;font-size:15px;letter-spacing:-.01em;overflow-wrap:anywhere}
+    .source-kind{color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.02em;white-space:nowrap;flex:0 0 auto}
+    .status-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%}
+    .status-dot.FRESH{background:var(--teal)}
+    .status-dot.STALE{background:var(--red)}
+    .status-dot.UNKNOWN{background:var(--amber)}
+    .badge.FRESH{color:var(--teal)}
+    .badge.STALE{color:var(--red)}
+    .badge.UNKNOWN{color:var(--amber)}
+    .source-meta{margin-top:14px;display:grid;gap:6px;font-size:13px}
+    .source-meta div{display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--line)}
+    .source-meta span:first-child{color:var(--muted)}
+    .source-meta span:last-child{font-weight:650;text-align:right;overflow-wrap:anywhere}
+    .empty{color:var(--muted);padding:6px 0}
+    .list{display:grid;gap:8px}
+    .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+    .row:last-child{border-bottom:0}
+    .row b{font-size:13px}
+    .cutover-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+    .cutover-grid div{padding:10px 12px;border-radius:9px;background:#142238;font-size:13px;color:var(--muted)}
+    .offline{max-width:760px;margin:70px auto;text-align:center}
+    .offline code{display:inline-block;max-width:100%;overflow:auto;padding:5px 7px;border-radius:5px;background:#071321;color:#d5e6ff;font-size:13px}
+    @media(max-width:640px){.shell{width:min(calc(100% - 20px),var(--shell))}.panel{padding:15px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><div class="eyebrow">Shadow observation layer</div><div class="campaign">Paripraśna Shadow Elevation</div></div></div>
+      <div class="header-state"><span id="plan-pill" class="pill">Plan revision —</span><span id="cutover-pill" class="pill">Cutover —</span></div>
+    </div>
+  </header>
+  <main class="shell">
+    <p id="boundary" class="boundary">Observations are not accepted evidence. This dashboard cannot close a gate or authorize cutover.</p>
+    <section class="section" aria-labelledby="sources-title">
+      <div class="section-head"><div><div class="eyebrow">Autonomous adapter freshness</div><h2 id="sources-title">Source freshness</h2></div><p id="as-of">Awaiting data</p></div>
+      <div id="sources" class="source-grid panel" role="status" aria-live="polite"></div>
+    </section>
+    <section class="section" aria-labelledby="contradictions-title">
+      <div class="section-head"><h2 id="contradictions-title">Contradictions</h2></div>
+      <div id="contradictions" class="panel list"></div>
+    </section>
+    <section class="section" aria-labelledby="gaps-title">
+      <div class="section-head"><h2 id="gaps-title">Data-quality gaps</h2></div>
+      <div id="gaps" class="panel list"></div>
+    </section>
+    <section class="section" aria-labelledby="cutover-title">
+      <div class="section-head"><h2 id="cutover-title">Cutover eligibility</h2></div>
+      <div id="cutover" class="panel"></div>
+    </section>
+  </main>
+  <script>
+    const esc = v => String(v ?? '—').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const cls = v => String(v ?? 'UNKNOWN').replace(/[^A-Z_]/g, '');
+    const dot = v => `<span class="status-dot ${cls(v)}" aria-hidden="true"></span>`;
+    const badge = v => `<span class="badge ${cls(v)}">${dot(v)}${esc(v)}</span>`;
+    const seconds = v => v == null ? '—' : `${Math.round(Number(v))}s`;
+    const abs = v => { if (!v) return 'No observation'; const d = new Date(v); return Number.isNaN(d.valueOf()) ? esc(v) : d.toLocaleString(); };
+
+    function render(data) {
+      document.querySelector('#plan-pill').textContent = `Plan revision ${data.plan_revision ?? 'NONE'}`;
+      const cutoverEligible = data.projection && data.projection.cutover_eligible;
+      document.querySelector('#cutover-pill').textContent = `Cutover ${cutoverEligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`;
+
+      document.querySelector('#as-of').textContent = `Projection as of ${abs(data.projection && data.projection.as_of)}`;
+
+      // source_states is keyed by every required adapter, even one that has never
+      // been observed -- rendering from it (not the shorter `sources` array, which
+      // only lists sources with at least one recorded observation) is what keeps a
+      // never-configured/never-run adapter visible instead of silently absent.
+      const byId = {};
+      for (const s of (data.sources || [])) byId[s.source_id] = s;
+      const sources = document.querySelector('#sources');
+      const stateEntries = Object.entries(data.source_states || {});
+      sources.innerHTML = stateEntries.map(([id, state]) => {
+        const extra = byId[id] || {};
+        return `
+        <article class="source-card panel ${cls(state.freshness)}">
+          <div class="source-top"><div><div class="source-name">${esc(id)}</div><div class="source-kind">${esc(extra.kind || '—')}</div></div>${badge(state.freshness)}</div>
+          <div class="source-meta">
+            <div><span>Last observed</span><span>${abs(state.observed_at)}</span></div>
+            <div><span>Age</span><span>${seconds(extra.age_seconds)}</span></div>
+            <div><span>Freshness budget</span><span>${seconds(extra.fresh_after_seconds)}</span></div>
+            <div><span>Cursor</span><span>${esc((state.cursor || '').slice(0, 16))}${state.cursor && state.cursor.length > 16 ? '…' : ''}</span></div>
+          </div>
+        </article>`;
+      }).join('') || '<p class="empty">No adapters configured.</p>';
+
+      const contradictions = document.querySelector('#contradictions');
+      contradictions.innerHTML = (data.contradictions || []).map(c => `<div class="row"><b>${esc(c.id)}</b><span>${esc(c.detail)} · ${esc(c.status)}</span></div>`).join('') || '<p class="empty">No contradictions recorded.</p>';
+
+      const gaps = document.querySelector('#gaps');
+      gaps.innerHTML = (data.data_quality_gaps || []).map(sourceId => {
+        const state = (data.source_states || {})[sourceId] || {};
+        return `<div class="row"><b>${esc(sourceId)}</b><span>${badge(state.freshness || 'UNKNOWN')}</span></div>`;
+      }).join('') || '<p class="empty">No data-quality gaps -- every adapter is FRESH.</p>';
+
+      const cutover = document.querySelector('#cutover');
+      const projection = data.projection || {};
+      cutover.innerHTML = `<p class="empty">${projection.authority_boundary ? esc(projection.authority_boundary) : 'Cutover requires a native decision.'}</p>
+        <div class="cutover-grid">
+          <div>Active plan revision<br><b style="color:var(--ink)">${esc(projection.active_plan_revision)}</b></div>
+          <div>Accepted evidence<br><b style="color:var(--ink)">${(projection.accepted_evidence || []).length}</b></div>
+          <div>Closed gates<br><b style="color:var(--ink)">${(projection.closed_gates || []).length}</b></div>
+          <div>Cutover eligible<br><b style="color:var(--ink)">${projection.cutover_eligible ? 'Yes' : 'No'}</b></div>
+        </div>`;
+    }
+
+    function offline(message) {
+      document.querySelector('main').innerHTML = `<div class="offline"><h1>Shadow dashboard unavailable</h1><p>${esc(message)}</p><p><code>GET /api/elevation</code> did not return a usable projection. This state is shown explicitly rather than presenting a stale or invented dashboard.</p></div>`;
+    }
+
+    fetch('/api/elevation').then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }).then(render).catch(err => offline(err.message || 'Unknown error'));
+  </script>
+</body>
 </html>

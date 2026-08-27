@@ -81,7 +81,22 @@ def builtin_probes(
         pulls = json.loads(run_command(["gh", "api", "repos/Marsys-Technologies/Madhav/pulls?state=open&per_page=100"]))
         if not isinstance(pulls, list):
             raise ValueError("GitHub probe did not return a pull-request list")
-        payload = {"open_pull_requests": pulls}
+        projected = [
+            {
+                "number": pull.get("number"),
+                "state": pull.get("state"),
+                "draft": pull.get("draft"),
+                "merged_at": pull.get("merged_at"),
+                "mergeable_state": pull.get("mergeable_state"),
+                "updated_at": pull.get("updated_at"),
+                "head_ref": (pull.get("head") or {}).get("ref"),
+                "head_sha": (pull.get("head") or {}).get("sha"),
+                "base_ref": (pull.get("base") or {}).get("ref"),
+            }
+            for pull in pulls
+            if isinstance(pull, dict)
+        ]
+        payload = {"open_pull_requests": projected}
         return {"cursor": _digest(payload), "payload": payload}
 
     def git_worktrees(_cursor: str | None) -> dict[str, Any]:
