@@ -11,6 +11,8 @@ DECLARE
   relation_name text;
   column_name text;
   inherited_role text;
+  granted_member text;
+  schema_name text;
   core_read_relations constant text[] := ARRAY[
     'nirmana_elevation_campaign_definitions',
     'nirmana_elevation_campaign_events',
@@ -69,25 +71,44 @@ BEGIN
   LOOP
     EXECUTE format('REVOKE %I FROM nirmana_evidence_ingress_writer', inherited_role);
   END LOOP;
+  -- The inverse membership is equally dangerous: a generic principal granted
+  -- this role can SET ROLE into its receipt INSERT privilege. Remove both
+  -- edges, rather than relying on the receipt trigger to catch only one kind.
+  FOR granted_member IN
+    SELECT member.rolname
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS granted ON granted.oid = membership.roleid
+      JOIN pg_roles AS member ON member.oid = membership.member
+     WHERE granted.rolname = 'nirmana_evidence_ingress_writer'
+  LOOP
+    EXECUTE format('REVOKE nirmana_evidence_ingress_writer FROM %I', granted_member);
+  END LOOP;
 
   EXECUTE format('REVOKE ALL PRIVILEGES ON DATABASE %I FROM nirmana_evidence_ingress_writer', current_database());
-  EXECUTE format('REVOKE ALL PRIVILEGES ON SCHEMA %I FROM nirmana_evidence_ingress_writer', current_schema());
-  EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I FROM nirmana_evidence_ingress_writer', current_schema());
-  EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I FROM nirmana_evidence_ingress_writer', current_schema());
-  FOR relation_name, column_name IN
-    SELECT relation.relname, attribute.attname
-      FROM pg_class AS relation
-      JOIN pg_attribute AS attribute ON attribute.attrelid = relation.oid
-      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-     WHERE namespace.nspname = current_schema()
-       AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
-       AND attribute.attnum > 0
-       AND NOT attribute.attisdropped
+  FOR schema_name IN
+    SELECT nspname
+      FROM pg_namespace
+     WHERE nspname !~ '^pg_'
+       AND nspname <> 'information_schema'
   LOOP
-    EXECUTE format(
-      'REVOKE ALL PRIVILEGES (%I) ON TABLE %I.%I FROM nirmana_evidence_ingress_writer',
-      column_name, current_schema(), relation_name
-    );
+    EXECUTE format('REVOKE ALL PRIVILEGES ON SCHEMA %I FROM nirmana_evidence_ingress_writer', schema_name);
+    EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I FROM nirmana_evidence_ingress_writer', schema_name);
+    EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I FROM nirmana_evidence_ingress_writer', schema_name);
+    FOR relation_name, column_name IN
+      SELECT relation.relname, attribute.attname
+        FROM pg_class AS relation
+        JOIN pg_attribute AS attribute ON attribute.attrelid = relation.oid
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+       WHERE namespace.nspname = schema_name
+         AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+         AND attribute.attnum > 0
+         AND NOT attribute.attisdropped
+    LOOP
+      EXECUTE format(
+        'REVOKE ALL PRIVILEGES (%I) ON TABLE %I.%I FROM nirmana_evidence_ingress_writer',
+        column_name, schema_name, relation_name
+      );
+    END LOOP;
   END LOOP;
 
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO nirmana_evidence_ingress_writer', current_database());
@@ -127,6 +148,27 @@ BEGIN
     RAISE EXCEPTION 'migration 632 refuses a nirmana_evidence_ingress_writer role with inherited memberships';
   END IF;
   IF EXISTS (
+    SELECT 1 FROM pg_auth_members AS membership
+      JOIN pg_roles AS granted ON granted.oid = membership.roleid
+     WHERE granted.rolname = 'nirmana_evidence_ingress_writer'
+  ) THEN
+    RAISE EXCEPTION 'migration 632 refuses a nirmana_evidence_ingress_writer role that another principal can assume';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_database AS database
+      JOIN pg_roles AS owner ON owner.oid = database.datdba
+     WHERE owner.rolname = 'nirmana_evidence_ingress_writer'
+  ) THEN
+    RAISE EXCEPTION 'migration 632 refuses an ingress login that owns a database';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_namespace AS namespace
+      JOIN pg_roles AS owner ON owner.oid = namespace.nspowner
+     WHERE owner.rolname = 'nirmana_evidence_ingress_writer'
+  ) THEN
+    RAISE EXCEPTION 'migration 632 refuses an ingress login that owns a schema';
+  END IF;
+  IF EXISTS (
     SELECT 1
       FROM pg_class AS relation
       JOIN pg_roles AS owner ON owner.oid = relation.relowner
@@ -162,6 +204,32 @@ BEGIN
        AND grantee.rolname = 'nirmana_evidence_ingress_writer'
   ) THEN
     RAISE EXCEPTION 'migration 632 could not revoke stale ingress column privileges';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+     FROM pg_class AS relation
+      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname <> current_schema()
+       AND namespace.nspname !~ '^pg_'
+       AND namespace.nspname <> 'information_schema'
+       AND (
+         (
+           relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+           AND has_table_privilege(
+             'nirmana_evidence_ingress_writer', relation.oid,
+             'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'
+           )
+         )
+         OR (
+           relation.relkind = 'S'
+           AND has_sequence_privilege(
+             'nirmana_evidence_ingress_writer', relation.oid,
+             'USAGE, SELECT, UPDATE'
+           )
+         )
+       )
+  ) THEN
+    RAISE EXCEPTION 'migration 632 refuses effective ingress relation privileges outside the evidence schema';
   END IF;
 END;
 $$;

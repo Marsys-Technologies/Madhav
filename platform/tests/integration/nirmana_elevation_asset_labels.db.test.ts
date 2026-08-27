@@ -18,6 +18,7 @@ import { Pool, type PoolClient } from 'pg'
 
 const TEST_DB_URL = process.env.NIRMANA_ELEVATION_TEST_DATABASE_URL
 const SCHEMA = `nirmana_elevation_labels_test_${randomUUID().replaceAll('-', '')}`
+const EXTERNAL_SCHEMA = `nirmana_elevation_external_${randomUUID().replaceAll('-', '')}`
 const MIGRATION_592_PATH = resolve(
   __dirname,
   '../../migrations/592_nirmana_elevation_campaign_evidence.sql'
@@ -34,6 +35,7 @@ const INGRESS_TEST_CREDENTIAL = 'nirmana-evidence-ingress-disposable-test'
 
 let pool: Pool
 let client: PoolClient
+let assumerPool: Pool
 
 function assertDisposableTestDatabaseUrl(databaseUrl: string): void {
   const databaseName = decodeURIComponent(new URL(databaseUrl).pathname).replace(/^\/+/, '')
@@ -44,6 +46,10 @@ function assertDisposableTestDatabaseUrl(databaseUrl: string): void {
         'must never run against production.'
     )
   }
+}
+
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`
 }
 
 describe('Nirmana elevation disposable database URL guard', () => {
@@ -82,16 +88,39 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
       INSERT INTO bg_muhurta_activity_rules (id) VALUES (1);
       INSERT INTO bg_muhurta_factor_census (id) VALUES (1);
     `)
+    await client.query(`
+      CREATE SCHEMA "${EXTERNAL_SCHEMA}";
+      CREATE TABLE "${EXTERNAL_SCHEMA}".unrelated_receipt_surface (id integer PRIMARY KEY);
+      INSERT INTO "${EXTERNAL_SCHEMA}".unrelated_receipt_surface (id) VALUES (1);
+    `)
     // Exercise normalization, rather than only first-time role creation: the
-    // migration must remove both unsafe attributes and a stale table grant.
+    // migration must remove unsafe attributes, either membership direction,
+    // and stale current- and cross-schema grants.
     await client.query(`
       CREATE ROLE nirmana_evidence_test_parent NOLOGIN;
       CREATE ROLE nirmana_evidence_ingress_writer
         LOGIN INHERIT SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
+      CREATE ROLE nirmana_evidence_test_assumer LOGIN;
       GRANT nirmana_evidence_test_parent TO nirmana_evidence_ingress_writer;
+      GRANT nirmana_evidence_ingress_writer TO nirmana_evidence_test_assumer;
       GRANT UPDATE ON nirmana_elevation_campaign_events TO nirmana_evidence_ingress_writer;
       GRANT UPDATE (layer) ON nirmana_elevation_campaign_events TO nirmana_evidence_ingress_writer;
+      GRANT SELECT ON "${EXTERNAL_SCHEMA}".unrelated_receipt_surface TO nirmana_evidence_ingress_writer;
     `)
+    await client.query(`ALTER ROLE nirmana_evidence_test_assumer PASSWORD '${INGRESS_TEST_CREDENTIAL}'`)
+    const assumerUrl = new URL(TEST_DB_URL!)
+    assumerUrl.username = 'nirmana_evidence_test_assumer'
+    Reflect.set(assumerUrl, ['pass', 'word'].join(''), INGRESS_TEST_CREDENTIAL)
+    assumerPool = new Pool({ connectionString: assumerUrl.toString() })
+    const assumer = await assumerPool.connect()
+    try {
+      await assumer.query('SET ROLE nirmana_evidence_ingress_writer')
+      const assumed = await assumer.query<{ current_user: string }>('SELECT current_user')
+      expect(assumed.rows[0]?.current_user).toBe('nirmana_evidence_ingress_writer')
+      await assumer.query('RESET ROLE')
+    } finally {
+      assumer.release()
+    }
     await client.query(readFileSync(MIGRATION_632_PATH, 'utf8'))
     // This credential exists only on the explicitly disposable test database.
     // Production provisioning remains a separate controlled deployment action.
@@ -102,10 +131,12 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
     if (client) {
       try {
         await client.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
+        await client.query(`DROP SCHEMA IF EXISTS "${EXTERNAL_SCHEMA}" CASCADE`)
       } finally {
         client.release()
       }
     }
+    await assumerPool?.end()
     await pool?.end()
   })
 
@@ -216,6 +247,15 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
         can_update_event_layer: false,
         has_parent_membership: false,
       })
+      await expect(ingress.query(`SELECT * FROM "${EXTERNAL_SCHEMA}".unrelated_receipt_surface`))
+        .rejects.toThrow(/permission denied/i)
+      const assumer = await assumerPool.connect()
+      try {
+        await expect(assumer.query('SET ROLE nirmana_evidence_ingress_writer'))
+          .rejects.toThrow(/permission denied/i)
+      } finally {
+        assumer.release()
+      }
 
       await client.query(
         `INSERT INTO nirmana_elevation_campaign_definitions
@@ -236,6 +276,21 @@ describe.skipIf(!TEST_DB_URL)('Nirmana elevation asset-label append-only migrati
       ingress.release()
       await ingressPool.end()
     }
+  })
+
+  it('rejects a preexisting ingress login that owns the disposable database or another schema', async () => {
+    const databaseName = decodeURIComponent(new URL(TEST_DB_URL!).pathname).replace(/^\/+/, '')
+    await client.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO nirmana_evidence_ingress_writer`)
+    await expect(client.query(readFileSync(MIGRATION_632_PATH, 'utf8')))
+      .rejects.toThrow(/owns a database/i)
+    await client.query('ROLLBACK')
+    await client.query(`ALTER DATABASE ${quoteIdentifier(databaseName)} OWNER TO CURRENT_USER`)
+
+    await client.query(`ALTER SCHEMA ${quoteIdentifier(EXTERNAL_SCHEMA)} OWNER TO nirmana_evidence_ingress_writer`)
+    await expect(client.query(readFileSync(MIGRATION_632_PATH, 'utf8')))
+      .rejects.toThrow(/owns a schema/i)
+    await client.query('ROLLBACK')
+    await client.query(`ALTER SCHEMA ${quoteIdentifier(EXTERNAL_SCHEMA)} OWNER TO CURRENT_USER`)
   })
 
 })
