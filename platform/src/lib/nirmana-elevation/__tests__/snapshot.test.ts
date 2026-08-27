@@ -988,6 +988,15 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(mismatch.assets.find((asset) => asset.asset_id === 'bg_transit_engine')?.milestones[3]).toMatchObject({
       milestone_id: 'deployed_and_executed', state: 'pending', event_type: null,
     })
+    const integrityBeforeCoverage = projectNirmanaElevationSnapshot({
+      ...rawSources,
+      campaign_events: rawSources.campaign_events.map((event) => event.event_type !== 'producer_covered' ? event : {
+        ...event,
+        observed_at: new Date(Date.parse(event.observed_at) + 600_000).toISOString(),
+        recorded_at: new Date(Date.parse(event.recorded_at) + 600_000).toISOString(),
+      }),
+    }, { generatedAt: observedAt })
+    expect(integrityBeforeCoverage.assets.find((asset) => asset.asset_id === 'bg_transit_engine')?.lifecycle_state).not.toBe('frozen')
     expect(mismatch.assets.find((asset) => asset.asset_id === 'bg_transit_engine')?.milestones[4]).toMatchObject({
       milestone_id: 'verified', state: 'pending', event_type: null,
     })

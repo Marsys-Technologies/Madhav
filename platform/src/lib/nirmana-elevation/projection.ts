@@ -549,7 +549,10 @@ export function projectAssetMilestones(input: {
   const operational = ['build', 'probe', 'producer_covered'].includes(obligation)
     ? acceptedEvents.get('deployed_and_executed')
     : acceptedEvents.get('built_or_dispositioned')
-  if (integrity && after(integrity, operational)
+  const integrityIngress = obligation === 'producer_covered'
+    ? acceptedEvents.get('built_or_dispositioned')
+    : operational
+  if (integrity && after(integrity, integrityIngress)
     && integrity.source_kind === 'server_reconstructed'
     && integrity.source_ref === `nirmana-elevation:integrity:${input.asset.asset_id}`) acceptedEvents.set('verified', integrity)
   if (frozen && after(frozen, acceptedEvents.get('verified'))

@@ -123,7 +123,13 @@ function mockCurrentRebuildEvidence(proven: boolean) {
     proposal: { action: 'optimize' as const, summary: 'A governed change is required.', output_contract: 'digest_identical' as const },
   }
   const implementation = { ...binding, decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision), implementation_digest: 'c'.repeat(64) }
-  const payload = { ...implementation, build_run_id: '482012f1-710e-4a25-994a-93821f5871aa', output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64) }
+  const payload = {
+    ...implementation,
+    build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+    wave_index: 0,
+    authorization_sha256: '9'.repeat(64),
+    output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
+  }
   queryMock.mockImplementation((sql: string) => {
     const statement = String(sql)
     if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })

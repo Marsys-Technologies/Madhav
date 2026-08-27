@@ -1024,20 +1024,33 @@ export function canonicalNirmanaRebuildEvidenceDigest(payload: unknown): string 
   return createHash('sha256').update(stableJson(NirmanaRebuildEvidenceSchema.parse(payload))).digest('hex')
 }
 
+/** The runner persists this digest with its immutable, dispatch-time plan. */
+export function canonicalNirmanaRunPlanManifestDigest(planManifest: unknown): string {
+  if (planManifest === null || typeof planManifest !== 'object' || Array.isArray(planManifest)) {
+    throw new NirmanaElevationEvidenceValidationError('Build run plan_manifest must be a JSON object.')
+  }
+  // The dispatcher writes Python's json.dumps(..., ensure_ascii=True,
+  // sort_keys=True, separators=(',', ':')) digest.  Escape non-ASCII here so
+  // the verifier checks precisely those immutable bytes, not a JS variant.
+  const dispatcherCanonicalJson = stableJson(planManifest).replace(/[\u0080-\uFFFF]/g,
+    (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`)
+  return createHash('sha256').update(dispatcherCanonicalJson).digest('hex')
+}
+
 export function canonicalNirmanaProbeContractDigest(healthProbe: unknown): string {
   return createHash('sha256').update(stableJson({ health_probe: healthProbe })).digest('hex')
 }
 
-export function canonicalNirmanaProbeResponseDigest(healthProbe: unknown): string {
-  return createHash('sha256').update(stableJson({ health_probe: healthProbe, acceptance: 'server_reconstructed' })).digest('hex')
+export function canonicalNirmanaProbeResponseDigest(healthProbe: unknown, observation: unknown): string {
+  return createHash('sha256').update(stableJson({ health_probe: healthProbe, observation })).digest('hex')
 }
 
 export function canonicalNirmanaIntegrityContractDigest(registryContract: unknown): string {
   return createHash('sha256').update(stableJson(RegistryContractSchema.parse(registryContract))).digest('hex')
 }
 
-export function canonicalNirmanaIntegrityResultDigest(registryContract: unknown): string {
-  return createHash('sha256').update(stableJson({ registry_contract: RegistryContractSchema.parse(registryContract), acceptance: 'server_reconstructed' })).digest('hex')
+export function canonicalNirmanaIntegrityResultDigest(registryContract: unknown, observation: unknown): string {
+  return createHash('sha256').update(stableJson({ registry_contract: RegistryContractSchema.parse(registryContract), observation })).digest('hex')
 }
 
 const NirmanaAssetAnalysisReceiptSchema = z.object({
@@ -1279,7 +1292,7 @@ interface AcceptedDecisionReceipt {
   recorded_at: string
 }
 
-function occursAfter(input: RecordNirmanaElevationEvidenceInput, predecessor: { observed_at: string; recorded_at: string }): boolean {
+function occursAfter(input: { observed_at: string; recorded_at?: string }, predecessor: { observed_at: string; recorded_at: string }): boolean {
   return Date.parse(input.observed_at) > Date.parse(predecessor.observed_at)
     && Date.parse(input.observed_at) > Date.parse(predecessor.recorded_at)
 }
@@ -1365,6 +1378,80 @@ async function requireImplementationProvenance(
   }
 }
 
+function normalizeDetectorValue(value: unknown): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+  if (value instanceof Date) return value.toISOString()
+  if (Array.isArray(value)) return value.map(normalizeDetectorValue)
+  if (typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, normalizeDetectorValue(nested)]))
+  }
+  return String(value)
+}
+
+async function collectProbeObservation(healthProbe: Record<string, unknown> | null): Promise<{ observation: unknown; observed_at: string }> {
+  const endpoint = healthProbe?.endpoint
+  if (typeof endpoint !== 'string' || !/^https?:\/\//.test(endpoint)) {
+    throw new NirmanaElevationEvidenceValidationError('probe_accepted requires a live absolute HTTP(S) endpoint in the current registry contract.')
+  }
+  const response = await fetch(endpoint, { method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(10_000) })
+  const body = await response.text()
+  const boundedBody = body.slice(0, 65_536)
+  return {
+    observation: {
+      endpoint,
+      status: response.status,
+      ok: response.ok,
+      body_sha256: createHash('sha256').update(boundedBody).digest('hex'),
+      body_truncated: body.length > boundedBody.length,
+    },
+    observed_at: new Date().toISOString(),
+  }
+}
+
+async function collectIntegrityObservation(client: PoolClient, registryContract: z.infer<typeof RegistryContractSchema>): Promise<{ observation: unknown; observed_at: string }> {
+  const detectorSql = registryContract.integrity_check_sql ?? registryContract.count_sql
+  if (typeof detectorSql !== 'string' || !/^\s*select\b/i.test(detectorSql) || detectorSql.includes(';')) {
+    throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a read-only current registry integrity detector query.')
+  }
+  const result = await client.query(detectorSql)
+  return {
+    observation: { detector_sql_sha256: createHash('sha256').update(detectorSql).digest('hex'), rows: normalizeDetectorValue(result.rows) },
+    observed_at: new Date().toISOString(),
+  }
+}
+
+async function normalizeDetectorEvidence(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+): Promise<RecordNirmanaElevationEvidenceInput> {
+  if (input.event_type !== 'probe_accepted' && input.event_type !== 'integrity_verified') return input
+  const current = await loadCurrentLifecycleContext(client, input)
+  if (input.event_type === 'probe_accepted') {
+    const payload = NirmanaProbeEvidenceSchema.parse(input.evidence_payload)
+    const observation = await collectProbeObservation(current.registryContract.health_probe)
+    return {
+      ...input,
+      observed_at: observation.observed_at,
+      evidence_payload: {
+        ...payload,
+        response_digest: canonicalNirmanaProbeResponseDigest(current.registryContract.health_probe, observation.observation),
+      },
+    }
+  }
+  const payload = NirmanaIntegrityEvidenceSchema.parse(input.evidence_payload)
+  const observation = await collectIntegrityObservation(client, current.registryContract)
+  return {
+    ...input,
+    observed_at: observation.observed_at,
+    evidence_payload: {
+      ...payload,
+      result_digest: canonicalNirmanaIntegrityResultDigest(current.registryContract, observation.observation),
+    },
+  }
+}
+
 async function requireProbeProvenance(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -1380,9 +1467,6 @@ async function requireProbeProvenance(
   assertLifecycleBinding(payload.data, current, 'probe_accepted')
   if (payload.data.probe_contract_sha256 !== canonicalNirmanaProbeContractDigest(current.registryContract.health_probe)) {
     throw new NirmanaElevationEvidenceValidationError('probe_accepted does not bind the frozen registry health-probe contract.')
-  }
-  if (payload.data.response_digest !== canonicalNirmanaProbeResponseDigest(current.registryContract.health_probe)) {
-    throw new NirmanaElevationEvidenceValidationError('probe_accepted response digest must be server-reconstructed from the current health-probe contract.')
   }
 }
 
@@ -1434,6 +1518,7 @@ async function requireProducerCoverageProvenance(
   }
   assertLifecycleBinding(payload.data, current, 'producer_covered')
   const analysis = await loadCurrentAcceptedAnalysis(client, input, current)
+  const decision = await loadCurrentAcceptedDecision(client, input, current)
   const definition = await loadFrozenReceiptDefinition(client, input)
   const manifest = NirmanaElevationManifestSchema.parse(definition.manifest)
   const producer = manifest.assets.find((asset) => asset.asset_id === payload.data.producer_asset_id && asset.layer === payload.data.producer_layer)
@@ -1455,9 +1540,64 @@ async function requireProducerCoverageProvenance(
       && parsed.data.build_run_id.toLowerCase() === payload.data.producer_run_id.toLowerCase()
       && canonicalNirmanaRebuildEvidenceDigest(parsed.data) === payload.data.producer_rebuild_digest
   })
-  if (producerRebuilds.length !== 1 || !occursAfter(input, analysis) || !occursAfter(input, producerRebuilds[0])) {
+  if (producerRebuilds.length !== 1 || !occursAfter(input, analysis)
+    || !occursAfter(input, decision) || !occursAfter(input, producerRebuilds[0])) {
     throw new NirmanaElevationEvidenceValidationError('producer_covered requires one prior accepted producer rebuild after the covered asset analysis.')
   }
+}
+
+async function loadCurrentProducerCoverage(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+  current: CurrentLifecycleContext,
+): Promise<{ observed_at: string; recorded_at: string }> {
+  if (current.manifestAsset.execution_obligation !== 'producer_covered' || !current.manifestAsset.producer_id) {
+    throw new NirmanaElevationEvidenceValidationError('Producer-covered lifecycle ingress requires a frozen producer relation.')
+  }
+  const analysis = await loadCurrentAcceptedAnalysis(client, input, current)
+  const decision = await loadCurrentAcceptedDecision(client, input, current)
+  const definition = await loadFrozenReceiptDefinition(client, input)
+  const manifest = NirmanaElevationManifestSchema.parse(definition.manifest)
+  const producer = manifest.assets.find((asset) => asset.asset_id === current.manifestAsset.producer_id)
+  if (!producer || producer.execution_obligation !== 'build' || !producer.covered_asset_ids?.includes(input.entity_id)) {
+    throw new NirmanaElevationEvidenceValidationError('Producer-covered lifecycle ingress requires the reciprocal frozen producer relation.')
+  }
+  const coverageRows = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND definition_revision = $2
+        AND event_type = 'producer_covered'
+        AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
+    [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
+  )
+  const rebuildRows = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }>(
+    `SELECT evidence_payload, source_kind, source_ref, observed_at, recorded_at
+       FROM nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND definition_revision = $2
+        AND event_type = 'accepted_rebuild_observed'
+        AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
+    [input.campaign_id, input.definition_revision, producer.asset_id, producer.layer],
+  )
+  const valid = coverageRows.rows.filter((coverage) => {
+    const payload = NirmanaProducerCoverageEvidenceSchema.safeParse(coverage.evidence_payload)
+    if (!payload.success || coverage.source_kind !== 'build_run'
+      || coverage.source_ref.toLowerCase() !== `build_run:${payload.data.producer_run_id.toLowerCase()}`
+      || payload.data.producer_asset_id !== producer.asset_id || payload.data.producer_layer !== producer.layer
+      || payload.data.registry_fingerprint_sha256 !== current.registryFingerprint || payload.data.analysis_digest !== current.analysisDigest) return false
+    const rebuild = rebuildRows.rows.filter((candidate) => {
+      const parsed = NirmanaRebuildEvidenceSchema.safeParse(candidate.evidence_payload)
+      return parsed.success && candidate.source_kind === 'build_run'
+        && candidate.source_ref.toLowerCase() === coverage.source_ref.toLowerCase()
+        && parsed.data.build_run_id.toLowerCase() === payload.data.producer_run_id.toLowerCase()
+        && canonicalNirmanaRebuildEvidenceDigest(parsed.data) === payload.data.producer_rebuild_digest
+        && occursAfter(coverage, candidate)
+    })
+    return rebuild.length === 1 && occursAfter(coverage, analysis) && occursAfter(coverage, decision)
+  })
+  if (valid.length !== 1) {
+    throw new NirmanaElevationEvidenceValidationError('Producer-covered integrity/freeze requires exactly one current coverage receipt and producer rebuild.')
+  }
+  return valid[0]
 }
 
 async function requireIntegrityProvenance(
@@ -1473,10 +1613,10 @@ async function requireIntegrityProvenance(
   if (payload.data.integrity_contract_sha256 !== canonicalNirmanaIntegrityContractDigest(current.registryContract)) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified does not bind the frozen registry integrity contract.')
   }
-  if (payload.data.result_digest !== canonicalNirmanaIntegrityResultDigest(current.registryContract)) {
-    throw new NirmanaElevationEvidenceValidationError('integrity_verified result digest must be server-reconstructed from the current integrity contract.')
-  }
   const obligation = current.manifestAsset.execution_obligation
+  const producerCoverage = obligation === 'producer_covered'
+    ? await loadCurrentProducerCoverage(client, input, current)
+    : null
   const operationEvent = obligation === 'probe' ? 'probe_accepted'
     : obligation && obligation in dispositionEventByObligation ? dispositionEventByObligation[obligation as keyof typeof dispositionEventByObligation]
       : obligation === 'build' ? 'accepted_rebuild_observed' : null
@@ -1492,6 +1632,9 @@ async function requireIntegrityProvenance(
   if (prerequisite.rows[0]?.present !== true) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a prior accepted execution or disposition receipt.')
   }
+  if (producerCoverage && !occursAfter(input, producerCoverage)) {
+    throw new NirmanaElevationEvidenceValidationError('Producer-covered integrity_verified must follow the exact current coverage receipt.')
+  }
 }
 
 async function requireFreezeProvenance(
@@ -1504,6 +1647,9 @@ async function requireFreezeProvenance(
   }
   const current = await loadCurrentLifecycleContext(client, input)
   assertLifecycleBinding(payload.data, current, 'asset_frozen')
+  const producerCoverage = current.manifestAsset.execution_obligation === 'producer_covered'
+    ? await loadCurrentProducerCoverage(client, input, current)
+    : null
   const integrity = await client.query<{ evidence_payload: unknown; source_kind: string; source_ref: string }>(
     `SELECT evidence_payload, source_kind, source_ref FROM nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2 AND event_type = 'integrity_verified'
@@ -1520,6 +1666,9 @@ async function requireFreezeProvenance(
   })
   if (validIntegrity.length !== 1) {
     throw new NirmanaElevationEvidenceValidationError('asset_frozen requires exactly one current validated integrity receipt.')
+  }
+  if (producerCoverage && !occursAfter(input, producerCoverage)) {
+    throw new NirmanaElevationEvidenceValidationError('Producer-covered asset_frozen must follow the exact current coverage receipt.')
   }
   const lifecycle = await client.query<{ event_type: string; evidence_payload: unknown; source_kind: string; source_ref: string }>(
     `SELECT event_type, evidence_payload, source_kind, source_ref
@@ -1569,7 +1718,7 @@ async function requireAcceptedRebuildProvenance(
     || payload.data.decision_digest !== canonicalNirmanaOptimizationVerdictDigest(decision.payload)) {
     throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed must bind the exact current optimization decision.')
   }
-  let implementationObservedAt: string | null = null
+  let implementationRecordedAt: string | null = null
   if (changeIsRequired(decision.payload)) {
     if (payload.data.implementation_digest === null) {
       throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed requires the exact current implementation receipt for a change-required decision.')
@@ -1593,7 +1742,7 @@ async function requireAcceptedRebuildProvenance(
     if (matchingImplementation.length !== 1 || !occursAfter(input, matchingImplementation[0])) {
       throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed requires exactly one current implementation receipt bound to its decision.')
     }
-    implementationObservedAt = matchingImplementation[0].observed_at
+    implementationRecordedAt = matchingImplementation[0].recorded_at
   } else if (payload.data.implementation_digest !== null) {
     throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed must not claim an implementation for a no-change decision.')
   }
@@ -1616,9 +1765,8 @@ async function requireAcceptedRebuildProvenance(
   if (authorization.length !== 1) {
     throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed requires one exact deterministic build-run authorization for its asset and wave.')
   }
-  const verified = await client.query<{ proven: boolean }>(
-    `SELECT EXISTS (
-       SELECT 1
+  const verified = await client.query<{ plan_manifest: unknown; plan_manifest_digest: string | null }>(
+    `SELECT run.plan_manifest, run.plan_manifest_digest
          FROM build_runs run
          JOIN nirmana_elevation_campaign_definitions definition
            ON definition.campaign_id = $5
@@ -1635,9 +1783,20 @@ async function requireAcceptedRebuildProvenance(
           AND run.action = 'rebuild'
           AND run.triggered_by <> 'nirmana-f0-machinery-canary'
           AND run.chart_id = (definition.manifest ->> 'chart_id')::uuid
-          AND run.created_at >= $7::timestamptz
-          AND run.created_at >= $8::timestamptz
-          AND ($9::timestamptz IS NULL OR run.created_at >= $9::timestamptz)
+          AND run.started_at IS NOT NULL
+          AND run.started_at > $7::timestamptz
+          AND run.started_at > $8::timestamptz
+          AND ($9::timestamptz IS NULL OR run.started_at > $9::timestamptz)
+          AND run.plan_manifest #>> '{campaign_control,campaign_id}' = $5
+          AND run.plan_manifest #>> '{campaign_control,definition_revision}' = $6
+          AND run.plan_manifest #>> '{campaign_control,layer}' = $10
+          AND (run.plan_manifest #>> '{campaign_control,wave_index}')::int = $11
+          AND run.plan_manifest_digest ~ '^[a-f0-9]{64}$'
+          AND EXISTS (
+            SELECT 1
+              FROM jsonb_array_elements(run.plan_manifest -> 'assets') AS planned_asset(value)
+             WHERE planned_asset.value ->> 'asset_id' = $2
+          )
           AND asset.asset_id = $2
           AND asset.state = 'complete'
           AND receipt.receipt_state = 'proven'
@@ -1653,15 +1812,16 @@ async function requireAcceptedRebuildProvenance(
                AND manifest_asset.value ->> 'execution_obligation' = 'build'
           )
           AND ((registry.scope = 'global' AND receipt.chart_id IS NULL)
-            OR (registry.scope = 'per_chart' AND receipt.chart_id = run.chart_id))
-     ) AS proven`,
+            OR (registry.scope = 'per_chart' AND receipt.chart_id = run.chart_id))`,
     [
       sourceMatch[1], input.entity_id, payload.data.output_digest, payload.data.output_digest_spec_sha256,
-      input.campaign_id, input.definition_revision, authorization[0].observed_at, decision.observed_at,
-      implementationObservedAt, input.layer, payload.data.wave_index,
+      input.campaign_id, input.definition_revision, authorization[0].recorded_at, decision.recorded_at,
+      implementationRecordedAt, input.layer, payload.data.wave_index,
     ],
   )
-  if (verified.rows[0]?.proven !== true) {
+  const exactRun = verified.rows.filter((run) => run.plan_manifest_digest !== null
+    && canonicalNirmanaRunPlanManifestDigest(run.plan_manifest) === run.plan_manifest_digest)
+  if (exactRun.length !== 1) {
     throw new Error('accepted_rebuild_observed requires a completed exact run/asset with a matching proven content receipt.')
   }
 }
@@ -2065,6 +2225,30 @@ function isExactEvidenceReceipt(
     && receipt.recorded_by === input.recorded_by)
 }
 
+function isExactDetectorRetry(
+  receipt: RecordNirmanaElevationEvidenceInput | undefined,
+  input: RecordNirmanaElevationEvidenceInput,
+): boolean {
+  if (!receipt || !['probe_accepted', 'integrity_verified'].includes(input.event_type)
+    || receipt.event_type !== input.event_type || receipt.entity_type !== input.entity_type
+    || receipt.entity_id !== input.entity_id || receipt.layer !== input.layer
+    || receipt.source_kind !== input.source_kind || receipt.source_ref !== input.source_ref) return false
+  if (input.event_type === 'probe_accepted') {
+    const existing = NirmanaProbeEvidenceSchema.safeParse(receipt.evidence_payload)
+    const requested = NirmanaProbeEvidenceSchema.safeParse(input.evidence_payload)
+    return existing.success && requested.success
+      && existing.data.registry_fingerprint_sha256 === requested.data.registry_fingerprint_sha256
+      && existing.data.analysis_digest === requested.data.analysis_digest
+      && existing.data.probe_contract_sha256 === requested.data.probe_contract_sha256
+  }
+  const existing = NirmanaIntegrityEvidenceSchema.safeParse(receipt.evidence_payload)
+  const requested = NirmanaIntegrityEvidenceSchema.safeParse(input.evidence_payload)
+  return existing.success && requested.success
+    && existing.data.registry_fingerprint_sha256 === requested.data.registry_fingerprint_sha256
+    && existing.data.analysis_digest === requested.data.analysis_digest
+    && existing.data.integrity_contract_sha256 === requested.data.integrity_contract_sha256
+}
+
 async function requireCurrentFrozenDefinition(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -2098,57 +2282,58 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
 
     const existing = await findExistingEvidenceReceipt(client, input)
     if (existing) {
-      if (!isExactEvidenceReceipt(existing, input)) throw new NirmanaElevationEvidenceConflictError()
+      if (!isExactEvidenceReceipt(existing, input) && !isExactDetectorRetry(existing, input)) throw new NirmanaElevationEvidenceConflictError()
       await client.query('COMMIT')
       return 'idempotent'
     }
 
     await requireCurrentFrozenDefinition(client, input)
-    const semanticExisting = await findExistingLifecycleReceipt(client, input)
+    const normalizedInput = await normalizeDetectorEvidence(client, input)
+    const semanticExisting = await findExistingLifecycleReceipt(client, normalizedInput)
     if (semanticExisting) {
       throw new NirmanaElevationEvidenceConflictError('A conflicting lifecycle receipt already exists for this registry/analysis generation; retry it with its original idempotency key.')
     }
-    if (input.event_type === 'foundation_lane_accepted') {
-      await requireFoundationLaneProvenance(client, input)
+    if (normalizedInput.event_type === 'foundation_lane_accepted') {
+      await requireFoundationLaneProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'stage_transition_accepted') {
-      await requireStageTransitionProvenance(client, input)
+    if (normalizedInput.event_type === 'stage_transition_accepted') {
+      await requireStageTransitionProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'accepted_rebuild_observed') {
-      await requireAcceptedRebuildProvenance(client, input)
+    if (normalizedInput.event_type === 'accepted_rebuild_observed') {
+      await requireAcceptedRebuildProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'build_run_authorized') {
-      await requireBuildRunAuthorizationProvenance(client, input)
+    if (normalizedInput.event_type === 'build_run_authorized') {
+      await requireBuildRunAuthorizationProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'asset_analysis_accepted' || input.event_type === 'optimization_verdict_accepted') {
-      if (input.source_kind !== 'git_commit') {
-        throw new NirmanaElevationEvidenceValidationError(`${input.event_type} requires source_kind=git_commit.`)
+    if (normalizedInput.event_type === 'asset_analysis_accepted' || normalizedInput.event_type === 'optimization_verdict_accepted') {
+      if (normalizedInput.source_kind !== 'git_commit') {
+        throw new NirmanaElevationEvidenceValidationError(`${normalizedInput.event_type} requires source_kind=git_commit.`)
       }
-      assertNirmanaGitCommitMatchesDeployment(input.source_ref)
+      assertNirmanaGitCommitMatchesDeployment(normalizedInput.source_ref)
     }
-    if (input.event_type === 'asset_analysis_accepted') {
-      await requireAcceptedAssetAnalysisProvenance(client, input)
+    if (normalizedInput.event_type === 'asset_analysis_accepted') {
+      await requireAcceptedAssetAnalysisProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'optimization_verdict_accepted') {
-      await requireAcceptedOptimizationVerdictProvenance(client, input)
+    if (normalizedInput.event_type === 'optimization_verdict_accepted') {
+      await requireAcceptedOptimizationVerdictProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'implementation_accepted') {
-      await requireImplementationProvenance(client, input)
+    if (normalizedInput.event_type === 'implementation_accepted') {
+      await requireImplementationProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'probe_accepted') {
-      await requireProbeProvenance(client, input)
+    if (normalizedInput.event_type === 'probe_accepted') {
+      await requireProbeProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'producer_covered') {
-      await requireProducerCoverageProvenance(client, input)
+    if (normalizedInput.event_type === 'producer_covered') {
+      await requireProducerCoverageProvenance(client, normalizedInput)
     }
-    if (['static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(input.event_type)) {
-      await requireNonBuildDispositionProvenance(client, input)
+    if (['static_accepted', 'source_accepted', 'empty_accepted', 'retired_with_disposition'].includes(normalizedInput.event_type)) {
+      await requireNonBuildDispositionProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'integrity_verified') {
-      await requireIntegrityProvenance(client, input)
+    if (normalizedInput.event_type === 'integrity_verified') {
+      await requireIntegrityProvenance(client, normalizedInput)
     }
-    if (input.event_type === 'asset_frozen') {
-      await requireFreezeProvenance(client, input)
+    if (normalizedInput.event_type === 'asset_frozen') {
+      await requireFreezeProvenance(client, normalizedInput)
     }
     const inserted = await client.query(
       `INSERT INTO nirmana_elevation_campaign_events
@@ -2158,10 +2343,10 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
        ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING
        RETURNING event_id`,
       [
-        input.campaign_id, input.definition_revision, input.idempotency_key,
-        input.event_type, input.entity_type, input.entity_id, input.layer,
-        JSON.stringify(input.evidence_payload), input.source_kind, input.source_ref,
-        input.observed_at, input.recorded_by,
+        normalizedInput.campaign_id, normalizedInput.definition_revision, normalizedInput.idempotency_key,
+        normalizedInput.event_type, normalizedInput.entity_type, normalizedInput.entity_id, normalizedInput.layer,
+        JSON.stringify(normalizedInput.evidence_payload), normalizedInput.source_kind, normalizedInput.source_ref,
+        normalizedInput.observed_at, normalizedInput.recorded_by,
       ],
     )
     if (inserted.rowCount === 1) {
@@ -2169,7 +2354,7 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
       return 'created'
     }
     const receipt = await findExistingEvidenceReceipt(client, input)
-    if (!isExactEvidenceReceipt(receipt, input)) throw new NirmanaElevationEvidenceConflictError()
+    if (!isExactEvidenceReceipt(receipt, normalizedInput) && !isExactDetectorRetry(receipt, normalizedInput)) throw new NirmanaElevationEvidenceConflictError()
     await client.query('COMMIT')
     return 'idempotent'
   } catch (error) {

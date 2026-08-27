@@ -33,8 +33,11 @@ import {
   assertNirmanaGitCommitMatchesDeployment,
   canonicalManifestDigest,
   canonicalNirmanaOptimizationVerdictDigest,
+  canonicalNirmanaRunPlanManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
   canonicalNirmanaProbeContractDigest,
+  canonicalNirmanaProbeResponseDigest,
+  canonicalNirmanaIntegrityResultDigest,
   canonicalRegistryContractDigest,
   createNirmanaElevationDefinition,
   freezeNirmanaElevationDefinition,
@@ -164,13 +167,21 @@ function currentRebuildReceipt() {
     decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
     implementation_digest: 'c'.repeat(64),
   }
+  const plan_manifest = {
+    version: 'nirmana-run-manifest/v1', chart_id: manifest.chart_id, scope: 'asset_set', scope_target: 'bg_prashna_rules', action: 'rebuild',
+    waves: [['bg_prashna_rules']], assets: [{ asset_id: 'bg_prashna_rules' }],
+    campaign_control: { campaign_id: 'nirmana-elevation', definition_revision: 'v1', layer: 'L0', wave_index: 0, snapshot_ref: 'test:snapshot' },
+  }
   return {
     currentRegistryRow,
     decision,
     implementation,
+    plan_manifest,
     payload: {
       ...binding,
       build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      wave_index: 0,
+      authorization_sha256: '9'.repeat(64),
       decision_digest: implementation.decision_digest,
       implementation_digest: implementation.implementation_digest,
       output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
@@ -184,9 +195,10 @@ function mockCurrentRebuildEvidence(proven: boolean) {
     const statement = String(sql)
     if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [receipt.currentRegistryRow] })
     if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
-    if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}` }] })
-    if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}` }] })
-    if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: [{ proven }] })
+    if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:56:00.000Z', recorded_at: '2026-08-25T08:56:00.000Z' }] })
+    if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:57:00.000Z', recorded_at: '2026-08-25T08:57:00.000Z' }] })
+    if (statement.includes("event_type = 'build_run_authorized'")) return Promise.resolve({ rows: [{ evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: '9'.repeat(64) }, source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T08:55:00.000Z', recorded_at: '2026-08-25T08:55:00.000Z' }] })
+    if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: proven ? [{ plan_manifest: receipt.plan_manifest, plan_manifest_digest: canonicalNirmanaRunPlanManifestDigest(receipt.plan_manifest) }] : [] })
     if (statement.includes('INSERT INTO nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
     return Promise.resolve({ rows: [] })
   })
@@ -206,6 +218,27 @@ describe('Nirmana elevation definition repository', () => {
 
   it('derives one canonical SHA-256 digest for the validated manifest', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('binds a build-run plan digest to the immutable canonical plan bytes', () => {
+    const plan = {
+      version: 'nirmana-run-manifest/v1',
+      campaign_control: { campaign_id: 'nirmana-elevation', definition_revision: 'v1', layer: 'L0', wave_index: 0 },
+      assets: [{ asset_id: 'bg_prashna_rules' }],
+    }
+    expect(canonicalNirmanaRunPlanManifestDigest(plan)).toMatch(/^[a-f0-9]{64}$/)
+    expect(canonicalNirmanaRunPlanManifestDigest({ ...plan, campaign_control: { ...plan.campaign_control, definition_revision: 'foreign' } }))
+      .not.toBe(canonicalNirmanaRunPlanManifestDigest(plan))
+    expect(canonicalNirmanaRunPlanManifestDigest({ ...plan, campaign_control: { ...plan.campaign_control, snapshot_ref: 'निर्‍മाण' } }))
+      .not.toBe(canonicalNirmanaRunPlanManifestDigest(plan))
+  })
+
+  it('does not let a detector contract label stand in for observed probe or integrity output', () => {
+    const probe = { endpoint: 'https://detector.example.test/health' }
+    expect(canonicalNirmanaProbeResponseDigest(probe, { status: 200, body_sha256: 'a'.repeat(64) }))
+      .not.toBe(canonicalNirmanaProbeResponseDigest(probe, { status: 503, body_sha256: 'a'.repeat(64) }))
+    expect(canonicalNirmanaIntegrityResultDigest(registry_contract, { rows: [{ count: 1 }] }))
+      .not.toBe(canonicalNirmanaIntegrityResultDigest(registry_contract, { rows: [{ count: 0 }] }))
   })
 
   it('accepts only the exact live baseline candidate and its label catalogue in one serializable transaction', async () => {
@@ -1212,6 +1245,8 @@ describe('Nirmana elevation definition repository', () => {
     const rebuildQuery = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM build_runs run'))
     expect(rebuildQuery?.[0]).toContain("receipt.output_digest_spec_sha256 = $4")
     expect(rebuildQuery?.[0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
+    expect(rebuildQuery?.[0]).toContain("run.plan_manifest #>> '{campaign_control,campaign_id}' = $5")
+    expect(rebuildQuery?.[0]).toContain('run.started_at > $7::timestamptz')
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_elevation_campaign_events'))).toBe(true)
   })
 
