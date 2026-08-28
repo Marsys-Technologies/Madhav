@@ -77,6 +77,12 @@
  *     — confirmed against live `chart_facts` rows (e.g. `78720121094c0de8`).
  *     `chart_facts_query`'s own doc comment: "emits_references: every
  *     pivoted field carries its source fact_id for Bodha back-reference."
+ *     NOT universal — see the F2 correction below: `chart_facts.fact_id` is
+ *     the common lowercase-hex shape but 2,835 live rows (7
+ *     `graha_avastha_*` categories) carry a UUID-shaped `fact_id` instead,
+ *     so this family alone under-covers `chart_facts`; the UUID candidate
+ *     set is now ALSO queried against `chart_facts` (see
+ *     `fetchCandidateSignalLabels` below).
  *
  * NOT widened (investigated, not confidently verified as safely resolvable
  * in this pass — see citation_resolver's PR description for the honest
@@ -86,6 +92,73 @@
  * formats are heterogeneous (slug-like vs UUID) and global (not chart-
  * scoped), which changes the fail-closed shape of the query in a way this
  * pass did not have budget to verify safely against a real corpus row.
+ *
+ * ── F1/F2 follow-up (S4 verifier rejection, V3-E-032 REJECT→FIX) ─────────
+ * An independent verifier confirmed the grounding logic above is sound
+ * (chart-scoped, fault-isolated, fail-closed) but found two real defects in
+ * the V3-E-032 widening itself:
+ *
+ *   F1 (BLOCKING — reader-visible internal-register leak). `reader_label`
+ *   (`citations/types.ts`) is documented as "the ONLY citation string ever
+ *   shown to the reader" and `protocol_adapter.ts` places it on the wire
+ *   VERBATIM (no `lintReaderProse` pass — only `audit_detail` was linted,
+ *   and that value is never forwarded to the wire at all, a defensive dead
+ *   end). The pre-F1 `bodha_msr_signals` source is genuinely reader-safe —
+ *   `signal_headline_text`/`signal_summary_text` are migration-325
+ *   hand-authored "short deterministic sentence for display" columns. The
+ *   two sources this S4 widening ADDED are not: live-sampled across ~100 of
+ *   the ~230 `chart_facts.fact_category` values on the S4 bench chart,
+ *   `citation_human` is INCONSISTENT, not uniformly one shape — genuinely
+ *   human-phrased sentences ("Sun is in Aquarius (Raman).") sit alongside
+ *   unmodified `fact_category.fact_subject.fact_key = value (ayanamsha)`
+ *   internal-audit strings (`"upagraha_position.DHUMA.sign_lord = Moon
+ *   (true_chitra)."`, and the same shape recurs across `aprakasha_position`,
+ *   `arudha_pada`, `bhava_arudha`, `bhrigu_nadi_point`, most
+ *   `esoteric_point_*` categories), bracket-tagged category-name leaks
+ *   (`"SAT sub_lord: Ketu [graha_kp_lords]"`), and at least one raw
+ *   Python-module-path leak (`ayurdaya`: "PyJHora jhora.horoscope.dhasa
+ *   .graha.aayu"). `chart_divisionals.citation_human` is MOSTLY hand-phrased
+ *   prose but not reliably so either (e.g. `"varga_position
+ *   .house_from_varga_lagna: 8.0 (true_chitra)."` leaks the same raw-field
+ *   shape in a minority of varga-writer categories). Neither source is safe
+ *   to place in `reader_label` unvetted, and the register-leak lint's
+ *   `HARD_PATTERNS` (`register_leak_lint.ts`) would not reliably catch
+ *   either leak shape — its `fact_id_namespace` pattern requires an
+ *   UPPERCASE dotted head (`PLN.SUN`-style), so these lowercase-headed
+ *   strings (`upagraha_position.…`, `varga_position.…`) slip through even
+ *   where the lint IS applied, and it has no pattern at all for a
+ *   bracket-tagged category name or a bare Python module path. Auditing
+ *   every `chart_facts`/`chart_divisionals` category by hand for
+ *   reader-safety was out of scope for this pass, so the MOST CONSERVATIVE
+ *   correct fix was taken (option (c) of the three the verifier offered):
+ *   `chart_facts` and `chart_divisionals`
+ *   citations no longer surface their raw `citation_human` as `reader_label`
+ *   at all. They resolve to a fixed, genuinely reader-safe generic label
+ *   (`'[chart fact]'` / `'[divisional placement]'`) — still `grade: primary`
+ *   (the GROUNDING correctness this whole widening exists for is unaffected;
+ *   a cited id that is real evidence for this turn still grades primary,
+ *   not `unverified`) and still fully resolvable/auditable via
+ *   `audit_detail` (source table + column + ref — which never carried
+ *   `citation_human` to begin with). Improving these two sources' reader
+ *   label QUALITY (real per-category human phrasing, or tightening the lint
+ *   to catch lowercase-headed leaks) is filed as follow-up work, not blocked
+ *   on here — landing the grounding fix without the leak risk was the goal.
+ *
+ *   F2 (should-fix — undocumented residual gap). This doc's own "16-
+ *   lowercase-hex-char" claim for `chart_facts.fact_id` was FALSE — 2,835
+ *   live rows (7 `graha_avastha_*` categories: `graha_avastha_baladi_per_varga`,
+ *   `graha_avastha_deeptaadi_per_varga`, `graha_avastha_jagradadi_per_varga`,
+ *   `graha_avastha_lajjitadi`, `graha_avastha_lajjitadi_per_varga`,
+ *   `graha_avastha_sayanadi`, `graha_avastha_sayanadi_per_varga`) carry a
+ *   UUID-shaped `fact_id` instead. Those ids WERE extracted into the UUID
+ *   candidate set (the extraction regex never restricted by source table)
+ *   but were never queried against `chart_facts` (only against
+ *   `bodha_msr_signals`/`chart_divisionals`/`chart_dashas`), so a genuinely-
+ *   retrieved avastha `fact_id` always resolved `unverified` — fail-closed
+ *   (not unsafe), but an undocumented residual gap in the exact defect class
+ *   this widening exists to close. Fixed: the UUID candidate set is now
+ *   ALSO queried against `chart_facts` (merged into the same lookup as the
+ *   hex-16 set, one query, `fact_id = ANY(...)` over the union).
  */
 
 import { query } from '@/lib/db/client'
@@ -95,8 +168,29 @@ import type { ToolBundle } from '@/lib/retrieval/shared_types'
 const SIGNAL_ID_RE = /SIG\.MSR\.\d{3}/g
 /** Standard UUID v4-shaped token (any of the 3 UUID-keyed row families below). */
 const UUID_RE = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g
-/** `chart_facts.fact_id` shape: sha256(...)[0:16], always lowercase hex. */
+/**
+ * `chart_facts.fact_id` shape: sha256(...)[0:16] lowercase hex — the COMMON
+ * shape, not the universal one (F2 correction): 2,835 live rows across 7
+ * `graha_avastha_*` categories carry a UUID-shaped `fact_id` instead (see
+ * the F2 module-doc section above). Those are extracted via `UUID_RE` above
+ * and queried against `chart_facts` alongside this hex-16 set — see
+ * `fetchCandidateSignalLabels`.
+ */
 const FACT_ID_HEX_RE = /\b[0-9a-f]{16}\b/g
+
+/**
+ * Fixed, reader-safe placeholder labels for the two F1-affected sources
+ * (`chart_facts`, `chart_divisionals`) — see the F1 module-doc section
+ * above for why their raw `citation_human` value is not safe to place in
+ * `reader_label`. Deliberately generic (no internal identifiers, no register
+ * acronyms, no table/category names) so they can never re-leak regardless
+ * of what the underlying writer's `citation_human` string looks like this
+ * turn. `grade` stays `'primary'` — the citation IS genuinely grounded in
+ * this turn's retrieved L1 evidence; only the reader-facing LABEL is
+ * downgraded to generic pending a real per-category audit (follow-up).
+ */
+const CHART_FACTS_SAFE_LABEL = '[chart fact]'
+const CHART_DIVISIONALS_SAFE_LABEL = '[divisional placement]'
 
 const SNIPPET_MAX = 295
 
@@ -202,22 +296,44 @@ export async function fetchCandidateSignalLabels(
     )
   }
 
-  if (candidates.factIdRefs.length > 0) {
+  // F2: `chart_facts.fact_id` is usually the 16-hex-char sha256 shape, but
+  // 2,835 live rows (7 `graha_avastha_*` categories) carry a UUID instead —
+  // see the F2 module-doc section. Merge both candidate shapes into ONE
+  // lookup against `chart_facts` (a dedup'd union) so a genuinely-retrieved
+  // avastha UUID resolves here too, not just the hex-16 family.
+  const chartFactsCandidates = [...new Set([...candidates.factIdRefs, ...candidates.uuidRefs])]
+
+  if (chartFactsCandidates.length > 0) {
     lookups.push(
-      query<{ fact_id: string; citation_human: string | null }>(
-        `SELECT fact_id, citation_human
+      query<{ fact_id: string }>(
+        `SELECT fact_id
          FROM chart_facts
          WHERE chart_id = $1 AND fact_id = ANY($2::text[])`,
-        [chartId, candidates.factIdRefs],
+        [chartId, chartFactsCandidates],
       )
         .then(({ rows }) => {
           for (const r of rows) {
-            labels.set(r.fact_id, {
-              reader_label: buildSnippet(r.citation_human, null, r.fact_id),
-              grade: 'primary' as CitationGrade,
-              source_table: 'chart_facts',
-              source_column: 'fact_id',
-            })
+            // F1: do NOT surface chart_facts.citation_human as reader_label
+            // — see the F1 module-doc section (it's an internal writer
+            // string in an unpredictable fraction of ~230 categories, not
+            // reliably reader-safe). A fixed, genuinely leak-free generic
+            // label is used instead; grading (grade: primary) and audit
+            // traceability (audit_detail, below) are unaffected.
+            //
+            // Guard against clobbering a higher-precedence bodha_msr_signals
+            // hit (checked first, above) — now that this lookup ALSO keys by
+            // UUID, a cross-table PK collision is structurally possible in
+            // principle (still a practical impossibility), so this keeps
+            // resolution order deterministic, same discipline as the
+            // chart_divisionals/chart_dashas guards below.
+            if (!labels.has(r.fact_id)) {
+              labels.set(r.fact_id, {
+                reader_label: CHART_FACTS_SAFE_LABEL,
+                grade: 'primary' as CitationGrade,
+                source_table: 'chart_facts',
+                source_column: 'fact_id',
+              })
+            }
           }
         })
         .catch((err) => {
@@ -229,8 +345,8 @@ export async function fetchCandidateSignalLabels(
 
   if (candidates.uuidRefs.length > 0) {
     lookups.push(
-      query<{ row_id: string; citation_human: string | null }>(
-        `SELECT id::text AS row_id, citation_human
+      query<{ row_id: string }>(
+        `SELECT id::text AS row_id
          FROM chart_divisionals
          WHERE chart_id = $1 AND id::text = ANY($2::text[])`,
         [chartId, candidates.uuidRefs],
@@ -241,9 +357,15 @@ export async function fetchCandidateSignalLabels(
             // (signal_id is checked first, above) — a UUID collision across
             // tables is a PK-generation impossibility in practice, but this
             // keeps resolution order deterministic if it ever happened.
+            //
+            // F1: do NOT surface chart_divisionals.citation_human as
+            // reader_label — see the F1 module-doc section (mostly
+            // hand-phrased prose, but not reliably so across every
+            // varga-writer category). Fixed, generic, leak-free label used
+            // instead; audit_detail (below) never carried citation_human.
             if (!labels.has(r.row_id)) {
               labels.set(r.row_id, {
-                reader_label: buildSnippet(r.citation_human, null, r.row_id),
+                reader_label: CHART_DIVISIONALS_SAFE_LABEL,
                 grade: 'primary' as CitationGrade,
                 source_table: 'chart_divisionals',
                 source_column: 'id',

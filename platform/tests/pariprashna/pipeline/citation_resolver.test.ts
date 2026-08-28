@@ -147,6 +147,11 @@ describe('fetchCandidateSignalLabels', () => {
 
   it('RED→GREEN: a genuinely-retrieved chart_facts.fact_id (non-MSR shape) now resolves to a real label', async () => {
     bySql({
+      // F1: the mocked row's citation_human deliberately mirrors the real,
+      // internal-audit-string shape verified live in production
+      // ("upagraha_position.DHUMA.sign_lord = Moon (true_chitra)." etc.) —
+      // proving the resolver does NOT place it on reader_label even when the
+      // DB hands it exactly that shape.
       chart_facts: () => ({
         rows: [{ fact_id: '78720121094c0de8', citation_human: 'upagraha_position.DHUMA.sign = Cancer (true_chitra).' }],
       }),
@@ -163,7 +168,76 @@ describe('fetchCandidateSignalLabels', () => {
     const resolved = buildTurnCitationResolver(labels).resolve('78720121094c0de8')
     expect(resolved).not.toBeNull()
     expect(resolved?.grade).toBe('primary')
-    expect(resolved?.reader_label).toBe('upagraha_position.DHUMA.sign = Cancer (true_chitra).')
+    // F1 (verifier BLOCKING finding): chart_facts.citation_human is an
+    // internal writer string in production ("upagraha_position.DHUMA
+    // .sign_lord = Moon (true_chitra)."-shaped) that must NEVER reach
+    // reader_label — the ONLY citation string ever shown to the reader
+    // (citations/types.ts). It resolves to a fixed, reader-safe generic
+    // label instead, regardless of what citation_human contained.
+    expect(resolved?.reader_label).toBe('[chart fact]')
+    expect(resolved?.reader_label).not.toContain('upagraha_position')
+    expect(resolved?.reader_label).not.toContain('.')
+  })
+
+  it('F2: a genuinely-retrieved UUID-shaped chart_facts.fact_id (the graha_avastha_* residual gap) now resolves via chart_facts', async () => {
+    // Live finding (F2): 2,835 chart_facts rows across 7 graha_avastha_*
+    // categories carry a UUID-shaped fact_id, not the hex-16 shape the
+    // module doc previously (falsely) claimed was universal. Pre-fix, a
+    // UUID candidate was extracted but never queried against chart_facts at
+    // all (only bodha_msr_signals/chart_divisionals/chart_dashas), so this
+    // exact input resolved unverified even though it was genuinely
+    // retrieved this turn.
+    const avasthaFactId = '0dd0c2a5-83de-4ed7-a4cf-a55a5d357436'
+    bySql({
+      chart_facts: (params) => {
+        const requested = params[1] as string[]
+        return {
+          rows: requested.includes(avasthaFactId)
+            ? [{ fact_id: avasthaFactId, citation_human: 'Ketu deeptaadi avastha in D150: dina' }]
+            : [],
+        }
+      },
+    })
+    const { labels, faulted } = await fetchCandidateSignalLabels(CHART_ID, {
+      legacyMsrRefs: [],
+      uuidRefs: [avasthaFactId],
+      factIdRefs: [],
+    })
+    expect(faulted).toBe(false)
+    // chart_facts was actually queried with the UUID candidate set, not
+    // skipped (the pre-fix gap: this branch only fired for factIdRefs).
+    const chartFactsCall = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM chart_facts'))
+    expect(chartFactsCall?.[1]).toEqual([CHART_ID, [avasthaFactId]])
+    const resolved = buildTurnCitationResolver(labels).resolve(avasthaFactId)
+    expect(resolved).not.toBeNull()
+    expect(resolved?.grade).toBe('primary')
+    expect(resolved?.audit_detail).toContain('chart_facts')
+    expect(resolved?.audit_detail).toContain(avasthaFactId)
+    // Same F1 discipline applies regardless of which id shape matched.
+    expect(resolved?.reader_label).toBe('[chart fact]')
+  })
+
+  it('F1: chart_divisionals.citation_human never reaches reader_label either (mostly-safe prose is not reliably safe)', async () => {
+    const divId = '79725c1c-4386-4ebc-8df3-15419fb436f9'
+    bySql({
+      // Mirrors a real leaking chart_divisionals row shape (a raw internal
+      // field name inside otherwise-prose citation_human), verified live.
+      chart_divisionals: () => ({
+        rows: [{ row_id: divId, citation_human: 'varga_position.house_from_varga_lagna: 8.0 (true_chitra).' }],
+      }),
+    })
+    const { labels, faulted } = await fetchCandidateSignalLabels(CHART_ID, {
+      legacyMsrRefs: [],
+      uuidRefs: [divId],
+      factIdRefs: [],
+    })
+    expect(faulted).toBe(false)
+    const resolved = buildTurnCitationResolver(labels).resolve(divId)
+    expect(resolved).not.toBeNull()
+    expect(resolved?.grade).toBe('primary')
+    expect(resolved?.audit_detail).toContain('chart_divisionals')
+    expect(resolved?.reader_label).toBe('[divisional placement]')
+    expect(resolved?.reader_label).not.toContain('varga_position')
   })
 
   it('RED→GREEN: a genuinely-retrieved UUID signal_id (the live-schema shape) now resolves, where SIG.MSR.NNN never would', async () => {
