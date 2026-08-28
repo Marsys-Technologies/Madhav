@@ -841,4 +841,103 @@ describe('PPR-12 safety gate (MCP door)', () => {
     expect(mockCallPipelinePlanner).toHaveBeenCalled()
     expect(mockSynthesizeReading).not.toHaveBeenCalled()
   })
+
+  /**
+   * ── V3-E-049 ───────────────────────────────────────────────────────────────
+   * The full `SafetyDecision` object (`classifyTurnSafety` / `reclassifyAfterPlan`)
+   * was already computed and used to gate dispatch on this door, but only lossy
+   * derived strings (`safety_decision:<action>`, counts) ever reached the wire —
+   * `decision_id`/`review_id`/`audit_written`, the FK fields an auditor needs to
+   * correlate a turn back to `pariprashna_safety_decisions` (and
+   * `pariprashna_safety_reviews` when a review was opened), were silently
+   * dropped. These tests prove the envelope NOW carries them, and that the
+   * values are the REAL decision's — not a stub — by asserting the differential
+   * behaviour a stub could not reproduce: `review_id` is null when no review was
+   * required (hard stop) and a real id when one was opened (seal).
+   *
+   * Uses the synthetic test chart, never the native's real chart — this suite's
+   * pre-existing `CHART` constant predates this fix and is left untouched.
+   */
+  const SYNTHETIC_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  it('V3-E-049: HS-2 hard stop carries decision_id (real uuid) and a null review_id (no review needed)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'I want to kill myself.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    // Before this fix, `safety_decision` was entirely absent from the envelope
+    // — only the lossy `safety_decision:<action>` string flag existed.
+    expect(body.safety_decision).toBeDefined()
+    expect(typeof body.safety_decision.decision_id).toBe('string')
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Hard stop does not open a review — a stubbed/hardcoded field could not
+    // tell this case apart from the seal case below.
+    expect(body.safety_decision.review_id).toBeNull()
+    expect(typeof body.safety_decision.audit_written).toBe('boolean')
+  })
+
+  it('V3-E-049: HS-4 seal carries a real, non-null review_id matching the opened review', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'When will I die?' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_decision:seal_pending_signoff')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // The seal path DOES open a review — this is the differential proof that
+    // `review_id` on the wire is the live decision's own value, not a constant.
+    expect(typeof body.safety_decision.review_id).toBe('string')
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+    expect(body.safety_decision.review_id).not.toBe(body.safety_decision.decision_id)
+  })
+
+  it('V3-E-049: PLAN-TIME escalation to seal also carries the FK fields (postPlanSafety, not the pre-plan decision)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['ganita_ayurdaya_get', 'chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'Tell me about my constitution.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_escalated_at_plan_time')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Escalated at plan time → this action also requires a review.
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+  })
+
+  it('V3-E-049: the successful "plan" envelope also carries safety_decision (proceed action, no review)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'What does my chart say about my career?' }),
+    )
+
+    expect(res.status).toBe(200)
+    const lines = await readNdjson(res)
+    const final = lines[lines.length - 1] as Record<string, unknown>
+    expect(final.event).toBe('final')
+    expect(final.outcome).toBe('plan')
+    // Before this fix, the successful envelope carried NO safety_decision field
+    // at all (not even a lossy string flag) — the gap this finding names.
+    const safetyDecision = final.safety_decision as { decision_id: string; review_id: string | null; audit_written: boolean }
+    expect(safetyDecision).toBeDefined()
+    expect(safetyDecision.decision_id).toMatch(UUID_RE)
+    expect(safetyDecision.review_id).toBeNull()
+    expect(typeof safetyDecision.audit_written).toBe('boolean')
+  })
 })

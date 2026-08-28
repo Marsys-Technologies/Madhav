@@ -441,7 +441,21 @@ export async function synthesizeReading(
       judgmentFlags.push('synthesis_returned_empty')
       return { reading: null, model_id: synthesisModelId, judgment_flags: judgmentFlags }
     }
-    return { reading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
+    // EDIR E-004 (S4 pipeline-parity re-verification, S4_stage_S8_report.md):
+    // `formatEvidenceBlock` above only ASKS the model (via the inline
+    // "[TRUNCATED ...]" instruction in the evidence block) to disclose
+    // truncation in its prose — nothing verified it actually did. A model
+    // response can be fluent, confident, and completely silent about a
+    // truncated evidence set while `judgment_flags` alone carries the
+    // honest signal (demonstrated at INTEGRATION rung: a realistic mocked
+    // model response with zero truncation language passed straight
+    // through). Since the model cannot be relied on for this, the
+    // disclosure is appended deterministically, server-side, whenever the
+    // flag is set — never left to model compliance.
+    const finalReading = judgmentFlags.includes('synthesis_evidence_truncated')
+      ? `${reading}\n\n*Note: some retrieved evidence for this reading was truncated due to length; the interpretation above may not reflect the complete evidence set.*`
+      : reading
+    return { reading: finalReading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
   } catch (err) {
     console.error('[prashna_ask_synthesis] synthesis call failed', err instanceof Error ? err.message : String(err))
     return { reading: null, model_id: synthesisModelId, judgment_flags: ['synthesis_call_failed'] }

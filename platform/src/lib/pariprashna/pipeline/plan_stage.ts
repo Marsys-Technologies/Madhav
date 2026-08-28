@@ -273,6 +273,11 @@ export async function runPlanStage(args: {
   for (let i = 0; i < plan.tool_calls.length; i++) plan.tool_calls[i].token_budget = arbitrated[i].token_budget
 
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map((tc) => tc.tool_name)))
+  // `judgmentFlags` is declared here (rather than alongside `removedCapabilities`
+  // below) so the compiled-floor failure signal (V3-E-026) can push into it
+  // immediately below — the SAME array the NO-LEAKAGE/safety-exclusion flags
+  // push into two sections later in this function.
+  const judgmentFlags: string[] = []
   if (plan.scope_tuple) {
     const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
     for (const tc of compiledFloor.toolCalls) {
@@ -281,12 +286,30 @@ export async function runPlanStage(args: {
         toolsAuthorized.push(tc.tool_name)
       }
     }
+    // V3-E-026 (§N.8 Earned-Signal Principle): `compileFloorForPlan` is TOTAL
+    // and never throws out to the caller — on a registry-completeness bug
+    // (`compileContract` throwing) it returns `compileFailed: true` with an
+    // empty, safe fallback so the generic B.11 floor guarantee below still
+    // runs. That real detector's output was previously computed and silently
+    // dropped one call frame up; surface it exactly as the NO-LEAKAGE/safety
+    // exclusion flags already do a few lines below.
+    if (compiledFloor.compileFailed) {
+      console.error(
+        '[pariprashna] compileFloorForPlan: compileContract failed (registry-completeness bug) — intent-specific compiled floor NOT applied this turn; generic B.11/dasha floor still runs',
+        { intent: compiledFloor.compilerIntent, chartId },
+      )
+      judgmentFlags.push('compiled_floor_compile_failed')
+      em.flag({
+        code: 'compiled_floor_compile_failed',
+        level: 'error',
+        detail: `intent-specific compiled floor failed to compile (intent=${compiledFloor.compilerIntent}); generic B.11 floor still applied`,
+      })
+    }
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
 
   // NO-LEAKAGE enforcement (doctrine F-R7) — surfaced as a `flag`.
-  const judgmentFlags: string[] = []
   const removedCapabilities: string[] = []
   const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
   if (noLeakageFiltered.length !== toolsAuthorized.length) {

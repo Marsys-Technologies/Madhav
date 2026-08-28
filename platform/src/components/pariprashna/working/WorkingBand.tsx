@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TurnState } from '../state/types'
 // S-2's canonical closed vocabulary (PB-1/integrate — replaced the C-1 stand-in).
-import { renderSealCompleteLabel, EDGE_STATE_LABELS } from '@/lib/pariprashna/lexicon'
+import { renderSealCompleteLabel, renderSealNoGroundingLabel, EDGE_STATE_LABELS } from '@/lib/pariprashna/lexicon'
 
 /**
  * §7.8 edge state: "Network drop mid-turn | RECONNECTING… (band stays;
@@ -123,7 +123,15 @@ export function WorkingBand({ turn, expanded, onToggle }: WorkingBandProps) {
   // Plain-text twin of the visual label below, for the throttled aria-live
   // region — the JSX label carries markup (a <b>, a dimmed trailing span)
   // that has no place in an announcement string.
-  const sealedLabelText = renderSealCompleteLabel((turn.grounding?.factorCount ?? 0) + (turn.grounding?.classicalCount ?? 0), elapsed)
+  // V3-E-024 fast-follow: `turn.grounding` is `null` for a settled turn that
+  // never computed one (a clarification-only turn is the live case — its
+  // server stream never emits `turn.commit`, the only event that populates
+  // `grounding`). "Grounded in 0 sources" would conflate that with "zero
+  // sources were found" for a turn that DID run grounding — a distinct,
+  // honest label instead.
+  const sealedLabelText = turn.grounding
+    ? renderSealCompleteLabel(turn.grounding.factorCount + turn.grounding.classicalCount, elapsed)
+    : renderSealNoGroundingLabel(elapsed)
   let announceText: string
   let label: React.ReactNode
   if (turn.status === 'errored' && turn.error) {
@@ -133,12 +141,14 @@ export function WorkingBand({ turn, expanded, onToggle }: WorkingBandProps) {
     announceText = turn.error.bandLabel
     label = turn.error.bandLabel
   } else if (turn.status === 'interrupted') {
-    // §7.8 edge state: "User presses Stop → STOPPED — KEPT WHAT ARRIVED".
-    // Reads the closed lexicon directly (was a wrapper-local string literal
-    // that happened to still match — §N.7.3: a constant can drift from its
-    // source; a reference cannot).
-    announceText = EDGE_STATE_LABELS.user_stopped
-    label = EDGE_STATE_LABELS.user_stopped
+    // §7.8 edge state, split by cause (V3-E-023): "User presses Stop →
+    // STOPPED — KEPT WHAT ARRIVED" vs. a real stale-connection/server-died
+    // timeout (ring_buffer.ts's finalizeInterruptedIfStale) → a distinct,
+    // honest label — the two must never share copy (§N.7 item 6: an
+    // invented cause standing in for the real one).
+    const label_ = turn.interruptedReason === 'connection_lost' ? EDGE_STATE_LABELS.connection_lost_final : EDGE_STATE_LABELS.user_stopped
+    announceText = label_
+    label = label_
   } else if (turn.status === 'settled' || turn.status === 'settling') {
     // S-2's sealed-band label: "Grounded in N sources · Ts" (N = chart factors
     // + classical sources; elapsed is the numeric client-clock seconds).

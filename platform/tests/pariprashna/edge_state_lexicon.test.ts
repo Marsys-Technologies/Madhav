@@ -14,11 +14,14 @@
  * table's copy lower-cased to sentence case, not a re-paraphrase.
  *
  * This is the exhaustive half of P2-G's fixture coverage: every one of
- * §7.8's ten situation rows (eleven `EdgeStateKey`s — network splits into its
- * two sequential states) is pinned here, regardless of whether a live wire/
- * reducer path exists for it yet. The render-level proof for the subset that
- * DOES have a real path today (network drop/resume, user-stopped, the six
- * §7.5 error kinds) lives in `edge_state_rendering.test.tsx`.
+ * §7.8's eleven situation rows (twelve `EdgeStateKey`s — network splits into
+ * its two sequential states; v0.6/EDIR V3-E-023 added the twelfth, the
+ * stale-timeout "connection lost, unrecoverable" row, distinct from both
+ * network_drop's active retry and user_stopped's deliberate action) is
+ * pinned here, regardless of whether a live wire/reducer path exists for it
+ * yet. The render-level proof for the subset that DOES have a real path
+ * today (network drop/resume, user-stopped, the six §7.5 error kinds) lives
+ * in `edge_state_rendering.test.tsx`.
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -66,6 +69,10 @@ describe('§7.8 edge-state table — exact lexicon copy, row by row', () => {
     expect(EDGE_STATE_LABELS.user_stopped).toBe('Stopped — kept what arrived')
   })
 
+  it('Connection lost mid-turn, unrecoverable (stale-timeout give-up) → "Connection lost — kept what arrived"', () => {
+    expect(EDGE_STATE_LABELS.connection_lost_final).toBe('Connection lost — kept what arrived')
+  })
+
   it('Mid-turn model switch requested → "Will switch to ⟨model⟩ next turn"', () => {
     expect(renderModelSwitchQueuedLabel('Opus')).toBe('Will switch to Opus next turn')
     expect(renderModelSwitchQueuedLabel('Gemini 3 Pro')).toBe('Will switch to Gemini 3 Pro next turn')
@@ -75,11 +82,12 @@ describe('§7.8 edge-state table — exact lexicon copy, row by row', () => {
     expect(EDGE_STATE_LABELS.queue_wait).toBe('In line — starts in a moment')
   })
 
-  it('the closed vocabulary has exactly the eleven EdgeStateKeys §7.8 defines (no silent additions/removals)', () => {
+  it('the closed vocabulary has exactly the twelve EdgeStateKeys §7.8 defines (no SILENT additions/removals — v0.6 documents this one)', () => {
     const staticKeys = Object.keys(EDGE_STATE_LABELS).sort()
     const expectedStaticKeys: Exclude<EdgeStateKey, 'capped_partial' | 'model_switch_queued'>[] = [
       'chart_rebuilt',
       'clarification_needed',
+      'connection_lost_final',
       'network_drop',
       'network_resumed',
       'open_prediction_window',

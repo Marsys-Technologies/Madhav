@@ -142,15 +142,23 @@
       "ms": "<ms>"
     },
     {
-      "type": "phase",
+      "type": "flag",
       "seq": 15,
+      "t": "<ms>",
+      "code": "citation_gate_errored",
+      "level": "error",
+      "detail": "citation/grounding gate could not run on this turn (internal error); PASS default applied, serving decision unchanged"
+    },
+    {
+      "type": "phase",
+      "seq": 16,
       "t": "<ms>",
       "phase": "finalize",
       "status": "start"
     },
     {
       "type": "turn.commit",
-      "seq": 16,
+      "seq": 17,
       "t": "<ms>",
       "turn_id": "00000000-0000-4000-8000-000000000002",
       "conversation_id": "00000000-0000-4000-8000-000000000001",
@@ -160,14 +168,14 @@
     },
     {
       "type": "phase",
-      "seq": 17,
+      "seq": 18,
       "t": "<ms>",
       "phase": "finalize",
       "status": "end"
     },
     {
       "type": "turn.close",
-      "seq": 18,
+      "seq": 19,
       "t": "<ms>",
       "turn_id": "00000000-0000-4000-8000-000000000002",
       "status": "ok",
@@ -422,14 +430,26 @@
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
-      "type": "phase",
+      "type": "flag",
       "seq": 15
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
-      "type": "phase",
+      "type": "flag",
       "seq": 15
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 16
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 16
     },
     {
       "fn": "createPendingStreamWriter",
@@ -581,13 +601,13 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "turn.commit",
-      "seq": 16
+      "seq": 17
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "turn.commit",
-      "seq": 16
+      "seq": 17
     },
     {
       "fn": "generateConversationTitle"
@@ -604,25 +624,25 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "phase",
-      "seq": 17
+      "seq": 18
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "phase",
-      "seq": 17
+      "seq": 18
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "turn.close",
-      "seq": 18
+      "seq": 19
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000002",
       "type": "turn.close",
-      "seq": 18
+      "seq": 19
     },
     {
       "fn": "endTurnCapture",
