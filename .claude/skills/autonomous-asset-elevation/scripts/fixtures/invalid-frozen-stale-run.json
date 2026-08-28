@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "campaign_id": "example-campaign",
+  "layer_id": "L0",
+  "definition_digest": "definition-current",
+  "asset_id": "example_asset",
+  "asset_type": "BUILD",
+  "epistemic_type": "deterministic_reference",
+  "lifecycle_state": "FROZEN",
+  "disposition": "OPTIMIZED",
+  "ownership": {
+    "owner": "worker-1",
+    "lease_fence": 4,
+    "worktree": "/isolated/example",
+    "branch": "codex/example-asset",
+    "base_sha": "base-sha"
+  },
+  "dag": {
+    "dag_digest": "dag-abc",
+    "hard_upstream": [],
+    "hard_edges_verified": false
+  },
+  "quality": {
+    "change_kind": "OPTIMIZATION",
+    "output_comparison": "EXPECTED_DELTA",
+    "baseline_refs": [],
+    "result_refs": [],
+    "performance_gain_ref": null,
+    "expected_delta_ref": null
+  },
+  "release": {
+    "merge_sha": "merged-sha",
+    "deployed_sha": "older-sha",
+    "production_verified": false,
+    "rebuild_applicability": "REQUIRED",
+    "production_rebuild_receipt": null,
+    "not_applicable_reason": null
+  },
+  "run_binding": {
+    "definition_digest": "definition-old",
+    "code_sha": "older-sha",
+    "upstream_digest": null,
+    "lease_fence": 3,
+    "run_generation": 0
+  },
+  "producer_coverage": {
+    "covered_by_asset_id": null,
+    "inherited_production_rebuild_receipt": null,
+    "inherited_acceptance_receipt": null
+  },
+  "evidence": {
+    "references": [],
+    "independent_verdict": "NOT_RUN",
+    "protected_terminal_writer": false,
+    "accepted_receipt": null
+  },
+  "blockers": ["production lock owned by older generation"]
+}
