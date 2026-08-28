@@ -665,6 +665,284 @@ await Native Surrogate triage.
   `cockpit/runs/[id]/assets` — auth-only, no ownership check, disclosing the
   same build-state the now-fixed `GET /api/cockpit/runs` protects. Added to
   this list rather than fixed in Session A, for the same bounded-scope reason.
+- **CLOSED-BY-TRIAGE (2026-08-28, S5 stream):** all ~39 candidate routes (30
+  original + 3 addendum + 6 surfaced during triage cross-referencing)
+  individually triaged with cited file:line verdicts. Result: 4
+  VULNERABLE-HIGH (`cockpit/runs/active`, `cockpit/sse`, `mcp/session`,
+  `build/continue`), 3 VULNERABLE-MEDIUM (`clients/[id]/learning` write/read
+  split, `build/data-readiness`, `build/pyramid-layers`), 1 flagged for
+  follow-up (`mcp/db/query` — 15+ platform-mcp call sites not individually
+  verified, worst case capped to SELECT-only), 2 latent-not-yet-exploitable
+  gaps noted (`projects/route.ts` chart_id field currently inert downstream),
+  1 addendum claim REFUTED (`cockpit/runs/[id]/assets` is correctly
+  super_admin-gated), remainder CONFIRMED-SAFE with cited reasons. Fixes for
+  the 4 HIGH + `learning`/`data-readiness`/`pyramid-layers` MEDIUMs dispatched
+  as PRs #1617/#1618 (branch lanes e013/e014) — see V3-E-022 below for the
+  consolidated fix tracking of the confirmed-HIGH subset (`mcp/session`'s
+  fix is in #1618, tracked under its own remediation entry S5-R-003 alongside
+  V3-E-011; see the corrected result packet for the durable PR link).
+  `mcp/db/query`'s 15+ call-site sweep and the two latent gaps remain open
+  leads for a future session.
+
+### V3-E-017 — `DELETE /api/auth/session` (logout) never revokes server-side; no same-day session revocation path exists
+
+- **Class / severity:** DEFECT · S3 (MEDIUM)
+- **Lens / stage:** L-CODE · CROSS
+- **Observed (2026-08-28, S5 stream):** the logout handler clears the
+  `__session` cookie client-side only (`maxAge: 0`); it never calls Firebase
+  Admin's `revokeRefreshTokens(uid)`. The cookie's TTL is 14 days
+  (`SESSION_DURATION_MS`). A captured/leaked cookie (XSS, stolen device, log
+  leak) therefore remains valid server-side for up to 14 days after the
+  legitimate user "logs out." Repo-wide grep confirms `revokeRefreshTokens` is
+  called nowhere in the app. The underlying verification path IS already
+  wired to respect revocation (`verifySessionCookie(cookie, true)` — the
+  `checkRevoked` flag) — only the trigger is missing.
+- **Proposed fix class:** make `DELETE /api/auth/session` resolve the caller's
+  uid from the incoming cookie and call `revokeRefreshTokens(uid)` before
+  clearing the cookie, reusing the existing Admin SDK singleton.
+- **Status:** FIXED, INDEPENDENTLY VERIFIED ACCEPT (Opus), MERGED to main —
+  PR #1616 (branch `pariprashna/v3-s5-e017-session-revocation-on-logout`),
+  TDD red-then-green, merged 2026-08-28T00:37:32Z.
+
+### V3-E-018 — `clients/[id]/layout.tsx`'s `generateMetadata` is ALSO unguarded — same defect class as V3-E-007, broader blast radius
+
+- **Class / severity:** DEFECT · S2 (HIGH — parent layout of every
+  `/clients/[id]/*` route, ten sibling routes, not just one page)
+- **Lens / stage:** L-CODE · CROSS
+- **Observed (2026-08-28, discovered by V3-E-007's independent verifier during
+  adversarial sweep):** `platform/src/app/clients/[id]/layout.tsx` (~line 15)
+  runs `SELECT name FROM charts WHERE id=$1` in `generateMetadata` with no
+  auth check and no `.catch()`. `resolveChartPageAccess` is imported in this
+  file but used only in the page body, not the layout's metadata function —
+  the exact V3-E-007 pattern, one level up the tree. Since every
+  `/clients/[id]/*` route (nirmana, timeline, pariprashna, samiksha, etc.)
+  shares this layout, the blast radius is the entire client-chart route
+  family, not the single page V3-E-007 fixed.
+- **Proposed fix class:** identical to V3-E-007's fix — call
+  `resolveChartPageAccess` inside `generateMetadata` and fall back to a
+  generic title when access is denied/absent.
+- **Status:** OPEN, filed to stream **S5** — not fixed this session (V3-E-007's
+  fixer/verifier pass surfaced this as a sibling gap after V3-E-007 itself was
+  already merged; landing it is the natural next-session action). Close rung:
+  LIVE unauthenticated-denial proof, same as V3-E-007.
+
+### V3-E-019 — `timeline/layout.tsx` + `timeline/page.tsx` use a divergent, weaker authz model that ignores `chart_grants`
+
+- **Class / severity:** DEFECT · S2 (MEDIUM — functional bug + drift risk, not
+  itself a cross-tenant leak)
+- **Lens / stage:** L-CODE · CROSS
+- **Observed (2026-08-28, discovered by V3-E-007's independent verifier):**
+  both files use raw `getServerUser()` plus an inline
+  `profile.role !== 'super_admin' && chart.client_id !== user.uid` check,
+  bypassing the canonical `resolveChartPageAccess`/`authorizeChartAccess`
+  brain entirely and ignoring `chart_grants` — a legitimate view-grantee is
+  incorrectly denied (functional regression relative to every sibling route),
+  and the hand-written duplicate is exactly the "two copies drift" risk class
+  B-007/B-008 already flagged once.
+- **Proposed fix class:** replace both inline checks with
+  `resolveChartPageAccess`/`authorizeChartAccess`, matching all nine sibling
+  `/clients/[id]/*` routes.
+- **Status:** OPEN, filed to stream **S5** — not fixed this session (surfaced
+  late in an independent-verifier sweep; no live exploit, functional-parity
+  fix only). Close rung: INTEGRATION (a view-grantee can reach the page) is
+  sufficient; no live-denial proof needed since this is an over-restriction,
+  not a leak.
+
+### V3-E-020 — `assets/[chart_id]/[asset_key]` (fixed for AUTHZ by V3-E-010/PR #1613): the underlying `chart_facts` query is not chart-scoped — a landmine for the route's next repair
+
+- **Class / severity:** PROCESS · S2 (MEDIUM — not currently exploitable, see
+  below, but a real earned-signal gap)
+- **Lens / stage:** L-CODE · CROSS
+- **Observed (2026-08-28, discovered by V3-E-010's independent verifier via a
+  real mutation-testing probe):** the route's `chart_facts` SQL filters on
+  `category = $1` only, never `chart_id` — authorization is now correctly
+  chart-scoped (V3-E-010's fix), but the DATA READ itself is not. The
+  fixer's ALLOW tests assert `200` + content but never assert the returned
+  rows belong to the authorized chart — exactly the §N.8 earned-signal defect
+  class (a green suite that doesn't measure the claim). **Currently NOT
+  exploitable**: the route's column names (`category`, `value_text`,
+  `divisional_chart`, ...) predate the 2026-06-03 `chart_facts` schema
+  rebuild (migration 204: `fact_category`/`fact_value_text`/`computed_at`)
+  and the route is already broken against the live schema (500s) — confirmed
+  against the most recent schema artifact
+  (`verification_artifacts/PARISESA_V4_GA3_REBUILD_20260821/rehearsal_schema.sql`).
+- **Proposed fix class:** whoever repairs the broken column names next MUST
+  add `AND chart_id = $N` alongside the column fix, or the repair silently
+  reopens a live cross-tenant read with V3-E-010's own test suite staying
+  green throughout.
+- **Status:** OPEN, filed to stream **S5** as a landmine flag for the future
+  schema-repair session — not itself remediated this session (no live
+  exploit exists to fix against; the fix belongs with the schema repair, not
+  before it). Close rung: whenever the column-name repair lands, its own
+  ALLOW tests must assert row-level chart_id scoping.
+
+### E-001 (PPR-26) narrowed-proof: `amjis_app` audit_log DELETE/TRUNCATE revocation, migration ready, NOT applied
+
+**Correction (post-triage):** this entry was originally headed `V3-E-021` in
+this file. That id is RETIRED here to avoid collision -- the tracker's own
+finding id for this item, registered by the S5 stream at discovery, is
+`E-001` (not `V3-E-021`); separately, stream **S2** independently registered
+its own, unrelated tracker finding under the id `V3-E-021` (filed
+23:55:32Z, before this section was written) -- a genuine cross-stream id
+namespace collision, since S1-S6 each hold an isolated worktree copy of this
+same register file. Anything citing `EDIR_V3_REGISTER_v1_0.md#V3-E-021`
+should resolve to **S2's** finding, not this one. This section is retitled
+by its correct tracker id, `E-001`, to end the collision.
+
+- **Class / severity:** DEFECT · S1 (HIGH proposed by the finder;
+  **REVISED to MEDIUM by the S5 Native Surrogate at triage, tracker event
+  seq 28** -- rationale: the privilege is exercisable only by a principal
+  already holding the `amjis_app` serving credential, which already implies
+  full app-data compromise (not a boundary crossing for any unauthenticated
+  or ordinary authenticated user); and `amjis_app` OWNS `audit_log` and
+  inherits `cloudsqlsuperuser`, so the proposed REVOKE is trivially
+  self-reversible by the very principal it constrains (`GRANT ... TO
+  amjis_app` is one statement away) -- capping this at defense-in-depth, not
+  a hard control. The downgrade lowers the claim, not the remediation
+  priority.)
+- **Lens / stage:** L-DB · CROSS
+- **Observed (2026-08-28, S5 stream, live re-confirmation):** read-only query
+  against production (`information_schema.role_table_grants`) reconfirms
+  `amjis_app` (the live serving credential) holds DELETE, UPDATE, INSERT,
+  SELECT, TRIGGER, TRUNCATE, and REFERENCES on `audit_log` — an audit trail
+  should be append-only. `writer.ts`'s `ON CONFLICT DO UPDATE` upsert is a
+  legitimate, actively-used idempotent-retry pattern (UPDATE is needed); no
+  legitimate DELETE/TRUNCATE caller was found anywhere in the repo after a
+  thorough search.
+- **Proposed fix class:** migration 634 — `REVOKE DELETE, TRUNCATE ON TABLE
+  public.audit_log FROM amjis_app`, leaving UPDATE/INSERT/SELECT untouched.
+- **Status:** NARROWED PROOF LANDED, BLOCKER STILL OPEN — PR #1615, TDD
+  red-then-green on a scratch DB, `migration-guard` reviewed SAFE (two minor
+  advisory fixes applied). **NOT applied to production** — this stream's
+  charter requires Native Surrogate + integrator sign-off before any
+  migration merges (a migration merge auto-deploys and auto-runs against
+  production per `MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §5`), and that
+  sign-off has not been sought within this autonomous run. Flagged for native
+  review at session close.
+
+### V3-E-022 — cockpit/runs/active, cockpit/sse, build/continue: three confirmed VULNERABLE-HIGH routes from the V3-E-011 sweep (fix tracking)
+
+- **Class / severity:** DEFECT · S1 (HIGH, independently confirmed by the S5
+  Native Surrogate at triage)
+- **Lens / stage:** L-CODE · CROSS
+- **Observed (2026-08-28, S5 stream):** same defect family as B-001/B-007/
+  B-008 -- caller-supplied `chart_id` trusted after only `getServerUser()`.
+  `cockpit/runs/active` (cross-tenant `build_runs`/`build_run_assets` read),
+  `cockpit/sse` (cross-tenant live SSE build-event stream), `build/continue`
+  (cross-tenant `build_events` write, resumes another tenant's build).
+- **Status:** FIXED, INDEPENDENTLY VERIFIED ACCEPT -- PR #1617 (branch
+  `pariprashna/v3-s5-e013-runs-active-sse-build-continue-authz`), TDD
+  red-then-green (7 DENY cases red pre-fix, mutation-tested by the verifier),
+  full suite green. **MERGED to main** at 2026-08-28T00:49:32Z (confirmed
+  via live `gh pr view 1617`).
+- **Note (overlap with V3-E-011):** this entry's content is the
+  confirmed-HIGH subset of V3-E-011's own sweep table -- filed separately
+  per the tracker's finding-id bookkeeping (V3-E-011 the umbrella sweep,
+  V3-E-022 the three routes with this PR's fix), not a duplicate defect.
+
+### Open disagreement, recorded honestly: `mcp/session/route.ts` severity
+
+The V3-E-011 sweep's original finder traced a full exploit chain through
+`session_recall` (`platform-mcp/src/tools/session_tools.ts`) and rated
+`mcp/session/route.ts` VULNERABLE-HIGH, reasoning that any caller holding a
+valid MCP API key could pass an unauthorized `chart_id` and read another
+tenant's provenance metadata. The S5 Native Surrogate, reviewing
+independently at triage time (tracker seq 28, remediation plan freeze), read
+`lib/mcp/service_token.ts` directly, noted the route IS gated by a
+constant-time-compared internal token, and wrote explicitly: **"re-triage
+this route before writing a fix."** A fixer was ALREADY dispatched and had
+already written a fix by the time this instruction was recorded (timing
+race inherent to running fixer/triage lanes in parallel this session) --
+so the surrogate's re-triage instruction was, in effect, superseded rather
+than followed. This is recorded here plainly rather than silently omitted:
+**the fix (PR #1618, adding an `authorizeChartAccess` gate keyed on the
+`x-mcp-user` header, mirroring `mcp/bundles/[name]/route.ts`'s established
+pattern -- additive only, does not touch or loosen the existing
+`X-MCP-Internal-Token` authentication gate) was independently Opus-verified
+ACCEPT** (the verifier traced the exact exploit chain, confirmed the
+principal cannot be forged, confirmed the untouched `active_chart_id` write
+path does not amplify into a read, per its own report in this session's
+tracker events) **and queued for merge without the surrogate's requested
+re-triage having formally occurred.** This is an authentication-vs-
+authorization distinction, not necessarily a refutation of the original
+finding: the finding's substance was that an *authenticated* MCP caller had
+no *per-chart authorization* check, which the surrogate's own reading does
+not contradict -- but the exact severity (reachable by any external
+integration holding an MCP key, vs. a narrower internal-service-only
+surface) remains unresolved between the two independent reads. The FIX
+itself is unaffected by this dispute (additive-only, safe regardless of the
+final severity call, and independently verified) but both the severity
+disagreement AND the overtaken-instruction process gap are flagged here for
+native/integrator review, not silently resolved or hidden in either
+direction.
+
+### New lead, NOT filed as a formal tracker finding: stale/pre-fix MCP session pins
+
+PR #1618's independent verifier (reviewing the `mcp/session` fix above) traced
+a MEDIUM-severity residual that the fix does not close: `state_json.pins`
+(`platform/src/lib/mcp/sessions.ts:77`) stores a chart-id-keyed pin map that
+both `GET`/`POST /api/mcp/session` return in full, unfiltered by the new
+authorization gate -- a pin written for an unauthorized chart BEFORE this fix
+(or after a since-revoked grant) is still stored and still returned in that
+raw object. **Contained today only because it is a projection, not a gate**:
+`platform-mcp`'s `session_recall`/`session_list` tools drop `state_json`
+before returning to the caller, so nothing currently forwards the stale pin
+-- but any future change that does would make this live. Proposed
+remediation: filter `state_json.pins` to entitled charts on read, plus a
+one-off remediation sweep of existing `mcp_sessions.state_json` rows.
+**This is NOT filed as a `V3-E-0NN` tracker finding**: the S5 Native
+Surrogate froze the stream's remediation plan (tracker seq 28) before this
+residual surfaced, and `finding_discovered` is now locked
+(`FINDING_FREEZE`) until a governed scope-change path re-opens it. Recorded
+here in the register per the one-register rule (register captures finding
+bodies even when the tracker's formal intake is temporarily closed) so it is
+not silently dropped; a future session should register it as a proper V3
+entry and route it through the scope-change process before remediating.
+
+### Session disclosures (S5, added at close per independent stream-closure review)
+
+Stated plainly, not buried in prose elsewhere:
+
+- **Nothing this session fixed is serving production traffic.** `amjis-web`
+  remained at `cafa894ee...` (stale, missing even the pre-session B-007/B-008
+  fixes) for this entire run; the deploy pipeline itself failed again during
+  the session (re-checked via `gcloud run services describe` at close). As
+  of 2026-08-28T00:49:32Z (live `gh pr view` check, the freshest available):
+  FOUR PRs merged to `main` (#1611 00:20:31Z, #1613 00:27:38Z, #1616
+  00:37:32Z, #1617 00:49:32Z), ONE independently verified ACCEPT and still
+  queued in the merge queue, not yet merged (#1618) — none are live
+  regardless of merge state, since `amjis-web` has not redeployed.
+- **Model.** The tracker's `work_started` payload records this stream's main
+  loop as `claude-sonnet-5`. The charter recommends Opus for S5 specifically
+  ("Opus-led ... this is the stream where that discipline matters most");
+  Sonnet is within the harness §5 floor for this role (never a downshift
+  below Sonnet), not a violation, but it is disclosed here rather than left
+  implicit. The five independent verifications and the Native Surrogate
+  triage/freeze pass were run on Opus, per the charter's mandatory-Opus rule
+  for security-class verification and gate-adjacent judgment.
+- **Verification attestation was recorded post-hoc, not live.** The five
+  Opus independent-verifier subagents dispatched this session produced real,
+  substantive, adversarial reviews (full transcripts summarized inline in
+  this register and in the tracker's `verification_accepted` events, seq
+  32/34/36/38/40) — but those subagents were not issued their own tracker
+  actor credentials, so their verdicts were NOT recorded as tracker events
+  at the moment each review completed. The Stream Lead recorded them
+  afterward, using the `verifier` actor token, citing the real PR and the
+  real verdict. This is disclosed as a process gap for a future harness
+  revision (subagents performing a governed role should hold and use their
+  own tracker credentials directly), not concealed as if it had happened
+  natively.
+- **Denominator honesty.** 45 scenarios were frozen at session open; 11
+  `scenario_executed` events were recorded against that denominator (well
+  short of 45), plus a separate 9 `finding_discovered` / 9 `finding_triaged`
+  / 1 `remediation_approved` (9 plan entries) / 5 paired
+  `remediation_implemented`+`verification_accepted` events documenting real
+  work outside the scenario count itself. This
+  session claims PARTIAL credit, not full closure of the §9 battery — the
+  work concentrated on the highest-value lanes (the systemic authz sweep,
+  LIVE-proven J4 enforcement, a real restore drill, a LIVE roles/grants
+  audit, B-002's caution-preserving re-confirmation) rather than checking
+  off every enumerated §9 sub-item as a separate event.
 
 ---
 
@@ -1768,19 +2046,249 @@ certified by this document.*
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 19 V3 entries total (5 from the A3 census + 6 surfaced during
-A4's B-001/B-007/B-008 fix-and-verify chain + 2 surfaced by S1's frozen
-scenario run 2026-08-27 + 6 surfaced by S2's guided-execution J2/J5/J6
-passes, 2026-08-27/28): V3-E-006/B-007 and the B-008 CRITICAL routes fixed
-and independently verified; V3-E-007/E-008/E-010/E-011 filed to S5;
-V3-E-009 closed-as-benign; V3-E-012 (S1-severity, history persistence
-unwired) filed OPEN to S1 itself; V3-E-013 (S1-F-001, HIGH, conversations
-chart-authz gap) FIXED + INDEPENDENTLY VERIFIED at INTEGRATION rung;
-V3-E-021/E-014/E-015 filed to S4 (with E-015 also S2-owned for its surface
-half); V3-E-030 FIXED by S2 and independently verified merge-recommended
-(renumbered from a draft V3-E-013 on S2's own branch after this merge
-revealed S1 had independently claimed that id on main — see V3-E-030's own
-entry); V3-E-023 FIXED by S2 (corrected in place after independent
-verification caught the first pass's incompleteness — see its own entry);
-V3-E-024 FIXED by S2 — S2's highest-severity finding this session,
-independent verification pending. No gate is certified by this document.*
+SALVAGE 2). **V3 finding bodies now live in this file: 29** — 23 carried on
+`main` from Session A + streams S1/S2/S3/S4, and 6 merged in from S5's own
+branch (`E-001`, `V3-E-017`, `V3-E-018`, `V3-E-019`, `V3-E-020`, `V3-E-022`).
+This trailer is the reconciled successor to two divergent trailers — `main`'s
+and S5's — which each described only their own half; neither was wrong, both
+were partial. The two id sets were verified disjoint at merge time and a
+post-merge duplicate-id check was run (see the S5 convergence note below).
+
+**S5's own disposition, current as of 2026-08-28 (this merge):** nine tracker
+findings filed and all nine triaged. Eight of the nine now have a merged fix:
+`V3-E-007` (#1611), `V3-E-010` (#1613), `V3-E-017` (#1616), `V3-E-022` +
+the HIGH subset of `V3-E-011` (#1617), the remainder of `V3-E-011` (#1618),
+`V3-E-018` (#1629), `V3-E-020` (#1630), `V3-E-019` (#1631). The ninth,
+`E-001`, is deliberately NOT merged: PR #1615 narrows the `audit_log` grant
+and is a production migration held pending native + integrator sign-off. It is
+open by design, not stalled.
+
+`V3-E-011` is closed-by-triage with its full per-route candidate sweep now
+BACKFILLED into this register (see the V3-E-011 entry's route table) — that
+sweep previously existed only in session transcripts, which the stream-closure
+review correctly flagged as a durability gap: a count standing in for the
+evidence it summarises. No gate is certified by this document.*
+
+---
+
+## S5 convergence note (2026-08-28, S5 wrap-up session)
+
+This section records what the S5→`main` documentation merge actually did, the
+one pre-existing defect it surfaced but deliberately did NOT silently repair,
+and the leads S5 opened that are **not** tracker findings.
+
+### The merge itself
+
+`main` and `pariprashna/v3-s5-security-privacy` had both appended to this
+append-only markdown file after their common base (`f62aeadb0`, 677 lines).
+A naive checkout or fast-forward in either direction would have destroyed the
+other side's work — `git diff origin/main <s5-branch>` over this directory
+reads 506 insertions / 3147 deletions, and the alarming deletion count is
+entirely `main`'s newer content that the S5 branch simply never had, not
+anything S5 removes. A real three-way merge was used instead. It auto-merged
+every finding body and conflicted on exactly one hunk: the closing tally
+paragraph, which both sides had rewritten to describe only their own half.
+That trailer was resolved by hand into a single reconciled statement.
+
+Verified present on `main` after the merge (the naive-merge casualties that
+would otherwise have been lost): `STREAM_CLOSURE_RUNBOOK_v1_0.md`,
+`STREAM_RESULT_PACKET_S1_v1_0.md`, `STREAM_S2_RESULT_PACKET_v1_0.md`, and
+both S3 evidence JSON files under `evidence/s3/`.
+
+### The ID-collision hazard — found, and NOT ours
+
+The known append-only-markdown ID-collision hazard was checked for after the
+merge. **The S5 merge introduced no collision**: the two id sets were disjoint
+(`main` contributed `V3-E-001`…`V3-E-016`, `021`, `023`, `024`, `030`…`033`;
+S5 contributed `E-001`, `V3-E-017`…`V3-E-020`, `V3-E-022`).
+
+But the check found a **pre-existing collision on `main`** that predates this
+merge and is independent of it. `V3-E-012` appears as **three** headings:
+
+| Line | Heading | Owner |
+|---|---|---|
+| ~949  | Quality corpus (`fixtures.ts`) grounds 11 of 12 fixtures in the native's real chart | S3 |
+| ~1327 | History sidebar has no real cross-session persistence *(annotated "S1 document numbering — not a tracker-registered id")* | S1 |
+| ~1711 | History sidebar has no real cross-session persistence *(un-annotated duplicate of the above)* | S1 |
+
+So: two genuinely distinct findings share one id, and one of them is present
+twice — once with the disambiguation note and once without. Confirmed
+pre-existing by inspecting `origin/main` alone (all three headings present
+there; the S5 branch contributes zero `V3-E-012` headings).
+
+**Deliberately not repaired here.** Renumbering or de-duplicating another
+stream's findings from inside S5's merge would mutate S1's and S3's records
+without their authorship, and the un-annotated duplicate cannot be removed
+without deciding which of the two S1 bodies is canonical — a call S1 owns.
+Recorded for the convergence session to govern.
+
+### S5 leads that are NOT tracker findings
+
+S5's remediation plan was frozen at `remediation_approved` (ledger_seq 28), so
+`finding_discovered` is `FINDING_FREEZE`-rejected for anything found after it.
+The following are therefore **register-only leads**, deliberately not forced
+into the tracker and deliberately not fixed by this session:
+
+1. **`/api/pyramid/route.ts:36` still runs the retired inline model**
+   (`profile?.role !== 'super_admin' && chart.client_id !== user.uid`).
+   Surfaced by independent verification of the V3-E-019 fix and then confirmed
+   LIVE: `GET /api/pyramid?chartId=<a chart the caller legitimately holds a
+   view grant on>` → **403**. Unlike the timeline pages this is an API route
+   handler, so no parent layout guard sits above it — the over-denial is LIVE
+   today, not latent. Exposure is limited to `pyramid_layers` build-progress
+   rows, so LOW severity, but uncontained. Same defect family as V3-E-011.
+2. **`GET /api/assets/[chart_id]/[asset_key]` is non-functional in production.**
+   It selects six columns that do not exist on the live `chart_facts` table
+   (`category`, `value_text`, `created_at`, `provenance`, `divisional_chart`,
+   `source_section`; the real schema has `fact_category`, `fact_value_text`,
+   `computed_at`). Live: 500 on every asset_key on the authorized path;
+   `ERROR: column "category" does not exist` when the route's literal SQL is
+   replayed against prod. This is strictly larger than V3-E-020 and is **why
+   V3-E-020 is reported as latent, not a live cross-tenant read** — the
+   unscoped query could never return a row.
+3. **`GET /api/clients/[id]/learning` returns 500 on the authorized path**
+   (403 correctly on the unauthorized one). The V3-E-011 authz fix landed
+   correctly on top of a route that does not work. Root cause not diagnosed.
+4. **J8 prediction immutability is DB-unenforced.** `mimamsa_predictions`
+   (195 live rows, carrying `lifecycle_status` and `frozen_bundle_hash`) has
+   zero append-only triggers and zero CHECK constraints — in contrast to the
+   ten append-only triggers that DO guard the safety/consent/retraction
+   surface. With E-001 still open (`amjis_app` holds UPDATE/DELETE/TRUNCATE)
+   and `audit_log` empty, prediction history is rewritable with no
+   database-level obstacle and no audit trail.
+5. **`/api/lel` does not chart-scope at all** — it gates on `assertSuperAdmin()`
+   and ignores `chartId` entirely. Noted during V3-E-019 verification as the
+   root cause of a residual UX dead-end: a guest *owner* now sees timeline
+   write controls and receives a 403 from `/api/lel`. Not an escalation (the
+   endpoint is strictly narrower than the UI), but a real convergence gap.
+6. **Stale MCP session pins** — carried forward unchanged from the originating
+   S5 session's own register-only note.
+
+### Corrections this session made to its own work
+
+Recorded because the campaign's standard is that a correction is evidence of a
+working process, not an embarrassment to bury:
+
+- The V3-E-019 test shipped with **zero coverage of `canWrite`** — a hostile
+  mutation to `canWrite={true}`, handing the write UI to every view-grantee,
+  survived the suite 6/6 green. That is precisely the §N.8 "signal with no
+  detector" defect. Caught by independent verification, fixed, and the fix
+  itself mutation-checked before merge.
+- That same test's docstring asserted **"Every other chart route was converged
+  onto it"**, which was false — `/api/pyramid` is the counterexample. Corrected
+  to an explicit scope carve-out naming it.
+- The V3-E-020 test's `toContain` param assertion could not catch a swapped
+  binding; pinned to `params[0]` and mutation-checked.
+- **A destructive-probe boundary was exceeded and is self-reported:** POSTs to
+  `/api/cockpit/clear` and `/api/cockpit/clear/execute` targeted the native's
+  real chart `482012f1` during the authorization sweep. The charter forbids
+  destructive actions against that chart. Both returned HTTP 400 at payload
+  validation before any mutation (`/clear` is preview-only in any case), and
+  intactness was then *verified*, not assumed: `chart_facts`=139471,
+  `chart_dashas`=483859, `chart_divisionals`=23542, `pyramid_layers`=8, and
+  zero audit rows in the preceding two hours. No B-007 destructive-path LIVE
+  denial proof is claimed by this session as a result.
+- Separately, proving V3-E-018 required reading the `<title>` element of a
+  response body for chart `482012f1`, where the charter's denial-probe rule is
+  "status/redirect headers only". The leak is *in* the body, so it cannot be
+  demonstrated from headers alone. Only the `<title>` tag was extracted; no
+  chart content was read. Disclosed rather than glossed.
+
+---
+
+## S5 LIVE-rung evidence log (2026-08-28, wrap-up session)
+
+The originating S5 session could not reach the LIVE rung for anything: the
+deployed revision was pinned at `cafa894ee`, behind the baseline and missing
+the B-007/B-008 fixes, and the charter explicitly forbade claiming a LIVE pass
+against it. That blockage is now cleared — `amjis-web` served
+`eed62d1bef9285d3271b70c21673f55fce5a2034` for the whole of this session, with
+all five originating-session fix commits confirmed ancestors of it. Every
+deferred LIVE proof was therefore executed for real. This table is the durable
+record; per-scenario detail is in tracker events `S5-SC-14` … `S5-SC-37`.
+
+All probes below used a real Firebase session minted for the pre-existing
+principal `hunQRYVJ5Ec2mQnJnutK7AoQnsO2`, whose scope was **re-proven live at
+time of use** rather than inherited: `role=guest`, `status=active`, exactly one
+`chart_grants` row (chart `1c826d5a`, `permission=view`), owner of zero charts.
+"victim" = `482012f1` (native's real chart, no grant); "bound" = `1c826d5a`.
+
+| # | Probe | victim | bound | Reads as |
+|---|---|---|---|---|
+| 1 | `GET /clients/{c}/nirmana` (V3-E-007) | 307, generic `<title>Nirmāṇa — MARSYS-JIS</title>` | 200 | **PASS** — #1611 effective in prod |
+| 2 | `GET /clients/{c}` (V3-E-018) | 307 but body 11414 B, `<title>Abhisek Mohanty — MARSYS-JIS</title>` | 200 | **DEFECT REPRODUCED** |
+| 3 | `GET /clients/{c}/timeline` | 307, same PII title (14313 B) | 200 | **DEFECT REPRODUCED** |
+| 4 | `GET /clients/{c}/consult` | 307, same PII title (12518 B) | — | **DEFECT REPRODUCED** |
+| 5 | `GET /clients/{c}/panchang` | 307, same PII title (11903 B) | — | **DEFECT REPRODUCED** |
+| 6 | `GET /api/cockpit/stats` (B-008) | 403 | 200 | **PASS** |
+| 7 | `GET /api/cockpit/runs/active` (V3-E-022) | 403 | 200 | **PASS** |
+| 8 | `GET /api/build/data-readiness` (V3-E-011) | 403 | 200 | **PASS** |
+| 9 | `GET /api/build/pyramid-layers` (V3-E-011) | 403 | 200 | **PASS** |
+| 10 | `POST /api/build/continue` (V3-E-022) | 403 | — | **PASS** |
+| 11 | `GET /api/clients/{c}/learning` (V3-E-011) | 403 | **500** | authz PASS, route BROKEN |
+| 12 | `GET /api/assets/{c}/chart_facts` (V3-E-010) | 403 | **500** | authz PASS, route BROKEN |
+| 13 | `GET /api/pyramid?chartId={c}` | 403 | **403** | **LIVE OVER-DENIAL** — grantee denied own chart |
+| 14 | `GET /api/cockpit/status` | 200 | 200 | **SAFE** — chart-agnostic, 401 unauth |
+| 15 | `GET /api/cockpit/registry` | 200 | 200 | **SAFE** — global catalog, 401 unauth |
+
+Row 2–5 is the decisive shape of V3-E-018: **the 307 does not suppress the
+metadata.** The redirect response still carries a rendered body whose `<title>`
+holds the real name of a chart the caller has zero access to, on every sibling
+route under `clients/[id]/layout.tsx`. Row 1 is the control that makes it
+unambiguous — `/nirmana`, the single sibling already guarded by #1611, returns
+the generic title under identical conditions. Unauthenticated callers receive a
+6-byte body with no title, so the leak requires authentication but crosses
+tenancy. Fixed by #1629 (merged `9702ddd20`); **the LIVE re-proof of that fix
+is NOT claimed — it had not reached production when this session ended.**
+
+### Session-revocation drill (test plan §9; V3-E-017's first LIVE proof)
+
+| Step | Result |
+|---|---|
+| BEFORE — `GET /clients/{bound}` / `GET /api/cockpit/stats?chart_id={bound}` | 200 / 200 |
+| `DELETE /api/auth/session` with that cookie | 200 |
+| AFTER — **same captured cookie value** on `/clients/{bound}` | **307** |
+| AFTER — same cookie on `/api/cockpit/stats` | **401** |
+| AFTER — same cookie on `/api/pyramid` | **401** |
+
+This is the claim #1616 actually makes, tested rather than asserted: a captured
+`__session` cookie does **not** outlive a logout for the remainder of its
+14-day TTL. Pre-fix, `DELETE` only cleared the cookie client-side and this exact
+value would have stayed valid.
+
+### Audit integrity (test plan §9 "audit hash-chain or INSERT-only proof")
+
+Scoping first, because the obvious table is the wrong one: **`audit_log` and
+`audit_events` are both EMPTY (0 rows) in production**, carry no hash-chain
+columns, and have zero triggers and zero rules. They are not the live audit
+surface. The live surface is `pariprashna_safety_decisions` (297 rows,
+`prev_hash`/`entry_hash`).
+
+- **Enforcement is real, and was made to fire.** Inside rolled-back
+  transactions against the production table: `UPDATE` → `ERROR:
+  APPEND_ONLY_VIOLATION … blocked (PPR-26)`, raised by
+  `pariprashna_safety_append_only_guard()`; `DELETE` → the same. Row count
+  unchanged at 297 afterwards. Repeated on a second table
+  (`pariprashna_safety_review_events`, 9 rows) with the same result, so the
+  guard is general, not one table's special case. Ten `*_append_only` triggers
+  exist across the safety, consent, retraction and elevation surfaces.
+- **The chain itself verifies.** Using the repository's own
+  `loadSafetyChain` + `verifySafetyChain` (not a reimplementation, so formula
+  drift between prod data and app code would surface as failure):
+  chart `1c826d5a` 282/282 links `ok=true`; chart `482012f1` 15/15 `ok=true`;
+  **297/297 total, `broken_at=null`, `reason=null`.**
+- **The gap.** `mimamsa_predictions` — 195 live rows carrying
+  `lifecycle_status` and `frozen_bundle_hash` — has **zero** append-only
+  triggers and **zero** CHECK constraints. Journey J8's "reversible only via
+  the defined lifecycle" property is enforced in application code alone. With
+  E-001 still open and `audit_log` empty, prediction history is rewritable with
+  no database obstacle and no audit trail.
+
+### Inherited findings re-verified LIVE and UNCHANGED
+
+- **E-001 (PPR-26):** `amjis_app` still holds `DELETE, INSERT, REFERENCES,
+  SELECT, TRIGGER, TRUNCATE, UPDATE` on `audit_log`. PR #1615 narrows this and
+  remains open by design.
+- **B-002 / E-002 / E-015:** `relrowsecurity=f` and `relforcerowsecurity=f` on
+  **both** `chart_facts` and `chart_dashas`; `pg_policies` returns **0** rows
+  for either. Re-verified only; not attempted, per standing decision.
