@@ -26,9 +26,14 @@ primary evidence; it is not acceptance until an authorized integrator emits
 ## What this packet claims (read this first)
 
 **PARTIAL CREDIT, not full stream closure.** Of the 45 scenarios frozen at
-session open, ~19 discrete tracker events were recorded against that
-denominator (10 `scenario_executed` + 9 findings + 5 remediation/
-verification pairs). The tracker's own contract requires
+session open, 11 `scenario_executed` events were recorded (10 substantive
+plus this packet's own correction-tracking event), well short of 45. Beyond
+scenarios, the stream also recorded 9 `finding_discovered`, 9
+`finding_triaged`, 1 `remediation_approved` (freezing 9 plan entries), and 5
+paired `remediation_implemented`/`verification_accepted` events (10 events)
+— none of which count toward the 45-scenario denominator itself, but all of
+which are real, durable tracker events documenting real work. The tracker's
+own contract requires
 `scenarios.executed == scenarios.planned` before the stream's regression/
 closure stages can be credited — this run does not meet that bar, and this
 packet does not claim it does. What this packet DOES claim: every fix this
@@ -42,13 +47,13 @@ against the full §9 enumeration, not the safety or honesty of what landed.
 ## Scenarios planned / executed
 
 45 planned (frozen at session open from test plan §9 + the charter's named
-inherited leads + J4-enforcement + J8). 10 scenario_executed events recorded
-(see tracker stream S5 events, seq 2–17 approx): B-001 LIVE re-verify, B-004
-re-verify, B-007/B-008 STATIC+INTEGRATION re-verify, B-002 caution review
-(LIVE-reconfirmed, left open), restore drill (real export/restore, DR-runbook
-gap found), J4 mortality/self-harm LIVE proof, roles/grants live audit,
-provider data-posture gap noted, PR #1611 merge confirmation, and the
-process-self-correction note. The remaining ~35 planned scenarios (the full
+inherited leads + J4-enforcement + J8). 11 scenario_executed events recorded:
+B-001 LIVE re-verify, B-004 re-verify, B-007/B-008 STATIC+INTEGRATION
+re-verify, B-002 caution review (LIVE-reconfirmed, left open), restore drill
+(real export/restore, DR-runbook gap found), J4 mortality/self-harm LIVE
+proof, roles/grants live audit, provider data-posture gap noted, PR #1611
+merge confirmation, the process-self-correction note, and this packet's own
+closure-review-corrections-applied event. The remaining ~34 planned scenarios (the full
 enumerated §9 sub-item list) are NOT individually executed as separate
 tracker events this session — they are substantively covered by the
 INTEGRATION-rung test suites re-run and confirmed green (see below), but an
@@ -167,8 +172,9 @@ silently absorbed.
   session should backfill the citations into the register rather than rely
   on this session's transcript.
 - **Nothing this session fixed is live.** Worth repeating outside the
-  deploy-staleness bullet above: two PRs are merged to `main`, three more
-  are verified and queued — zero are deployed. `amjis-web` stayed at
+  deploy-staleness bullet above: three PRs are merged to `main` (#1611,
+  #1613, #1616), two more are independently verified ACCEPT and queued in
+  the merge queue (#1617, #1618) — zero are deployed. `amjis-web` stayed at
   `cafa894ee` for this entire run, and the deploy pipeline itself failed
   again mid-session.
 - **Model disclosure**: this stream's main loop ran on `claude-sonnet-5`

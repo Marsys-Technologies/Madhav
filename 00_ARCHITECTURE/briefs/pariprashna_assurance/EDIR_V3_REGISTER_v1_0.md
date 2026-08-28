@@ -677,9 +677,12 @@ await Native Surrogate triage.
   1 addendum claim REFUTED (`cockpit/runs/[id]/assets` is correctly
   super_admin-gated), remainder CONFIRMED-SAFE with cited reasons. Fixes for
   the 4 HIGH + `learning`/`data-readiness`/`pyramid-layers` MEDIUMs dispatched
-  as PRs #1616/#1617 (branch lanes e013/e014) — see V3-E-021/V3-E-022 below
-  for the consolidated fix tracking. `mcp/db/query`'s 15+ call-site sweep and
-  the two latent gaps remain open leads for a future session.
+  as PRs #1617/#1618 (branch lanes e013/e014) — see V3-E-022 below for the
+  consolidated fix tracking of the confirmed-HIGH subset (`mcp/session`'s
+  fix is in #1618, tracked under its own remediation entry S5-R-003 alongside
+  V3-E-011; see the corrected result packet for the durable PR link).
+  `mcp/db/query`'s 15+ call-site sweep and the two latent gaps remain open
+  leads for a future session.
 
 ### V3-E-017 — `DELETE /api/auth/session` (logout) never revokes server-side; no same-day session revocation path exists
 
@@ -949,13 +952,17 @@ S2 independently owns the real `V3-E-021`). V3-E-011 closed-by-triage with
 the full ~39-route candidate sweep individually verdicted (per-route detail
 lives in this session's tracker/agent record, not reproduced verbatim here —
 flagged by the stream-closure review as a durability gap for a future
-session to backfill). V3-E-007's FIX (PR #1611) independently verified
-ACCEPT and CONFIRMED MERGED to main (its underlying FINDING stays OPEN
-pending the deploy-staleness-blocked LIVE denial proof); V3-E-010/017/022's
-fix PRs (#1613/#1616/#1617) independently verified ACCEPT — #1613 CONFIRMED
-MERGED, #1616/#1617 queued; the mcp/session+learning+build-reads fix PR
-#1618 independently verified ACCEPT with a pre-merge sanity query run clean
-(0 legacy owner_id/client_id mismatches) and queued for merge; one new
+session to backfill). THREE fix PRs CONFIRMED MERGED to main as of session
+close: #1611 (V3-E-007 — its underlying FINDING stays OPEN pending the
+deploy-staleness-blocked LIVE denial proof), #1613 (V3-E-010), #1616
+(V3-E-017). TWO more independently verified ACCEPT and queued in the merge
+queue, not yet merged: #1617 (V3-E-022 / the confirmed-HIGH subset of
+V3-E-011) and #1618 (the remainder of V3-E-011's fix — mcp/session, plus
+`clients/[id]/learning`, `build/data-readiness`, `build/pyramid-layers` —
+verified with a pre-merge sanity query run clean, 0 legacy owner_id/
+client_id mismatches). Re-check `gh pr view <n>` for current state before
+citing this table — the merge queue was still draining as this register was
+last edited. One new
 MEDIUM lead (stale MCP session pins, above) surfaced post-freeze and
 recorded register-only, not yet a tracker finding. All five verifications
 are now formally attested as tracker `verification_accepted` events (seq
