@@ -787,6 +787,50 @@ await Native Surrogate triage.
   `S6-SC-M01-first-signal-full-turn-latency` (ledger_seq 378) before this
   register entry was filed.
 
+### S6-V3-E-003 — Planner-stage (S5) latency has a real, undocumented tail up to 99.3s on the synthetic chart
+
+- **Class / severity:** DEFECT · S1 (proposed HIGH by finder — a stage-level
+  tail comparable to or exceeding the whole-turn provisional p95 target;
+  final severity per register law is assigned at triage by the Native
+  Surrogate, not the finder)
+- **Lens / stage:** L-LIVE · S5 (AcharyaPlan / planner, per S4's 11-stage
+  decomposition)
+- **Journey:** J-ask (any interpretive/predictive turn via the Portal/web
+  door)
+- **Expected:** provisional interpretive-turn p95 <90s (test plan v2.1
+  §10.2); the planner is one of eleven stages and should not, on its own,
+  threaten the whole-turn budget.
+- **Observed (2026-08-28, this session):** read-only query (role
+  `amjis_app`, via `cloud-sql-proxy 127.0.0.1:5433`, scoped to
+  `conversation_messages` joined to `conversations` where `chart_id =
+  1c826d5a-41cb-4450-b4dc-59d440e5f75a` only) over 265 real Portal-door
+  assistant turns found a persisted, per-turn field
+  (`metadata_json.custom.planning_latency_ms`, paired with
+  `planning_model_id`, observed value `gemini-3.7-flash`) that S4's
+  MCP-door-only investigation did not surface. Distribution: avg 5,955ms,
+  min 1,974ms, **max 99,339ms**. Five samples exceed 30s; the maximum alone
+  (99.3s) is inside-or-over the whole-turn provisional p95 (<90s) before any
+  synthesis time is added. This **partially revises** S4's claim in
+  `S4_LATENCY_WATERFALL_v1_0.md` that "no native per-stage timer exists for
+  S1-S5" — the timer exists for this stage on the Portal door (S4 measured
+  only the MCP door, where it is absent); S4's own inferred bound for this
+  same stage (~7.9s this-run upper bound, ~3.9s avg elsewhere) is close to
+  this sample's average but far short of its real tail.
+- **Code anchor:** `conversation_messages.metadata_json.custom.planning_latency_ms`
+  / `.planning_model_id` (persisted column: `metadata_json`, DB-verified this
+  session; application code path not yet traced).
+- **PPR/gap cross-reference:** **V3-E-015** (S4, same stage family, MCP
+  door), `S4_LATENCY_WATERFALL_v1_0.md` §2 (S5 row).
+- **Proposed fix class:** not proposed here — this session did not trace the
+  application code that sets `planning_model_id`/produces these outliers;
+  triage should determine whether the tail correlates with a specific model,
+  query class, or load condition before any fix is scoped.
+- **Status:** OPEN · verification rung: LIVE (already achieved this
+  session — real DB read against production data, read-only, scoped to the
+  synthetic chart only) · banked to the S6 tracker stream as
+  `scenario_executed` `S6-SC-M02-planning-stage-latency-segmentation` and
+  `finding_discovered` `S6-V3-E-003`.
+
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
@@ -794,8 +838,9 @@ await Native Surrogate triage.
 SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
 B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
 B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign); 2 S6-namespaced entries added
+E-011 filed to S5, V3-E-009 closed-as-benign); 3 S6-namespaced entries added
 2026-08-28 (S6-V3-E-001 process self-correction, S6-V3-E-002 baseline
-reproduction cross-referencing S4's V3-E-015 — S4's own V3-E-0NN entries
-live on S4's branch pending merge, not yet present in this copy). No gate is
-certified by this document.*
+reproduction cross-referencing S4's V3-E-015, S6-V3-E-003 new planner-stage
+tail-latency finding revising S4's S5-stage bound — S4's own V3-E-0NN
+entries live on S4's branch pending merge, not yet present in this copy). No
+gate is certified by this document.*
