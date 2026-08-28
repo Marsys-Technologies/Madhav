@@ -817,12 +817,19 @@ await Native Surrogate triage.
 
 ---
 
-### V3-E-032 — CRITICAL: live corpus sample shows 0% of citation attempts reach a trustworthy grade across 10 turns/6 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed
+### V3-E-032 — CRITICAL: live corpus sample shows 0 of 80 citation attempts reach a trustworthy grade across 10 turns/6 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed; adversarially reviewed and CORRECTED
+
+**Corrected 2026-08-28 after a 3-way blinded Opus adversarial refuter panel
+(elevation R-2, `SURROGATE-SCORED — pending native rubric`) found real errors
+in this entry's first-filed version. Corrections applied inline below rather
+than silently — see "Adversarial review" at the end.**
 
 - **Class / severity:** DEFECT (corroborating/quantifying V3-E-016 at corpus
-  scale) filed to **S4** (primary — same grounding/retrieval pipeline root
-  cause as V3-E-016) · plus an S3 in-territory scorer-harness DEFECT, found
-  and FIXED this session · **CRITICAL**
+  scale) filed to **S4** (primary — root cause narrowed by the refuter panel
+  to `platform/src/lib/pariprashna/pipeline/citation_resolver.ts`, not the
+  broader "grounding/retrieval pipeline" this entry originally named) · plus
+  an S3 in-territory scorer-harness DEFECT, found and FIXED this session ·
+  **CRITICAL**
 - **Lens / stage:** L-LIVE (deployed web door, `scripts/probe/ask.ts`,
   synthetic chart `1c826d5a` only) · S3 quality-corpus scoring harness
   (`platform/src/lib/pariprashna/corpus/dimensions/citation_precision.ts`)
@@ -841,81 +848,206 @@ await Native Surrogate triage.
   block (the other 6 were short/blocked/degenerate responses, reported
   `not_yet_measurable`, not silently dropped). Across all 10 measured turns:
   `primary=supporting=contextual=prior_reading=0` — zero citations, across
-  160 total citation attempts, ever reached a real verification tier. The
-  remaining 80 were all graded `unverified`.
+  **80** total citation attempts (the per-turn `unverified` counts summed:
+  1+8+13+9+5+7+16+8+10+3 = 80), ever reached a real verification tier; all
+  80 graded `unverified`. (First-filed version of this entry stated "160" —
+  wrong, and wrong in a self-incriminating way: 160 is exactly the
+  double-counted denominator the scorer fix below removes. Corrected here.)
 - **Scorer bug found and fixed (S3 in-territory, `citation_precision.ts`):**
   `citations/rewriter.ts`'s `resolveSentinel` has exactly one branch for an
   unresolvable reference, and that single branch both assigns
   `grade: 'unverified'` AND increments the hallucination counter
   (`rewriter.ts:263-278`) — `grade_counts.unverified` and
   `hallucination_count` are the SAME event, always exactly equal by
-  construction, never disjoint (confirmed empirically: all 10 measured
-  turns had `hallucination_count === grade_counts.unverified` exactly, with
-  underlying magnitudes varying 1..16 — not a coincidence, a structural
-  invariant). The scorer previously computed `resolved` as the sum of ALL
+  construction, never disjoint (independent-verifier-confirmed by tracing
+  every path into both counters, not just empirically — see stream result
+  packet). The scorer previously computed `resolved` as the sum of ALL
   `grade_counts` (including `unverified`) and then added
   `hallucination_count` again as a separate denominator term — double-
   counting every unresolvable citation and mathematically forcing the score
   toward ~0.5 for any turn with zero genuinely-verified citations,
-  regardless of true severity (a turn with 1 hallucination scores the same
-  ~0.5 as a turn with 16). This MASKED the true 0.0 (zero citations ever
+  regardless of true severity. This MASKED the true 0.0 (zero citations ever
   reached primary/supporting/contextual/prior_reading) behind a falsely
-  reassuring midpoint score. Fixed via TDD: 2 new tests added to
-  `citation_precision.test.ts` (one encoding the real rewriter invariant
-  the old test's synthetic fixture violated, one asserting the true 0.0
-  case), confirmed RED against the old implementation, fixed, confirmed
-  GREEN; full corpus suite re-run clean (104/104, zero regressions). With
-  the corrected scorer, the same 16-fixture batch's `citation_precision`
-  mean is exactly `0`, not the pre-fix `0.5`.
-- **Corroboration of V3-E-016:** V3-E-016 found one specific hallucinated
-  fact (Moon nakshatra) with its own receipt disclosing
-  `hallucination_count: 2` and a 9/14 MCP↔web namespace retrieval gap. This
-  finding shows the same failure mode is not that one query's bad luck —
-  it reproduces at 0% true citation-precision across 10 independently
-  authored queries spanning 6 different work classes. `b11_coverage` (a
-  separate, independently-computed dimension — sanity-checked against
-  V3-E-016's own receipt numbers and confirmed NOT to share the same bug)
-  measured a mean of `0.237` across the same 16-fixture sample, consistent
-  with V3-E-016's own `served: 5, floor_item_total: 14` (0.357) with zero
-  cross-domain authorization on top.
-- **Why not fixed further in S3:** the citation_precision.ts scorer bug
-  IS S3's own territory and IS fixed (above). The underlying platform
-  defect it measures — why the web door's citation rewriter resolves so
-  few citations to a real, verified signal — is the grounding/retrieval
-  pipeline itself (S4 territory, same root cause V3-E-016 already named:
-  `validation_stage.ts` has zero references to `hallucination_count`, and
-  the receipt's own `honest_gaps` disclosure path exists but nothing wires
-  the citation-grade signal into it).
-- **Proposed fix class:** S4's V3-E-016 remediation (wiring
-  `validation_stage.ts`/`streaming_citation_validator.ts` to gate or
-  disclose on `evidence_grades`) directly addresses this finding's root
-  cause too — recommend S4 treat V3-E-016 and V3-E-032 as one root-cause
-  group (`root_cause_group: V3-E-016`, set on this finding's tracker event).
-- **Status:** OPEN, filed to **S4**, CRITICAL. The S3-territory half (the
-  scorer bug) is CLOSED — fix landed this session, independently verified
-  per harness §6.2 (see stream result packet). Close rung for the platform
-  defect: LIVE (a re-run of this same 16-fixture batch against a fixed
-  `validation_stage.ts` showing citation_precision materially above 0).
+  reassuring midpoint score. Fixed via TDD: 2 new tests, confirmed RED
+  against the old implementation, GREEN after; full corpus suite re-run
+  clean (104/104, zero regressions). Independent verifier additionally
+  proved algebraically that the fix is strictly non-lenient versus the old
+  formula for all inputs (`score_new ≤ score_old` always). The evidence
+  report this entry originally cited
+  (`platform/scripts/pariprashna/out/s3_live_corpus_report_s3batch02.json`)
+  was committed in the SAME commit as the fix WITHOUT being regenerated —
+  it still showed the pre-fix `0.5` and pre-fix finding-string wording,
+  making "0.0" a re-derivation, not a filed measurement, when first written.
+  **Regenerated** (same path, same 16 captured turns, current scorer) —
+  now correctly shows `citation_precision: 0`.
+- **Root cause, narrowed by the refuter panel:** the original filing
+  attributed this to "the grounding/retrieval pipeline" generally (same
+  framing as V3-E-016). Refuter #2 traced the actual mechanism further:
+  `citation_resolver.ts:36` — `const SIGNAL_ID_RE = /SIG\.MSR\.\d{3}/g` — the
+  resolver's prefetch ONLY recognizes `SIG.MSR.NNN`-shaped ids. The synthesis
+  prompt (`pariprashna_synthesis_prompt_v1.ts`) instructs the model to cite
+  "the exact reference id as it appears in the retrieved context" —
+  ANY retrieved id, not only MSR signal ids (L1 `ga_*` fact_ids, yoga ids,
+  dasha row ids are all valid retrieved-context ids per the fixtures'
+  own grounding notes throughout `fixtures.ts`). A citation of any
+  non-MSR-signal id — even one that is perfectly, verifiably grounded in
+  what the turn actually retrieved — resolves to `null` and grades
+  `unverified` **by construction**, independent of whether retrieval
+  coverage was good or bad. This is a resolver SCOPE bug (recognizes one id
+  family, silently fails closed on all others), not proof of a sparse-
+  retrieval/grounding-coverage problem per se — though `fetchCandidateSignalLabels`
+  also fails closed to an empty map on any DB fault (`citation_resolver.ts:83-88`),
+  which independently produces the exact same uniform-zero signature. Both
+  mechanisms point at `citation_resolver.ts` specifically, not the broader
+  pipeline. Uniform 0.0 across 10 heterogeneous turns fits ONE binary
+  wiring/scope failure better than a partial, query-dependent retrieval gap
+  (V3-E-016's own turn showed a partial 9/14 gap, not a total one) — the
+  two findings likely share upstream lineage but are not proven to be
+  literally the same defect; S4 should investigate `citation_resolver.ts`'s
+  id-recognition scope as the primary lead, not assume V3-E-016's fix alone
+  resolves this.
+- **Sample-scope caveats (added per adversarial review):** single synthetic
+  chart (`1c826d5a`) only — no control/comparison chart run, so a thin-data
+  confound specific to this chart is disclosed, not excluded. 8/10 measured
+  turns also showed `cross_domain.status` unavailable with reason
+  "plan.domains was not populated by the planner" (see the companion
+  `b11_coverage` finding below) — consistent with one common upstream
+  planner/retrieval-wiring cause manifesting repeatedly, not ten
+  independent failures. "Systemic" is downgraded here from "across the
+  door" to "reproducible across this test chart's 10 measured turns,
+  spanning 6 work classes, plausibly one common upstream cause" — still
+  release-blocking as a user-visible defect (every citation in the sample
+  rendered unverified/hallucinated to the reader), not weakened in
+  severity, only in the breadth of the causal claim.
+- **Why not fixed further in S3:** the citation_precision.ts scorer bug IS
+  S3's own territory and IS fixed (above). `citation_resolver.ts` is
+  `pipeline/` code — S4 territory, referral only, never a cross-territory
+  fix.
+- **Proposed fix class:** S4 investigates widening `citation_resolver.ts`'s
+  id recognition beyond `SIG.MSR.NNN` (or resolving against a broader id
+  catalog matching what the synthesis prompt actually instructs the model
+  to cite), and hardening `fetchCandidateSignalLabels`'s fail-closed-to-
+  empty-map path to distinguish "genuinely nothing to cite" from "DB fault
+  swallowed" (the latter should not silently present as the former). V3-E-016's
+  `validation_stage.ts` gating recommendation still applies as a
+  defense-in-depth disclosure layer regardless of root cause.
+- **Status:** OPEN, filed to **S4** with the narrowed root cause above,
+  CRITICAL. The S3-territory half (the scorer bug) is CLOSED — fix landed
+  this session (PR #1619), independently verified per harness §6.2 (ACCEPT
+  verdict, see stream result packet). Close rung for the platform defect:
+  LIVE (a re-run of this same batch against a fixed `citation_resolver.ts`
+  showing citation_precision materially above 0).
 - **Tracker:** `finding_discovered` event `ef457619-6ea3-4b85-a052-b3334b37c153`
-  (S3 stream_seq 5), `root_cause_group: V3-E-016`.
+  (S3 stream_seq 5), `root_cause_group: V3-E-016` (kept for now; S4 should
+  confirm or split once `citation_resolver.ts` is actually investigated).
+
+**Adversarial review (elevation R-2, `SURROGATE-SCORED — pending native
+rubric`, 3-way blinded Opus panel, 2026-08-28):** all three refuters
+independently confirmed the underlying defect is real and release-blocking
+(exact 0.5 on all 10 pre-fix turns is only possible if
+`primary+supporting+contextual+prior_reading=0` on every one — algebraically
+forced, not inferable-away) while each independently catching the same "160
+vs 80" arithmetic error and the same "report never regenerated post-fix"
+gap — convergent, high-confidence findings, now corrected above. Refuter #2
+additionally supplied the `citation_resolver.ts` root-cause narrowing.
+Refuter #3 additionally found a second, DISTINCT scorer defect in
+`b11_coverage.ts` — filed separately as V3-E-033 below, not folded into this
+entry.
+
+---
+
+### V3-E-033 — S3 scorer harness: `b11_coverage.ts` penalizes low `served` count directly, contradicting its own docblock
+
+- **Class / severity:** DEFECT · S3 scorer harness (in-territory, not fixed
+  this session — see rationale below) · **MEDIUM** (a measurement-accuracy
+  defect in a not-yet-release-blocking-on-its-own scorer, not a live
+  user-facing defect itself)
+- **Lens / stage:** L-CODE · S3 quality-corpus scoring harness
+  (`platform/src/lib/pariprashna/corpus/dimensions/b11_coverage.ts`)
+- **Observed (2026-08-28, found by refuter #3 during the V3-E-032
+  adversarial panel, independently confirmed by direct code read this
+  session):** `b11_coverage.ts`'s own docblock (line 13-18): "The RS-4
+  proportionality carve-out... means this scorer does not penalize a low
+  `served` count on its own; it penalizes `coverage`/`cross_domain` being
+  `unavailable`... which is the actual failure mode B.11 exists to catch."
+  But the implementation (line 44):
+  `coverageComponent = total > 0 ? Math.min(1, served / total) : 1` — a
+  direct, linear penalty on a low `served`/`total` ratio, exactly what the
+  docblock says this scorer does NOT do. Under the documented (intended)
+  behavior, `coverageComponent` should be non-zero (arguably 1) whenever
+  `coverage.status === 'measured'` regardless of the served/total ratio,
+  penalizing only `'unavailable'` status. Re-scoring the S3 16-fixture live
+  batch (V3-E-032's evidence) under a spec-faithful interpretation would
+  raise the `b11_coverage` mean from `0.237` to roughly `0.55` — direction
+  unchanged (still below the 0.75 qualification bar), but the magnitude
+  V3-E-032 originally reported was inflated ~2.3x by this bug (V3-E-032
+  corrected to note this).
+- **Compounding framing error (also refuter #3):** V3-E-032 reported
+  `b11_coverage` as a mean across all 16 fixtures. Only **10 of 16** actually
+  produce a `b11_coverage` score: `sensitive` fixtures are exempt from
+  `B11_COVERAGE_REQUIREMENT` per `bars.ts`, and `ambiguous_clarification`
+  fixtures are excluded from all 4 qualification work classes entirely per
+  `work_classes.ts` (`workClass: null`) — neither gets a b11 score to
+  average in the first place. The denominator was misstated.
+- **Why not fixed this session:** resolving which side is authoritative
+  (the docblock's stated intent, or the current code) requires real design
+  judgment this stream did not have time to responsibly exercise under
+  adversarial-panel time pressure — specifically, `bars.ts` requiring
+  `b11_coverage >= 0.75` for the `factual` work class may itself already be
+  in tension with the RS-4 carve-out the docblock cites (RS-4 says a
+  `factual`-class fixture should satisfy B.11 differently/more leniently,
+  via a frame-check rather than the SAME full-floor-coverage bar every
+  other class is held to) — a `bars.ts` design question, not just a
+  one-line `b11_coverage.ts` code fix. Fabricating a rushed fix to one side
+  of a two-file design tension risked getting it wrong in a worse way than
+  leaving it honestly open. §N.4 "floors aspirational, not gates" and
+  §N.8 apply: an honest open finding beats an invented resolution.
+- **What the underlying data actually shows, spec-faithful (the real
+  release-blocking signal here):** `cross_domain.status: 'unavailable'`
+  (reason: `"plan.domains was not populated by the planner"`) on **8 of 10**
+  measured turns in the V3-E-032 batch — this IS exactly the failure mode
+  `b11_coverage.ts`'s own docblock says the dimension exists to catch,
+  independent of the `coverageComponent` dispute above. This is the number
+  worth citing toward a gate, not the disputed pooled mean.
+- **Proposed fix class:** (a) a native/Native-Surrogate ruling on whether
+  `bars.ts`'s `factual` requirement should apply `b11_coverage` at the
+  general 0.75 threshold or an RS-4-adjusted one; (b) once ruled,
+  `b11_coverage.ts`'s `coverageComponent` computation brought into line with
+  whichever side the ruling settles on (code-to-match-docblock, or
+  docblock-to-match-code-plus-bars.ts-adjustment); (c) separately and
+  regardless of (a)/(b): investigate why the planner fails to populate
+  `plan.domains` on 8/10 turns — likely S4 pipeline territory (the planning
+  stage), referral not a cross-territory fix.
+- **Status:** OPEN, S3-owned (scorer-harness territory), not release-gating
+  on its own — the `plan.domains` planner gap it surfaces IS potentially
+  release-relevant and is the number to carry forward, not the disputed
+  mean. Close rung: STATIC (a documented ruling + landed fix + independent
+  verification, same pattern as V3-E-012).
+- **Tracker:** `finding_discovered` event `875dea20-6fe4-4a60-89ec-58f4995bdacd`
+  (S3 stream_seq 6).
 
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 14 V3 entries on this branch (5 from the A3 census + 6 surfaced
+SALVAGE 2); 15 V3 entries on this branch (5 from the A3 census + 6 surfaced
 during A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/
 B-007 and the B-008 CRITICAL routes fixed and independently verified,
-V3-E-007/E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 3 filed
+V3-E-007/E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 4 filed
 2026-08-28 by stream S3: V3-E-012, real-chart-grounding question on the
 quality corpus's pre-existing fixtures, filed for native ruling; V3-E-016
 (originally drafted as E-013, renumbered on a live TRACKER-side
 FINDING_ID_CONFLICT — S2 had already claimed E-013..E-015 concurrently in
 this shared, cross-worktree register; see E-017's own named gap), CRITICAL
 reproducible hallucination-of-real-chart-facts defect on the deployed web
-door, filed to S4/S5; V3-E-032, CRITICAL corpus-scale (0% true citation
-precision across 10 live turns) corroboration of V3-E-016 plus an
-in-territory S3 scorer bug found and FIXED this session, filed to S4).
+door, filed to S4/S5; V3-E-032, CRITICAL corpus-scale (0 of 80 true
+citation-verification) corroboration of V3-E-016 plus an in-territory S3
+scorer bug found and FIXED this session, filed to S4 with a narrowed root
+cause (`citation_resolver.ts`) after 3-way adversarial refuter review
+corrected its first-filed numbers; V3-E-033, MEDIUM, a second distinct S3
+scorer defect (`b11_coverage.ts` contradicting its own docblock) the same
+refuter panel surfaced, filed OPEN pending a design ruling, not rushed to a
+fix).
 Other streams (S1/S2/S4/S5/S6) file V3-E entries on their OWN branches per
 the harness's per-stream-branch model (§2.1) — this file's count is scoped
 to what S3 has filed on `pariprashna/v3-s3-answer-quality`; the tracker

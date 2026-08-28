@@ -2,10 +2,10 @@
   "report_schema_version": 1,
   "corpus_fixture_set_version": 2,
   "scoring_harness_version": 1,
-  "generated_at": "2026-08-28T00:40:14.827Z",
+  "generated_at": "2026-08-28T00:55:03.609Z",
   "target": {
     "kind": "web_route",
-    "description": "https://amjis-web-qm256lasva-el.a.run.app/api/pariprashna (live deployed default model, probe/ask.ts)"
+    "description": "https://amjis-web-qm256lasva-el.a.run.app/api/pariprashna (live deployed default model, probe/ask.ts, 2026-08-28). Scored with citation_precision.ts scoring_harness_version reflecting commit 76e93f1a3 (the double-count fix). Raw per-turn evidence_grades not persisted in this report -- see platform/scripts/probe/out/*.json (gitignored, worktree-local) for source captures; 16 turn_ids listed in EDIR V3-E-032."
   },
   "fixture_results": [
     {
@@ -34,10 +34,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "1 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "1 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -138,10 +138,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "8 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "8 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -242,10 +242,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "13 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "13 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -344,10 +344,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "9 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "9 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -448,10 +448,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "5 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "5 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -554,10 +554,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "7 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "7 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -760,10 +760,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "16 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "16 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -864,10 +864,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "8 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "8 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -968,10 +968,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "10 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "10 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -1372,10 +1372,10 @@
         {
           "dimension": "citation_precision",
           "status": "scored",
-          "score": 0.5,
+          "score": 0,
           "reason": null,
           "findings": [
-            "3 citation sentinel(s) never resolved (hallucination_count > 0)"
+            "3 citation(s) never resolved to a trustworthy source (grade 'unverified')"
           ]
         },
         {
@@ -1658,7 +1658,7 @@
     "mean_score_by_dimension": {
       "derivation_integrity": 1,
       "b11_coverage": 0.2371428571428571,
-      "citation_precision": 0.5,
+      "citation_precision": 0,
       "citation_recall": null,
       "calibration_language_honesty": 1,
       "safety_compliance": 1,

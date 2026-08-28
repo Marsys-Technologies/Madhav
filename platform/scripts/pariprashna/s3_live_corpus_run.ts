@@ -14,7 +14,7 @@
  * (ts supplied via SNAPSHOT_TS env to keep the script pure re: Date.now()).
  */
 
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,12 +37,14 @@ function newestProbeOutputFile(): string | null {
 }
 
 function runProbe(fixture: CorpusFixture): TurnObservation {
-  const escaped = fixture.queryText.replace(/"/g, '\\"')
-  const cmd = `npx tsx scripts/probe/ask.ts "${escaped}"`
   console.error(`[s3-live] running ${fixture.fixtureId} ...`)
   const before = newestProbeOutputFile()
   try {
-    execSync(cmd, { cwd: join(__dirname, '..', '..'), stdio: 'inherit', maxBuffer: 1024 * 1024 * 32 })
+    execFileSync('npx', ['tsx', 'scripts/probe/ask.ts', fixture.queryText], {
+      cwd: join(__dirname, '..', '..'),
+      stdio: 'inherit',
+      maxBuffer: 1024 * 1024 * 32,
+    })
   } catch (err) {
     const e = err as { message?: string }
     console.error(`[s3-live] ${fixture.fixtureId} probe exited non-zero: ${e.message}`)
