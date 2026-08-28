@@ -1,13 +1,14 @@
 ---
 artifact: PARIPRASHNA_STREAM_CLOSURE_RUNBOOK
-version: 1.1
+version: 1.2
 status: CURRENT — the authoritative procedure a stream follows to legitimately
   CLOSE on the accepted tracker (emit result_packet_accepted). Written to
   resolve a systemic blocker S1 surfaced (no stream had ever closed) — after
   independent verification found the blocker to be PROCEDURAL, not a tracker
   defect. v1.0 changed no tracker code; it was the missing ceremony, documented.
-  v1.1 documents one genuinely new tracker capability (the surrogate-only
-  FINDING_FREEZE plan-revision path) alongside that ceremony.
+  v1.1 corrected step 4's event vocabulary against control.py. v1.2 documents
+  one genuinely new tracker capability (the surrogate-only FINDING_FREEZE
+  plan-revision path) alongside that ceremony.
 date: 2026-08-29
 authoritative_side: claude
 relates_to:
@@ -17,21 +18,35 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/AUTONOMOUS_EXECUTION_ELEVATION_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md
 changelog:
-  - "1.1 (2026-08-29, Paripraśna v3 closeout lane A2): step 4 gains the governed
-    FINDING_FREEZE plan-revision path. Previously the runbook could only tell a
-    stream that a post-freeze finding 'needs a separately governed scope path' —
-    a path that did not exist, leaving real findings (S5-V3-E-023/024, the S1
-    and S3/S4 register-only entries) stuck outside the tracker. The new
-    NATIVE_SURROGATE-only `finding_freeze_exception_granted` event is that path;
-    it admits exactly one named finding_id and leaves the freeze in force for
-    everything else. Tracker change: `tracker/control.py`."
+  - "1.2 (2026-08-29, Paripraśna v3 closeout lane A2): step 4 gains the governed
+    FINDING_FREEZE plan-revision path, appended to lane A1's v1.1 step-4 rewrite
+    (both kept; A1's corrected event vocabulary is authoritative and untouched).
+    Previously the runbook could only tell a stream that a post-freeze finding
+    'needs a separately governed scope path' — a path that did not exist, leaving
+    real findings (S5-V3-E-023/024, the S1 and S3/S4 register-only entries) stuck
+    outside the tracker. The new NATIVE_SURROGATE-only
+    `finding_freeze_exception_granted` event is that path; it admits exactly one
+    named finding_id and leaves the freeze in force for everything else. Tracker
+    change: `tracker/control.py`."
+  - "1.1 (2026-08-29, Claude Code, lane A1): vocabulary correction only, no
+    substance change. §3 step 4 described the remediation-verification ceremony
+    using a phantom event type, `remediation_verified`, that does not exist in
+    `tracker/control.py`. control.py's ROLE_EVENTS has no such event type; the
+    real closure step is an INDEPENDENT_VERIFIER `verification_accepted` event
+    whose payload carries `remediation_id` + `finding_id` (control.py lines
+    630-639, the `REMEDIATION_VERIFICATION_REFERENCE` guard), preceded by the
+    STREAM_LEAD's `remediation_proposed` -> NATIVE_SURROGATE's
+    `remediation_approved` -> STREAM_LEAD's `remediation_implemented`
+    (control.py ROLE_EVENTS, line 26-32, and the `remediation_implemented`
+    handling at lines 621-629). Step 4 rewritten to name the real event types
+    and payload fields exactly as control.py implements them."
   - "1.0 (2026-08-28, Claude Code): initial runbook. Corrects S1's closure-
     blocker finding from 'tracker defect requiring a central fix' to 'a real
     procedural gap: streams attempt closure before completing the lifecycle
     ceremony.' Evidence and the exact ceremony below."
 ---
 
-# Paripraśna — Stream Closure Runbook v1.0
+# Paripraśna — Stream Closure Runbook v1.2
 
 ## 0 — Executive verdict (the correction)
 
@@ -103,15 +118,24 @@ event. In order:
    scenarios. Verify; accept.
 3. **`{S}:triage`** — **every discovered finding must be `finding_triaged` first**
    (`TRIAGE_INCOMPLETE` guards this). Verify; accept.
-4. **`{S}:remediation`** — freeze a `remediation_approved` plan that **accounts for
-   every triaged finding** (`REMEDIATION_PLAN_SCHEMA`); then each planned remediation
-   gets a `remediation_verified` that **names the planned remediation id AND its
-   finding, in the same stream** (`REMEDIATION_VERIFICATION_REFERENCE`); every
-   planned remediation must reach `VERIFIED` (`REMEDIATION_INCOMPLETE` lists any
-   that haven't). Then verify + accept the stage. NOTE: once the remediation plan
-   is frozen, a *new* finding is `FINDING_FREEZE`-rejected — it needs a separately
-   governed scope path (a plan revision), so freeze the plan only after triage is
-   genuinely complete.
+4. **`{S}:remediation`** — the STREAM_LEAD emits a `remediation_proposed` event per
+   fix, then the NATIVE_SURROGATE freezes a `remediation_approved` plan that
+   **accounts for every triaged finding** (`REMEDIATION_PLAN_SCHEMA`); the
+   STREAM_LEAD implements each planned entry via `remediation_implemented`,
+   naming that entry's `remediation_id` **and** `finding_id`
+   (`REMEDIATION_CONTRACT` rejects an unplanned id/finding pairing, or a
+   `remediation_id` implemented twice); the INDEPENDENT_VERIFIER then emits a
+   **`verification_accepted`** event whose payload carries that same
+   `remediation_id` **and** `finding_id` (`REMEDIATION_VERIFICATION_REFERENCE`
+   rejects a `remediation_id`/`finding_id` pair that doesn't match a planned
+   entry, or that has no matching `remediation_implemented` event in the same
+   stream — there is no separate `remediation_verified` event type; verification
+   of a remediation is a `verification_accepted` event carrying these two payload
+   fields). Every planned remediation must reach `VERIFIED` this way
+   (`REMEDIATION_INCOMPLETE` lists any that haven't). Then verify + accept the
+   stage. NOTE: once the remediation plan is frozen, a *new* finding is
+   `FINDING_FREEZE`-rejected — it needs a separately governed scope path (a plan
+   revision), so freeze the plan only after triage is genuinely complete.
 
    **The governed plan-revision path (the only way past `FINDING_FREEZE`).** A
    `NATIVE_SURROGATE` — and no other role — emits `finding_freeze_exception_granted`
@@ -183,4 +207,4 @@ future, *governed* tracker refinement — proposed and reviewed, never an unatte
 mid-run relaxation. It is explicitly out of scope here: v1.0 documents the ceremony
 as the tracker actually enforces it today.
 
-*End STREAM_CLOSURE_RUNBOOK v1.0.*
+*End STREAM_CLOSURE_RUNBOOK v1.1.*
