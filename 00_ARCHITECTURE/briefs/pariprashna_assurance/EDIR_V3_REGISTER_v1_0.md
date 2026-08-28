@@ -984,24 +984,35 @@ investigated further here.)*
   status, which the UI renders as still "composing," with the composer
   correctly disabled for an in-progress turn that, server-side, is not
   in progress at all.
-- **Proposed fix class:** `turn.close` should be treated as the
-  authoritative "this turn is fully done" signal regardless of whether a
-  `turn.commit` preceded it — broaden the guard to settle on ANY turn.close
-  arriving while the turn is not already in a terminal state
-  (`'settled'`/`'errored'`/`'interrupted'`), not only from `'settling'`.
-  This is squarely S2's own reducer and is a small, well-understood,
-  narrowly-scoped fix; NOT landed in this session — the change touches the
-  single highest-traffic function in the reducer (every turn's terminal
-  transition) and deserves independent verification with fresh eyes before
-  merge given its severity, rather than a same-session rush; see status.
-- **Status:** OPEN — confirmed, root-caused, NOT yet fixed. This is S2's
-  top-priority carry-forward item; recommend the very next unit of work in
-  this stream (or an immediate native-authorized fast-follow) implements
-  and verifies the broadened `turn.close` guard above before this stream
-  closes, given the severity (an entire common interaction pattern —
-  literally any ambiguous or under-specified question — dead-ends the
-  reader with no recovery path visible in the UI: no error, no retry
-  affordance, no timeout message, just a frozen "Composing…").
+- **Fix landed (2026-08-28, S2, same session):** `turn.close`'s guard
+  broadened from `t.status === 'settling'` to "settle unless already in a
+  terminal state" (`'settled' | 'errored' | 'interrupted'` — a `Set` lookup,
+  named `TERMINAL_STATUSES` in the code for exactly this reuse). A
+  clarification turn (or any future turn shape lacking `turn.commit`) now
+  settles the instant `turn.close` arrives, exactly matching the server's
+  own authoritative "this turn is done" signal.
+- **Demonstrated-can-fail:** new
+  `platform/src/components/pariprashna/state/__tests__/reducer.turn_close.test.ts`,
+  4 cases: (1) the exact reproduction shape (`block.commit` with no
+  `turn.commit`, then `turn.close`) — RED (`'streaming'`) against pre-fix
+  `reducer.ts`, GREEN after; (2) the existing `turn.commit` → `turn.close`
+  path is unchanged (regression guard); (3) a `turn.close` arriving after
+  `CLIENT_STOP` does NOT resurrect the turn into `'settled'` (stays
+  `'interrupted'`); (4) a `turn.close` arriving after an `error` event does
+  NOT overwrite the error state (stays `'errored'`). All 4 pass. Full
+  territory suite: 1530 passed, 0 regressions. `tsc --noEmit` and `eslint`
+  clean on all touched files.
+- **Status:** FIXED — PR pending, independent verification pending. Given
+  this is the reducer's single highest-traffic terminal-transition path,
+  independent verification is held to the same bar as a security-class
+  finding even though it is not one: a distinct verifier should
+  independently re-derive the live wire trace's implication, confirm the
+  three regression-guard cases actually protect what they claim to (not
+  just that they pass), and consider any other status this change might
+  reach that the four cases above don't cover, before this merges.
+- **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
+  question on a deployed build post-merge; confirm the clarification turn
+  settles promptly and the composer re-enables so the reader can answer).
 - **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
   question on a deployed build post-fix; confirm the clarification turn
   settles promptly and the composer re-enables so the reader can answer).
@@ -1018,5 +1029,6 @@ V3-E-009 closed-as-benign, V3-E-021/E-014/E-015 filed to S4 (with E-015 also
 S2-owned for its surface half), V3-E-013 FIXED by S2 and independently
 verified merge-recommended, V3-E-023 FIXED by S2 (corrected in place after
 independent verification caught the first pass's incompleteness — see its
-own entry), V3-E-024 CONFIRMED root-caused OPEN — S2's highest-severity,
-NOT-yet-fixed carry-forward item). No gate is certified by this document.*
+own entry), V3-E-024 FIXED by S2 — S2's highest-severity finding this
+session, independent verification pending). No gate is certified by this
+document.*

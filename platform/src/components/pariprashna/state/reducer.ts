@@ -350,9 +350,21 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     }
 
     case 'turn.close': {
+      // V3-E-024: `turn.close` is the server's authoritative "this turn is
+      // fully done" signal — it must settle the turn REGARDLESS of whether
+      // `turn.commit` preceded it. A clarification-only turn's server
+      // stream never emits `turn.commit` at all (confirmed live: `block.commit`
+      // -> `phase:plan end` -> `turn.close` directly, no grounding to report),
+      // so gating settlement on `status === 'settling'` — a status ONLY
+      // `turn.commit` ever sets — left such a turn stuck forever in its
+      // pre-close status, composer locked, even though the server had
+      // already closed it. Settle from any NON-terminal status; a turn
+      // already `'settled'`/`'errored'`/`'interrupted'` is never resurrected
+      // by a (possibly late/duplicate) turn.close.
+      const TERMINAL_STATUSES: ReadonlySet<TurnState['status']> = new Set(['settled', 'errored', 'interrupted'])
       return updateTurn(state, action.turnId, (t) => {
-        if (t.status === 'settling') return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
-        return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        if (TERMINAL_STATUSES.has(t.status)) return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
