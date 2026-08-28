@@ -161,6 +161,14 @@ export function canonicalRegistryContractDigest(input: unknown): string {
   return createHash('sha256').update(stableJson(parsed)).digest('hex')
 }
 
+function canonicalRegistryContractComparisonInput(input: unknown) {
+  const parsed = RegistryFingerprintInputSchema.parse(input)
+  return {
+    ...parsed,
+    depends_on: [...parsed.depends_on].sort(),
+  }
+}
+
 export const NirmanaElevationManifestSchema = z.object({
   chart_id: z.literal(CANONICAL_NIRMANA_CHART_ID),
   assets: z.array(ManifestAssetSchema).min(1),
@@ -344,8 +352,14 @@ export function assertManifestMatchesRegistry(
   for (const [assetId, asset] of manifestById) {
     const registryRow = registryById.get(assetId)
     if (!registryRow) throw new Error(`Frozen manifest asset ${assetId} is absent from the live registry.`)
-    const liveFingerprint = canonicalRegistryContractDigest(registryContractFingerprintInput(registryRow))
-    if (liveFingerprint !== asset.registry_fingerprint_sha256) {
+    const frozenContract = canonicalRegistryContractComparisonInput({
+      asset_id: asset.asset_id,
+      layer: asset.layer,
+      depends_on: asset.depends_on ?? [],
+      registry_contract: asset.registry_contract,
+    })
+    const liveContract = canonicalRegistryContractComparisonInput(registryContractFingerprintInput(registryRow))
+    if (stableJson(frozenContract) !== stableJson(liveContract)) {
       throw new Error(`Frozen manifest asset ${assetId} does not match the live registry contract.`)
     }
   }
