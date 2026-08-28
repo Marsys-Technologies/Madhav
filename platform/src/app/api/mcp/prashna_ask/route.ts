@@ -471,6 +471,24 @@ export async function POST(request: Request) {
         toolsAuthorized.push(tc.tool_name)
       }
     }
+    // V3-E-024 (extends PR #1621's plan_stage.ts fix to this door): the
+    // compiler's E-7 insight-mandate note was computed by compileContract on
+    // every call but had no field to survive through CompiledFloorResult until
+    // PR #1621 added it — it reached nowhere on the MCP door either. Folded
+    // into `plan.synthesis_guidance` for the same reason plan_stage.ts and
+    // consult/route.ts do — but UNLIKE those two doors, this route's synthesis
+    // is `synthesizeReading` (prashna_ask_synthesis.ts), a separate
+    // non-agentic single-shot call with its OWN system-prompt assembly, not
+    // `buildConsultSystemContent`. `plan.synthesis_guidance` has no prior path
+    // into `synthesizeReading` at all — so it is threaded through explicitly
+    // below via the new `synthesisGuidance` param, which that module folds
+    // into its system prompt under the same "SYNTHESIS GUIDANCE:" framing
+    // consult uses, for voice parity between the two doors.
+    if (compiledFloor.llm_extension_note) {
+      plan.synthesis_guidance = plan.synthesis_guidance
+        ? `${plan.synthesis_guidance}\n\n${compiledFloor.llm_extension_note}`
+        : compiledFloor.llm_extension_note
+    }
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
@@ -772,6 +790,10 @@ export async function POST(request: Request) {
           capTripped: costCapTripped?.reason ?? null,
           nowContextDate,
           currentMahaAntar: chartHeader?.current_maha_antar ?? null,
+          // V3-E-024: carries the floor-discipline note (and, at depth:'deepdive',
+          // the E-7 INSIGHT MANDATE prefix) folded into plan.synthesis_guidance
+          // above — this door's only path for that guidance to reach the model.
+          synthesisGuidance: plan.synthesis_guidance ?? null,
         })
       }
       judgmentFlags.push(...synthesis.judgment_flags)

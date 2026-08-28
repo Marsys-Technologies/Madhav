@@ -249,6 +249,16 @@ export interface CompiledFloorResult {
   unmappedPrimitives: string[]
   /** True if compileContract threw and this result is an empty (safe) fallback. */
   compileFailed: boolean
+  /**
+   * V3-E-024: the compiler's E-7 insight-mandate note (`CompiledContract.llm_extension_note`,
+   * @/lib/vidhi/compiler) — depth-aware guidance for the LLM-owned band-3 extension, leading
+   * with the INSIGHT MANDATE at `depth: 'deepdive'`. Previously computed by `compileContract`
+   * on every call but silently discarded here (this interface had no field for it), so it
+   * reached nowhere on the plan_stage.ts path. Threaded through unchanged so plan_stage.ts can
+   * fold it into `plan.synthesis_guidance`. Empty string on the `compileFailed` fallback path
+   * (no contract compiled, so no note to report — an honest absence, not a fabricated one).
+   */
+  llm_extension_note: string
 }
 
 /**
@@ -271,6 +281,7 @@ export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string
       mappedPrimitives: [],
       unmappedPrimitives: [],
       compileFailed: true,
+      llm_extension_note: '',
     }
   }
 
@@ -305,6 +316,7 @@ export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string
     mappedPrimitives,
     unmappedPrimitives,
     compileFailed: false,
+    llm_extension_note: contract.llm_extension_note,
   }
 }
 
