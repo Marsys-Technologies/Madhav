@@ -27,7 +27,7 @@ supersedes: nothing — this is a companion to S5_STREAM_RESULT_PACKET_v1_0.md v
 | `S5:closure` work item | untouched, `accepted=False` | projection `work_items` |
 | all 7 stage work items | `accepted=False` | projection `work_items` |
 | findings | 9 filed, 9 triaged (5 HIGH / 4 MEDIUM) | projection `findings` |
-| remediations | 9 planned, **7 implemented, 7 verified** | projection `remediations` |
+| remediations | 9 planned, **8 implemented, 8 verified** | projection `remediations` |
 | ledger integrity | `ok: true`, expected == actual == materialized hash | `/api/integrity` |
 
 **No gate was bypassed and no closure event was fired.** The two historical
@@ -125,11 +125,16 @@ with withholding explicitly available. It **WITHHELD all three**:
 
 Stages 4–6 are unreachable regardless:
 
-- **`S5:remediation` is hard-blocked.** It requires all 9 planned remediations
-  VERIFIED. **7 of 9** are. `S5-R-005` (E-001) cannot be — PR #1615 is a
-  production migration held for native/integrator sign-off, and emitting
-  `remediation_implemented` for it would be a fabricated signal. `S5-R-007`
-  (V3-E-019) awaits PR #1631's merge.
+- **`S5:remediation` is hard-blocked on exactly one thing, and it is a native
+  decision.** The stage requires all 9 planned remediations VERIFIED. **8 of 9
+  now are** — every one except **`S5-R-005` (E-001)**. That one cannot reach
+  VERIFIED by any legitimate route available to this session: PR #1615 is a
+  production migration held for native/integrator sign-off, the plan is frozen
+  so `REMEDIATION_PLAN_LOCKED` blocks removing it, and emitting
+  `remediation_implemented` for an unmerged migration would be precisely the
+  fabricated signal this campaign exists to catch. **Disposing E-001 — merge it,
+  or governed-scope-change it out of the plan — is the single highest-leverage
+  unblock available to convergence.**
 - `S5:verification` and `S5:regression` follow `remediation` under
   `WORK_ITEM_ORDER`, and `regression` additionally re-checks the denominator.
 
@@ -160,7 +165,7 @@ verdict and reasoning are recorded in §9 below.
 | V3-E-022 | fix merged (#1617), **LIVE-proven** (403) |
 | V3-E-018 | **fixed + merged this session** (#1629 → `9702ddd20`) |
 | V3-E-020 | **fixed + merged this session** (#1630 → `e1a1bd9c6`), **severity re-graded down** |
-| V3-E-019 | **fixed this session** (#1631), in merge queue at session end |
+| V3-E-019 | **fixed + merged this session** (#1631 → `b1ad6d8a3`) |
 | E-001 | **open by design** — PR #1615 held for the native |
 
 **V3-E-020 was downgraded on my own evidence, not defended.** Independent
