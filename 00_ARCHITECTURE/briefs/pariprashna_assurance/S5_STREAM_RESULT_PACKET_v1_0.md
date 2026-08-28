@@ -1,17 +1,29 @@
 ---
 artifact: S5_STREAM_RESULT_PACKET
-version: "1.1"
-status: CLAIMS PARTIAL CREDIT, NOT FULL CLOSURE — see "What this packet claims"
-  below. Revised after an independent stream-closure review (WITHHOLD verdict,
-  items W-1 through W-4) surfaced record-accuracy gaps; this revision (a)
-  formally attests all five independent verifications as tracker
-  `verification_accepted` events (seq 32/34/36/38/40, linked to
-  `remediation_implemented` seq 31/33/35/37/39 against the frozen plan seq 28
-  — closing W-1), (b) refreshes the merge-status table against live state
-  (closing part of W-3), (c) states the partial-credit claim explicitly
-  (closing W-2), (d) adds the deploy-staleness/model/overtaken-instruction
-  disclosures (closing W-4). See the closure reviewer's own report (this
-  session's tracker/agent record) for the full WITHHOLD rationale.
+version: "1.2"
+status: WORK COMPLETE FOR THIS SESSION; CG-3 NOT FORMALLY CLOSED — a third,
+  independent Opus integrator pass re-derived every count in this packet from
+  the raw tracker ledger, found the record now fully accurate, and ACCEPTED
+  THE WORK ON THE MERITS — then attempted to emit `result_packet_accepted`
+  and had the tracker correctly REJECT it, twice, on structural grounds:
+  `result_packet_accepted` requires (a) all six S5 work items already
+  `work_item_accepted` (none are), (b) `scenarios.executed == scenarios.planned`
+  (11 != 45), and (c) a prior `stream_closure_recommended` from an
+  INDEPENDENT_VERIFIER (none exists). The integrator declined to force the
+  emit or route around the gate — correctly: this is the campaign's own
+  Earned-Signal discipline (CLAUDE.md §N.8) working as designed.
+  `result_packet_accepted` is a FULL-closure signal with no partial-credit
+  path in the current tracker schema. This packet therefore stands as the
+  durable record of real, verified, safe work — landed via merged/queued PRs
+  and tracker events, independently re-verified three times over — without a
+  formal CG-3 tracker acceptance, which needs either a follow-on session
+  closing the 34-scenario denominator gap or a campaign-level decision to add
+  a partial-credit path. Prior revision history: v1.1 corrected W-1 through
+  W-4 from a stream-closure WITHHOLD (verification attestation, merge-status
+  accuracy, partial-credit framing, missing disclosures); two follow-up
+  commits fixed sibling instances of the same stale-count errors two
+  subsequent integrator passes kept finding in un-checked corners of the
+  same two documents.
 stream_id: S5
 stream_name: Security, Privacy and Data Integrity
 date: 2026-08-28
