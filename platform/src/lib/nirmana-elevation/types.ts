@@ -298,6 +298,24 @@ const ProgramSyncSchema = z.object({
   current_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   candidate_definition_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  /** Server-derived from the same authoritative inputs guarded by supersede_definition. */
+  supersession_eligible: z.boolean(),
+  supersession_blockers: z.array(z.enum([
+    'not_plan_adaptation',
+    'current_definition_not_frozen',
+    'current_definition_mismatch',
+    'candidate_mismatch',
+    'source_unavailable',
+    'source_error',
+    'observation_incomplete',
+    'observation_stale',
+    'release_not_in_sync',
+    'runtime_not_quiet',
+    'campaign_events_present',
+    'definition_build_runs_present',
+    'revision_not_unique',
+    'candidate_reconstruction_failed',
+  ])),
 })
 
 /** Version 2 adds governed campaign stages and display identities without changing v1. */
