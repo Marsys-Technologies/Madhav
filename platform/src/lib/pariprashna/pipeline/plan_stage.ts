@@ -305,6 +305,18 @@ export async function runPlanStage(args: {
         detail: `intent-specific compiled floor failed to compile (intent=${compiledFloor.compilerIntent}); generic B.11 floor still applied`,
       })
     }
+    // V3-E-024: the compiler's E-7 insight-mandate note (leads with the beyond-acharya
+    // INSIGHT MANDATE at depth:'deepdive', else the floor-discipline note alone) was
+    // computed by compileContract on every call but had no field to survive through
+    // CompiledFloorResult — it reached nowhere. Folded into `plan.synthesis_guidance`,
+    // the existing, tested mechanism for planner-level hints reaching the synthesis
+    // stage (see `buildConsultSystemContent`'s "SYNTHESIS GUIDANCE" section), rather
+    // than inventing a new plumbing path.
+    if (compiledFloor.llm_extension_note) {
+      plan.synthesis_guidance = plan.synthesis_guidance
+        ? `${plan.synthesis_guidance}\n\n${compiledFloor.llm_extension_note}`
+        : compiledFloor.llm_extension_note
+    }
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)

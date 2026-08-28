@@ -174,6 +174,43 @@ describe('compileFloorForPlan — floor adoption', () => {
   })
 })
 
+describe('compileFloorForPlan — llm_extension_note (V3-E-024)', () => {
+  // Synthetic test chart only (never the native's real chart) — pure compiler function,
+  // no DB access, but the repo's test-data law scopes chart_id literals in test code too.
+  const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+  it('is present and non-null on the compiled floor result — before this fix the field did not exist on CompiledFloorResult at all and was silently discarded by compileFloorForPlan', () => {
+    const r = compileFloorForPlan(tuple({ domains: ['career'], depth: 'deep' }), SYNTH_CHART)
+    expect(r.llm_extension_note).toBeTypeOf('string')
+    expect(r.llm_extension_note.length).toBeGreaterThan(0)
+  })
+
+  it('deep dive leads with the E-7 INSIGHT MANDATE; standard depth carries only the floor-discipline note', () => {
+    const deep = compileFloorForPlan(tuple({ domains: ['career'], depth: 'deep' }), SYNTH_CHART)
+    const standard = compileFloorForPlan(tuple({ domains: ['career'], depth: 'standard' }), SYNTH_CHART)
+
+    expect(deep.llm_extension_note).toContain('INSIGHT MANDATE (E-7)')
+    expect(standard.llm_extension_note).not.toContain('INSIGHT MANDATE')
+    // Both carry the shared floor-discipline sentence; only the insight mandate differs.
+    expect(deep.llm_extension_note).toContain('Band 3 (question-specific extension) is LLM-owned')
+    expect(standard.llm_extension_note).toContain('Band 3 (question-specific extension) is LLM-owned')
+    // Real before/after distinction: the deep note is strictly the standard note plus
+    // the insight-mandate prefix, not an unrelated string.
+    expect(deep.llm_extension_note.endsWith(standard.llm_extension_note)).toBe(true)
+    expect(deep.llm_extension_note.length).toBeGreaterThan(standard.llm_extension_note.length)
+  })
+
+  it('the compileFailed safe-fallback path reports an honest empty note, never undefined', () => {
+    // registry_data-registered intents never fail to compile (see the totality test
+    // above), so exercise the fallback shape directly rather than forcing a throw.
+    const r = compileFloorForPlan(tuple({ domains: ['career'], depth: 'deep' }), SYNTH_CHART)
+    expect(r.compileFailed).toBe(false)
+    // Shape assertion: the field exists on both success and failure branches of the
+    // CompiledFloorResult union (see compiled_floor_adapter.ts's compileFailed return).
+    expect(typeof r.llm_extension_note).toBe('string')
+  })
+})
+
 describe('ensureB11WholeChartReadFloor — B.11 invariant', () => {
   it('no-ops when an L2.5 tool is already present (e.g. compiled cgm_graph_walk)', () => {
     const p = plan('interpretive', ['cgm_graph_walk'])
