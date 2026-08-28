@@ -40,7 +40,7 @@ P1_F004 = "P1-F-004"
 P2_PHASE_IDS = ["P2", "P3", "P4", "P5", "P6", "P7"]
 P2_GENERAL_STREAMS = P2_PHASE_IDS + [stream_id for stream_id, _ in STREAMS]
 P2_ACTOR_IDS = {f"lead-{pid.lower()}" for pid in P2_PHASE_IDS} | {f"lead-{sid.lower()}" for sid in STREAM_IDS} | {"surrogate", "verifier", "integrator", "native"}
-_SCENARIO_SLOT_RE = re.compile(r"S(\d+)-SC-(\d+)", re.IGNORECASE)
+_SCENARIO_SLOT_RE = re.compile(r"^S(\d+)-SC-(\d+)", re.IGNORECASE)
 # Lower bound is empirical: the S5 concurrency incident (D-127-class collision) had its two
 # writer instances' scenario-lease-relevant writes ~392s apart; the TTL must exceed that gap
 # for the guard to have caught it, while still recovering promptly from a genuinely dead writer.
@@ -66,10 +66,13 @@ def digest(value: Any) -> str:
 
 
 def request_fingerprint(request: dict[str, Any]) -> str:
-    """Bind idempotency to the actor's complete, server-timestamp-free intent."""
+    """Bind idempotency to the actor's complete, server-timestamp-free intent.
+    writer_instance_id is deliberately excluded: a retry of the same logical request
+    (same idempotency_key, same payload) after a writer-process restart legitimately
+    mints a new writer_instance_id, and must still be recognized as the same request."""
     return digest({key: request.get(key) for key in (
         "actor_id", "idempotency_key", "event_type", "payload", "stream_id",
-        "expected_stream_seq", "evidence", "writer_instance_id",
+        "expected_stream_seq", "evidence",
     )})
 
 
@@ -465,9 +468,14 @@ class EventStore:
                 con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=excluded.current_seq", (stream_id, stream_seq))
             previous = con.execute("SELECT last_hash FROM ledger_meta WHERE id=1").fetchone()[0]
             occurred_at = now_iso()
-            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "request_fingerprint": fingerprint, "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": request["payload"], "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
+            # writer_instance_id is folded into the durably-stored, hash-chain-protected
+            # payload (rather than a new top-level events column) so the historical
+            # hash-chain body composition for every pre-existing event is untouched — this
+            # only adds a new payload key on newly-written scenario_executed events.
+            stored_payload = {**request["payload"], "writer_instance_id": request["writer_instance_id"]} if event_type == "scenario_executed" else request["payload"]
+            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "request_fingerprint": fingerprint, "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": stored_payload, "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
             event_hash = digest(body)
-            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], fingerprint, stream_id, stream_seq, body["actor_id"], role, event_type, canonical(request["payload"]), canonical(evidence), occurred_at, previous, event_hash))
+            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], fingerprint, stream_id, stream_seq, body["actor_id"], role, event_type, canonical(stored_payload), canonical(evidence), occurred_at, previous, event_hash))
             con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (event_hash,))
             row = con.execute("SELECT * FROM events WHERE event_id=?", (body["event_id"],)).fetchone()
             con.execute("COMMIT")
@@ -764,8 +772,11 @@ class EventStore:
         now = now_iso()
         row = con.execute("SELECT actor_id, writer_instance_id, acquired_at, last_seen_at FROM stream_scenario_write_leases WHERE stream_id=?", (stream_id,)).fetchone()
         if row and row["writer_instance_id"] != writer_instance_id:
-            elapsed = (parse_time(now) or 0) - (parse_time(row["last_seen_at"]) or 0)
-            if elapsed < SCENARIO_WRITER_LEASE_TTL_SECONDS:
+            last_seen = parse_time(row["last_seen_at"])
+            # An unparsable last_seen_at must never be treated as "infinitely stale" —
+            # fail closed (reject the takeover) rather than silently granting it.
+            stale = last_seen is not None and (parse_time(now) or 0) - last_seen >= SCENARIO_WRITER_LEASE_TTL_SECONDS
+            if not stale:
                 raise RejectedEvent("CONCURRENT_WRITER_LEASE_CONFLICT", f"{stream_id} scenario-execution writes are actively leased to another writer instance ({row['writer_instance_id']}); this write from {writer_instance_id} is rejected to prevent a duplicate-recording collision")
         acquired_at = row["acquired_at"] if row and row["writer_instance_id"] == writer_instance_id else now
         con.execute(
@@ -1138,7 +1149,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         stream_sessions.sort(key=lambda session: session.get("started_at") or "", reverse=True)
         stream["execution_session"] = stream_sessions[0] if stream_sessions else None
         planned_scenarios = stream["execution_session"].get("planned_scenarios") if stream["execution_session"] else None
-        distinct_scenario_slots = {scenario_slot(sid) for sid in stream["scenario_ids"]}
+        distinct_scenario_slots = {scenario_slot(raw_scenario_id) for raw_scenario_id in stream["scenario_ids"]}
         stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(distinct_scenario_slots), "recorded_scenario_events": len(stream["scenario_ids"])}
         next_stage = next((stage_id for stage_id, _, _ in STAGES if not items[f"{sid}:{stage_id}"]["accepted"]), "closure")
         stream["lifecycle_stage"] = {"id": next_stage, "name": STAGE_NAMES[next_stage]}

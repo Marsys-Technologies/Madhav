@@ -721,6 +721,19 @@ class ControlPlaneTests(unittest.TestCase):
         s1 = next(s for s in self.store.projection()["canonical"]["streams"] if s["id"] == "S1")
         self.assertEqual(s1["scenarios"]["executed"], 1)
 
+    def test_scenario_execution_retry_with_new_writer_instance_is_still_idempotent(self):
+        """A crash-and-restart retry of the same logical scenario_executed request (same
+        idempotency_key, same payload) must remain idempotent even though the resubmitting
+        process legitimately mints a new writer_instance_id — writer_instance_id identifies
+        the writer for lease purposes; it is never part of request identity."""
+        self.emit("lead-s1", "work_started", {"session_id": "idempotent-retry", "planned_scenarios": 5}, "S1")
+        request = {"actor_id": "lead-s1", "idempotency_key": "retry-me", "event_type": "scenario_executed", "payload": {"scenario_id": "S1-SC-01-first"}, "stream_id": "S1", "expected_stream_seq": self.store.next_stream_seq("S1"), "evidence": EVIDENCE, "writer_instance_id": "writer-before-restart"}
+        first = self.store.submit(request)
+        self.assertFalse(first["idempotent"])
+        retry = self.store.submit({**request, "writer_instance_id": "writer-after-restart"})
+        self.assertTrue(retry["idempotent"])
+        self.assertEqual(retry["event"]["event_id"], first["event"]["event_id"])
+
     def test_stale_writer_lease_can_be_taken_over(self):
         self.emit("lead-s1", "work_started", {"session_id": "lease-takeover", "planned_scenarios": 5}, "S1")
         self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-first"}, "S1", writer_instance_id="writer-a")
@@ -844,6 +857,15 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue(self.emit("integrator", "work_item_accepted", {"work_item_id": "S1:extra", "verification_event_id": verification["event"]["event_id"]}, "S1")["accepted"])
         with self.assertRaises(RejectedEvent) as duplicate: self.emit("integrator", "scope_change_approved", {"reason": "duplicate", "added_work_items": [{"id": "S1:extra", "phase_id": "P3", "title": "duplicate", "campaign_points": 1}]}, "P3")
         self.assertEqual(duplicate.exception.code, "SCOPE_CHANGE_SCHEMA")
+
+    def test_scope_change_cannot_add_a_scenario_whose_slot_was_already_executed(self):
+        """Same fix class as DUPLICATE_SCENARIO: a scope addition must not be able to claim
+        a numeric slot that was already executed under a different slug."""
+        self.emit("lead-s1", "work_started", {"session_id": "scope-slot-collision", "planned_scenarios": 5}, "S1")
+        self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-first-pass"}, "S1")
+        with self.assertRaises(RejectedEvent) as ctx:
+            self.emit("integrator", "scope_change_approved", {"reason": "attempted re-add of an already-executed slot", "added_work_items": [{"id": "S1:extra-slot-collision", "phase_id": "P3", "stream_id": "S1", "title": "extra", "campaign_points": 1}], "added_scenarios": [{"id": "S1-SC-01-relabelled", "stream_id": "S1"}]}, "P3")
+        self.assertEqual(ctx.exception.code, "SCOPE_CHANGE_SCHEMA")
 
     def test_gate_closure_requires_evidence_and_integrator(self):
         with self.assertRaises(RejectedEvent) as ctx: self.emit("integrator", "gate_closed", {"gate_id": "CG-0"}, "P0", evidence=[])
