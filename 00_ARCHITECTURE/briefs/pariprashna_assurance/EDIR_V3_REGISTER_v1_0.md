@@ -1307,24 +1307,40 @@ entry.
 ---
 
 **Cross-stream id collision note (merge from `origin/main`, 2026-08-28):**
-the two entries immediately below (titled "V3-E-012" and "V3-E-013" by S1)
-collide in NUMBER ONLY with this document's own S3-filed `V3-E-012` above.
-Verified against the tracker's `/api/projection` (the globally-unique
-authority per elevation §5.5): `finding_id "V3-E-012"` is registered to
-**S3** (`lead-s3`, MEDIUM, event `481df17a-b499-4f3d-a080-b20d1ce85398`) —
-S1's two entries below were never submitted through the tracker's
-`finding_discovered` event type at all (S1's own entry text says its
-finding intake was `FINDING_FREEZE`-rejected after `S1-F-001`'s remediation
-plan froze it, so these are document-only prose numbers, not tracker-
-registered ids). Per elevation §5.5's one-register rule, this divergence is
-recorded here rather than silently resolved by either stream renumbering
-its own tracker-authoritative entries — Session C convergence should assign
-S1's two entries fresh, tracker-registered ids. Kept below verbatim,
-unmodified from `origin/main`.
+the two entries originally titled "V3-E-012" and "V3-E-013" by S1 in this
+section collided in NUMBER ONLY with this document's own S3-filed
+`V3-E-012` above. Verified against the tracker's `/api/projection` (the
+globally-unique authority per elevation §5.5): `finding_id "V3-E-012"` is
+registered to **S3** (`lead-s3`, MEDIUM, event
+`481df17a-b499-4f3d-a080-b20d1ce85398`) — S1's two entries were never
+submitted through the tracker's `finding_discovered` event type at all
+(S1's own entry text says its finding intake was `FINDING_FREEZE`-rejected
+after `S1-F-001`'s remediation plan froze it, so these were document-only
+prose numbers, not tracker-registered ids). Per elevation §5.5's
+one-register rule, this divergence was recorded here rather than silently
+resolved by either stream renumbering its own tracker-authoritative
+entries.
+
+**Resolution (S1 convergence-readiness checkpoint, 2026-08-29, lead-s1):**
+per this checkpoint's explicit instruction to namespace S1's own document
+findings `S1-V3-E-NNN`, S1's two colliding entries below are renumbered
+**`S1-V3-E-012`** and **`S1-V3-E-013`** — collision-free going forward, and
+matching the fresh-id path this note already recommended. Neither S3's
+`V3-E-012` above nor any other stream's entry is touched. The renumbered
+entries' bodies are otherwise unmodified from `origin/main` except for a
+brief status/evidence update recording this session's LIVE re-proof against
+current production (see each entry).
+
+**Document-structure defect found and fixed in the same pass:** a prior
+merge had split S1's `V3-E-012` heading from its own body — the heading
+survived here (this section) but its body was displaced ~380 lines below,
+past several of S2's entries that got spliced in between during a later
+sync, leaving a dangling heading with no content directly under it (a pure
+merge artifact, not a content change by any stream). The dangling duplicate
+heading is removed below; the complete, single surviving copy — heading now
+renamed `S1-V3-E-012` — is where its full body already lived.
 
 ---
-
-### V3-E-012 (S1 document numbering — see collision note above; not a tracker-registered id) — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
 
 <!-- --- merged from origin/main (2nd sync, 2026-08-28) --- -->
 
@@ -1708,7 +1724,7 @@ investigated further here.)*
 
 ---
 
-### V3-E-012 — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
+### S1-V3-E-012 (renumbered 2026-08-29 from a colliding document-only `V3-E-012` — see the cross-stream id collision note above; still not a tracker-registered `finding_id`, S1's finding intake remains `FINDING_FREEZE`-rejected) — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
 
 - **Class / severity:** DEFECT · **S1 (BLOCKING, proposed)** — this is the
   literal charter subject of stream S1 ("Navigation, **Shell & History**"),
@@ -1862,7 +1878,9 @@ investigated further here.)*
     (the exact refresh sequence in "Observed" above, repeated against the
     deployed revision) is explicitly OPEN — the fix is merge-ready/merging,
     not yet deployed; deferred to the harness's gated deploy-sync
-    checkpoint, same honest-gap pattern as S1-F-001/V3-E-013.
+    checkpoint, same honest-gap pattern as S1-F-001/S1-V3-E-013. (Both this
+    entry and S1-V3-E-013 have since reached LIVE close rung — see the
+    2026-08-29 updates below.)
   - **V3-E-012b** (S2, content-hydration on selecting a historical row —
     severity **S2 MAJOR**): REFERRED, not attempted by S1. Needs the real
     backend `conversation_id` threaded through `useLiveStream`'s wire
@@ -1877,10 +1895,30 @@ investigated further here.)*
   Surrogate ruling on scope (touches state-management choices, e.g.
   whether `handleSidebarSelect` should swap the live view). That ruling
   came back the same session (above) and 012a was landed within it.
+- **LIVE re-proof (2026-08-29, S1 convergence-readiness checkpoint,
+  lead-s1) — Close rung reached: LIVE.** PR #1614 confirmed merged and
+  ancestor of the currently-deployed revision `9aed4cb73bd6ec81a8cfed
+  31394e82261cf79512` (`git merge-base --is-ancestor`, cross-checked
+  against `gh run list --workflow=deploy.yml` and `gcloud run services
+  describe amjis-web`). Real browser session (Playwright), identity
+  `hunQRYVJ5Ec2mQnJnutK7AoQnsO2`, chart `1c826d5a`, against the current
+  production host `amjis-web-938361928218.asia-south1.run.app`: fresh load
+  AND a full reload both showed 9 real persisted readings grouped under a
+  real `role="group"` chart header (confirming the Sidebar aria fix from
+  the same PR is also live) — true refresh persistence, not a fixture or a
+  React-state artifact. A deliberately-empty test conversation created in
+  the same pass correctly did NOT appear in the list (zero assistant
+  turns/receipt yet) — the receipt-based discriminator is behaving
+  correctly against real production data. Large-history-perf test
+  (`tests/pariprashna/history/sidebar.test.tsx`) re-run against current
+  `origin/main` HEAD: still green, no regression from the many other
+  streams' commits landed since. Full request/trace-id log in this
+  session's `reproduction_recorded` tracker event (S1 stream_seq 19,
+  event `f7d4b76e-fa87-419f-b5a8-b6fd3c71d028`).
 
 ---
 
-### V3-E-013 (S1 document numbering — see collision note above; not a tracker-registered id) — `POST`/`GET /api/conversations` created/listed chart-scoped rows with no `chart_grants`/ownership check (S1-F-001) — FIXED + INDEPENDENTLY VERIFIED
+### S1-V3-E-013 (renumbered 2026-08-29 from a preemptively-flagged document-only `V3-E-013` — see the cross-stream id collision note above; still not a tracker-registered `finding_id`) — `POST`/`GET /api/conversations` created/listed chart-scoped rows with no `chart_grants`/ownership check (S1-F-001) — FIXED + INDEPENDENTLY VERIFIED
 
 - **Class / severity:** DEFECT · **HIGH** (Native Surrogate triage,
   `decision_recorded`/`finding_triaged` event `e6a55098-d146-49b5-a0dc-
@@ -1945,6 +1983,65 @@ investigated further here.)*
   re-proof after the deploy-sync checkpoint runs (Session C / native
   review), same pattern as S5's charter for its own stale-deployment gap —
   merged-to-main is not yet deployed.
+- **LIVE re-proof (2026-08-29, S1 convergence-readiness checkpoint,
+  lead-s1) — Close rung reached: LIVE.** Commit `61a6dc4f8` confirmed
+  ancestor of the currently-deployed revision `9aed4cb73bd6ec81a8cfed
+  31394e82261cf79512`. Real two-identity denial test against current
+  production (`amjis-web-938361928218.asia-south1.run.app`), synthetic
+  chart `1c826d5a` only: identity `hunQRYVJ5Ec2mQnJnutK7AoQnsO2` created a
+  real conversation (`HTTP 201`, trace `33f4cf95e947e44ebf4cfe389ffc7434`);
+  the SAME identity's `POST /api/conversations` against a real chart it
+  holds zero grant on (`cb73cd3d-9eba-4220-9902-0de91566e980`) returned
+  **`HTTP 403 AUTH_FORBIDDEN`** (trace `faa4e9015eaae66d9011a5c4ca3c7409`),
+  the demonstrated-can-fail pair for this fix (`201` pre-fix on
+  2026-08-27 → `403` post-fix, now confirmed against the actually-deployed
+  artifact, not merely merged code); a no-cookie control on the same
+  request path returned a distinct `401`, confirming the `403` was
+  authenticated-but-forbidden. A second, independent identity
+  (`t0sSkP1qeoegmWESi7P50QNFMgF3`) was separately denied `hunQRYVJ5Ec2mQnJnutK7AoQnsO2`'s
+  new conversation across all of `GET`, `GET /messages`, `DELETE`,
+  `GET /active-ayanamshas`, `GET /export`, and `POST /share` — six real
+  requests, six `HTTP 404 DATA_NOT_FOUND` responses (info-hiding design:
+  functionally denied, not literally `403` — noted as a factual correction
+  to this checkpoint's own instruction text, which named `403`). Full
+  request/trace-id log in this session's `reproduction_recorded` tracker
+  event (S1 stream_seq 19, event `f7d4b76e-fa87-419f-b5a8-b6fd3c71d028`).
+  Test conversation archived after the pass.
+
+---
+
+### S1-V3-E-014 — Mobile referral triaged: history sidebar has no responsive/off-canvas behavior at all, even collapsed
+
+- **Class / severity:** DEFECT · S1 minor (proposed) — cosmetic/layout, not
+  a data-exposure or correctness defect; contributing factor to a separate
+  S2/S3 finding's severity, not independently blocking.
+- **Provenance:** referral received from stream S3's J9 mobile pass
+  (`V3-E-031`, finding 3, filed 2026-08-28 — "persistent narrow sidebar
+  column at mobile width... `history/Sidebar.tsx` is S1's component
+  (charter territory)... filed as a referral, not fixed here"). Triaged
+  by S1 at this convergence-readiness checkpoint, 2026-08-29 — not fixed,
+  per this checkpoint's explicit scope (re-prove, do not open a new
+  remediation cycle; "end at a checkpoint").
+- **Confirmed by code read (2026-08-29):** `history/Sidebar.tsx`'s width is
+  `collapsed ? 46 : 232` unconditionally — no viewport query, no
+  `useMediaQuery`/`matchMedia` check, no off-canvas/drawer variant exists
+  anywhere in the component. The referral's observation is accurate: at a
+  390px viewport the sidebar's collapsed 46px state still consumes a
+  fixed-height vertical column, eating into the ~326–344px nominally
+  available for the reading pane — worse than an off-canvas drawer that
+  collapses to zero width, and (per V3-E-031) plausibly compounding that
+  finding's own header-clipping severity on the real deployed page versus
+  its isolated reproduction.
+- **Proposed fix class (not attempted this checkpoint):** a
+  `useMediaQuery`-gated mobile variant — either force `collapsed=true` AND
+  render at 0 width with an off-canvas toggle/drawer below a breakpoint, or
+  reduce the collapsed glyph rail itself well below 46px on narrow
+  viewports. Needs a real mobile-viewport LIVE re-proof (390×844, matching
+  V3-E-031's own methodology) to close, not a code-only claim.
+- **Status:** OPEN, S1 territory, triaged not fixed. Closes V3-E-031's
+  finding 3 when resolved (that entry's own "Close rung required" already
+  names "Finding 3: S1's own disposition" — this entry IS that
+  disposition, recorded, deferred to a future S1 remediation session).
 
 ---
 
@@ -2121,6 +2218,18 @@ stream's findings from inside S5's merge would mutate S1's and S3's records
 without their authorship, and the un-annotated duplicate cannot be removed
 without deciding which of the two S1 bodies is canonical — a call S1 owns.
 Recorded for the convergence session to govern.
+
+**Resolved by S1 (2026-08-29, convergence-readiness checkpoint, lead-s1):**
+the un-annotated duplicate (~1711, no body of its own after the later S2
+merge split it from its content) was a dangling heading, not a second
+distinct body — removed. The single surviving S1 body (was ~1327/1711,
+now the section right after the cross-stream id collision note) is
+renamed `S1-V3-E-012`; S1's second entry (`V3-E-013`) is renamed
+`S1-V3-E-013` for the same reason, ahead of a second collision — neither
+was a tracker-registered `finding_id` (S1's intake stayed
+`FINDING_FREEZE`-rejected throughout). S3's genuinely distinct `V3-E-012`
+(fixtures.ts grounding) is untouched. Both S1 entries also gained a LIVE
+re-proof update against current production this same checkpoint.
 
 ### S5 leads that are NOT tracker findings
 
