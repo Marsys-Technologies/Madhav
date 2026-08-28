@@ -96,15 +96,30 @@ export async function POST(request: Request): Promise<Response> {
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
   const clientConversationId = body.conversationId
+  // V3-E-045: `turnId` and `queryId` used to be two independently-generated
+  // `crypto.randomUUID()` calls for what is, in practice, one durable turn
+  // identity — the wire (`turn.open`/`turn.commit`/`turn.close`/
+  // `receipt.define`, all keyed on `turn_id`) and the persisted
+  // `conversation_messages.metadata_json.custom.queryId` for that same turn's
+  // message pointed at two different UUIDs, so a caller holding only the wire
+  // `turn_id` could not look up the persisted row by that id directly.
+  // `queryId` is consumed downstream purely as an opaque correlation id — a
+  // `pending_streams` row key (`ON CONFLICT (query_id)`, upserted/deleted only
+  // by this same turn, so reusing `turnId` cannot collide with another turn's
+  // row any more than the old independent UUID could), a `plan.query_plan_id`
+  // stamp, and an optional planner trace tag — nothing parses its format or
+  // requires it to differ from `turnId`, so the safe fix is to derive it
+  // directly from `turnId` rather than mint a second random UUID.
+  const turnId = crypto.randomUUID()
   const identity: TurnIdentity = {
     chartId,
     clientConversationId,
     isFirstTurn: !clientConversationId,
     conversationId: clientConversationId ?? crypto.randomUUID(),
-    turnId: crypto.randomUUID(),
-    queryId: crypto.randomUUID(),
+    turnId,
+    queryId: turnId,
   }
-  const { turnId, conversationId } = identity
+  const { conversationId } = identity
 
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
