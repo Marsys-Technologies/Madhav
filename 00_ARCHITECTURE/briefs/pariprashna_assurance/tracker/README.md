@@ -84,6 +84,23 @@ writer never permanently blocks the stream. The projected `scenarios.executed` c
 distinct-slot count, never the raw event count; `scenarios.recorded_scenario_events` exposes
 the raw count separately for audit.
 
+**Where the lease is enforced, and what it does and does not cover.** Both the lease and the
+numeric-slot dedup guard live in the shared `EventStore` (`control.py`), backed by the
+`stream_scenario_write_leases` SQLite table — *not* in the HTTP request handler. Every caller
+therefore inherits them: `POST /api/events`, `cli.py emit`, `demo.py`, and any future writer.
+`cli.py` instantiates `EventStore` directly and never touches the server process, so this
+placement is what stops it being a single-writer bypass; `tests/pariprashna_assurance_tracker/
+test_cli_writer_lease.py` proves it cross-process (a separate `cli.py` OS process is rejected
+while an HTTP writer holds the lease — impossible unless enforcement is DB-backed) and fails
+red if the check is ever relocated into `server.py`. Honest scope limit: the lease covers
+`scenario_executed` writes only. A stream's other `STREAM_LEAD` events (`finding_discovered`,
+`paused`, `blocked`, `verification_started`, …) are *not* leased — a second, unaware writer
+instance can still record those against a stream whose scenario lease another instance holds.
+`expected_stream_seq` prevents lost updates there, but not two concurrent sessions both
+recording work. Broadening the lease is a live-control-plane design decision (it must not
+break the verifier, surrogate, and integrator writing to the same stream concurrently by
+design) and is deliberately left open rather than changed unreviewed.
+
 After all discovered findings in a stream are triaged, the surrogate emits one
 `remediation_approved` event containing its `remediation_plan` (an explicit empty list is
 valid when no remediation is required). Each entry maps one triaged finding to one remediation.
@@ -99,8 +116,13 @@ Run it with:
 
 ```sh
 python3 -m unittest -v tests/pariprashna_assurance_tracker/test_control.py
+python3 -m unittest -v tests/pariprashna_assurance_tracker/test_cli_writer_lease.py
 tests/pariprashna_assurance_tracker/browser_smoke.sh
 ```
+
+`test_cli_writer_lease.py` runs `cli.py` as a real subprocess against an isolated temporary
+runtime; it is the cross-process proof that the single-writer lease is DB-backed rather than
+HTTP-handler-local.
 
 The browser/SSE integration test binds a loopback socket. In a sandboxed environment it may
 require local socket permission; it never opens a non-loopback listener. The Chrome smoke
