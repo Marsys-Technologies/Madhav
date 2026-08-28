@@ -387,6 +387,16 @@ export async function POST(request: Request) {
         cap_tripped: null,
       },
       persistence: MCP_TURN_PERSISTENCE_NONE,
+      // V3-E-049: the FK fields an auditor follows to `pariprashna_safety_decisions`
+      // (and, when a review was opened, `pariprashna_safety_reviews`). The full
+      // `SafetyDecision` object is already in scope from `classifyTurnSafety` above
+      // — this is a read of fields already computed, not a new computation, and
+      // carries no matched text or rule ids (gate 11 [integrity] is unaffected).
+      safety_decision: {
+        decision_id: safetyDecision.decision_id,
+        review_id: safetyDecision.review_id,
+        audit_written: safetyDecision.audit_written,
+      },
       // Counts and the action only — never the matched text and never the rule
       // ids (gate 11 [integrity], the same discipline the web door follows).
       judgment_flags: [
@@ -508,6 +518,13 @@ export async function POST(request: Request) {
           cap_tripped: null,
         },
         persistence: MCP_TURN_PERSISTENCE_NONE,
+        // V3-E-049: same FK-field addition as the pre-plan safety_withheld branch
+        // above — `postPlanSafety` is already in scope from `reclassifyAfterPlan`.
+        safety_decision: {
+          decision_id: postPlanSafety.decision_id,
+          review_id: postPlanSafety.review_id,
+          audit_written: postPlanSafety.audit_written,
+        },
         judgment_flags: [
           `safety_decision:${postPlanSafety.action}`,
           'safety_reading_withheld',
@@ -784,6 +801,18 @@ export async function POST(request: Request) {
         },
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
+        // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`
+        // above, closed over from the POST handler's scope) already computed and
+        // gated dispatch with the full `SafetyDecision` object — only its derived,
+        // lossy `safety_*` judgment_flags reached the wire before this fix. These
+        // are the FK fields an auditor follows to `pariprashna_safety_decisions`
+        // (and `pariprashna_safety_reviews` when a review was opened): a pure read
+        // of already-computed fields, no new computation, no new DB call.
+        safety_decision: {
+          decision_id: postPlanSafety.decision_id,
+          review_id: postPlanSafety.review_id,
+          audit_written: postPlanSafety.audit_written,
+        },
         judgment_flags: judgmentFlags,
       }
 
