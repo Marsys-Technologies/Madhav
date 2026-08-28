@@ -14,20 +14,26 @@ export interface ChartPin {
  */
 export function ThreadHeader({ chartPin }: { chartPin: ChartPin }) {
   return (
-    <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--pp-rule)' }}>
-      <div className="flex items-baseline gap-6">
+    // V3-E (S2, J9 mobile pass): at 390px (the test plan's named mobile
+    // viewport), an unwrapped `justify-between` row squeezed the MARSYS JIS
+    // wordmark against the chart-name group until it visibly clipped —
+    // `flexWrap: 'wrap'` + `minWidth: 0` on the shrinkable group lets the
+    // wordmark drop to its own line instead of being cut off; nothing is
+    // hidden or truncated, every string still renders in full.
+    <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--pp-rule)', flexWrap: 'wrap', rowGap: 6 }}>
+      <div className="flex items-baseline gap-6" style={{ minWidth: 0, flexWrap: 'wrap', rowGap: 4 }}>
         <span className="pp-prose" style={{ fontSize: 19, fontWeight: 500 }}>
           Paripraśna
         </span>
         <span aria-hidden className="self-center rounded-full" style={{ width: 3, height: 3, background: 'var(--pp-gold-tertiary)' }} />
-        <span>
+        <span style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13, color: 'var(--pp-ink-dim)' }}>{chartPin.name}</div>
           <div style={{ fontSize: 8.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--pp-gold-tertiary)' }}>
             {chartPin.bornLine}
           </div>
         </span>
       </div>
-      <span className="pp-prose" style={{ fontSize: 12, letterSpacing: '0.24em', fontWeight: 500 }}>
+      <span className="pp-prose" style={{ fontSize: 12, letterSpacing: '0.24em', fontWeight: 500, flexShrink: 0 }}>
         MARSYS <span style={{ color: 'var(--pp-gold)' }}>JIS</span>
       </span>
     </div>

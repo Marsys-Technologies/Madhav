@@ -1248,6 +1248,64 @@ investigated further here.)*
 
 ---
 
+### V3-E-031 — J9 mobile pass (390×844): header wordmark clipping (FIXED), a hydration console error, and a persistent sidebar column at mobile width (referred to S1)
+
+- **Class / severity:** DEFECT · S3 minor (the header clipping — cosmetic,
+  fixed) + DOC/PROCESS (the hydration error — observed, not root-caused) +
+  referral (the sidebar column — S1 territory)
+- **Lens(es):** L-USER (+ L-CODE for the header fix)
+- **Journey:** J9 (mobile: journeys 1/2/4/6 re-run at 390×844)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, viewport
+  390×844):**
+  1. **Header wordmark clipping (S2, fixed):** `ThreadHeader.tsx`'s
+     `justify-between` row had no wrap/shrink handling; at 390px the
+     "MARSYS JIS" wordmark visibly clipped/overlapped the chart-name group
+     (full-page screenshot evidence). Root cause: no `flexWrap`, no
+     `minWidth: 0` on the shrinkable group, no `flexShrink: 0` on the
+     wordmark. **Fixed**: added all three; verified via an isolated
+     before/after HTML reproduction of the exact inline-style layout at
+     390×844 (REPLAY rung — a true LIVE re-proof against the deployed
+     component, which also has the sidebar column eating further into the
+     available width, is still required post-deploy; not claimed here).
+     `tsc`/`eslint` clean; no existing test coverage for this
+     previously-untested component (pure CSS flex behavior does not
+     evaluate meaningfully under jsdom, so no unit test was added — the
+     isolated HTML reproduction is the honest rung for this class of fix).
+  2. **React hydration error (observed, NOT root-caused):** on initial
+     navigation at 390×844, the browser console logged one error: minified
+     React error #418 (hydration text mismatch) from the deployed
+     production bundle. The page rendered visually correct despite the
+     error (full-page screenshot shows no visible breakage). Not
+     reproduced against a non-minified build, so the exact component/text
+     responsible is NOT identified — filed as an honest, unresolved
+     observation rather than guessed. Whether this is mobile-viewport-
+     specific or a general (viewport-independent) hydration issue is
+     likewise not established; this session did not have time to isolate
+     it further.
+  3. **Persistent narrow sidebar column at mobile width (S1 territory,
+     referral only):** at 390px, the collapsed history sidebar still
+     occupies a full-height, non-trivial-width vertical column (visible in
+     the same screenshot) rather than collapsing to zero width or becoming
+     an off-canvas drawer — this eats directly into the ~326px of content
+     width nominally available at this viewport and is very likely a
+     contributing factor to finding 1 being worse on the real deployed page
+     than in the isolated reproduction above. `history/Sidebar.tsx` is S1's
+     component (charter territory), not S2's — filed as a referral, not
+     fixed here.
+- **Evidence:** `.playwright-mcp/s2-scratch/mobile_390_hydration.png` (live,
+  full-page, deployed), `.playwright-mcp/s2-scratch/threadheader_before_after.png`
+  (isolated before/after reproduction) — both local to this worktree's
+  gitignored scratch dir, not committed (screenshots are evidence artifacts,
+  not source).
+- **Status:** Finding 1 FIXED (independent verification pending). Finding 2
+  OPEN, unresolved, filed for whichever stream/session next has non-minified
+  build access to root-cause it. Finding 3 OPEN, referred to **S1**.
+- **Close rung required:** Finding 1: LIVE re-proof against the deployed
+  component post-merge+deploy. Finding 2: root-cause identification, then
+  its own close rung. Finding 3: S1's own disposition.
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
 SALVAGE 2); 19 V3 entries total (5 from the A3 census + 6 surfaced during
