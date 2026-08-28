@@ -1,32 +1,92 @@
 ---
 artifact: STREAM_RESULT_PACKET_S1
-version: "1.1"
-status: REVIEWED BY INTEGRATOR — substance accepted; formal `result_packet_accepted`
-  event BLOCKED by a genuine, campaign-wide control-plane gap (not an S1 defect).
-  See §Integrator review below.
+version: "1.2"
+status: CONVERGENCE-READY CHECKPOINT — both fixes confirmed LIVE in current production
+  with fresh trace-id evidence; NOT closed (closure remains Session C's / the
+  native's, per this checkpoint's own scope). See §Convergence-readiness
+  checkpoint below.
 stream_id: S1
 stream_name: Navigation, Shell & History
-date: 2026-08-28
+date: 2026-08-29
 session_id: s1-nav-shell-20260827T232652Z
 actor: lead-s1
 changelog:
-  - "1.1 (2026-08-28): PR #1610 confirmed MERGED to main (commit 61a6dc4f8),
-    independently re-confirmed live on origin/main by the integrator. Added
-    §Integrator review section: substance of the packet accepted, but the
-    formal result_packet_accepted event could not be emitted because the
-    tracker's own prerequisite chain (six per-stage work_item_accepted
-    events + a stream_closure_recommended event) has never been satisfiable
-    by ANY stream in this campaign -- a control-plane gap, not evidence of
-    incomplete S1 work. Two EDIR staleness corrections (V3-E-012 split
-    status, V3-E-013 merge status) made per the integrator's finding. Added
-    a CI-flakiness fix (the large-history perf test's absolute-ms budget
-    failed once under CI load; rewired to a relative-scaling assertion)."
+  - "1.2 (2026-08-29, convergence-readiness checkpoint): re-derived state
+    fresh rather than trusting the 2026-08-28 ledger. Confirmed both PR
+    #1610 and #1614 are ancestors of the CURRENT deployed revision
+    (9aed4cb73bd6ec81a8cfed31394e82261cf79512, cross-checked deploy
+    workflow vs. gcloud). Re-ran the cross-chart/cross-identity LIVE denial
+    proof against current production with two real, independent synthetic
+    identities (not the same one twice): 9 real HTTP requests, 9 trace ids
+    logged. Re-confirmed device-return/refresh persistence and the
+    large-history-perf test hold against current production/main. Found
+    and reconciled a real cross-stream EDIR id collision (S1's V3-E-012/013
+    vs. S3's tracker-registered V3-E-012, plus a genuine merge-artifact
+    duplicate heading) -- renumbered S1's own two entries to
+    S1-V3-E-012/013, touching no other stream's content. Triaged one
+    incoming referral (S3's V3-E-031 finding 3, mobile sidebar width) as
+    S1-V3-E-014 -- documented, not fixed (out of this checkpoint's scope).
+    Disclosed a real, unfixable-by-event tracker gap: execution_session's
+    deployed_revision has no update path in the schema after work_started;
+    the correct current value is recorded in evidence instead. Did NOT
+    seek closure -- ends at a checkpoint per explicit instruction."
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/charters/STREAM_CHARTER_S1_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md
   - https://github.com/Marsys-Technologies/Madhav/pull/1610
   - https://github.com/Marsys-Technologies/Madhav/pull/1614
 ---
+
+## Convergence-readiness checkpoint (2026-08-29, lead-s1)
+
+**Both S1 fixes confirmed LIVE in current production**, not merely merged. Deployed
+revision `9aed4cb73bd6ec81a8cfed31394e82261cf79512` (confirmed via `gh run list
+--workflow=deploy.yml --branch=main --status=success` and cross-checked directly against
+`gcloud run services describe amjis-web`) contains both `61a6dc4f8` (S1-F-001) and
+`429fe6f2393c7d34b05b61093d99e00806dacc5a` (V3-E-012a) via `git merge-base
+--is-ancestor`.
+
+**Two-identity LIVE denial re-proof**, against `https://amjis-web-938361928218.
+asia-south1.run.app`, synthetic chart `1c826d5a` only: identity A
+(`hunQRYVJ5Ec2mQnJnutK7AoQnsO2`) created a real conversation (`201`); identity A's own
+attempt against an unauthorized chart correctly got `403 AUTH_FORBIDDEN` (the
+demonstrated-can-fail pair for S1-F-001, now proven against the deployed artifact, not
+just merged code); a second, independent, real identity (`t0sSkP1qeoegmWESi7P50QNFMgF3`)
+was denied identity A's conversation across six distinct routes — all `404
+DATA_NOT_FOUND` (a factual correction to this checkpoint's brief, which expected `403`:
+the app's actual design returns `404` for cross-tenant thread access, an intentional
+information-hiding choice, not a defect). Nine real trace ids logged; full detail in EDIR
+`S1-V3-E-012`/`S1-V3-E-013` and tracker event `f7d4b76e-fa87-419f-b5a8-b6fd3c71d028`.
+
+**Device-return persistence and large-history performance** re-confirmed against current
+production/`main`: a real browser session showed 9 genuinely persisted readings survive a
+full page reload (with the Sidebar aria fix from the same PR also confirmed live), and the
+perf test still passes against current `origin/main` with zero regression from the many
+other streams' commits landed since 2026-08-27.
+
+**EDIR id-collision reconciled.** A genuine cross-stream collision (S1's document-only
+`V3-E-012`/`V3-E-013` vs. S3's tracker-registered `V3-E-012`) plus a real merge-artifact
+defect (S1's `V3-E-012` heading had been split from its own body by a later merge,
+producing a dangling duplicate heading) — both found and fixed, touching only S1's own
+entries (renamed `S1-V3-E-012`/`S1-V3-E-013`), never S3's or any other stream's content.
+One incoming referral (S3's `V3-E-031` finding 3) triaged as `S1-V3-E-014`, confirmed
+accurate by a direct code read, documented and left OPEN — not fixed, per this
+checkpoint's explicit "do not seek closure" scope.
+
+**One disclosed, unfixable-by-this-session gap**: the tracker's `execution_session.
+deployed_revision` field has no event-driven update path after `work_started` (confirmed
+by reading `tracker/control.py` — no event type's fold logic touches it). The stale value
+recorded there (`cafa894ee...`) could not be corrected via any tracker event; the correct
+current value is recorded in the `reproduction_recorded` event's payload instead, disclosed
+rather than silently worked around.
+
+**Sole-writer check**: confirmed clean — all pre-checkpoint S1 ledger events (17) and this
+checkpoint's own two new events (19, 20) are attributable to `lead-s1` or its
+session-spawned `surrogate`/`verifier` subagents; no foreign writes observed.
+
+**This is a checkpoint, not a closure.** Per explicit instruction, this session did not
+seek `result_packet_accepted` or `stream_closure_recommended` — those remain Session C's
+/ the native's to grant, unaffected by this update.
 
 ## Integrator review (2026-08-28, distinct Opus subagent, role PROGRAMME_INTEGRATOR)
 
