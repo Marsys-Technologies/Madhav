@@ -496,7 +496,7 @@ const ROUTE_BRANCHES: RouteScenario[] = [
   {
     name: 'branch-citation-gate-throws',
     derived_from: 'route-branch',
-    note: 'Citation validator throws → swallowed, no grade emitted, turn still closes ok (the documented catch).',
+    note: 'Citation validator throws → swallowed, PASS default preserved, turn still closes ok (the documented catch). V3-E-039 fix: a citation_gate_errored flag now fires from the catch block (still no grade — em.grade is never reached on this path) so the turn is not totally silent about the internal error.',
     body: baseBody(),
     planner: planSpec(),
     toolOutcomes: { msr_sql: 3, chart_facts_query: 2 },
