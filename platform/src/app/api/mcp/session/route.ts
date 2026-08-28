@@ -39,9 +39,25 @@
  *   - active_chart_id from POST body is stored as-is; entitlement is NOT
  *     checked here (the MCP sidecar checks it before calling this endpoint).
  *   - All DB ops are scoped to user_uid — no cross-user access.
- *   - pin_chart_id is NOT an entitlement check either (same as active_chart_id) —
- *     the MCP sidecar/tool layer must already have authorized the chart before
- *     ever passing its chart_id here.
+ *   - pin_chart_id IS entitlement-checked (V3-E-011 finding 1 fix,
+ *     2026-08-28): unlike active_chart_id, pin_chart_id drives
+ *     `getOrRefreshProvenanceStamp`, which resolves and persists a
+ *     provenance stamp (build_id/build_status/ledger_version/priors_version/
+ *     now_context_date) for whatever chart_id is passed — the calling tool
+ *     layer (`session_recall`) was found to let an explicitly-passed
+ *     `chart_id` argument win over the session's own entitled chart without
+ *     itself re-checking ownership, so this route can no longer assume the
+ *     caller already authorized the chart. Both GET (`pin_chart_id` query
+ *     param) and POST (`pin_chart_id` body field) now run
+ *     `authorizeChartAccess` (read/'view'-or-better) before ever calling
+ *     `getOrRefreshProvenanceStamp`, mirroring the same brain
+ *     `/api/mcp/bundles/[name]/route.ts` and `/api/mcp/prashna_ask/route.ts`
+ *     already gate chart_id on. A denied chart never reaches
+ *     `getOrRefreshProvenanceStamp` — no stamp is computed OR persisted.
+ *
+ * Responses (pin_chart_id path only):
+ *   401: { error: 'AUTHZ_DENIED', chartId, denial: {...} } — caller has no
+ *        'view'-or-better grant on the requested pin_chart_id.
  *
  * M3 — MCP elevation arc (2026-07-01). Provenance stamp — R5 W4 (2026-07-09).
  */
@@ -55,6 +71,40 @@ import {
   getOrRefreshProvenanceStamp,
 } from '@/lib/mcp/sessions'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
+import { query } from '@/lib/db/client'
+
+// ── pin_chart_id authorization gate (V3-E-011 finding 1) ────────────────────
+//
+// Shared by GET and POST: resolves the caller's role and runs the same
+// `authorizeChartAccess` brain every other /api/mcp/* route gates chart_id
+// access through (see bundles/[name]/route.ts, prashna_ask/route.ts). Returns
+// a ready-to-return 401 NextResponse on denial, or null when access is
+// granted ('all' owner/super_admin, or 'view' chart_grants). This is a
+// metadata READ (provenance stamp), so 'view' is sufficient — not a
+// write-level check.
+async function denyPinChartAccess(uid: string, chartId: string): Promise<NextResponse | null> {
+  const role = await resolveMcpPrincipalRole(uid)
+  const perm = await authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })
+  if (perm === 'deny') {
+    return NextResponse.json(
+      {
+        error: 'AUTHZ_DENIED',
+        chartId,
+        denial: {
+          reason: 'entitlement' as const,
+          chart_id: chartId,
+          permission_found: 'deny' as const,
+          permission_required: 'view' as const,
+          distinct_from_empty: true as const,
+        },
+      },
+      { status: 401 }
+    )
+  }
+  return null
+}
 
 // ── GET — retrieve or create session ─────────────────────────────────────────
 
@@ -80,6 +130,9 @@ export async function GET(request: Request) {
     const session = await getOrCreateSession(uid, sessionKey)
 
     if (pinChartId) {
+      const denied = await denyPinChartAccess(uid, pinChartId)
+      if (denied) return denied
+
       const { pin, judgment_flags } = await getOrRefreshProvenanceStamp(
         session.session_id,
         uid,
@@ -138,6 +191,9 @@ export async function POST(request: Request) {
     }
 
     if (body.pin_chart_id) {
+      const denied = await denyPinChartAccess(uid, body.pin_chart_id)
+      if (denied) return denied
+
       const { pin, judgment_flags } = await getOrRefreshProvenanceStamp(
         session.session_id,
         uid,
