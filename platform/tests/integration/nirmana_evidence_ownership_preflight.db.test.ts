@@ -21,6 +21,7 @@ const transientFixtureRoles = [
   'unexpected_app_parent',
   'unexpected_app_assumer',
   'unexpected_provider_child',
+  'cloudsqlobservability',
   'marker_reader_denied',
   'marker_reader',
   'hostile_default_grantor',
@@ -67,7 +68,17 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       }
     }
     modeledProviderPostgres = true
-    await admin.query(`CREATE ROLE cloudsqlsuperuser NOLOGIN CREATEROLE CREATEDB; GRANT cloudsqlsuperuser TO postgres; CREATE ROLE amjis_app LOGIN PASSWORD '${roleAuthToken}' CREATEROLE CREATEDB; GRANT cloudsqlsuperuser TO amjis_app; GRANT CONNECT ON DATABASE nirmana_evidence_preflight_test TO amjis_app; ALTER DATABASE nirmana_evidence_preflight_test OWNER TO cloudsqlsuperuser; ALTER SCHEMA public OWNER TO amjis_app; GRANT CREATE ON SCHEMA public TO cloudsqlsuperuser, postgres;`)
+    await admin.query(`CREATE ROLE cloudsqlsuperuser NOLOGIN CREATEROLE CREATEDB;
+      CREATE ROLE cloudsqlagent LOGIN CREATEROLE CREATEDB;
+      CREATE ROLE cloudsqlimportexport LOGIN CREATEROLE CREATEDB;
+      CREATE ROLE cloudsqllogical NOLOGIN REPLICATION;
+      GRANT cloudsqlsuperuser TO postgres, cloudsqlagent, cloudsqlimportexport, cloudsqllogical;
+      CREATE ROLE amjis_app LOGIN PASSWORD '${roleAuthToken}' CREATEROLE CREATEDB;
+      GRANT cloudsqlsuperuser TO amjis_app;
+      GRANT CONNECT ON DATABASE nirmana_evidence_preflight_test TO amjis_app;
+      ALTER DATABASE nirmana_evidence_preflight_test OWNER TO cloudsqlsuperuser;
+      ALTER SCHEMA public OWNER TO amjis_app;
+      GRANT CREATE ON SCHEMA public TO cloudsqlsuperuser, postgres;`)
     await admin.query(`SET ROLE amjis_app; CREATE TABLE _migrations_applied (filename text PRIMARY KEY, sha256 text NOT NULL); RESET ROLE`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/592_nirmana_elevation_campaign_evidence.sql'), 'utf8')}`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/627_nirmana_elevation_asset_labels.sql'), 'utf8')}`)
@@ -164,6 +175,23 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     await admin.query('CREATE ROLE unexpected_provider_child NOLOGIN; GRANT cloudsqlsuperuser TO unexpected_provider_child')
     await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/unbounded provider database-owner membership topology/i)
     await admin.query('REVOKE cloudsqlsuperuser FROM unexpected_provider_child; DROP ROLE unexpected_provider_child')
+  })
+
+  it('refuses an unlisted Cloud SQL-like child of the provider database-owner closure', async () => {
+    await admin.query('CREATE ROLE cloudsqlobservability NOLOGIN; GRANT cloudsqlsuperuser TO cloudsqlobservability')
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).rejects.toThrow(/unbounded provider database-owner membership topology/i)
+    await admin.query('REVOKE cloudsqlsuperuser FROM cloudsqlobservability; DROP ROLE cloudsqlobservability')
+  })
+
+  it('refuses an allowlisted Cloud SQL system child reparented beneath another provider system user', async () => {
+    await admin.query('REVOKE cloudsqlsuperuser FROM cloudsqllogical; GRANT cloudsqlagent TO cloudsqllogical')
+    try {
+      await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app')))
+        .rejects.toThrow(/unbounded provider database-owner membership topology/i)
+    } finally {
+      await admin.query('REVOKE cloudsqlagent FROM cloudsqllogical; GRANT cloudsqlsuperuser TO cloudsqllogical')
+    }
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('unmarked')
   })
 
   it('fails closed when the generic marker probe cannot read its ledger', async () => {
@@ -322,6 +350,17 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     expect(providerTopology.rows[0]?.public_owner).toBe('amjis_app')
     expect(modeledProviderPostgres).toBe(true)
     expect(providerTopology.rows[0]).toEqual({ postgres_is_low_privilege: true, postgres_is_provider_child: true, postgres_is_direct_provider_child: true, public_owner: 'amjis_app' })
+    const providerSystemChildren = await admin.query<{ role: string }>(`
+      SELECT member.rolname AS role
+        FROM pg_auth_members membership
+        JOIN pg_roles member ON member.oid = membership.member
+       WHERE membership.roleid = 'cloudsqlsuperuser'::regrole
+         AND member.rolname <> 'amjis_app'
+       ORDER BY member.rolname
+    `)
+    expect(providerSystemChildren.rows.map((row) => row.role)).toEqual([
+      'cloudsqlagent', 'cloudsqlimportexport', 'cloudsqllogical', 'postgres',
+    ])
     const sharedSchema = await admin.query<{ owner_create: boolean; ingress_create: boolean; control_create: boolean; migrator_create: boolean }>(`
       SELECT has_schema_privilege('nirmana_evidence_owner', 'public', 'CREATE') AS owner_create,
              has_schema_privilege('nirmana_evidence_ingress_writer', 'public', 'CREATE') AS ingress_create,
@@ -372,6 +411,22 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     const beforeMarker = await readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))
     expect(beforeMarker).toBe('unmarked')
     expect(requiresNirmanaEvidenceLegacyOwner(beforeMarker)).toBe(true)
+    await admin.query('REVOKE cloudsqlsuperuser FROM cloudsqllogical; GRANT cloudsqlagent TO cloudsqllogical')
+    try {
+      await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+        .rejects.toThrow(/unbounded provider database-owner membership topology/i)
+    } finally {
+      await admin.query('REVOKE cloudsqlagent FROM cloudsqllogical; GRANT cloudsqlsuperuser TO cloudsqllogical')
+    }
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('unmarked')
+    await admin.query('CREATE ROLE cloudsqlobservability NOLOGIN; GRANT cloudsqlsuperuser TO cloudsqlobservability')
+    try {
+      await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+        .rejects.toThrow(/unbounded provider database-owner membership topology/i)
+    } finally {
+      await admin.query('REVOKE cloudsqlsuperuser FROM cloudsqlobservability; DROP ROLE cloudsqlobservability')
+    }
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('unmarked')
     await admin.query('SET ROLE amjis_app; GRANT REFERENCES (asset_id) ON public.asset_registry TO PUBLIC; RESET ROLE')
     await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
       .rejects.toThrow(/non-owner writer ACLs outside the explicit envelope/i)

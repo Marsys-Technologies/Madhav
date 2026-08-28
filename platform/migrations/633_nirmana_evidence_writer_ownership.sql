@@ -98,9 +98,11 @@ BEGIN
   ) OR has_database_privilege('amjis_app', current_database(), 'CREATE') THEN
     RAISE EXCEPTION 'migration 633 requires generic application role membership and database administration cleanup';
   END IF;
-  -- Mirror the preflight's bounded provider-root classification.  A bare
-  -- role named postgres is not exempt: it must be the non-super direct child
-  -- of the current database owner, with no unreviewed provider descendant.
+  -- Mirror the preflight's bounded provider-root classification. A bare
+  -- postgres role is not exempt: it must be the non-super direct child of the
+  -- current database owner. The three additional names are exact observed
+  -- Cloud SQL system users, not a cloudsql* wildcard; no other descendant is
+  -- accepted.
   IF EXISTS (
     WITH RECURSIVE provider_roots(oid, depth) AS (
       SELECT datdba, 0 FROM pg_database WHERE datname = current_database()
@@ -116,6 +118,7 @@ BEGIN
      WHERE NOT (
        root.oid = database.datdba
        OR (root.depth = 1 AND role.rolname = 'postgres' AND NOT role.rolsuper AND NOT role.rolreplication AND NOT role.rolbypassrls)
+       OR (root.depth = 1 AND role.rolname IN ('cloudsqlagent', 'cloudsqlimportexport', 'cloudsqllogical'))
      )
   ) THEN
     RAISE EXCEPTION 'migration 633 refuses unbounded provider database-owner membership topology';
