@@ -108,7 +108,7 @@ against a canonical list — that is itself the finding. What this session did
 | Rate + spend limits on both doors | Not executed. |
 | Provider data-posture checks beyond the originating session's note | Not executed. |
 | Crash-consistent persistence, replay, semantic-hash parity, schema compatibility | Not executed. |
-| LIVE re-proof of THIS session's own fixes (#1629/#1630 etc.) | Merged but **not yet deployed** when the session ended — production still served `eed62d1be`. Convergence must re-probe after the next deploy. |
+| LIVE re-proof of #1630 (V3-E-020) and #1631 (V3-E-019) | Merged but not yet deployed at session end — production reached `9702ddd20`, which contains #1629 only. Convergence must re-probe after the next deploy. **#1629's own LIVE re-proof WAS obtained — see below.** |
 
 ## 3 — Per-stage work-item acceptance state, and who is needed
 
@@ -410,6 +410,46 @@ These are tracker/platform issues that convergence should own, not stream work:
    `work_started`, and a second `work_started` is `INVALID_TRANSITION` from
    RUNNING. The database was correctly NOT hand-edited. Needs an integrator
    mechanism or a governed tracker change.
+
+## 9b — V3-E-018's LIVE re-proof was obtained before session end
+
+Both independent verifiers named the same weakest point: *"the merged #1629 has
+no LIVE re-proof … the highest-blast-radius merged fix is unproven in
+production."* Production deployed `9702ddd20` — #1629's merge commit — while
+this session was still open, and the proof was taken. Same guest principal,
+same four routes, same probe; only the deployed revision differs.
+
+| Route | BEFORE (`eed62d1be`) | AFTER (`9702ddd20`) |
+|---|---|---|
+| `/clients/482012f1` | 307, 11414 B, `<title>Abhisek Mohanty — MARSYS-JIS</title>` | 307, 11394 B, **`<title>Chart — MARSYS-JIS</title>`** |
+| `…/timeline` | 307, 14313 B, same PII title | 307, **generic title** |
+| `…/consult` | 307, 12518 B, same PII title | 307, **generic title** |
+| `…/panchang` | 307, 11883 B, same PII title | 307, **generic title** |
+| `…/nirmana` *(control, already fixed by #1611)* | `Nirmāṇa — MARSYS-JIS` | `Nirmāṇa — MARSYS-JIS` — unchanged |
+| `/clients/1c826d5a/timeline` *(positive control)* | 200, real title | **200, real title — no over-denial** |
+
+The unchanged negative control and the still-working positive control together
+make the change attributable to the fix rather than to a blanket failure.
+Recorded in the ledger as an evidence-rung upgrade (`correction_recorded`,
+STATIC+INTEGRATION → LIVE) against the existing R-006 verification; it alters no
+count and credits no work item.
+
+## 9c — ⚠ The `/api/panchang` leak is STILL LIVE as this session ends
+
+Re-probed against the current deployed revision `9702ddd20` at session close.
+**It still leaks.** PR #1633 has not merged, so the fix is not in production:
+
+    POST /api/panchang {chart_id: 482012f1-…}  as a guest with NO grant
+      -> HTTP 200
+      -> native_context.birth_nakshatra_name = "Purva Bhadrapada"
+      -> native_context.moon_sign_name       = "Kumbha"
+      -> native_context.native_name          = <present; redacted, len 15>
+
+This is the native's own birth data, readable by any authenticated user holding
+any chart UUID, **right now**. It is the single most urgent item in this
+handoff. The fix is written, independently refute-verified with no bypass found,
+and waiting in the merge queue — it needs merging and deploying, and it needs a
+tracker finding id.
 
 ## 10 — What convergence must not miss
 
