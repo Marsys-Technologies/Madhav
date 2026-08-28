@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,16 @@ export async function POST(req: NextRequest) {
 
   const { chart_id } = await req.json().catch(() => ({}))
   if (!chart_id) return NextResponse.json({ error: 'chart_id required' }, { status: 400 })
+
+  // V3-E-011: this route checked only "is anyone logged in" and then
+  // trusted the caller-supplied chart_id — any authenticated user could
+  // resume/continue another tenant's build and INSERT build_events rows
+  // for it, a cross-tenant WRITE. Resuming a build is state-changing, so
+  // 'write' (owner or super_admin only) is required — a chart_grants
+  // 'view' grantee must not be able to trigger a build resume, matching
+  // the B-008 precedent for the cockpit refresh/runs POST routes.
+  const denied = await requireChartPermission({ uid: user.uid, chartId: chart_id, access: 'write' })
+  if (denied) return denied
 
   // Get latest build
   const { rows } = await query<{ build_id: string }>(
