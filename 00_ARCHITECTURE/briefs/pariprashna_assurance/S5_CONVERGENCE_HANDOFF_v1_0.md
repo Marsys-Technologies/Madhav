@@ -434,7 +434,31 @@ Recorded in the ledger as an evidence-rung upgrade (`correction_recorded`,
 STATIC+INTEGRATION → LIVE) against the existing R-006 verification; it alters no
 count and credits no work item.
 
-## 9c — ⚠ The `/api/panchang` leak is STILL LIVE as this session ends
+## 9c — RESOLVED before session end: the `/api/panchang` leak is CLOSED in production
+
+**Superseded within this session.** This section originally recorded the leak as
+still live; PR #1633 then merged (`82bb9294b`), production advanced to that
+commit, and the fix was re-probed with the same principal and the same request
+that had demonstrated the leak. Retained rather than deleted so the transition
+is visible.
+
+| | BEFORE (`eed62d1be`, re-confirmed on `9702ddd20`) | AFTER (`82bb9294b`) |
+|---|---|---|
+| `POST /api/panchang` `chart_id=482012f1`, guest with **no grant** | **HTTP 200**, `native_context` present — `birth_nakshatra_name: "Purva Bhadrapada"`, `moon_sign_name: "Kumbha"`, real `native_name` | **HTTP 403**, `native_context` **absent**, body `{error, code}` only |
+| *control 1* — same endpoint, **legitimately granted** chart | 200 | **200**, `native_context` present with its **own** values (`Ardra` / `Mithuna` — Abhinandan's, not the native's) |
+| *control 2* — same request, **no `chart_id`** | 200, no `native_context` | **200, no `native_context`** — public path intact |
+
+Control 1 proves the 403 is authorization rather than breakage; control 2 proves
+the unauthenticated-safe panchang was not collateral damage. **This closes the
+last outstanding LIVE proof of the session.**
+
+It still has **no tracker finding id** — `FINDING_FREEZE` blocked
+`finding_discovered`, and that gate was not worked around. Convergence must
+assign one so the fix has a finding record behind it.
+
+### (original text, superseded)
+
+The leak was live and unfixed at the time §9c was first written
 
 Re-probed against the current deployed revision `9702ddd20` at session close.
 **It still leaks.** PR #1633 has not merged, so the fix is not in production:
