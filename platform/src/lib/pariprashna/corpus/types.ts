@@ -74,8 +74,28 @@ export type DimensionId = (typeof DIMENSION_IDS)[number]
  * (CLAUDE.md §B) for anything that cites real chart content; a clearly
  * labeled synthetic id for anything that must not touch canonical chart
  * data during test authoring (see fixtures.ts per-fixture grounding notes).
+ *
+ * PRE-EXISTING fixtures use this constant. It predates the campaign's
+ * test-data law (`PARIPRASHNA_EXPERIENCE_ASSURANCE_TEST_PLAN_v2_1.md`
+ * frontmatter, promoted 2026-08-24: "all live probes default to the
+ * synthetic consented chart"). Filed as EDIR V3-E-012 (2026-08-28) for
+ * native ruling on whether this pre-existing usage is authorized under the
+ * law's "specifically requires it AND the native has authorized" clause.
+ * ALL NEW fixtures added from 2026-08-28 onward MUST use
+ * `SYNTHETIC_TEST_CHART_ID` below, never this constant.
  */
 export const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+
+/**
+ * The campaign's synthetic consented test chart (Abhinandan Mohanty) — the
+ * test-data law's mandatory default for every NEW fixture grounded in real
+ * chart content. Distinct from `fixtures.ts`'s local `SYNTHETIC_CHART_ID`
+ * sentinel (`'SYNTHETIC:no-chart-content-referenced'`), which marks a
+ * fixture that references NO chart content at all (the `ambiguous_
+ * clarification` class) — this constant is a real, queryable chart id for
+ * fixtures that DO cite real (synthetic-chart) content.
+ */
+export const SYNTHETIC_TEST_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 
 export interface CorpusFixtureExpectations {
   /**
