@@ -340,6 +340,29 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).not.toHaveBeenCalled()
   })
 
+  it('rate-limits supersession per authenticated actor before opening its transaction', async () => {
+    superAdmin()
+    mutationRateLimitMock.mockResolvedValue({
+      allowed: false, reason: 'rpm_exceeded', retry_after_seconds: 42,
+    })
+    const { POST } = await import('../route')
+    const response = await POST(request({
+      command: 'supersede_definition', campaign_id: 'nirmana-elevation',
+      expected_current_revision: 'v1', expected_current_manifest_sha256: 'c'.repeat(64),
+      source_observation_id: baselineObservationId,
+      expected_candidate_sha256: 'a'.repeat(64),
+      expected_candidate_catalogue_sha256: 'b'.repeat(64),
+      new_definition_revision: 'v2',
+    }))
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('42')
+    expect(await response.json()).toEqual({ error: 'supersession rate limit exceeded' })
+    expect(mutationRateLimitMock).toHaveBeenCalledWith('admin:nirmana_supersede_definition:admin-1')
+    expect(transactionQueryMock).not.toHaveBeenCalled()
+    expect(auditMock).not.toHaveBeenCalled()
+  })
+
   it('requires the exact monitor observation identity for baseline acceptance', async () => {
     superAdmin()
     const { POST } = await import('../route')

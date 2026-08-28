@@ -1104,6 +1104,7 @@ it('atomically supersedes the exact current frozen definition with the server-de
     mockSupersessionTransaction({
       candidate,
       oldDigest,
+      sourceObservation: planAdaptationObservationFor(candidate, oldDigest, { currently_fresh: false }),
       storedRows: [
         { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: '2026-08-26T00:00:00.000Z' },
         { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: candidate.manifest_sha256, manifest: candidate.manifest, created_by: 'admin-1', superseded_at: null },
@@ -1113,6 +1114,26 @@ it('atomically supersedes the exact current frozen definition with the server-de
     await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
       .resolves.toBe('idempotent')
     expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('FROM asset_registry'))).toBe(false)
+  })
+
+  it('requires recorded in-sync quiet monitor state before reading the registry or mutating definitions', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    for (const sourceObservation of [
+      planAdaptationObservationFor(candidate, oldDigest, { release_state: 'out_of_sync' }),
+      planAdaptationObservationFor(candidate, oldDigest, { runtime_liveness: 'active' }),
+    ]) {
+      transactionQueryMock.mockReset()
+      transactionReleaseMock.mockReset()
+      mockSupersessionTransaction({ candidate, oldDigest, sourceObservation })
+
+      await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+        .rejects.toThrow(/exact plan-adaptation monitor observation/i)
+      const attemptedSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(attemptedSql.some((sql) => sql.includes('FROM asset_registry')
+        || sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    }
   })
 
   it('rolls back and leaves the old definition current when the replacement insert fails', async () => {
