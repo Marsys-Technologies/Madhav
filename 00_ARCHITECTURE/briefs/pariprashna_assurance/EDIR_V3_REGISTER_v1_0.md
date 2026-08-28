@@ -817,7 +817,22 @@ await Native Surrogate triage.
 
 ---
 
-### V3-E-032 — CRITICAL: live corpus sample shows 0 of 80 citation attempts reach a trustworthy grade across 10 turns/6 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed; adversarially reviewed and CORRECTED
+### V3-E-032 — CRITICAL: live corpus sample shows 0 of 183 citation attempts reach a trustworthy grade across 24 turns/8 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed; adversarially reviewed and CORRECTED; independently reproduced by a 2nd batch
+
+**2nd-batch update (2026-08-28, S3, later in the same stream session):** a
+FULLY INDEPENDENT second live batch of 17 fixtures (different queries,
+same 8 work classes, same synthetic chart) reproduced the identical
+pattern exactly: `citation_precision` mean `0` again, `b11_coverage` mean
+`0.184` again (vs. the first batch's `0.237`/corrected `0.189`-per-class).
+Combined across both batches: **24 of 33 fixtures** produced a measured
+`evidence_grades` block; across all 24, **183 total citation attempts, 0
+resolved to a trustworthy grade** (`primary=supporting=contextual=
+prior_reading=0` in every single one). This directly answers refuter #2's
+n=10-is-thin concern from the first-batch review: the pattern holds at
+more than double the sample, drawn from an independently-authored fixture
+set. Original single-batch numbers (0 of 80, 10 turns) preserved below for
+audit-trail continuity; treat the numbers in this update block as
+authoritative going forward.
 
 **Corrected 2026-08-28 after a 3-way blinded Opus adversarial refuter panel
 (elevation R-2, `SURROGATE-SCORED — pending native rubric`) found real errors
