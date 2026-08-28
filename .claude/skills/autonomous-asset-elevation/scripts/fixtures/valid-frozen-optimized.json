@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "campaign_id": "example-campaign",
+  "layer_id": "L0",
+  "definition_digest": "definition-abc",
+  "asset_id": "example_asset",
+  "asset_type": "BUILD",
+  "epistemic_type": "deterministic_reference",
+  "lifecycle_state": "FROZEN",
+  "disposition": "OPTIMIZED",
+  "ownership": {
+    "owner": "worker-1",
+    "lease_fence": 3,
+    "worktree": "/isolated/example",
+    "branch": "codex/example-asset",
+    "base_sha": "base-sha"
+  },
+  "dag": {
+    "dag_digest": "dag-abc",
+    "hard_upstream": [],
+    "hard_edges_verified": true
+  },
+  "quality": {
+    "change_kind": "OPTIMIZATION",
+    "output_comparison": "EQUIVALENT",
+    "baseline_refs": ["evidence://baseline"],
+    "result_refs": ["evidence://result"],
+    "performance_gain_ref": "evidence://performance",
+    "expected_delta_ref": null
+  },
+  "release": {
+    "merge_sha": "merged-sha",
+    "deployed_sha": "merged-sha",
+    "production_verified": true,
+    "rebuild_applicability": "REQUIRED",
+    "production_rebuild_receipt": "evidence://rebuild",
+    "not_applicable_reason": null
+  },
+  "run_binding": {
+    "definition_digest": "definition-abc",
+    "code_sha": "merged-sha",
+    "upstream_digest": "upstream-abc",
+    "lease_fence": 3,
+    "run_generation": 1
+  },
+  "producer_coverage": {
+    "covered_by_asset_id": null,
+    "inherited_production_rebuild_receipt": null,
+    "inherited_acceptance_receipt": null
+  },
+  "evidence": {
+    "references": ["evidence://verification"],
+    "independent_verdict": "ACCEPT",
+    "protected_terminal_writer": true,
+    "accepted_receipt": "evidence://freeze"
+  },
+  "blockers": []
+}

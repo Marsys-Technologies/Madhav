@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marsys.ai/schemas/asset-elevation-record-v1.json",
+  "title": "Asset Elevation Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "layer_id",
+    "definition_digest",
+    "asset_id",
+    "asset_type",
+    "epistemic_type",
+    "lifecycle_state",
+    "disposition",
+    "ownership",
+    "dag",
+    "quality",
+    "release",
+    "run_binding",
+    "producer_coverage",
+    "evidence",
+    "blockers"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "campaign_id": {"type": "string", "minLength": 1},
+    "layer_id": {"type": "string", "minLength": 1},
+    "definition_digest": {"type": "string", "minLength": 1},
+    "asset_id": {"type": "string", "minLength": 1},
+    "asset_type": {
+      "enum": ["BUILD", "SERVICE", "PROBE", "SOURCE", "PRODUCER_COVERED", "OTHER"]
+    },
+    "epistemic_type": {"type": "string", "minLength": 1},
+    "lifecycle_state": {
+      "enum": [
+        "RECONCILED",
+        "ELIGIBLE",
+        "ANALYZED",
+        "OPTIMIZED",
+        "JUSTIFIED_NO_CHANGE",
+        "INTEGRATED",
+        "DEPLOYED",
+        "REBUILT_ONCE",
+        "INDEPENDENTLY_VERIFIED",
+        "FROZEN",
+        "QUARANTINED"
+      ]
+    },
+    "disposition": {
+      "type": ["string", "null"],
+      "enum": [
+        "OPTIMIZED",
+        "ENRICHED_CORRECTED",
+        "EXPANDED_ADOPTION",
+        "JUSTIFIED_NO_CHANGE",
+        "MERGED_SPLIT",
+        "RETAINED_LIMITED_USE",
+        "RETIRED_SUPERSEDED",
+        "SOURCE_ONLY",
+        "SERVICE_PROBE",
+        "PRODUCER_COVERED",
+        null
+      ]
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "lease_fence", "worktree", "branch", "base_sha"],
+      "properties": {
+        "owner": {"type": "string"},
+        "lease_fence": {"type": "integer", "minimum": 0},
+        "worktree": {"type": "string"},
+        "branch": {"type": "string"},
+        "base_sha": {"type": "string"}
+      }
+    },
+    "dag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dag_digest", "hard_upstream", "hard_edges_verified"],
+      "properties": {
+        "dag_digest": {"type": "string", "minLength": 1},
+        "hard_upstream": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "hard_edges_verified": {"type": "boolean"}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_kind", "output_comparison", "baseline_refs", "result_refs", "performance_gain_ref", "expected_delta_ref"],
+      "properties": {
+        "change_kind": {"enum": ["NONE", "OPTIMIZATION", "CORRECTNESS_ENRICHMENT", "ADOPTION", "DISPOSITION"]},
+        "output_comparison": {"enum": ["NOT_RUN", "EQUIVALENT", "EXPECTED_DELTA", "NOT_APPLICABLE", "FAILED"]},
+        "baseline_refs": {"type": "array", "items": {"type": "string"}},
+        "result_refs": {"type": "array", "items": {"type": "string"}},
+        "performance_gain_ref": {"type": ["string", "null"]},
+        "expected_delta_ref": {"type": ["string", "null"]}
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["merge_sha", "deployed_sha", "production_verified", "rebuild_applicability", "production_rebuild_receipt", "not_applicable_reason"],
+      "properties": {
+        "merge_sha": {"type": ["string", "null"]},
+        "deployed_sha": {"type": ["string", "null"]},
+        "production_verified": {"type": "boolean"},
+        "rebuild_applicability": {"enum": ["REQUIRED", "NOT_APPLICABLE"]},
+        "production_rebuild_receipt": {"type": ["string", "null"]},
+        "not_applicable_reason": {"type": ["string", "null"]}
+      }
+    },
+    "run_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definition_digest", "code_sha", "upstream_digest", "lease_fence", "run_generation"],
+      "properties": {
+        "definition_digest": {"type": ["string", "null"]},
+        "code_sha": {"type": ["string", "null"]},
+        "upstream_digest": {"type": ["string", "null"]},
+        "lease_fence": {"type": "integer", "minimum": 0},
+        "run_generation": {"type": "integer", "minimum": 0}
+      }
+    },
+    "producer_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["covered_by_asset_id", "inherited_production_rebuild_receipt", "inherited_acceptance_receipt"],
+      "properties": {
+        "covered_by_asset_id": {"type": ["string", "null"]},
+        "inherited_production_rebuild_receipt": {"type": ["string", "null"]},
+        "inherited_acceptance_receipt": {"type": ["string", "null"]}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["references", "independent_verdict", "protected_terminal_writer", "accepted_receipt"],
+      "properties": {
+        "references": {"type": "array", "items": {"type": "string"}},
+        "independent_verdict": {"enum": ["NOT_RUN", "ACCEPT", "REJECT", "INCONCLUSIVE"]},
+        "protected_terminal_writer": {"type": "boolean"},
+        "accepted_receipt": {"type": ["string", "null"]}
+      }
+    },
+    "blockers": {"type": "array", "items": {"type": "string"}}
+  }
+}
