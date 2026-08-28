@@ -668,6 +668,386 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-021 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
+
+*(renumbered from a draft `V3-E-012` 2026-08-28: the tracker rejected that id
+with `FINDING_ID_CONFLICT` — stream S3 had independently claimed `V3-E-012`
+on its own branch, an inevitable id-collision risk of parallel streams
+appending to one register file across unmerged branches, not itself
+investigated further here.)*
+
+- **Class / severity:** DEFECT · S1 major (proposed — reader-visible
+  disagreement between what the composer says it asked for and what the
+  chart was actually read at; provenance: historical E-110/E-112, reproduced
+  fresh on the current build)
+- **Lens(es):** L-USER + L-WIRE
+- **Pipeline stage:** S1 (intent/scope classification) / S4 (scope
+  resolution) — NOT S2; S2's own UI component is disclosing the truth
+  correctly (see below)
+- **Journey:** J2
+- **Provenance:** historical `E-110`/`E-112` (test plan §4.1 S4 row) —
+  independently reproduced live, not re-cited from the old register.
+- **Expected:** selecting "Deep dive" in the composer (label reads
+  "acharya-grade · deep dive override") should cause the resolved
+  `scope_tuple.depth` to be `deep`/`deep_dive`, or the composer should not
+  claim an override took effect.
+- **Observed (2026-08-27, LIVE, deployed `amjis-web@cafa894ee`, chart
+  `1c826d5a`, S2-territory code at this commit is byte-identical to current
+  `origin/main` HEAD `28a157fb1` — zero S2-territory commits landed between
+  the stale deploy pin and HEAD, confirmed via
+  `git log --oneline cafa894ee..28a157fb1 -- platform/src/components/pariprashna platform/src/lib/pariprashna`
+  returning 0 commits, so this LIVE proof is representative of current main):
+  - Request body: `{"chartId":"1c826d5a-...","reading_depth":"deep_dive",...}`
+    — the composer correctly sent the override (S2's own composer→API wiring
+    is NOT the defect).
+  - Wire response `grade` event: `{"subject":"reading_depth_received","grade":"standard","detail":"scope_tuple: intent=dasha_timing width=standard depth=standard"}`
+    — the server resolved `depth=standard` regardless of the request.
+  - S2's own UI (composer chip's "Depth the last reading actually received"
+    indicator) correctly and honestly displayed "depth received: standard"
+    — this component is functioning as designed; the disagreement is real,
+    not a rendering bug.
+- **Code anchor:** `platform/src/lib/vidhi/scope_classifier.ts`
+  (`ScopeTupleSchema` resolution — test plan §4.1 S4 row); MCP-side twin
+  `platform-mcp/src/resources/vidhi/scope_resolver.ts`.
+- **Cross-reference:** test plan §4.1 S4 row; GAP-8.
+- **Proposed fix class:** owning-stream fix in the web scope resolver so an
+  explicit composer override actually reaches `scope_tuple.depth`, or (if
+  intentionally gated) the composer must not present "Deep dive" as a live
+  option / must disclose why the override didn't apply before the turn runs,
+  not only after via the small "depth received" indicator.
+- **Status:** OPEN, filed to stream **S4** (pipeline scope-resolution
+  territory) — not fixed by S2; S2's own composer/indicator component is
+  confirmed correct and not the defect.
+- **Close rung required:** REPLAY or LIVE (a fixture/turn where "Deep dive" is
+  selected and `scope_tuple.depth` resolves to `deep`).
+
+### V3-E-030 — The settle announcement claimed "Grounded" for a turn whose own receipt recorded `hallucination_count: 4` and whose own `citation_gate` fired an ERROR
+
+- **Class / severity:** DEFECT · S1 blocking (proposed — a confidence-honesty
+  violation on the single reader-facing (and screen-reader-facing) summary of
+  an entire reading)
+- **Lens(es):** L-USER + L-WIRE + L-CODE
+- **Pipeline stage:** SURFACE (S2, working-region/settle-announcement) +
+  S8/S9 (synthesis + citation-gate — S4 territory for the root generation
+  defect; S2 territory for the surface's failure to disclose it)
+- **Journey:** J2
+- **Observed (2026-08-27, LIVE, deployed `amjis-web@cafa894ee` — S2-territory
+  code confirmed byte-identical to current HEAD, see V3-E-021):** asked
+  "What does the current dasha period mean for my career, and how does it
+  interact with transiting Saturn?" (turn `ad4228a2-ec12-450e-85c3-52b5398ed2ad`).
+  Full SSE trace:
+  - `grade` event: `{"subject":"citation_gate","grade":"ERROR","detail":"prescriptive query (predictive) produced 0 citations — guidance must be grounded"}`
+    and the paired `flag` event `citation_gate_error`.
+  - `receipt.define`'s `evidence_grades`: `{"grade_counts":{"unverified":4,...all others 0},"hallucination_count":4}`.
+  - All 4 `citation.define` events carried `"grade":"unverified"` and a
+    literal placeholder `snippet`/`reader_label` of `"[unverified citation N]"`
+    (see V3-E-014).
+  - `turn.commit`: `"status":"ok"` — no degraded/error status propagated.
+  - Settled UI (`role="status"`, the one `aria-live="polite"` settle
+    announcement `GroundingRegion.tsx` documents as "the settle announcement
+    for assistive tech"): **"Reading complete. Grounded in 4 chart factors.
+    7/21 floor items served."** — no qualifier, no mention of `unverified`,
+    `hallucination_count`, or the citation_gate ERROR anywhere in the
+    surfaced text. A screen-reader user hears only "Grounded."
+  - Root cause confirmed by code read: `GroundingRegion.tsx` built its
+    summary from `turn.grounding.factorCount` (a raw, grade-blind citation
+    tally, `s1LiveAdapter.ts:286` `factorCount = citationsSeen - classicalSeen`)
+    and never read the ALREADY-COMPUTED, already-correctly-worded
+    `turn.grounding.gradeSummaryLabel` (`state/groundingRollup.ts`'s honest
+    WELL-GROUNDED / SUPPORTED / CATALOG-ONLY — UNVERIFIED / HONEST-GAP
+    rollup, purpose-built to prevent exactly this — see its own doc comment).
+    `gradeSummaryLabel` was computed and stored on every turn but had ZERO
+    production readers (the same "computed then discarded" defect class as
+    E-073's `unmappedPrimitives`/`compileFailed`, §N.8).
+  - Test plan cross-reference: §4.3 item 2 (degradation propagation
+    honesty — "never absorbed into a confident-looking answer"); §7
+    Confidence honesty ("never exceed the evidence"); test principle 4
+    (honest absence, "never filled with plausible-looking content").
+- **Proposed fix class:** additive, in-territory (S2) — read
+  `gradeSummaryLabel` in the settle announcement; only announce an
+  unqualified "Grounded in N…" when the rollup itself says WELL-GROUNDED.
+- **Fix landed (2026-08-28, S2, this session):** `GroundingRegion.tsx` now
+  branches on `gradeSummaryLabel === GRADE_SUMMARY_WELL_GROUNDED`; when not
+  well-grounded, the announcement leads with the honest rollup label instead
+  of the bare word "Grounded". Demonstrated-can-fail: new test
+  `platform/src/components/pariprashna/__tests__/GroundingRegion.test.tsx`
+  is RED against the pre-fix component (asserts the announcement discloses
+  `unverified`/`catalog-only` for a CATALOG-ONLY rollup; failed with
+  `"Reading complete. Grounded in 4 chart factors. (Estimated..." ` before
+  the fix) and GREEN after. Full territory suite
+  (`vitest run src/components/pariprashna src/lib/pariprashna`): 1523
+  passed, 0 regressions. Commit `c06d19486`.
+  **Not yet fixed in this pass:** `WorkingBand.tsx`'s compact sealed-band
+  label (`renderSealCompleteLabel`, `lexicon.ts:161`, "Grounded in N sources
+  · Ts") has the identical grade-blind-count defect and is the ONE thing a
+  sighted user sees at the moment of settle (before opening the dock) — it
+  was left unchanged this pass to keep the fix narrowly scoped and reviewable
+  in one sitting; carried forward as the next unit of this same defect class.
+- **Status:** FIXED (`GroundingRegion.tsx` only) — PR pending, independent
+  verification pending. `WorkingBand.tsx`'s sealed-band label: OPEN, same
+  stream (S2), not yet fixed. The upstream root cause (why every citation on
+  a predictive query resolves to `unverified` with placeholder content) is
+  filed separately to S4 as V3-E-014.
+- **Close rung required:** LIVE re-proof of `GroundingRegion.tsx`'s fix
+  against a deployed build once merged and synced.
+
+### V3-E-014 — `citation.define`'s `snippet`/`reader_label` for `structural_prior`-tier signals is the literal unfilled placeholder string `"[unverified citation N]"`
+
+- **Class / severity:** DEFECT · S2 major (proposed — every citation chip in
+  the dock for a query with only structural-prior signals is uninformative by
+  construction, defeating the dock's core proof requirement)
+- **Lens(es):** L-WIRE + L-USER
+- **Pipeline stage:** S8 (synthesis) / S9 (citation assembly) — S4 territory
+- **Journey:** J2
+- **Observed (2026-08-27, LIVE):** all 4 `citation.define` events on the
+  turn cited in V3-E-030 carried, verbatim: `"snippet":"[unverified citation 1]","reader_label":"[unverified citation 1]"`
+  (and 2/3/4). The dock (`GroundingCard.tsx`, confirmed by code read to
+  faithfully render `citation.title` = `reader_label` exactly as received —
+  **not itself defective**; it is displaying real wire data correctly) shows
+  each chip's primary label as the literal bracketed placeholder, twice
+  (title line + relevance line, both sourced from the same unfilled
+  string), with grade "— honest gap" on every one. Expanding the chip shows
+  only the raw internal `signal_id` (e.g. `PLN.SATURN`) and a generic
+  category ("structural signal") — no source, confidence, or caveat prose,
+  failing test plan §5.1's dock proof ("why should I trust this sentence?"
+  is unanswerable from the dock alone for this reading).
+- **Proposed fix class:** the S8/S9 citation-assembly stage must generate a
+  real human-readable snippet for `structural_prior`-tier signals (e.g. a
+  short factual restatement of what `PLN.SATURN` structurally means — "Saturn,
+  10th lord, exalted in 7th" — grade `honest_gap`/`unverified` is fine to
+  keep, but the LABEL must not be a raw template placeholder that leaked to
+  production).
+- **Status:** OPEN, filed to stream **S4**. S2's dock component
+  (`GroundingCard.tsx`) confirmed NOT to need a change — it renders whatever
+  it is given, correctly.
+- **Close rung required:** REPLAY (a fixture asserting a real, non-placeholder
+  `reader_label` for a `structural_prior` citation) or LIVE re-proof.
+
+### V3-E-015 — The `finalize`/"Sealing…" phase ran silent and frozen for 15–22 consecutive seconds in the aria-live progress region, with zero elapsed/phase signal (§4.3.5 progress-truthfulness)
+
+- **Class / severity:** DEFECT · S2 major (proposed — same defect class as
+  the historical `E-003` progress-freeze seed, reproduced fresh in a
+  different phase of the pipeline)
+- **Lens(es):** L-USER + L-WIRE
+- **Pipeline stage:** SURFACE (S2 working region) — root latency itself is
+  S11/S8 territory (receipt assembly + interpretation-set candidate
+  generation), filed jointly
+- **Journey:** J2 / §4.3.5 progress-cadence check
+- **Observed (2026-08-27/28, LIVE, 1s-cadence sampling per test plan §4.3
+  item 5, two independent turns on the deployed synthetic-chart Portal):**
+  - Turn 1 (career/dasha question): wire trace shows `phase:"finalize","status":"start"`
+    at `t=1787874184613` and `receipt.define` at `t=1787874206478` — **21.87s**
+    inside `finalize` with no intermediate wire event at all.
+  - Turn 2 (relationships/sade-sati question): 1s-cadence DOM polling of the
+    `[role="status"]` aria-live region captured the phase label **"Sealing…"
+    unchanged across 15 consecutive 1-second samples (t=7026ms through
+    t=21071ms)** — no elapsed suffix, no phase-accurate detail, no
+    percentage; the label then jumped directly to the settled
+    "Reading complete…" state at t=22074ms. `lexicon.ts`'s `seal` phase
+    entry is explicitly marked `suffixable: false`, an assumption this data
+    shows is wrong for turns where `finalize` is not near-instant (the
+    receipt's own `interpretation_sets` field shows 2 LLM-generated
+    candidate-set calls with rationale/falsifier text happening inside this
+    same window — a plausible latency source, not confirmed).
+  - Cross-reference: test plan §4.3 item 5 (canonical instance E-003,
+    `register_prashna_ask.ts:202`, MCP door) — this is the Portal-door,
+    `finalize`-phase sibling of that same defect class: "monotone,
+    phase-accurate, elapsed-accurate advancement" is not observed during a
+    real 15-22s window.
+- **Proposed fix class:** either (a) make the `seal`/finalize phase
+  suffixable with a real elapsed counter or sub-step label (e.g. "Sealing —
+  computing alternatives" while `interpretation_sets` candidates generate),
+  or (b) if the interpretation-set generation is itself the latency driver,
+  move it to its own visible band phase rather than hiding it inside
+  "Sealing".
+- **Status:** OPEN, filed to stream **S2** (surface disclosure) with a
+  cross-reference to **S4** (whether S11 receipt-assembly / interpretation-set
+  generation latency itself needs optimization is S4's §4.2 S11 metric, not
+  S2's to fix) — NOT fixed this session (requires deciding the right
+  sub-phase label taxonomy, which is a product-shape decision better made
+  with the Native Surrogate / native than as a same-session drive-by edit).
+- **Close rung required:** LIVE re-proof (1s-cadence sampling showing the
+  aria-live region changes at least once during any `finalize` window longer
+  than ~5s).
+
+### V3-E-023 — An interrupted turn's caveat text always said "connection was lost", even for a deliberate user Stop; and (independent-verifier correction) also silently mislabeled the real connection-lost case as a user Stop
+
+- **Class / severity:** DEFECT · S2 major (raised from the original S3-minor
+  triage — the independent verifier's correction below shows this defect
+  runs both directions, not one)
+- **Lens(es):** L-USER + L-CODE
+- **Pipeline stage:** SURFACE (S2: `Turn.tsx`, `working/WorkingBand.tsx`,
+  `state/reducer.ts`, `state/types.ts`, `lib/pariprashna/lexicon.ts`)
+- **Journey:** J6 (interruption)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, S2-territory
+  code confirmed byte-identical to current HEAD — see V3-E-021):** asked a
+  long question, waited 4s into synthesis, pressed Stop. Rendered result:
+  the working-band header correctly read **"Stopped — kept what arrived
+  · 0:04"**; two lines below it, the caveat paragraph read **"The connection
+  was lost partway. What arrived is above; nothing was altered."** — a
+  direct in-turn contradiction (one honest label, one invented cause, for
+  the exact same event).
+- **First-pass fix (2026-08-28, S2, this session) and its own defect,
+  caught by independent verification:** the first fix removed the
+  network-failure clause unconditionally, on the claim that
+  `status: 'interrupted'` is reached ONLY via the user-stop action path.
+  **The independent verifier (distinct agent, adversarial re-read of
+  `reducer.ts`) disproved this**: `snapshot.apply` (reducer.ts) ALSO sets
+  `status: 'interrupted'` for a genuine, live, stale-connection/server-died
+  timeout — `lib/pariprashna/protocol/ring_buffer.ts`'s
+  `finalizeInterruptedIfStale` (60s `GRACE_WINDOW_MS` of no wire activity
+  while a turn is open, its own docstring: "a server-died-mid-turn
+  condition"), forwarded by `app/api/pariprashna/resume/route.ts` into a
+  `snapshot.apply` event. For THAT path, "the connection was lost" was
+  actually the truthful wording, and the first-pass fix would have
+  silently mislabeled a real server-side failure as a calm user action —
+  trading one contradiction for a different, narrower one (a real failure
+  presented as if the user had chosen to stop).
+- **Corrected fix (2026-08-28, S2, same session):** added
+  `TurnState.interruptedReason: 'user_stop' | 'connection_lost' | null`,
+  set explicitly at both reachable call sites (`CLIENT_STOP` and the
+  fixture-only `interrupted` WireEvent → `'user_stop'`; `snapshot.apply`'s
+  interrupted branch → `'connection_lost'`). `WorkingBand.tsx`'s band label
+  and `Turn.tsx`'s caveat both now branch on this field: `'user_stop'` keeps
+  "Stopped — kept what arrived" / "What arrived is above; nothing was
+  altered."; `'connection_lost'` gets its own honest, distinct pair — a new
+  lexicon entry `EDGE_STATE_LABELS.connection_lost_final` ("Connection lost
+  — kept what arrived") plus the caveat's original "The connection was lost
+  partway..." sentence, now conditioned correctly instead of unconditional.
+- **CI caught a real gap in this stream's OWN verification process
+  (2026-08-28):** the new `connection_lost_final` lexicon key broke
+  `tests/pariprashna/edge_state_lexicon.test.ts`'s closed-vocabulary
+  exact-count assertion — a real, correct governance test this stream had
+  never run (it lives under `platform/tests/`, not `platform/src/`, and
+  every "full territory suite" claim in this register up to this point had
+  silently only covered the `src/` tree). Fixed by properly amending the
+  governing design doc (`PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md` §7.8,
+  version 0.5→0.6, changelog entry) with a twelfth, documented row, then
+  updating the test to match — not by weakening or deleting the governance
+  check. Left in this register rather than hidden: this stream's evidence
+  claims before this point should be read as "the `src/` subset of the
+  territory suite," which is what was actually run each time.
+- **Demonstrated-can-fail:** `platform/src/components/pariprashna/__tests__/Turn.test.tsx`
+  now covers BOTH causes explicitly (RED/GREEN separately verified for the
+  original defect; the `connection_lost` case is a new assertion added
+  after the correction, not itself independently re-verified RED-before-fix
+  since it was authored alongside the fix — see close rung). Full territory
+  suite: 1526 passed, 0 regressions; `tsc --noEmit` clean on all touched
+  files; `eslint` clean.
+- **Status:** FIXED (corrected version) — PR pending, independent
+  verification of the CORRECTED version pending (the verification above
+  covered the original, since-superseded fix).
+- **Close rung required:** LIVE re-proof of both branches post-merge (press
+  Stop mid-turn → "Stopped" copy only; force a 60s+ stale gap → "Connection
+  lost" copy only, never the other's wording in either case).
+- **Process note:** this entry is left in place with the correction
+  narrated inline (register law: an entry's history is never erased) rather
+  than retracted-and-refiled, since the underlying finding (the original
+  contradiction) was real and the fix for it is real — only the completeness
+  of the FIRST attempted fix was wrong, caught before merge by the
+  independence law doing exactly what it exists to do.
+
+### V3-E-024 — A clarification-only turn can leave the reader permanently locked out of the composer: the server closes the turn in <1s, the client never notices
+
+- **Class / severity:** DEFECT · S1 blocking (proposed — this is the most
+  severe finding of S2's session: it dead-ends an entire, common class of
+  user turns with no recovery available to the reader)
+- **Lens(es):** L-USER + L-WIRE + L-CODE
+- **Pipeline stage:** SURFACE (S2: `state/reducer.ts`'s `turn.close` handler)
+- **Journey:** J5 (clarification)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, S2-territory
+  code confirmed byte-identical to current HEAD — see V3-E-021):** asked a
+  deliberately ambiguous question ("Is it a good time?") to trigger a
+  clarification. The instrument correctly classified it and streamed a
+  complete, well-formed clarifying question within ~1 second: "I want to
+  make sure I read the right part of the chart. Could you clarify what
+  you'd like to know — a specific life area..." The FULL SSE trace for this
+  turn: `turn.open` → `phase:plan start` → `flag:safety_decision:proceed`
+  → `flag:clarification_needed` (carrying the full clarifying-question text)
+  → `block.open`/`block.delta`/`block.commit` (the clarifying text) →
+  `phase:plan end, ms:2` → **`turn.close, status:"ok", ms:458`** — the
+  ENTIRE turn completed server-side in **458 milliseconds**, cleanly closed.
+  The client UI, however, showed **"Composing the approach…"** with the
+  clarifying text fully visible underneath, the composer textbox
+  **disabled**, and the Stop button active — and **stayed in that exact
+  state, unchanged, for 121+ seconds** (observed to that point; not
+  confirmed to ever self-resolve). No console error. The reader has the
+  full clarifying question in front of them but literally cannot type or
+  send a reply — the composer is locked.
+- **Root cause, confirmed by direct code read (`state/reducer.ts`):** every
+  NORMAL (non-clarification) turn's server stream includes a `turn.commit`
+  event before `turn.close`; the reducer's `turn.commit` case is the ONLY
+  place that sets `status: 'settling'`. The reducer's `turn.close` case is:
+  ```
+  case 'turn.close': {
+    return updateTurn(state, action.turnId, (t) => {
+      if (t.status === 'settling') return { ...t, status: 'settled', ... }
+      return { ...t, ... }  // status UNCHANGED otherwise
+    })
+  }
+  ```
+  A clarification-flagged turn's server stream, confirmed above, **never
+  emits `turn.commit` at all** — it goes straight from the clarification
+  block's commit to `turn.close`. So when `turn.close` arrives, the turn's
+  client-side status is still whatever pre-close status it was left in
+  (`'submitted'`/`'thinking'`/`'streaming'`), the `if (t.status ===
+  'settling')` guard never matches, and the `turn.close` handler's fallback
+  branch updates only bookkeeping fields (`lastEventId`/`seenEventIds`) —
+  **`status` never changes**. The turn is stuck forever in its pre-close
+  status, which the UI renders as still "composing," with the composer
+  correctly disabled for an in-progress turn that, server-side, is not
+  in progress at all.
+- **Fix landed (2026-08-28, S2, same session):** `turn.close`'s guard
+  broadened from `t.status === 'settling'` to "settle unless already in a
+  terminal state" (`'settled' | 'errored' | 'interrupted'` — a `Set` lookup,
+  named `TERMINAL_STATUSES` in the code for exactly this reuse). A
+  clarification turn (or any future turn shape lacking `turn.commit`) now
+  settles the instant `turn.close` arrives, exactly matching the server's
+  own authoritative "this turn is done" signal.
+- **Demonstrated-can-fail:** new
+  `platform/src/components/pariprashna/state/__tests__/reducer.turn_close.test.ts`,
+  4 cases: (1) the exact reproduction shape (`block.commit` with no
+  `turn.commit`, then `turn.close`) — RED (`'streaming'`) against pre-fix
+  `reducer.ts`, GREEN after; (2) the existing `turn.commit` → `turn.close`
+  path is unchanged (regression guard); (3) a `turn.close` arriving after
+  `CLIENT_STOP` does NOT resurrect the turn into `'settled'` (stays
+  `'interrupted'`); (4) a `turn.close` arriving after an `error` event does
+  NOT overwrite the error state (stays `'errored'`). All 4 pass. Full
+  territory suite: 1530 passed, 0 regressions. `tsc --noEmit` and `eslint`
+  clean on all touched files.
+- **Status:** FIXED — PR pending, independent verification pending. Given
+  this is the reducer's single highest-traffic terminal-transition path,
+  independent verification is held to the same bar as a security-class
+  finding even though it is not one: a distinct verifier should
+  independently re-derive the live wire trace's implication, confirm the
+  three regression-guard cases actually protect what they claim to (not
+  just that they pass), and consider any other status this change might
+  reach that the four cases above don't cover, before this merges.
+- **Independent verification (2026-08-28, distinct verifier agent):**
+  confirmed the root cause (with one correction: `snapshot.apply`'s
+  closed-gap path also sets `'settling'`, not only `turn.commit` — the
+  fix's comment corrected in place, no functional change), confirmed the
+  fix closes it with no regression, independently re-ran all 4 tests
+  (reverting `reducer.ts` to its pre-fix parent commit to reproduce RED
+  itself, not trusting the claim), confirmed 1530/1530 territory suite,
+  clean `tsc`/`eslint`. Flagged two follow-ups, both addressed same
+  session: (a) the `'reconnecting'` interaction was safe only via an
+  untested cross-file call-order invariant in `useLiveStream.ts` — a new
+  regression-guard test now pins it explicitly; (b) `WorkingBand.tsx`'s
+  compact sealed-band label rendered "Grounded in 0 sources · Ts" for a
+  settled turn with `grounding: null` (newly reachable via this very fix),
+  conflating "never computed" with "zero found" — fixed with a distinct
+  `renderSealNoGroundingLabel` ("Answered · Ts"), TDD'd RED-then-GREEN in
+  `working/__tests__/WorkingBand.test.tsx`. Full suite after all follow-ups:
+  1533 passed, 0 regressions.
+- **Status:** FIXED and independently verified (with the two flagged
+  follow-ups also landed same session) — merge-ready pending CI green.
+- **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
+  question on a deployed build post-merge; confirm the clarification turn
+  settles promptly and the composer re-enables so the reader can answer).
+
+---
+
 ### V3-E-012 — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
 
 - **Class / severity:** DEFECT · **S1 (BLOCKING, proposed)** — this is the
@@ -881,13 +1261,79 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-031 — J9 mobile pass (390×844): header wordmark clipping (FIXED), a hydration console error, and a persistent sidebar column at mobile width (referred to S1)
+
+- **Class / severity:** DEFECT · S3 minor (the header clipping — cosmetic,
+  fixed) + DOC/PROCESS (the hydration error — observed, not root-caused) +
+  referral (the sidebar column — S1 territory)
+- **Lens(es):** L-USER (+ L-CODE for the header fix)
+- **Journey:** J9 (mobile: journeys 1/2/4/6 re-run at 390×844)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, viewport
+  390×844):**
+  1. **Header wordmark clipping (S2, fixed):** `ThreadHeader.tsx`'s
+     `justify-between` row had no wrap/shrink handling; at 390px the
+     "MARSYS JIS" wordmark visibly clipped/overlapped the chart-name group
+     (full-page screenshot evidence). Root cause: no `flexWrap`, no
+     `minWidth: 0` on the shrinkable group, no `flexShrink: 0` on the
+     wordmark. **Fixed**: added all three; verified via an isolated
+     before/after HTML reproduction of the exact inline-style layout at
+     390×844 (REPLAY rung — a true LIVE re-proof against the deployed
+     component, which also has the sidebar column eating further into the
+     available width, is still required post-deploy; not claimed here).
+     `tsc`/`eslint` clean; no existing test coverage for this
+     previously-untested component (pure CSS flex behavior does not
+     evaluate meaningfully under jsdom, so no unit test was added — the
+     isolated HTML reproduction is the honest rung for this class of fix).
+  2. **React hydration error (observed, NOT root-caused):** on initial
+     navigation at 390×844, the browser console logged one error: minified
+     React error #418 (hydration text mismatch) from the deployed
+     production bundle. The page rendered visually correct despite the
+     error (full-page screenshot shows no visible breakage). Not
+     reproduced against a non-minified build, so the exact component/text
+     responsible is NOT identified — filed as an honest, unresolved
+     observation rather than guessed. Whether this is mobile-viewport-
+     specific or a general (viewport-independent) hydration issue is
+     likewise not established; this session did not have time to isolate
+     it further.
+  3. **Persistent narrow sidebar column at mobile width (S1 territory,
+     referral only):** at 390px, the collapsed history sidebar still
+     occupies a full-height, non-trivial-width vertical column (visible in
+     the same screenshot) rather than collapsing to zero width or becoming
+     an off-canvas drawer — this eats directly into the ~326px of content
+     width nominally available at this viewport and is very likely a
+     contributing factor to finding 1 being worse on the real deployed page
+     than in the isolated reproduction above. `history/Sidebar.tsx` is S1's
+     component (charter territory), not S2's — filed as a referral, not
+     fixed here.
+- **Evidence:** `.playwright-mcp/s2-scratch/mobile_390_hydration.png` (live,
+  full-page, deployed), `.playwright-mcp/s2-scratch/threadheader_before_after.png`
+  (isolated before/after reproduction) — both local to this worktree's
+  gitignored scratch dir, not committed (screenshots are evidence artifacts,
+  not source).
+- **Status:** Finding 1 FIXED (independent verification pending). Finding 2
+  OPEN, unresolved, filed for whichever stream/session next has non-minified
+  build access to root-cause it. Finding 3 OPEN, referred to **S1**.
+- **Close rung required:** Finding 1: LIVE re-proof against the deployed
+  component post-merge+deploy. Finding 2: root-cause identification, then
+  its own close rung. Finding 3: S1's own disposition.
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 13 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain, 2 surfaced by S1's frozen scenario
-run 2026-08-27: V3-E-006/B-007 and the B-008 CRITICAL routes fixed and
-independently verified, V3-E-007/E-008/E-010/E-011 filed to S5, V3-E-009
-closed-as-benign, V3-E-012 (S1-severity, history persistence unwired) filed
-OPEN to S1 itself, V3-E-013 (S1-F-001, HIGH, conversations chart-authz gap)
-FIXED + INDEPENDENTLY VERIFIED at INTEGRATION rung the same session). No
-gate is certified by this document.*
+SALVAGE 2); 19 V3 entries total (5 from the A3 census + 6 surfaced during
+A4's B-001/B-007/B-008 fix-and-verify chain + 2 surfaced by S1's frozen
+scenario run 2026-08-27 + 6 surfaced by S2's guided-execution J2/J5/J6
+passes, 2026-08-27/28): V3-E-006/B-007 and the B-008 CRITICAL routes fixed
+and independently verified; V3-E-007/E-008/E-010/E-011 filed to S5;
+V3-E-009 closed-as-benign; V3-E-012 (S1-severity, history persistence
+unwired) filed OPEN to S1 itself; V3-E-013 (S1-F-001, HIGH, conversations
+chart-authz gap) FIXED + INDEPENDENTLY VERIFIED at INTEGRATION rung;
+V3-E-021/E-014/E-015 filed to S4 (with E-015 also S2-owned for its surface
+half); V3-E-030 FIXED by S2 and independently verified merge-recommended
+(renumbered from a draft V3-E-013 on S2's own branch after this merge
+revealed S1 had independently claimed that id on main — see V3-E-030's own
+entry); V3-E-023 FIXED by S2 (corrected in place after independent
+verification caught the first pass's incompleteness — see its own entry);
+V3-E-024 FIXED by S2 — S2's highest-severity finding this session,
+independent verification pending. No gate is certified by this document.*

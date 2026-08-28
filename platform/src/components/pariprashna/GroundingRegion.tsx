@@ -1,4 +1,5 @@
 import type { TurnState } from './state/types'
+import { GRADE_SUMMARY_HONEST_GAP, GRADE_SUMMARY_WELL_GROUNDED } from './state/groundingRollup'
 
 /**
  * Mounts once, after `turn.commit` (§5.1 ③) — but its VISUAL content lives
@@ -11,11 +12,36 @@ import type { TurnState } from './state/types'
  */
 export function GroundingRegion({ turn }: { turn: TurnState }) {
   if (turn.status !== 'settled' || !turn.grounding) return null
-  const { factorCount, classicalCount, completenessLine, source } = turn.grounding
-  let summary =
-    classicalCount > 0
-      ? `Reading complete. Grounded in ${factorCount} chart factors, ${classicalCount} classical sources.`
-      : `Reading complete. Grounded in ${factorCount} chart factors.`
+  const { factorCount, classicalCount, completenessLine, source, gradeSummaryLabel } = turn.grounding
+  // The bare citation count is never itself a confidence verdict (§N.7/§N.8
+  // — groundingRollup.ts's own rationale): only announce "Grounded in N…" as
+  // an unqualified confident claim when the ACTUAL per-citation grade
+  // distribution earned that word. Otherwise the count stands, but the
+  // already-computed honest rollup (WELL-GROUNDED / SUPPORTED /
+  // CATALOG-ONLY — UNVERIFIED / HONEST GAP) replaces the word "Grounded"
+  // rather than being silently discarded.
+  const isWellGrounded = gradeSummaryLabel === GRADE_SUMMARY_WELL_GROUNDED
+  // HONEST_GAP asserts no citations were found; factorCount and
+  // gradeSummaryLabel are sourced independently upstream (client tally vs.
+  // server grade_counts aggregate — s1LiveAdapter.ts) and CAN disagree
+  // (fixtures/honest_gap.ts already models factorCount:4 alongside this
+  // label). Never pair the "gap" wording with a nonzero parenthetical count
+  // — that reads as self-contradictory to a screen-reader user.
+  const isHonestGap = gradeSummaryLabel === GRADE_SUMMARY_HONEST_GAP
+  let summary: string
+  if (isWellGrounded) {
+    summary =
+      classicalCount > 0
+        ? `Reading complete. Grounded in ${factorCount} chart factors, ${classicalCount} classical sources.`
+        : `Reading complete. Grounded in ${factorCount} chart factors.`
+  } else if (isHonestGap) {
+    summary = `Reading complete. ${gradeSummaryLabel}`
+  } else {
+    summary =
+      classicalCount > 0
+        ? `Reading complete. ${gradeSummaryLabel} (${factorCount} chart factors, ${classicalCount} classical sources).`
+        : `Reading complete. ${gradeSummaryLabel} (${factorCount} chart factors).`
+  }
   if (completenessLine) summary += ` ${completenessLine}.`
   // G2-B (§N.7 item 6): a client-estimated rollup must never read the same
   // as a server-derived one — the ONE reader-facing summary this component

@@ -43,6 +43,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     citations: {},
     grounding: null,
     readingDepthReceived: null,
+    interruptedReason: null,
     error: null,
     pendingPredictionCandidates: [],
     lastEventId: null,
@@ -161,7 +162,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks }
       })
     }
 
@@ -349,9 +350,22 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     }
 
     case 'turn.close': {
+      // V3-E-024: `turn.close` is the server's authoritative "this turn is
+      // fully done" signal — it must settle the turn REGARDLESS of whether
+      // `turn.commit` preceded it. A clarification-only turn's server
+      // stream never emits `turn.commit` at all (confirmed live: `block.commit`
+      // -> `phase:plan end` -> `turn.close` directly, no grounding to report),
+      // so gating settlement on `status === 'settling'` — a status set by
+      // `turn.commit` and by `snapshot.apply`'s closed-gap path, but by
+      // NOTHING in a clarification turn's own stream — left such a turn
+      // stuck forever in its pre-close status, composer locked, even though
+      // the server had already closed it. Settle from any NON-terminal
+      // status; a turn already `'settled'`/`'errored'`/`'interrupted'` is
+      // never resurrected by a (possibly late/duplicate) turn.close.
+      const TERMINAL_STATUSES: ReadonlySet<TurnState['status']> = new Set(['settled', 'errored', 'interrupted'])
       return updateTurn(state, action.turnId, (t) => {
-        if (t.status === 'settling') return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
-        return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        if (TERMINAL_STATUSES.has(t.status)) return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -372,7 +386,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -391,6 +405,10 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         return {
           ...t,
           status,
+          // A stale-timeout snapshot (ring_buffer.ts's finalizeInterruptedIfStale,
+          // forwarded by resume/route.ts) is a real connection/server-died
+          // condition — never the user pressing Stop (V3-E-023).
+          interruptedReason: status === 'interrupted' ? 'connection_lost' : null,
           tail: null,
           activeSeam: null,
           blocks: action.text ? [{ id: `snapshot-${action.turnId}`, kind: 'paragraph' as const, html: action.text }] : t.blocks,
