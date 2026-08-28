@@ -13,6 +13,13 @@ const migrationPath = path.resolve(
 const integrityMigration = fs.existsSync(migrationPath)
   ? fs.readFileSync(migrationPath, 'utf8')
   : ''
+const dependencyMigrationPath = path.resolve(
+  process.cwd(),
+  'supabase/migrations/635_nirmana_l0_dependency_contracts.sql',
+)
+const dependencyMigration = fs.existsSync(dependencyMigrationPath)
+  ? fs.readFileSync(dependencyMigrationPath, 'utf8')
+  : ''
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_GOVERNANCE_TEST_DATABASE_URL
 
 if (TEST_DATABASE_URL) {
@@ -41,7 +48,6 @@ describe('migration 615 — scoped L0 governance integrity contracts', () => {
     for (const hash of Object.values(HASHES)) expect(integrityMigration).toContain(hash)
     for (const [assetId, sortOrder, floor] of [
       ['bg_class_priors', 67, 171],
-      ['bg_class_lifetime_counts', 21, 6],
       ['bg_formula_constants', 68, 17],
     ] as const) {
       expect(ASSETS.find(asset => asset.asset_id === assetId)).toMatchObject({
@@ -50,6 +56,32 @@ describe('migration 615 — scoped L0 governance integrity contracts', () => {
         depends_on: [],
       })
     }
+    expect(ASSETS.find(asset => asset.asset_id === 'bg_class_lifetime_counts')).toMatchObject({
+      sort_order: 21,
+      target_floor: 6,
+      depends_on: ['bg_ghatana'],
+    })
+    // 615 must keep validating its original pre-migration state. The new
+    // dependency is applied by a later immutable registry-contract migration.
+    expect(integrityMigration).toMatch(/asset_id='bg_class_lifetime_counts'[\s\S]*?registry_row\.depends_on=ARRAY\[\]::text\[\]/)
+  })
+})
+
+describe('migration 635 — source-backed L0 dependency contracts', () => {
+  it('is runner-owned, only converges known legacy arrays, and leaves 615 historical validation intact', () => {
+    expect(dependencyMigration).not.toBe('')
+    expect(dependencyMigration).not.toMatch(/^BEGIN;/m)
+    expect(dependencyMigration).not.toMatch(/^COMMIT;/m)
+    expect(dependencyMigration).toContain("depends_on = ARRAY[]::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['bg_ghatana']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions', 'bg_panchanga']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions', 'bg_prashna_rules']::text[]")
+    expect(dependencyMigration).toContain('migration 635 refuses drifted')
+    expect(dependencyMigration).toContain('migration 635 requires CURRENT active source authorities')
+    expect(dependencyMigration).toContain('migration 635 requires CURRENT active target contracts')
+    expect(dependencyMigration).toContain('migration 635 refuses a cycle through a corrected L0 dependency contract')
+    expect(integrityMigration).toMatch(/asset_id='bg_class_lifetime_counts'[\s\S]*?registry_row\.depends_on=ARRAY\[\]::text\[\]/)
   })
 })
 
