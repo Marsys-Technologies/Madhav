@@ -8,11 +8,12 @@ import { baseFixture } from '../__tests__/test_helpers'
 
 // Real probe/ask.ts output captured live this session (2026-08-28) against
 // the deployed web door for the synthetic test chart 1c826d5a — see EDIR
-// V3-E-016 for the full context of what this specific turn revealed.
-const LIVE_PROBE_RECORD_PATH = join(
-  __dirname,
-  '../../../../../scripts/probe/out/8b9486f2-dabc-469e-873b-b27afc49cbb5.json',
-)
+// V3-E-016 for the full context of what this specific turn revealed. Copied
+// into a tracked __fixtures__ dir (originally read straight from
+// scripts/probe/out/, which is gitignored — worked locally, ENOENT on a
+// fresh CI checkout that never had that worktree-local file; see the S3
+// stream's CI-failure fix commit).
+const LIVE_PROBE_RECORD_PATH = join(__dirname, '__fixtures__/live_probe_record_v3_e_016.json')
 
 describe('turnObservationFromProbeOutput', () => {
   it('extracts a real, schema-valid receipt from a live probe record’s receipt.define event', () => {
