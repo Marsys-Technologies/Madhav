@@ -107,25 +107,39 @@ an incorrect same-stream fix.
 
 ## Regression evidence
 
-- Full S2-territory suite (`vitest run src/components/pariprashna
-  src/lib/pariprashna`): **1533 passed, 78 skipped, 1 todo, 0 failed** at
-  every commit in the chain (re-run after each fix, after the honest-gap
-  follow-up, after the `interruptedReason` correction, after the
-  `turn.close` fix, after its two follow-ups, after the merge with
-  origin/main, after the mobile fix).
-- `tsc --noEmit`: clean on every touched file across all 6 commits.
-- `eslint`: clean on every touched file across all 6 commits (two
+- `vitest run src/components/pariprashna src/lib/pariprashna`: **1533
+  passed, 78 skipped, 1 todo, 0 failed** at every commit through
+  `25b28ec54` — but this was only the `src/` subset of the real territory;
+  see the CI-caught gap below.
+- **CI caught a real process gap**: `platform/tests/pariprashna/
+  edge_state_lexicon.test.ts` (a governance test living OUTSIDE `src/`)
+  failed on `25b28ec54` — my own "full territory suite" claims through that
+  commit had silently never covered `platform/tests/`. Root cause and fix
+  in commit `013dd6fb1`: properly version-bumped and amended the governing
+  design doc rather than weakening the test. After that fix: the complete
+  `platform/tests/pariprashna + src/components/pariprashna +
+  src/lib/pariprashna` set is **2093 passed, 104 skipped, 1 todo, 0
+  failed**; the FULL `vitest run` (matching CI's exact invocation) is
+  **10271 passed, 599 skipped, 2 todo, 8 failed** — all 8 failures are
+  pre-existing `ajv-formats`/`uuid` missing-package gaps local to this
+  worktree's dependency install, independently confirmed (by the first
+  verifier pass, and by CI's own green result on those same tests in its
+  environment) as unrelated to any S2 commit.
+- `tsc --noEmit`: clean on every touched file across all 8 commits.
+- `eslint`: clean on every touched file across all 8 commits (two
   pre-existing unrelated warnings in `lexicon.ts`, untouched by any S2
   commit, not introduced by this stream).
-- 8 new/extended test files:
+- 9 new/extended test files:
   `GroundingRegion.test.tsx` (3 cases), `Turn.test.tsx` (2 cases),
-  `reducer.turn_close.test.ts` (5 cases), `WorkingBand.test.tsx` (2 cases)
-  — every fix demonstrated RED-before/GREEN-after against the pre-fix
-  commit, independently re-confirmed by the verifier passes (not merely
-  asserted by the fixer).
-- Full CI on PR #1612 at HEAD (`25b28ec54`): in progress at packet
-  authoring time — see the PR's own check-run history for final status;
-  this packet does not claim a green CI it has not observed complete.
+  `reducer.turn_close.test.ts` (5 cases), `WorkingBand.test.tsx` (2 cases),
+  `edge_state_lexicon.test.ts` (extended, 1 new case) — every fix
+  demonstrated RED-before/GREEN-after against the pre-fix commit,
+  independently re-confirmed by the verifier passes (not merely asserted
+  by the fixer).
+- Full CI on PR #1612 at HEAD (`013dd6fb1`, the fix above): re-triggered
+  by this push, being confirmed now — see the PR's own check-run history
+  for final status; this packet does not claim a green CI it has not
+  observed complete.
 
 ## Independent verifier verdict
 

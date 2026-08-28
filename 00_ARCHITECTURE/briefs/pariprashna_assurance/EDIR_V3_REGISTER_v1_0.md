@@ -914,6 +914,19 @@ investigated further here.)*
   lexicon entry `EDGE_STATE_LABELS.connection_lost_final` ("Connection lost
   — kept what arrived") plus the caveat's original "The connection was lost
   partway..." sentence, now conditioned correctly instead of unconditional.
+- **CI caught a real gap in this stream's OWN verification process
+  (2026-08-28):** the new `connection_lost_final` lexicon key broke
+  `tests/pariprashna/edge_state_lexicon.test.ts`'s closed-vocabulary
+  exact-count assertion — a real, correct governance test this stream had
+  never run (it lives under `platform/tests/`, not `platform/src/`, and
+  every "full territory suite" claim in this register up to this point had
+  silently only covered the `src/` tree). Fixed by properly amending the
+  governing design doc (`PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md` §7.8,
+  version 0.5→0.6, changelog entry) with a twelfth, documented row, then
+  updating the test to match — not by weakening or deleting the governance
+  check. Left in this register rather than hidden: this stream's evidence
+  claims before this point should be read as "the `src/` subset of the
+  territory suite," which is what was actually run each time.
 - **Demonstrated-can-fail:** `platform/src/components/pariprashna/__tests__/Turn.test.tsx`
   now covers BOTH causes explicitly (RED/GREEN separately verified for the
   original defect; the `connection_lost` case is a new assertion added
