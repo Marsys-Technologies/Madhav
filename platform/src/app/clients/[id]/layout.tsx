@@ -6,12 +6,24 @@ import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { ConditionalChartSwitcherBar } from '@/components/nav/ConditionalChartSwitcherBar'
 
+// V3-E-018: generateMetadata has no guaranteed request-scoped session by
+// default, so it must resolve access itself via the SAME resolveChartPageAccess
+// path the layout body uses below — never a raw, unguarded query — before it
+// may put the chart `name` (PII) into the <title>. This layout is the parent of
+// every sibling chart route, so an unguarded read here leaked the name on all
+// of them. The bar matches the layout body's own bar (`permission !== 'deny'`),
+// not the stricter canBuild bar V3-E-007 needed: a chart_grants view-grantee
+// legitimately sees this name in the breadcrumb already.
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
+  const access = await resolveChartPageAccess(id)
+  if (!access || access.permission === 'deny') {
+    return { title: 'Chart — MARSYS-JIS' }
+  }
   const result = await query<{ name: string }>('SELECT name FROM charts WHERE id=$1', [id])
   const name = result.rows[0]?.name
   return { title: name ? `${name} — MARSYS-JIS` : 'Chart — MARSYS-JIS' }
