@@ -668,6 +668,388 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-012 — Quality corpus (`fixtures.ts`) grounds 11 of its 12 existing fixtures in the native's real chart, not the synthetic default
+
+- **Class / severity:** PROCESS · S3 (MEDIUM, proposed — this is a
+  test-data-law compliance question about already-committed, baseline-frozen
+  content, not a proven violation or a live-probe incident)
+- **Lens / stage:** L-CODE · S3 corpus territory
+- **Expected:** per the test plan's frontmatter `test_data_law`, "all live
+  probes default to the synthetic consented chart `1c826d5a-...`. The
+  native's real chart (`482012f1`) is used only where a scenario specifically
+  requires it AND the native has authorized that specific use." S3's own
+  launch instructions and elevation §3.2 item 2 name real-chart use as the
+  reserved residue that self-pauses a stream if introduced un-authorized.
+- **Observed (2026-08-28, S3 stream-open):** `platform/src/lib/pariprashna/corpus/fixtures.ts`
+  (committed on `origin/main`, present unmodified at this stream's baseline
+  SHA — not introduced by this session) imports `CANONICAL_CHART_ID`
+  (`= '482012f1-710e-4a25-994a-93821f5871aa'`, the native's real chart) from
+  `types.ts` and sets it as `chartId` on **11 of the corpus's 12 existing
+  fixtures** (`factual-001`, `interpretive-001`, the `timing`, `cross-domain`,
+  `remedial`, `sensitive`, `incomplete-evidence`, `returning-conversation`,
+  `disagreement`, `prediction`, and `door-parity` fixtures all use
+  `CANONICAL_CHART_ID`; only `ambiguous-001-will-i-be-successful` uses
+  `SYNTHETIC_CHART_ID`). `types.ts`'s own docblock (line 73-76) frames this as
+  intentional: the real chart is used "for anything that cites real chart
+  content," with a synthetic id reserved for "anything that must not touch
+  canonical chart data during test authoring" — i.e. the module's author
+  already drew this distinction deliberately, but no authorization citation
+  is attached to any individual fixture confirming the native specifically
+  authorized each real-chart use per the test-data law's own conjunctive
+  test ("specifically requires it AND the native has authorized that
+  specific use").
+- **Why this is not treated as a live self-pause trigger:** the precedent
+  PROCESS finding for this exact issue class, historical **E-010** ("Live
+  probe used the native's real chart without specific need"), is recorded
+  CLOSED-AS-CODIFIED (2026-08-24, via the plan v2.0 test-data law itself) —
+  its closure mechanism was writing the very rule this finding is now
+  checked against, not leaving the question open. E-010's framing is also
+  specifically about a *live probe*, not a *static, already-committed
+  fixture* grounding choice — a materially different act. This finding is
+  therefore filed for native/Native-Surrogate confirmation of the existing
+  fixtures' authorization basis, not as a blocking violation. Consistent
+  with this, S3 proceeded to open the stream and expand the corpus, with the
+  explicit constraint that **every new fixture authored this session uses
+  `SYNTHETIC_CHART_ID` (`1c826d5a-...`) exclusively, no exceptions** — the
+  question this finding raises is scoped strictly to the 11 pre-existing
+  fixtures, never to new S3 work.
+- **Proposed fix class:** either (a) the native/Surrogate confirms the
+  existing real-chart grounding was an intentional, in-scope authorization
+  (test-data-law's "specifically requires it" clause — richer/fully-built
+  L1-L5 data on the real chart vs. the synthetic chart's likely-sparser
+  build is a plausible legitimate reason), in which case this closes
+  CLOSED-AS-CODIFIED like its precedent with that rationale recorded inline
+  per-fixture; or (b) if not authorized, the 11 fixtures are re-grounded
+  against the synthetic chart as a remediation PR, filed as S3's own
+  in-territory fix (the corpus is squarely S3's file territory) once ruled.
+- **Status:** OPEN, filed to native/Native-Surrogate for the authorization
+  ruling. Close rung: STATIC (a documented ruling, or a landed
+  re-grounding PR with independent verification if ruled unauthorized).
+
+---
+
+### V3-E-016 — CRITICAL: deployed web door hallucinates the native's real, specific chart facts when answering an unrelated synthetic-chart factual query, and serves them with undisclosed confidence
+
+- **Class / severity:** DEFECT · S3-discovered, filed to **S4** (primary —
+  grounding/validation pipeline root cause) and **S5** (privacy/disclosure
+  angle: real, specific, sensitive personal astrological data about the
+  native surfaced in an unrelated synthetic-chart response) · **CRITICAL**
+  (reproducible, live production, factual-integrity + confidence-honesty
+  double violation, with a plausible privacy-disclosure reading)
+- **Lens / stage:** L-LIVE (deployed web door) · pipeline S9 Grounding/Safety
+  Validation (`validation_stage.ts`, `streaming_citation_validator.ts`) ·
+  overlaps S3's own dimension 1 (Factual integrity) and dimension 5
+  (Confidence honesty)
+- **Expected:** per test plan §1.3 principle 4 ("Honest absence… a gap,
+  empty state, degraded provider, or unfinished turn is stated plainly,
+  never filled with plausible-looking content") and CLAUDE.md §N.7/§B.10
+  ("Claude never invents numerical chart values"), a query against chart
+  `1c826d5a` (Abhinandan, the synthetic test chart) for its Moon's
+  nakshatra should either (a) return `1c826d5a`'s real, ground-truth L1
+  fact — **Ardra**, sign **Gemini**, longitude 73.2278°, confirmed live via
+  `ganita_positions_get(chart_id=1c826d5a, planet=Moon)` this session — or
+  (b) honestly disclose it lacks grounded data for this fact.
+- **Observed (2026-08-28, S3 stream-open, reproduced twice):** two
+  independent, freshly-authenticated live turns against the deployed web
+  door (`POST https://amjis-web-qm256lasva-el.a.run.app/api/pariprashna`,
+  via the existing `platform/scripts/probe/ask.ts` harness, `chartId:
+  "1c826d5a-41cb-4450-b4dc-59d440e5f75a"` explicitly present in both POST
+  bodies and echoed correctly in both turns' own `turn.open` SSE event) both
+  answered "the Moon in this chart is placed in **Purva Bhadrapada**
+  nakshatra… **27°02′48″** in the sign of **Aquarius**" — verbatim,
+  degree-for-degree identical across both independent runs. This is **not**
+  chart `1c826d5a`'s data (ground-truthed above as Ardra/Gemini) — it is the
+  native Abhisek Mohanty's own FORENSIC canonical Moon fact (CLAUDE.md §B:
+  "Moon = Purva Bhadrapada", chart `482012f1`), reproduced with enough
+  precision (the exact degree) that this reads as memorized real content,
+  not a generic plausible-sounding guess. The literal string `482012f1`
+  never appears anywhere in either turn's SSE stream or receipt — the leak
+  is in the *content*, not a chart-id mix-up in the request/turn-tracking
+  layer itself.
+  - **The turn's own streamed receipt (`receipt.define` SSE event) already
+    detects this dishonestly**: `evidence_grades.hallucination_count: 2`,
+    both cited facts (`NAK.PURVA_BHADRAPADA`, `PLN.MOON`) graded
+    `"unverified"` (0 primary/supporting/contextual grades). The receipt's
+    own `coverage` block discloses the root condition honestly:
+    `"served": 5, "empty": 9, "floor_item_total": 14, "channel_note": "9 of
+    14 floor items have NO web-executable retrieval tool (MCP↔web namespace
+    gap); 5 served, 9 empty, 0 dark."` — i.e. the web door lacks a real
+    retrieval path for this fact type, and rather than disclosing the gap
+    (which the receipt's own `honest_gaps` field is structurally built to
+    carry), the synthesis layer filled it with specific, confident,
+    plausible-looking — and, disturbingly, *correct-for-a-different-chart*
+    — content. The served prose shows plain, unflagged footnote markers
+    (`[1]`, `[2]`); nothing in the reader-facing text discloses
+    `unverified`/hallucinated status.
+  - `platform/src/lib/pariprashna/pipeline/validation_stage.ts` (the S9
+    grounding/safety validation stage) contains **zero** references to
+    `hallucination_count` — confirmed by direct grep this session — meaning
+    nothing in the validation stage currently gates, downgrades, or
+    discloses on this signal even though the receipt computes it correctly.
+    The detector is honest; nothing downstream acts on it.
+  - Evidence: `platform/scripts/probe/out/24ba8c23-9bde-4c27-9f69-70e6bfd1e9d4.json`,
+    `platform/scripts/probe/out/8b9486f2-dabc-469e-873b-b27afc49cbb5.json`
+    (both worktree-local, not committed — reference by path for the
+    assigned stream to pull), plus the live `ganita_positions_get` ground-
+    truth call this session.
+- **Why not fixed in S3:** root cause is either the grounding/retrieval
+  coverage gap itself (pipeline stage territory, S4) or the missing
+  validation-stage gate on `hallucination_count`/`evidence_grades` before
+  serving (S9, also S4 primarily, S5 for the disclosure angle) — both
+  outside S3's charter territory (quality corpus / rubric harness /
+  synthesis prompts). This is exactly the "collateral finding while
+  verifying something unrelated" class the shared elevated frame's §6
+  instructs surfacing, not silently fixing across a territory boundary.
+- **Proposed fix class:** (a) wire `validation_stage.ts` (or
+  `streaming_citation_validator.ts`) to gate on `evidence_grades.
+  hallucination_count > 0` — at minimum forcing an explicit low-confidence/
+  unverified disclosure into the served prose, at maximum blocking the
+  claim and falling back to the `honest_gaps` disclosure path that already
+  exists structurally in the receipt; (b) separately, investigate whether
+  this is reproducible for other fact types/charts (systemic, like
+  V3-E-011's ~30-route sweep) or specific to the MCP↔web namespace gap for
+  nakshatra-class facts.
+- **Status:** OPEN, filed to **S4** (primary) and **S5** (privacy angle),
+  flagged CRITICAL for expedited triage given the reproducible real-data
+  disclosure content. Close rung: LIVE (a seeded reproduction of this exact
+  query turning honest/gapped instead of hallucinated, against the deployed
+  route).
+
+---
+
+### V3-E-032 — CRITICAL: live corpus sample shows 0 of 80 citation attempts reach a trustworthy grade across 10 turns/6 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed; adversarially reviewed and CORRECTED
+
+**Corrected 2026-08-28 after a 3-way blinded Opus adversarial refuter panel
+(elevation R-2, `SURROGATE-SCORED — pending native rubric`) found real errors
+in this entry's first-filed version. Corrections applied inline below rather
+than silently — see "Adversarial review" at the end.**
+
+- **Class / severity:** DEFECT (corroborating/quantifying V3-E-016 at corpus
+  scale) filed to **S4** (primary — root cause narrowed by the refuter panel
+  to `platform/src/lib/pariprashna/pipeline/citation_resolver.ts`, not the
+  broader "grounding/retrieval pipeline" this entry originally named) · plus
+  an S3 in-territory scorer-harness DEFECT, found and FIXED this session ·
+  **CRITICAL**
+- **Lens / stage:** L-LIVE (deployed web door, `scripts/probe/ask.ts`,
+  synthetic chart `1c826d5a` only) · S3 quality-corpus scoring harness
+  (`platform/src/lib/pariprashna/corpus/dimensions/citation_precision.ts`)
+- **Observed (2026-08-28, S3 stream, live corpus run):** ran a 16-fixture
+  live sample (2 fixtures × 8 single-turn-compatible work classes:
+  factual, interpretive_whole_chart, cross_domain_contradiction,
+  incomplete_evidence, remedial, sensitive, timing, ambiguous_clarification;
+  the 3 conversation-history-seeded classes — disagreement,
+  returning_conversation_drift, prediction_capture_outcome — need a
+  `priorTurns` seeding capability the runner does not yet have wired to a
+  live door, an honest disclosed gap, not run this pass) against the
+  deployed route via `platform/scripts/pariprashna/s3_live_corpus_run.ts`
+  (new driver script, this session, wiring the existing
+  `probe_output_adapter.ts` + `runCorpus` to `scripts/probe/ask.ts` per one
+  call per fixture). 10 of 16 turns produced a measured `evidence_grades`
+  block (the other 6 were short/blocked/degenerate responses, reported
+  `not_yet_measurable`, not silently dropped). Across all 10 measured turns:
+  `primary=supporting=contextual=prior_reading=0` — zero citations, across
+  **80** total citation attempts (the per-turn `unverified` counts summed:
+  1+8+13+9+5+7+16+8+10+3 = 80), ever reached a real verification tier; all
+  80 graded `unverified`. (First-filed version of this entry stated "160" —
+  wrong, and wrong in a self-incriminating way: 160 is exactly the
+  double-counted denominator the scorer fix below removes. Corrected here.)
+- **Scorer bug found and fixed (S3 in-territory, `citation_precision.ts`):**
+  `citations/rewriter.ts`'s `resolveSentinel` has exactly one branch for an
+  unresolvable reference, and that single branch both assigns
+  `grade: 'unverified'` AND increments the hallucination counter
+  (`rewriter.ts:263-278`) — `grade_counts.unverified` and
+  `hallucination_count` are the SAME event, always exactly equal by
+  construction, never disjoint (independent-verifier-confirmed by tracing
+  every path into both counters, not just empirically — see stream result
+  packet). The scorer previously computed `resolved` as the sum of ALL
+  `grade_counts` (including `unverified`) and then added
+  `hallucination_count` again as a separate denominator term — double-
+  counting every unresolvable citation and mathematically forcing the score
+  toward ~0.5 for any turn with zero genuinely-verified citations,
+  regardless of true severity. This MASKED the true 0.0 (zero citations ever
+  reached primary/supporting/contextual/prior_reading) behind a falsely
+  reassuring midpoint score. Fixed via TDD: 2 new tests, confirmed RED
+  against the old implementation, GREEN after; full corpus suite re-run
+  clean (104/104, zero regressions). Independent verifier additionally
+  proved algebraically that the fix is strictly non-lenient versus the old
+  formula for all inputs (`score_new ≤ score_old` always). The evidence
+  report this entry originally cited
+  (`platform/scripts/pariprashna/out/s3_live_corpus_report_s3batch02.json`)
+  was committed in the SAME commit as the fix WITHOUT being regenerated —
+  it still showed the pre-fix `0.5` and pre-fix finding-string wording,
+  making "0.0" a re-derivation, not a filed measurement, when first written.
+  **Regenerated** (same path, same 16 captured turns, current scorer) —
+  now correctly shows `citation_precision: 0`.
+- **Root cause, narrowed by the refuter panel:** the original filing
+  attributed this to "the grounding/retrieval pipeline" generally (same
+  framing as V3-E-016). Refuter #2 traced the actual mechanism further:
+  `citation_resolver.ts:36` — `const SIGNAL_ID_RE = /SIG\.MSR\.\d{3}/g` — the
+  resolver's prefetch ONLY recognizes `SIG.MSR.NNN`-shaped ids. The synthesis
+  prompt (`pariprashna_synthesis_prompt_v1.ts`) instructs the model to cite
+  "the exact reference id as it appears in the retrieved context" —
+  ANY retrieved id, not only MSR signal ids (L1 `ga_*` fact_ids, yoga ids,
+  dasha row ids are all valid retrieved-context ids per the fixtures'
+  own grounding notes throughout `fixtures.ts`). A citation of any
+  non-MSR-signal id — even one that is perfectly, verifiably grounded in
+  what the turn actually retrieved — resolves to `null` and grades
+  `unverified` **by construction**, independent of whether retrieval
+  coverage was good or bad. This is a resolver SCOPE bug (recognizes one id
+  family, silently fails closed on all others), not proof of a sparse-
+  retrieval/grounding-coverage problem per se — though `fetchCandidateSignalLabels`
+  also fails closed to an empty map on any DB fault (`citation_resolver.ts:83-88`),
+  which independently produces the exact same uniform-zero signature. Both
+  mechanisms point at `citation_resolver.ts` specifically, not the broader
+  pipeline. Uniform 0.0 across 10 heterogeneous turns fits ONE binary
+  wiring/scope failure better than a partial, query-dependent retrieval gap
+  (V3-E-016's own turn showed a partial 9/14 gap, not a total one) — the
+  two findings likely share upstream lineage but are not proven to be
+  literally the same defect; S4 should investigate `citation_resolver.ts`'s
+  id-recognition scope as the primary lead, not assume V3-E-016's fix alone
+  resolves this.
+- **Sample-scope caveats (added per adversarial review):** single synthetic
+  chart (`1c826d5a`) only — no control/comparison chart run, so a thin-data
+  confound specific to this chart is disclosed, not excluded. 8/10 measured
+  turns also showed `cross_domain.status` unavailable with reason
+  "plan.domains was not populated by the planner" (see the companion
+  `b11_coverage` finding below) — consistent with one common upstream
+  planner/retrieval-wiring cause manifesting repeatedly, not ten
+  independent failures. "Systemic" is downgraded here from "across the
+  door" to "reproducible across this test chart's 10 measured turns,
+  spanning 6 work classes, plausibly one common upstream cause" — still
+  release-blocking as a user-visible defect (every citation in the sample
+  rendered unverified/hallucinated to the reader), not weakened in
+  severity, only in the breadth of the causal claim.
+- **Why not fixed further in S3:** the citation_precision.ts scorer bug IS
+  S3's own territory and IS fixed (above). `citation_resolver.ts` is
+  `pipeline/` code — S4 territory, referral only, never a cross-territory
+  fix.
+- **Proposed fix class:** S4 investigates widening `citation_resolver.ts`'s
+  id recognition beyond `SIG.MSR.NNN` (or resolving against a broader id
+  catalog matching what the synthesis prompt actually instructs the model
+  to cite), and hardening `fetchCandidateSignalLabels`'s fail-closed-to-
+  empty-map path to distinguish "genuinely nothing to cite" from "DB fault
+  swallowed" (the latter should not silently present as the former). V3-E-016's
+  `validation_stage.ts` gating recommendation still applies as a
+  defense-in-depth disclosure layer regardless of root cause.
+- **Status:** OPEN, filed to **S4** with the narrowed root cause above,
+  CRITICAL. The S3-territory half (the scorer bug) is CLOSED — fix landed
+  this session (PR #1619), independently verified per harness §6.2 (ACCEPT
+  verdict, see stream result packet). Close rung for the platform defect:
+  LIVE (a re-run of this same batch against a fixed `citation_resolver.ts`
+  showing citation_precision materially above 0).
+- **Tracker:** `finding_discovered` event `ef457619-6ea3-4b85-a052-b3334b37c153`
+  (S3 stream_seq 5), `root_cause_group: V3-E-016` (kept for now; S4 should
+  confirm or split once `citation_resolver.ts` is actually investigated).
+
+**Adversarial review (elevation R-2, `SURROGATE-SCORED — pending native
+rubric`, 3-way blinded Opus panel, 2026-08-28):** all three refuters
+independently confirmed the underlying defect is real and release-blocking
+(exact 0.5 on all 10 pre-fix turns is only possible if
+`primary+supporting+contextual+prior_reading=0` on every one — algebraically
+forced, not inferable-away) while each independently catching the same "160
+vs 80" arithmetic error and the same "report never regenerated post-fix"
+gap — convergent, high-confidence findings, now corrected above. Refuter #2
+additionally supplied the `citation_resolver.ts` root-cause narrowing.
+Refuter #3 additionally found a second, DISTINCT scorer defect in
+`b11_coverage.ts` — filed separately as V3-E-033 below, not folded into this
+entry.
+
+---
+
+### V3-E-033 — S3 scorer harness: `b11_coverage.ts` penalizes low `served` count directly, contradicting its own docblock
+
+- **Class / severity:** DEFECT · S3 scorer harness (in-territory, not fixed
+  this session — see rationale below) · **MEDIUM** (a measurement-accuracy
+  defect in a not-yet-release-blocking-on-its-own scorer, not a live
+  user-facing defect itself)
+- **Lens / stage:** L-CODE · S3 quality-corpus scoring harness
+  (`platform/src/lib/pariprashna/corpus/dimensions/b11_coverage.ts`)
+- **Observed (2026-08-28, found by refuter #3 during the V3-E-032
+  adversarial panel, independently confirmed by direct code read this
+  session):** `b11_coverage.ts`'s own docblock (line 13-18): "The RS-4
+  proportionality carve-out... means this scorer does not penalize a low
+  `served` count on its own; it penalizes `coverage`/`cross_domain` being
+  `unavailable`... which is the actual failure mode B.11 exists to catch."
+  But the implementation (line 44):
+  `coverageComponent = total > 0 ? Math.min(1, served / total) : 1` — a
+  direct, linear penalty on a low `served`/`total` ratio, exactly what the
+  docblock says this scorer does NOT do. Under the documented (intended)
+  behavior, `coverageComponent` should be non-zero (arguably 1) whenever
+  `coverage.status === 'measured'` regardless of the served/total ratio,
+  penalizing only `'unavailable'` status. Re-scoring the S3 16-fixture live
+  batch (V3-E-032's evidence) under a spec-faithful interpretation would
+  raise the `b11_coverage` mean from `0.237` to roughly `0.55` — direction
+  unchanged (still below the 0.75 qualification bar), but the magnitude
+  V3-E-032 originally reported was inflated ~2.3x by this bug (V3-E-032
+  corrected to note this).
+- **Compounding framing error (also refuter #3):** V3-E-032 reported
+  `b11_coverage` as a mean across all 16 fixtures. Only **10 of 16** actually
+  produce a `b11_coverage` score: `sensitive` fixtures are exempt from
+  `B11_COVERAGE_REQUIREMENT` per `bars.ts`, and `ambiguous_clarification`
+  fixtures are excluded from all 4 qualification work classes entirely per
+  `work_classes.ts` (`workClass: null`) — neither gets a b11 score to
+  average in the first place. The denominator was misstated.
+- **Why not fixed this session:** resolving which side is authoritative
+  (the docblock's stated intent, or the current code) requires real design
+  judgment this stream did not have time to responsibly exercise under
+  adversarial-panel time pressure — specifically, `bars.ts` requiring
+  `b11_coverage >= 0.75` for the `factual` work class may itself already be
+  in tension with the RS-4 carve-out the docblock cites (RS-4 says a
+  `factual`-class fixture should satisfy B.11 differently/more leniently,
+  via a frame-check rather than the SAME full-floor-coverage bar every
+  other class is held to) — a `bars.ts` design question, not just a
+  one-line `b11_coverage.ts` code fix. Fabricating a rushed fix to one side
+  of a two-file design tension risked getting it wrong in a worse way than
+  leaving it honestly open. §N.4 "floors aspirational, not gates" and
+  §N.8 apply: an honest open finding beats an invented resolution.
+- **What the underlying data actually shows, spec-faithful (the real
+  release-blocking signal here):** `cross_domain.status: 'unavailable'`
+  (reason: `"plan.domains was not populated by the planner"`) on **8 of 10**
+  measured turns in the V3-E-032 batch — this IS exactly the failure mode
+  `b11_coverage.ts`'s own docblock says the dimension exists to catch,
+  independent of the `coverageComponent` dispute above. This is the number
+  worth citing toward a gate, not the disputed pooled mean.
+- **Proposed fix class:** (a) a native/Native-Surrogate ruling on whether
+  `bars.ts`'s `factual` requirement should apply `b11_coverage` at the
+  general 0.75 threshold or an RS-4-adjusted one; (b) once ruled,
+  `b11_coverage.ts`'s `coverageComponent` computation brought into line with
+  whichever side the ruling settles on (code-to-match-docblock, or
+  docblock-to-match-code-plus-bars.ts-adjustment); (c) separately and
+  regardless of (a)/(b): investigate why the planner fails to populate
+  `plan.domains` on 8/10 turns — likely S4 pipeline territory (the planning
+  stage), referral not a cross-territory fix.
+- **Status:** OPEN, S3-owned (scorer-harness territory), not release-gating
+  on its own — the `plan.domains` planner gap it surfaces IS potentially
+  release-relevant and is the number to carry forward, not the disputed
+  mean. Close rung: STATIC (a documented ruling + landed fix + independent
+  verification, same pattern as V3-E-012).
+- **Tracker:** `finding_discovered` event `875dea20-6fe4-4a60-89ec-58f4995bdacd`
+  (S3 stream_seq 6).
+
+---
+
+**Cross-stream id collision note (merge from `origin/main`, 2026-08-28):**
+the two entries immediately below (titled "V3-E-012" and "V3-E-013" by S1)
+collide in NUMBER ONLY with this document's own S3-filed `V3-E-012` above.
+Verified against the tracker's `/api/projection` (the globally-unique
+authority per elevation §5.5): `finding_id "V3-E-012"` is registered to
+**S3** (`lead-s3`, MEDIUM, event `481df17a-b499-4f3d-a080-b20d1ce85398`) —
+S1's two entries below were never submitted through the tracker's
+`finding_discovered` event type at all (S1's own entry text says its
+finding intake was `FINDING_FREEZE`-rejected after `S1-F-001`'s remediation
+plan froze it, so these are document-only prose numbers, not tracker-
+registered ids). Per elevation §5.5's one-register rule, this divergence is
+recorded here rather than silently resolved by either stream renumbering
+its own tracker-authoritative entries — Session C convergence should assign
+S1's two entries fresh, tracker-registered ids. Kept below verbatim,
+unmodified from `origin/main`.
+
+---
+
+### V3-E-012 (S1 document numbering — see collision note above; not a tracker-registered id) — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
+
+<!-- --- merged from origin/main (2nd sync, 2026-08-28) --- -->
+
 ### V3-E-021 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
 
 *(renumbered from a draft `V3-E-012` 2026-08-28: the tracker rejected that id
@@ -1197,7 +1579,7 @@ investigated further here.)*
 
 ---
 
-### V3-E-013 — `POST`/`GET /api/conversations` created/listed chart-scoped rows with no `chart_grants`/ownership check (S1-F-001) — FIXED + INDEPENDENTLY VERIFIED
+### V3-E-013 (S1 document numbering — see collision note above; not a tracker-registered id) — `POST`/`GET /api/conversations` created/listed chart-scoped rows with no `chart_grants`/ownership check (S1-F-001) — FIXED + INDEPENDENTLY VERIFIED
 
 - **Class / severity:** DEFECT · **HIGH** (Native Surrogate triage,
   `decision_recorded`/`finding_triaged` event `e6a55098-d146-49b5-a0dc-
@@ -1260,6 +1642,44 @@ investigated further here.)*
   for its own stale-deployment gap.
 
 ---
+
+*End EDIR_V3_REGISTER v1.0 (merged from `origin/main` 2026-08-28 — this
+branch's own S3 filings below, plus S1's document-numbered entries carried
+in verbatim; see the cross-stream id collision note above V3-E-012) — 115
+historical entries imported by reference; 81 branches dispositioned
+(SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 · SALVAGE 2); 15 V3 entries
+tracker-registered to this branch (5 from the A3 census + 6 surfaced during
+A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and
+the B-008 CRITICAL routes fixed and independently verified, V3-E-007/
+E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 4 filed
+2026-08-28 by stream S3: V3-E-012, real-chart-grounding question on the
+quality corpus's pre-existing fixtures, filed for native ruling; V3-E-016
+(originally drafted as E-013, renumbered on a live TRACKER-side
+FINDING_ID_CONFLICT — S2 had already claimed E-013..E-015 concurrently in
+this shared, cross-worktree register; see E-017's own named gap), CRITICAL
+reproducible hallucination-of-real-chart-facts defect on the deployed web
+door, filed to S4/S5; V3-E-032, CRITICAL corpus-scale (0 of 80 true
+citation-verification) corroboration of V3-E-016 plus an in-territory S3
+scorer bug found and FIXED this session, filed to S4 with a narrowed root
+cause (`citation_resolver.ts`) after 3-way adversarial refuter review
+corrected its first-filed numbers; V3-E-033, MEDIUM, a second distinct S3
+scorer defect (`b11_coverage.ts` contradicting its own docblock) the same
+refuter panel surfaced, filed OPEN pending a design ruling, not rushed to a
+fix); plus 2 document-numbered (non-tracker) entries merged in from S1's
+`origin/main` PRs under the SAME "V3-E-012"/"V3-E-013" numbers as this
+branch's own tracker-registered findings — a genuine cross-stream numbering
+collision, not silently resolved here, flagged for Session C to assign S1's
+two entries fresh ids (S1-severity history-persistence-unwired filed OPEN
+to S1 itself; S1-F-001 conversations chart-authz gap, FIXED + INDEPENDENTLY
+VERIFIED at INTEGRATION rung).
+Other streams (S1/S2/S4/S5/S6) file V3-E entries on their OWN branches per
+the harness's per-stream-branch model (§2.1); the tracker (global
+`finding_discovered` event stream, `finding_id` globally unique) is the
+cross-stream source of truth, reconciled into one register at Session C
+convergence (elevation §5.5's one-register rule + parity check). No gate is
+certified by this document.*
+
+<!-- --- merged from origin/main (2nd sync, 2026-08-28) --- -->
 
 ### V3-E-031 — J9 mobile pass (390×844): header wordmark clipping (FIXED), a hydration console error, and a persistent sidebar column at mobile width (referred to S1)
 

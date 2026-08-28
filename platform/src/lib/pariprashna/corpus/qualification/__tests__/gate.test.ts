@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { baseObservation } from '../../__tests__/test_helpers'
 import type { CorpusFixture, TurnObservation } from '../../types'
 import type { CorpusRunReport } from '../../report_schema'
-import { CORPUS_FIXTURE_SET_VERSION } from '../../fixtures'
+import { CORPUS_FIXTURE_SET_VERSION, CORPUS_FIXTURES } from '../../fixtures'
 import { CORPUS_SCORING_HARNESS_VERSION } from '../../dimensions'
 import { evaluateQualification, qualifyModelForWorkClass } from '../gate'
 import { QUALIFICATION_BARS } from '../bars'
@@ -74,7 +74,7 @@ describe('qualifyModelForWorkClass — pass path', () => {
 
     expect(result.status).toBe('qualified')
     expect(result.qualified).toBe(true)
-    expect(result.fixturesRun).toBe(1)
+    expect(result.fixturesRun).toBe(CORPUS_FIXTURES.filter((f) => f.queryClass === 'factual').length)
   })
 })
 
