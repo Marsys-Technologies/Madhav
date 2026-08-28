@@ -1,7 +1,7 @@
 ---
 artifact: PARIPRASHNA_DESIGN_ENGINEERING_PLAN
 canonical_id: PARIPRASHNA_DESIGN_ENGINEERING_PLAN
-version: 0.5
+version: 0.6
 status: DRAFT
 date: 2026-07-28
 author: Claude (Cowork design-engineering session)
@@ -12,6 +12,22 @@ relates_to:
   - 00_ARCHITECTURE/PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md (the audit that proved the backend was sound)
   - 00_ARCHITECTURE/CHAT_V2_CLOSE_v1_0.md (the prior build this plan learns from)
 changelog:
+  - "0.6 (2026-08-28, Paripraśna assurance campaign, stream S2, EDIR V3-E-023):
+    §7.8's edge-state table gains a twelfth row, `Connection lost mid-turn,
+    unrecoverable (stale-timeout give-up)` → `CONNECTION LOST — KEPT WHAT
+    ARRIVED`, distinct from both the active `RECONNECTING…` retry state and
+    `STOPPED — KEPT WHAT ARRIVED` (a deliberate user action). Live-reproduced
+    defect this closes: `Turn.tsx`'s interrupted-turn caveat and
+    `WorkingBand.tsx`'s band label both unconditionally said/implied one of
+    those two causes regardless of which had actually occurred — a real
+    stale-connection/server-died timeout (`ring_buffer.ts`'s
+    `finalizeInterruptedIfStale`) was indistinguishable from the reader
+    calmly pressing Stop. `lib/pariprashna/lexicon.ts`'s `EdgeStateKey` union
+    and `EDGE_STATE_LABELS` gain `connection_lost_final`; the closed-vocabulary
+    exhaustiveness test (`tests/pariprashna/edge_state_lexicon.test.ts`)
+    updated in the same PR to require exactly twelve keys, per that test's
+    own stated purpose (\"no SILENT additions/removals\" — this one is
+    documented here, not silent). No other §7.8 row changed."
   - "0.5 (2026-08-19, P0-E design-plan grounding pass, session PB-3-Bot): corrected drift between this
     plan's earlier sections and the real, shipped frontend, verified against
     `platform/src/components/pariprashna/` and `platform/AGENTS.md`. Two classes of drift closed:
@@ -711,7 +727,7 @@ Skeleton: **receive plainly → restate the chart's ground → reconcile honestl
 
 Empty state: "Ask the chart." + subline "Career, timing, relationships, health — the reading draws on the full depth of ⟨name⟩'s chart." Example pills generated from the chart's live features, phrased as first-person questions. Remedies: always attributive — "the tradition prescribes", "Parāśara's line for this affliction is…", never "you should"; remedy blocks carry their classical citation chip like any other claim (P7).
 
-### 7.8 The phase lexicon (working-region labels) — COMPLETE closed vocabulary [v0.3]
+### 7.8 The phase lexicon (working-region labels) — COMPLETE closed vocabulary [v0.6]
 
 **The rule:** this is a **closed** map. Every `activity.upsert` carries a `label_key`; the client renders only lexicon strings. An engine capability with no entry falls back to `CONSULTING THE CHART` **plus a CI warning** — a raw tool name, layer name, or internal id can never reach the band, structurally.
 
@@ -746,6 +762,7 @@ Empty state: "Ask the chart." + subline "Career, timing, relationships, health �
 | Timeout | `TAKING LONGER THAN USUAL…` at 20s; failure band at hard limit | infinite spinner |
 | Cost/coverage cap trips (partial) | `SERVED WITHIN LIMITS — ⟨n⟩ OF ⟨m⟩ STEPS` + honest-gap ribbon in answer | pretending completeness |
 | User presses Stop | `STOPPED — KEPT WHAT ARRIVED` ; turn settles as interrupted | discarding streamed text |
+| Connection lost mid-turn, unrecoverable (stale-timeout give-up, distinct from the active `RECONNECTING…` retry above) | `CONNECTION LOST — KEPT WHAT ARRIVED` ; turn settles as interrupted, caveat discloses the real cause | conflating with `STOPPED — KEPT WHAT ARRIVED` (a deliberate user action is a different cause than a server-died timeout, and the reader-facing copy must not claim the wrong one for either) |
 | Mid-turn model switch requested | queued: `WILL SWITCH TO ⟨model⟩ NEXT TURN` | hot-swapping mid-answer |
 | Queue wait (busy instrument) | `IN LINE — STARTS IN A MOMENT` | fake progress |
 
