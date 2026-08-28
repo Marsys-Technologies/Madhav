@@ -96,6 +96,33 @@ describe('PariprashnaApp history merge (V3-E-012a)', () => {
     expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
   })
 
+  it('renaming a fetched historical row shows the honest notice and does NOT relabel the live thread (regression: rename ignored the row id)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        conversations: [
+          { id: 'conv-past-1', chart_id: 'c-1', title: 'Old reading', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
+        ],
+      }),
+    } as Response)
+
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1))
+
+    // Double-click the fetched (historical) row's title to enter rename mode,
+    // then commit — this must NOT silently retitle anything else, and must
+    // surface the same honest notice as selecting a historical row.
+    fireEvent.doubleClick(screen.getByText('Old reading'))
+    const input = screen.getByDisplayValue('Old reading')
+    fireEvent.change(input, { target: { value: 'Renamed by mistake' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
+    // Still exactly one row (the fetched one) — no live thread was spawned
+    // or relabeled as a side effect.
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
+  })
+
   it('does not fetch on the fixture host (no chartId / live flag off)', () => {
     vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '0')
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)

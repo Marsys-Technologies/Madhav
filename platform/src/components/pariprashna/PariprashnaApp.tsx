@@ -259,9 +259,26 @@ function PariprashnaSurface({
     return () => clearTimeout(timer)
   }, [unavailableNotice])
 
-  const handleSidebarRename = useCallback((_id: string, title: string) => {
-    setTitleOverride(title)
-  }, [])
+  const handleSidebarRename = useCallback(
+    (id: string, title: string) => {
+      // V3-E-012a follow-up: `titleOverride` only ever feeds the LIVE
+      // thread's title (see the `threads` useMemo). Before pastReadings
+      // existed there was only ever one row, so `id` was always the live
+      // thread's — now that fetched historical rows share the same
+      // rename affordance, a rename on one of THEM must not silently
+      // relabel the unrelated live thread instead. Same honest-notice
+      // treatment as selecting a historical row (surrogate ruling B4);
+      // renaming a past reading isn't wired yet either (it was never
+      // persisted server-side even for the live thread — local-only
+      // today — so a fetched row's rename has nowhere real to go).
+      if (id !== threadId) {
+        setUnavailableNotice(true)
+        return
+      }
+      setTitleOverride(title)
+    },
+    [threadId],
+  )
 
   // Arrival line (§3.2, J2, AC-16) — fixture-only sample data on the fixture
   // host; the live host renders nothing until the real L1/Kāla wiring lands
