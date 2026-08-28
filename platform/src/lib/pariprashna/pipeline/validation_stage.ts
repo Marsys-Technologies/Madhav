@@ -63,6 +63,20 @@ export function runValidationStage(args: {
     }
   } catch (err) {
     console.error('[pariprashna] citation gate error', err)
+    // V3-E-039: the gate NEVER fails the turn — `citationGateResult` above is
+    // untouched, so the PASS default is preserved as the serving decision,
+    // exactly as before this fix. The defect was that the throw happens
+    // BEFORE `em.grade()` above is reached, so previously NO wire event fired
+    // for this turn at all (not PASS, not WARN, not ERROR) — silence, not a
+    // wrong grade. Emit the same judgment-flag + `flag` mechanism this stage
+    // already uses for a WARN/ERROR gate result, so a malformed-input turn
+    // carries an honest signal instead of total silence.
+    judgmentFlags.push('citation_gate_errored')
+    em.flag({
+      code: 'citation_gate_errored',
+      level: 'error',
+      detail: 'citation/grounding gate could not run on this turn (internal error); PASS default applied, serving decision unchanged',
+    })
   }
 
   return {
