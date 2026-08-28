@@ -79,7 +79,7 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
       ALTER DATABASE nirmana_evidence_preflight_test OWNER TO cloudsqlsuperuser;
       ALTER SCHEMA public OWNER TO amjis_app;
       GRANT CREATE ON SCHEMA public TO cloudsqlsuperuser, postgres;`)
-    await admin.query(`SET ROLE amjis_app; CREATE TABLE _migrations_applied (filename text PRIMARY KEY, sha256 text NOT NULL); RESET ROLE`)
+    await admin.query(`SET ROLE amjis_app; CREATE TABLE _migrations_applied (id SERIAL PRIMARY KEY, filename text UNIQUE NOT NULL, sha256 text NOT NULL); RESET ROLE`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/592_nirmana_elevation_campaign_evidence.sql'), 'utf8')}`)
     await admin.query(`SET ROLE amjis_app; ${readFileSync(resolve(__dirname, '../../migrations/627_nirmana_elevation_asset_labels.sql'), 'utf8')}`)
     await admin.query(`SET ROLE amjis_app; CREATE TABLE asset_registry (asset_id text); CREATE TABLE nirmana_elevation_monitor_observations (id text); CREATE TABLE build_runs (id text); CREATE TABLE build_run_assets (id text); CREATE TABLE asset_provenance_receipts (id text); CREATE TABLE asset_output_digest_specs (id text); RESET ROLE`)
@@ -268,6 +268,14 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     // Simulates an interruption after the handoff commit but before marker 633:
     // replay must validate state and return without trying to reclaim ownership.
     await expect(runNirmanaEvidenceOwnershipPreflight(legacy)).resolves.toBeUndefined()
+    const markerLedgerSequence = await admin.query<{ migrator_usage: boolean; migrator_select: boolean; migrator_update: boolean; control_usage: boolean; ingress_usage: boolean }>(`
+      SELECT has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'USAGE') AS migrator_usage,
+             has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'SELECT') AS migrator_select,
+             has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'UPDATE') AS migrator_update,
+             has_sequence_privilege('nirmana_campaign_control_writer', 'public._migrations_applied_id_seq', 'USAGE') AS control_usage,
+             has_sequence_privilege('nirmana_evidence_ingress_writer', 'public._migrations_applied_id_seq', 'USAGE') AS ingress_usage
+    `)
+    expect(markerLedgerSequence.rows[0]).toEqual({ migrator_usage: true, migrator_select: false, migrator_update: false, control_usage: false, ingress_usage: false })
     const generic = new Pool({ connectionString: legacy })
     await expect(generic.query('DROP SCHEMA nirmana_evidence CASCADE')).rejects.toThrow(/must be owner|permission denied/i)
     await expect(generic.query('CREATE TABLE nirmana_evidence.generic_escape (id text)')).rejects.toThrow(/permission denied/i)
@@ -411,6 +419,11 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     const beforeMarker = await readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))
     expect(beforeMarker).toBe('unmarked')
     expect(requiresNirmanaEvidenceLegacyOwner(beforeMarker)).toBe(true)
+    await admin.query('REVOKE USAGE ON SEQUENCE public._migrations_applied_id_seq FROM nirmana_migrator')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/exact migration-ledger sequence access/i)
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('unmarked')
+    await expect(runNirmanaEvidenceOwnershipPreflight(roleUrl('amjis_app'))).resolves.toBeUndefined()
     await admin.query('REVOKE cloudsqlsuperuser FROM cloudsqllogical; GRANT cloudsqlagent TO cloudsqllogical')
     try {
       await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
@@ -435,6 +448,36 @@ describe.skipIf(!url)('Nirmana direct-owner preflight — disposable PostgreSQL'
     const afterMarker = await readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))
     expect(afterMarker).toBe('marked')
     expect(requiresNirmanaEvidenceLegacyOwner(afterMarker)).toBe(false)
+    await admin.query('GRANT SELECT ON SEQUENCE public._migrations_applied_id_seq TO nirmana_migrator')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/exact migration-ledger sequence access/i)
+    await admin.query('REVOKE SELECT ON SEQUENCE public._migrations_applied_id_seq FROM nirmana_migrator')
+    await admin.query('GRANT UPDATE ON SEQUENCE public._migrations_applied_id_seq TO nirmana_migrator')
+    try {
+      await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+        .rejects.toThrow(/exact migration-ledger sequence access/i)
+    } finally {
+      await admin.query('REVOKE UPDATE ON SEQUENCE public._migrations_applied_id_seq FROM nirmana_migrator')
+    }
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('marked')
+    await admin.query('GRANT USAGE ON SEQUENCE public.control_acl_stale_seq TO nirmana_migrator')
+    try {
+      await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+        .rejects.toThrow(/non-owner writer ACLs outside the explicit envelope/i)
+    } finally {
+      await admin.query('REVOKE USAGE ON SEQUENCE public.control_acl_stale_seq FROM nirmana_migrator')
+    }
+    await expect(readNirmanaEvidenceOwnershipStatus(roleUrl('amjis_app'))).resolves.toBe('marked')
+    await admin.query('REVOKE USAGE ON SEQUENCE public._migrations_applied_id_seq FROM nirmana_migrator')
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl))
+      .rejects.toThrow(/exact migration-ledger sequence access/i)
+    await admin.query('SET ROLE amjis_app')
+    try {
+      await admin.query(readFileSync(resolve(__dirname, '../../supabase/migrations/634_nirmana_migrator_ledger_sequence.sql'), 'utf8'))
+    } finally {
+      await admin.query('RESET ROLE')
+    }
+    await expect(applyNirmanaEvidenceOwnershipMarker(migratorUrl)).resolves.toBeUndefined()
     await admin.query('SET ROLE cloudsqlsuperuser; CREATE TABLE public.default_acl_after_marker (id text); RESET ROLE')
     const postMarkerAcl = await admin.query<{ control_read: boolean; migrator_read: boolean }>(`
       SELECT has_table_privilege('nirmana_campaign_control_writer', 'public.default_acl_after_marker', 'SELECT') AS control_read,
