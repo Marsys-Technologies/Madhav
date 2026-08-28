@@ -132,6 +132,13 @@ export type ClassifiedErrorKind =
   | 'timeout'
   | 'network'
   | 'auth'
+  // V3-E-041 fix: entitlement/consent refusal kinds — mirrors
+  // `PariprashnaErrorKind` in `lib/pariprashna/errors/classify.ts`, the
+  // sole place that constructs a `ClassifiedError`.
+  | 'not_authorized'
+  | 'chart_not_found'
+  | 'consent_required'
+  | 'conversation_not_found'
   | 'unknown'
 
 export interface ClassifiedError {

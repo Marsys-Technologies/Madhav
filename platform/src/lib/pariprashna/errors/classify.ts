@@ -61,7 +61,17 @@
  * to CLASSIFY (which `kind`), never surfaced to the reader.
  */
 
-export type PariprashnaErrorKind = 'rate_limit' | 'model_overload' | 'timeout' | 'network' | 'auth' | 'unknown'
+export type PariprashnaErrorKind =
+  | 'rate_limit'
+  | 'model_overload'
+  | 'timeout'
+  | 'network'
+  | 'auth'
+  | 'not_authorized'
+  | 'chart_not_found'
+  | 'consent_required'
+  | 'conversation_not_found'
+  | 'unknown'
 
 export type PariprashnaErrorAction = 'retry' | 'switch_model' | 'continue' | 'settings'
 
@@ -111,6 +121,17 @@ export interface ClassifyErrorOptions {
  *  same style as the two classifiers this replaces. */
 function classifyKind(code: string): PariprashnaErrorKind {
   const c = code.toLowerCase()
+  // V3-E-041 fix: entitlement/consent refusal codes from `authorizeTurn`
+  // (`safety_gate.ts`) are a business-logic decision, not a transient
+  // server/network failure — they must NOT fall through to the generic
+  // `unknown` bucket (which offers a `retry` action; retrying a permission
+  // or consent refusal is wrong advice). Checked first, with exact/prefix
+  // matching (not the loose `.includes()` style below), so these codes
+  // cannot be accidentally shadowed by — or shadow — the generic checks.
+  if (c === 'forbidden') return 'not_authorized'
+  if (c === 'chart_not_found') return 'chart_not_found'
+  if (c.startsWith('subject_consent_required')) return 'consent_required'
+  if (c === 'conversation_not_found') return 'conversation_not_found'
   if (c.includes('rate') || c.includes('429')) return 'rate_limit'
   if (c.includes('overload') || c.includes('capacity') || c.includes('503') || c.includes('529')) {
     return 'model_overload'
@@ -171,6 +192,35 @@ function copyFor(
             sentence: 'Renew in settings.',
             actions: ['settings'],
           }
+    // V3-E-041 fix: these four are entitlement/consent REFUSALS, not
+    // transient failures — the copy states what actually happened and the
+    // action set carries no `retry` (retrying changes nothing about
+    // authorization or consent state). Per §7.5's own convention this is
+    // fixed copy keyed by kind, never the raw `ev.message`/code.
+    case 'not_authorized':
+      return {
+        bandLabel: "You don't have access to this chart",
+        sentence: 'This chart is not shared with you. Retrying will not change that.',
+        actions: [],
+      }
+    case 'chart_not_found':
+      return {
+        bandLabel: 'This chart could not be found',
+        sentence: 'It may have been removed, or the link is wrong. Retrying will not change that.',
+        actions: [],
+      }
+    case 'consent_required':
+      return {
+        bandLabel: 'Consent is required for this reading',
+        sentence: "The subject's consent record does not permit this. Retrying will not change that.",
+        actions: [],
+      }
+    case 'conversation_not_found':
+      return {
+        bandLabel: 'This conversation could not be found',
+        sentence: 'It may have been removed, or the link is wrong. Retrying will not change that.',
+        actions: [],
+      }
     case 'unknown':
     default:
       return {
