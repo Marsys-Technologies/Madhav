@@ -227,6 +227,7 @@ describe('Nirmana elevation monitor divergence', () => {
       candidate: reordered,
       observation: null,
     })).toMatchObject({ status: 'in_sync', affected_asset_ids: [] })
+    expect(reordered.manifest).toEqual(current.manifest)
     expect(reordered.manifest_sha256).toBe(current.manifest_sha256)
     expect(reordered.registry_contract_sha256).toBe(current.registry_contract_sha256)
   })
