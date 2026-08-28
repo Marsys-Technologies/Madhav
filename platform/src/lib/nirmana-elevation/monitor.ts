@@ -592,7 +592,7 @@ function releaseAgeSeconds(release: NirmanaReleaseStatus): number {
   return ages.length > 0 ? Math.floor(Math.max(...ages)) : 0
 }
 
-async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>): Promise<NirmanaMonitorObservation> {
+async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, 'id' | 'observed_at' | 'freshness_deadline_at'>): Promise<NirmanaMonitorObservation> {
   const affectedAssetIds = [...new Set(input.affected_asset_ids)].sort()
   const inserted = await query<NirmanaMonitorObservation>(
     `INSERT INTO nirmana_elevation_monitor_observations
@@ -605,7 +605,8 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
         release_state, release_observed_at, release_age_seconds,
         public_detail, source_error_code)
      VALUES ($1, $2::text[], $3, $4, $5, $6, $7, $8, $9, $10,
-             $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+             $11, $12, $13, $14, $12::timestamptz + INTERVAL '15 minutes',
+             $15, $16, $17, $18, $19, $20)
      RETURNING id, observed_at, status, affected_asset_ids,
                current_definition_sha256, candidate_definition_sha256,
                registry_identity_sha256, registry_contract_sha256,
@@ -629,7 +630,6 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
       input.source_observed_at,
       input.source_age_seconds,
       input.freshness_state,
-      input.freshness_deadline_at,
       input.runtime_liveness,
       input.release_state,
       input.release_observed_at,
@@ -644,7 +644,7 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
 }
 
 export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObservation> {
-  let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at'>
+  let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at' | 'freshness_deadline_at'>
   try {
     const inputs = await readMonitorInputs()
     const release = await loadNirmanaReleaseStatus()
@@ -658,9 +658,6 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
       deployed_revision: release.release.deployed_revision,
       production_in_sync: release.release.production_in_sync,
     })
-    const freshnessDeadlineAt = new Date(
-      Date.parse(inputs.sourceObservedAt) + FRESHNESS_WINDOW_SECONDS * 1000,
-    ).toISOString()
     const sourceAgeSeconds = Math.max(
       0,
       Math.floor((Date.now() - Date.parse(inputs.sourceObservedAt)) / 1000),
@@ -684,7 +681,6 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
       source_observed_at: inputs.sourceObservedAt,
       source_age_seconds: sourceAgeSeconds,
       freshness_state: sourceAgeSeconds <= FRESHNESS_WINDOW_SECONDS ? 'fresh' : 'stale',
-      freshness_deadline_at: freshnessDeadlineAt,
       runtime_liveness: inputs.runtimeLiveness,
       release_state: releaseState(release),
       release_observed_at: releaseObservedAt,
@@ -711,7 +707,6 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
       source_observed_at: null,
       source_age_seconds: null,
       freshness_state: 'unavailable',
-      freshness_deadline_at: null,
       runtime_liveness: 'unavailable',
       release_state: 'unavailable',
       release_observed_at: null,
