@@ -668,10 +668,134 @@ await Native Surrogate triage.
 
 ---
 
+### S6-V3-E-001 — Prior S6 session mis-reported real probe/smoke/recovery tooling as fabricated
+
+- **Class / severity:** PROCESS · S3 (minor — self-corrected same day, no
+  downstream action taken on the false claim before correction)
+- **Lens / stage:** L-PROCESS · SURFACE (S6 stream self-audit, not a pipeline
+  stage)
+- **Journey:** N/A (tooling-census step of S6 charter preflight, test plan
+  v2.1 §10, Phase A)
+- **Expected:** a stream-lead session verifies a file-existence claim (its own
+  or an upstream plan's) against the actual filesystem/git state before
+  recording it as fact, per CLAUDE.md §N.7/§N.8 (no invented judgment; a
+  claim needs a real detector behind it).
+- **Observed (2026-08-28):** an earlier S6 session, executing the Opus-5-
+  authored kickoff plan, ran `ls`/`find`/`git ls-tree` checks for
+  `platform/scripts/probe/ask.ts`, `post_deploy_behavior_smoke.ts`, and
+  `dd16_outbox_recovery_test.ts`, got empty/missing results, and reported to
+  the operator that the plan's "existing load/chaos tooling" citation was
+  "fabricated" and that "none of those files exist anywhere in the repo, on
+  any branch." **This was false.** Re-derivation this session confirms all
+  three files exist, at exactly the path the plan cited
+  (`platform/scripts/probe/`), on `origin/main`, in this worktree's own
+  checkout, and have been present since this worktree was first provisioned
+  (`ask.sh`/`ask.ts`/`dd16_outbox_recovery_test.ts`/`post_deploy_behavior_smoke.ts`
+  all carry filesystem mtime `2026-08-28 05:10`, this worktree's creation
+  time) — `git log --diff-filter=A` shows `ask.ts` added 2026-08-20 (PR
+  #1374), `dd16_outbox_recovery_test.ts` added 2026-08-20 (PR #1396), and
+  `post_deploy_behavior_smoke.ts` added 2026-08-22 (PR #1494), all well
+  before this S6 session ever opened.
+- **Correcting the checkpoint prompt's own hypothesis:** the prompt that
+  triggered this correction hypothesized the root cause as "the plan cited
+  them at the WRONG PATH or as the WRONG CATEGORY." Re-derivation does not
+  support that: the plan's cited path (`platform/scripts/probe/<name>`) is
+  the exact, correct path — there was no path or category mismatch. The
+  actual root cause could not be conclusively reconstructed post-hoc (the
+  prior session's own transcript shows correct `cd`/`pwd` state at the point
+  of the failed check); most likely a transient shell/tool-result artifact,
+  but regardless: the check was reported as fact after a single unverified
+  negative result, without a second confirming method — precisely the
+  missing-detector-behind-a-claim pattern §N.8 names.
+- **Code anchor:** `platform/scripts/probe/ask.ts:1-50`,
+  `platform/scripts/probe/post_deploy_behavior_smoke.ts:1-50`,
+  `platform/scripts/probe/dd16_outbox_recovery_test.ts:1-50` (headers read
+  and confirmed this session).
+- **What the three files actually are** (correcting the mischaracterization
+  in both directions — they are real, but they are not a load/chaos/CWV
+  harness): `ask.ts` is a standing, already-solved-auth-seam LIVE driver for
+  `/api/pariprashna` (mints a session via `probe-service-account` chart-grant
+  impersonation, POSTs, consumes the SSE stream to completion, writes one
+  immutable JSON per turn) — reusable for any web-route/SSE/reconnect
+  scenario. `post_deploy_behavior_smoke.ts` is a real authenticated LIVE turn
+  against the synthetic chart, built on `ask.ts`, asserting real engine
+  behaviour (9 targeted demonstrated-can-fail mutations) — per memory of a
+  2026-08-23 run it was RED on a service-side JSON parse error at that time;
+  current status not re-verified this session. `dd16_outbox_recovery_test.ts`
+  is a real crash-kill/outbox-recovery replay test against the live
+  `pariprashna_persistence_outbox` table (migration 578) via `pg.Pool`/
+  `DATABASE_URL`, self-cleaning — this already covers one §10.3 resilience
+  scenario (server-loss-mid-persist / outbox retry) and is a model for
+  authoring the rest, not a load generator or chaos injector itself. No
+  §10.3 load generator, fault injector, or browser/CWV harness exists
+  anywhere in this repo, on any branch checked.
+- **PPR/gap cross-reference:** none specific; process-integrity finding.
+- **Proposed fix class:** none required — this entry IS the correction. The
+  false "fabricated" claim was made verbally to the operator in-session and
+  was not otherwise durably recorded (no tracker event, no prior EDIR entry,
+  no committed doc) before this correction, so there is no other durable
+  record to retract.
+- **Status:** CLOSED — corrected same session it was made, before any
+  downstream action was taken on the false premise.
+
+### S6-V3-E-002 — Third independent LIVE reproduction: >99% of turn wall-clock remains unattributed outside tool dispatch
+
+- **Class / severity:** BASELINE · S2 (MAJOR, proposed — this is the
+  reproducibility confirmation of an already-filed defect, not a new one)
+- **Lens / stage:** L-LIVE · S8 (Interpretation & Adjudication / synthesis)
+- **Journey:** J-ask (general interpretive query via MCP door)
+- **Expected:** per the provisional NFR targets (test plan v2.1 §10.2),
+  interpretive-turn p95 <90s, with per-stage latency accounted for well
+  enough to direct optimization attention (test plan §10.1: "per-stage
+  latency waterfall").
+- **Observed (2026-08-28, this session):** a real `prashna_ask` call against
+  the synthetic chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a` ("What does this
+  chart indicate about career prospects and professional growth over the
+  next five years?", MCP door) completed in **86,945 ms (86.9s)** wall-clock
+  (`trace_id 69ac9756-2c01-402b-8fff-b8abfbbfec2e`, `job_id
+  a0480ded-9647-430c-9843-432bce0b5a8c`). Of that, only **450ms (0.52%)** is
+  attributable to native per-tool telemetry (10 tools dispatched via
+  `completeness.tools_dispatched[].latency_ms`); the remaining **99.48%** has
+  no native per-stage timer, matching stream S4's independently-filed
+  **V3-E-015** ("Turn latency waterfall: >99% of wall-clock time remains
+  unattributed outside tool dispatch", itself a sharpened reproduction of the
+  original seed EDIR E-006, 2026-08-23, 81.3s/4.9% attributed). This is now a
+  **third** independent live sample of the same structural gap: E-006
+  (81.3s, 4.9% attributed) → S4's reproduction (102.4s, 0.69% attributed,
+  `S4_LATENCY_WATERFALL_v1_0.md`) → this S6 sample (86.9s, 0.52% attributed).
+  The turn also carried `judgment_flags: ["synthesis_evidence_truncated"]`
+  (also seen in S4's sample) and confirmed live the MCP-door persistence gap
+  already filed as P2-B-004/E-119: `persistence.status: "none"` — this
+  MCP-door turn (reading, judgment_flags, completeness) is not durably
+  persisted anywhere.
+- **Code anchor:** no single anchor — this is an absence-of-instrumentation
+  finding across pipeline stages S1–S5, S7–S11 on the MCP door; see
+  `S4_LATENCY_WATERFALL_v1_0.md` §3 for the specific half-built
+  `query_trace_steps` `step_name='synthesis'` writer (Portal-door only,
+  `completed_at`/`latency_ms` never populated) that is the closest existing
+  scaffolding for a real fix.
+- **PPR/gap cross-reference:** **V3-E-015** (S4, this same gap, on S4's
+  branch pending merge), P2-B-004/E-119 (MCP-door persistence).
+- **Proposed fix class:** none proposed here — inherited from V3-E-015 /
+  `S4_LATENCY_WATERFALL_v1_0.md`'s own recommendation (instrument the
+  existing half-built `query_trace_steps` synthesis-completion write; extend
+  equivalent stage timers to the MCP door). S6 does not yet propose new fix
+  work beyond citing the corroboration.
+- **Status:** OPEN as baseline reproduction · verification rung: LIVE
+  (already achieved this session, real end-to-end call, real trace_id) ·
+  banked to the S6 tracker stream as `scenario_executed` event
+  `S6-SC-M01-first-signal-full-turn-latency` (ledger_seq 378) before this
+  register entry was filed.
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
 SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
 B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
 B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
-document.*
+E-011 filed to S5, V3-E-009 closed-as-benign); 2 S6-namespaced entries added
+2026-08-28 (S6-V3-E-001 process self-correction, S6-V3-E-002 baseline
+reproduction cross-referencing S4's V3-E-015 — S4's own V3-E-0NN entries
+live on S4's branch pending merge, not yet present in this copy). No gate is
+certified by this document.*
