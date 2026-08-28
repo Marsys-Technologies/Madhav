@@ -24,7 +24,12 @@ function directDependencies(assetId: string): string[] {
 function readinessFor(assetId: string, blockedUpstream?: string) {
   const directDeps = directDependencies(assetId)
   const throughput = new Map<string, ThroughputEntry>(
-    directDeps.map((dep) => [dep, { asset_id: dep, state: 'lit' }] as const),
+    directDeps.map((dependencyId) => [dependencyId, {
+      asset_id: dependencyId,
+      // bg_panchanga is a service contract: a fresh successful probe produces
+      // service_ok, which is the planner's ready state for a service upstream.
+      state: dependencyId === 'bg_panchanga' ? 'service_ok' : 'lit',
+    }] as const),
   )
   const freshness = new Map(
     directDeps.map((dep) => [
