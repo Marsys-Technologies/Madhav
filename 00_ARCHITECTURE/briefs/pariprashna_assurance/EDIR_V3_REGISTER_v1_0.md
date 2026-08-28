@@ -1,6 +1,6 @@
 ---
 artifact: PARIPRASHNA_EDIR_V3_REGISTER
-version: 1.0
+version: 1.1
 status: LIVING — opened by Session A phase A3-ABSORB. Append-only; an entry
   closes only at its named verification rung with dated evidence; a RETRACTED
   entry keeps its full history; severity is assigned at triage by the Native
@@ -31,6 +31,18 @@ changelog:
     origin/pariprashna/* and origin/codex/pariprashna-* branches with one
     disposition each; §4 seeded with five V3 entries surfaced by the census
     itself."
+  - "1.1 (2026-08-28, S4 stream): appended 44 V3-E-nnn entries (V3-E-012..
+    V3-E-055) from the S4 Pipeline Correctness & Door Parity stream's full
+    11-stage + 6-synergy-test + J10 investigation (17 parallel agents, several
+    reaching LIVE rung against the synthetic chart). New §4b section; §4's
+    original five A3-census entries plus A4's six B-001/B-007/B-008-chain
+    entries (V3-E-001..V3-E-011) are unchanged. Dedup discipline applied per
+    the elevation's register law: 12 historical findings (E-003, E-004, E-005,
+    E-006, E-039, E-048, E-050, E-104, E-105, E-112, GAP-6, GAP-8/PPR-16) each
+    got exactly one fresh V3 entry citing all reproducing sources, not one
+    entry per agent; the 18-diverging-receipt-fields cross-door finding was
+    filed as 2 entries (systemic root cause + the one specific worst
+    sub-finding) rather than 18. Footer entry count updated 11→55."
 ---
 
 # Paripraśna EDIR V3 — Experience Defect & Improvement Register (v3 campaign)
@@ -668,10 +680,535 @@ await Native Surrogate triage.
 
 ---
 
-*End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
+## §4b — V3 entries from the S4 Pipeline Correctness & Door Parity stream
+
+44 entries (V3-E-012..V3-E-055), appended 2026-08-28 by the Tracker/Register
+Ops role consolidating 17 parallel agent reports (11 pipeline-stage lanes S1,
+S2, S3, ScopeTuple/S4, S5, S6, S7, S8, S9, S10, S11 + 6 synergy tests:
+boundary-contract enforcement, degradation-propagation honesty, trace
+coherence, latency-waterfall accounting, progress truthfulness, and
+cross-door whole-receipt parity including journey J10). Source reports:
+`.s4_scratch/S4_stage_{S1,S2,S3,ScopeTuple,S5,S6,S7,S8,S9,S10,S11}_report.md`
+and `.s4_scratch/S4_synergy_{boundary_contracts,degradation_honesty,
+trace_coherence,latency_waterfall,progress_truthfulness,crossdoor_j10}_report.md`.
+Test subject throughout: synthetic chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a`
+("Abhinandan Mohanty") — the native's real chart `482012f1-…` was never
+queried by any of the 17 lanes. Several lanes reached genuine **LIVE** rung
+(real deployed-shaped turns against the synthetic chart, real DB reads via
+the read-only Cloud SQL proxy) — cited explicitly per entry below, not
+undersold. Dedup discipline: a historical finding independently reproduced
+by more than one lane is filed as ONE fresh entry with `Provenance:` citing
+the historical id and all reproducing sources; a systemic root cause with one
+sharply distinct, independently-actionable sub-finding is filed as two
+entries (root cause + worst sub-finding), not one-per-symptom. Severities
+below are finder-proposed and await Native Surrogate triage, per register law.
+
+### V3-E-012 — MCP door progress reporting freezes for the entire synthesis phase (E-003 reproduction, worse than seed)
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Failure-honesty, synergy/progress-truthfulness · CROSS (S8-adjacent, job-status serving layer)
+- **Provenance:** E-003
+- **Expected:** `prashna_status`'s `progress.message`/`progress.pct` visibly change during a long synthesis phase, surfacing the `last_tool:'synthesis'` phase-transition signal the platform route already emits.
+- **Observed (2026-08-28):** Two independent LIVE reproductions. (1) A dedicated in-process probe against the real route handler and real synthesis LLM call: `progress.message`/`pct` froze at `"8/~25 tool calls made, 2.5s elapsed"`/`pct:32` for 69.7s of a 77.1s turn — 91% of wall-clock, worse than the seed's originally-logged 43%. (2) An independently-run latency-waterfall probe against a second, separate live turn corroborated the identical mechanism: message `"11/~25 tool calls made, 0.7s elapsed"` held byte-identical from `elapsed_ms=8,726` to `elapsed_ms=51,613` before completing at 102,402ms. Root cause: `register_prashna_ask.ts`'s message-building `onProgress` callback discards the `last_tool` field entirely; `synthesizeReading()` is one `await`ed call with no intermediate progress emission; `JobRegistry.updateProgress()` simply holds the last snapshot verbatim. The outer top-level `elapsed_ms` JSON field is honestly live-computed throughout — only the embedded `progress.message`/`pct` are frozen.
+- **Code anchor:** `platform-mcp/src/tools/register_prashna_ask.ts:198-206` (message-building callback, discards `last_tool`); `platform/src/app/api/mcp/prashna_ask/route.ts` (no heartbeat during the `await synthesizeReading(...)` call, ~line 743); `platform-mcp/src/lib/job_registry.ts` (`updateProgress`/`get`, no independent live refresh).
+- **PPR/gap cross-reference:** door-parity note — the Portal door's `working/` region does NOT reproduce this defect (see V3-E-050); this is MCP-door-scoped.
+- **Proposed fix class:** surface `last_tool` in the rendered message ("Synthesizing the reading… (Ns elapsed)"); emit periodic heartbeat progress events during the synthesis await; have `register_prashna_status.ts` recompute a live pct/message-elapsed from `job.createdAt` the same way it already does for the outer `elapsed_ms`.
+- **Status:** OPEN · verification rung required to close: LIVE (already achieved this session — real DB, real synthesis call, real synthetic chart, reproduced independently twice).
+
+### V3-E-013 — Evidence-truncation disclosed only in `judgment_flags`, never enforced/verified in reader-visible prose (E-004 reproduction, MCP door)
+
+- **Class / severity:** DEFECT · S1 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty (B.10) · S8
+- **Provenance:** E-004
+- **Expected:** reader-visible prose discloses truncation whenever `judgment_flags` contains `synthesis_evidence_truncated`.
+- **Observed (2026-08-28, worktree HEAD `f62aeadb0`):** `formatEvidenceBlock()` pushes an inline prompt *instruction* asking the model to disclose truncation; `synthesizeReading()` sets the flag; the model's raw response is returned verbatim with no lint/repair/rejection pass. A real INTEGRATION-rung demonstrated-can-fail test forced truncation (400,000-char oversized row past the 320,000-char budget), mocked a plausible fluent reading containing zero truncation language, and confirmed the codebase permits exactly this: `judgment_flags` carries the flag, `reading` text matches none of `/truncat/i|partial|incomplete|exhaustive|only (a portion|some) of/`. The permanent test suite (`prashna_ask_synthesis.test.ts`) has asserted green on this exact gap for over a month across three "disclose truncation" commits, none of which ever asserted on `result.reading` content. A degradation-honesty pass independently corroborates the systemic pattern: `grade`/`flag` wire events are dropped by the client adapter before reaching the reducer for other stages too (see V3-E-042), suggesting E-004 is one instance of a repo-wide envelope-vs-prose decoupling.
+- **Code anchor:** `platform/src/lib/pipeline/prashna_ask_synthesis.ts:285-294` (unverified prompt instruction), `:378-381` (flag set, no verification), `:439-444` (reading returned verbatim); `platform/src/app/api/mcp/prashna_ask/route.ts:775,787` (independent fields, never spliced).
+- **PPR/gap cross-reference:** B.10 (no fabricated completeness); see V3-E-035 for the distinct, worse Portal-door gap (no truncation handling at all).
+- **Proposed fix class:** post-hoc verification/repair pass on `reading` when the flag is set (lint that fails closed and appends a disclosure sentence, or a lightweight second check), or deterministically append a disclosure sentence rather than relying on model self-report.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real vitest run, real code paths, mocked adapter only).
+
+### V3-E-014 — Citation density thin and updated; production's own citation counter is blind to this door's real footnote format (E-005 reproduction/update)
+
+- **Class / severity:** DEFECT · S2 (proposed) — upgraded from E-005's original IMPROVEMENT/BASELINE framing
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty · S9
+- **Provenance:** E-005
+- **Expected:** citation density is measured, not assumed, and the counter measuring it can see the citations the model actually produces.
+- **Observed (2026-08-28, LIVE):** a real `prashna_ask` MCP call against the synthetic chart (job `e6870d9f-…`, trace `498e3184-…`) produced a reading with 7 well-formed GFM footnotes (up from the E-005 seed's 2 — the absolute count varies by reading, updating rather than refuting the pattern) but only 50% claim-density by hand count (7 of 14 distinct factual/computed claims carried a footnote). Separately and more severely: the footnote *definitions* in this real reading are raw evidence-row UUIDs, not the `SIG.MSR.NNN` format the shared synthesis prompt mandates — `countSignalCitations()`/`totalSignalCitations()` both return 0 on this reading, and `validateCitations()` returns a silent `gate_result:'PASS'` for the non-prescriptive `holistic` class. A many-claim reading with real, honestly-numbered footnotes and a measured 50% citation rate is therefore indistinguishable, to the one gate that exists, from a reading with zero grounding attempted.
+- **Code anchor:** `platform/src/lib/synthesis/citation_check.ts:14` (pattern); `platform/src/lib/pipeline/prashna_ask_synthesis.ts` (evidence source, no citation-format enforcement); `synthesis_prompt_v2.ts:36-46` (the citation-format contract the model doesn't honor on this door).
+- **PPR/gap cross-reference:** PPR-04.
+- **Proposed fix class:** either `citation_check.ts`'s pattern accepts a UUID-shaped footnote definition when it resolves against a known evidence row id, or the MCP door's evidence floor is made to surface real `SIG.MSR.NNN` ids.
+- **Status:** OPEN · verification rung required to close: INTEGRATION + LIVE (already achieved this session — one real data point plus a real vitest measurement script).
+
+### V3-E-015 — Turn latency waterfall: >99% of wall-clock time remains unattributed outside tool dispatch (E-006 reproduction, sharpened)
+
+- **Class / severity:** BASELINE (with an IMPROVEMENT flag) · S3 (proposed)
+- **Lens(es) / pipeline stage:** Optimality, synergy/latency-waterfall · CROSS
+- **Provenance:** E-006
+- **Expected:** a latency baseline that can be re-derived and tracked over time as the pipeline's own SLO reference.
+- **Observed (2026-08-28, LIVE, real end-to-end `prashna_ask`/`prashna_status` turn):** native telemetry (the job's own `completeness.tools_dispatched[].latency_ms`) shows S6 dispatch = 705ms of a 102,402ms total turn = 0.69%; UNATTRIBUTED = 99.31%. This corroborates and sharpens the E-006 seed (81.3s turn, tool dispatch ≈4.0s ≈4.9%, >95% unattributed) on a second, independent live turn — same shape, worse ratio. A best-effort 11-stage decomposition (mixing MEASURED-DIRECT, STATIC-PROVEN-negligible, and bounded-inference evidence classes, each labeled honestly) attributes the dominant remainder (~91.4% of wall-clock) to S8 synthesis, corroborated independently by S5's own DB-backed measurement of planner latency (3,925ms avg over 14 real turns, ≈4.8% of the E-006 reference turn) and by the fact that no direct S8 timer exists on either door (see V3-E-030 for that root cause).
+- **Code anchor:** none — this is a measurement/baseline finding, not a code defect per se.
+- **PPR/gap cross-reference:** feeds the S6 (Performance/Resilience) SLO baseline per MACRO_PLAN §9.
+- **Proposed fix class:** none required to close this baseline itself; see V3-E-030 for the instrumentation fix that would let this baseline be re-derived with stage-level precision going forward.
+- **Status:** OPEN as baseline · verification rung required to close: absorbed into the G5/S6 SLO baseline (LIVE rung already achieved this session, twice independently).
+
+### V3-E-016 — Register-leak lint: 4 confirmed evasion classes pass clean (E-039 reproduction)
+
+- **Class / severity:** IMPROVEMENT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Optimality (false-negative rate), Failure-honesty · S9
+- **Provenance:** E-039
+- **Expected:** the PPR-04 "100% seeded-id catch" claim holds against a reasonable adversarial variant sweep, or is scoped honestly to what it actually covers.
+- **Observed (2026-08-28, INTEGRATION, real vitest run against `lintReaderProse`):** 4 of 5 adversarial variants evade the lint with `leakCount:0`, text unchanged: lowercase register acronym ("msr"), mixed-case ("Msr"), uppercase asset-id prefix ("BO_laksana"), and a spaced-out acronym ("M S R"). The control ("MSR") is correctly caught. No comprehensive seeded false-negative-rate corpus exists to give this a formal percentage — the honest finding is "at least 4 known evasion classes pass clean, 0 known adversarial corpus measures the rest."
+- **Code anchor:** `platform/src/lib/pariprashna/citations/register_leak_lint.ts:80` (asset-id pattern, lowercase-only), `:99` (register-acronym pattern, uppercase-only), `:157` (near-miss lowercase set, telemetry-only, never redacts).
+- **PPR/gap cross-reference:** PPR-04.
+- **Proposed fix class:** case-insensitive matching (with care for common-English-word collisions) and/or a real seeded evasion corpus wired into a CI false-negative-rate check.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real vitest, 4/5 real reds, 1 control green).
+
+### V3-E-017 — MCP door (`prashna_ask`) runs zero stage-S9 grounding validation (E-048 reproduction)
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Door parity (PPR-30) · S9
+- **Provenance:** E-048
+- **Expected:** every door that returns synthesized prose runs the same grounding/safety validation gate (or an equivalent), so a leak/uncited-claim defense that exists on one door exists on both.
+- **Observed (2026-08-28, INTEGRATION + LIVE):** grep-confirmed zero matches for `lintReaderProse|validateCitations|register_leak|citation_gate|runValidationStage` in `platform/src/app/api/mcp/prashna_ask/route.ts` or `platform/src/lib/pipeline/prashna_ask_synthesis.ts`. The V3-E-014 reading — containing raw evidence-row UUIDs in visible prose — passed through completely unlinted, live. Of the 5 call points named in the test plan's S9 anchor, 4 fire live on the Portal door and 1 (`reader_text/review.ts:40`) is offline/build-time-only (reachable only from a manually-run curation script, never a live turn on either door) — the test plan's S9 anchor documentation should be corrected to distinguish "4 live per-turn call points + 1 offline curation-time gate."
+- **Code anchor:** `platform/src/app/api/mcp/prashna_ask/route.ts:743-759` (the `synthesizeReading` call, no lint/gate wrapper); `platform/src/lib/pariprashna/reader_text/review.ts:40` (the offline-only call point, doc-scope correction).
+- **PPR/gap cross-reference:** PPR-30, PPR-04.
+- **Proposed fix class:** wire `lintReaderProse` over `synthesis.reading` before it enters `readingEnvelope`, and run `validateCitations`/an equivalent gate, surfacing the result in `judgment_flags` the same way the web door does; separately, correct the test plan's S9 call-point count.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (static grep) + LIVE (already achieved this session — the captured unlinted reading itself is the positive proof).
+
+### V3-E-018 — Per-query-class citation density threshold table is dead code (E-050 reproduction)
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Correctness · S9
+- **Provenance:** E-050
+- **Expected:** a declared per-class minimum-citation table is actually consulted by the gate it exists next to.
+- **Observed (2026-08-28, STATIC):** `MIN_CITATIONS_BY_CLASS`, `hasMinimumCitations`, `citationThresholdForClass` have zero callers anywhere in `src` outside their own defining file and its unit test. `validateCitations()`'s real gate logic only checks "≥1 verified citation ⇒ PASS", never the per-class floor.
+- **Code anchor:** `platform/src/lib/synthesis/citation_check.ts:17-29,53-64`.
+- **PPR/gap cross-reference:** PPR-04.
+- **Proposed fix class:** call `hasMinimumCitations`/`citationThresholdForClass` from `validateCitations()`, or delete the table and its exports if superseded.
+- **Status:** OPEN · verification rung required to close: STATIC (already achieved this session — caller-count grep).
+
+### V3-E-019 — `fallback_recommended`'s `confidence < 0.5` disjunct is structurally unreachable dead code (E-104 reproduction)
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Failure-honesty, §N.8 Earned-Signal · S4
+- **Provenance:** E-104
+- **Expected:** a two-term ambiguity guard's second disjunct is reachable and meaningful.
+- **Observed (2026-08-28, INTEGRATION):** `fallback_recommended = !intentMatched || confidence < 0.5` (`scope_classifier.ts:299`); since `intentMatched` alone contributes +0.6 to confidence and nothing pushes confidence below that floor while `intentMatched` is true, the second disjunct can never fire while the first is false. Confirmed by direct arithmetic and by every intent-matched query in the existing test suite clearing 0.6 the same way.
+- **Code anchor:** `platform/src/lib/vidhi/scope_classifier.ts:289-299`.
+- **PPR/gap cross-reference:** none specific — a classifier-internals defect.
+- **Proposed fix class:** the guard either becomes reachable (recompute confidence from more than a binary intent-match signal) or is removed/documented as dead.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — fresh reproduction, `failure_honesty_check.test.ts`).
+
+### V3-E-020 — Clarification false positives: three ordinary questions bounced to clarification instead of answered (E-105 reproduction)
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Failure-honesty · S1/S4
+- **Provenance:** E-105
+- **Expected:** an ordinary, answerable astrological question is answered, not bounced back for clarification.
+- **Observed (2026-08-28, INTEGRATION, fresh reproduction, same three queries as the historical seed):** `'Will I get married?'`, `'Where is my Moon?'`, and `'Am I going to be rich?'` each classify to `intent:'unknown', confidence:0, fallback_recommended:true` on the Portal classifier — every one of these is an ordinary, answerable question that would be bounced to a `ClarificationRequest` instead of answered.
+- **Code anchor:** `platform/src/lib/vidhi/scope_classifier.ts:289-299` (same code region as V3-E-019 — both defects share a root cause in the classifier's confidence formula).
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** broaden `INTENT_RULES` for these common phrasings, or adjust the confidence formula so a domain-matched-but-not-intent-matched query doesn't collapse to `unknown`.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — fresh reproduction, `failure_honesty_check.test.ts`).
+
+### V3-E-021 — Web door's classifier defaults `depth:'standard'`, violating the binding deepdive-default doctrine and excluding an entire machine-band tier (E-112 reproduction)
+
+- **Class / severity:** DEFECT · S2 (proposed, per E-112's existing proposal)
+- **Lens(es) / pipeline stage:** Correctness, Demonstrated-can-fail, Door parity (PPR-30/PPR-16) · S4
+- **Provenance:** E-112
+- **Expected:** per `compiler.ts`'s own BINDING doctrine comment ("Deepdive is the default state of the instrument… an unclassifiable question resolves to general_synthesis at deepdive, never trimmed"), depth should default to deep, not standard.
+- **Observed (2026-08-28, INTEGRATION, fresh independent reproduction with exact tool-name-level detail):** `scope_classifier.ts:263` defaults `depth:'standard'`; the MCP-side module implementing the deepdive-default LAW (`scope_resolver.ts`) is never imported by the web door. For an identical tuple, `standard` compiles 6 retrieval tool_calls / 14 total floor items (0 machine_band); `deep` compiles 13 tool_calls / 28 floor items (14 machine_band). The reader-visible completeness denominator changes from N/14 to N/28 depending purely on this default.
+- **Code anchor:** `platform/src/lib/vidhi/scope_classifier.ts:262-265`; `platform/src/lib/vidhi/compiler.ts:93-117`.
+- **PPR/gap cross-reference:** PPR-16, PPR-30.
+- **Proposed fix class:** per E-112's own proposed close rung — REPLAY, both doors resolve the same depth for the same class of question.
+- **Status:** OPEN · verification rung required to close: REPLAY (INTEGRATION already achieved this session with exact tool-call counts — `depth_effect.test.ts`).
+
+### V3-E-022 — SemanticReadingParts classification is dark by default with a silent, unmarked fallback to plain paragraph (GAP-6 reproduction)
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Failure-honesty, §N.7/§N.8 silent-downgrade class · S10
+- **Provenance:** GAP-6
+- **Expected:** either the classifier runs and the reader sees real verse/gap-ribbon/heading/table/role structure, or — if deliberately off — a marker records that classification was skipped.
+- **Observed (2026-08-28, INTEGRATION, real server assembler + real client adapter + real reducer chained end-to-end):** `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` defaults `false`. All 5 block-kind detectors (`table`/`verse`/`gap_ribbon`/`heading`/`paragraph`+role) are genuinely implemented, not stubs, and are proven correctly wired when the flag is on (40/40 pre-existing tests pass). With the flag off, `commitBlock()` emits `{block_id, text}` only — no `kind` — and `s1LiveAdapter.ts`'s `ev.kind ?? 'paragraph'` plus the reducer's pass-through mean a classical verse citation (`>` blockquote markers intact) or an honest-gap sentence ("the chart is silent…") renders identically to ordinary prose, with zero field anywhere (wire event, reducer `CommittedBlock`, or DOM) indicating classification was skipped. This is structural-fidelity loss with an accompanying honesty gap, not data loss — raw text is preserved.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/reading_parts.ts:353-355`; `platform/src/components/pariprashna/state/s1LiveAdapter.ts:211`; `platform/src/components/pariprashna/state/reducer.ts:259`; flag default `platform/src/lib/config/feature_flags.ts:558`.
+- **PPR/gap cross-reference:** GAP-6.
+- **Proposed fix class:** additive/observability — add a per-turn `em.flag({code:'semantic_classification_skipped', ...})`, or flip the flag now that client renderers are tested and exist; a native/EDIR-owner disposition question, not a code change made this session.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real assembler + real client adapter + real reducer, chained, no mocks of code under test).
+
+### V3-E-023 — `scope_tuple`/depth never reaches the LLM planner's own prompt; the honest depth-disclosure grade ships dark by default (GAP-8/PPR-16 reproduction)
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty · S4/S5
+- **Provenance:** GAP-8, PPR-16
+- **Expected:** it should be clear (by doctrine or disclosure) whether the planner LLM sees the depth signal directly, and the reader-facing honest disclosure of the depth actually received should be live.
+- **Observed (2026-08-28, STATIC + INTEGRATION):** `pipeline_planner.ts`'s LLM `userPayload` is built from `native_id`, `manifest`, `history`, `query` only — `scope_tuple`/`classification` is computed but never included in what the planner reads; depth's only effect on the executed tool set is a POST-hoc, conditional floor merge (`plan_stage.ts:279`, no-op for any tool the planner already independently requested). Separately, the reader-facing `reading_depth_received` disclosure grade (`plan_stage.ts:253-260`, built to close this exact PPR-09/16 gap) is gated behind `isHonestControlsEnabled()`, which defaults OFF (`honest_controls/flag.ts:22-23`, `feature_flags.ts:312`: "Default false: ships dark") — in default configuration, the disclosure this mechanism exists to emit is never sent.
+- **Code anchor:** `platform/src/lib/pipeline/pipeline_planner.ts:416-424`; `platform/src/lib/pariprashna/pipeline/plan_stage.ts:244-260,276-284`; `platform/src/lib/pariprashna/honest_controls/flag.ts:22-27`.
+- **PPR/gap cross-reference:** GAP-8, PPR-16, PPR-09.
+- **Proposed fix class:** either confirm the depth-blind-planner design is intentional (floor = deterministic safety net, planner = independent judgment) and document it, or surface `scope_tuple` in the planner's own prompt; separately, confirm production flag state for the disclosure grade and whether a flip is scheduled.
+- **Status:** OPEN · verification rung required to close: STATIC/INTEGRATION (already achieved this session).
+
+### V3-E-024 — `compileFloorForPlan` discards `llm_extension_note`; the E-7 INSIGHT MANDATE never reaches the web/Paripraśna synthesis prompt at any depth
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Demonstrated-can-fail · S4
+- **Expected:** per `compiler.ts`'s own docstring, a `deepdive`-depth contract's `llm_extension_note` should reach the synthesis system prompt, directing the answerer "past fact-gathering to the non-obvious" — the qualitative payoff of asking for more depth.
+- **Observed (2026-08-28, INTEGRATION):** `compileContract(...).llm_extension_note` correctly differs between `standard` and `deep` (confirmed: `deep` contains "INSIGHT MANDATE"), but `compileFloorForPlan`'s return shape (`CompiledFloorResult`) has no field for it — both `llm_extension_note` and `adaptive_expansions` are computed and thrown away. The only consumer anywhere in `src/` (`floor_cache.ts`) itself has zero production importers. This is the concrete mechanism-level explanation for why "deep dive" so often reads to a native as no different from "standard" even on turns where the floor genuinely differs.
+- **Code anchor:** `platform/src/lib/pipeline/compiled_floor_adapter.ts:241-309` (return shape + function body); `platform/src/lib/vidhi/compiler.ts:300-314,375-384`.
+- **PPR/gap cross-reference:** GAP-8, PPR-16 (mechanism behind the symptom family E-109/E-110/E-112 describe).
+- **Proposed fix class:** plumb `contract.llm_extension_note` (and optionally `adaptive_expansions`) through `CompiledFloorResult` into `plan.synthesis_guidance`.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real function, real inputs, `depth_effect.test.ts`).
+
+### V3-E-025 — Web door compiles only 1 of N domain floors (single-intent precedence) vs MCP door's full union for multi-domain queries
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Door parity (PPR-30) · S5
+- **Expected:** for a multi-domain question, both doors should compile the same floor-mandated evidence set.
+- **Observed (2026-08-28, INTEGRATION, both compiler entry points called live against the real registry):** the web door's `classifierIntentToCompilerIntent` picks exactly ONE `IntentClass` via fixed precedence — the first domain in `tuple.domains[]` with a registered deepdive floor wins, every other domain's floor is never compiled (confirmed: `domains:['career','wealth']` compiles ONLY `career_deepdive`, 23 mapped + 15 unmapped primitives, wealth-deepdive entirely absent). The MCP door's `buildVidhiPlan` → `compileMultiDomainContract` UNIONS both domains' deepdive floors for the identical input. The same reader, asking the same multi-domain question through the two doors, receives a different floor-mandated evidence set, with the web door's plan a strict subset of the MCP door's, undisclosed on the wire. A secondary parity gap, same root cause pair: the MCP door's `adaptive_expansions` (E-3 Anusaraṇa) field is never surfaced or consumed by `plan_stage.ts`/`PipelinePlan` at all.
+- **Code anchor:** `platform/src/lib/pipeline/compiled_floor_adapter.ts:86-95,262-309` vs `platform-mcp/src/resources/vidhi/plan_builder.ts:60-67`; `platform/src/lib/vidhi/compiler.ts:26-30` (union semantics doc comment).
+- **PPR/gap cross-reference:** PPR-30.
+- **Proposed fix class:** repoint `compileFloorForPlan` to call `compileMultiDomainContract` with the classifier tuple's full `domains[]` array, mirroring the MCP door.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — both compiler entry points called live with an identical two-domain tuple).
+
+### V3-E-026 — Compiled-floor failure signal (`compileFailed`/`unmappedPrimitives`/`mappedPrimitives`) is computed but never consumed by `plan_stage.ts`
+
+- **Class / severity:** DEFECT · S2 (proposed) — §N.8 Earned-Signal class
+- **Lens(es) / pipeline stage:** Correctness, §N.8 · S5
+- **Expected:** when `compileFloorForPlan` computes `compileFailed:true` (the compiler's own documented "registry-completeness bug… must fail loudly" case), the caller surfaces it.
+- **Observed (2026-08-28, INTEGRATION, real registry-throw mock + grep-verified caller):** `plan_stage.ts:276-284` only consumes `compiledFloor.toolCalls`; grep-confirmed the file contains no reference to `compiledFloor.compileFailed`, `.unmappedPrimitives`, or `.mappedPrimitives` anywhere. If `compileContract` ever throws in production, the turn silently falls through to the generic B.11 fallback with no `em.flag()`, no `judgment_flags` entry, no server log line marking that the intent-specific compiled floor failed to compile — indistinguishable from a healthy turn on every surface a reader/operator can see. Two real tests confirm the split: the low-level mechanism DOES fail loudly (real thrown Error, correctly caught, `compileFailed` correctly set); the caller silently drops the signal one call frame up.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/plan_stage.ts:276-284`; `platform/src/lib/pipeline/compiled_floor_adapter.ts:241-252`.
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** when `compiledFloor.compileFailed` or `unmappedPrimitives.length > 0`, push a `judgment_flags` entry and `em.flag()`, mirroring the pattern this same file already applies to NO-LEAKAGE strips and safety exclusions.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session).
+
+### V3-E-027 — `buildWebCompletenessReceipt` under-counts actual floor coverage for ~25% of the registry's `live_tool` surface
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Optimality, Correctness · S5
+- **Expected:** the completeness receipt's served/empty/dark accounting should use the same tool-resolution path that actually decides dispatch.
+- **Observed (2026-08-28, INTEGRATION, real registry data, both import paths exercised):** `buildWebCompletenessReceipt` resolves `live_tool → retrieval tool` using only the hand-curated `LIVE_TOOL_TO_RETRIEVAL` map, while the code path that actually decides dispatch (`compileFloorForPlan → resolveLiveTool`) additionally falls back to the generated projection bridge. Of 40 distinct `live_tool` names in the registry, 10 resolve to a real web-executable tool via the generated bridge but are invisible to the hand map — including major primitives (`ganita_chart_facts_get`, `ganita_positions_get`, `ganita_dasha_periods_get`, `mechanism_retrodiction_get`, and 6 others). For any floor primitive keyed to one of these, dispatch happens and gets results, but the receipt reports it as `web_namespace_gap` (empty/dark) regardless — the "honest" receipt is systematically too pessimistic for ~25% of the registry surface.
+- **Code anchor:** `platform/src/lib/pipeline/completeness_wiring.ts:106` vs `platform/src/lib/pipeline/compiled_floor_adapter.ts:224-226`.
+- **PPR/gap cross-reference:** §N.7 item 3 "reference, not a copy" class.
+- **Proposed fix class:** `completeness_wiring.ts` should call `resolveLiveTool` (exported from `compiled_floor_adapter.ts`) instead of indexing `LIVE_TOOL_TO_RETRIEVAL` directly.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session).
+
+### V3-E-028 — Predictive-class turns show 0% tool-selection efficiency: full floor dispatched, zero citations produced, 14/14 real turns
+
+- **Class / severity:** DEFECT · S1 (proposed) — 100%-reproducible, DB-confirmed over-dispatch on a prescriptive query class where B.10 grounding matters most
+- **Lens(es) / pipeline stage:** Optimality · S5/S8
+- **Expected:** dispatched evidence should translate into cited, grounded output at some measurable non-zero rate.
+- **Observed (2026-08-28, DB-backed/LIVE-adjacent, 14 real turns via `query_trace_steps`, `predictive` query class):** every one of 14 measured turns dispatched a full 10-tool floor and cited zero of it (`citation_error`/`citation_warn` rows, message: "prescriptive query (predictive) produced 0 citations — guidance must be grounded", on all 14). Root cause: `evidence_stage.ts`'s pass-1 dispatch fetches every authorized tool purely to build the completeness receipt and extract candidate signal-ids, but pass-1 content is never injected into the synthesis prompt; the synthesis model runs its own separate agentic loop, free to call or not call any subset of tools, and for predictive-class turns in this sample it chose to ground nothing.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:75-103`; `platform/src/lib/pariprashna/pipeline/citation_resolver.ts:44-54`; `platform/src/lib/pipelines/shared/run_adapter_dispatch.ts:441-489`.
+- **PPR/gap cross-reference:** B.10, §N.6.
+- **Proposed fix class:** either skip pass-1 dispatch for tools the agentic loop will redundantly re-call, or feed pass-1 results directly into the agentic loop's tool-result cache so an already-fetched tool is served from pass 1.
+- **Status:** OPEN · verification rung required to close: DB-backed/LIVE-adjacent (already achieved this session — 14 independent real turns, 100% reproduction rate).
+
+### V3-E-029 — `budget_arbiter` can zero a floor tool's `token_budget` while the presence-only floor check reports the floor satisfied (dormant)
+
+- **Class / severity:** DEFECT · S3 (proposed) — currently latent, not actively starving evidence
+- **Lens(es) / pipeline stage:** Failure-honesty · S5
+- **Expected:** a B.11 floor guarantee should verify the floor tool is genuinely usable, not merely present by name.
+- **Observed (2026-08-28, INTEGRATION, real `arbitrateBudgets` + real `ensureB11WholeChartReadFloor` called together, no mocking):** `arbitrateBudgets` can reduce a priority-3 tool's `token_budget` to 0; `ensureB11WholeChartReadFloor` checks only tool-name presence, not whether `token_budget > 0`, so the floor guarantee reports itself satisfied for a tool whose own budget field claims 0 tokens. Confirmed live: a real `msr_sql` p3 tool's budget zeroed 2000→0, floor check still returns `injected:false` (believes the floor is met). Currently dormant because `token_budget` is not actually consumed anywhere on the pass-1 dispatch path — but this means the arbiter's own stated job (hard cap on `planned_total`) is not currently enforced by anything downstream, and this exact interaction becomes a live evidence-starvation bug the moment someone wires `token_budget` into real content truncation.
+- **Code anchor:** `platform/src/lib/pipeline/budget_arbiter.ts:54-66`; `platform/src/lib/pipeline/compiled_floor_adapter.ts:329-330`; `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:75-103`; `platform/src/lib/cache/with_cache.ts:60-107`.
+- **PPR/gap cross-reference:** §N.8 (looks-fine-because-nothing-reads-it trap).
+- **Proposed fix class:** `ensureB11WholeChartReadFloor`/`ensureDashaContextFloor` should check `token_budget > 0`, not name presence alone; separately confirm whether `token_budget`'s non-use on the dispatch path is intentional or a stale wiring gap.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real functions, no mocking).
+
+### V3-E-030 — No native per-stage latency telemetry exists between S1 and S11; the S8 synthesis trace-completion row is permanently stuck at `status:'running'`
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Optimality, synergy/latency-waterfall, synergy/trace-coherence · CROSS
+- **Expected:** the sum of 11 stage durations should be reconstructable from telemetry so regressions are locatable to a specific stage, and E-006-style latency baselines should be re-derivable over time.
+- **Observed (2026-08-28, LIVE + INTEGRATION, independently corroborated by four separate lanes this session):** (1) The Portal door's `em.phase()` instrumentation emits only 4 coarse buckets (plan/retrieve/synthesize/finalize), not exposed via the MCP door at all. (2) `query_trace_steps` rows for `step_name='synthesis'` (the WEB `consult` route) get a real `started_at` but `completed_at`/`latency_ms` are NEVER populated — confirmed live: 16/16 historical rows stuck `status='running'`, 0/0 ever reach `status='done'`; the scaffolding for an S8 timer exists and is silently abandoned mid-build. (3) The MCP door writes ZERO rows to `query_trace_steps` at all, ever — consistent with its `persistence: {status:'none'}` field (P2-B-004/E-119). (4) S5's own attempt to compute "plan latency share of turn" from this table was overstated by ~10x (46% vs the true ~4.8%) precisely because the synthesis step's missing `latency_ms` silently skews the step-sum denominator — a concrete demonstration that this instrumentation gap corrupts derived metrics, not just leaves a blank field. This means E-006's own latency-share figures cannot currently be re-derived from `query_trace_steps`.
+- **Code anchor:** `platform/src/lib/synthesis/single_model_strategy.ts` (zero `traceEmitter` calls for synthesis completion); `platform/src/lib/trace/types.ts:315` (stale doc claim, "context_assembly… still emitted in prod" — false); `platform/src/app/api/pariprashna/route.ts:138,322`; `platform/src/lib/pariprashna/pipeline/{plan_stage.ts,evidence_stage.ts,synthesis_stage.ts,persistence_stage.ts,safety_gate.ts}` (4-bucket phase instrumentation only).
+- **PPR/gap cross-reference:** feeds E-006 re-derivation; §N.8.
+- **Proposed fix class:** add `em.phase()` (or equivalent trace-span) boundaries at each of the 11 architectural stage seams; complete the already-half-built `query_trace_steps` synthesis row (write `completed_at`/`latency_ms` when synthesis actually finishes); surface the same span data through the MCP door's job-result envelope.
+- **Status:** OPEN · verification rung required to close: LIVE (already achieved this session — real completed job responses inspected field-by-field, plus live `query_trace_steps` DB reads, corroborated independently by 4 separate lanes).
+
+### V3-E-031 — S6 ToolBroker dispatch has no protective bounds: no per-tool timeout, no queue backpressure refusal, no per-tool latency budget
+
+- **Class / severity:** DEFECT · S1 (proposed) — a hung tool call blocks the entire retrieve stage indefinitely and is never reported
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty, Optimality · S6
+- **Expected:** per the dispatch queue's own honest-degradation doc-comment ("queue/refuse, never thin quality"), a hung call should be bounded and reported as unresolved/timed-out; sustained overload should eventually refuse rather than queue unbounded; a per-tool budget should exist to measure optimality against.
+- **Observed (2026-08-28, INTEGRATION, real production code):** (1) A never-resolving `submit()` task does not settle within a 1500ms observation window; no `AbortController`/`setTimeout`/`Promise.race` exists anywhere in `dispatch_queue.ts` or `with_cache.ts`. Because `evidence_stage.ts` (and the MCP door's serial loop) `await` the full batch before emitting anything, one hung tool blocks the entire retrieve stage — no `unresolved`/`error`/`timeout` entry is ever produced; the request runs until an outer infrastructure timeout kills the whole thing, losing even the tools that *did* succeed. (2) `getSharedQosDispatchQueue()` constructs the singleton with no options — `maxQueueDepth` defaults `undefined` (unbounded); `QueueSaturatedError`/the refuse mechanism works correctly under test but is unreachable in production (grep-confirmed zero non-test call sites configure it). (3) `cap_tripped` (the one real, earned cost-cap signal) is only checked BETWEEN calls, so a hang leaves no "next iteration" for it to trip on — the cap's own job (bounding wall-clock exposure) is not actually enforced for a hang. (4) No `latency_budget`/`timeout_ms`/`sla` field exists anywhere on `CapabilityDescriptor` or the S6 surface, so per-tool optimality-vs-budget is structurally unmeasurable (only an aggregate whole-job wall-clock cap exists). Explicit tool rejections (throws), by contrast, ARE honestly surfaced end-to-end — this gap is specific to hangs, not failures generally.
+- **Code anchor:** `platform/src/lib/retrieval/qos/dispatch_queue.ts:185-204` (`pump()`, unwrapped `next.run()`), `:271-274` (unconfigured singleton); `platform/src/lib/cache/with_cache.ts:60-107` (unbounded `await`); `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:87-91`; `platform/src/app/api/mcp/prashna_ask/route.ts:655-671`; `platform/src/lib/pipeline/cost_caps.ts:67-89`; `platform/src/lib/retrieval/registry/types.ts` (`CapabilityDescriptor`, no latency field).
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** wrap the `run()` closure (or `next.run()` in `pump()`) in `Promise.race` against a per-tool timeout that rejects, flowing through the existing honest-error path; set an explicit `maxQueueDepth` on the shared singleton; add an optional `expected_latency_ms_p95` field to `CapabilityDescriptor`.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real `QosDispatchQueue`, real hang test, real queue-depth grep).
+
+### V3-E-032 — Duplicated dispatch-loop implementation across two entry points is a door-parity/maintainability risk
+
+- **Class / severity:** IMPROVEMENT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Door parity, Correctness · S6
+- **Expected:** one dispatch implementation backs every door, so a fix (e.g. V3-E-031's timeout fix) lands everywhere at once.
+- **Observed (2026-08-28, INTEGRATION, both call sites confirmed):** `consult/route.ts` (~L900-970) inlines a near-duplicate of `evidence_stage.ts`'s (L75-105) submit/executeWithCache/toolEventLog loop; both share the `getSharedQosDispatchQueue()` singleton but are separately written and maintained.
+- **Code anchor:** `platform/src/app/api/chat/consult/route.ts:900-970`; `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:75-105`.
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** extract the shared dispatch-loop body into one function both routes call.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — code read, both call sites confirmed).
+
+### V3-E-033 — `hydrateBundle` silently drops failed non-floor assets with no bundle-level disclosure and no wire event at all
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty (§N.6/§N.7 item 6) · S7
+- **Expected:** when N assets are requested and M<N actually load, the returned bundle (or the wire) should be able to answer "which assets were dropped and why."
+- **Observed (2026-08-28, INTEGRATION, two independent confirmations):** (1) A dedicated S7 investigation demonstrated live via real `hydrateBundle` calls that unknown `asset_id`s, manifest entries with no `path`, and `storage.readFile` throws each do `console.warn(...); continue` with no corresponding field on `HydratedBundle` — a caller reading the returned object cannot distinguish "got exactly what was asked" from "some of it silently vanished." (2) A separate degradation-honesty investigation independently confirmed the same code paths never reach the SSE wire in any form: `hydrateBundle(plan, manifest)` doesn't even accept an `em`/emitter parameter, so the failure structurally cannot become a flag, grade, or error event — it never reaches the client, machine-readable or otherwise (only the ONE floor asset, e.g. `CGM`, is fatal and becomes a real `em.error()`).
+- **Code anchor:** `platform/src/lib/bundle/bundle_hydrator.ts:104-131` (three non-floor failure branches), `:107,114,127-130`; `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:66` (no emitter passed in).
+- **PPR/gap cross-reference:** §N.6, §N.7 item 6.
+- **Proposed fix class:** add a `skipped: {asset_id, reason}[]` field to `HydratedBundle`, populated at each non-floor `continue` site; thread `em`/a warnings collector through `hydrateBundle` and emit `em.flag({code:'asset_hydration_failed', ...})` per skipped asset, feeding the skip list into the completeness receipt/synthesis prompt.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real filesystem I/O errors, real manifest shapes, two independent reproductions).
+
+### V3-E-034 — Registry-lookup-miss silently escapes `toolEventLog`, unlike a dispatch throw
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty · S7
+- **Expected:** "tool not found in the registry bridge" and "tool found but dispatch threw" — two failures of the same class — should be recorded identically in `toolEventLog`.
+- **Observed (2026-08-28, INTEGRATION, real `runEvidenceStage`, mocked only at the I/O seams):** a registry-lookup miss produces zero `toolEventLog` entries (`out.toolEventLog` empty), while the equivalent dispatch-throw case produces exactly one `status:'error'` row. Downstream, `completeness_wiring.ts`'s `if (!outcome)` branch treats the resulting gap as `empty_reason:'route_not_invoked'` — the SAME label used for "this tool was correctly never authorized" — rather than a distinct reason. The live `activity.upsert` SSE event does say `status:'error'` (streaming client sees it), but the server-side completeness receipt cannot see it — an inconsistency between what streams and what's recorded for the turn's own honesty accounting.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:80-84` (no `toolEventLog.push`) vs `:96-101` (catch branch does push); `platform/src/lib/pipeline/completeness_wiring.ts:98,120-129`.
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** push a `toolEventLog` entry in the `if (!t)` branch too, matching the catch branch's shape; give `completeness_wiring.ts` a distinct `empty_reason` for "authorized but registry-unresolvable" vs. genuine non-authorization.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real `runEvidenceStage`).
+
+### V3-E-035 — Portal-door agentic-loop tool results have no size cap/truncation handling at all, unlike the MCP door's budgeted approach
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Optimality, Door parity (PPR-30) · S8
+- **Expected:** if one door budgets/truncates oversized evidence, the sibling door should have an equivalent mechanism, or the asymmetry should be a named, deliberate decision.
+- **Observed (2026-08-28, INTEGRATION-adjacent static trace + grep):** `executeMCPTool` (`mcp_tool_executor.ts:66-71`) returns `JSON.stringify({tool, results, result_count})` to the model with zero size cap, zero row selection, zero truncation logic. Exhaustive grep for "truncat" across `synthesis_stage.ts` and `pariprashna/` returns only an unrelated prompt instruction and a different, later-stage concept (`interpretation_sets.truncated_count`, a cap on interpretation-set count, not raw evidence size). No `judgment_flags` vocabulary exists in the Portal pipeline at all. A wide `deep_dive` (up to 16 agentic-loop re-entries) accumulating many large tool results could grow the message history unboundedly, with no application-level truncation, no flag, and therefore no disclosure surface to even build prose-enforcement onto — a distinct, likely-worse failure mode than the MCP door's V3-E-013 (a silent provider-level context truncation/error with zero telemetry, vs. an honest-but-unverified partial fix).
+- **Code anchor:** `platform/src/lib/synthesis/mcp_tool_executor.ts:66-71`; `platform/src/lib/synthesis/agentic_loop.ts` (no truncation logic found).
+- **PPR/gap cross-reference:** PPR-30; sibling of V3-E-013.
+- **Proposed fix class:** add a size cap / bearing-aware row selection to `executeMCPTool`'s results, mirroring the MCP door's `selectRowsWithinBudget` approach, plus a disclosure signal.
+- **Status:** OPEN · verification rung required to close: LIVE (a repro test running an oversized tool result through the real agentic loop; INTEGRATION-adjacent static trace already achieved this session).
+
+### V3-E-036 — Citation-gate PASS is not distinguishable from "0 citations, format-mismatch suspected" for non-prescriptive query classes
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Failure-honesty · S9
+- **Expected:** per §N.6/§N.7, a reading with zero machine-verifiable citations should be visibly flagged even when the query class doesn't hard-require them.
+- **Observed (2026-08-28, INTEGRATION):** `validateCitations()` returns `{gate_result:'PASS', gate_reason:"informational query (…); citations not required"}` for `layer1_count:0` on any non-prescriptive-class query, with no flag distinguishing "genuinely no claims to cite" from "7 real citations existed but none matched the expected pattern" (the exact V3-E-014 case).
+- **Code anchor:** `platform/src/lib/synthesis/citation_check.ts:139-145`.
+- **PPR/gap cross-reference:** §N.6, §N.7; sibling of V3-E-014/V3-E-018.
+- **Proposed fix class:** emit a distinct, low-severity flag when `layer1_count===0` AND the raw text contains GFM footnote markers that didn't resolve to the expected pattern — a "format-mismatch suspected" signal instead of a bare PASS.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session).
+
+### V3-E-037 — `interpretation_sets[].status:'generated'` claims genuine 3-way candidate distinctness on a lexical-overlap proxy that does not detect synonym-paraphrased near-duplicates
+
+- **Class / severity:** DEFECT · S2 (proposed) — §N.8 Earned-Signal Principle
+- **Lens(es) / pipeline stage:** Correctness, Demonstrated-can-fail · S11
+- **Expected:** `status:'generated'` implies the system verified ≥3 genuinely distinct interpretive conclusions, per the worker's own system prompt.
+- **Observed (2026-08-28, INTEGRATION, real `generateInterpretationSets`, only the LLM network seam mocked):** three synonym-paraphrased restatements of ONE identical claim ("career growth → leadership position → via hard work," reworded three ways with near-fully disjoint vocabulary) pass through the real, unmocked pipeline as `status:'generated'`, `candidates.length:3` — with no flag or degraded confidence. The only structural guard, `hasNearDuplicateCandidates` (lexical token-overlap), is self-disclosed in its own doc comment as "a floor-raise… not a semantic guarantee" that "cannot guarantee every near-duplicate candidate set is caught" — the code's own comments already disclose the limitation, but the receipt field consuming it does not.
+- **Code anchor:** `platform/src/lib/pariprashna/interpretation/worker.ts:279-299` (`hasNearDuplicateCandidates`/`overlapRatio`), `:322-356` (`coerceEntry`).
+- **PPR/gap cross-reference:** §N.8.
+- **Proposed fix class:** strengthen the distinctness check with an embedding-similarity comparison (the codebase already has embedding infrastructure in L5), or surface the proxy's own disclosed limitation as a receipt field (e.g. `distinctness_check:'lexical_only'`).
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real pipeline, only the network seam mocked).
+
+### V3-E-038 — `AcharyaReadingReceipt` has no mechanism to flag a substantive, uncited, time-indexed predictive claim in rendered prose
+
+- **Class / severity:** DEFECT · S2 (proposed, escalating to S1 if this pattern occurs in production predictive-timing claims — career/health/marriage timing assertions are exactly the safety/calibration-adjacent class the Ethical Framework cares about)
+- **Lens(es) / pipeline stage:** Failure-honesty, Correctness · S11
+- **Expected:** an acharya-grade audit receipt should let an auditor distinguish "every substantive claim in this prose has grounding" from "this prose asserts things the receipt is silent about."
+- **Observed (2026-08-28, INTEGRATION, real `assembleAcharyaReadingReceipt` + `validateAcharyaReadingReceipt`):** constructed a turn with an uncited, specific, falsifiable claim ("Saturn's Mahadasha begins in early 2027 and will bring five years of career stability and a confirmed promotion by 2029") alongside one cited claim. The receipt correctly recorded only the cited claim (`facts_consumed`=1 entry, `derivation_chains` for the uncited block has `fact_refs:[]`) — honest about what it captured — but `honest_gaps` is sourced entirely from the floor-item completeness model, which has zero visibility into prose content, so no entry exists for the uncited claim. `validateAcharyaReadingReceipt` reports the receipt fully coherent (0 violations). An auditor inspecting only the receipt has no way to know the prose asserted a specific 2027-2029 timing prediction.
+- **Code anchor:** `platform/src/lib/pariprashna/receipt/assemble.ts:510-536` (`factRefsForBlock`/`buildFactsConsumed`), `:217-234` (`buildHonestGaps`).
+- **PPR/gap cross-reference:** §N.7/§N.8 ("an honest null beats an invented judgment… but a genuine gap still needs a flag").
+- **Proposed fix class:** add an uncited-substantive-claim detector (even coarse — a committed prose block with empty `fact_refs` matching a numeric/date/predictive-language heuristic), surfaced as a new honest field (e.g. `uncited_claim_blocks: string[]`).
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real receipt assembly + validation).
+
+### V3-E-039 — Citation/grounding gate (`runValidationStage`) silently swallows internal errors on malformed synthesis input and defaults to PASS with ZERO wire event
+
+- **Class / severity:** DEFECT · S2 (proposed) — worst of the 10 boundary-contract findings: no signal at all, not even a wrong grade
+- **Lens(es) / pipeline stage:** synergy/boundary-contract · CROSS (S8→S9)
+- **Expected:** the B.11 grounding-validation enforcement point should refuse loudly (or at minimum emit an explicit degraded-grade signal) when its input is malformed enough that validation could not run.
+- **Observed (2026-08-28, INTEGRATION, real vitest harness, malformed-input probe):** `runValidationStage` wraps the entire citation-gate call in a try/catch that logs to the server console only and returns the PASS-default `citationGateResult` initialized before the try block; because the throw happens inside `validateCitationsForStream` BEFORE `em.grade({subject:'citation_gate', ...})` is reached, the `grade` wire event for this turn never fires — not PASS, not WARN, not ERROR. A deliberate, documented design choice ("the gate NEVER fails the turn"), but its consequence (total absence of the grounding signal on a malformed-input turn) is undisclosed to the wire protocol.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/validation_stage.ts:30-73`.
+- **PPR/gap cross-reference:** B.11.
+- **Proposed fix class:** emit a `flag`/judgment-flag entry ("citation_gate_errored") from inside the catch block so the wire always carries a signal, even when the PASS default is intentionally preserved as the serving decision.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real vitest harness, `.s4_scratch/boundary_contracts.test.ts`).
+
+### V3-E-040 — Beyond the one S3→S4 Zod gate, no pipeline stage boundary re-validates its input at runtime: malformed objects crash with raw TypeErrors or silently corrupt/pass through
+
+- **Class / severity:** DEFECT · S2 (proposed) — architecture-level: "a malformed object never crosses a boundary" holds for exactly 1 of 10 boundaries
+- **Lens(es) / pipeline stage:** synergy/boundary-contract · CROSS (S4→S5, S5→S6, S6→S7, S7→S8, S9→S10)
+- **Expected:** every stage boundary should validate its input against its own contract (or fail with a designed, named error), matching the one boundary (B3, S3→S4) that already does this correctly via `PipelinePlanSchema.safeParse`.
+- **Observed (2026-08-28, INTEGRATION, real vitest harness against all 10 boundaries, 22 assertions):** `compiled_floor_adapter.ts` (S4→S5) reads `tuple.domains/width/depth/intent` with zero `ScopeTupleSchema.safeParse` calls — a missing `domains` throws a raw `TypeError`, an invalid `depth` enum silently becomes `depth:undefined` with no error. Three independent unguarded `.map()` calls crash with bare `TypeError`s on wrong-typed array fields at S5→S6 (`plan.tool_calls`), S6→S7 (`plan.asset_bundle`), and S7→S8 (`bundle.assets`). At S9→S10, `buildCanonicalParts`'s `for (const b of input.committedBlocks)` has no `Array.isArray` guard — a string input iterates per-character (JS's iterable protocol), producing a plausible-looking, silently empty result rather than an error. Score across all 10 boundaries: 1/10 has a real, actively-enforced runtime schema gate; 0/10 refuse a malformed object at their own entry point with a purpose-built check (two graceful cases at S5→S6/S6→S7 are incidental byproducts of unrelated registry/floor-asset presence logic, not boundary validation). Boundary 1 (S1→S2, `authorizeTurn`) could not be fully exercised in this sandbox (no DB route) and is flagged NOT FULLY TESTED rather than assumed safe.
+- **Code anchor:** `platform/src/lib/pipeline/compiled_floor_adapter.ts:86-121`; `platform/src/lib/pariprashna/pipeline/evidence_stage.ts:68-70`; `platform/src/lib/bundle/bundle_hydrator.ts:66-67`; `platform/src/lib/pariprashna/pipeline/synthesis_stage.ts:241-244`; `platform/src/lib/pariprashna/pipeline/reading_parts.ts:565-591`; `platform/src/lib/pariprashna/pipeline/safety_gate.ts:237` (B1, tentative).
+- **PPR/gap cross-reference:** PROJECT_ARCHITECTURE §3 ("a malformed object never crosses" boundary claim).
+- **Proposed fix class:** call `ScopeTupleSchema.safeParse` (or equivalent) at the top of `compileFloorForPlan`; add a shared lightweight `PipelineBoundaryError`-style array/shape guard at each S5-S8 entry point; add an explicit `Array.isArray` guard to `buildCanonicalParts`; re-run Boundary 1 from an environment with real DB access.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session for 9/10 boundaries; Boundary 1 needs a DB-reachable environment).
+
+### V3-E-041 — S2 entitlement-denial and consent-refusal codes are misclassified client-side as a generic transient "something failed on our side" error
+
+- **Class / severity:** DEFECT · S1 (proposed) — safety/consent-adjacent: `SUBJECT_CONSENT_REQUIRED` is a PPR-14 consent refusal routed through the same misclassification
+- **Lens(es) / pipeline stage:** synergy/degradation-honesty · S2
+- **Expected:** an entitlement/consent refusal should be disclosed as what it is, with an action set that does not suggest retrying will help.
+- **Observed (2026-08-28, INTEGRATION, real `classifyPariprashnaError`, 4/4 proven):** `safety_gate.ts`'s `authorizeTurn` emits `em.error({code:'FORBIDDEN'|'CHART_NOT_FOUND'|'SUBJECT_CONSENT_REQUIRED:<reason>'|'CONVERSATION_NOT_FOUND', message, ...})`. The client's `s1LiveAdapter.ts:335-341` routes every `error` event through `classifyPariprashnaError(ev.code)`, discarding `ev.message` (server/log-side only). `classify.ts`'s `classifyKind()` has no case for any of these four codes — all fall to `'unknown'` → "Something failed on our side… the plumbing. It is logged." with `actions:['retry']`. Proven by 4/4 real tests: each code asserts `kind:'unknown'` + the generic copy.
+- **Code anchor:** `platform/src/components/pariprashna/state/s1LiveAdapter.ts:335-341`; `platform/src/lib/pariprashna/errors/classify.ts:112-124` (`classifyKind()`).
+- **PPR/gap cross-reference:** PPR-11, PPR-14; sibling of V3-E-013's flag/disclosure-decoupling class.
+- **Proposed fix class:** add explicit `kind`s (e.g. `'not_authorized'`, `'not_found'`, `'consent_required'`) to `classifyKind`/`copyFor` with non-retry actions, or forward a safe subset of `ev.message` for these business-logic codes.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — 4/4 passing vitest run against real `classifyPariprashnaError`).
+
+### V3-E-042 — `grade`/`flag` wire events for completeness and citation-gate signals are dropped or reducer-inert; the tool-activity UI has no rendering state for an errored tool either
+
+- **Class / severity:** DEFECT · S2 (proposed)
+- **Lens(es) / pipeline stage:** synergy/degradation-honesty · S6/S9
+- **Expected:** a `grade` event carrying a real degradation signal, or a `flag` event marking a B.11 grounding-validation failure, should reach visible or at least reducer-tracked client state; a failed/timed-out tool should render distinguishably from a running one.
+- **Observed (2026-08-28, INTEGRATION, direct code read confirmed for all three claims):** `s1LiveAdapter.ts:273-282`'s `case 'grade': if (ev.subject !== 'reading_depth_received') return []` discards every OTHER grade subject before the reducer ever sees it — including `completeness` (S6) and `citation_gate` (S9). `reducer.ts:290-292`'s `case 'flag'` only updates `lastEventId`/`seenEventIds` for a `citation_gate_warn`/`citation_gate_error` flag — no visible UI state results. Separately, `ActivityRow.tsx:13-17` renders the glyph/color purely from `row.status==='done'`, with NO branch for `status:'error'` — an errored or timed-out tool (see V3-E-031) renders pixel-identical to one still running or not yet started. Together: a real B.11 grounding-validation failure or a real tool-dispatch gap can be correctly detected and emitted server-side and still never become visible to the reader.
+- **Code anchor:** `platform/src/components/pariprashna/state/s1LiveAdapter.ts:273-282`; `platform/src/components/pariprashna/state/reducer.ts:290-292`; `platform/src/components/pariprashna/activity/ActivityRow.tsx:13-17`.
+- **PPR/gap cross-reference:** B.11; sibling of V3-E-013/V3-E-039.
+- **Proposed fix class:** route non-`reading_depth_received` grade subjects into reducer-tracked (even aggregated) state; route citation-gate flags into `judgmentFlags`/an existing visible grounding-quality indicator (`GroundingCard`); add an explicit error-state render branch to `ActivityRow.tsx`.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — direct code read of all three code paths).
+
+### V3-E-043 — Three independent, mutually-disjoint telemetry/persistence systems back "the" 11-stage pipeline depending on which of three live routes serves the turn; no single trace_id joins stages across doors
+
+- **Class / severity:** DEFECT · S2 (proposed) — the crux of the "one trace_id joins all 11 stages plus both doors' persistence" requirement is false as built
+- **Lens(es) / pipeline stage:** synergy/trace-coherence, Door parity · CROSS
+- **Expected:** one trace_id joins Portal + MCP persistence for the same logical turn.
+- **Observed (2026-08-28, INTEGRATION local-dev + STATIC, 3 real turns driven through a real Firebase-authenticated local server + real DB):** `POST /api/chat/consult` (the live-default Consume chat UI) writes to `query_trace_steps`. `POST /api/pariprashna` (a separate, `PARIPRASHNA_ENABLED`-gated route implementing the exact stage-named files the charter's S1-S11 anchor table cites) writes to a completely disjoint typed-SSE/Redis-ring-buffer/optional-DB-capture system. The MCP door (`prashna_ask`) is a third, independent case: its `trace_id` is a bare `crypto.randomUUID()` used only for a few writer calls, never touching `query_trace_steps` (grep-confirmed zero references). No shared table or key links any two of the three doors' records for the same logical question.
+- **Code anchor:** `platform/src/lib/trace/{emitter,writer}.ts` (consult); `platform/src/lib/pariprashna/protocol/{emitter,ring_buffer,stream_capture}.ts` (pariprashna); `platform/src/app/api/mcp/prashna_ask/route.ts:251` (MCP).
+- **PPR/gap cross-reference:** door-parity, trace-coherence.
+- **Proposed fix class:** either converge on one persistence surface, or add an explicit cross-reference column/table joining `query_trace_steps.query_id` ↔ `pariprashna_stream_capture.turn_id` ↔ MCP `trace_id`.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — 2 routes tested live, 3rd confirmed via exhaustive static grep).
+
+### V3-E-044 — S2/S3 entitlement and safety decisions run before the consult route's trace_id exists; a refused turn has zero forensic trail
+
+- **Class / severity:** DEFECT · S2 (proposed) — the security-relevant refusal path is the one case with literally no trace record
+- **Lens(es) / pipeline stage:** synergy/trace-coherence, safety-observability · S2/S3
+- **Expected:** every admitted-or-refused turn correlates to a stable id from the moment entitlement/safety checks run.
+- **Observed (2026-08-28, INTEGRATION + STATIC, structural code-order fact confirmed on the real route):** `authorizeChartAccess()` (`consult/route.ts:362`) and `classifyTurnSafety()` (`:476`) both run BEFORE `preAllocatedQueryId` is minted (`:531`); a refusal returns before that line is ever reached (`:512-516`). An admitted turn leaves no positive telemetry record of the decision having run either — no row in any query_id-keyed table for either decision.
+- **Code anchor:** `platform/src/app/api/chat/consult/route.ts:362,476,512-516,531`.
+- **PPR/gap cross-reference:** trace-coherence, PPR-11/PPR-12.
+- **Proposed fix class:** mint the trace_id at request entry, before authz/safety, and emit `step_start`/`step_done` rows for both decisions using it — including on the refusal path.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session, 1 real live turn) + STATIC (structural fact, not turn-dependent).
+
+### V3-E-045 — On `/api/pariprashna`, the wire-visible `turn_id` and the durably-persisted `conversation_messages.metadata_json.custom.queryId` for the same turn are two different, independently-generated UUIDs
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** synergy/trace-coherence · S11
+- **Expected:** the id a caller receives on the wire should be the id that resolves the persisted record.
+- **Observed (2026-08-28, INTEGRATION, live, reproduced in 2/2 test turns):** the SSE wire identifies the turn by `turn_id` (`turn.open`/`turn.commit`/`turn.close`/`receipt.define` all key off it), but `conversation_messages.metadata_json.custom.queryId` for that same turn's message is a different, independently-generated UUID (`route.ts:104-105`, two separate `crypto.randomUUID()` calls). A caller holding only the wire `turn_id` cannot look up the persisted message by that id directly.
+- **Code anchor:** `platform/src/app/api/pariprashna/route.ts:104-105`.
+- **PPR/gap cross-reference:** trace-coherence.
+- **Proposed fix class:** derive `queryId` from `turnId` (or persist `turnId` alongside it) so a caller can join wire events to the persisted row with one id.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — live, reproduced twice).
+
+### V3-E-046 — Pre-synthesis bundle-level validation on the consult route has zero telemetry regardless of outcome
+
+- **Class / severity:** DEFECT · S3 (proposed)
+- **Lens(es) / pipeline stage:** synergy/trace-coherence · S9
+- **Expected:** a trace-queryable record of the bundle-validation pass/fail decision.
+- **Observed (2026-08-28, INTEGRATION, live turn):** `bundleSummary` (`runAll(bundle,'bundle',…)`) is computed and used only to gate an inline 422 response on `consult/route.ts`; it is never persisted, pass or fail.
+- **Code anchor:** `platform/src/app/api/chat/consult/route.ts:1015-1022`.
+- **PPR/gap cross-reference:** trace-coherence.
+- **Proposed fix class:** emit a trace step (or audit_log row) for this validation regardless of pass/fail.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session).
+
+### V3-E-047 — S10 (SemanticReadingParts) and S11 (AcharyaReadingReceipt) do not exist on the live-default `/api/chat/consult` path; both are gated behind flags that default off
+
+- **Class / severity:** PROCESS · S4 (proposed, informational/scope-config) — may be working-as-designed (rollback gate) rather than a defect; flagged for owner triage
+- **Lens(es) / pipeline stage:** synergy/trace-coherence, pipeline-stage-coverage · S10/S11
+- **Expected/observed (2026-08-28, INTEGRATION, flags forced on locally):** `reading_parts.ts`/`block_classifier.ts` are imported only by `/api/pariprashna` and sibling `pariprashna/pipeline/*` files, never by `/api/chat/consult` — on the live default path these stages, as named, do not run at all (the consult route consumes plain AI-SDK text parts instead). `/api/pariprashna` itself is gated `PARIPRASHNA_ENABLED` (default `false`); its receipt sub-feature needs a second, also-default-off flag `PARIPRASHNA_RECEIPT_EMISSION_ENABLED`. Both confirmed live once forced on locally; never confirmed against the actual deployed environment's flag state (out of scope this session).
+- **Code anchor:** `platform/src/lib/config/feature_flags.ts:170,356,523,572`.
+- **PPR/gap cross-reference:** cross-reference V3-E-048/V3-E-049 (the same flag governs whether MCP-vs-Portal receipt comparison is even meaningful).
+- **Proposed fix class:** none required — recommend the owning verifier confirm production flag state and grade whether this is a deliberate rollout gate.
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session, local flags forced on) → LIVE (confirm actual deployed flag state, not done this session).
+
+### V3-E-048 — MCP `prashna_ask` has no call path to receipt assembly at all: no in-memory `AcharyaReadingReceipt` object is ever constructed for this door, even transiently
+
+- **Class / severity:** DEFECT · S2 (proposed) — additive to the already-tracked P2-B-004/E-119 persistence gap, not a restatement of it
+- **Lens(es) / pipeline stage:** synergy/cross-door-parity (PPR-30) · S11 · **Journey:** J10
+- **Provenance:** additive to P2-B-004 / E-119 (`MCP_TURN_PERSISTENCE_NONE`) — cite that item as shared root cause, do not treat this as an independent new root cause.
+- **Expected:** a whole-receipt parity check (PPR-30) should compare two doors that both *can* emit the same structured object.
+- **Observed (2026-08-28, code-level comparison — deployed images confirmed stale, so LIVE dual-door was not attempted; the divergence is architectural, not data-dependent):** `grep -rn "assembleAcharyaReadingReceipt|runPersistenceStage"` across `platform-mcp/src` and the MCP route returns zero matches. Traced counterfactually with `PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true` (the only state under which "whole-receipt parity" means anything, since Portal itself ships this flag dark-by-default too — see V3-E-047): under that condition Portal assembles a full receipt; MCP still assembles none — the flag is never referenced on the MCP door at all, so flipping it does nothing there. All 18 top-level receipt fields diverge (`receipt_schema_version`, `turn_id`, `conversation_id`, `chart_id`, `generated_at`, `coverage`, `facts_consumed`, `derivation_chains`, `cross_domain`, `evidence_grades`, `honest_gaps`, `calibration_disclosure`, `prose_binding`, `provenance`, `interpretation_sets`, `confidence_typing`, `receipt_hash`, and `safety_decision` — the last one filed separately as V3-E-049) — trivially absent rather than differently-valued. The single cheapest available fix identified: `cross_domain`/`plan.domains` is already computed in MCP request scope (used internally for `ensureB11WholeChartReadFloor`) but never written to the response envelope — pure wiring gap, no new computation needed. `coverage`'s Portal-side schema also hardcodes `channel: z.literal('web')`, which would need to become a non-literal enum before MCP could ever populate it honestly, independent of the call-path gap.
+- **Code anchor:** `platform/src/app/api/mcp/prashna_ask/route.ts` (no import of `receipt/assemble.ts` or `pipeline/persistence_stage.ts`, confirmed by grep); `platform/src/lib/config/feature_flags.ts:344-356,572`; `platform/src/lib/pariprashna/pipeline/persistence_stage.ts:504-505`; `platform/src/lib/pariprashna/receipt/schema.ts:44-54` (`channel` literal).
+- **PPR/gap cross-reference:** PPR-30; provenance P2-B-004/E-119.
+- **Proposed fix class:** either (a) MCP door onboards a receipt-assembly call site gated by the same flag (with the individual cheap wins — `cross_domain`, `safety_decision` per V3-E-049 — landing first, independent of the full assembler), or (b) explicitly re-scope PPR-30's receipt-parity doctrine as "Portal-only, not a cross-door contract" until (a) lands.
+- **Status:** OPEN · verification rung required to close: code-level comparison (fallback rung achieved this session — architectural absence, confirmed by exhaustive grep, not data-dependent so a live dual-door run would not change the finding).
+
+### V3-E-049 — The full structured `SafetyDecision` object is computed on the MCP door but discarded; only lossy string flags reach the wire, dropping the exact FK fields (`decision_id`/`review_id`/`audit_written`) an auditor needs
+
+- **Class / severity:** DEFECT · S1 (proposed) — safety-relevant audit field, flagged highest of the 18 receipt-field findings: the underlying object genuinely exists in MCP's own request scope, and the gap specifically drops the audit trail's join keys
+- **Lens(es) / pipeline stage:** synergy/cross-door-parity (PPR-30), Correctness · S11 (also S-safety) · **Journey:** J10
+- **Provenance:** additive to P2-B-004 / E-119; sibling of V3-E-048.
+- **Expected:** `safety_decision.{status, decision_id, enforced, severity, action, classes_detected, review_id, audit_written}` on both doors — the MCP door's own route comment states this gate is deliberately mirrored from the web door.
+- **Observed (2026-08-28, code-level comparison):** `classifyTurnSafety`/`reclassifyAfterPlan` genuinely run on the MCP door (`route.ts:356-361,483-491`) and gate dispatch/strip capabilities, but the final envelope only ever emits derived, lossy string flags (`safety_decision:<action>`, `safety_mortality_capabilities_excluded`, `safety_classes_detected:<n>`). The structured object itself — including `decision_id` and `review_id`, the FK fields an auditor would follow to `pariprashna_safety_decisions` — is discarded, not attached to the response.
+- **Code anchor — Portal:** `platform/src/lib/pariprashna/receipt/assemble.ts:236-261` (`buildSafetyDecision`), `receipt/schema.ts:153-164`. **— MCP:** `platform/src/app/api/mcp/prashna_ask/route.ts:356-361,483-530` (`postPlanSafety`/`reclassifyAfterPlan`/`applyCapabilityExclusion`), `:511-516,769-788` (only string flags reach the wire).
+- **PPR/gap cross-reference:** PPR-30; PPR-12.
+- **Proposed fix class:** near-zero-cost — `postPlanSafety` already exists in scope at the point `readingEnvelope` is constructed; add a `safety_decision: buildSafetyDecision(postPlanSafety)`-equivalent key to the MCP envelope, reusing Portal's own builder shape. This does not require V3-E-048's full receipt-assembly wiring to land first.
+- **Status:** OPEN · verification rung required to close: code-level comparison (fallback rung achieved this session) → INTEGRATION (a live MCP turn with the fix applied, showing the structured object on the wire).
+
+### V3-E-050 — Portal door's progress-reporting architecture does NOT reproduce E-003; scope E-003 to the MCP door only
+
+- **Class / severity:** IMPROVEMENT / DOC · S4 (proposed, informational/parity-closure)
+- **Lens(es) / pipeline stage:** synergy/progress-truthfulness, Door parity (PPR-30) · CROSS
+- **Expected:** per the PPR-30 doctrine, the register should explicitly record when two doors do NOT share a defect, so a single-door finding isn't mistakenly read as whole-product.
+- **Observed (2026-08-28, STATIC — code trace only; no live browser turn run this session, `getServerUser()`'s real Firebase-session cost was judged out of budget):** Portal's `working/WorkingBand.tsx` elapsed counter is a pure client `setInterval` wall-clock tick, independent of server event cadence — it cannot freeze mid-turn the way the MCP door's cached `JobProgress` object can, by construction. Synthesis genuinely streams continuously (`text_delta`→`block.delta` events for the whole duration), the opposite shape of the MCP door's single unmonitored `await`. `currentLiveLabel()` picks up the `phase{synthesize,start}` event immediately, giving a fresh label before the freeze window that afflicts MCP would even begin. One number remains unmeasured: the exact TTFT-vs-band-label-update gap (architecturally bounded by ordinary LLM time-to-first-token, not measured live this session).
+- **Code anchor:** `platform/src/components/pariprashna/working/WorkingBand.tsx` (`useElapsedSeconds`, `currentLiveLabel`); `platform/src/lib/pariprashna/pipeline/synthesis_stage.ts` (continuous `text_delta`→`block.delta` emission).
+- **PPR/gap cross-reference:** PPR-30; parity counterpart to V3-E-012 (E-003).
+- **Proposed fix class:** none required functionally; annotate E-003/V3-E-012 as MCP-door-scoped; confirm the unmeasured TTFT gap with live Portal browser access in a future pass.
+- **Status:** OPEN · verification rung required to close: STATIC (already achieved this session) → LIVE (a real browser/Firebase-session turn, not attempted this session — deliberately, per the honesty caveat above).
+
+### V3-E-051 — Scope-classifier "faithful port, do not diverge" contract has silently broken: three independent fix waves each landed on only one door
+
+- **Class / severity:** DEFECT · S2 (proposed) — structural, affects every query through the standalone MCP classifier tools and any caller threading a pre-classified tuple back into `prashna_ask`
+- **Lens(es) / pipeline stage:** Correctness, Door parity (PPR-30) · S1
+- **Expected:** `intent_scope_classifier.ts` (MCP) and `scope_classifier.ts` (Portal) compute identical `scope_tuple` fields for identical input, per the Portal file's own docstring ("faithful port… do not diverge").
+- **Observed (2026-08-28, REPLAY/INTEGRATION, 19-query representative set through both classifiers directly):** 19/19 queries diverged on at least one `scope_tuple` field. Three independent fix waves each landed on only one side: (1) MCP implements the Ω4 "earned-narrow, default-deep" width/depth doctrine (`route`, `narrow_confidence`, `depth_available` fields); Portal still implements the pre-Ω4 keyword-only model, default `standard`/`standard` — universal across all 19 queries. (2) Portal's W6.1 domain-inferred-intent fallback was never ported to MCP: `"What is my career direction and its timing over the next few years?"` resolves `intent:domain_assessment` on Portal but `intent:unknown, fallback_recommended:true` on MCP — a real clarification-outcome flip, demonstrated with a real RED vitest run against MCP's classifier (the exact defect class Portal's own W6.1 fix was built to close, referencing a real prior live E2E incident, trace `6d1eb827-…`). (3) MCP's F-24 plural-safety `DOMAIN_RULES` fix was never ported to Portal: `"What is my finances outlook?"` resolves `domains:['wealth']` on MCP but `domains:['general']` on Portal (same for "relationships" → `marriage`/`general`).
+- **Code anchor:** `platform-mcp/src/tools/intent_scope_classifier.ts:212-350` (Ω4 apparatus, no Portal counterpart), `:182-193` (F-24 plural-safe `DOMAIN_RULES`); `platform/src/lib/vidhi/scope_classifier.ts:1-27` (the "do not diverge" docstring), `:241-254` (W6.1 fix, no MCP counterpart), `:164-175` (unfixed singular-only `DOMAIN_RULES`), `:256-265` (width/depth logic).
+- **PPR/gap cross-reference:** PPR-30.
+- **Proposed fix class:** port the Ω4 doctrine and the W6.1 domain-inferred-intent fallback to MCP's classifier verbatim; port the F-24 plural-safe `DOMAIN_RULES` to Portal verbatim; add a cross-door parity test so future drift is CI-caught (nothing today asserts cross-door equality — both `.test.ts` suites pass in isolation).
+- **Status:** OPEN · verification rung required to close: REPLAY/INTEGRATION (already achieved this session — real vitest run against real source for the RED demonstration; direct unit-level function calls, real regex tables, for the 19-query parity sweep).
+
+### V3-E-052 — No independent classification-accuracy corpus exists for the scope classifier on either door
+
+- **Class / severity:** BASELINE / IMPROVEMENT · S3 (proposed)
+- **Lens(es) / pipeline stage:** Optimality · S1
+- **Expected:** a classifier this central to routing would ideally be measured against an independently-labeled corpus with a tracked accuracy number over time.
+- **Observed (2026-08-28, REPLAY, test-suite inspection):** the only "accuracy" evidence is 37 (MCP) / 10 (Portal) hand-written unit-test cases, each asserting the classifier's output against its OWN regex tables — no independent ground truth. Both classifiers are effectively free latency-wise (sub-hundredth-of-a-millisecond, p95 ≤0.0082ms MCP / ≤0.0054ms Portal) — latency is not the concern; measured accuracy is the gap.
+- **Code anchor:** `platform-mcp/src/tools/intent_scope_classifier.test.ts`; `platform/src/__tests__/lib/vidhi/scope_classifier.test.ts`.
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** author a small independently-labeled fixture corpus (50-100 queries spanning all 11 intents × ambiguous/adversarial cases), checked in and run in CI as a standing accuracy gate, separate from the regex-table unit tests.
+- **Status:** OPEN · verification rung required to close: REPLAY (already achieved this session — test-suite inspection + latency bench).
+
+### V3-E-053 — Redundant `charts` table round-trip inflates every S2 entitlement decision by roughly 2x
+
+- **Class / severity:** IMPROVEMENT (performance) · S3 (proposed, Low-Medium)
+- **Lens(es) / pipeline stage:** Optimality · S2
+- **Expected:** one round-trip to `charts` per turn to resolve both existence and ownership.
+- **Observed (2026-08-28, INTEGRATION, real `authorizeChartAccess` calls over the live Cloud SQL Auth Proxy tunnel, real synthetic-chart rows):** `authorizeTurn` runs `SELECT id, name, client_id FROM charts WHERE id=$1` for the `CHART_NOT_FOUND` check, then calls `authorizeChartAccess`, which independently runs its own `SELECT owner_id FROM charts WHERE id=$1` against the same table/row — two sequential round trips to `charts` for the same `chart_id` on every turn, plus a `profiles` lookup in between (3 sequential DB round trips before `authorizeChartAccess` even reaches its own branch). Measured: full `authorizeTurn`-shaped sequence p50=326.3ms (deny) vs `authorizeChartAccess` alone p50=154.9ms — roughly 2x inflation of the fail-closed hot path.
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/safety_gate.ts:237-245`; `platform/src/lib/auth/authorizeChartAccess.ts:56-67`.
+- **PPR/gap cross-reference:** none specific.
+- **Proposed fix class:** have `authorizeTurn` pass its already-fetched chart row (or just `owner_id`) into `authorizeChartAccess` so it never re-queries `charts`, or combine the existence + ownership check into one query. Local to this one caller — not a change to `authorizeChartAccess`'s public contract used identically elsewhere (`invoke_tool.ts`).
+- **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — measured against real DB via real proxy).
+
+### V3-E-054 — SafetyPolicyDecision gate (HS-1..HS-4) ships flag-OFF by default; zero live enforcement until an operator flips the feature flag
+
+- **Class / severity:** DEFECT (configuration-risk, not a code defect) · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Failure-honesty · S3
+- **Expected:** per PPR-12/MP §3.5.C and the module's own doc comments, HS-1..HS-4 should be an active, live-enforced safety-critical hard-stop mechanism.
+- **Observed (2026-08-28, static code read + config read):** `feature_flags.ts:546`: `PARIPRASHNA_SAFETY_GATE_ENABLED: false`; no override found in `platform/.env.local`. With the flag off, `classifyTurnSafety` returns `enforced:false, action:'proceed'` before running a single pattern and before touching the database (confirmed by the flag-OFF benchmark: 0 DB calls, sub-microsecond). This is documented as a deliberate ship-dark decision ("the flip is a deliberate act at P1 close"), but as shipped by default, none of HS-1..HS-4 are enforced in production — no question is classified, no hard-stop fires, no capability is excluded, no review is opened, unless `MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true` is set. The mechanism itself is correct and well-tested (680 passing unit tests across 6 HS classes including HS-5/HS-6) — this is a deployed-state finding, not a code-correctness one.
+- **Code anchor:** `platform/src/lib/config/feature_flags.ts:546`; `platform/src/lib/pariprashna/safety/flag.ts:23-27`.
+- **PPR/gap cross-reference:** PPR-12.
+- **Proposed fix class:** not a code fix — confirm with the native whether P1 close (the flip point named in the flag's own doc comment) has occurred, and if not, track it explicitly as an open operational item.
+- **Status:** OPEN · verification rung required to close: static code read + config read (already achieved this session) → LIVE (confirm actual deployed flag value, out of this lane's authorized scope this session).
+
+### V3-E-055 — WEB door (`/api/pariprashna`) has zero route-level test coverage for the S3 safety short-circuit
+
+- **Class / severity:** DEFECT (test-coverage gap) · S2 (proposed)
+- **Lens(es) / pipeline stage:** Correctness, Demonstrated-can-fail · S3
+- **Expected:** a route carrying a safety-critical short-circuit should have at least one route-level test proving the short-circuit renders on ITS wire format, parallel to what the MCP door's `prashna_ask` route test already does (HS-2 hard-stop, seal path, plan-time escalation, floor test).
+- **Observed (2026-08-28, exhaustive grep + static read):** `src/app/api/pariprashna/` has no `__tests__` directory at all; the golden-stream baseline corpus (30 scenario JSONs) contains none matching `safety|hard_stop|hs1|hs2|hs3|hs4|seal_pending`. The safety module's own unit tests (680 tests) and a consult-door test (7 tests) are thorough and green, but nothing proves `runSafetyPolicyGate`'s `speak()` calls actually reach the SSE wire for THIS route, and the post-plan escalation branch (`route.ts:186-199`) is unique to this route and untested anywhere — not exercised by the safety module's own unit tests, which stop at `reclassifyAfterPlan`'s return value.
+- **Code anchor:** `platform/src/app/api/pariprashna/route.ts:153-199`; missing counterpart of `platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts:739-838`.
+- **PPR/gap cross-reference:** PPR-12; door parity.
+- **Proposed fix class:** add 1-2 golden-stream baseline scenarios (or a small dedicated route test) flipping `PARIPRASHNA_SAFETY_GATE_ENABLED` on and asserting the HS-2 fixed text + a `safety_decision:*` judgment flag appear verbatim in the SSE stream, plus one scenario exercising the post-plan escalation branch specifically.
+- **Status:** OPEN · verification rung required to close: static code read + exhaustive grep (already achieved this session) → INTEGRATION (the new test landing and passing).
+
+---
+
+*End EDIR_V3_REGISTER v1.1 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
-B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
-document.*
+SALVAGE 2); 55 V3 entries total (5 from the A3 census + 6 surfaced during
+A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27 [V3-E-006/B-007 and
+the B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/
+E-010/E-011 filed to S5, V3-E-009 closed-as-benign] + 44 from the S4 Pipeline
+Correctness & Door Parity stream, 2026-08-28 [V3-E-012..E-055; 17 parallel
+agents covering the 11 pipeline stages S1-S11 plus 6 synergy tests including
+journey J10; several reaching LIVE rung against the synthetic chart]). No
+gate is certified by this document.*
