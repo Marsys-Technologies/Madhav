@@ -1,0 +1,22 @@
+import { describe, it, expect } from 'vitest'
+import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
+import { LIVE_TOOL_TO_RETRIEVAL, resolveLiveTool } from '@/lib/pipeline/compiled_floor_adapter'
+import { resolveGeneratedToolUri } from '@/lib/retrieval/registry/generated_web_tool_bridge'
+
+describe('S5 probe: completeness_wiring vs compiled_floor_adapter resolution divergence', () => {
+  it('lists live_tools resolvable via generated bridge but NOT in the hand map', () => {
+    const distinctLiveTools = Array.from(new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool)))
+    const onlyViaGenerated: string[] = []
+    for (const lt of distinctLiveTools) {
+      const inHandMap = lt in LIVE_TOOL_TO_RETRIEVAL
+      const viaGenerated = resolveGeneratedToolUri(lt)
+      const viaFull = resolveLiveTool(lt)
+      if (!inHandMap && viaGenerated) onlyViaGenerated.push(lt)
+      // sanity
+      expect(viaFull).toBe(inHandMap ? LIVE_TOOL_TO_RETRIEVAL[lt] : viaGenerated)
+    }
+    console.log('distinct live_tools:', distinctLiveTools.length)
+    console.log('resolvable ONLY via generated bridge (invisible to completeness_wiring.ts):', onlyViaGenerated)
+    expect(onlyViaGenerated.length).toBeGreaterThanOrEqual(0) // informational
+  })
+})

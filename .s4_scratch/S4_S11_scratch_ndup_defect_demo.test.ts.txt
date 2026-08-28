@@ -1,0 +1,111 @@
+/**
+ * TEMPORARY S4 investigation scratch test — S11 lane (interpretation_sets
+ * sub-field of AcharyaReadingReceipt). NOT part of the deliverable; deleted
+ * after the audit run.
+ *
+ * §N.8 demonstrated-can-fail probe: `interpretation_sets[].status ===
+ * 'generated'` is meant to certify ">=3 genuinely DISTINCT candidate
+ * readings" (worker.ts's own system prompt + PPR-02). The ONLY structural
+ * guard against non-distinct candidates is `hasNearDuplicateCandidates`
+ * (worker.ts, defect-5b), a crude lexical-token-overlap heuristic
+ * (Jaccard-like ratio >= 0.8 over the smaller set = "near-duplicate"). The
+ * module's own doc comment concedes this is a "floor-raise... not a
+ * semantic guarantee" and "cannot guarantee every near-duplicate candidate
+ * set is caught".
+ *
+ * This test forces the underlying condition ("candidates are genuinely
+ * distinct readings") FALSE by constructing three candidates that are
+ * near-total SYNONYM PARAPHRASES of the exact same underlying judgment
+ * (career growth -> a position of authority -> via sustained hard work),
+ * using almost entirely disjoint vocabulary so the lexical-overlap ratio
+ * stays well under the 0.8 threshold. It then calls the REAL
+ * `generateInterpretationSets` (no mocking of worker.ts's own coercion
+ * logic) with an injected caller returning exactly this payload, and shows
+ * the entry still comes back `status: 'generated'` — i.e. the field reads
+ * as if genuine distinctness were verified, when the actual (semantic)
+ * condition the field claims to certify was never checked and is false.
+ */
+import { describe, it, expect, vi } from 'vitest'
+
+const mockGetEffectiveModel = vi.fn()
+vi.mock('@/lib/models/runtime_config', () => ({
+  getEffectiveModel: (...args: unknown[]) => mockGetEffectiveModel(...args),
+}))
+mockGetEffectiveModel.mockResolvedValue('gemini-2.5-flash')
+
+import { generateInterpretationSets, type InterpretationLlmCaller } from '../worker'
+import type { SignificantJudgment } from '../detect'
+
+function judgment(overrides: Partial<SignificantJudgment> = {}): SignificantJudgment {
+  return {
+    judgment_id: 'sig-domain_verdict-1',
+    category: 'domain_verdict',
+    block_id: 'blk-1-1',
+    claim_text: 'Your career shows strong potential this decade.',
+    detection_basis: "G2-A block role='verdict'",
+    ...overrides,
+  }
+}
+
+describe('S4 S11 audit — §N.8 demonstrated defect: interpretation_sets near-duplicate distinctness heuristic', () => {
+  it('three lexically-disjoint but SEMANTICALLY IDENTICAL candidates pass as status="generated" (genuine distinctness NOT actually verified)', async () => {
+    const j = judgment()
+
+    // All three candidates assert the IDENTICAL underlying reading — career
+    // growth culminating in a position of authority, driven by sustained
+    // hard work — restated with near-total synonym substitution. A human
+    // acharya reviewing these would call them one reading said three ways,
+    // not three "genuinely DISTINCT candidate readings... different
+    // interpretive conclusions" as the system prompt requires.
+    const candidates = [
+      {
+        reading:
+          'The native will achieve significant career growth and rise into a leadership position through consistent hard work.',
+        rationale: 'The tenth house lord is strong and well-aspected, supporting steady professional ascent.',
+      },
+      {
+        reading:
+          'Professional advancement is likely, with promotion to a position of authority resulting from sustained diligent effort.',
+        rationale: 'Dasha lord placement favors career elevation driven by disciplined ongoing labor.',
+      },
+      {
+        reading:
+          'Expect vocational success: the individual will attain a managerial role thanks to persistent industrious dedication.',
+        rationale: 'Benefic influence on the career axis correlates with earned advancement over time.',
+      },
+    ]
+
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates,
+            selected_index: 0,
+            selected_rationale:
+              'The first reading is strongest because it most directly follows the tenth-house dignity pattern observed in the chart.',
+            falsifier:
+              'This reading would be falsified if the tenth house lord loses strength or the current dasha period ends without any career promotion event occurring.',
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+
+    // The field reads as if genuine 3-way distinctness were confirmed...
+    expect(entry.status).toBe('generated')
+    expect(entry.candidates).toHaveLength(3)
+
+    // ...but the underlying condition the status claims to certify
+    // (candidates are genuinely DISTINCT interpretive conclusions) is FALSE
+    // here by construction: all three candidates assert the same claim
+    // (career growth -> authority position -> via hard work). No detector
+    // in the real pipeline (hasNearDuplicateCandidates's lexical-overlap
+    // check) caught this, because token overlap across the synonym-swapped
+    // candidates stays under the 0.8 threshold despite semantic identity.
+    console.log('[S4-S11] interpretation_sets §N.8 demo: entry.status =', entry.status, '(claims genuine distinctness)')
+    console.log('[S4-S11] candidates are semantic paraphrases of ONE reading:', candidates.map((c) => c.reading))
+  })
+})

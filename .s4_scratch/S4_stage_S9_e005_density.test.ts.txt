@@ -1,0 +1,117 @@
+/**
+ * E-005 re-measurement — S4/S9 lane.
+ *
+ * Feeds the REAL, live-captured reading (obtained 2026-08-28 via
+ * mcp__marsys-jis-direct__prashna_ask against the SYNTHETIC test chart
+ * 1c826d5a-41cb-4450-b4dc-59d440e5f75a, job_id e6870d9f-547b-436a-8f30-
+ * 216dd7e7697d, trace_id 498e3184-ae37-4a3a-b7fc-b5e645690008) through the
+ * REAL exported citation-counting/validation functions to get an honest,
+ * reproducible measurement instead of an assumption.
+ */
+import { describe, it, expect } from 'vitest'
+import { countSignalCitations, totalSignalCitations, validateCitations } from '@/lib/synthesis/citation_check'
+import { extractCitations, countCitations } from '@/lib/perf/heuristics/extract_citations'
+
+// Verbatim reading text from the live capture (footnote section included).
+const READING = `**Core Chart Synthesis & Dominant Mechanisms**
+For this Aries Ascendant, the chart's operational core is governed by a highly integrated triad spanning the 12th, 10th, and 8th houses. This manifests as a prominent closed house-lordship and dispositor circuit: Jupiter in the 10th (Capricorn) is disposited by Saturn in the 8th (Scorpio), which in turn is disposited by Mars in the 12th (Pisces), wrapping the chain back to Jupiter (ruler of Pisces)[^4]. Such an 8-10-12 loop intrinsically links career (10th) with crises, shared resources, or sudden transformations (8th), and isolation, foreign lands, or behind-the-scenes work (12th).
+
+Furthermore, network centrality analysis of the chart's architecture highlights House 8 and House 2 as dominant hub nodes. This indicates that themes of accumulated wealth, deep psychological transformation, and sudden upheavals act as the gravitational centers of the native's life.
+
+**Career & Professional Trajectory**
+Career matters carry an explicit structural tension—a computed promise-versus-denial contradiction—embedded in the chart's signatures[^3]. Jupiter, the planet of expansion, sits in the 10th house of career in its sign of debilitation (Capricorn). However, it achieves a potent Neecha Bhanga Raja Yoga (debilitation cancellation) that is ratified by a concordant "Friend" dignity in the D9 Navamsha[^1]. This promises early struggles or a sense of professional misplacement that is eventually redeemed by a significant rise.
+
+Because the 10th lord (Saturn) is placed in the 8th house, the professional trajectory is rarely linear. It favors fields involving research, dealing with other people's crises, hidden knowledge, or profound systemic transformations. The 8-10-12 circuit dictates that working out of the public eye, in foreign environments, or in highly specialized, isolated settings will ultimately fuel professional success.
+
+**Wealth & Financial Patterns**
+The wealth axis is primarily governed by Venus, the 2nd lord (Taurus), which is exceptionally strong. Venus is exalted in the 12th house (Pisces) and cross-checks with concordant strength in the Navamsha[^2]. An exalted 2nd lord in the 12th typically indicates earning from foreign sources, multinational institutions, or significant expenditures on luxury, philanthropy, and travel.
+
+However, there is a notable divergence regarding Jupiter's influence on wealth: while Jupiter functions powerfully in the D1 due to its Neecha Bhanga, its wealth ratification explicitly fails when tested against the D2 Hora chart[^5]. This divergence suggests that while money flows easily (especially via foreign or 12th house avenues), the native's ability to retain liquid wealth or accumulate traditional assets may face intermittent structural hurdles. The 11th house of gains contains the Sun and a severely combust Mercury, further indicating that financial inflows may come with bureaucratic delays or ego-related complexities.
+
+**Relationships & Interpersonal Dynamics**
+The relationship axis features the nodal presence of Ketu in the 7th house (Libra) and Rahu in the 1st (Aries). This naturally introduces a degree of detachment, unconventionality, or spiritualization into partnerships. Because the 7th lord, Venus, is exalted in the 12th house (bed pleasures, loss, subconscious), there is a deeply romantic and potentially sacrificial quality to love. The partner may be from a foreign background or met in an isolated or highly private setting.
+
+We also observe systemic domain contradictions regarding character[^6] and health[^7], reflecting the immense psychological strain between the assertion of self (Rahu in Aries) and the intense subconscious undercurrents of the 8th and 12th houses. The native's internal world is intensely private, shaped by the 12th house stellium (Mars, Venus).
+
+**Current Dasha & Timing**
+*Anchor Date: August 27, 2026*
+The native is currently in the final weeks of the Saturn Mahadasha / Rahu Antardasha (running from December 2023 to October 10, 2026). This is a classical chidra (transitional) and highly karmic phase. Saturn sits in the 8th house of sudden events, and Rahu is in the 1st house of self. This combination frequently triggers profound identity shifts, sudden structural changes in life direction, or intense psychological recalibrations. It is a period of "shedding skin."
+
+On October 10, 2026, the native will enter the Saturn MD / Jupiter AD. This pivotal shift will activate the 8-10-12 dispositor circuit at its root. Because Jupiter enjoys Neecha Bhanga and sits in the 10th house, this upcoming period promises a professional renaissance and the resolution of prior career crises. The delays and struggles of the 8th house Saturn will find constructive, expansive outlets through the 10th house Jupiter, marking a time of significant professional redemption and public visibility after a phase of deep internal reorganization.
+
+[^1]: c48b591f-4827-4f17-8104-6cd8bf1e254a
+[^2]: b102596c-42c6-4dc0-b276-c1bfa2cf5562
+[^3]: 2e03c850-6f9b-4c6d-9ea9-8cd7ac9092b1
+[^4]: df4fc8c2-7f66-44ff-a91d-bf2b9aaf7b4f
+[^5]: c436bcf8-10ea-4a5a-b6c6-437b15526233
+[^6]: b982ad9e-d486-4c22-b61b-406bb048f0cf
+[^7]: 3e20d601-ddaf-4912-b24d-aeee0354e6f9`
+
+describe('E-005 re-measurement on a real, live-captured many-claim reading (2026-08-28)', () => {
+  it('reports GFM footnote count (structural) vs SIG.MSR.NNN signal-id count (what citation_check.ts actually looks for)', () => {
+    const gfmFootnoteRefs = READING.match(/\[\^\d+\](?!:)/g) ?? []
+    const gfmFootnoteDefs = READING.match(/^\[\^\d+\]:/gm) ?? []
+    console.log(`[E-005] GFM footnote inline refs = ${gfmFootnoteRefs.length}, definitions = ${gfmFootnoteDefs.length}`)
+    expect(gfmFootnoteRefs.length).toBe(7)
+    expect(gfmFootnoteDefs.length).toBe(7)
+
+    // What the REAL production citation counter (citation_check.ts) sees:
+    const sigCount = countSignalCitations(READING)
+    const sigTotal = totalSignalCitations(READING)
+    console.log(`[E-005] countSignalCitations (SIG.MSR.NNN pattern) = ${sigCount}, totalSignalCitations = ${sigTotal}`)
+    // The footnote DEFINITIONS in this real reading are raw evidence-row UUIDs,
+    // not SIG.MSR.NNN ids -- so the production signal-id counter finds ZERO,
+    // even though 7 real footnotes are structurally present.
+    expect(sigCount).toBe(0)
+
+    // What the extract_citations.ts heuristic (perf/compliance path) sees:
+    const extracted = extractCitations(READING)
+    console.log(`[E-005] extractCitations() found: ${JSON.stringify(extracted)}`)
+    // It DOES count the bare [^N] GFM refs (format-agnostic), so it reports 7.
+    expect(countCitations(READING)).toBe(7)
+  })
+
+  it('runs the real validateCitations() gate against this reading for a holistic query class, using its own SIG.MSR pattern', () => {
+    const contextJson = JSON.stringify({ note: 'no SIG.MSR ids in this evidence set for this door' })
+    const result = validateCitations(READING, contextJson, 'holistic')
+    console.log(`[E-005] validateCitations gate_result=${result.gate_result} reason="${result.gate_reason}"`)
+    // 0 SIG.MSR ids in output -> layer1_count 0 -> for a non-prescriptive class
+    // (holistic is not in PRESCRIPTIVE_CLASSES) this is a silent PASS, not a
+    // WARN/ERROR -- i.e. the gate would say nothing is wrong even though the
+    // citation format never matched at all.
+    expect(result.layer1_count).toBe(0)
+    expect(result.gate_result).toBe('PASS')
+  })
+
+  it('measures citation DENSITY: footnotes per distinct factual/computed claim, counted by hand against the real prose', () => {
+    // Distinct factual/computed astrological claims in the reading (placements,
+    // dignities, yogas, dasha dates, structural claims) -- counted manually,
+    // enumerated in the accompanying report for audit. This is the honest,
+    // measured denominator E-005 asked for, not an assumption.
+    const distinctFactualClaims = [
+      'Jupiter 10th Capricorn debilitated + Neecha Bhanga + D9 Friend dignity (cited [^1])',
+      'Dispositor chain Jupiter->Saturn->Mars->Jupiter, 8-10-12 loop (cited [^4])',
+      'Network centrality: House 8 and House 2 as dominant hub nodes (UNCITED)',
+      'Promise-vs-denial career contradiction (cited [^3])',
+      'Venus 2nd lord exalted 12th Pisces + Navamsha concordance (cited [^2])',
+      'Jupiter D2 Hora wealth ratification fails (cited [^5])',
+      '11th house: Sun + severely combust Mercury (UNCITED)',
+      'Ketu 7th house (Libra), Rahu 1st house (Aries) placement (UNCITED)',
+      '12th house stellium: Mars + Venus (UNCITED)',
+      'Character domain contradiction (cited [^6])',
+      'Health domain contradiction (cited [^7])',
+      'Saturn MD / Rahu AD window, Dec 2023 - Oct 10 2026 (UNCITED)',
+      'Saturn 8th house / Rahu 1st house dasha-lord placement restated (UNCITED)',
+      'Oct 10 2026 transition to Saturn MD / Jupiter AD (UNCITED)',
+    ]
+    const cited = distinctFactualClaims.filter((c) => c.includes('cited')).length
+    const uncited = distinctFactualClaims.filter((c) => c.includes('UNCITED')).length
+    const density = cited / distinctFactualClaims.length
+    console.log(
+      `[E-005] distinct factual/computed claims = ${distinctFactualClaims.length}, cited = ${cited}, uncited = ${uncited}, density = ${(density * 100).toFixed(1)}%`,
+    )
+    expect(distinctFactualClaims.length).toBe(14)
+    expect(cited).toBe(7)
+    expect(uncited).toBe(7)
+  })
+})

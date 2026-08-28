@@ -1,0 +1,10 @@
+1787874570.384128
+poll1 elapsed_ms=8726 pct=44 msg="11/~25 tool calls made, 0.7s elapsed"
+1787874575.7055318
+poll2 elapsed_ms=16313 pct=44 msg="11/~25 tool calls made, 0.7s elapsed" (STALE - same as poll1)
+1787874579.451713
+poll3 elapsed_ms=21604 pct=44 msg=STALE same
+1787874583.481856
+poll4 elapsed_ms=25715 pct=44 msg=STALE same
+1787874590.046043
+poll5 elapsed_ms=29150 pct=44 msg=STALE same

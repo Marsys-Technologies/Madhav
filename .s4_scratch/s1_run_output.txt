@@ -1,0 +1,162 @@
+====================================================================================================
+PARITY CHECK — MCP intent_scope_classifier.ts  vs  Portal scope_classifier.ts
+====================================================================================================
+
+Q: "What dasha am I running now?"
+  MCP    : intent=dasha_timing domains=["general"] width=broad depth=deep horizon=present interv=none ent=native fb=false route=deep
+  Portal : intent=dasha_timing domains=["general"] width=standard depth=standard horizon=present interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Where is Saturn transiting currently?"
+  MCP    : intent=transit_analysis domains=["general"] width=broad depth=deep horizon=present interv=none ent=native fb=false route=deep
+  Portal : intent=transit_analysis domains=["general"] width=standard depth=standard horizon=present interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Do I have a Gaja Kesari yoga?"
+  MCP    : intent=yoga_identification domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=yoga_identification domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "What is the Shadbala of my Jupiter?"
+  MCP    : intent=planet_strength domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=planet_strength domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Analyze my 10th house lord"
+  MCP    : intent=house_analysis domains=["career","property"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=house_analysis domains=["career","property"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "What remedy should I do for Saturn?"
+  MCP    : intent=remedy_lookup domains=["general"] width=broad depth=deep horizon=atemporal interv=remedy ent=native fb=false route=deep
+  Portal : intent=remedy_lookup domains=["general"] width=standard depth=standard horizon=atemporal interv=remedy ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "What is my birth nakshatra and tithi?"
+  MCP    : intent=panchanga domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=reference fb=false route=deep
+  Portal : intent=panchanga domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=reference fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "What does BPHS say about the 8th lord?"
+  MCP    : intent=classical_rule domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=reference fb=false route=deep
+  Portal : intent=classical_rule domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=reference fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Give me a full reading of my chart"
+  MCP    : intent=chart_overview domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=chart_overview domains=["general"] width=broad depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: depth(mcp=deep vs portal=standard)
+
+Q: "Was my last prediction accurate?"
+  MCP    : intent=prediction_calibration domains=["general"] width=broad depth=deep horizon=past interv=none ent=native fb=false route=deep
+  Portal : intent=prediction_calibration domains=["general"] width=standard depth=standard horizon=past interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Assess my career prospects"
+  MCP    : intent=domain_assessment domains=["career"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=domain_assessment domains=["career"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "What sign is my Moon in?"
+  MCP    : intent=unknown domains=["general"] width=narrow depth=shallow horizon=atemporal interv=none ent=native fb=true route=narrow
+  Portal : intent=unknown domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=true
+  >>> DIVERGE on: width(mcp=narrow vs portal=standard), depth(mcp=shallow vs portal=standard)
+
+Q: "What is my career direction and its timing over the next few years?"
+  MCP    : intent=unknown domains=["career"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=true route=deep
+  Portal : intent=domain_assessment domains=["career"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: intent(mcp=unknown vs portal=domain_assessment), width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard), fallback_recommended(mcp=true vs portal=false)
+
+Q: "What is my finances outlook?"
+  MCP    : intent=domain_assessment domains=["wealth"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=domain_assessment domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: domains(mcp=["wealth"] vs portal=["general"]), width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "Are there any surgeries indicated for my health?"
+  MCP    : intent=unknown domains=["health"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=true route=deep
+  Portal : intent=domain_assessment domains=["health"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: intent(mcp=unknown vs portal=domain_assessment), width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard), fallback_recommended(mcp=true vs portal=false)
+
+Q: "What are my relationships prospects?"
+  MCP    : intent=domain_assessment domains=["marriage"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=false route=deep
+  Portal : intent=domain_assessment domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=false
+  >>> DIVERGE on: domains(mcp=["marriage"] vs portal=["general"]), width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "hey there, can you help me out with something?"
+  MCP    : intent=unknown domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=true route=deep
+  Portal : intent=unknown domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=true
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: "asdfqwer zxcv"
+  MCP    : intent=unknown domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=true route=deep
+  Portal : intent=unknown domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=true
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+Q: ""
+  MCP    : intent=unknown domains=["general"] width=broad depth=deep horizon=atemporal interv=none ent=native fb=true route=deep
+  Portal : intent=unknown domains=["general"] width=standard depth=standard horizon=atemporal interv=none ent=native fb=true
+  >>> DIVERGE on: width(mcp=broad vs portal=standard), depth(mcp=deep vs portal=standard)
+
+TOTAL divergences: 19 / 19 queries
+
+====================================================================================================
+ADVERSARIAL AMBIGUITY PROBE
+====================================================================================================
+Q: "tell me about it"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+Q: "what about the thing we discussed"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+Q: "is it good or bad"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+Q: "more please"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+Q: "yes"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+Q: "go on"
+  MCP    : intent=unknown confidence=0 fallback_recommended=true
+  Portal : intent=unknown confidence=0 fallback_recommended=true
+
+====================================================================================================
+LATENCY BENCH
+====================================================================================================
+MCP    classifyScope: n=200 mean=0.0047ms p50=0.0044ms p95=0.0082ms max=0.0139ms
+Portal classifyScope: n=200 mean=0.0032ms p50=0.0028ms p95=0.0054ms max=0.0106ms
+
+====================================================================================================
+CLARIFICATION-TRIGGER PRECISION (both directions)
+====================================================================================================
+
+-- MCP classifier --
+  [OK] "hey there, can you help me out with something?" -> fallback_recommended=true (expected true)
+  [OK] "asdfqwer zxcv" -> fallback_recommended=true (expected true)
+  [OK] "" -> fallback_recommended=true (expected true)
+  [OK] "tell me about it" -> fallback_recommended=true (expected true)
+  [OK] "is it good or bad" -> fallback_recommended=true (expected true)
+MCP  should-clarify (positive): 5/5 correct
+  [OK] "What dasha am I running now?" -> fallback_recommended=false (expected false)
+  [OK] "Assess my career prospects" -> fallback_recommended=false (expected false)
+  [OK] "What remedy should I do for Saturn?" -> fallback_recommended=false (expected false)
+  [OK] "Give me a full reading of my chart" -> fallback_recommended=false (expected false)
+  [OK] "What is my wealth outlook?" -> fallback_recommended=false (expected false)
+MCP  should-NOT-clarify (negative): 5/5 correct
+
+-- Portal classifier --
+  [OK] "hey there, can you help me out with something?" -> fallback_recommended=true (expected true)
+  [OK] "asdfqwer zxcv" -> fallback_recommended=true (expected true)
+  [OK] "" -> fallback_recommended=true (expected true)
+  [OK] "tell me about it" -> fallback_recommended=true (expected true)
+  [OK] "is it good or bad" -> fallback_recommended=true (expected true)
+Portal  should-clarify (positive): 5/5 correct
+  [OK] "What dasha am I running now?" -> fallback_recommended=false (expected false)
+  [OK] "Assess my career prospects" -> fallback_recommended=false (expected false)
+  [OK] "What remedy should I do for Saturn?" -> fallback_recommended=false (expected false)
+  [OK] "Give me a full reading of my chart" -> fallback_recommended=false (expected false)
+  [OK] "What is my wealth outlook?" -> fallback_recommended=false (expected false)
+Portal  should-NOT-clarify (negative): 5/5 correct
+
+CHART ANCHOR (never queried live, referenced only as classifier input for entitlement logic): 1c826d5a-41cb-4450-b4dc-59d440e5f75a

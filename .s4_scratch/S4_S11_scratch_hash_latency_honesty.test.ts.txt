@@ -1,0 +1,226 @@
+/**
+ * TEMPORARY S4 investigation scratch test — S11 (TurnProvenance +
+ * AcharyaReadingReceipt) lane. NOT part of the deliverable; deleted after
+ * the audit run. Exercises the REAL assembleAcharyaReadingReceipt against
+ * realistic fixtures to (a) prove hash stability across two assembles of
+ * the identical logical input, (b) measure assembly latency (N=20), and
+ * (c) demonstrate the prose<->receipt grounding gap for an uncited claim.
+ */
+import { describe, it, expect } from 'vitest'
+
+import { assembleAcharyaReadingReceipt } from '../assemble'
+import type { AssembleAcharyaReadingReceiptArgs } from '../assemble'
+import type { OpenBlock, DetectedCitationRow } from '@/lib/pariprashna/pipeline/reading_parts'
+import type { ResolvedTurnCitation } from '@/lib/pariprashna/citations/stream_wiring'
+import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
+import type { TurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
+
+const FIXED_NOW = new Date('2026-08-28T09:15:00.000Z')
+const SYNTH_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+function provenanceStamp(): TurnProvenanceStamp {
+  return {
+    build_id: 'build-s4-11',
+    priors_version: 'priors-v3',
+    formula_versions: { salience_formula_ver: 'v2' },
+    ranking_config: { mode: 'composite_v1' },
+    now_context_date: '2026-08-28',
+    computed_at: '2026-08-28T09:14:00.000Z',
+  }
+}
+
+function toolBundle(toolName: string, resultsContent: string[]): ToolBundle {
+  return {
+    tool_bundle_id: `tb-${toolName}`,
+    tool_name: toolName,
+    tool_version: '1.0',
+    invocation_params: {},
+    results: resultsContent.map((c) => ({ content: c })),
+    served_from_cache: false,
+    latency_ms: 12,
+    result_hash: 'sha256:abc',
+    schema_version: '1.0',
+  }
+}
+
+function completenessReceiptFixture(): WebCompletenessReceipt {
+  return {
+    served: [
+      { floor_item_id: 'p1', source: 'tool_a' },
+      { floor_item_id: 'p2', source: 'tool_b' },
+    ],
+    empty: [{ floor_item_id: 'p3', empty_reason: 'route_empty' }],
+    dark: [{ floor_item_id: 'p4', cr_row: 'CR-42' }],
+    coverage: { floor_item_total: 4, served: 2, empty: 1, dark: 1 },
+    channel: 'web',
+    channel_note: '1 of 4 floor items have no web-executable retrieval tool',
+    web_dark_primitive_ids: ['p4'],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// A "realistic" turn: 6 committed prose blocks, 14 citations found/resolved,
+// two calibration-bearing tool calls, typed confidence on.
+// ---------------------------------------------------------------------------
+function realisticArgs(): AssembleAcharyaReadingReceiptArgs {
+  const committedBlocks: OpenBlock[] = Array.from({ length: 6 }, (_, i) => ({
+    id: `blk-${i}-0`,
+    role: 'prose',
+    text:
+      `This is synthesized reading paragraph ${i}. It references signal [${i * 2 + 1}] and ` +
+      `also [${i * 2 + 2}] as grounding for the claim made in this block regarding chart ${SYNTH_CHART_ID}.`,
+  }))
+
+  const citationsFound: DetectedCitationRow[] = Array.from({ length: 12 }, (_, i) => ({
+    index: i + 1,
+    signal_id: `SIG.MSR.${String(i + 1).padStart(3, '0')}`,
+    layer: i % 3 === 0 ? 'L1' : 'L2.5',
+  }))
+
+  const resolvedCitations: ResolvedTurnCitation[] = citationsFound.map((c) => ({
+    index: c.index,
+    signal_id: c.signal_id,
+    layer: c.layer,
+    snippet: `snippet for ${c.signal_id}`,
+    grade: (['primary', 'supporting', 'contextual', 'unverified', 'prior_reading'] as const)[c.index % 5],
+  }))
+
+  const validToolResults: ToolBundle[] = [
+    toolBundle('query_calibration', [
+      JSON.stringify({
+        verdict_distribution: [
+          { composite_verdict: 'confirmed', n: 22, mean_score: 0.812 },
+          { composite_verdict: 'partial', n: 9, mean_score: 0.51234 },
+        ],
+      }),
+    ]),
+    toolBundle('query_insights', [
+      JSON.stringify({ calibration_summary: { total_matches: 31, mean_composite_score: 0.643219 } }),
+    ]),
+    toolBundle('ganita_chart_facts_get', ['{"facts":[]}']),
+  ]
+
+  return {
+    turnId: 'turn-s4-11-bench',
+    conversationId: 'conv-s4-11-bench',
+    chartId: SYNTH_CHART_ID,
+    now: FIXED_NOW,
+    plan: { domains: ['career', 'health', 'relationship'] },
+    committedBlocks,
+    accumulatedText: committedBlocks.map((b) => b.text).join('\n\n'),
+    citationsFound,
+    citationRewriteEnabled: true,
+    resolvedCitations,
+    citationHallucinationCount: 0,
+    completenessReceipt: completenessReceiptFixture(),
+    safetyDecision: undefined,
+    validToolResults,
+    provenanceStamp: provenanceStamp(),
+    typedConfidenceEnabled: true,
+  }
+}
+
+describe('S4 S11 audit — hash stability (item 4a)', () => {
+  it('assembling the SAME logical receipt twice (identical inputs, fixed `now`) yields an IDENTICAL receipt_hash', () => {
+    const args = realisticArgs()
+    const r1 = assembleAcharyaReadingReceipt(args)
+    const r2 = assembleAcharyaReadingReceipt(args)
+    expect(r1.receipt_hash).toBe(r2.receipt_hash)
+    expect(r1.receipt_hash).toMatch(/^[0-9a-f]{64}$/)
+    console.log('[S4-S11] hash stability: r1 === r2 ->', r1.receipt_hash === r2.receipt_hash, r1.receipt_hash)
+  })
+
+  it('a genuinely different logical input (one extra citation) changes the hash', () => {
+    const args = realisticArgs()
+    const r1 = assembleAcharyaReadingReceipt(args)
+    const args2 = { ...args, citationHallucinationCount: 1 }
+    const r2 = assembleAcharyaReadingReceipt(args2)
+    expect(r1.receipt_hash).not.toBe(r2.receipt_hash)
+  })
+})
+
+describe('S4 S11 audit — latency (item 2)', () => {
+  it('measures p50/p95 over N=20 assembles of a realistic-size receipt', () => {
+    const N = 20
+    const samples: number[] = []
+    // warm-up (JIT) — not counted
+    for (let i = 0; i < 3; i++) assembleAcharyaReadingReceipt(realisticArgs())
+    for (let i = 0; i < N; i++) {
+      const args = realisticArgs()
+      const t0 = process.hrtime.bigint()
+      assembleAcharyaReadingReceipt(args)
+      const t1 = process.hrtime.bigint()
+      samples.push(Number(t1 - t0) / 1e6) // ms
+    }
+    samples.sort((a, b) => a - b)
+    const p50 = samples[Math.floor(N * 0.5)]
+    const p95 = samples[Math.floor(N * 0.95)]
+    console.log('[S4-S11] latency samples (ms):', samples.map((s) => s.toFixed(3)))
+    console.log(`[S4-S11] latency p50=${p50.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${samples[N - 1].toFixed(3)}ms`)
+    expect(p50).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('S4 S11 audit — failure-honesty: prose<->receipt grounding gap (item 3)', () => {
+  it('a substantive prose claim with NO citation marker produces ZERO footprint in facts_consumed/derivation_chains, and nothing in the receipt or validator flags it', () => {
+    const uncitedClaimBlock: OpenBlock = {
+      id: 'blk-0-0',
+      role: 'prose',
+      text:
+        'Saturn\'s Mahadasha begins in early 2027 and will bring five years of career ' +
+        'stability and a confirmed promotion by 2029. This is asserted with no bracket ' +
+        'citation marker anywhere in this sentence.',
+    }
+    const citedClaimBlock: OpenBlock = {
+      id: 'blk-0-1',
+      role: 'prose',
+      text: 'Separately, the native\'s Lagna lord is well-placed per [1].',
+    }
+    const citationsFound: DetectedCitationRow[] = [{ index: 1, signal_id: 'SIG.MSR.001', layer: 'L1' }]
+    const resolvedCitations: ResolvedTurnCitation[] = [
+      { index: 1, signal_id: 'SIG.MSR.001', layer: 'L1', snippet: 'x', grade: 'primary' },
+    ]
+
+    const receipt = assembleAcharyaReadingReceipt({
+      turnId: 't-gap',
+      conversationId: 'c-gap',
+      chartId: SYNTH_CHART_ID,
+      now: FIXED_NOW,
+      plan: { domains: ['career'] },
+      committedBlocks: [uncitedClaimBlock, citedClaimBlock],
+      accumulatedText: `${uncitedClaimBlock.text}\n\n${citedClaimBlock.text}`,
+      citationsFound,
+      citationRewriteEnabled: true,
+      resolvedCitations,
+      citationHallucinationCount: 0,
+      completenessReceipt: completenessReceiptFixture(),
+      safetyDecision: undefined,
+      validToolResults: [],
+      provenanceStamp: provenanceStamp(),
+    })
+
+    // The receipt's ENTIRE grounding inventory (facts_consumed + every block's
+    // fact_refs) has exactly ONE entry — the cited claim. The uncited
+    // "Saturn Mahadasha ... confirmed promotion by 2029" claim (a specific,
+    // falsifiable, time-indexed predictive assertion) has NO representation
+    // anywhere in the receipt.
+    expect(receipt.facts_consumed).toHaveLength(1)
+    const uncitedBlockChain = receipt.derivation_chains.find((d) => d.block_id === 'blk-0-0')
+    expect(uncitedBlockChain?.fact_refs).toEqual([])
+
+    // honest_gaps only reports floor items the completeness receipt itself
+    // knows about (p3/p4) — it has no mechanism to know an uncited PROSE
+    // CLAIM exists at all, so it cannot and does not flag this block.
+    expect(receipt.honest_gaps.gaps?.map((g) => g.floor_item_id).sort()).toEqual(['p3', 'p4'])
+
+    console.log(
+      '[S4-S11] prose<->receipt gap: uncited block fact_refs =',
+      JSON.stringify(uncitedBlockChain?.fact_refs),
+      '| facts_consumed total =',
+      receipt.facts_consumed.length,
+      '| honest_gaps =',
+      JSON.stringify(receipt.honest_gaps.gaps),
+    )
+  })
+})

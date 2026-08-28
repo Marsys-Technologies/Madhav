@@ -1,0 +1,34 @@
+import { describe, it, expect } from 'vitest'
+import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
+
+describe('S9 register-leak lint — evasion-class probe (false-negative surface)', () => {
+  it('EVADES: lowercase register acronym is NOT redacted (near-miss = telemetry-only)', () => {
+    const r = lintReaderProse('this is grounded in the msr for this chart.')
+    expect(r.clean).toContain('msr') // confirmed leak survives
+    expect(r.leakCount).toBe(0)
+  })
+
+  it('EVADES: mixed-case register acronym ("Msr") is NOT redacted (not in near-miss set either)', () => {
+    const r = lintReaderProse('this is grounded in the Msr for this chart.')
+    expect(r.clean).toContain('Msr')
+    expect(r.leakCount).toBe(0)
+  })
+
+  it('EVADES: asset-id with uppercase prefix ("BO_laksana") is NOT matched (pattern requires lowercase prefix)', () => {
+    const r = lintReaderProse('Derived from BO_laksana for this native.')
+    expect(r.clean).toContain('BO_laksana')
+    expect(r.leakCount).toBe(0)
+  })
+
+  it('EVADES: spaced-out acronym ("M S R") is NOT matched', () => {
+    const r = lintReaderProse('Grounded in the M S R for this chart.')
+    expect(r.clean).toContain('M S R')
+    expect(r.leakCount).toBe(0)
+  })
+
+  it('CAUGHT (control): standard uppercase acronym IS redacted', () => {
+    const r = lintReaderProse('Grounded in the MSR for this chart.')
+    expect(r.clean).not.toMatch(/\bMSR\b/)
+    expect(r.leakCount).toBeGreaterThan(0)
+  })
+})

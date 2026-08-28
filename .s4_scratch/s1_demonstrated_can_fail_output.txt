@@ -1,0 +1,30 @@
+
+ RUN  v4.1.8 /Users/Dev/Vibe-Coding/Apps/Madhav/.clone/worktrees/pariprashna-v3-s4/platform
+
+ ❯ |node| src/__tests__/lib/vidhi/s4_scratch_s1_parity.test.ts (2 tests | 1 failed) 7ms
+     × MCP twin SHOULD also resolve to domain_assessment for door parity (PPR-30) — currently RED 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| src/__tests__/lib/vidhi/s4_scratch_s1_parity.test.ts > S4/S1 SCRATCH — MCP vs Portal parity on the W6.1 domain-inferred-intent query > MCP twin SHOULD also resolve to domain_assessment for door parity (PPR-30) — currently RED
+AssertionError: expected 'unknown' to be 'domain_assessment' // Object.is equality
+
+Expected: "domain_assessment"
+Received: "unknown"
+
+ ❯ src/__tests__/lib/vidhi/s4_scratch_s1_parity.test.ts:31:34
+     29|     // This assertion is expected to FAIL on the current MCP source, p…
+     30|     // W6.1 fix was never ported to the MCP twin (cross-door divergenc…
+     31|     expect(r.scope_tuple.intent).toBe('domain_assessment')
+       |                                  ^
+     32|     expect(r.fallback_recommended).toBe(false)
+     33|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  05:17:06
+   Duration  160ms (transform 24ms, setup 14ms, import 42ms, tests 7ms, environment 0ms)
+

@@ -1,0 +1,201 @@
+/**
+ * S4 (S9 lane) scratch integration test — NOT part of the committed suite.
+ *
+ * Demonstrated-can-fail proof for register_leak_lint.ts's 5 real call points:
+ *   1. synthesis_stage.ts:827  -> lintReaderProse(event.text)               [delta path, flag OFF]
+ *   2. reading_parts.ts:205    -> lintReaderProse(this.currentBlock.text)   [commitBlock whole-block backstop]
+ *   3. reading_parts.ts:463    -> lintReaderProse(value)                    [scrubToolArgs / scrubValue]
+ *   4. citations/rewriter.ts:217 -> lintReaderProse(raw, resolver)          [flushHold malformed-sentinel path]
+ *   5. citations/rewriter.ts:330 -> lintReaderProse(text, resolver)         [lintEmit, the rewriter's single exit]
+ *   6. reader_text/review.ts:40  -> lintReaderProse(entry.reader_text)      [offline catalog-freeze review step]
+ *
+ * Each test seeds a KNOWN leak pattern (a register acronym, an asset id, a
+ * table name, a fact_id namespace token) through the REAL exported function
+ * at that call point (not a re-implementation) and asserts the leak is gone
+ * from the observable output. Also captures p50/p95 latency for N=20 calls
+ * to runValidationStage's underlying validateCitationsForStream.
+ */
+import { describe, it, expect } from 'vitest'
+
+import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
+import { ReadingPartsAssembler, scrubToolArgs } from '@/lib/pariprashna/pipeline/reading_parts'
+import { CitationStreamRewriter } from '@/lib/pariprashna/citations/rewriter'
+import { reviewEntry } from '@/lib/pariprashna/reader_text/review'
+import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { CitationResolver } from '@/lib/pariprashna/citations/types'
+import type { ReaderTextEntry, MsrSignal } from '@/lib/pariprashna/reader_text/types'
+import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
+
+const SYNTHETIC_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+function fakeEmitter(flags: unknown[]): PariprashnaEmitter {
+  return {
+    flag: (f: unknown) => flags.push(f),
+    blockOpen: () => {},
+    blockDelta: () => {},
+    blockCommit: () => {},
+  } as unknown as PariprashnaEmitter
+}
+
+// ── 1. synthesis_stage.ts:827 real path (deltaLint = lintReaderProse(event.text)) ──
+describe('call point 1: synthesis_stage.ts:827 delta-lint (flag-OFF direct path)', () => {
+  it('a raw model delta containing a register acronym is scrubbed before it would hit the wire', () => {
+    // This is EXACTLY the expression at synthesis_stage.ts:827.
+    const event = { text: 'This claim is grounded in the CDLM and the bo_laksana asset.' }
+    const deltaLint = lintReaderProse(event.text)
+    expect(deltaLint.leakCount).toBeGreaterThan(0)
+    expect(deltaLint.clean).not.toMatch(/\bCDLM\b/)
+    expect(deltaLint.clean).not.toMatch(/\bbo_laksana\b/)
+  })
+})
+
+// ── 2. reading_parts.ts:205 commitBlock whole-block backstop ──────────────────
+describe('call point 2: reading_parts.ts commitBlock() whole-block lint backstop', () => {
+  it('a leak split across two delta chunks (invisible to a per-delta lint) is caught at commit time', () => {
+    const flags: unknown[] = []
+    const a = new ReadingPartsAssembler(fakeEmitter(flags), 1)
+    const blk = a.ensureBlock('prose')
+    // Split "CGM" itself across two appendProse calls so NO single delta ever
+    // contains the full token -- the exact case the file's own comment names
+    // as commitBlock's reason to exist.
+    a.appendProse(blk, 'Per the C')
+    a.appendProse(blk, 'GM cross-reference, this holds.')
+    expect(blk.text).toContain('CGM') // pre-commit: still raw, unlinted
+    a.commitBlock()
+    expect(blk.text).not.toMatch(/\bCGM\b/)
+    expect(flags.some((f) => (f as { code?: string }).code === 'register_leak_scrubbed')).toBe(true)
+  })
+})
+
+// ── 3. reading_parts.ts:463 scrubToolArgs / scrubValue ─────────────────────────
+describe('call point 3: reading_parts.ts scrubToolArgs (tool-call args persistence path)', () => {
+  it('an internal table-name token inside a nested tool-arg string is redacted before persistence', () => {
+    const { args, redacted } = scrubToolArgs({
+      chart_id: SYNTHETIC_CHART_ID, // schema key, NOT prose -- must survive untouched
+      note: 'derived from bodha_signals for this chart',
+      nested: { detail: 'see UCN section 4 for context' },
+    })
+    expect(redacted).toBe(true)
+    expect(args.chart_id).toBe(SYNTHETIC_CHART_ID) // key/value schema field preserved
+    expect(String(args.note)).not.toMatch(/\bbodha_signals\b/)
+    expect(JSON.stringify((args.nested as Record<string, unknown>).detail)).not.toMatch(/\bUCN\b/)
+  })
+})
+
+// ── 4 & 5. citations/rewriter.ts:217 (flushHold) and :330 (lintEmit) ───────────
+describe('call points 4/5: citations/rewriter.ts TurnCitationStream', () => {
+  const resolver: CitationResolver = {
+    resolve: () => null,
+    readerLabel: () => null,
+  }
+
+  it('lintEmit (line 330): plain prose leak flowing through the pass-mode path is scrubbed', () => {
+    const events: unknown[] = []
+    const stream = new CitationStreamRewriter({
+      resolver,
+      modelId: 'test-model',
+      onWireEvent: (e) => events.push(e),
+    })
+    const out = stream.write('Grounded in the MSR and the ga_chart_service asset for this native. ')
+    expect(out.text).not.toMatch(/\bMSR\b/)
+    expect(out.text).not.toMatch(/\bga_chart_service\b/)
+  })
+
+  it('flushHold (line 217): a malformed/unclosed sentinel body exceeding the byte ceiling is scrubbed on forced flush', () => {
+    const events: unknown[] = []
+    const stream = new CitationStreamRewriter({
+      resolver,
+      modelId: 'test-model',
+      onWireEvent: (e) => events.push(e),
+    })
+    // Open a sentinel that references CGM inside its (never-closed) body, then
+    // exceed MAX_HOLDBACK_BYTES (64) so flushHold's byte-ceiling path fires
+    // synchronously inside this single write() call.
+    const openerBody = '⟦cite:CGM-leak-inside-unclosed-sentinel-body-padding-to-exceed-64-bytes-total'
+    expect(Buffer.byteLength(openerBody, 'utf8')).toBeGreaterThan(64)
+    const out = stream.write(openerBody)
+    // The forced flush must have run the lint over the held bytes -- assert
+    // no raw CGM survives in emitted text, and a malformed_sentinel flag fired.
+    expect(out.text).not.toMatch(/\bCGM\b/)
+    expect(out.events.some((e) => (e as { flag?: string }).flag === 'malformed_sentinel')).toBe(true)
+  })
+})
+
+// ── 6. reader_text/review.ts:40 (catalog-freeze offline review step) ──────────
+describe('call point 6: reader_text/review.ts reviewEntry', () => {
+  it('a catalog entry whose authored reader_text leaks a register acronym fails review and is scrubbed in clean_text', () => {
+    const entry: ReaderTextEntry = {
+      signal_id: 'SIG.MSR.001',
+      reader_text: 'This finding is confirmed by the RM and the CDLM cross-reference.',
+      grade: 'supporting',
+      grounding_note: 'scratch test entry -- not a real catalog signal',
+      catalog_discrepancy_note: '',
+    }
+    const signal: MsrSignal | null = null
+    const reviewed = reviewEntry(entry, signal)
+    expect(reviewed.passed).toBe(false) // hard leak -> excluded from the frozen artifact
+    expect(reviewed.clean_text).not.toMatch(/\bRM\b/)
+    expect(reviewed.clean_text).not.toMatch(/\bCDLM\b/)
+    expect(reviewed.flags.some((f) => f.source === 'register_leak')).toBe(true)
+  })
+})
+
+// ── Latency instrumentation: validateCitationsForStream (the fn runValidationStage
+// wraps at validation_stage.ts:47) ─────────────────────────────────────────────
+describe('S9 validation latency (N=20)', () => {
+  it('measures p50/p95 wall-clock ms of validateCitationsForStream over a representative payload', () => {
+    const outputText =
+      'Saturn exalted in the 7th house (SIG.MSR.142) shapes authority patterns. ' +
+      'This is corroborated by SIG.MSR.207 and the current Mercury Mahadasha timing. ' +
+      'Repeat: '.repeat(20) + 'SIG.MSR.142 SIG.MSR.207'
+    const contextJson = JSON.stringify({
+      bundle: {},
+      tool_results: [{ tool_name: 'x', results: [{ id: 'SIG.MSR.142' }, { id: 'SIG.MSR.207' }] }],
+    })
+    const N = 20
+    const samples: number[] = []
+    for (let i = 0; i < N; i++) {
+      const t0 = performance.now()
+      validateCitationsForStream(outputText, contextJson, 'interpretive_whole_chart', false)
+      samples.push(performance.now() - t0)
+    }
+    samples.sort((a, b) => a - b)
+    const p50 = samples[Math.floor(N * 0.5)]
+    const p95 = samples[Math.floor(N * 0.95) === N ? N - 1 : Math.floor(N * 0.95)]
+    // eslint-disable-next-line no-console
+    console.log(`[S9 latency] N=${N} p50=${p50.toFixed(3)}ms p95=${p95.toFixed(3)}ms all=${samples.map((s) => s.toFixed(2)).join(',')}`)
+    expect(p95).toBeLessThan(50) // sanity bound; real number reported in report.md
+  })
+
+  it('measures p50/p95 over a REALISTIC-SIZE assembled context (large tool_results bundle, ~120KB JSON)', () => {
+    const outputText =
+      'Saturn exalted in the 7th house (SIG.MSR.142) shapes authority patterns across career and ' +
+      'relationships. This is corroborated by SIG.MSR.207, SIG.MSR.311, and the current Mercury ' +
+      'Mahadasha / Saturn Antardasha timing window (SIG.MSR.089). Cross-domain contradictions ' +
+      'surface between the 6th-house affliction (SIG.MSR.412) and the exalted 7th-house dignity.'
+    const bigResults = Array.from({ length: 40 }, (_, i) => ({
+      id: `SIG.MSR.${String(100 + i).padStart(3, '0')}`,
+      headline: 'a synthetic MSR-style signal row used only to size the JSON payload realistically',
+      body: 'x'.repeat(2000),
+    }))
+    const contextJson = JSON.stringify({
+      bundle: { synthetic_padding: 'y'.repeat(5000) },
+      tool_results: [{ tool_name: 'msr_sql', results: bigResults }],
+    })
+    // eslint-disable-next-line no-console
+    console.log(`[S9 latency] realistic contextJson byte size = ${Buffer.byteLength(contextJson, 'utf8')}`)
+    const N = 20
+    const samples: number[] = []
+    for (let i = 0; i < N; i++) {
+      const t0 = performance.now()
+      validateCitationsForStream(outputText, contextJson, 'interpretive_whole_chart', false)
+      samples.push(performance.now() - t0)
+    }
+    samples.sort((a, b) => a - b)
+    const p50 = samples[Math.floor(N * 0.5)]
+    const p95 = samples[Math.floor(N * 0.95) === N ? N - 1 : Math.floor(N * 0.95)]
+    // eslint-disable-next-line no-console
+    console.log(`[S9 latency realistic] N=${N} p50=${p50.toFixed(3)}ms p95=${p95.toFixed(3)}ms all=${samples.map((s) => s.toFixed(2)).join(',')}`)
+    expect(p95).toBeLessThan(200)
+  })
+})
