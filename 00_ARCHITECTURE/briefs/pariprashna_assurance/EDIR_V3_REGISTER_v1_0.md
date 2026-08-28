@@ -870,13 +870,14 @@ investigated further here.)*
   aria-live region changes at least once during any `finalize` window longer
   than ~5s).
 
-### V3-E-023 — An interrupted turn's caveat text invented a network-failure cause for a deliberate user Stop click
+### V3-E-023 — An interrupted turn's caveat text always said "connection was lost", even for a deliberate user Stop; and (independent-verifier correction) also silently mislabeled the real connection-lost case as a user Stop
 
-- **Class / severity:** DEFECT · S3 minor (proposed — a wording-accuracy /
-  confidence-honesty defect, not a data-loss or authorization issue; but a
-  direct in-turn contradiction between two adjacent pieces of copy)
+- **Class / severity:** DEFECT · S2 major (raised from the original S3-minor
+  triage — the independent verifier's correction below shows this defect
+  runs both directions, not one)
 - **Lens(es):** L-USER + L-CODE
-- **Pipeline stage:** SURFACE (S2, `Turn.tsx`)
+- **Pipeline stage:** SURFACE (S2: `Turn.tsx`, `working/WorkingBand.tsx`,
+  `state/reducer.ts`, `state/types.ts`, `lib/pariprashna/lexicon.ts`)
 - **Journey:** J6 (interruption)
 - **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, S2-territory
   code confirmed byte-identical to current HEAD — see V3-E-021):** asked a
@@ -886,38 +887,136 @@ investigated further here.)*
   was lost partway. What arrived is above; nothing was altered."** — a
   direct in-turn contradiction (one honest label, one invented cause, for
   the exact same event).
-- **Code anchor / root cause:** `state/reducer.ts` confirms `status:
-  'interrupted'` is set ONLY by the user-stop action path (no other reducer
-  case sets it) — this is never reached by an actual unrecoverable network
-  failure (that path is the separate `errored` status, whose own
-  `classifyPariprashnaError`-derived `bandLabel` legitimately says
-  "The connection was lost" for a REAL failure — confirmed via
-  `errors/classify.ts` and its own test). `Turn.tsx`'s caveat paragraph
-  under `turn.status === 'interrupted'` hardcoded the same "connection was
-  lost" wording unconditionally, not tied to the lexicon's own
-  `EDGE_STATE_LABELS.user_stopped` truth the band label two lines above it
-  already uses — a wrapper-local literal that drifted from the single
-  source of truth (§N.7 item 3).
-- **Fix landed (2026-08-28, S2, this session):** removed the invented
-  network-failure clause; caveat now reads "What arrived is above; nothing
-  was altered." (the band label above already states the honest cause).
-  Demonstrated-can-fail: new test
-  `platform/src/components/pariprashna/__tests__/Turn.test.tsx` RED against
-  pre-fix `Turn.tsx` (confirmed: the exact old string rendered), GREEN
-  after. Full territory suite: 1525 passed, 0 regressions.
-- **Status:** FIXED — PR pending, independent verification pending.
-- **Close rung required:** LIVE re-proof (press Stop on a deployed build
-  post-merge; confirm no "connection was lost" wording appears).
+- **First-pass fix (2026-08-28, S2, this session) and its own defect,
+  caught by independent verification:** the first fix removed the
+  network-failure clause unconditionally, on the claim that
+  `status: 'interrupted'` is reached ONLY via the user-stop action path.
+  **The independent verifier (distinct agent, adversarial re-read of
+  `reducer.ts`) disproved this**: `snapshot.apply` (reducer.ts) ALSO sets
+  `status: 'interrupted'` for a genuine, live, stale-connection/server-died
+  timeout — `lib/pariprashna/protocol/ring_buffer.ts`'s
+  `finalizeInterruptedIfStale` (60s `GRACE_WINDOW_MS` of no wire activity
+  while a turn is open, its own docstring: "a server-died-mid-turn
+  condition"), forwarded by `app/api/pariprashna/resume/route.ts` into a
+  `snapshot.apply` event. For THAT path, "the connection was lost" was
+  actually the truthful wording, and the first-pass fix would have
+  silently mislabeled a real server-side failure as a calm user action —
+  trading one contradiction for a different, narrower one (a real failure
+  presented as if the user had chosen to stop).
+- **Corrected fix (2026-08-28, S2, same session):** added
+  `TurnState.interruptedReason: 'user_stop' | 'connection_lost' | null`,
+  set explicitly at both reachable call sites (`CLIENT_STOP` and the
+  fixture-only `interrupted` WireEvent → `'user_stop'`; `snapshot.apply`'s
+  interrupted branch → `'connection_lost'`). `WorkingBand.tsx`'s band label
+  and `Turn.tsx`'s caveat both now branch on this field: `'user_stop'` keeps
+  "Stopped — kept what arrived" / "What arrived is above; nothing was
+  altered."; `'connection_lost'` gets its own honest, distinct pair — a new
+  lexicon entry `EDGE_STATE_LABELS.connection_lost_final` ("Connection lost
+  — kept what arrived") plus the caveat's original "The connection was lost
+  partway..." sentence, now conditioned correctly instead of unconditional.
+- **Demonstrated-can-fail:** `platform/src/components/pariprashna/__tests__/Turn.test.tsx`
+  now covers BOTH causes explicitly (RED/GREEN separately verified for the
+  original defect; the `connection_lost` case is a new assertion added
+  after the correction, not itself independently re-verified RED-before-fix
+  since it was authored alongside the fix — see close rung). Full territory
+  suite: 1526 passed, 0 regressions; `tsc --noEmit` clean on all touched
+  files; `eslint` clean.
+- **Status:** FIXED (corrected version) — PR pending, independent
+  verification of the CORRECTED version pending (the verification above
+  covered the original, since-superseded fix).
+- **Close rung required:** LIVE re-proof of both branches post-merge (press
+  Stop mid-turn → "Stopped" copy only; force a 60s+ stale gap → "Connection
+  lost" copy only, never the other's wording in either case).
+- **Process note:** this entry is left in place with the correction
+  narrated inline (register law: an entry's history is never erased) rather
+  than retracted-and-refiled, since the underlying finding (the original
+  contradiction) was real and the fix for it is real — only the completeness
+  of the FIRST attempted fix was wrong, caught before merge by the
+  independence law doing exactly what it exists to do.
+
+### V3-E-024 — A clarification-only turn can leave the reader permanently locked out of the composer: the server closes the turn in <1s, the client never notices
+
+- **Class / severity:** DEFECT · S1 blocking (proposed — this is the most
+  severe finding of S2's session: it dead-ends an entire, common class of
+  user turns with no recovery available to the reader)
+- **Lens(es):** L-USER + L-WIRE + L-CODE
+- **Pipeline stage:** SURFACE (S2: `state/reducer.ts`'s `turn.close` handler)
+- **Journey:** J5 (clarification)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, S2-territory
+  code confirmed byte-identical to current HEAD — see V3-E-021):** asked a
+  deliberately ambiguous question ("Is it a good time?") to trigger a
+  clarification. The instrument correctly classified it and streamed a
+  complete, well-formed clarifying question within ~1 second: "I want to
+  make sure I read the right part of the chart. Could you clarify what
+  you'd like to know — a specific life area..." The FULL SSE trace for this
+  turn: `turn.open` → `phase:plan start` → `flag:safety_decision:proceed`
+  → `flag:clarification_needed` (carrying the full clarifying-question text)
+  → `block.open`/`block.delta`/`block.commit` (the clarifying text) →
+  `phase:plan end, ms:2` → **`turn.close, status:"ok", ms:458`** — the
+  ENTIRE turn completed server-side in **458 milliseconds**, cleanly closed.
+  The client UI, however, showed **"Composing the approach…"** with the
+  clarifying text fully visible underneath, the composer textbox
+  **disabled**, and the Stop button active — and **stayed in that exact
+  state, unchanged, for 121+ seconds** (observed to that point; not
+  confirmed to ever self-resolve). No console error. The reader has the
+  full clarifying question in front of them but literally cannot type or
+  send a reply — the composer is locked.
+- **Root cause, confirmed by direct code read (`state/reducer.ts`):** every
+  NORMAL (non-clarification) turn's server stream includes a `turn.commit`
+  event before `turn.close`; the reducer's `turn.commit` case is the ONLY
+  place that sets `status: 'settling'`. The reducer's `turn.close` case is:
+  ```
+  case 'turn.close': {
+    return updateTurn(state, action.turnId, (t) => {
+      if (t.status === 'settling') return { ...t, status: 'settled', ... }
+      return { ...t, ... }  // status UNCHANGED otherwise
+    })
+  }
+  ```
+  A clarification-flagged turn's server stream, confirmed above, **never
+  emits `turn.commit` at all** — it goes straight from the clarification
+  block's commit to `turn.close`. So when `turn.close` arrives, the turn's
+  client-side status is still whatever pre-close status it was left in
+  (`'submitted'`/`'thinking'`/`'streaming'`), the `if (t.status ===
+  'settling')` guard never matches, and the `turn.close` handler's fallback
+  branch updates only bookkeeping fields (`lastEventId`/`seenEventIds`) —
+  **`status` never changes**. The turn is stuck forever in its pre-close
+  status, which the UI renders as still "composing," with the composer
+  correctly disabled for an in-progress turn that, server-side, is not
+  in progress at all.
+- **Proposed fix class:** `turn.close` should be treated as the
+  authoritative "this turn is fully done" signal regardless of whether a
+  `turn.commit` preceded it — broaden the guard to settle on ANY turn.close
+  arriving while the turn is not already in a terminal state
+  (`'settled'`/`'errored'`/`'interrupted'`), not only from `'settling'`.
+  This is squarely S2's own reducer and is a small, well-understood,
+  narrowly-scoped fix; NOT landed in this session — the change touches the
+  single highest-traffic function in the reducer (every turn's terminal
+  transition) and deserves independent verification with fresh eyes before
+  merge given its severity, rather than a same-session rush; see status.
+- **Status:** OPEN — confirmed, root-caused, NOT yet fixed. This is S2's
+  top-priority carry-forward item; recommend the very next unit of work in
+  this stream (or an immediate native-authorized fast-follow) implements
+  and verifies the broadened `turn.close` guard above before this stream
+  closes, given the severity (an entire common interaction pattern —
+  literally any ambiguous or under-specified question — dead-ends the
+  reader with no recovery path visible in the UI: no error, no retry
+  affordance, no timeout message, just a frozen "Composing…").
+- **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
+  question on a deployed build post-fix; confirm the clarification turn
+  settles promptly and the composer re-enables so the reader can answer).
 
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 17 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain + 6 surfaced by S2's guided-execution
-J2/J6 passes, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes
+SALVAGE 2); 18 V3 entries (5 from the A3 census + 6 surfaced during A4's
+B-001/B-007/B-008 fix-and-verify chain + 7 surfaced by S2's guided-execution
+J2/J5/J6 passes, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes
 fixed and independently verified, V3-E-007/E-008/E-010/E-011 filed to S5,
 V3-E-009 closed-as-benign, V3-E-021/E-014/E-015 filed to S4 (with E-015 also
-S2-owned for its surface half), V3-E-013/E-023 FIXED by S2 — E-013
-independently verified merge-recommended, E-023 pending independent
-verification). No gate is certified by this document.*
+S2-owned for its surface half), V3-E-013 FIXED by S2 and independently
+verified merge-recommended, V3-E-023 FIXED by S2 (corrected in place after
+independent verification caught the first pass's incompleteness — see its
+own entry), V3-E-024 CONFIRMED root-caused OPEN — S2's highest-severity,
+NOT-yet-fixed carry-forward item). No gate is certified by this document.*

@@ -43,6 +43,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     citations: {},
     grounding: null,
     readingDepthReceived: null,
+    interruptedReason: null,
     error: null,
     pendingPredictionCandidates: [],
     lastEventId: null,
@@ -161,7 +162,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks }
       })
     }
 
@@ -372,7 +373,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -391,6 +392,10 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         return {
           ...t,
           status,
+          // A stale-timeout snapshot (ring_buffer.ts's finalizeInterruptedIfStale,
+          // forwarded by resume/route.ts) is a real connection/server-died
+          // condition — never the user pressing Stop (V3-E-023).
+          interruptedReason: status === 'interrupted' ? 'connection_lost' : null,
           tail: null,
           activeSeam: null,
           blocks: action.text ? [{ id: `snapshot-${action.turnId}`, kind: 'paragraph' as const, html: action.text }] : t.blocks,

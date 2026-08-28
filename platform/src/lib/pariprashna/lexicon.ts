@@ -277,6 +277,7 @@ export type EdgeStateKey =
   | 'timeout_20s'
   | 'capped_partial'
   | 'user_stopped'
+  | 'connection_lost_final'
   | 'model_switch_queued'
   | 'queue_wait'
 
@@ -291,6 +292,7 @@ export const EDGE_STATE_LABELS: Readonly<Record<Exclude<EdgeStateKey,
   provider_busy: 'The model is busy — retrying',
   timeout_20s: 'Taking longer than usual…',
   user_stopped: 'Stopped — kept what arrived',
+  connection_lost_final: 'Connection lost — kept what arrived',
   queue_wait: 'In line — starts in a moment',
 } as const
 
