@@ -70,7 +70,9 @@ Boundary-injection and demonstrated-can-fail tests are INTEGRATION-rung by natur
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — file S4 findings as `V3-E-0NN`, `stream: S4`. Note V3-E-004 (a PRELIM branch-census grading on `codex/pariprashna-shadow-deploy`'s `elevation_service.py`) is tracker-infrastructure, not pipeline — not your territory despite the P-PIPE-adjacent name; leave it filed as-is.
+`../EDIR_V3_REGISTER_v1_0.md` — Note V3-E-004 (a PRELIM branch-census grading on `codex/pariprashna-shadow-deploy`'s `elevation_service.py`) is tracker-infrastructure, not pipeline — not your territory despite the P-PIPE-adjacent name; leave it filed as-is.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all NEW S4 findings in `../EDIR_V3_REGISTER_S4_v1_0.md` as `S4-V3-E-0NN` (next id: check that file's frontmatter `id_convention` — note `S4-V3-E-016` is already reserved by a pre-split document-local number, so the next free id is `S4-V3-E-017`). Findings pre-split filed to S4 (V3-E-021, V3-E-014, and the pipeline-root-cause half of V3-E-016) stay in `../EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`.
 
 ## Posture
 

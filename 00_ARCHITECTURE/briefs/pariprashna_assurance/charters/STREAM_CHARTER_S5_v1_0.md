@@ -56,7 +56,9 @@ This stream's proof law is the strictest of the six: object-level authorization 
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — this is YOUR register's primary customer stream; V3-E-007, V3-E-008, V3-E-010, V3-E-011 are explicitly addressed to you. File new findings as `V3-E-0NN`, `stream: S5`.
+`../EDIR_V3_REGISTER_v1_0.md` — this was YOUR register's primary customer stream pre-split; V3-E-007, V3-E-008, V3-E-010, V3-E-011 were explicitly addressed to you and stay there.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all NEW S5 findings in `../EDIR_V3_REGISTER_S5_v1_0.md` as `S5-V3-E-0NN` (next id: check that file's frontmatter `id_convention`). S5's pre-split contributions (E-001, V3-E-017..020, V3-E-022, plus its own convergence note and LIVE-rung evidence log) stay in `../EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`.
 
 ## Posture
 

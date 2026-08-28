@@ -46,7 +46,9 @@ Per finding: STATIC → REPLAY → INTEGRATION → LIVE → (NATIVE ACCEPTANCE r
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — 11 V3 entries open as of A5 freeze. None are S1-territory-specific yet; file any S1 finding there as `V3-E-0NN`, `stream: S1`, citing this charter. Cross-territory findings (e.g. an a11y issue that's actually in S2's viewport territory) go through the referral protocol (elevation §8.3) — file to the owning stream, never fix cross-territory.
+`../EDIR_V3_REGISTER_v1_0.md` — 11 V3 entries open as of A5 freeze. None are S1-territory-specific yet. Cross-territory findings (e.g. an a11y issue that's actually in S2's viewport territory) go through the referral protocol (elevation §8.3) — file to the owning stream, never fix cross-territory.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all NEW S1 findings in `../EDIR_V3_REGISTER_S1_v1_0.md` as `S1-V3-E-0NN` (next id: check that file's frontmatter `id_convention`), never in the shared index or another stream's file. S1's own pre-split entries (S1-V3-E-012/013/014) stay in `../EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`.
 
 ## Posture
 

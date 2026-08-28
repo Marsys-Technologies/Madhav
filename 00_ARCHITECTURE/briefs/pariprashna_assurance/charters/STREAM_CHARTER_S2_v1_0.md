@@ -51,7 +51,9 @@ STATIC → REPLAY → INTEGRATION → LIVE, per finding. Progress-truthfulness (
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — file S2 findings as `V3-E-0NN`, `stream: S2`. Cross-territory referral (elevation §8.3) for anything actually rooted in S1's shell or S3's synthesis-quality territory.
+`../EDIR_V3_REGISTER_v1_0.md` — cross-territory referral (elevation §8.3) for anything actually rooted in S1's shell or S3's synthesis-quality territory.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all NEW S2 findings in `../EDIR_V3_REGISTER_S2_v1_0.md` as `S2-V3-E-0NN` (next id: check that file's frontmatter `id_convention`), never in the shared index or another stream's file. S2's pre-split findings (including its fix of V3-E-030 and its own turn-lifecycle finding V3-E-024) stay in `../EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`.
 
 ## Posture
 
