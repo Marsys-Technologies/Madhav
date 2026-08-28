@@ -1,14 +1,14 @@
 ---
 artifact: S6_RESULT_IN_PROGRESS
-version: "1.0"
+version: "1.1"
 status: IN PROGRESS — NOT a result packet, NOT a closure claim. Stream closure
   (result_packet_accepted) is deferred to the convergence session (Session C)
   by native decision; this document does not attempt it and must not be read
   as one.
-date: 2026-08-28
+date: 2026-08-29
 stream_id: S6
 produced_by: Paripraśna assurance stream S6 (Performance, Resilience &
-  Observability), checkpoint-and-premise-correction pass
+  Observability), convergence-ready pass (session 2)
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/charters/STREAM_CHARTER_S6_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/S4_LATENCY_WATERFALL_v1_0.md
@@ -16,6 +16,13 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md#S6-V3-E-002
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md#S6-V3-E-003
 changelog:
+  - "1.1 (2026-08-29, convergence-ready pass): 4 more scenarios executed (7/31
+    total). S6-V3-E-003 independently re-verified by code read and reconciled
+    with S4's V3-E-043 — one coherent instrumentation story, not two adjacent
+    claims. New real data: cost-per-turn ($0.29 avg on synthesis), safety
+    verdicts (302 decisions, 292 clean), prediction resolution (0/56
+    resolved — honest gap, not a defect). Harness build spec reviewed:
+    confirmed complete and convergence-legible, unchanged."
   - "1.0 (2026-08-28): initial checkpoint after premise-correction pass. 3/31
     scenarios executed with LIVE/DB evidence; 1 finding filed; harness build
     scoped and explicitly parked, not attempted."
@@ -50,35 +57,62 @@ over- nor under-claiming):
 anywhere in this repo, on any branch checked.** That gap is real and is
 Section 5 below.
 
-## 2 — Real evidence banked this session (N = 3 of 31 scenarios; 1 finding)
+## 2 — Real evidence banked (N = 7 of 31 scenarios; 1 finding, reconciled)
 
 All logged to the tracker (`lead-s6`, HTTP-only writes, full evidence per
-event) and cross-referenced in EDIR. Tracker state as of this checkpoint:
-`S6: RUNNING, scenarios {executed: 3, planned: 31}, findings: 1`.
+event, `writer_instance_id` lease honored per the D-127 hardening that
+landed on `origin/main` between sessions — re-derived and adopted live, not
+assumed) and cross-referenced in EDIR. Tracker state as of this pass:
+`S6: RUNNING, scenarios {executed: 7, planned: 31}, findings: 1`.
 
 | Scenario | Result | Trace/evidence |
 |---|---|---|
-| `S6-SC-M01-first-signal-full-turn-latency` | Third independent LIVE reproduction of the turn-latency-unattributed finding: 86,945ms end-to-end, only 0.52% attributable to tool dispatch. Corroborates S4's **V3-E-015** (E-006: 81.3s/4.9%; S4: 102.4s/0.69%; S6: 86.9s/0.52%). | `trace_id 69ac9756-2c01-402b-8fff-b8abfbbfec2e`, `job_id a0480ded-9647-430c-9843-432bce0b5a8c` |
-| `S6-SC-M02-planning-stage-latency-segmentation` | 265 real Portal-door samples of `planning_latency_ms` for the synthetic chart: avg 5,955ms, min 1,974ms, **max 99,339ms**. New finding, not mere corroboration — see below. | Read-only DB query via `cloud-sql-proxy 127.0.0.1:5433/amjis`, `amjis_app` role, scoped to `chart_id=1c826d5a-...` only |
-| `S6-SC-M03-prediction-capture-resolution-coverage` | 56 rows in `mimamsa_predictions`, 6 in `pariprashna_predictive_samples` for the synthetic chart — confirms capture is non-zero; resolution-status breakdown not yet queried. | Same DB access path, read-only |
+| `S6-SC-M01-first-signal-full-turn-latency` | Third independent LIVE reproduction: 86,945ms end-to-end, 0.52% attributable to tool dispatch. Corroborates S4's **V3-E-015**. | `trace_id 69ac9756-2c01-402b-8fff-b8abfbbfec2e` |
+| `S6-SC-M02-planning-stage-latency-segmentation` | 265 real samples of `planning_latency_ms`, `/api/pariprashna` route: avg 5,955ms, min 1,974ms, **max 99,339ms**. | Read-only DB query, `chart_id=1c826d5a-...` only |
+| `S6-SC-M03-prediction-capture-resolution-coverage` | 56 rows in `mimamsa_predictions`, 6 in `pariprashna_predictive_samples`. | Same DB access path |
+| `S6-SC-M04-cost-per-turn-channel-model` | 255 synthesis calls (`llm_usage_events`, `pipeline_stage='synthesize'`), 1:1 with 255 conversations (no retries in-sample): total $73.79, **avg $0.2894/turn**, avg 121,381 input / 4,276 output tokens, latency 6,569–**179,830ms**. `llm_call_log` does NOT capture pariprashna calls (only an incidental `title` call, cost_usd NULL) — `llm_usage_events` is the correct source table. | Read-only DB, n=255 |
+| `S6-SC-M05-fourth-latency-reproduction` | Fourth LIVE sample: 96,337ms, 0.30% attributed. Intended to segment a new work class (dasha timing) but the planner classified it `predictive` again — reported honestly as an additional predictive-class sample, not a new segment. | `trace_id 4645e719-3e62-4d52-b3b5-63add2e58aa8` |
+| `S6-SC-M06-safety-verdicts` | 302 `pariprashna_safety_decisions` rows, all `enforced=true`: 292 clean/`proceed`, 5 `hard_stop`→`seal_pending_signoff`, 3 `review_required`→`seal_pending_signoff`, 2 `hard_stop`/`hard_stop`. Flagged (not adjudicated) as a cross-stream observation for S5's `V3-E-054` ("safety gate ships flag-OFF by default") — this table shows historically-enforced decisions on this chart; doesn't itself establish current deployed flag state. | Read-only DB, n=302 |
+| `S6-SC-M07-persistence-outcome-and-prediction-resolution-detail` | Outbox: 0 rows (empty-queue snapshot, not a resilience proof). Predictions: all 56 rows `lifecycle_status='pending'` — **0% resolved**, reported as an honest gap consistent with L5 Mimāṃsā's documented STRUCTURAL-mode seal (calibration fills in as outcome data accrues, by design), not escalated as a defect. | Read-only DB |
 
-**Finding S6-V3-E-003** (proposed HIGH, pending Native Surrogate triage): the
-planner stage (S5 in S4's decomposition) has a real, undocumented tail up to
-99.3s on production turns for the synthetic chart — comparable to or
-exceeding the whole-turn provisional interpretive p95 target (<90s) on its
-own. This also **partially revises** S4's claim that no per-stage timer
-exists for S1–S5: the timer exists for this stage on the Portal door (S4
-measured only the MCP door, where `persistence.status: "none"` — confirmed
-independently this session too — and no such field is exposed).
+**Finding S6-V3-E-003** (proposed HIGH, pending Native Surrogate triage,
+**independently re-verified and reconciled this pass**): the planner stage
+has a real, undocumented tail up to 99.3s on production turns for the
+synthetic chart. Re-verification method: read the actual application code
+rather than re-running the DB query. `platform/src/app/api/pariprashna/route.ts`
+imports `runPlanStage` (sets `planning_latency_ms`) and `runPersistenceStage`
+(persists it to `conversation_messages.metadata_json`) — confirms the DB
+finding traces to a real, in-charter-scope route. The code path that
+actually serves the `prashna_ask` MCP tool call
+(`platform-mcp/src/lib/prashna_ask_bridge.ts` → HTTP →
+`platform/src/app/api/mcp/prashna_ask/route.ts`, a **third**, separate
+route) has zero planning-stage timer, grep-confirmed. **Reconciliation: this
+is a precise restatement of S4's already-filed `V3-E-043`** (three
+independent, mutually-disjoint telemetry surfaces — `/api/chat/consult`,
+`/api/pariprashna`, and the MCP door), not a second independent defect. The
+finding's original "Portal door vs MCP door" framing was imprecise against
+the real three-surface architecture (there is no single "Portal door" vs
+"MCP door" binary) — corrected in EDIR, cross-referenced to both `V3-E-015`
+and `V3-E-043` now. One coherent instrumentation story for convergence.
 
 ## 3 — What is reachable now vs. what needs the net-new harness
 
-**Reachable now, no new infrastructure** (the remaining ~7-9 of the "cheap"
-batch this checkpoint was scoped to; not attempted further this pass —
-parked for the next working session, not abandoned):
-- More `prashna_ask` baseline calls for other work classes / query classes (each ~90s real wall-clock).
-- DB-backed: cost-per-turn (needs tracing `llm_call_log`/`llm_usage_events` to a `turn_id`, not yet done), client-error rates, resolution-status breakdown on the 56/6 prediction rows above, `pariprashna_persistence_outbox` current-state snapshot (queried this session: 0 rows currently — an empty-queue snapshot, not a resilience proof).
-- Reusing `post_deploy_behavior_smoke.ts` as-is for the demonstrated-can-fail scenario, **after** first re-verifying whether its 2026-08-23 RED status (JSON parse error) still holds — not re-verified this session.
+**Reachable, executed this pass** (4 more beyond the prior checkpoint's 3):
+cost-per-turn, a 4th/5th latency sample, safety verdicts, persistence-outbox
+snapshot + prediction resolution detail. Proxy torn down after (PID 50232).
+
+**Still reachable, not yet attempted** (parked, not abandoned — smaller
+remainder than before):
+- More `prashna_ask` baseline calls, deliberately targeting a genuinely
+  non-predictive `query_class` (both attempts this pass classified as
+  `predictive` — a `chart_overview` or `remedy_lookup`-shaped question may
+  be needed to actually reach a `factual`-equivalent segment).
+- Client-error rates — no `client_error`/`lint` table was found in this
+  DB; this metric category may not be DB-observable at all without a
+  browser/client-side probe (a real gap, not yet resolved either way).
+- Reusing `post_deploy_behavior_smoke.ts` for the demonstrated-can-fail
+  scenario, after first re-verifying whether its 2026-08-23 RED status
+  still holds — **still not re-verified**.
 
 **Needs the net-new §10.3 harness** (the load generator / chaos injector /
 CWV-browser battery — genuinely does not exist, per Section 1):
@@ -103,12 +137,30 @@ Recommended shape for that dedicated session:
 ## 5 — Explicit non-claims
 
 - This is **not** a stream closure. No `result_packet_accepted` was sought or
-  will be sought from this session.
-- 3 of 31 scenarios executed is reported as **3/31**, not rounded up, not
-  described as "baseline phase complete."
+  will be sought from this or the prior session.
+- 7 of 31 scenarios executed is reported as **7/31**, not rounded up, not
+  described as "baseline phase complete" — several §10.1 categories (client
+  errors, lint firings, full segmentation-by-work-class) remain unattempted.
 - The §10.3 battery is reported as **not started**, not "in progress" — no
-  scenario in that category has been executed.
+  scenario in that category has been executed, across two sessions.
 - Finding S6-V3-E-003's severity is **proposed**, not final, per register
-  law.
+  law — triage by the Native Surrogate has not occurred.
+- The reconciliation with `V3-E-043` in Section 2 corrects this document's
+  own prior imprecise "Portal door vs MCP door" framing; it does not claim
+  S4's `V3-E-043` itself needed correction — that entry was already accurate
+  and is the senior finding here.
 
-*End S6 result-in-progress v1.0 — checkpoint only.*
+## 6 — Task-3 confirmation: harness build spec reviewed, unchanged
+
+Re-read Section 4 this pass against the convergence-legibility bar (reuse
+spec + reachable-vs-needs-infra split + size estimate, all present and
+specific to named files). No thinness found — the spec already names exact
+files to reuse (`ask.ts`'s auth seam, `dd16`'s interrupt-and-verify shape),
+gives a concrete size estimate (half-day for concurrency+reconnect), and
+explicitly separates what needs zero new infra (CWV via Chrome DevTools MCP)
+from what needs real build work (fault injection). Section 3 above was
+refreshed to reflect what two sessions' worth of "reachable now" work
+actually found reachable vs. not, which is the part that most needed
+updating — Section 4's harness spec itself did not need a rewrite.
+
+*End S6 result-in-progress v1.1 — checkpoint only, not closure.*
