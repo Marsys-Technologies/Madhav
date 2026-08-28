@@ -1,14 +1,14 @@
 ---
 artifact: PARIPRASHNA_STREAM_S2_RESULT_PACKET
-version: "2.0"
-status: DRAFT — coverage-complete (30/30); awaiting integrator's
-  `result_packet_accepted` event at Session C convergence. This document
-  remains a link set to primary evidence, not acceptance itself. Per the
-  recorded native decision, S2 does NOT self-certify closure or CG-3 —
-  that ceremony is Session C's job.
+version: "3.0"
+status: DRAFT — convergence-ready (30/30, truth-checked, not inflated);
+  awaiting integrator's `result_packet_accepted` event at Session C
+  convergence. This document remains a link set to primary evidence, not
+  acceptance itself. Per the recorded native decision, S2 does NOT
+  self-certify closure or CG-3 — that ceremony is Session C's job.
 stream_id: S2
 stream_name: Conversation & Reading Experience
-date: 2026-08-28
+date: 2026-08-29
 charter: 00_ARCHITECTURE/briefs/pariprashna_assurance/charters/STREAM_CHARTER_S2_v1_0.md
 tracker_session_id: s2-run-2026-08-28-a
 sessions:
@@ -17,15 +17,45 @@ sessions:
     pr: https://github.com/Marsys-Technologies/Madhav/pull/1612
     outcome: 5 fixes landed and merged; 9/30 scenarios executed; stopped at
       an interactive-session turn boundary (not a hard blocker).
-  - session: 2 (this revision)
+  - session: 2
     branch: pariprashna/v3-s2-scenarios-cont
-    pr: none opened — this pass is documentation/test-infrastructure only,
-      no product code changed; see "Session 2 commits" below.
+    pr: none opened in session 2 itself; landed in session 3's PR (below).
     outcome: remaining 21 scenarios executed, bringing the stream to 30/30
       against the frozen denominator; 3 new findings filed; V3-E-024's
       real-world scope broadened (addendum, no code change); visual-
       regression baseline store established as a structural prerequisite.
+  - session: 3 (this revision — convergence-readiness pass)
+    branch: pariprashna/v3-s2-scenarios-cont (same branch, rebased onto
+      current main and pushed)
+    pr: opened this session — see "Session 3" below for the URL and SHAs.
+    outcome: independently truth-checked the 30/30 claim against the live
+      ledger (mirroring the S5 collision-analysis method) and confirmed it
+      real, not inflated; investigated all S2-scoped SEQUENCE_CONFLICT
+      rejections and reached a benign verdict; landed session 2's
+      previously-unmerged visual-baseline + findings work onto main;
+      re-attempted LIVE re-proof of V3-E-024 against the now-current
+      production deploy (deploy-pin blocker cleared) and hit a new,
+      different, honestly-disclosed blocker (shared test-session
+      revoked). Explicitly NOT closing — checkpoint handoff only.
 changelog:
+  - "3.0 (2026-08-29, session 3, convergence-readiness pass): tracker
+    truth-check performed and PASSED (30/30 confirmed real via distinct
+    raw scenario_id count == recorded_scenario_events == 30, verified
+    against the D-127-hardened control-plane build). SEQUENCE_CONFLICT
+    investigation closed: 52 S2-scoped rejections all traced to benign
+    single-writer optimistic-concurrency retries, zero cross-writer
+    collisions, sole-writer constraint intact. Session 2's branch merged
+    forward onto current main (12 commits including the D-127 hardening
+    itself and the newly-unblocked deploy) and a PR opened, landing the
+    visual-baseline store and 3 findings on main for the first time.
+    LIVE re-proof of V3-E-024 re-attempted now that the stale-deploy-pin
+    blocker cleared (production now serves 9aed4cb73, confirmed ancestor
+    of PR #1612's fix commits) but blocked by a NEW, different issue: the
+    shared test principal's session cookie was rejected in production
+    (most likely revoked by S5's own documented session-revocation drill
+    against the same UID) and this worktree holds no Firebase admin
+    credentials to mint a replacement. Disclosed as a residual, not
+    papered over."
   - "2.0 (2026-08-28, session 2, coverage-completion pass): full rewrite.
     Scenarios 9/30 -> 30/30. Findings V3-E-060, V3-E-061 (CRITICAL,
     corroborated twice), V3-E-062 added. V3-E-024 addendum: affects ALL
@@ -42,6 +72,135 @@ changelog:
 ---
 
 # Stream result packet — S2 (Conversation & Reading Experience)
+
+## Session 3 — convergence-readiness truth-check (2026-08-29)
+
+This session was launched specifically to verify the 30/30 claim was real
+(not inflated the way S5's ledger was, per control-plane PR #1638/D-127)
+and to close two named open gaps before convergence. Findings below.
+
+### Tracker truth-check: 30/30 is REAL
+
+The control-plane server running at `127.0.0.1:8787` was confirmed (via
+`lsof` + process inspection) to be release `9aed4cb73bd6` — the exact
+D-127-hardened build, matching the current production `amjis-web` deploy
+SHA. That release's `scenario_slot()` function extracts a canonical
+`S{N}-SC-{NN}` numeric key from `scenario_id` and falls back to the raw id
+string for any non-conforming id (this is the mechanism that caught S5's
+inflation: S5's ids DID follow the `S{N}-SC-{NN}` convention, and two
+different writer instances had written different descriptive slugs for the
+same numeric slot).
+
+**S2 never adopted the `S{N}-SC-{NN}` convention** — every S2 `scenario_id`
+is a descriptive slug (`j2-standard-interpretive-reading`,
+`region-composer-paste-behavior`, etc.). This means the D-127 collision
+class cannot occur on S2 by construction: `scenario_slot()` falls back to
+the exact raw string for every one of S2's ids, so the dedup key has always
+been, and remains, plain string identity.
+
+Verified directly against the live projection:
+```
+canonical.streams[S2].scenarios == {
+  "executed": 30,
+  "planned": 30,
+  "recorded_scenario_events": 30
+}
+```
+`recorded_scenario_events` (raw count of accepted `scenario_executed`
+events) equals `executed` (distinct-slot count) equals `30`. Zero
+duplicates, zero inflation. The full list of 30 distinct `scenario_id`
+values was pulled from `canonical.streams[S2].scenario_ids` and
+cross-checked against both sessions' known scenario lists — all 9 from
+session 1 and all 21 from session 2 are present, no id appears twice.
+**Verdict: 30/30 is genuine.**
+
+### SEQUENCE_CONFLICT investigation: benign, not a defect
+
+Queried `/api/rejected` and filtered to S2-scoped entries (54 total,
+matched on `request.stream_id == "S2"` or `actor_id == "lead-s2"`):
+
+| Code | Count | Actor(s) |
+|---|---|---|
+| SEQUENCE_CONFLICT | 52 | `lead-s2` (50), `verifier` (2) |
+| FINDING_ID_CONFLICT | 1 | `lead-s2` |
+| FINDING_SCHEMA | 1 | `lead-s2` |
+
+**Verdict: benign.** Every `SEQUENCE_CONFLICT` on S2 is the expected
+artifact of the tracker's strict optimistic-concurrency control: this
+stream's own emitter (`.playwright-mcp/s2-scratch/emit2.py`) POSTs an
+initial `expected_stream_seq`, catches the resulting 409, extracts
+the server's reported "current N" from the error body, and retries once —
+by design, every such retry logs one rejected event before its accepted
+counterpart. Cross-checked: several idempotency keys appear rejected
+*twice* in a row (e.g. `s2-scen-network-kill`, `s2-find-v3e060`) from
+back-to-back batch submissions where the sequence advanced again between
+the first 409 and the retry — a self-inflicted but harmless retry storm
+from a **single** writer, not a cross-writer collision. The two
+`verifier`-actor rejections (`s2-verify-v3e030-e023-e024`,
+`s2-stream-closure-recommended`) are a **different, authorized role**
+(INDEPENDENT_VERIFIER) submitting its own event types (`verification_
+accepted`, `stream_closure_recommended`) — not a second writer on S2's
+own `scenario_executed`/`finding_discovered` stream, and not a violation
+of the sole-writer constraint. (`s2-verify-v3e030-e023-e024` is confirmed
+to have landed successfully at ledger_seq 125 on retry.)
+
+**Sole-writer constraint check (per this session's standing instruction):**
+no S2 `scenario_executed` or `finding_discovered` event was found on the
+ledger from any actor other than `lead-s2`. No disclosure required.
+
+### Visual-regression baseline: established in session 2, now landed on `main`
+
+The baseline store itself was correctly established in session 2
+(`VISUAL_BASELINE_POLICY_v1_0.md`, 8 PNGs under
+`g-transmute.spec.ts-snapshots/`, diff threshold `maxDiffPixels: 200`,
+synthetic-fixture-only — the gate suite runs against
+`scripts/replay/server.ts`'s deterministic fixtures and never touches a
+real `chart_id` at all, so the "synthetic chart only" constraint is
+satisfied trivially). **The actual gap was that this work never reached
+`main`** — session 2 ended without opening a PR, so from convergence's
+perspective (reading `main`) the baseline did not exist. This session:
+merged `origin/main` (12 commits, including the D-127 hardening) into
+`pariprashna/v3-s2-scenarios-cont`, re-ran the baseline diff post-merge to
+confirm it still holds (`2 passed`, 0-diff self-comparison, unchanged),
+and opened a PR — see "Session 3 commits and PR" below.
+
+**One process defect self-caught and fixed during this merge**: the first
+attempt at resolving the `EDIR_V3_REGISTER_v1_0.md` merge conflict against
+S5's own just-landed convergence content mistakenly kept only one side of
+a conflicting hunk, silently discarding the full V3-E-060/061/062 finding
+bodies (only a summary addendum survived). Caught by a post-merge grep
+verification (`^### V3-E-06`) that found nothing, before the merge commit
+was pushed anywhere. The merge was reset and redone correctly, this time
+verified line-by-line before committing. Disclosed here rather than
+silently fixed, per the campaign's standing correction-transparency norm.
+
+### LIVE re-proof of V3-E-024: deploy-pin blocker CLEARED, different blocker hit
+
+`gh run list --workflow=deploy.yml --branch=main --status=success --limit 1`
+now returns `9aed4cb73bd6ec81a8cfed31394e82261cf79512` (2026-08-28T19:41Z) —
+confirmed via `git merge-base --is-ancestor` to include PR #1612's fix
+commits (`86740c9cb`, `614a2c850`) and the D-127 hardening. **The stale
+`cafa894ee` pin that blocked every prior LIVE-rung claim is gone.** This is
+itself meaningful evidence: the fix is confirmed live in production by
+code ancestry, even short of an interactive click-through.
+
+An interactive click-through re-proof was attempted (navigate to the
+deployed Portal for chart `1c826d5a`, reuse the session-1 test principal's
+captured `__session` cookie) and **blocked by a different, new issue**:
+the cookie (JWT `exp` claim still valid until 2026-09-10, so not
+client-side expired) is rejected server-side — every request redirects to
+`/login` regardless of which of the service's two equivalent Cloud Run
+hostnames is used. The most likely cause: this is the same test principal
+(`hunQRYVJ5Ec2mQnJnutK7AoQnsO2`) S5's own documented "session-revocation
+drill" (`EDIR_V3_REGISTER_v1_0.md`, S5 convergence section) deliberately
+logged out as part of its own LIVE proof of V3-E-017 — a real, disclosed
+side effect of streams sharing one test fixture, not a new product defect.
+Minting a replacement session cookie requires `FIREBASE_ADMIN_CREDENTIALS`
++ `NEXT_PUBLIC_FIREBASE_API_KEY` (`platform/scripts/dev/
+mint_session_cookie.ts`), neither present in this worktree. **Not
+attempted further** — out of scope to source production credentials into
+an assurance worktree; recorded as a residual for whichever session next
+holds those credentials (or can request a fresh test-principal grant).
 
 ## Scenarios planned / executed
 
@@ -400,8 +559,10 @@ new verification pass.
   session-2 corroboration), V3-E-062 (`EDIR_V3_REGISTER_v1_0.md`).
 - PR: https://github.com/Marsys-Technologies/Madhav/pull/1612 (session 1,
   7 commits, merged).
-- Session-2 branch: `pariprashna/v3-s2-scenarios-cont` (4 commits, not
-  yet merged — see Open items #7).
+- Session 3 PR: opened this session against `pariprashna/v3-s2-scenarios-cont`
+  — see the top-level report for the URL and exact SHAs (a merge commit
+  rebasing session 2's 4 commits onto current `main`, plus this packet's
+  own v3.0 rewrite).
 - `VISUAL_BASELINE_POLICY_v1_0.md` — new artifact this session, documents
   the baseline store, diff policy, and scope.
 - Tracker events: `work_started` (ledger_seq 59), 10×`finding_discovered`
