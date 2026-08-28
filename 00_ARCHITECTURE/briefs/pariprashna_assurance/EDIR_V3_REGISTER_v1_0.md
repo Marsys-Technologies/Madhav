@@ -800,20 +800,43 @@ await Native Surrogate triage.
   process gap in the closing result packet: the freeze-on-first-remediation
   design does not fit a stream that legitimately discovers findings across
   its whole scenario run, not only during one upfront triage pass.
-- **Status:** OPEN, S1 territory, own-fix candidate — NOT fixed in this pass
-  (see below). Close rung: INTEGRATION (component wired + tested against a
-  replay/integration harness) then LIVE re-proof (the exact refresh sequence
-  above, repeated against the deployed revision after merge+deploy).
-- **Disposition (lead-s1, 2026-08-27):** given remaining stream ceiling and
-  the S1-F-001 security fix already landed this session, this is filed
-  OPEN with full root-cause evidence and a concrete fix class rather than
-  attempted inline — it is a genuine feature-completion item (new fetch
-  wiring + conversation-id persistence design, touching state management
-  choices a Native Surrogate should weigh in on: e.g., should selecting a
-  past thread actually swap the live view, given `handleSidebarSelect` is
-  currently a documented no-op?) rather than a same-shape-as-B-007 one-line
-  authz gate. Recommended as S1's top follow-up item if the stream is
-  resumed or extended.
+- **Status (updated 2026-08-28): SPLIT, then FIXED+VERIFIED (012a) /
+  REFERRED (012b).** A Native Surrogate ruling (`decision_recorded`,
+  tracker event `f3b88219-432f-4096-999c-07f6700f6406`) split this entry
+  after the disposition below was written but before the stream closed:
+  - **V3-E-012a** (S1, this entry's listing/persistence half — severity
+    affirmed **S1 BLOCKING**): FIXED. `PariprashnaApp.tsx` now fetches real
+    history via `GET /api/conversations?readingsOnly=true` (a receipt-based
+    discriminator, `lib/conversations.ts`, distinguishing Paripraśna
+    readings from the legacy consume/consult chat tree that shares
+    `module='consume'`), merges it into the sidebar, and guards the
+    pre-existing rename affordance against mis-targeting the wrong thread
+    (a second bug self-caught while landing this fix). PR
+    [#1614](https://github.com/Marsys-Technologies/Madhav/pull/1614),
+    commits `84cbe15fe`/`ca1053b0c`/`b8916c433`/`3af773794`. **Independently
+    verified twice** (distinct Sonnet code-reviewer subagents; tracker event
+    `18688f01-381d-41f5-81d7-0f90e88b3e49`, verdict ACCEPT, INTEGRATION
+    rung) — including reproducing the pre-fix RED state in a throwaway
+    worktree and a temporary revert-and-confirm-RED check on the race
+    backstop's own test. **Close rung reached: INTEGRATION.** LIVE re-proof
+    (the exact refresh sequence in "Observed" above, repeated against the
+    deployed revision) is explicitly OPEN — the fix is merge-ready/merging,
+    not yet deployed; deferred to the harness's gated deploy-sync
+    checkpoint, same honest-gap pattern as S1-F-001/V3-E-013.
+  - **V3-E-012b** (S2, content-hydration on selecting a historical row —
+    severity **S2 MAJOR**): REFERRED, not attempted by S1. Needs the real
+    backend `conversation_id` threaded through `useLiveStream`'s wire
+    decoder/reducer (`platform/src/components/pariprashna/hooks/
+    useLiveStream.ts`, `state/**`) — explicitly S2 territory per elevation
+    §8.2, which S1 may not touch. J7 stays incomplete (selecting a past
+    reading shows an honest "not openable yet" notice, not its content)
+    until 012b closes.
+- **Disposition history (lead-s1, 2026-08-27, superseded by the split
+  above):** originally filed OPEN with full root-cause evidence and a
+  concrete fix class rather than attempted inline, pending a Native
+  Surrogate ruling on scope (touches state-management choices, e.g.
+  whether `handleSidebarSelect` should swap the live view). That ruling
+  came back the same session (above) and 012a was landed within it.
 
 ---
 
@@ -874,10 +897,14 @@ await Native Surrogate triage.
   merged to the stream branch but not yet deployed; deploying is the
   harness's gated deploy-sync checkpoint (§6.3), out of a stream's own
   authority. Honest gap, not a defect; carried to the result packet.
-- **Status:** FIXED, INTEGRATION-VERIFIED, merge-ready (PR pending CI green
-  per harness §6.2). Close rung: LIVE re-proof after the deploy-sync
-  checkpoint runs (Session C / native review), same pattern as S5's charter
-  for its own stale-deployment gap.
+- **Status (updated 2026-08-28):** FIXED, INTEGRATION-VERIFIED, **MERGED to
+  `main`** — PR [#1610](https://github.com/Marsys-Technologies/Madhav/pull/1610),
+  merge commit `61a6dc4f8` (2026-08-28T00:11:25Z), independently confirmed
+  live on `origin/main` (the `authorizeChartAccess` gate is present in both
+  handlers at the merged tip, not merely in the PR diff). Close rung: LIVE
+  re-proof after the deploy-sync checkpoint runs (Session C / native
+  review), same pattern as S5's charter for its own stale-deployment gap —
+  merged-to-main is not yet deployed.
 
 ---
 
