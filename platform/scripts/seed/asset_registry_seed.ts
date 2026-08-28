@@ -572,7 +572,7 @@ export const ASSETS: AssetDef[] = [
     // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md § ADJUDICATION-2 item 5.
     // Mirrors migration 522's asset_registry INSERT exactly — a clean reseed must
     // not silently drop this asset (the ga_vichara / bo_pratijna defect class).
-    // Global L0, `depends_on: []`, super-admin-triggered only (brief §2.5.2).
+    // Global L0, after the event/activity ontology it classifies, super-admin-triggered only (brief §2.5.2).
     //
     // `count_sql` counts the ROWS AT THE RESERVED COORDINATE, not the whole table:
     // brahma_class_priors also holds 164 signal-salience priors from
@@ -1484,7 +1484,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
-    depends_on: ['ga_condition', 'bg_vastu_directions'],
+    depends_on: ['ga_condition'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

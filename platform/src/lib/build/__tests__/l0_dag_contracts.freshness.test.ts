@@ -14,7 +14,6 @@ const contracts = [
   ['bg_panchanga', 'ga_panchanga'],
   ['bg_ghatana', 'bg_class_lifetime_counts'],
   ['bg_prashna_rules', 'ga_prashna'],
-  ['bg_vastu_directions', 'ga_vastu'],
 ] as const
 
 function directDependencies(assetId: string): string[] {

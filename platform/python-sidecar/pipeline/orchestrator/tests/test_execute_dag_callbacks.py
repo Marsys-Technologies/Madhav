@@ -49,7 +49,6 @@ def test_on_complete_exception_does_not_crash_scheduler():
         ('bg_panchanga', 'ga_panchanga'),
         ('bg_ghatana', 'bg_class_lifetime_counts'),
         ('bg_prashna_rules', 'ga_prashna'),
-        ('bg_vastu_directions', 'ga_vastu'),
     ],
 )
 def test_l0_contract_failure_blocks_its_downstream_writer(upstream, downstream):

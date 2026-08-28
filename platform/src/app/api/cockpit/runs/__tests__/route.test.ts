@@ -69,6 +69,13 @@ const REGISTRY_PANCHANGA_SERVICE = [{
   has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'panchanga_engine' },
 }]
 
+// The registry must retain bg_panchanga as a dependency identity for ga_panchanga,
+// while the route must never select it in an ordinary build plan.
+const REGISTRY_PANCHANGA_DEPENDENT = [
+  { asset_id: 'ga_panchanga', layer: 'ganita', scope: 'per_chart', depends_on: ['bg_panchanga'], estimated_seconds: 30 },
+  ...REGISTRY_PANCHANGA_SERVICE,
+]
+
 // Bodha registry: includes bo_* assets for G4 precondition gate tests
 const REGISTRY_BODHA = [
   { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
@@ -121,6 +128,16 @@ function seedSuccessfulBuild(registryRows: typeof REGISTRY_WITH_L0) {
     .mockResolvedValueOnce(NO_FRESHNESS) // asset_freshness — no prior receipts
     .mockResolvedValue({ rows: [{ id: 'run-abc' }], rowCount: 1 }) // INSERT build_runs + assets
   mockInvokeRunJob.mockResolvedValue(undefined)
+}
+
+function freshnessRow(assetId: string, state: 'fresh' | 'stale') {
+  const writerDigests = writerDigestInventory.writers as Record<string, string>
+  return {
+    asset_id: assetId,
+    state,
+    reasons: state === 'fresh' ? [] : ['probe receipt is stale'],
+    code_digest: assetId === 'bg_panchanga' ? writerDigestInventory.probe_digest : writerDigests[assetId],
+  }
 }
 
 beforeEach(() => {
@@ -671,6 +688,84 @@ describe('POST /api/cockpit/runs — governed global service probes', () => {
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 
+})
+
+describe('POST /api/cockpit/runs — service probe dependency identities', () => {
+  function seedPanchangaDependentBuild(
+    throughputRows: Array<{ asset_id: string; state: string }>,
+    freshnessRows: ReturnType<typeof freshnessRow>[],
+  ) {
+    seedRole('super_admin')
+    // scope=asset checks the target before the normal dispatch reads.
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ scope: 'per_chart' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_PANCHANGA_DEPENDENT, rowCount: REGISTRY_PANCHANGA_DEPENDENT.length })
+      .mockResolvedValueOnce({ rows: throughputRows, rowCount: throughputRows.length })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce({ rows: freshnessRows, rowCount: freshnessRows.length })
+      .mockResolvedValue({ rows: [{ id: 'run-panchanga-001' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+  }
+
+  it('allows ga_panchanga only when its retained service probe identity is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'fresh')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest.assets.map((asset: { asset_id: string }) => asset.asset_id)).toEqual(['ga_panchanga'])
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is missing', async () => {
+    seedPanchangaDependentBuild([], [])
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'unknown', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is stale', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'stale')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('never dispatches a no-writer service in an L0 layer build', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      ...REGISTRY_WITH_L0.filter(row => row.layer === 'brahmagyan'),
+      ...REGISTRY_PANCHANGA_SERVICE,
+    ] as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'brahmagyan', action: 'rebuild' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['bg_ephemeris', 'bg_ontology'])
+  })
 })
 
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──

@@ -87,7 +87,6 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
   ga_panchanga: ['ga_positions', 'bg_panchanga'],
   bg_class_lifetime_counts: ['bg_ghatana'],
   ga_prashna: ['ga_positions', 'bg_prashna_rules'],
-  ga_vastu: ['ga_condition', 'bg_vastu_directions'],
 }
 
 describe('asset_registry_seed — post-626 DAG parity', () => {
@@ -113,18 +112,18 @@ describe('asset_registry_seed — post-626 DAG parity', () => {
     ])
   })
 
-  it('pins the four L0 upstream contracts required by downstream assets', () => {
-    expect(Object.keys(L0_CONTRACT_DEPENDENCIES)).toHaveLength(4)
+  it('pins the three L0 upstream contracts required by downstream assets', () => {
+    expect(Object.keys(L0_CONTRACT_DEPENDENCIES)).toHaveLength(3)
 
     for (const [assetId, dependencies] of Object.entries(L0_CONTRACT_DEPENDENCIES)) {
       expect(assetsById.get(assetId)?.depends_on, assetId).toEqual(dependencies)
     }
   })
 
-  it('uses the ga_vastu registry asset id for the Vastu map table contract', () => {
+  it('keeps ga_vastu dependent only on the condition data it reads', () => {
     expect(assetsById.get('ga_vastu')).toMatchObject({
       target_table: 'ga_vastu_planet_direction_map',
-      depends_on: ['ga_condition', 'bg_vastu_directions'],
+      depends_on: ['ga_condition'],
     })
     expect(assetsById.has('ga_vastu_planet_direction_map')).toBe(false)
   })

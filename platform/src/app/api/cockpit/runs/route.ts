@@ -315,15 +315,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Filter registry to allowed scopes. A service with no writer is not a general
-  // planning candidate: the only permitted exception is the single, validated
-  // service probe above. This also prevents a super_admin global/layer run from
-  // accidentally broadening into a no-writer service dispatch.
+  // Retain vetted no-writer probes as registry identities so pre-flight can
+  // verify a dependent's fresh service receipt. They are excluded only from
+  // ordinary candidate selection below; an explicitly admitted singleton probe
+  // remains the sole path that may dispatch one.
   const requestedServiceProbeIds = new Set(requestedServiceProbes.map(row => row.asset_id))
   const allowedRegistry = registryResult.rows.filter(r =>
     allowedScopes.includes(r.scope)
-    && (r.has_writer !== false || requestedServiceProbeIds.has(r.asset_id))
   )
+  const nonCandidateAssetIds = new Set(allowedRegistry
+    .filter(row => row.has_writer === false && !requestedServiceProbeIds.has(row.asset_id))
+    .map(row => row.asset_id))
 
   // L0 GATE (native ruling 2026-06-26): global Build/Rebuild NEVER includes L0 (brahmagyan),
   // regardless of role. L0 is built ONLY via an explicit layer='brahmagyan' trigger or
@@ -347,6 +349,7 @@ export async function POST(req: NextRequest) {
   }))
   const buildPlan = resolveBuildPlan({
     scope, scope_target, action, registry: planRegistry, throughput, freshness, protectedAssetIds,
+    nonCandidateAssetIds,
   })
   const plan = buildPlan.plan_waves.flat()
 
