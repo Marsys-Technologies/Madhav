@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -39,6 +40,11 @@ P1_F004 = "P1-F-004"
 P2_PHASE_IDS = ["P2", "P3", "P4", "P5", "P6", "P7"]
 P2_GENERAL_STREAMS = P2_PHASE_IDS + [stream_id for stream_id, _ in STREAMS]
 P2_ACTOR_IDS = {f"lead-{pid.lower()}" for pid in P2_PHASE_IDS} | {f"lead-{sid.lower()}" for sid in STREAM_IDS} | {"surrogate", "verifier", "integrator", "native"}
+_SCENARIO_SLOT_RE = re.compile(r"S(\d+)-SC-(\d+)", re.IGNORECASE)
+# Lower bound is empirical: the S5 concurrency incident (D-127-class collision) had its two
+# writer instances' scenario-lease-relevant writes ~392s apart; the TTL must exceed that gap
+# for the guard to have caught it, while still recovering promptly from a genuinely dead writer.
+SCENARIO_WRITER_LEASE_TTL_SECONDS = 1800
 
 
 class RejectedEvent(ValueError):
@@ -63,8 +69,20 @@ def request_fingerprint(request: dict[str, Any]) -> str:
     """Bind idempotency to the actor's complete, server-timestamp-free intent."""
     return digest({key: request.get(key) for key in (
         "actor_id", "idempotency_key", "event_type", "payload", "stream_id",
-        "expected_stream_seq", "evidence",
+        "expected_stream_seq", "evidence", "writer_instance_id",
     )})
+
+
+def scenario_slot(scenario_id: str) -> str:
+    """Canonical numeric-slot key for a scenario_id (S{N}-SC-{NN}), independent of any
+    descriptive suffix or writer-specific prefix. Falls back to the raw id for scenario_ids
+    that do not follow the convention, so pre-existing non-conforming ids keep dedupling
+    exactly as before."""
+    match = _SCENARIO_SLOT_RE.search(scenario_id)
+    if not match:
+        return scenario_id
+    stream_num, scenario_num = match.groups()
+    return f"S{int(stream_num)}-SC-{int(scenario_num):02d}"
 
 
 def parse_time(value: str | None) -> float | None:
@@ -167,6 +185,7 @@ class EventStore:
                 CREATE TABLE IF NOT EXISTS p1_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS p2_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS presences (session_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, stream_id TEXT, state TEXT NOT NULL, observed_at TEXT NOT NULL, detail TEXT);
+                CREATE TABLE IF NOT EXISTS stream_scenario_write_leases (stream_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, writer_instance_id TEXT NOT NULL, acquired_at TEXT NOT NULL, last_seen_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projection_state (id INTEGER PRIMARY KEY CHECK (id=1), canonical_json TEXT NOT NULL, projection_hash TEXT NOT NULL, as_of TEXT NOT NULL, event_count INTEGER NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projector_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT, lag_events INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS monitor_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT);
@@ -387,6 +406,8 @@ class EventStore:
             raise RejectedEvent("EVIDENCE_REQUIRED", f"{request['event_type']} requires primary evidence")
         if any(not isinstance(e, dict) or not e.get("uri") or not e.get("kind") for e in evidence):
             raise RejectedEvent("EVIDENCE_SCHEMA", "each evidence item requires kind and uri")
+        if request["event_type"] == "scenario_executed" and (not isinstance(request.get("writer_instance_id"), str) or not request["writer_instance_id"].strip()):
+            raise RejectedEvent("WRITER_INSTANCE_ID_REQUIRED", "scenario execution requires a non-empty writer_instance_id to enforce the single-writer-per-stream lease")
         if "occurred_at" in request:
             raise RejectedEvent("OCCURRED_AT_FORBIDDEN", "the server assigns event occurrence time")
         with self._lock, self.connection() as con:
@@ -500,12 +521,14 @@ class EventStore:
         if typ == "scenario_executed":
             if stream_id not in STREAM_IDS or not isinstance(payload.get("scenario_id"), str) or not payload["scenario_id"].strip():
                 raise RejectedEvent("SCENARIO_SCHEMA", "scenario execution requires a known stream and non-empty scenario_id")
+            self._enforce_scenario_writer_lease(con, stream_id, request["actor_id"], request["writer_instance_id"])
             planned, scoped_ids, previous = self._scenario_contract(con, stream_id)
             if not isinstance(planned, int):
                 raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "scenario execution requires a chartered planned_scenarios denominator")
-            if payload["scenario_id"] in previous:
-                raise RejectedEvent("DUPLICATE_SCENARIO", "a scenario can be executed only once per stream")
-            if len(previous) >= planned + len(scoped_ids):
+            previous_slots = {scenario_slot(pid) for pid in previous}
+            if scenario_slot(payload["scenario_id"]) in previous_slots:
+                raise RejectedEvent("DUPLICATE_SCENARIO", "a scenario numeric slot can be executed only once per stream, regardless of slug")
+            if len(previous_slots) >= planned + len(scoped_ids):
                 raise RejectedEvent("SCENARIO_DENOMINATOR_EXCEEDED", "executed scenarios cannot exceed the frozen denominator")
         if typ == "work_item_accepted":
             item = payload.get("work_item_id")
@@ -711,7 +734,7 @@ class EventStore:
                 if not isinstance(scenario, dict) or not isinstance(scenario.get("id"), str) or not scenario["id"].strip() or scenario.get("stream_id") not in STREAM_IDS or scenario["id"] in known_scenarios or scenario["id"] in new_scenario_ids:
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "each added scenario needs a globally unique id and known stream_id")
                 _, _, executed = self._scenario_contract(con, scenario["stream_id"])
-                if scenario["id"] in executed:
+                if scenario_slot(scenario["id"]) in {scenario_slot(pid) for pid in executed}:
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "a scope-approved scenario cannot already have been executed")
                 new_scenario_ids.add(scenario["id"])
         if typ == "correction_recorded":
@@ -731,6 +754,25 @@ class EventStore:
                     raise RejectedEvent("EVIDENCE_REQUIRED", "a session ceiling correction requires authority evidence")
                 if not isinstance(payload["ceiling"], (int, float)) or isinstance(payload["ceiling"], bool) or payload["ceiling"] <= 0:
                     raise RejectedEvent("CORRECTION_SCHEMA", "a corrected session ceiling must be a positive number of seconds")
+
+    @staticmethod
+    def _enforce_scenario_writer_lease(con: sqlite3.Connection, stream_id: str, actor_id: str, writer_instance_id: str) -> None:
+        """A stream's scenario-execution writes are leased to one writer instance at a time.
+        A second, different instance is rejected while the lease is fresh; a stale lease
+        (no scenario write in SCENARIO_WRITER_LEASE_TTL_SECONDS) may be taken over, so a
+        genuinely dead writer never permanently deadlocks the stream."""
+        now = now_iso()
+        row = con.execute("SELECT actor_id, writer_instance_id, acquired_at, last_seen_at FROM stream_scenario_write_leases WHERE stream_id=?", (stream_id,)).fetchone()
+        if row and row["writer_instance_id"] != writer_instance_id:
+            elapsed = (parse_time(now) or 0) - (parse_time(row["last_seen_at"]) or 0)
+            if elapsed < SCENARIO_WRITER_LEASE_TTL_SECONDS:
+                raise RejectedEvent("CONCURRENT_WRITER_LEASE_CONFLICT", f"{stream_id} scenario-execution writes are actively leased to another writer instance ({row['writer_instance_id']}); this write from {writer_instance_id} is rejected to prevent a duplicate-recording collision")
+        acquired_at = row["acquired_at"] if row and row["writer_instance_id"] == writer_instance_id else now
+        con.execute(
+            "INSERT INTO stream_scenario_write_leases(stream_id,actor_id,writer_instance_id,acquired_at,last_seen_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(stream_id) DO UPDATE SET actor_id=excluded.actor_id, writer_instance_id=excluded.writer_instance_id, acquired_at=excluded.acquired_at, last_seen_at=excluded.last_seen_at",
+            (stream_id, actor_id, writer_instance_id, acquired_at, now),
+        )
 
     @staticmethod
     def _scenario_contract(con: sqlite3.Connection, stream_id: str) -> tuple[int | None, list[str], list[str]]:
@@ -1096,7 +1138,8 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         stream_sessions.sort(key=lambda session: session.get("started_at") or "", reverse=True)
         stream["execution_session"] = stream_sessions[0] if stream_sessions else None
         planned_scenarios = stream["execution_session"].get("planned_scenarios") if stream["execution_session"] else None
-        stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(stream["scenario_ids"])}
+        distinct_scenario_slots = {scenario_slot(sid) for sid in stream["scenario_ids"]}
+        stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(distinct_scenario_slots), "recorded_scenario_events": len(stream["scenario_ids"])}
         next_stage = next((stage_id for stage_id, _, _ in STAGES if not items[f"{sid}:{stage_id}"]["accepted"]), "closure")
         stream["lifecycle_stage"] = {"id": next_stage, "name": STAGE_NAMES[next_stage]}
         if stream["execution_session"]:

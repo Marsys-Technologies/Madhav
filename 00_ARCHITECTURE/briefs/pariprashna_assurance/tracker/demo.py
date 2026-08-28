@@ -7,7 +7,10 @@ from control import EventStore
 E = [{"kind": "demo-fixture", "uri": "fixture://pariprashna-assurance/demo"}]
 
 def submit(store, actor, typ, payload, stream=None, key=""):
-    return store.submit({"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{stream}-{store.next_stream_seq(stream) if stream else 0}", "event_type": typ, "payload": payload, "stream_id": stream, "expected_stream_seq": store.next_stream_seq(stream) if stream else None, "evidence": E})
+    request = {"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{stream}-{store.next_stream_seq(stream) if stream else 0}", "event_type": typ, "payload": payload, "stream_id": stream, "expected_stream_seq": store.next_stream_seq(stream) if stream else None, "evidence": E}
+    if typ == "scenario_executed":
+        request["writer_instance_id"] = f"{actor}-demo-writer"
+    return store.submit(request)
 
 def accept_item(store, stream, item, number):
     lead = f"lead-{stream.lower()}" if stream.startswith("S") else "lead-p0"

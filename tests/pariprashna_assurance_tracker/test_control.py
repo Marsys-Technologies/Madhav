@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 TRACKER = Path(__file__).parents[2] / "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker"
 sys.path.insert(0, str(TRACKER))
-from control import EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
+from control import EVENT_SCHEMA, EventStore, RejectedEvent, canonical, digest, fold, programme_definition, presence_overlay  # noqa: E402
 from server import EventBus, ReplayMonitor, handler_factory, adapter_health, seed_empty_demo_runtime, service_identity  # noqa: E402
 from service import CANONICAL_MADHAV_ORIGIN, RELEASE_FILES, SERVICE_LABEL, _PROVENANCE_GIT_CONFIG, _assert_upgradeable_p0b_service, _assert_upgradeable_p1_service, _assert_upgradeable_p2_service, _p1_release_upgrade_lock, _p2_release_upgrade_lock, _prove_loopback_p1_service, _prove_loopback_p2_service, _same_interpreter_binary, _secure_service_logs, assert_release_attestation, attest_release, build_launchd_plist, runtime_preflight, upgrade_p1, upgrade_p1_release, upgrade_p2, upgrade_p2_release  # noqa: E402
 from http.server import ThreadingHTTPServer
@@ -31,8 +31,29 @@ class ControlPlaneTests(unittest.TestCase):
 
     def tearDown(self): self.tmp.cleanup()
 
-    def emit(self, actor, typ, payload=None, stream=None, evidence=EVIDENCE, key=None, seq=None):
-        return self.store.submit({"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{time.time_ns()}", "event_type": typ, "payload": payload or {}, "stream_id": stream, "expected_stream_seq": self.store.next_stream_seq(stream) if stream and seq is None else seq, "evidence": evidence})
+    def emit(self, actor, typ, payload=None, stream=None, evidence=EVIDENCE, key=None, seq=None, writer_instance_id=None):
+        request = {"actor_id": actor, "idempotency_key": key or f"{actor}-{typ}-{time.time_ns()}", "event_type": typ, "payload": payload or {}, "stream_id": stream, "expected_stream_seq": self.store.next_stream_seq(stream) if stream and seq is None else seq, "evidence": evidence}
+        if typ == "scenario_executed":
+            request["writer_instance_id"] = writer_instance_id or f"{actor}-primary-writer"
+        return self.store.submit(request)
+
+    def _insert_raw_event(self, stream_id, actor_id, actor_role, event_type, payload, idempotency_key, evidence=None, occurred_at="2026-08-28T14:24:29Z"):
+        """Insert a hash-chain-valid event directly into the ledger, bypassing _submit()'s
+        validation — used only to reproduce a pre-existing corrupted historical ledger (as in
+        the real S5 incident), which the current guard now prevents from being newly written."""
+        evidence = EVIDENCE if evidence is None else evidence
+        with self.store.connection() as con:
+            con.execute("BEGIN IMMEDIATE")
+            seq_row = con.execute("SELECT current_seq FROM stream_sequences WHERE stream_id=?", (stream_id,)).fetchone()
+            stream_seq = (seq_row[0] if seq_row else 0) + 1
+            previous = con.execute("SELECT last_hash FROM ledger_meta WHERE id=1").fetchone()[0]
+            body = {"schema_version": EVENT_SCHEMA, "event_id": f"raw-{idempotency_key}", "idempotency_key": idempotency_key, "request_fingerprint": digest({"actor_id": actor_id, "idempotency_key": idempotency_key, "event_type": event_type, "payload": payload, "stream_id": stream_id, "expected_stream_seq": stream_seq - 1, "evidence": evidence}), "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": actor_id, "actor_role": actor_role, "event_type": event_type, "payload": payload, "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
+            event_hash = digest(body)
+            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, idempotency_key, body["request_fingerprint"], stream_id, stream_seq, actor_id, actor_role, event_type, canonical(payload), canonical(evidence), occurred_at, previous, event_hash))
+            con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=excluded.current_seq", (stream_id, stream_seq))
+            con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (event_hash,))
+            con.execute("COMMIT")
+        self.store.rebuild()
 
     def accepted_s1_item(self):
         self.emit("lead-s1", "work_started", {"session_id": "s1", "assignment": "baseline", "branch": "b", "worktree": "w", "baseline_sha": "a", "current_sha": "a", "verifier": "verifier", "participants": [{"actor_id": "surrogate", "role": "NATIVE_SURROGATE", "state": "ACTIVE", "assignment": "triage", "model": "product-model", "reasoning_config": "standard"}, {"actor_id": "a11y-specialist", "role": "SPECIALIST", "state": "WAITING", "assignment": "accessibility review", "model": "audit-model", "reasoning_config": "high"}], "model": "test-model", "reasoning_config": "test", "cost": {"amount": 125000, "currency": "INR", "basis": "approved ceiling"}, "planned_scenarios": 12}, "S1")
@@ -670,6 +691,61 @@ class ControlPlaneTests(unittest.TestCase):
         with self.assertRaises(RejectedEvent) as excess: self.emit("lead-s1", "scenario_executed", {"scenario_id": "second-path"}, "S1")
         self.assertEqual(excess.exception.code, "SCENARIO_DENOMINATOR_EXCEEDED")
 
+    def test_scenario_execution_requires_writer_instance_id(self):
+        self.emit("lead-s1", "work_started", {"session_id": "no-writer-id", "planned_scenarios": 1}, "S1")
+        with self.assertRaises(RejectedEvent) as ctx:
+            self.store.submit({"actor_id": "lead-s1", "idempotency_key": "missing-writer", "event_type": "scenario_executed", "payload": {"scenario_id": "S1-SC-01"}, "stream_id": "S1", "expected_stream_seq": self.store.next_stream_seq("S1"), "evidence": EVIDENCE})
+        self.assertEqual(ctx.exception.code, "WRITER_INSTANCE_ID_REQUIRED")
+
+    def test_duplicate_scenario_rejected_by_numeric_slot_not_full_slug(self):
+        """S5 defect (1/2): DUPLICATE_SCENARIO must key on the numeric slot (S{N}-SC-{NN}),
+        not the full slug — a relabelled retry of the same slot must still be rejected."""
+        self.emit("lead-s1", "work_started", {"session_id": "slot-dedup", "planned_scenarios": 5}, "S1")
+        writer = "writer-primary"
+        self.assertTrue(self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-first-pass"}, "S1", writer_instance_id=writer)["accepted"])
+        with self.assertRaises(RejectedEvent) as duplicate:
+            self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-relabelled-retry"}, "S1", writer_instance_id=writer)
+        self.assertEqual(duplicate.exception.code, "DUPLICATE_SCENARIO")
+
+    def test_concurrent_writer_on_same_stream_token_is_rejected(self):
+        """S5 defect (2/2): two live writer instances authenticated as the same stream-lead
+        token must not both be able to record scenario executions — the second, unaware
+        instance is rejected with a named error code while the first instance's lease holds."""
+        self.emit("lead-s1", "work_started", {"session_id": "lease-collision", "planned_scenarios": 5}, "S1")
+        self.assertTrue(self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-first-pass"}, "S1", writer_instance_id="writer-a")["accepted"])
+        with self.assertRaises(RejectedEvent) as concurrent:
+            self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-02-reproof-pass"}, "S1", writer_instance_id="writer-b")
+        self.assertEqual(concurrent.exception.code, "CONCURRENT_WRITER_LEASE_CONFLICT")
+        rejected_codes = [r["code"] for r in self.store.rejected()]
+        self.assertIn("CONCURRENT_WRITER_LEASE_CONFLICT", rejected_codes)
+        s1 = next(s for s in self.store.projection()["canonical"]["streams"] if s["id"] == "S1")
+        self.assertEqual(s1["scenarios"]["executed"], 1)
+
+    def test_stale_writer_lease_can_be_taken_over(self):
+        self.emit("lead-s1", "work_started", {"session_id": "lease-takeover", "planned_scenarios": 5}, "S1")
+        self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-01-first"}, "S1", writer_instance_id="writer-a")
+        with self.store.connection() as con:
+            con.execute("UPDATE stream_scenario_write_leases SET last_seen_at=? WHERE stream_id='S1'", ("2000-01-01T00:00:00Z",))
+        result = self.emit("lead-s1", "scenario_executed", {"scenario_id": "S1-SC-02-second"}, "S1", writer_instance_id="writer-b")
+        self.assertTrue(result["accepted"])
+
+    def test_projector_counts_distinct_numeric_slots_not_raw_duplicate_events(self):
+        """Reproduces the S5 production defect (45-from-37) at small scale: a ledger already
+        holding genuine numeric-slot duplicates (one authentic execution + one duplicate
+        re-proof per slot, exactly as two concurrent lead-s5 sessions produced before this
+        guard existed) must be projected as its TRUE distinct-slot coverage — never the
+        inflated raw event count."""
+        self.emit("lead-s1", "work_started", {"session_id": "historical-collision", "planned_scenarios": 10}, "S1")
+        for i in range(1, 9):
+            self.emit("lead-s1", "scenario_executed", {"scenario_id": f"S1-SC-{i:02d}-first-pass"}, "S1", writer_instance_id="writer-original")
+        for i in range(1, 9):
+            self._insert_raw_event("S1", "lead-s1", "STREAM_LEAD", "scenario_executed", {"scenario_id": f"S1-SC-{i:02d}-reproof-pass"}, idempotency_key=f"reproof-{i}")
+        projection = self.store.projection()["canonical"]
+        s1 = next(s for s in projection["streams"] if s["id"] == "S1")
+        self.assertEqual(len(s1["scenario_ids"]), 16)
+        self.assertEqual(s1["scenarios"]["executed"], 8)
+        self.assertTrue(self.store.verify_replay()["ok"])
+
     def test_remediation_plan_is_frozen_after_triage(self):
         self.emit("lead-s1", "work_started", {"session_id": "remediation-contract", "planned_scenarios": 1}, "S1")
         self.emit("lead-s1", "finding_discovered", {"finding_id": "finding-1", "severity": "HIGH", "root_cause_group": "contract"}, "S1")
@@ -737,7 +813,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.emit("integrator", "result_packet_accepted", {"stream_id": "S1"}, "S1")
         projection = self.store.projection(); stream = next(s for s in projection["display"]["streams"] if s["id"] == "S1")
         cell = next(cell for cell in projection["liveness"]["cells"] if cell["stream_id"] == "S1")
-        self.assertEqual(stream["scenarios"], {"planned": 2, "executed": 2}); self.assertEqual(stream["lifecycle"], "COMPLETE"); self.assertEqual(cell["health"], "UNKNOWN")
+        self.assertEqual(stream["scenarios"], {"planned": 2, "executed": 2, "recorded_scenario_events": 2}); self.assertEqual(stream["lifecycle"], "COMPLETE"); self.assertEqual(cell["health"], "UNKNOWN")
 
     def test_failed_stream_cannot_receive_packet_closure_credit(self):
         self.emit("lead-s1", "work_started", {"session_id": "failed-before-packet", "planned_scenarios": 1}, "S1")
@@ -755,7 +831,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_execution_session_projection_exposes_governance_fields(self):
         self.accepted_s1_item(); projection = self.store.projection()
         stream = next(s for s in projection["canonical"]["streams"] if s["id"] == "S1")
-        self.assertEqual(stream["scenarios"], {"planned": 12, "executed": 0}); self.assertEqual(stream["lifecycle_stage"]["id"], "baseline")
+        self.assertEqual(stream["scenarios"], {"planned": 12, "executed": 0, "recorded_scenario_events": 0}); self.assertEqual(stream["lifecycle_stage"]["id"], "baseline")
         self.assertEqual(stream["execution_session"]["model"], "test-model"); self.assertEqual(stream["execution_session"]["reasoning_config"], "test")
         cell = projection["liveness"]["cells"][0]
         self.assertEqual(cell["conversation_id"], "s1"); self.assertIn("elapsed_seconds", cell); self.assertIn("last_presence_at", cell); self.assertEqual(cell["cost"], {"amount": 125000, "currency": "INR", "basis": "approved ceiling"}); self.assertEqual(cell["participants"][1]["actor_id"], "a11y-specialist")
@@ -813,7 +889,7 @@ class ControlPlaneTests(unittest.TestCase):
         def writer():
             for index in range(20):
                 try:
-                    peer.submit({"actor_id": "lead-s1", "idempotency_key": f"concurrent-snapshot-{index}", "event_type": "scenario_executed", "payload": {"scenario_id": f"concurrent-snapshot-{index}"}, "stream_id": "S1", "expected_stream_seq": peer.next_stream_seq("S1"), "evidence": EVIDENCE})
+                    peer.submit({"actor_id": "lead-s1", "idempotency_key": f"concurrent-snapshot-{index}", "event_type": "scenario_executed", "payload": {"scenario_id": f"concurrent-snapshot-{index}"}, "stream_id": "S1", "expected_stream_seq": peer.next_stream_seq("S1"), "evidence": EVIDENCE, "writer_instance_id": "concurrent-snapshot-writer"})
                 except Exception as exc:  # pragma: no cover - asserted below
                     failures.append(exc)
         thread = threading.Thread(target=writer); thread.start()
