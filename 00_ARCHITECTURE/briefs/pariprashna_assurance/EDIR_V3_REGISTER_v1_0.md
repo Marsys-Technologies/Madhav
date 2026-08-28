@@ -700,8 +700,9 @@ await Native Surrogate triage.
 - **Proposed fix class:** make `DELETE /api/auth/session` resolve the caller's
   uid from the incoming cookie and call `revokeRefreshTokens(uid)` before
   clearing the cookie, reusing the existing Admin SDK singleton.
-- **Status:** IN REMEDIATION — PR #1616 (branch `pariprashna/v3-s5-e017-session-revocation-on-logout`)
-  open, TDD red-then-green, awaiting independent verification.
+- **Status:** FIXED, INDEPENDENTLY VERIFIED ACCEPT (Opus), MERGED to main —
+  PR #1616 (branch `pariprashna/v3-s5-e017-session-revocation-on-logout`),
+  TDD red-then-green, merged 2026-08-28T00:37:32Z.
 
 ### V3-E-018 — `clients/[id]/layout.tsx`'s `generateMetadata` is ALSO unguarded — same defect class as V3-E-007, broader blast radius
 
@@ -832,9 +833,8 @@ by its correct tracker id, `E-001`, to end the collision.
 - **Status:** FIXED, INDEPENDENTLY VERIFIED ACCEPT -- PR #1617 (branch
   `pariprashna/v3-s5-e013-runs-active-sse-build-continue-authz`), TDD
   red-then-green (7 DENY cases red pre-fix, mutation-tested by the verifier),
-  full suite green. **Queued in the repo merge queue, NOT yet merged** as of
-  this entry's last edit -- confirm live state via `gh pr view 1617` before
-  citing this as closed.
+  full suite green. **MERGED to main** at 2026-08-28T00:49:32Z (confirmed
+  via live `gh pr view 1617`).
 - **Note (overlap with V3-E-011):** this entry's content is the
   confirmed-HIGH subset of V3-E-011's own sweep table -- filed separately
   per the tracker's finding-id bookkeeping (V3-E-011 the umbrella sweep,
@@ -906,9 +906,12 @@ Stated plainly, not buried in prose elsewhere:
 - **Nothing this session fixed is serving production traffic.** `amjis-web`
   remained at `cafa894ee...` (stale, missing even the pre-session B-007/B-008
   fixes) for this entire run; the deploy pipeline itself failed again during
-  the session (re-checked via `gcloud run services describe` at close). Two
-  PRs are merged to `main` (#1611, #1613), three more are independently
-  verified and queued (#1616, #1617, #1618) — none are live.
+  the session (re-checked via `gcloud run services describe` at close). As
+  of 2026-08-28T00:49:32Z (live `gh pr view` check, the freshest available):
+  FOUR PRs merged to `main` (#1611 00:20:31Z, #1613 00:27:38Z, #1616
+  00:37:32Z, #1617 00:49:32Z), ONE independently verified ACCEPT and still
+  queued in the merge queue, not yet merged (#1618) — none are live
+  regardless of merge state, since `amjis-web` has not redeployed.
 - **Model.** The tracker's `work_started` payload records this stream's main
   loop as `claude-sonnet-5`. The charter recommends Opus for S5 specifically
   ("Opus-led ... this is the stream where that discipline matters most");
@@ -929,9 +932,12 @@ Stated plainly, not buried in prose elsewhere:
   revision (subagents performing a governed role should hold and use their
   own tracker credentials directly), not concealed as if it had happened
   natively.
-- **Denominator honesty.** 45 scenarios were frozen at session open; ~19
-  discrete tracker events were recorded (10 `scenario_executed` plus the
-  finding/remediation/verification chain) against that denominator. This
+- **Denominator honesty.** 45 scenarios were frozen at session open; 11
+  `scenario_executed` events were recorded against that denominator (well
+  short of 45), plus a separate 9 `finding_discovered` / 9 `finding_triaged`
+  / 1 `remediation_approved` (9 plan entries) / 5 paired
+  `remediation_implemented`+`verification_accepted` events documenting real
+  work outside the scenario count itself. This
   session claims PARTIAL credit, not full closure of the §9 battery — the
   work concentrated on the highest-value lanes (the systemic authz sweep,
   LIVE-proven J4 enforcement, a real restore drill, a LIVE roles/grants
@@ -952,12 +958,13 @@ S2 independently owns the real `V3-E-021`). V3-E-011 closed-by-triage with
 the full ~39-route candidate sweep individually verdicted (per-route detail
 lives in this session's tracker/agent record, not reproduced verbatim here —
 flagged by the stream-closure review as a durability gap for a future
-session to backfill). THREE fix PRs CONFIRMED MERGED to main as of session
-close: #1611 (V3-E-007 — its underlying FINDING stays OPEN pending the
+session to backfill). As of 2026-08-28T00:49:32Z (live `gh pr view` check,
+the freshest available): FOUR fix PRs CONFIRMED MERGED to main: #1611
+(V3-E-007 — its underlying FINDING stays OPEN pending the
 deploy-staleness-blocked LIVE denial proof), #1613 (V3-E-010), #1616
-(V3-E-017). TWO more independently verified ACCEPT and queued in the merge
-queue, not yet merged: #1617 (V3-E-022 / the confirmed-HIGH subset of
-V3-E-011) and #1618 (the remainder of V3-E-011's fix — mcp/session, plus
+(V3-E-017), #1617 (V3-E-022 / the confirmed-HIGH subset of V3-E-011). ONE
+more independently verified ACCEPT and still queued in the merge queue, not
+yet merged: #1618 (the remainder of V3-E-011's fix — mcp/session, plus
 `clients/[id]/learning`, `build/data-readiness`, `build/pyramid-layers` —
 verified with a pre-merge sanity query run clean, 0 legacy owner_id/
 client_id mismatches). Re-check `gh pr view <n>` for current state before

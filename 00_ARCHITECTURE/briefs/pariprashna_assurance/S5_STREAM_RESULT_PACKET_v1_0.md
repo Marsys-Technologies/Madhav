@@ -89,9 +89,9 @@ counted.
 | #1611 | V3-E-007 | ACCEPT (Opus) | **MERGED** to main (00:20:31Z) |
 | #1613 | V3-E-010 | ACCEPT (Opus) | **MERGED** to main (00:27:38Z) |
 | #1615 | E-001 | not sent for verification — explicitly held; requires Native Surrogate + integrator sign-off before merge (production migration) | **NOT merged, by design** — never queued, auto-merge never armed (confirmed via GitHub timeline, zero `auto_merge_*` events) |
-| #1616 | V3-E-017 | ACCEPT (Opus) | **MERGED** to main |
-| #1617 | V3-E-011 (3 of the 4 HIGH routes) / V3-E-022 | ACCEPT (Opus) | queued in merge queue as of packet time |
-| #1618 | V3-E-011 (mcp/session) + learning + build reads | ACCEPT (Opus), pre-merge sanity query (0 legacy owner_id/client_id mismatches) run clean | queued in merge queue as of packet time |
+| #1616 | V3-E-017 | ACCEPT (Opus) | **MERGED** to main (00:37:32Z) |
+| #1617 | V3-E-011 (3 of the 4 HIGH routes) / V3-E-022 | ACCEPT (Opus) | **MERGED** to main (00:49:32Z) |
+| #1618 | V3-E-011 (mcp/session) + learning + build reads | ACCEPT (Opus), pre-merge sanity query (0 legacy owner_id/client_id mismatches) run clean | queued in merge queue, not yet merged as of 00:49:32Z (the freshest live check at edit time) |
 
 Zero REJECT verdicts this session — every dispatched fix passed adversarial
 review, though not without real findings along the way (see verifier notes
@@ -155,7 +155,7 @@ silently absorbed.
   against its own reading of the service-token gate; the fix landed either
   way (additive, safe regardless), but the exact severity is an open call for
   native/integrator review.
-- **Denominator honesty**: 10 of 45 frozen scenarios executed as discrete
+- **Denominator honesty**: 11 of 45 frozen scenarios executed as discrete
   tracker events; substantive §9 coverage is broader than that number alone
   suggests (see INTEGRATION-rung suite re-runs throughout this session), but
   the gap between "planned" and "executed-as-events" is real and stated
@@ -172,11 +172,12 @@ silently absorbed.
   session should backfill the citations into the register rather than rely
   on this session's transcript.
 - **Nothing this session fixed is live.** Worth repeating outside the
-  deploy-staleness bullet above: three PRs are merged to `main` (#1611,
-  #1613, #1616), two more are independently verified ACCEPT and queued in
-  the merge queue (#1617, #1618) — zero are deployed. `amjis-web` stayed at
-  `cafa894ee` for this entire run, and the deploy pipeline itself failed
-  again mid-session.
+  deploy-staleness bullet above. As of 2026-08-28T00:49:32Z (live `gh pr
+  view` check, the freshest available at edit time): FOUR PRs merged to
+  `main` (#1611, #1613, #1616, #1617), ONE independently verified ACCEPT
+  and still queued, not yet merged (#1618) — zero are deployed regardless.
+  `amjis-web` stayed at `cafa894ee` for this entire run, and the deploy
+  pipeline itself failed again mid-session.
 - **Model disclosure**: this stream's main loop ran on `claude-sonnet-5`
   (tracker `work_started` payload), not the charter's preferred Opus — legal
   under harness §5's floor (never a downshift below Sonnet), but stated here
