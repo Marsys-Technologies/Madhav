@@ -66,7 +66,7 @@ BEGIN
        AND has_writer IS FALSE
        AND asset_kind = 'service'
        AND asset_type = 'service'
-       AND health_probe IS NOT NULL
+       AND health_probe->>'probe_type' = 'panchanga_engine'
   ) THEN
     RAISE EXCEPTION 'migration 635 requires the vetted bg_panchanga service-probe contract';
   END IF;

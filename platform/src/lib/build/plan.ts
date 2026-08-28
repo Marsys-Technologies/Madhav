@@ -371,7 +371,9 @@ export function resolveBuildPlan({
     throw new Error('asset_set scope requires a non-empty list of valid asset_ids')
   }
 
-  // update and cascade: no pre-flight, use existing behavior, return new shape
+  // Every action that produces a candidate must pass the same out-of-plan
+  // dependency preflight. Update/cascade used to bypass it, which could plan a
+  // consumer after its L0/service identity had been withheld from candidates.
   if (action === 'update') {
     const scopeAssets = candidateAssetsInScope(scope, scope_target)
     const stale = scopeAssets.filter(id =>
@@ -386,6 +388,13 @@ export function resolveBuildPlan({
     const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
     const rawCandidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+    if (blockers.length > 0) {
+      return {
+        status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
+        protected_assets: withheld,
+      }
+    }
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
     return {
@@ -403,6 +412,13 @@ export function resolveBuildPlan({
     ).map(r => r.asset_id)
     const rawCandidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+    if (blockers.length > 0) {
+      return {
+        status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
+        protected_assets: withheld,
+      }
+    }
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
     return {
@@ -446,12 +462,9 @@ export function resolveBuildPlan({
     return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null, protected_assets: withheld }
   }
 
-  // pre-flight gate: only for non-global scope (global has all assets as candidates)
-  if (scope !== 'global') {
-    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
-    if (blockers.length > 0) {
-      return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
-    }
+  const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+  if (blockers.length > 0) {
+    return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
   }
 
   const waves = computeWaves(candidates, registry, scope, scope_target)

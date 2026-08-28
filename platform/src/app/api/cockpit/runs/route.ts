@@ -7,7 +7,7 @@ import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
-import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS, isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
+import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
@@ -240,18 +240,7 @@ export async function POST(req: NextRequest) {
               asset_kind, asset_type, health_probe
        FROM asset_registry
        WHERE is_active = true
-         AND (
-           has_writer = true
-           OR (
-             has_writer = false
-             AND asset_kind = 'service'
-             AND asset_type = 'service'
-             AND health_probe IS NOT NULL
-             AND asset_id = ANY($1::text[])
-           )
-         )
        ORDER BY layer, sort_order`,
-      [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
     ),
     query<ThroughputEntry>(
       // Include global (chart_id IS NULL) rows alongside chart-scoped so built L0/global
@@ -315,24 +304,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Retain vetted no-writer probes as registry identities so pre-flight can
-  // verify a dependent's fresh service receipt. They are excluded only from
-  // ordinary candidate selection below; an explicitly admitted singleton probe
-  // remains the sole path that may dispatch one.
+  // Supply the whole active registry to the planner. Candidate restrictions are
+  // deliberately represented as exclusions rather than by dropping dependency
+  // identities: an otherwise-authorized per-chart asset can still fail closed
+  // on its global L0/service prerequisite.
   const requestedServiceProbeIds = new Set(requestedServiceProbes.map(row => row.asset_id))
-  const allowedRegistry = registryResult.rows.filter(r =>
-    allowedScopes.includes(r.scope)
-  )
-  const nonCandidateAssetIds = new Set(allowedRegistry
-    .filter(row => row.has_writer === false && !requestedServiceProbeIds.has(row.asset_id))
+  const nonCandidateAssetIds = new Set(registryResult.rows
+    .filter(row =>
+      !allowedScopes.includes(row.scope)
+      || (scope === 'global' && row.layer === 'brahmagyan')
+      || (row.has_writer === false && !requestedServiceProbeIds.has(row.asset_id))
+    )
     .map(row => row.asset_id))
-
-  // L0 GATE (native ruling 2026-06-26): global Build/Rebuild NEVER includes L0 (brahmagyan),
-  // regardless of role. L0 is built ONLY via an explicit layer='brahmagyan' trigger or
-  // an individual bg_* asset trigger, and only by super_admin.
-  const planRegistry = scope === 'global'
-    ? allowedRegistry.filter(r => r.layer !== 'brahmagyan')
-    : allowedRegistry
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
   const allRegistryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
@@ -348,7 +331,7 @@ export async function POST(req: NextRequest) {
     return [r.asset_id, { state: r.state, reasons: recordedReasons }]
   }))
   const buildPlan = resolveBuildPlan({
-    scope, scope_target, action, registry: planRegistry, throughput, freshness, protectedAssetIds,
+    scope, scope_target, action, registry: registryResult.rows, throughput, freshness, protectedAssetIds,
     nonCandidateAssetIds,
   })
   const plan = buildPlan.plan_waves.flat()
@@ -384,7 +367,7 @@ export async function POST(req: NextRequest) {
 
   // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
   // operational metadata, so the runner must never re-plan a queued run from it.
-  const registryByAssetId = new Map(planRegistry.map(entry => [entry.asset_id, entry]))
+  const registryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
   const writerCountByTarget = new Map<string, number>()
   for (const entry of registryResult.rows) {
     if (entry.target_table) {
