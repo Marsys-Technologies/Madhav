@@ -8,6 +8,7 @@ import {
   type NirmanaElevationRawSources,
 } from '../snapshot'
 import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalNirmanaRebuildEvidenceDigest, canonicalRegistryContractDigest } from '../definitions'
+import { buildNirmanaBaselineCandidate } from '../monitor'
 
 const observedAt = '2026-08-25T09:00:00.000Z'
 const milestoneAt = '2026-08-25T09:01:00.000Z'
@@ -135,6 +136,9 @@ function monitorObservation(overrides: Partial<MonitorObservationRow> = {}): Mon
     freshness_deadline_at: '2026-08-25T09:15:00.000Z',
     runtime_liveness: 'quiet',
     source_error_code: null,
+    release_state: 'in_sync',
+    registry_identity_sha256: '1'.repeat(64),
+    registry_contract_sha256: '2'.repeat(64),
     ...overrides,
   }
 }
@@ -597,6 +601,54 @@ describe('projectNirmanaElevationSnapshot', () => {
     expect(snapshot.program_sync.candidate_catalogue_sha256).toMatch(/^[a-f0-9]{64}$/)
     expect(snapshot.progress).toMatchObject({ denominator_status: 'frozen', assets_total: 1 })
     expect(snapshot.data_quality.gaps).toContain('Plan adaptation is required before the program denominator can change.')
+  })
+
+  it('derives supersession eligibility from the same monitor, definition, candidate, event, and build-run inputs as the transaction guard', () => {
+    const candidate = buildNirmanaBaselineCandidate(defaultRegistry)
+    const current = defaultManifest()
+    const currentDigest = canonicalManifestDigest(current)
+    const eligibleRaw = () => sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest: current, manifest_sha256: currentDigest, created_at: observedAt,
+      }],
+      monitor_observations: [monitorObservation({
+        status: 'plan_adaptation_required', current_definition_sha256: currentDigest,
+        candidate_definition_sha256: candidate.manifest_sha256,
+        candidate_catalogue_sha256: candidate.catalogue_sha256,
+        registry_identity_sha256: candidate.registry_identity_sha256,
+        registry_contract_sha256: candidate.registry_contract_sha256,
+      })],
+    })
+
+    const eligible = projectNirmanaElevationSnapshot(eligibleRaw(), { generatedAt: '2026-08-25T09:05:00.000Z' })
+    expect(eligible.program_sync).toMatchObject({ supersession_eligible: true, supersession_blockers: [] })
+
+    const blockedCases: Array<[string, Partial<NirmanaElevationRawSources>, Partial<MonitorObservationRow>, string]> = [
+      ['source error', {}, { source_error_code: 'NIRMANA_SOURCE_UNAVAILABLE' }, 'source_error'],
+      ['release state', {}, { release_state: 'out_of_sync' }, 'release_not_in_sync'],
+      ['runtime liveness', {}, { runtime_liveness: 'active' }, 'runtime_not_quiet'],
+      ['candidate drift', {}, { candidate_definition_sha256: 'f'.repeat(64) }, 'candidate_mismatch'],
+      ['current-definition event', {
+        campaign_events: [{ campaign_id: 'nirmana-elevation', definition_revision: 'v1', event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0', evidence_payload: {}, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: observedAt, recorded_at: observedAt }],
+      }, {}, 'campaign_events_present'],
+      ['definition-scoped build run', {
+        build_runs: [{ id: runOne, chart_id: canonicalChartId, state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt, campaign_id: 'nirmana-elevation', definition_revision: 'v1' }],
+      }, {}, 'definition_build_runs_present'],
+    ]
+    for (const [, rawOverrides, observationOverrides, blocker] of blockedCases) {
+      const raw = eligibleRaw()
+      const snapshot = projectNirmanaElevationSnapshot({
+        ...raw,
+        ...rawOverrides,
+        monitor_observations: [monitorObservation({
+          ...raw.monitor_observations![0],
+          ...observationOverrides,
+        })],
+      }, { generatedAt: '2026-08-25T09:05:00.000Z' })
+      expect(snapshot.program_sync).toMatchObject({ supersession_eligible: false })
+      expect(snapshot.program_sync.supersession_blockers).toContain(blocker)
+    }
   })
 
   it('marks the monitor stale only after the five-minute window plus ten-minute grace', () => {

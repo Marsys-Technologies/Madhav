@@ -139,7 +139,7 @@ function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
     <DefinitionSupersessionPanel
       key={`supersession:${snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}`}
       snapshot={snapshot}
-      onSuperseded={onBaselineAccepted}
+      onRefresh={onBaselineAccepted}
     />
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
       <CampaignSpine snapshot={snapshot} onOpenAudit={openAudit} />

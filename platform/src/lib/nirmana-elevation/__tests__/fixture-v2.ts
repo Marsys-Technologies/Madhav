@@ -350,6 +350,9 @@ const inSyncObservation = {
   freshness_deadline_at: '2026-08-26T00:17:00.000Z',
   source_error_code: null,
   runtime_liveness: 'quiet' as const,
+  release_state: 'in_sync' as const,
+  registry_identity_sha256: '1'.repeat(64),
+  registry_contract_sha256: '2'.repeat(64),
 }
 
 /** No monitor receipt is deliberately distinct from the complete program-sync fixtures below. */

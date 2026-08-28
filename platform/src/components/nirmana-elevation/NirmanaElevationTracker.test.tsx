@@ -88,6 +88,8 @@ function baselineMissingV2(): NirmanaElevationSnapshotV2 {
     current_definition_sha256: null,
     candidate_definition_sha256: 'd'.repeat(64),
     candidate_catalogue_sha256: 'e'.repeat(64),
+    supersession_eligible: false,
+    supersession_blockers: [],
   }
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
   if (!monitor) throw new Error('Fixture must include the program monitor source.')
@@ -124,6 +126,8 @@ describe('NirmanaElevationTracker', () => {
       current_definition_sha256: null,
       candidate_definition_sha256: null,
       candidate_catalogue_sha256: null,
+      supersession_eligible: false,
+      supersession_blockers: [],
     }
     const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
     if (!monitor) throw new Error('Fixture must include the program monitor source.')

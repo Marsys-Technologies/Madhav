@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 
@@ -8,7 +8,7 @@ const EVIDENCE_URL = '/api/admin/nirmana-elevation/evidence'
 
 type Props = {
   snapshot: NirmanaElevationSnapshotV2
-  onSuperseded?: () => Promise<boolean>
+  onRefresh?: () => Promise<boolean>
 }
 
 type SupersessionCandidate = {
@@ -27,16 +27,10 @@ function deterministicRevision(observationId: string, observedAt: string): strin
 
 function currentCandidate(snapshot: NirmanaElevationSnapshotV2): SupersessionCandidate | null {
   const sync = snapshot.program_sync
-  const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
-  const noProjectedCampaignUsage = snapshot.audit.raw_ledger_refs.length === 0 && snapshot.active_runs.length === 0
-  if (sync.status !== 'plan_adaptation_required'
+  if (!sync.supersession_eligible
     || snapshot.campaign.campaign_id !== 'nirmana-elevation'
     || snapshot.campaign.definition_status !== 'frozen'
     || snapshot.campaign.definition_revision === null
-    || monitor?.state !== 'fresh'
-    || snapshot.sources.some((source) => source.state !== 'fresh')
-    || snapshot.release.production_in_sync !== true
-    || !noProjectedCampaignUsage
     || sync.source_observation_id === null
     || sync.observed_at === null
     || sync.current_definition_sha256 === null
@@ -62,31 +56,69 @@ function formatObservedAt(value: string): string {
   }).format(new Date(value))
 }
 
-function publicFailureMessage(status: number): string {
-  if (status === 409) return 'The proposal changed or no longer meets the supersession safeguards. Refresh the tracker before trying again.'
-  if (status === 429) return 'Definition supersession is temporarily rate-limited. Wait briefly, then refresh the tracker.'
-  if (status === 401 || status === 403) return 'Your super-admin session is no longer authorized. Sign in again, then refresh the tracker.'
-  if (status === 503) return 'Supersession safeguards could not be verified. No definition change was made. Refresh the tracker before trying again.'
-  return 'The definition could not be superseded. No program progress was changed. Refresh the tracker before trying again.'
+const BLOCKER_COPY: Record<NirmanaElevationSnapshotV2['program_sync']['supersession_blockers'][number], string> = {
+  not_plan_adaptation: 'The observation is not a plan-adaptation proposal.',
+  current_definition_not_frozen: 'The current definition is not frozen.',
+  current_definition_mismatch: 'The observation does not match the current definition.',
+  candidate_mismatch: 'The live candidate no longer matches the observation.',
+  source_unavailable: 'The authoritative monitor source is unavailable.',
+  source_error: 'The authoritative monitor reported a source error.',
+  observation_incomplete: 'The monitor observation is incomplete.',
+  observation_stale: 'The monitor observation is no longer fresh.',
+  release_not_in_sync: 'The release is not in sync.',
+  runtime_not_quiet: 'The monitored runtime is not quiet.',
+  campaign_events_present: 'The current definition already has campaign events.',
+  definition_build_runs_present: 'The current definition already has build runs.',
+  revision_not_unique: 'The proposed definition revision is already in use.',
+  candidate_reconstruction_failed: 'The server could not reconstruct the candidate safely.',
 }
 
-export function DefinitionSupersessionPanel({ snapshot, onSuperseded }: Props) {
+export function DefinitionSupersessionPanel({ snapshot, onRefresh }: Props) {
   const candidate = currentCandidate(snapshot)
+  const candidateIdentity = candidate === null ? null : [candidate.observationId, candidate.currentDigest, candidate.candidateDigest, candidate.candidateCatalogueDigest, candidate.newRevision].join(':')
+  const requestGate = useRef<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [superseded, setSuperseded] = useState(false)
+  const [supersededIdentity, setSupersededIdentity] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [indeterminateResult, setIndeterminateResult] = useState<{ identity: string; message: string } | null>(null)
+  const superseded = supersededIdentity === candidateIdentity
+  const refreshRequired = indeterminateResult?.identity === candidateIdentity
+  const error = refreshRequired ? indeterminateResult.message : null
 
-  if (!candidate) return null
+  const refreshAfterIndeterminateResult = async (message: string) => {
+    if (candidateIdentity === null) return
+    setIndeterminateResult({ identity: candidateIdentity, message })
+    if (!onRefresh) return
+    setRefreshing(true)
+    try {
+      await onRefresh()
+    } catch {
+      // The view remains latched until its candidate identity changes.
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  if (!candidate) {
+    if (snapshot.program_sync.status !== 'plan_adaptation_required' || snapshot.program_sync.supersession_blockers.length === 0) return null
+    return <section role="status" aria-labelledby="definition-supersession-unavailable-heading" className="rounded-xl border border-brand-warn/60 bg-brand-warn/10 p-4">
+      <h2 id="definition-supersession-unavailable-heading" className="font-serif text-lg text-brand-gold-cream">Definition supersession unavailable</h2>
+      <p className="mt-1 text-sm text-brand-text-2">The server-derived eligibility check has withheld this control. Refresh the tracker after resolving every blocker.</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-brand-text-3">
+        {snapshot.program_sync.supersession_blockers.map((blocker) => <li key={blocker}>{BLOCKER_COPY[blocker]}</li>)}
+      </ul>
+    </section>
+  }
 
   const supersede = async () => {
+    if (candidateIdentity === null || submitting || superseded || refreshRequired || requestGate.current === candidateIdentity) return
     const confirmed = window.confirm(
       'Supersede this exact frozen definition with the displayed candidate? This is a governed plan replacement, not permission to start or resume campaign work.',
     )
     if (!confirmed) return
 
+    requestGate.current = candidateIdentity
     setSubmitting(true)
-    setError(null)
     try {
       const response = await fetch(EVIDENCE_URL, {
         method: 'POST',
@@ -104,32 +136,34 @@ export function DefinitionSupersessionPanel({ snapshot, onSuperseded }: Props) {
         }),
       })
       if (!response.ok) {
-        setError(publicFailureMessage(response.status))
+        await refreshAfterIndeterminateResult(response.status === 409
+          ? 'The server safely refused this proposal because it changed or no longer meets the supersession safeguards. Refresh is required before another request.'
+          : 'The server did not provide a definitive supersession outcome. Refresh is required before another request.')
         return
       }
       const body: unknown = await response.json()
       if (typeof body !== 'object' || body === null
         || !('outcome' in body)
         || (body.outcome !== 'superseded' && body.outcome !== 'idempotent')) {
-        setError('The server returned an unexpected supersession result. Refresh the tracker before taking another action.')
+        await refreshAfterIndeterminateResult('The server response was not a definitive supersession outcome. Refresh is required before another request.')
         return
       }
-      setSuperseded(true)
-      if (onSuperseded) {
+      setSupersededIdentity(candidateIdentity)
+      if (onRefresh) {
         setRefreshing(true)
         let refreshed = false
         try {
-          refreshed = await onSuperseded()
+          refreshed = await onRefresh()
         } catch {
           refreshed = false
         }
         setRefreshing(false)
         if (!refreshed) {
-          setError('The definition was superseded, but current evidence could not refresh. Reload the page to retrieve authoritative evidence.')
+          setIndeterminateResult({ identity: candidateIdentity, message: 'The definition was superseded, but current evidence could not refresh. Reload the page to retrieve authoritative evidence.' })
         }
       }
     } catch {
-      setError('The supersession request could not be completed. No definition change was made. Refresh the tracker before trying again.')
+      await refreshAfterIndeterminateResult('The supersession request result is unknown. Refresh is required before another request.')
     } finally {
       setSubmitting(false)
     }
@@ -153,11 +187,11 @@ export function DefinitionSupersessionPanel({ snapshot, onSuperseded }: Props) {
           <dt className="font-semibold text-brand-text-2">Candidate labels</dt><dd className="break-all font-mono">{candidate.candidateCatalogueDigest}</dd>
           <dt className="font-semibold text-brand-text-2">New revision</dt><dd className="break-all font-mono">{candidate.newRevision}</dd>
         </dl>
-        <p className="mt-3 text-xs text-brand-text-3">Current tracker evidence shows no accepted campaign receipts or active runs. The server rechecks every supersession safeguard atomically.</p>
+        <p className="mt-3 text-xs text-brand-text-3">This eligibility decision is server-derived from the authoritative monitor, definition, event, build-run, and live-candidate checks. The server rechecks it atomically when submitted.</p>
       </div>
       <button
         type="button"
-        disabled={submitting || superseded}
+        disabled={submitting || superseded || refreshRequired}
         onClick={() => void supersede()}
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-warn bg-brand-warn/15 px-4 py-2 text-sm font-semibold text-brand-gold-cream transition hover:bg-brand-warn/25 disabled:cursor-not-allowed disabled:opacity-60"
       >
@@ -168,6 +202,8 @@ export function DefinitionSupersessionPanel({ snapshot, onSuperseded }: Props) {
     </div>
     {superseded && refreshing && <p role="status" className="mt-3 text-sm text-brand-success">Definition superseded. Refreshing the tracker from authoritative evidence…</p>}
     {superseded && !refreshing && !error && <p role="status" className="mt-3 text-sm text-brand-success">Definition superseded. Current evidence refreshed.</p>}
+    {refreshRequired && refreshing && <p role="status" className="mt-3 text-sm text-brand-warn">Refreshing authoritative evidence before another request…</p>}
+    {refreshRequired && !refreshing && <p role="status" className="mt-3 text-sm text-brand-warn">This candidate is locked until the authoritative snapshot identity changes.</p>}
     {error && <p role="alert" className="mt-3 text-sm text-brand-warn">{error}</p>}
   </section>
 }

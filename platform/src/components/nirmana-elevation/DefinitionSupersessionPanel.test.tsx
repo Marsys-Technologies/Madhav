@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fixtureV2, planAdaptationSnapshot } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
+import { planAdaptationSnapshot } from '@/lib/nirmana-elevation/__tests__/fixture-v2'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import { DefinitionSupersessionPanel } from './DefinitionSupersessionPanel'
 
@@ -22,6 +22,8 @@ function supersessionSnapshot(): NirmanaElevationSnapshotV2 {
     current_definition_sha256: currentDigest,
     candidate_definition_sha256: candidateDigest,
     candidate_catalogue_sha256: catalogueDigest,
+    supersession_eligible: true,
+    supersession_blockers: [],
   }
   snapshot.active_runs = []
   snapshot.audit = { receipts: [], raw_ledger_refs: [] }
@@ -50,7 +52,7 @@ afterEach(() => {
 })
 
 describe('DefinitionSupersessionPanel', () => {
-  it('renders only an evidence-bound, unused, fresh plan-adaptation candidate', () => {
+  it('renders only an evidence-bound candidate when the server-derived eligibility contract permits it', () => {
     const snapshot = supersessionSnapshot()
     const { rerender } = render(<DefinitionSupersessionPanel snapshot={snapshot} />)
 
@@ -63,23 +65,14 @@ describe('DefinitionSupersessionPanel', () => {
     expect(screen.getByText(/never submits a caller-provided manifest/i)).toBeVisible()
 
     const unavailable = supersessionSnapshot()
-    unavailable.sources.find((source) => source.source_id === 'program_monitor')!.state = 'unavailable'
+    unavailable.program_sync = { ...unavailable.program_sync, supersession_eligible: false, supersession_blockers: ['runtime_not_quiet'] }
     rerender(<DefinitionSupersessionPanel snapshot={unavailable} />)
     expect(screen.queryByRole('button', { name: 'Supersede definition' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/monitored runtime is not quiet/i)
 
-    const hasReceipts = supersessionSnapshot()
-    hasReceipts.audit = structuredClone(fixtureV2.audit)
-    rerender(<DefinitionSupersessionPanel snapshot={hasReceipts} />)
-    expect(screen.queryByRole('button', { name: 'Supersede definition' })).not.toBeInTheDocument()
-
-    const active = supersessionSnapshot()
-    active.active_runs = structuredClone(fixtureV2.active_runs)
-    rerender(<DefinitionSupersessionPanel snapshot={active} />)
-    expect(screen.queryByRole('button', { name: 'Supersede definition' })).not.toBeInTheDocument()
-
-    const outOfSync = supersessionSnapshot()
-    outOfSync.release.production_in_sync = false
-    rerender(<DefinitionSupersessionPanel snapshot={outOfSync} />)
+    const candidateChangedOnServer = supersessionSnapshot()
+    candidateChangedOnServer.program_sync = { ...candidateChangedOnServer.program_sync, supersession_eligible: false, supersession_blockers: ['candidate_mismatch'] }
+    rerender(<DefinitionSupersessionPanel snapshot={candidateChangedOnServer} />)
     expect(screen.queryByRole('button', { name: 'Supersede definition' })).not.toBeInTheDocument()
   })
 
@@ -87,8 +80,8 @@ describe('DefinitionSupersessionPanel', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const onSuperseded = vi.fn().mockResolvedValue(true)
-    render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} onSuperseded={onSuperseded} />)
+    const onRefresh = vi.fn().mockResolvedValue(true)
+    render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} onRefresh={onRefresh} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Supersede definition' }))
     expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/governed plan replacement.*not permission to start or resume/i))
@@ -111,19 +104,56 @@ describe('DefinitionSupersessionPanel', () => {
       new_definition_revision: `ntap-20260827-${observationId}`,
     })
     expect(JSON.parse(String(requestInit?.body))).not.toHaveProperty('manifest')
-    await waitFor(() => expect(onSuperseded).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1))
     expect(screen.getByRole('status')).toHaveTextContent(/definition superseded/i)
   })
 
-  it('fails closed with bounded copy when the server rejects a stale candidate', async () => {
+  it('latches a 409 refusal and refreshes before allowing another request', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ error: `Candidate ${'f'.repeat(64)} changed at postgresql${'://private-host'}` }, 409)))
+    const onRefresh = vi.fn().mockResolvedValue(true)
 
-    render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} />)
+    const { rerender } = render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} onRefresh={onRefresh} />)
     fireEvent.click(screen.getByRole('button', { name: 'Supersede definition' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/no longer meets the supersession safeguards/i)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/safely refused this proposal/i)
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Supersede definition' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Supersede definition' }))
+    expect(fetch).toHaveBeenCalledTimes(1)
+    const changedIdentity = supersessionSnapshot()
+    changedIdentity.program_sync = {
+      ...changedIdentity.program_sync,
+      candidate_definition_sha256: '9'.repeat(64),
+    }
+    rerender(<DefinitionSupersessionPanel snapshot={changedIdentity} onRefresh={onRefresh} />)
+    expect(screen.getByRole('button', { name: 'Supersede definition' })).toBeEnabled()
     expect(document.body).not.toHaveTextContent('private-host')
     expect(document.body).not.toHaveTextContent('f'.repeat(64))
+  })
+
+  it('treats a malformed success response as indeterminate and locks the candidate', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ outcome: 'created' }, 200)))
+    const onRefresh = vi.fn().mockResolvedValue(true)
+
+    render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} onRefresh={onRefresh} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Supersede definition' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not a definitive supersession outcome/i)
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Supersede definition' })).toBeDisabled()
+  })
+
+  it('never sends a duplicate request while the first request is pending', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<Response>(() => {})))
+
+    render(<DefinitionSupersessionPanel snapshot={supersessionSnapshot()} />)
+    const button = screen.getByRole('button', { name: 'Supersede definition' })
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

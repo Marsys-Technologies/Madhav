@@ -15,6 +15,8 @@ function unknownObservationSnapshot(): NirmanaElevationSnapshotV2 {
     current_definition_sha256: null,
     candidate_definition_sha256: null,
     candidate_catalogue_sha256: null,
+    supersession_eligible: false,
+    supersession_blockers: [],
   }
   snapshot.campaign.current_stage = null
   snapshot.campaign.current_layer = null
