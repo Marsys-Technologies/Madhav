@@ -1,17 +1,25 @@
 ---
 artifact: S4_RESULT_PACKET
-version: "1.0"
+version: "1.1"
 status: CURRENT — stream S4 (Pipeline Correctness & Door Parity) result packet per
-  templates/STREAM_RESULT_PACKET_TEMPLATE.md. NOT yet integrator-accepted at the
-  tracker level — see §7 for the honest gap.
-date: 2026-08-28
+  templates/STREAM_RESULT_PACKET_TEMPLATE.md. CONVERGENCE-READY, NOT closed — a
+  resume session (2026-08-29) drove additional remediation but the tracker-level
+  result_packet_accepted/CG-3 event remains BLOCKED — see §7.
+date: 2026-08-29
 stream_id: S4
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/charters/STREAM_CHARTER_S4_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/S4_LATENCY_WATERFALL_v1_0.md
-  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md (V3-E-012..055, V3-E-S4-PROC-001, V3-E-S4-PROC-002)
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md (V3-E-012..056, V3-E-S4-PROC-001, V3-E-S4-PROC-002)
 changelog:
-  - "1.0 (2026-08-28): initial and final packet for this session's S4 run."
+  - "1.1 (2026-08-29, resume session): 4 additional findings driven to MERGED +
+    independently-verified (V3-E-034, V3-E-045, V3-E-055, and newly-absorbed
+    V3-E-056 — S3's citation_resolver.ts CRITICAL). 10/44 findings now have a
+    landed fix (was 6/44). Confirmed a second facet of the tracker gate
+    (FINDING_FREEZE blocks new findings post-plan-freeze, live-tested). 34
+    findings remain OPEN, re-confirmed still valid (checked S1/S5/S6 branches
+    for overlapping fixes — none found)."
+  - "1.0 (2026-08-28): initial packet for the first S4 session."
 ---
 
 # S4 Result Packet — Pipeline Correctness & Door Parity
@@ -71,7 +79,7 @@ Full findings table, code anchors, evidence, and severities: `EDIR_V3_REGISTER_v
 
 ## 3 — Remediations verified / rejected
 
-**6 verified and merged; 38 dispositioned (not attempted this session, by design).**
+**10 verified and merged (6 original session + 4 resume session); 34 dispositioned (not attempted, by design).**
 
 | Finding | Fix | PR | Independent verifier |
 |---|---|---|---|
@@ -80,21 +88,41 @@ Full findings table, code anchors, evidence, and severities: `EDIR_V3_REGISTER_v
 | V3-E-026 + V3-E-039 (silent signal drops) | Additive flag emission, zero serving-decision change (verified by reverting only the regenerated baseline and re-running) | [#1622](https://github.com/Marsys-Technologies/Madhav/pull/1622) | ACCEPT |
 | V3-E-041 (misleading entitlement error copy) | Honest, non-retry messages for 4 error codes | [#1623](https://github.com/Marsys-Technologies/Madhav/pull/1623) | ACCEPT |
 | V3-E-049 (safety_decision envelope gap) | decision_id/review_id/audit_written added; checked for IDOR (none — UUIDv4, only consumer is super-admin-gated) | [#1624](https://github.com/Marsys-Technologies/Madhav/pull/1624) | ACCEPT |
+| V3-E-034 (registry-lookup miss escapes toolEventLog) *(resume)* | Distinct `error_kind`, distinct `empty_reason` | [#1643](https://github.com/Marsys-Technologies/Madhav/pull/1643) | ACCEPT |
+| V3-E-045 (turn_id ≠ persisted queryId) *(resume)* | Unified id (31 baseline fixtures regenerated, byte-identical after UUID normalization) | [#1644](https://github.com/Marsys-Technologies/Madhav/pull/1644) | ACCEPT |
+| V3-E-055 (WEB door zero safety test coverage) *(resume)* | 5 new route-level tests, mutation-tested | [#1645](https://github.com/Marsys-Technologies/Madhav/pull/1645) | ACCEPT |
+| **V3-E-056** (citation_resolver.ts CRITICAL, absorbed from S3's `V3-E-032`) *(resume)* | Widened id-recognition to 4 chart-scoped tables; root cause live-verified (SIG.MSR.NNN never occurs in production, `signal_id` is a UUID) | [#1646](https://github.com/Marsys-Technologies/Madhav/pull/1646) | **REJECT** (reader-visible leak found) → fixed → **ACCEPT** |
 
-All 5 PRs: verifier-accepted (distinct actor from fixer) + own-territory + full CI
+All 9 PRs: verifier-accepted (distinct actor from fixer) + own-territory + full CI
 green + weakens no test/CI/auth/safety/guard + merged via the branch-protection merge
-queue. One genuine merge conflict encountered and resolved by hand (PR #1621 vs. the
-already-merged #1622, both adding independent code in the same function) — both
-additive blocks kept, 162/165 tests re-verified post-resolution before re-push.
+queue. Two genuine merge conflicts encountered and resolved by hand: PR #1621 vs. the
+already-merged #1622 (both adding independent code in the same function, both blocks
+kept); and the resume-session branches needed re-rebasing onto main twice as sibling
+streams (S1/S3/S5) continued merging concurrently.
 
-None of the 6 fixes touch `authorizeChartAccess.ts` or `safety_gate.ts` gating logic —
-confirmed independently by every verifier via `git diff`.
+**The citation fix (V3-E-056) is the one genuine adversarial catch in this stream**:
+round-1 review found the widened citation resolution surfaced raw internal DB strings
+(`chart_facts.citation_human`, e.g. `"upagraha_position.DHUMA.sign_lord = Moon
+(true_chitra)."`) as the reader-visible citation label, unlinted, on 14,945 live
+production rows — and the fix's own test asserted the leak as expected output. The
+follow-up removed `citation_human` from the SELECT entirely for the two affected
+sources (structurally impossible to leak, not merely unused), preserving the
+grounding-correctness fix (the actual point of the defect) via a safe placeholder
+label. Round-2 review used mutation testing (reintroduced the exact original leak,
+confirmed the new tests catch it) before accepting.
 
-**38 findings dispositioned, not remediated this session** (Native Surrogate triage,
-`SURROGATE_TRIAGE_TABLE.md`): `DEFER_OPEN_S4` (in S4 territory, too large/risky for
-this session — 30), `REFER_S1`/`REFER_S5`/`REFER_S6` (cross-territory — 6, referral
-notes appended to each EDIR entry), `ALREADY_TRACKED` (additive to P2-B-004/E-119,
-cited not duplicated — 1), `NO_ACTION_NEEDED` (informational baseline — 1).
+None of the 10 fixes touch `authorizeChartAccess.ts` or `safety_gate.ts` gating logic
+— confirmed independently by every verifier via `git diff`.
+
+**34 findings dispositioned, not remediated** (Native Surrogate triage,
+`SURROGATE_TRIAGE_TABLE.md`, re-confirmed still valid this resume session — checked
+S1/S5/S6 branches for any overlapping fix landing on the 6 cross-referred findings;
+none found as of this session): `DEFER_OPEN_S4` (in S4 territory, too large/risky for
+a same-session additive fix — 27, down from 30 as V3-E-034/045/055 moved to fixed),
+`REFER_S1`/`REFER_S5`/`REFER_S6` (cross-territory — 6, referral notes appended to each
+EDIR entry, still open on target streams), `ALREADY_TRACKED` (additive to
+P2-B-004/E-119, cited not duplicated — 1), `NO_ACTION_NEEDED` (informational baseline
+— 1).
 
 ## 4 — Regression evidence
 
@@ -107,12 +135,16 @@ consolidated trail).
 
 ## 5 — Independent verifier verdict
 
-**5 of 5 fix PRs independently verified ACCEPT** (one — #1621 — after an initial
-REJECT correctly caught a real scope gap, which was then fixed and re-verified).
-Verifiers were distinct actors from the fixers throughout (harness §independence law).
-The stream's own closure was independently recommended by the `verifier` tracker actor
-(`stream_closure_recommended`, tracker event, stream_seq 158) citing 54/54 scenarios,
-44/44 findings triaged, 6/44 remediated-and-verified, 38/44 honestly dispositioned.
+**9 of 9 fix PRs independently verified ACCEPT** (two — #1621 and #1646 — after an
+initial REJECT correctly caught a real gap, fixed, and re-verified: #1621's scope was
+incomplete, #1646's carried a real reader-visible data leak). Verifiers were distinct
+actors from the fixers throughout (harness §independence law); the CRITICAL fix (#1646)
+was reviewed twice by an Opus-tier verifier given its severity. The stream's own
+closure was independently recommended by the `verifier` tracker actor
+(`stream_closure_recommended`, tracker event, stream_seq 158, from the FIRST session)
+citing 54/54 scenarios, 44/44 findings triaged; that recommendation predates the resume
+session's additional 4 remediations and remains valid (nothing it cited changed, more
+was only added on top).
 
 ## 6 — Latency waterfall (required S6 input)
 
@@ -123,38 +155,63 @@ independently corroborates and sharpens EDIR E-006 on a second live turn.
 
 ## 7 — Open A3 decisions and residual risks
 
-- **Tracker closure credit is BLOCKED, not obtained** — `result_packet_accepted`/CG-3
-  could not be filed at the tracker level. Root cause: the tracker's `S4:remediation`
-  work-item gate requires ALL 44 triaged findings to reach `VERIFIED`, not just the 6
-  selected for same-session remediation, conflicting with the elevation's own
-  explicitly-endorsed partial-scope model. Filed as `V3-E-S4-PROC-002` — a decision
-  for the Programme Integrator/native, not resolvable by more stream-local tracker
-  events (fabricating verification for the 38 un-remediated findings was explicitly
-  refused as an unearned-green violation). Tracker state: `work_started` →
-  `finding_discovered` ×44 → `finding_triaged` ×44 → `decision_recorded` →
-  `remediation_approved` (44-entry plan) → `scenario_executed` ×54 →
-  `remediation_implemented` ×6 → `verification_accepted` ×6 →
-  `stream_closure_recommended` → 3 of 6 `work_item_accepted` stages (`charter`,
-  `baseline`, `triage`) landed; `remediation`/`verification`/`regression`/`closure`
-  stages blocked on the same gate. Final tracker stream_seq: 165.
-- **Cross-stream EDIR numbering collision** (`V3-E-S4-PROC-001`) — S4's `V3-E-012..055`
+- **Tracker closure credit is BLOCKED, not obtained — confirmed in TWO distinct forms
+  this resume session.** (a) The original gate: `S4:remediation` work-item acceptance
+  requires ALL 44 triaged findings to reach `VERIFIED`, not just the ones with a real
+  same-session fix — `V3-E-S4-PROC-002`. (b) NEW this session, live-tested: once
+  `remediation_approved` freezes a stream's plan, the tracker ALSO refuses any new
+  `finding_discovered` event (`409 FINDING_FREEZE`) — confirmed by a real API call,
+  which is why `V3-E-056` (the absorbed citation CRITICAL) could not be filed as a
+  tracker event despite being real, triaged, fixed, and independently verified. Both
+  are the same underlying problem (the tracker has no path for a stream to resume with
+  new in-scope work after its own plan freeze) and both need a Programme
+  Integrator/native decision, not a stream-local workaround — fabricating either a
+  verification or a finding-discovery event was explicitly refused both times.
+  Tracker state as of this addendum: `work_started` → `finding_discovered` ×44 →
+  `finding_triaged` ×44 → `decision_recorded` → `remediation_approved` (44-entry plan)
+  → `scenario_executed` ×54 → `remediation_implemented` ×9 (6 original + 3 resume;
+  `V3-E-056` excluded, see above) → `verification_accepted` ×6 (original session only
+  — the resume session's 4 new fixes have real independent-verifier ACCEPT reports
+  staged as evidence in this packet and the register, but their tracker-level
+  `verification_accepted` event is convergence's to run, same as the original 6's
+  formal-acceptance chain) → `stream_closure_recommended` → 3 of 6 `work_item_accepted`
+  stages landed (`charter`, `baseline`, `triage`); `remediation`/`verification`/
+  `regression`/`closure` stages remain blocked on gate (a). Final tracker stream_seq:
+  **168**.
+- **Cross-stream EDIR numbering collision** (`V3-E-S4-PROC-001`) — S4's `V3-E-012..056`
   collide with sibling streams' (S1/S2/S3/S5) independently-numbered entries on their
   own branches/on main. Worked around locally (tracker `finding_id`s prefixed `S4-`);
   the register's own entry numbers are unchanged pending Session C reconciliation.
 - **6 findings referred cross-territory** (V3-E-042→S1, V3-E-044/V3-E-054→S5,
   V3-E-015/V3-E-031/V3-E-053→S6) — referral notes appended to each register entry;
-  not fixed by S4 per elevation §8.3.
-- **30 findings deferred OPEN in S4's own territory** — real, evidenced, triaged, not
-  attempted this session (too large/risky for a same-session additive fix per Native
-  Surrogate judgment). Available for a future S4-territory session; `V3-E-034`,
-  `V3-E-045`, `V3-E-055` are the Surrogate's own stated top picks for next time.
-- **B-002-class caution honored**: nothing in this session's 6 landed fixes touches
-  `authorizeChartAccess`/`safety_gate.ts` gating logic — every candidate that came
-  close (`V3-E-044`, `V3-E-053`, `V3-E-054`) was referred to S5 instead of squeezed in,
-  per the harness's absolute rail on auth-adjacent changes.
+  re-checked this resume session against S1/S5/S6's current branches, none yet
+  addressed by their target streams (S5 independently hit the SAME `V3-E-S4-PROC-002`
+  tracker gate at their own closure attempt — corroborating evidence the gate is a
+  campaign-wide problem, not S4-specific).
+- **27 findings deferred OPEN in S4's own territory** — real, evidenced, triaged, not
+  attempted (too large/risky for a same-session additive fix per Native Surrogate
+  judgment), down from 30 as `V3-E-034`/`V3-E-045`/`V3-E-055` — the Surrogate's own
+  named top picks — moved to fixed this resume session. Available for a future
+  S4-territory session.
+- **B-002-class caution honored across both sessions**: nothing in the 10 landed fixes
+  touches `authorizeChartAccess`/`safety_gate.ts` gating logic — every candidate that
+  came close (`V3-E-044`, `V3-E-053`, `V3-E-054`) was referred to S5 instead of
+  squeezed in, per the harness's absolute rail on auth-adjacent changes.
+- **The citation CRITICAL (V3-E-056) is the one item genuinely absent from the
+  original 44-finding denominator** — it was absorbed from a cross-stream referral
+  discovered AFTER the original session's `work_started`/triage/plan-freeze sequence.
+  It is real, fixed, merged, and independently verified (twice), but sits outside the
+  tracker's own scenario/finding accounting for this stream by construction (see the
+  FINDING_FREEZE point above) — convergence should treat it as in-scope, evidenced
+  work product regardless of its absence from the tracker's own denominator.
 
-This packet is a link set to primary evidence (EDIR_V3_REGISTER §4b, 5 merged PRs,
+This packet is a link set to primary evidence (EDIR_V3_REGISTER §4b, 9 merged PRs,
 `S4_LATENCY_WATERFALL_v1_0.md`, `.s4_scratch/*` investigation reports). It is not
-tracker-level acceptance until the §7 gap is resolved by the Programme Integrator.
+tracker-level acceptance until the §7 gaps are resolved by the Programme Integrator.
+CONVERGENCE-READY per the resume task's own framing: every remediation this stream
+could honestly drive to a real, independently-verified, merged fix has been; every
+remaining gap is either a genuine cross-territory referral, a deliberately-deferred
+larger fix, or a tracker-mechanics limitation outside this stream's authority to
+resolve — staged for convergence, not closed by S4 itself.
 
-*End S4_RESULT_PACKET v1.0.*
+*End S4_RESULT_PACKET v1.1.*

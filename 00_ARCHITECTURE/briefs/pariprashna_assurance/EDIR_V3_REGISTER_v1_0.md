@@ -969,6 +969,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** none specific.
 - **Proposed fix class:** push a `toolEventLog` entry in the `if (!t)` branch too, matching the catch branch's shape; give `completeness_wiring.ts` a distinct `empty_reason` for "authorized but registry-unresolvable" vs. genuine non-authorization.
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real `runEvidenceStage`).
+- **Resolved (2026-08-29, resume session):** MERGED — PR [#1643](https://github.com/Marsys-Technologies/Madhav/pull/1643), independently verified ACCEPT (verifier traced `registry_unresolvable` to `receipt/assemble.ts`'s `buildHonestGaps()` and the live data-completeness SSE event — genuinely consumed, not a dead value; RED→GREEN independently reproduced; full repo suite 10480/10488, 8 pre-existing unrelated failures confirmed).
 
 ### V3-E-035 — Portal-door agentic-loop tool results have no size cap/truncation handling at all, unlike the MCP door's budgeted approach
 
@@ -1092,6 +1093,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** trace-coherence.
 - **Proposed fix class:** derive `queryId` from `turnId` (or persist `turnId` alongside it) so a caller can join wire events to the persisted row with one id.
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — live, reproduced twice).
+- **Resolved (2026-08-29, resume session):** MERGED — PR [#1644](https://github.com/Marsys-Technologies/Madhav/pull/1644), independently verified ACCEPT (verifier normalized UUIDs across all 31 regenerated baseline fixtures — byte-identical, zero non-UUID structural change; reverted only the baselines with the code fix kept, confirmed 31/31 failures land exclusively on id fields; collision risk re-verified via `pending_streams` `ON CONFLICT` semantics — none introduced; 568/568 broader regression).
 
 ### V3-E-046 — Pre-synthesis bundle-level validation on the consult route has zero telemetry regardless of outcome
 
@@ -1205,6 +1207,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** PPR-12; door parity.
 - **Proposed fix class:** add 1-2 golden-stream baseline scenarios (or a small dedicated route test) flipping `PARIPRASHNA_SAFETY_GATE_ENABLED` on and asserting the HS-2 fixed text + a `safety_decision:*` judgment flag appear verbatim in the SSE stream, plus one scenario exercising the post-plan escalation branch specifically.
 - **Status:** OPEN · verification rung required to close: static code read + exhaustive grep (already achieved this session) → INTEGRATION (the new test landing and passing).
+- **Resolved (2026-08-29, resume session):** MERGED — PR [#1645](https://github.com/Marsys-Technologies/Madhav/pull/1645), independently verified ACCEPT via mutation testing (verifier hardcoded a stale duplicate response string, neutered the escalation condition, and removed the early return so evidence-stage would silently run — the tests correctly failed in each case, proving the assertions are load-bearing, not tautological). Test-only, zero production code touched. 2599+ broader suite pass.
 
 ---
 
@@ -1248,3 +1251,40 @@ gate is certified by this document.*
 - **Impact:** every one of the six P3 streams will likely hit this same gate at their own closure, since the elevation's whole model assumes streams triage more findings than they remediate in one session. This is not S4-specific.
 - **Proposed fix class:** either (a) split the `remediation` work-item gate into two tiers — "planned remediations complete" (only entries with a real fix description, i.e. not a "no remediation" placeholder) vs. an informational "deferred/referred count" that does not block closure, or (b) have `result_packet_accepted`/CG-3 accept a stream's `stream_closure_recommended` (already gated on an INDEPENDENT_VERIFIER's explicit sign-off, which S4 obtained) as sufficient without requiring 100% of triaged findings VERIFIED — a governance/Programme Integrator decision, not a stream-local fix.
 - **Status:** OPEN · S4's own result_packet_accepted/CG-3 tracker event remains formally BLOCKED pending this decision — see `S4_RESULT_PACKET_v1_0.md` for the actual stream result packet, produced independently of this tracker gate.
+- **Addendum (2026-08-29, resume session):** confirmed a second facet live — once `remediation_approved` freezes the plan, the tracker ALSO refuses any new `finding_discovered` for the stream (`409 FINDING_FREEZE — "a new finding after the frozen remediation plan requires a separately governed scope path"`), even for a genuinely new finding absorbed from a cross-stream referral in a later resume session (see `V3-E-056` below, which could not be filed as a tracker event for this reason — filed to the register only). The tracker's one-shot-session model does not currently support a stream resuming with new in-scope work after its own plan freeze; this is the same root problem as the remediation gate, one layer earlier.
+
+### V3-E-056 — `citation_resolver.ts` id-recognition scope defect (absorbed from S3's `V3-E-032` referral) — FIXED and independently verified through two adversarial review rounds
+
+- **Class / severity:** DEFECT · **CRITICAL** (confirmed, not proposed — this is S3's own live-corpus CRITICAL, absorbed as an S4-owned finding per the pipeline-territory referral)
+- **Lens(es) / pipeline stage:** Correctness, Door-neutral pipeline · S9 (grounding/citation)
+- **Provenance:** S3's `V3-E-032` (0/183 real citation attempts reached a trustworthy grade across 24 live turns/8 work classes; S3's own scorer bug that had masked this as 0.5 was found and fixed by S3, PR #1619; the platform-side root cause was referred to S4 as pipeline territory).
+- **Expected:** a citation of any id genuinely present in this turn's retrieved evidence resolves to a real grade, not `unverified` by construction.
+- **Observed (2026-08-29, LIVE, root cause re-derived independently against production, not assumed from S3's filing):** `citation_resolver.ts`'s `SIGNAL_ID_RE` only recognized `SIG.MSR.NNN`-shaped ids — but a live query confirmed `bodha_msr_signals.signal_id` is a genuine UUID column in production; the `SIG.MSR.NNN` string format **never occurs in live per-chart data at all** (it is the MSR spec-catalog convention only). This alone plausibly explains the full 183/183.
+- **Fix:** widened resolution to 4 chart-scoped tables in parallel (`bodha_msr_signals`, `chart_facts`, `chart_divisionals`, `chart_dashas`), each independently `WHERE chart_id = $1` (STRICTER than the original query, which had no chart filter at all — verified by the independent reviewer); fail-closed-to-null preserved for anything not actually retrieved this turn (no over-crediting, adversarially confirmed); per-source DB-fault isolation added (`citation_prefetch_db_fault` flag, one table's fault doesn't blank the others).
+- **Adversarial review round 1 — REJECTED:** an independent Opus-level verifier found the widened `reader_label` (the one field ever shown to the reader, unlinted) was being filled from raw `chart_facts.citation_human`/`chart_divisionals.citation_human` DB strings — internal audit text like `"upagraha_position.DHUMA.sign_lord = Moon (true_chitra)."` — live-confirmed on 14,945 production rows. The fix's own test asserted the leaked string as expected output.
+- **Follow-up fix:** after sampling ~100 real `fact_category` values live and confirming the data is genuinely inconsistent (real prose mixed with raw internal strings, bracket-tagged leaks, a raw module-path leak) with no separate human-authored display column available, `citation_human` was removed from the SELECT entirely for the two affected sources — structurally impossible to leak, not merely unused. Both now resolve `reader_label` to a fixed, leak-free placeholder; `grade: primary` (the load-bearing grounding fix) is fully preserved. A related gap (2,835 `chart_facts` rows with UUID-shaped `fact_id` never queried) was fixed in the same pass.
+- **Adversarial review round 2 — ACCEPTED:** the same reviewer re-checked with mutation testing (reintroduced the exact original leak, confirmed the test suite catches it on the precise right assertions), confirmed `audit_detail` never reaches the wire, confirmed the placeholder approach preserves the fix's real value (grading correctness, not label prose, was the actual defect), and re-verified every check that passed in round 1 still holds (no over-crediting, chart-scoping, fault isolation, zero auth/safety touch).
+- **Code anchor:** `platform/src/lib/pariprashna/pipeline/citation_resolver.ts`, `platform/src/lib/pariprashna/pipeline/synthesis_stage.ts`.
+- **PPR/gap cross-reference:** PPR-04; S3's `V3-E-032`/`V3-E-016`.
+- **Not widened (honest scope limit, confirmed twice):** the L0 `l0_citation_ids` family (`sutravali_rules.rule_id`, `classical_texts_source.text_id`) — heterogeneous slug/UUID format, globally scoped rather than chart-scoped, would need a different fail-closed query shape; landing it unverified risked exactly the over-crediting hazard this fix otherwise avoids.
+- **Status:** MERGED — PR [#1646](https://github.com/Marsys-Technologies/Madhav/pull/1646) (2-commit fix + follow-up), independently verified ACCEPT after one REJECT→fix→re-verify cycle. Full regression: 2141/2246 pass (104 pre-existing skips), including S3's own `citation_precision.ts` scorer test. Tracker note: this finding could not be filed as a `finding_discovered` event (see `V3-E-S4-PROC-002` addendum above, `FINDING_FREEZE`) — recorded here and in the result packet instead.
+
+---
+
+*End EDIR_V3_REGISTER — S4 resume-session addendum (2026-08-29): 4 additional
+findings driven to MERGED+independently-verified this session (V3-E-034,
+V3-E-045, V3-E-055, and the newly-absorbed V3-E-056 citation CRITICAL
+referred from S3) — PRs #1643/#1644/#1645/#1646, all merged to main. 57 V3
+entries total on this branch (55 prior + V3-E-S4-PROC-002 + V3-E-056; note
+`V3-E-S4-PROC-002` is a PROCESS entry outside the numeric V3-E-0NN sequence
+by design, see its own body). 10 of S4's 44 triaged findings now have a
+landed, merged, independently-verified fix (6 from the prior session + 4
+this session); 34 remain OPEN per their Native Surrogate disposition
+(deferred/referred/tracked-elsewhere/no-action), unchanged and re-confirmed
+still valid this session (checked sibling streams S1/S5/S6 for any
+overlapping fix landing on their branches — none found for the 6 referred
+findings as of this addendum). The mid-document "End EDIR_V3_REGISTER v1.1"
+marker above (before this addendum) is a pre-existing stray artifact from
+an earlier session, not corrected here — out of this session's scope per
+the same note the v1.1 aggregation pass itself recorded for a similar
+stray marker earlier in the file. This is genuinely the end of the file.*
