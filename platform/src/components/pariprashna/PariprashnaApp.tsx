@@ -182,6 +182,16 @@ function PariprashnaSurface({
   useEffect(() => {
     if (isFixtureHost) return
     let cancelled = false
+    // Independent-verifier finding (V3-E-012a review): the "fetched before
+    // any live turn can exist" argument covers when the request is SENT,
+    // not when it RESOLVES — an unusually fast turn could persist+receipt
+    // (persistence_stage.ts, synchronous ahead of turn.close) before this
+    // response returns, producing a real (if low-likelihood) duplicate row.
+    // Backstop: anything the fetch reports as updated at-or-after the
+    // moment we asked is presumptively that same in-flight/just-finished
+    // live turn, not independent prior history — drop it rather than risk
+    // a visible duplicate.
+    const snapshotAtMs = Date.now()
     fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true`)
       .then((r) => (r.ok ? r.json() : null))
       .then(
@@ -197,15 +207,17 @@ function PariprashnaSurface({
         } | null) => {
           if (cancelled || !data?.conversations) return
           setPastReadings(
-            data.conversations.map((c) => ({
-              id: c.id,
-              chartId: c.chart_id,
-              chartName: chartPin.name,
-              title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
-              updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
-              active: false,
-              streaming: false,
-            })),
+            data.conversations
+              .map((c) => ({
+                id: c.id,
+                chartId: c.chart_id,
+                chartName: chartPin.name,
+                title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
+                updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
+                active: false,
+                streaming: false,
+              }))
+              .filter((t) => t.updatedAtMs < snapshotAtMs),
           )
         },
       )

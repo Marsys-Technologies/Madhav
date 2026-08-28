@@ -123,6 +123,25 @@ describe('PariprashnaApp history merge (V3-E-012a)', () => {
     expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
   })
 
+  it('drops a fetched row updated at-or-after the fetch snapshot moment (race backstop: independent-verifier finding 2)', async () => {
+    const future = new Date(Date.now() + 60_000).toISOString() // "resolved late" simulation
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        conversations: [
+          { id: 'conv-stale', chart_id: 'c-1', title: 'Genuinely old reading', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
+          { id: 'conv-racy', chart_id: 'c-1', title: 'Just-completed turn racing the fetch', first_message_snippet: null, updated_at: future, created_at: future },
+        ],
+      }),
+    } as Response)
+
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+
+    await waitFor(() => expect(screen.getByText('Genuinely old reading')).toBeInTheDocument())
+    expect(screen.queryByText('Just-completed turn racing the fetch')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
+  })
+
   it('does not fetch on the fixture host (no chartId / live flag off)', () => {
     vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '0')
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
