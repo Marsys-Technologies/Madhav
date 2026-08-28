@@ -750,6 +750,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** feeds the S6 (Performance/Resilience) SLO baseline per MACRO_PLAN §9.
 - **Proposed fix class:** none required to close this baseline itself; see V3-E-030 for the instrumentation fix that would let this baseline be re-derived with stage-level precision going forward.
 - **Status:** OPEN as baseline · verification rung required to close: absorbed into the G5/S6 SLO baseline (LIVE rung already achieved this session, twice independently).
+- **Cross-stream referral (2026-08-28):** this baseline IS S6's (Performance, Resilience & Observability) own NFR input, per the S4 charter — see `S4_LATENCY_WATERFALL_v1_0.md` for the full formal handoff artifact. Referred to **S6** as the baseline owner; S4 does not own SLO-target-setting.
 
 ### V3-E-016 — Register-leak lint: 4 confirmed evasion classes pass clean (E-039 reproduction)
 
@@ -934,6 +935,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** none specific.
 - **Proposed fix class:** wrap the `run()` closure (or `next.run()` in `pump()`) in `Promise.race` against a per-tool timeout that rejects, flowing through the existing honest-error path; set an explicit `maxQueueDepth` on the shared singleton; add an optional `expected_latency_ms_p95` field to `CapabilityDescriptor`.
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — real `QosDispatchQueue`, real hang test, real queue-depth grep).
+- **Cross-stream referral (2026-08-28):** timeout/backpressure/latency-budget mechanisms are production resilience posture, not a drive-by pipeline fix — referred to **S6** (Performance, Resilience & Observability) per its charter ownership of timeouts/reconnect/resilience; S1-severity, high priority.
 
 ### V3-E-032 — Duplicated dispatch-loop implementation across two entry points is a door-parity/maintainability risk
 
@@ -1055,6 +1057,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** B.11; sibling of V3-E-013/V3-E-039.
 - **Proposed fix class:** route non-`reading_depth_received` grade subjects into reducer-tracked (even aggregated) state; route citation-gate flags into `judgmentFlags`/an existing visible grounding-quality indicator (`GroundingCard`); add an explicit error-state render branch to `ActivityRow.tsx`.
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — direct code read of all three code paths).
+- **Cross-stream referral (2026-08-28):** the client-side rendering fix (`s1LiveAdapter.ts`, `reducer.ts`, `ActivityRow.tsx`) is UI/surface territory, not S4's pipeline territory — referred to **S1** (Navigation, Shell & History) per elevation §8.3; S4 does not fix cross-territory.
 
 ### V3-E-043 — Three independent, mutually-disjoint telemetry/persistence systems back "the" 11-stage pipeline depending on which of three live routes serves the turn; no single trace_id joins stages across doors
 
@@ -1077,6 +1080,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** trace-coherence, PPR-11/PPR-12.
 - **Proposed fix class:** mint the trace_id at request entry, before authz/safety, and emit `step_start`/`step_done` rows for both decisions using it — including on the refusal path.
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session, 1 real live turn) + STATIC (structural fact, not turn-dependent).
+- **Cross-stream referral (2026-08-28):** the fix reorders code around `authorizeChartAccess()`/`classifyTurnSafety()` — S4 does not touch auth/safety-gating logic per its scope boundary — referred to **S5** (Security, Privacy & Data Integrity).
 
 ### V3-E-045 — On `/api/pariprashna`, the wire-visible `turn_id` and the durably-persisted `conversation_messages.metadata_json.custom.queryId` for the same turn are two different, independently-generated UUIDs
 
@@ -1177,6 +1181,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** none specific.
 - **Proposed fix class:** have `authorizeTurn` pass its already-fetched chart row (or just `owner_id`) into `authorizeChartAccess` so it never re-queries `charts`, or combine the existence + ownership check into one query. Local to this one caller — not a change to `authorizeChartAccess`'s public contract used identically elsewhere (`invoke_tool.ts`).
 - **Status:** OPEN · verification rung required to close: INTEGRATION (already achieved this session — measured against real DB via real proxy).
+- **Cross-stream referral (2026-08-28):** the fix touches `authorizeTurn`'s entitlement hot path (auth-adjacent); S4 does not modify auth-path code per its scope boundary — referred to **S6** (Performance, Resilience & Observability) for perf ownership, coordinating with S5 if the auth-path change itself needs security sign-off.
 
 ### V3-E-054 — SafetyPolicyDecision gate (HS-1..HS-4) ships flag-OFF by default; zero live enforcement until an operator flips the feature flag
 
@@ -1188,6 +1193,7 @@ below are finder-proposed and await Native Surrogate triage, per register law.
 - **PPR/gap cross-reference:** PPR-12.
 - **Proposed fix class:** not a code fix — confirm with the native whether P1 close (the flip point named in the flag's own doc comment) has occurred, and if not, track it explicitly as an open operational item.
 - **Status:** OPEN · verification rung required to close: static code read + config read (already achieved this session) → LIVE (confirm actual deployed flag value, out of this lane's authorized scope this session).
+- **Cross-stream referral (2026-08-28):** an unverified-off safety hard-stop mechanism is a certification-blocking security/safety posture question, not a pipeline-correctness fix — referred to **S5** (Security, Privacy & Data Integrity) to confirm deployed flag state and escalate to the native if still off.
 
 ### V3-E-055 — WEB door (`/api/pariprashna`) has zero route-level test coverage for the S3 safety short-circuit
 
