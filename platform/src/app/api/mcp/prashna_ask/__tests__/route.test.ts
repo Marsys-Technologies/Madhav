@@ -56,7 +56,7 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
-  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false })),
+  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false, llm_extension_note: '' })),
   ensureB11WholeChartReadFloor: vi.fn(() => false),
   ensureDashaContextFloor: vi.fn(() => false),
 }))
@@ -102,9 +102,14 @@ import { query as dbQuery } from '@/lib/db/client'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
+import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
 import { POST } from '../route'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+// Synthetic test chart — used by the new V3-E-024 tests below only (never the
+// native's real chart), per the repo's test-data law. Auth/DB are fully mocked
+// in this file regardless, so this distinction is belt-and-suspenders.
+const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 
 function makeReq(body: object, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/mcp/prashna_ask', {
@@ -495,6 +500,56 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.emptyResultTools).toEqual([])
     expect(call.strippedLeakedCapabilities).toEqual([])
     expect(call.capTripped).toBeNull()
+  })
+
+  /**
+   * V3-E-024 (extends PR #1621's plan_stage.ts fix to this door). PR #1621
+   * fixed the Vidhi compiler's E-7 `llm_extension_note` reaching nowhere at
+   * ONE of three production `compileFloorForPlan` call sites. This asserts
+   * the fix at THIS site (route.ts ~line 456): the note is folded into
+   * `plan.synthesis_guidance`, and — since this door's synthesis
+   * (`synthesizeReading`) has no other path for planner/compiler guidance to
+   * reach it, unlike consult's `buildConsultSystemContent` — threaded through
+   * explicitly as the new `synthesisGuidance` param.
+   */
+  it('V3-E-024: folds compileFloorForPlan().llm_extension_note into plan.synthesis_guidance and passes it to synthesizeReading as synthesisGuidance', async () => {
+    const outcome = {
+      outcome: 'plan' as const,
+      plan: {
+        ...planOutcome(['chart_facts_query']).plan,
+        scope_tuple: { intent: 'domain_assessment', domains: ['career'], width: 'standard', depth: 'deep' },
+        synthesis_guidance: 'Lead with the dominant career yoga.',
+      },
+    }
+    mockCallPipelinePlanner.mockResolvedValue(outcome)
+    ;(compileFloorForPlan as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      compilerIntent: 'career_deepdive',
+      toolCalls: [],
+      mappedPrimitives: [],
+      unmappedPrimitives: [],
+      compileFailed: false,
+      llm_extension_note:
+        'INSIGHT MANDATE (E-7): go beyond acharya-grade pattern recognition. ' +
+        'Band 3 (question-specific extension) is LLM-owned: pursue beyond-floor context.',
+    })
+
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'Give me a deep dive on my career.' }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toContain('Lead with the dominant career yoga.')
+    expect(call.synthesisGuidance).toContain('INSIGHT MANDATE (E-7)')
+    expect(call.synthesisGuidance).toContain('Band 3 (question-specific extension) is LLM-owned')
+  })
+
+  it('V3-E-024: passes synthesisGuidance: null (never undefined) to synthesizeReading when the plan carries no synthesis_guidance and the compiled floor has no note', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'What is my ascendant?' }))
+    await readNdjson(res)
+
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toBeNull()
   })
 
   it('W6.3: threads chart_header.current_maha_antar and today\'s date into the synthesis call as the temporal anchor', async () => {
