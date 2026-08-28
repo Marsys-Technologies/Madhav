@@ -88,14 +88,17 @@ $preflight$;
 -- ── 1. REVOKE — close the destroy-the-evidence half of PPR-26 for audit_log ──
 -- REVOKE of a privilege the grantee does not currently hold is a documented
 -- Postgres no-op (not an error), which is what makes this safe to re-run.
-REVOKE DELETE, TRUNCATE ON TABLE audit_log FROM amjis_app;
+-- Schema-qualified to match the preflight's to_regclass('public.audit_log')
+-- check exactly — no ambiguity via search_path.
+REVOKE DELETE, TRUNCATE ON TABLE public.audit_log FROM amjis_app;
 
 -- ── 2. POST-CONDITION — a real detector for the claim this migration makes ──
 -- §N.8: the claim is "amjis_app can no longer DELETE or TRUNCATE audit_log,
 -- and its remaining legitimate privileges (SELECT, INSERT, UPDATE, TRIGGER,
--- REFERENCES) are untouched." This checks the claim directly rather than
--- trusting the REVOKE statement above ran without silently affecting the
--- wrong grantee.
+-- REFERENCES) are untouched." This checks the claim directly, for ALL FIVE
+-- surviving privileges named in header item 3 (not just three of them),
+-- rather than trusting the REVOKE statement above ran without silently
+-- affecting the wrong grantee or a wider set of privileges than intended.
 DO $postcondition$
 BEGIN
   IF has_table_privilege('amjis_app', 'public.audit_log', 'DELETE') THEN
@@ -106,9 +109,9 @@ BEGIN
     RAISE EXCEPTION
       'E001_POSTCONDITION_FAILED: amjis_app still holds TRUNCATE on audit_log after REVOKE.';
   END IF;
-  -- Deliberately NOT revoked (see header item 1) — confirm they survived so a
-  -- future edit to this file cannot accidentally widen its blast radius
-  -- without this check catching it.
+  -- Deliberately NOT revoked (see header item 1 for UPDATE, item 3 for the
+  -- rest) — confirm all five survived so a future edit to this file cannot
+  -- accidentally widen its blast radius without this check catching it.
   IF NOT has_table_privilege('amjis_app', 'public.audit_log', 'SELECT') THEN
     RAISE EXCEPTION
       'E001_POSTCONDITION_FAILED: amjis_app unexpectedly lost SELECT on audit_log.';
@@ -121,6 +124,14 @@ BEGIN
     RAISE EXCEPTION
       'E001_POSTCONDITION_FAILED: amjis_app unexpectedly lost UPDATE on audit_log '
       '(UPDATE is intentionally NOT revoked by this migration — see header item 1).';
+  END IF;
+  IF NOT has_table_privilege('amjis_app', 'public.audit_log', 'TRIGGER') THEN
+    RAISE EXCEPTION
+      'E001_POSTCONDITION_FAILED: amjis_app unexpectedly lost TRIGGER on audit_log.';
+  END IF;
+  IF NOT has_table_privilege('amjis_app', 'public.audit_log', 'REFERENCES') THEN
+    RAISE EXCEPTION
+      'E001_POSTCONDITION_FAILED: amjis_app unexpectedly lost REFERENCES on audit_log.';
   END IF;
 END
 $postcondition$;
