@@ -39,6 +39,16 @@ export interface ToolEventLogEntry {
   ms: number
   ok_count: number
   err_count: number
+  /**
+   * Distinguishes the failure class when status==='error' (V3-E-034). Both classes are
+   * recorded IDENTICALLY in shape here (status:'error') — a registry-lookup miss (the tool
+   * name failed `getToolByName`, so nothing was ever dispatched) and a dispatch throw (the
+   * tool was found but the call itself threw) are the same failure severity and both deserve a
+   * `toolEventLog` row. This field lets a downstream consumer (completeness_wiring.ts) report a
+   * distinct, honest `empty_reason` for each class instead of collapsing a registry-unresolvable
+   * authorized tool into the same bucket as a tool that was never authorized at all.
+   */
+  error_kind?: 'registry_unresolvable' | 'dispatch_error'
 }
 
 export interface EvidenceStageOutput {
@@ -80,6 +90,11 @@ export async function runEvidenceStage(args: {
       const t = getToolByName(toolName) as RetrievalTool | undefined
       if (!t) {
         em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'error' })
+        // V3-E-034: a registry-lookup miss is the same failure severity as a dispatch throw
+        // below — record it identically (a toolEventLog row with status:'error') rather than
+        // letting it silently escape the log with zero rows, which downstream collapsed into
+        // the SAME empty_reason as "correctly never authorized" (completeness_wiring.ts).
+        toolEventLog.push({ name: toolName, status: 'error', ms: 0, ok_count: 0, err_count: 1, error_kind: 'registry_unresolvable' })
         return null
       }
       const toolStart = Date.now()
@@ -96,7 +111,7 @@ export async function runEvidenceStage(args: {
       } catch {
         const ms = Date.now() - toolStart
         em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'error', ms })
-        toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1 })
+        toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1, error_kind: 'dispatch_error' })
         return null
       }
     }),
@@ -111,7 +126,7 @@ export async function runEvidenceStage(args: {
     completenessReceipt = buildWebCompletenessReceipt(
       plan.scope_tuple,
       chartId,
-      toolEventLog.map((e) => ({ name: e.name, status: e.status, ok_count: e.ok_count })),
+      toolEventLog.map((e) => ({ name: e.name, status: e.status, ok_count: e.ok_count, error_kind: e.error_kind })),
     )
   }
 
