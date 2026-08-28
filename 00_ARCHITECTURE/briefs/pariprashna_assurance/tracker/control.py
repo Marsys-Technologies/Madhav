@@ -762,6 +762,18 @@ class EventStore:
                     raise RejectedEvent("EVIDENCE_REQUIRED", "a session ceiling correction requires authority evidence")
                 if not isinstance(payload["ceiling"], (int, float)) or isinstance(payload["ceiling"], bool) or payload["ceiling"] <= 0:
                     raise RejectedEvent("CORRECTION_SCHEMA", "a corrected session ceiling must be a positive number of seconds")
+            if "deployed_revision" in payload:
+                # Unlike the ceiling correction above, this is deliberately NOT restricted to
+                # "only when unset" / "only once": a session may need to re-prove its result
+                # against successive fresher revisions as later deploys land (the S5 case this
+                # exists for), so each correction_recorded event is just one more additive fold
+                # step layered onto the immutable work_started receipt — never a rewrite of it.
+                if target["event_type"] != "work_started" or target["actor_id"] != request["actor_id"] or target["stream_id"] != stream_id:
+                    raise RejectedEvent("CORRECTION_TARGET", "a deployed_revision correction may target only this actor's work-start in this stream")
+                if not isinstance(payload["deployed_revision"], str) or not payload["deployed_revision"].strip():
+                    raise RejectedEvent("CORRECTION_SCHEMA", "a corrected deployed_revision must be a non-empty revision identifier")
+                if not request.get("evidence"):
+                    raise RejectedEvent("EVIDENCE_REQUIRED", "a deployed_revision correction requires deploy-log evidence proving the fresher revision")
 
     @staticmethod
     def _enforce_scenario_writer_lease(con: sqlite3.Connection, stream_id: str, actor_id: str, writer_instance_id: str) -> None:
@@ -1083,6 +1095,16 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
             ceiling = payload.get("ceiling")
             if session_id and isinstance(ceiling, (int, float)) and not isinstance(ceiling, bool) and ceiling > 0:
                 sessions[session_id]["ceiling"] = ceiling
+                sessions[session_id]["last_evidence"] = evidence
+                sessions[session_id]["last_evidence_at"] = event["occurred_at"]
+            deployed_revision = payload.get("deployed_revision")
+            if session_id and isinstance(deployed_revision, str) and deployed_revision.strip():
+                # Additive fold-forward only: the work_started event this corrects is never
+                # touched (events are append-only, enforced by the DB trigger); the projector
+                # simply lets the latest correction_recorded event win when it replays the log
+                # in ledger order, so the original value stays reconstructable from the raw log
+                # at any point in history even though the live projection now shows the update.
+                sessions[session_id]["deployed_revision"] = deployed_revision
                 sessions[session_id]["last_evidence"] = evidence
                 sessions[session_id]["last_evidence_at"] = event["occurred_at"]
         elif typ == "finding_discovered":

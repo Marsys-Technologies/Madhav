@@ -86,6 +86,74 @@ class ControlPlaneTests(unittest.TestCase):
             self.emit("lead-s1", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "missing authority evidence", "ceiling": 14400}, "S1", evidence=[])
         self.assertEqual(no_evidence.exception.code, "EVIDENCE_REQUIRED")
 
+    def test_deployed_revision_can_be_updated_post_hoc_without_touching_the_original_receipt(self):
+        """A7: a stream needs to re-prove a security fix LIVE against production AFTER a later
+        deploy has landed (e.g. S5 re-proving an auth fix against a fresher revision than when
+        its session started). deployed_revision is frozen on work_started at session-start
+        time; this proves the post-hoc update path is (a) reflected in the live projection,
+        (b) additive — the original work_started event and its original revision value are
+        untouched in the raw append-only log — and (c) role/stream-forgery-proof."""
+        self.emit("lead-s5", "work_started", {"session_id": "s5", "deployed_revision": "aaaaaaa", "planned_scenarios": 1}, "S5")
+        started = next(event for event in self.store.events() if event["event_type"] == "work_started" and event["stream_id"] == "S5")
+        deploy_evidence = [{"kind": "deploy_log", "uri": "https://github.com/Marsys-Technologies/Madhav/actions/runs/999"}]
+
+        # (a) the projection reflects the updated revision after the event.
+        first_update = self.emit("lead-s5", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "re-proved CVE fix against the revision deployed by PR #1701", "deployed_revision": "bbbbbbb"}, "S5", evidence=deploy_evidence)
+        session = next(item for item in self.store.projection()["canonical"]["execution_sessions"] if item["id"] == "s5")
+        self.assertEqual(session["deployed_revision"], "bbbbbbb")
+
+        # deployed_revision correction is deliberately repeatable (unlike the ceiling
+        # correction above) — a stream may need to re-prove against several later deploys
+        # over its lifetime; the latest correction wins in the fold, and every prior value
+        # remains reconstructable from the append-only log (checked below).
+        self.emit("lead-s5", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "re-proved again after PR #1704 landed", "deployed_revision": "ccccccc"}, "S5", evidence=deploy_evidence)
+        session = next(item for item in self.store.projection()["canonical"]["execution_sessions"] if item["id"] == "s5")
+        self.assertEqual(session["deployed_revision"], "ccccccc")
+
+        # (b) the original work_started event and its original revision value are untouched
+        # in the raw event log — both the first correction and the re-read of the original
+        # work_started row must still show "aaaaaaa", proving old values remain reconstructable.
+        raw_started = next(event for event in self.store.events() if event["event_id"] == started["event_id"])
+        self.assertEqual(raw_started["payload"]["deployed_revision"], "aaaaaaa")
+        self.assertEqual(raw_started["event_hash"], started["event_hash"])
+        correction_events = [event for event in self.store.events() if event["event_type"] == "correction_recorded" and event["payload"].get("corrects_event_id") == started["event_id"]]
+        self.assertEqual([event["payload"]["deployed_revision"] for event in correction_events], ["bbbbbbb", "ccccccc"])
+        self.assertTrue(self.store.verify_replay()["ok"])
+
+        # a bare schema/evidence check, mirroring the ceiling correction's coverage.
+        with self.assertRaises(RejectedEvent) as no_evidence:
+            self.emit("lead-s5", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "missing evidence", "deployed_revision": "ddddddd"}, "S5", evidence=[])
+        self.assertEqual(no_evidence.exception.code, "EVIDENCE_REQUIRED")
+        with self.assertRaises(RejectedEvent) as bad_schema:
+            self.emit("lead-s5", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "empty revision", "deployed_revision": "  "}, "S5", evidence=deploy_evidence)
+        self.assertEqual(bad_schema.exception.code, "CORRECTION_SCHEMA")
+
+    def test_deployed_revision_correction_cannot_be_forged_for_another_streams_session(self):
+        """(c) an actor without the right role/ownership cannot forge this update for another
+        stream's session — covers both a wrong-stream STREAM_LEAD and a non-STREAM_LEAD role."""
+        self.emit("lead-s5", "work_started", {"session_id": "s5-secure", "deployed_revision": "aaaaaaa", "planned_scenarios": 1}, "S5")
+        started = next(event for event in self.store.events() if event["event_type"] == "work_started" and event["stream_id"] == "S5")
+        deploy_evidence = [{"kind": "deploy_log", "uri": "https://github.com/Marsys-Technologies/Madhav/actions/runs/1000"}]
+
+        # A different stream's lead does not own S5 and cannot even address the event to it.
+        with self.assertRaises(RejectedEvent) as wrong_stream_ownership:
+            self.emit("lead-s3", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "forged update attempt", "deployed_revision": "fffffff"}, "S3", evidence=deploy_evidence)
+        self.assertEqual(wrong_stream_ownership.exception.code, "CORRECTION_TARGET")
+
+        # Even if a foreign lead is (mis-)pointed at S5 directly, ownership is not theirs.
+        with self.assertRaises(RejectedEvent) as stream_forbidden:
+            self.emit("lead-s3", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "forged update attempt", "deployed_revision": "fffffff"}, "S5", evidence=deploy_evidence)
+        self.assertEqual(stream_forbidden.exception.code, "STREAM_FORBIDDEN")
+
+        # A role that is not STREAM_LEAD cannot emit correction_recorded at all.
+        with self.assertRaises(RejectedEvent) as role_forbidden:
+            self.emit("verifier", "correction_recorded", {"corrects_event_id": started["event_id"], "reason": "forged update attempt", "deployed_revision": "fffffff"}, "S5", evidence=deploy_evidence)
+        self.assertEqual(role_forbidden.exception.code, "ROLE_FORBIDDEN")
+
+        # The session's deployed_revision must remain the original value throughout.
+        session = next(item for item in self.store.projection()["canonical"]["execution_sessions"] if item["id"] == "s5-secure")
+        self.assertEqual(session["deployed_revision"], "aaaaaaa")
+
     def test_replay_detects_tampered_event_chain_before_rebuild(self):
         with self.store.connection() as con:
             con.execute("DROP TRIGGER events_no_update")
