@@ -870,14 +870,54 @@ investigated further here.)*
   aria-live region changes at least once during any `finalize` window longer
   than ~5s).
 
+### V3-E-023 — An interrupted turn's caveat text invented a network-failure cause for a deliberate user Stop click
+
+- **Class / severity:** DEFECT · S3 minor (proposed — a wording-accuracy /
+  confidence-honesty defect, not a data-loss or authorization issue; but a
+  direct in-turn contradiction between two adjacent pieces of copy)
+- **Lens(es):** L-USER + L-CODE
+- **Pipeline stage:** SURFACE (S2, `Turn.tsx`)
+- **Journey:** J6 (interruption)
+- **Observed (2026-08-28, LIVE, deployed `amjis-web@cafa894ee`, S2-territory
+  code confirmed byte-identical to current HEAD — see V3-E-021):** asked a
+  long question, waited 4s into synthesis, pressed Stop. Rendered result:
+  the working-band header correctly read **"Stopped — kept what arrived
+  · 0:04"**; two lines below it, the caveat paragraph read **"The connection
+  was lost partway. What arrived is above; nothing was altered."** — a
+  direct in-turn contradiction (one honest label, one invented cause, for
+  the exact same event).
+- **Code anchor / root cause:** `state/reducer.ts` confirms `status:
+  'interrupted'` is set ONLY by the user-stop action path (no other reducer
+  case sets it) — this is never reached by an actual unrecoverable network
+  failure (that path is the separate `errored` status, whose own
+  `classifyPariprashnaError`-derived `bandLabel` legitimately says
+  "The connection was lost" for a REAL failure — confirmed via
+  `errors/classify.ts` and its own test). `Turn.tsx`'s caveat paragraph
+  under `turn.status === 'interrupted'` hardcoded the same "connection was
+  lost" wording unconditionally, not tied to the lexicon's own
+  `EDGE_STATE_LABELS.user_stopped` truth the band label two lines above it
+  already uses — a wrapper-local literal that drifted from the single
+  source of truth (§N.7 item 3).
+- **Fix landed (2026-08-28, S2, this session):** removed the invented
+  network-failure clause; caveat now reads "What arrived is above; nothing
+  was altered." (the band label above already states the honest cause).
+  Demonstrated-can-fail: new test
+  `platform/src/components/pariprashna/__tests__/Turn.test.tsx` RED against
+  pre-fix `Turn.tsx` (confirmed: the exact old string rendered), GREEN
+  after. Full territory suite: 1525 passed, 0 regressions.
+- **Status:** FIXED — PR pending, independent verification pending.
+- **Close rung required:** LIVE re-proof (press Stop on a deployed build
+  post-merge; confirm no "connection was lost" wording appears).
+
 ---
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 16 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain + 5 surfaced by S2's guided-execution
-J2 pass, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes fixed
-and independently verified, V3-E-007/E-008/E-010/E-011 filed to S5,
+SALVAGE 2); 17 V3 entries (5 from the A3 census + 6 surfaced during A4's
+B-001/B-007/B-008 fix-and-verify chain + 6 surfaced by S2's guided-execution
+J2/J6 passes, 2026-08-27/28: V3-E-006/B-007 and the B-008 CRITICAL routes
+fixed and independently verified, V3-E-007/E-008/E-010/E-011 filed to S5,
 V3-E-009 closed-as-benign, V3-E-021/E-014/E-015 filed to S4 (with E-015 also
-S2-owned for its surface half), V3-E-013 FIXED by S2 pending independent
+S2-owned for its surface half), V3-E-013/E-023 FIXED by S2 — E-013
+independently verified merge-recommended, E-023 pending independent
 verification). No gate is certified by this document.*

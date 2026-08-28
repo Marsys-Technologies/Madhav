@@ -1,5 +1,5 @@
 import type { TurnState } from './state/types'
-import { GRADE_SUMMARY_WELL_GROUNDED } from './state/groundingRollup'
+import { GRADE_SUMMARY_HONEST_GAP, GRADE_SUMMARY_WELL_GROUNDED } from './state/groundingRollup'
 
 /**
  * Mounts once, after `turn.commit` (§5.1 ③) — but its VISUAL content lives
@@ -21,12 +21,21 @@ export function GroundingRegion({ turn }: { turn: TurnState }) {
   // CATALOG-ONLY — UNVERIFIED / HONEST GAP) replaces the word "Grounded"
   // rather than being silently discarded.
   const isWellGrounded = gradeSummaryLabel === GRADE_SUMMARY_WELL_GROUNDED
+  // HONEST_GAP asserts no citations were found; factorCount and
+  // gradeSummaryLabel are sourced independently upstream (client tally vs.
+  // server grade_counts aggregate — s1LiveAdapter.ts) and CAN disagree
+  // (fixtures/honest_gap.ts already models factorCount:4 alongside this
+  // label). Never pair the "gap" wording with a nonzero parenthetical count
+  // — that reads as self-contradictory to a screen-reader user.
+  const isHonestGap = gradeSummaryLabel === GRADE_SUMMARY_HONEST_GAP
   let summary: string
   if (isWellGrounded) {
     summary =
       classicalCount > 0
         ? `Reading complete. Grounded in ${factorCount} chart factors, ${classicalCount} classical sources.`
         : `Reading complete. Grounded in ${factorCount} chart factors.`
+  } else if (isHonestGap) {
+    summary = `Reading complete. ${gradeSummaryLabel}`
   } else {
     summary =
       classicalCount > 0

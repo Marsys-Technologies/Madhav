@@ -41,7 +41,12 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
         <AnswerRegion turn={turn} chartId={chartId} />
         {turn.status === 'interrupted' && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
-            The connection was lost partway. What arrived is above; nothing was altered.
+            {/* `interrupted` is reached ONLY via a deliberate Stop click
+                (reducer.ts — no other action sets it); the band label two
+                lines above already says so honestly
+                (EDGE_STATE_LABELS.user_stopped). This caveat must not
+                invent a network cause for what was a deliberate action. */}
+            What arrived is above; nothing was altered.
           </p>
         )}
         <PersistenceNotice turn={turn} />

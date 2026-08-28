@@ -18,14 +18,14 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { GroundingRegion } from '../GroundingRegion'
 import { makeInitialTurnState } from '../state/reducer'
-import { GRADE_SUMMARY_CATALOG_ONLY, GRADE_SUMMARY_WELL_GROUNDED } from '../state/groundingRollup'
+import { GRADE_SUMMARY_CATALOG_ONLY, GRADE_SUMMARY_HONEST_GAP, GRADE_SUMMARY_WELL_GROUNDED } from '../state/groundingRollup'
 import type { TurnState } from '../state/types'
 
-function settledTurnWith(gradeSummaryLabel: string): TurnState {
+function settledTurnWith(gradeSummaryLabel: string, factorCount = 4): TurnState {
   const turn = makeInitialTurnState('turn-1', 'What does this period ask of my career?')
   turn.status = 'settled'
   turn.grounding = {
-    factorCount: 4,
+    factorCount,
     classicalCount: 0,
     elapsedLabel: '0:71',
     gradeSummaryLabel,
@@ -53,5 +53,18 @@ describe('GroundingRegion — grade-honest settle announcement', () => {
     const status = screen.getByRole('status')
     expect(status.textContent).toMatch(/grounded/i)
     expect(status.textContent).not.toMatch(/unverified|catalog-only/i)
+  })
+
+  it('never pairs "honest gap" wording with a nonzero parenthetical factor count (independent-verifier follow-up)', () => {
+    // The server-derived branch of s1LiveAdapter.ts sources factorCount from
+    // the client's own citation tally and gradeSummaryLabel from the
+    // server's independent grade_counts aggregate — the two CAN disagree
+    // (fixtures/honest_gap.ts already models factorCount:4 alongside the
+    // HONEST_GAP label). "Honest gap — silence verified... (4 chart
+    // factors)." reads as self-contradictory to a screen-reader user.
+    const turn = settledTurnWith(GRADE_SUMMARY_HONEST_GAP, 4)
+    render(<GroundingRegion turn={turn} />)
+    const status = screen.getByRole('status')
+    expect(status.textContent).not.toMatch(/\(\s*4\s*chart factors\s*\)/i)
   })
 })
