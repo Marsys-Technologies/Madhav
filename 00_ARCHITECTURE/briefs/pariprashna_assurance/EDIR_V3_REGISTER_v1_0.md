@@ -817,16 +817,109 @@ await Native Surrogate triage.
 
 ---
 
+### V3-E-032 — CRITICAL: live corpus sample shows 0% of citation attempts reach a trustworthy grade across 10 turns/6 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed
+
+- **Class / severity:** DEFECT (corroborating/quantifying V3-E-016 at corpus
+  scale) filed to **S4** (primary — same grounding/retrieval pipeline root
+  cause as V3-E-016) · plus an S3 in-territory scorer-harness DEFECT, found
+  and FIXED this session · **CRITICAL**
+- **Lens / stage:** L-LIVE (deployed web door, `scripts/probe/ask.ts`,
+  synthetic chart `1c826d5a` only) · S3 quality-corpus scoring harness
+  (`platform/src/lib/pariprashna/corpus/dimensions/citation_precision.ts`)
+- **Observed (2026-08-28, S3 stream, live corpus run):** ran a 16-fixture
+  live sample (2 fixtures × 8 single-turn-compatible work classes:
+  factual, interpretive_whole_chart, cross_domain_contradiction,
+  incomplete_evidence, remedial, sensitive, timing, ambiguous_clarification;
+  the 3 conversation-history-seeded classes — disagreement,
+  returning_conversation_drift, prediction_capture_outcome — need a
+  `priorTurns` seeding capability the runner does not yet have wired to a
+  live door, an honest disclosed gap, not run this pass) against the
+  deployed route via `platform/scripts/pariprashna/s3_live_corpus_run.ts`
+  (new driver script, this session, wiring the existing
+  `probe_output_adapter.ts` + `runCorpus` to `scripts/probe/ask.ts` per one
+  call per fixture). 10 of 16 turns produced a measured `evidence_grades`
+  block (the other 6 were short/blocked/degenerate responses, reported
+  `not_yet_measurable`, not silently dropped). Across all 10 measured turns:
+  `primary=supporting=contextual=prior_reading=0` — zero citations, across
+  160 total citation attempts, ever reached a real verification tier. The
+  remaining 80 were all graded `unverified`.
+- **Scorer bug found and fixed (S3 in-territory, `citation_precision.ts`):**
+  `citations/rewriter.ts`'s `resolveSentinel` has exactly one branch for an
+  unresolvable reference, and that single branch both assigns
+  `grade: 'unverified'` AND increments the hallucination counter
+  (`rewriter.ts:263-278`) — `grade_counts.unverified` and
+  `hallucination_count` are the SAME event, always exactly equal by
+  construction, never disjoint (confirmed empirically: all 10 measured
+  turns had `hallucination_count === grade_counts.unverified` exactly, with
+  underlying magnitudes varying 1..16 — not a coincidence, a structural
+  invariant). The scorer previously computed `resolved` as the sum of ALL
+  `grade_counts` (including `unverified`) and then added
+  `hallucination_count` again as a separate denominator term — double-
+  counting every unresolvable citation and mathematically forcing the score
+  toward ~0.5 for any turn with zero genuinely-verified citations,
+  regardless of true severity (a turn with 1 hallucination scores the same
+  ~0.5 as a turn with 16). This MASKED the true 0.0 (zero citations ever
+  reached primary/supporting/contextual/prior_reading) behind a falsely
+  reassuring midpoint score. Fixed via TDD: 2 new tests added to
+  `citation_precision.test.ts` (one encoding the real rewriter invariant
+  the old test's synthetic fixture violated, one asserting the true 0.0
+  case), confirmed RED against the old implementation, fixed, confirmed
+  GREEN; full corpus suite re-run clean (104/104, zero regressions). With
+  the corrected scorer, the same 16-fixture batch's `citation_precision`
+  mean is exactly `0`, not the pre-fix `0.5`.
+- **Corroboration of V3-E-016:** V3-E-016 found one specific hallucinated
+  fact (Moon nakshatra) with its own receipt disclosing
+  `hallucination_count: 2` and a 9/14 MCP↔web namespace retrieval gap. This
+  finding shows the same failure mode is not that one query's bad luck —
+  it reproduces at 0% true citation-precision across 10 independently
+  authored queries spanning 6 different work classes. `b11_coverage` (a
+  separate, independently-computed dimension — sanity-checked against
+  V3-E-016's own receipt numbers and confirmed NOT to share the same bug)
+  measured a mean of `0.237` across the same 16-fixture sample, consistent
+  with V3-E-016's own `served: 5, floor_item_total: 14` (0.357) with zero
+  cross-domain authorization on top.
+- **Why not fixed further in S3:** the citation_precision.ts scorer bug
+  IS S3's own territory and IS fixed (above). The underlying platform
+  defect it measures — why the web door's citation rewriter resolves so
+  few citations to a real, verified signal — is the grounding/retrieval
+  pipeline itself (S4 territory, same root cause V3-E-016 already named:
+  `validation_stage.ts` has zero references to `hallucination_count`, and
+  the receipt's own `honest_gaps` disclosure path exists but nothing wires
+  the citation-grade signal into it).
+- **Proposed fix class:** S4's V3-E-016 remediation (wiring
+  `validation_stage.ts`/`streaming_citation_validator.ts` to gate or
+  disclose on `evidence_grades`) directly addresses this finding's root
+  cause too — recommend S4 treat V3-E-016 and V3-E-032 as one root-cause
+  group (`root_cause_group: V3-E-016`, set on this finding's tracker event).
+- **Status:** OPEN, filed to **S4**, CRITICAL. The S3-territory half (the
+  scorer bug) is CLOSED — fix landed this session, independently verified
+  per harness §6.2 (see stream result packet). Close rung for the platform
+  defect: LIVE (a re-run of this same 16-fixture batch against a fixed
+  `validation_stage.ts` showing citation_precision materially above 0).
+- **Tracker:** `finding_discovered` event `ef457619-6ea3-4b85-a052-b3334b37c153`
+  (S3 stream_seq 5), `root_cause_group: V3-E-016`.
+
+---
+
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 13 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
-B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign; + 2 filed 2026-08-28 by stream
-S3 at its own session-open: V3-E-012, real-chart-grounding question on the
+SALVAGE 2); 14 V3 entries on this branch (5 from the A3 census + 6 surfaced
+during A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/
+B-007 and the B-008 CRITICAL routes fixed and independently verified,
+V3-E-007/E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 3 filed
+2026-08-28 by stream S3: V3-E-012, real-chart-grounding question on the
 quality corpus's pre-existing fixtures, filed for native ruling; V3-E-016
 (originally drafted as E-013, renumbered on a live TRACKER-side
 FINDING_ID_CONFLICT — S2 had already claimed E-013..E-015 concurrently in
 this shared, cross-worktree register; see E-017's own named gap), CRITICAL
 reproducible hallucination-of-real-chart-facts defect on the deployed web
-door, filed to S4/S5). No gate is certified by this document.*
+door, filed to S4/S5; V3-E-032, CRITICAL corpus-scale (0% true citation
+precision across 10 live turns) corroboration of V3-E-016 plus an
+in-territory S3 scorer bug found and FIXED this session, filed to S4).
+Other streams (S1/S2/S4/S5/S6) file V3-E entries on their OWN branches per
+the harness's per-stream-branch model (§2.1) — this file's count is scoped
+to what S3 has filed on `pariprashna/v3-s3-answer-quality`; the tracker
+(global `finding_discovered` event stream, `finding_id` globally unique) is
+the cross-stream source of truth, reconciled into one register at Session
+C convergence (elevation §5.5's one-register rule + parity check). No gate
+is certified by this document.*
