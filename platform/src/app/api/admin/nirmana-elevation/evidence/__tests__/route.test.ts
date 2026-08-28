@@ -505,38 +505,67 @@ describe('POST /api/admin/nirmana-elevation/evidence', () => {
     expect(auditMock).toHaveBeenLastCalledWith('admin-1', 'nirmana_definition_recorded', null, expect.objectContaining({ definition_status: 'frozen', outcome: 'frozen' }))
   })
 
-  it('accepts a typed atomic definition-supersession command', async () => {
+
+it('accepts a typed atomic definition-supersession command without accepting a caller manifest', async () => {
     superAdmin()
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: 'c'.repeat(64),
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: registryRows })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
-      .mockResolvedValueOnce({})
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRows)
+    const sourceObservation = {
+      id: baselineObservationId, observed_at: '2026-08-26T05:00:01.000Z',
+      status: 'plan_adaptation_required', current_definition_sha256: oldDigest,
+      candidate_definition_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+      source_state: 'available', source_observed_at: '2026-08-26T05:00:00.000Z',
+      freshness_state: 'fresh', freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+      source_error_code: null, release_state: 'in_sync', runtime_liveness: 'quiet', currently_fresh: true,
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')
+        || statement.startsWith('LOCK TABLE')) return Promise.resolve({ rows: [] })
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')
+        && statement.includes('ORDER BY definition_revision')) {
+        return Promise.resolve({ rows: [{
+          definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+          manifest, created_by: 'admin-0', superseded_at: null,
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) return Promise.resolve({ rows: [sourceObservation] })
+      if (statement.includes('AS event_count')) return Promise.resolve({ rows: [{ event_count: 0, build_run_count: 0 }] })
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: registryRows })
+      if (statement.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')) return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+      if (statement.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
+      if (statement.includes('SELECT definition_status, manifest FROM nirmana_evidence')) return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      if (statement.includes('SELECT event_type, entity_type, entity_id, layer')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
     const { POST } = await import('../route')
     const response = await POST(request({
       command: 'supersede_definition', campaign_id: 'nirmana-elevation',
-      expected_current_revision: 'v1', expected_current_manifest_sha256: 'c'.repeat(64),
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: manifest_sha256,
+      expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
+      source_observation_id: baselineObservationId,
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      new_definition_revision: 'v2',
     }))
     expect(response.status).toBe(201)
     expect(await response.json()).toEqual({ outcome: 'superseded' })
+    expect(mutationRateLimitMock).toHaveBeenCalledWith('admin:nirmana_supersede_definition:admin-1')
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
     expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, expect.objectContaining({
-      command: 'supersede_definition', expected_current_revision: 'v1', new_definition_revision: 'v2', outcome: 'superseded',
+      command: 'supersede_definition', expected_current_revision: 'v1', new_definition_revision: 'v2',
+      candidate_manifest_sha256: candidate.manifest_sha256, outcome: 'superseded',
     }))
   })
 
-  it('rejects a malformed frozen manifest before it can transition state', async () => {
+ it('rejects a malformed frozen manifest before it can transition state', async () => {
     superAdmin()
     const { POST } = await import('../route')
     const response = await POST(request({

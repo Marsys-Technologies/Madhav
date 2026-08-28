@@ -225,10 +225,11 @@ const supersede = z.object({
   campaign_id: campaignId,
   expected_current_revision: revision,
   expected_current_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  source_observation_id: z.string().uuid(),
+  expected_candidate_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   new_definition_revision: revision,
-  new_manifest: NirmanaElevationManifestSchema,
-  new_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-})
+}).strict()
 const labelCatalogue = NirmanaLabelCatalogueInputSchema
   .omit({ recorded_by: true })
   .extend({ command: z.literal('record_label_catalogue') })
@@ -262,23 +263,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid Nirmana evidence command', issues: parsed.error.issues }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
   }
 
-  if (parsed.data.command === 'accept_baseline_candidate') {
+  if (parsed.data.command === 'accept_baseline_candidate' || parsed.data.command === 'supersede_definition') {
+    const isSupersession = parsed.data.command === 'supersede_definition'
     let rateLimit
     try {
-      rateLimit = await checkRateLimit(`admin:nirmana_accept_baseline_candidate:${auth.user.uid}`)
+      rateLimit = await checkRateLimit(`admin:nirmana_${parsed.data.command}:${auth.user.uid}`)
     } catch {
       // This explicit mutation fails closed when the shared limiter is
       // unavailable. Never open the acceptance transaction without a decision,
       // and never log a raw database error from this boundary.
-      console.error('[api/admin/nirmana-elevation/evidence] baseline acceptance rate limiter unavailable')
+      console.error(`[api/admin/nirmana-elevation/evidence] ${isSupersession ? 'supersession' : 'baseline acceptance'} rate limiter unavailable`)
       return NextResponse.json(
-        { error: 'baseline acceptance rate limiter unavailable' },
+        { error: isSupersession ? 'supersession rate limiter unavailable' : 'baseline acceptance rate limiter unavailable' },
         { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } },
       )
     }
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: 'baseline acceptance rate limit exceeded' },
+        { error: isSupersession ? 'supersession rate limit exceeded' : 'baseline acceptance rate limit exceeded' },
         {
           status: 429,
           headers: {
@@ -322,8 +324,10 @@ export async function POST(request: Request) {
         campaign_id: parsed.data.campaign_id,
         expected_current_revision: parsed.data.expected_current_revision,
         expected_current_manifest_sha256: parsed.data.expected_current_manifest_sha256,
+        source_observation_id: parsed.data.source_observation_id,
+        candidate_manifest_sha256: parsed.data.expected_candidate_sha256,
+        candidate_catalogue_sha256: parsed.data.expected_candidate_catalogue_sha256,
         new_definition_revision: parsed.data.new_definition_revision,
-        new_manifest_sha256: parsed.data.new_manifest_sha256,
         outcome,
       })
       return NextResponse.json({ outcome }, { status: outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })

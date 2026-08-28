@@ -57,7 +57,6 @@ vi.mock('../campaign-control-writer', () => ({
     connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
   }),
 }))
-
 const releaseStatusMock = vi.fn()
 const ciRunMock = vi.fn()
 vi.mock('../release', () => ({
@@ -81,6 +80,7 @@ import {
   createNirmanaElevationDefinition,
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
+  registryContractFingerprintInput,
   supersedeNirmanaElevationDefinition,
   type NirmanaRegistryContractRow,
 } from '../definitions'
@@ -163,6 +163,126 @@ function baselineObservationFor(
     currently_fresh: true,
     ...overrides,
   }
+}
+
+function planAdaptationObservationFor(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  currentDefinitionSha256: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return baselineObservationFor(candidate, {
+    status: 'plan_adaptation_required',
+    current_definition_sha256: currentDefinitionSha256,
+    release_state: 'in_sync',
+    runtime_liveness: 'quiet',
+    ...overrides,
+  })
+}
+
+function supersessionInput(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  expectedCurrentManifestSha256: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    campaign_id: 'nirmana-elevation' as const,
+    expected_current_revision: 'v1',
+    expected_current_manifest_sha256: expectedCurrentManifestSha256,
+    source_observation_id: baselineObservationId,
+    expected_candidate_sha256: candidate.manifest_sha256,
+    expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+    new_definition_revision: 'v2',
+    created_by: 'admin-1',
+    ...overrides,
+  }
+}
+
+function mockSupersessionTransaction({
+  candidate,
+  oldDigest,
+  oldManifest = manifest,
+  storedRows,
+  sourceObservation = planAdaptationObservationFor(candidate, oldDigest),
+  liveRows = registryRowsFor(manifest),
+  usage = { event_count: 0, build_run_count: 0 },
+  update = { rowCount: 1, rows: [{ definition_revision: 'v1' }] },
+  insert = { rowCount: 1, rows: [{ definition_revision: 'v2' }] },
+  insertError,
+  receipt,
+  labels = { label_count: candidate.labels.length, digest_matches: true },
+}: {
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>
+  oldDigest: string
+  oldManifest?: typeof manifest
+  storedRows?: unknown[]
+  sourceObservation?: Record<string, unknown>
+  liveRows?: NirmanaRegistryContractRow[]
+  usage?: { event_count: number; build_run_count: number }
+  update?: { rowCount: number; rows: unknown[] }
+  insert?: { rowCount: number; rows: unknown[] }
+  insertError?: Error
+  receipt?: Record<string, unknown>
+  labels?: { label_count: number; digest_matches: boolean }
+}) {
+  const stored = storedRows ?? [{
+    definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+    manifest: oldManifest, created_by: 'admin-0', superseded_at: null,
+  }]
+  const isExactRetry = stored.some((row) => (row as { definition_revision?: string }).definition_revision === 'v1'
+    && (row as { definition_status?: string }).definition_status === 'superseded')
+  const exactReceipt = receipt ?? {
+    event_type: 'asset_label_catalogue_accepted',
+    entity_type: 'label_catalogue',
+    entity_id: 'v2',
+    layer: null,
+    evidence_payload: {
+      catalogue_sha256: candidate.catalogue_sha256,
+      asset_count: candidate.labels.length,
+      audit_provenance: 'normative',
+      source_observation_id: baselineObservationId,
+      source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+      source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+      source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+    },
+    source_kind: 'governed_catalogue',
+    source_ref: 'label_catalogue:v2',
+  }
+  transactionQueryMock.mockImplementation((sql: string) => {
+    const statement = String(sql)
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+      || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+      || statement.includes('pg_advisory_xact_lock')
+      || statement.startsWith('LOCK TABLE')) return Promise.resolve({ rows: [] })
+    if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')
+      && statement.includes('ORDER BY definition_revision')) return Promise.resolve({ rows: stored })
+    if (statement.includes('FROM nirmana_elevation_monitor_observations')) return Promise.resolve({ rows: [sourceObservation] })
+    if (statement.includes('AS event_count')) return Promise.resolve({ rows: [usage] })
+    if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+    if (statement.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')) return Promise.resolve(update)
+    if (statement.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+      return insertError ? Promise.reject(insertError) : Promise.resolve(insert)
+    }
+    if (statement.includes('SELECT definition_status, manifest FROM nirmana_evidence')) {
+      return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+    }
+    if (statement.includes('SELECT event_type, entity_type, entity_id, layer')) {
+      return Promise.resolve({ rows: isExactRetry ? [exactReceipt] : [] })
+    }
+    if (statement.includes('SELECT count(*)::int AS label_count')) {
+      return Promise.resolve({ rows: [isExactRetry ? labels : { label_count: 0, digest_matches: false }] })
+    }
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+      return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+    }
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+      return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+    }
+    throw new Error(`Unexpected SQL: ${statement}`)
+  })
 }
 
 function useEvidenceTransaction({
@@ -268,6 +388,28 @@ describe('Nirmana elevation definition repository', () => {
 
   it('derives one canonical SHA-256 digest for the validated manifest', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('canonicalizes live registry dependency order while preserving real dependency changes', () => {
+    const rawRegistryRow: NirmanaRegistryContractRow = {
+      ...registryRowsFor(manifest)[0],
+      asset_id: 'bg_target',
+      depends_on: ['bg_beta', 'bg_alpha'],
+    }
+    const orderedRegistryRow: NirmanaRegistryContractRow = {
+      ...rawRegistryRow,
+      depends_on: ['bg_alpha', 'bg_beta'],
+    }
+    const changedRegistryRow: NirmanaRegistryContractRow = {
+      ...rawRegistryRow,
+      depends_on: ['bg_alpha'],
+    }
+
+    expect(canonicalRegistryContractDigest(registryContractFingerprintInput(rawRegistryRow)))
+      .toBe(canonicalRegistryContractDigest(registryContractFingerprintInput(orderedRegistryRow)))
+    expect(canonicalRegistryContractDigest(registryContractFingerprintInput(changedRegistryRow)))
+      .not.toBe(canonicalRegistryContractDigest(registryContractFingerprintInput(orderedRegistryRow)))
+    expect(registryContractFingerprintInput(rawRegistryRow).depends_on).toEqual(['bg_alpha', 'bg_beta'])
   })
 
   it('binds a build-run plan digest to the immutable canonical plan bytes', () => {
@@ -891,303 +1033,148 @@ describe('Nirmana elevation definition repository', () => {
     })).resolves.toBe('idempotent')
   })
 
-  it('atomically supersedes the exact current frozen definition with a live-registry-matched frozen revision', async () => {
+
+it('atomically supersedes the exact current frozen definition with the server-derived live candidate', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({}) // BEGIN
-      .mockResolvedValueOnce({}) // SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
-      .mockResolvedValueOnce({}) // campaign/revision advisory lock
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({}) // dispatcher wave advisory lock
-      .mockResolvedValueOnce({}) // evidence/build_runs table locks
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
-      .mockResolvedValueOnce({}) // COMMIT
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: registryRowsFor(manifest) })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation',
-      expected_current_revision: 'v1',
-      expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2',
-      new_manifest: manifest,
-      new_manifest_sha256: canonicalManifestDigest(manifest),
-      created_by: 'admin-1',
-    })).resolves.toBe('superseded')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
 
-    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')))
-      .toEqual([
-        'BEGIN', 'SET TRANSACTION', 'SELECT pg_advisory_xact_lock(hashtextextended($1,', 'SELECT definition_revision,', 'SELECT pg_advisory_xact_lock(hashtextextended($1,',
-        'LOCK TABLE', 'SELECT (SELECT', 'SELECT asset_id,', 'UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions', 'INSERT INTO', 'COMMIT',
-      ])
-    expect(transactionQueryMock.mock.calls[2][1]).toEqual(['nirmana-elevation:nirmana-elevation:v1'])
-    expect(transactionQueryMock.mock.calls[4][1]).toEqual(['nirmana-elevation:v1:L0:wave-0'])
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+    expect(transactionSql).toEqual(expect.arrayContaining([
+      expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
+      expect.stringContaining('FROM asset_registry'),
+      expect.stringContaining("SET definition_status = 'superseded'"),
+      expect.stringContaining("VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5)"),
+      expect.stringContaining("'asset_label_catalogue_accepted'"),
+    ]))
+    const insertedDefinition = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))
+    expect(JSON.parse(String(insertedDefinition?.[1]?.[2]))).toEqual(candidate.manifest)
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('requires a currently fresh server-derived plan-adaptation observation for a new supersession', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      sourceObservation: planAdaptationObservationFor(candidate, oldDigest, { currently_fresh: false }),
+    })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/fresh in-sync quiet/i)
   })
 
   it('supersedes a candidate whose dependency order differs from the live registry order', async () => {
     const oldDigest = 'c'.repeat(64)
     const dependencyRows: NirmanaRegistryContractRow[] = [
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_alpha',
-        depends_on: [],
-        sort_order: 1,
-        target_table: 'bg_alpha',
-        count_sql: 'SELECT count(*) FROM bg_alpha',
-      },
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_beta',
-        depends_on: [],
-        sort_order: 2,
-        target_table: 'bg_beta',
-        count_sql: 'SELECT count(*) FROM bg_beta',
-      },
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_target',
-        depends_on: ['bg_beta', 'bg_alpha'],
-        sort_order: 3,
-        target_table: 'bg_target',
-        count_sql: 'SELECT count(*) FROM bg_target',
-      },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_beta', 'bg_alpha'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
     ]
     const candidate = buildNirmanaBaselineCandidate(dependencyRows)
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: dependencyRows })
 
-    transactionQueryMock
-      .mockResolvedValueOnce({}) // BEGIN
-      .mockResolvedValueOnce({}) // SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
-      .mockResolvedValueOnce({}) // campaign/revision advisory lock
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({}) // dispatcher wave advisory lock
-      .mockResolvedValueOnce({}) // evidence/build_runs table locks
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: dependencyRows })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
-      .mockResolvedValueOnce({}) // COMMIT
-
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation',
-      expected_current_revision: 'v1',
-      expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2',
-      new_manifest: candidate.manifest,
-      new_manifest_sha256: candidate.manifest_sha256,
-      created_by: 'admin-1',
-    })).resolves.toBe('superseded')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
   })
 
   it('refuses supersession when the live registry changes a candidate dependency set', async () => {
     const oldDigest = 'c'.repeat(64)
     const candidateRows: NirmanaRegistryContractRow[] = [
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_alpha',
-        depends_on: [],
-        sort_order: 1,
-        target_table: 'bg_alpha',
-        count_sql: 'SELECT count(*) FROM bg_alpha',
-      },
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_beta',
-        depends_on: [],
-        sort_order: 2,
-        target_table: 'bg_beta',
-        count_sql: 'SELECT count(*) FROM bg_beta',
-      },
-      {
-        ...registryRowsFor(manifest)[0],
-        asset_id: 'bg_target',
-        depends_on: ['bg_alpha', 'bg_beta'],
-        sort_order: 3,
-        target_table: 'bg_target',
-        count_sql: 'SELECT count(*) FROM bg_target',
-      },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_alpha', 'bg_beta'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
     ]
     const candidate = buildNirmanaBaselineCandidate(candidateRows)
-    const changedRegistryRows = candidateRows.map((row) => row.asset_id === 'bg_target'
-      ? { ...row, depends_on: ['bg_alpha'] }
-      : row)
+    const changedRows = candidateRows.map((row) => row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha'] } : row)
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: changedRows })
 
-    transactionQueryMock
-      .mockResolvedValueOnce({}) // BEGIN
-      .mockResolvedValueOnce({}) // SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
-      .mockResolvedValueOnce({}) // campaign/revision advisory lock
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({}) // dispatcher wave advisory lock
-      .mockResolvedValueOnce({}) // evidence/build_runs table locks
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: changedRegistryRows })
-      .mockResolvedValueOnce({}) // ROLLBACK
-
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation',
-      expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: candidate.manifest,
-      new_manifest_sha256: candidate.manifest_sha256, created_by: 'admin-1',
-    })).rejects.toThrow(/live registry contract/i)
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/candidate changed/i)
   })
 
   it('treats only an exact completed supersession retry as idempotent', async () => {
     const oldDigest = 'c'.repeat(64)
-    const newDigest = canonicalManifestDigest(manifest)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      storedRows: [
         { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: '2026-08-26T00:00:00.000Z' },
-        { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: newDigest, manifest, created_by: 'admin-1', superseded_at: null },
-      ] })
-      .mockResolvedValueOnce({})
+        { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: candidate.manifest_sha256, manifest: candidate.manifest, created_by: 'admin-1', superseded_at: null },
+      ],
+    })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: newDigest, created_by: 'admin-2',
-    })).resolves.toBe('idempotent')
-    expect(transactionQueryMock).toHaveBeenCalledTimes(5)
-    expect(String(transactionQueryMock.mock.calls[4][0])).toBe('COMMIT')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('idempotent')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('FROM asset_registry'))).toBe(false)
   })
 
   it('rolls back and leaves the old definition current when the replacement insert fails', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
-      .mockRejectedValueOnce(new Error('replacement insert failed'))
-      .mockResolvedValueOnce({})
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, insertError: new Error('replacement insert failed') })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
-    })).rejects.toThrow('replacement insert failed')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow('replacement insert failed')
     expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
   it('refuses supersession when the expected frozen revision has campaign evidence', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{ event_count: 1, build_run_count: 0 }] })
-      .mockResolvedValueOnce({})
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, usage: { event_count: 1, build_run_count: 0 } })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
-    })).rejects.toThrow(/already has campaign events/i)
-    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/already has campaign events/i)
   })
 
   it('refuses supersession when a build-run manifest identifies the expected frozen revision', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 1 }] })
-      .mockResolvedValueOnce({})
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, usage: { event_count: 0, build_run_count: 1 } })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
-    })).rejects.toThrow(/already has build runs/i)
-    const preconditionCall = transactionQueryMock.mock.calls[6]
-    expect(String(preconditionCall[0])).toContain("plan_manifest #>> '{campaign_control,campaign_id}'")
-    expect(String(preconditionCall[0])).toContain("plan_manifest #>> '{campaign_control,definition_revision}'")
-    expect(preconditionCall[1]).toEqual(['nirmana-elevation', 'v1'])
-    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/already has campaign events or build runs/i)
+    const usageCall = transactionQueryMock.mock.calls.find(([sql]) => String(sql).includes('AS event_count'))
+    expect(String(usageCall?.[0])).toContain("plan_manifest #>> '{campaign_control,campaign_id}'")
+    expect(usageCall?.[1]).toEqual(['nirmana-elevation', 'v1'])
   })
 
-  it('allows supersession when build runs belong to another campaign definition', async () => {
+  it('allows supersession when no build run belongs to the expected campaign definition', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{
-        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-        manifest, created_by: 'admin-0', superseded_at: null,
-      }] })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [{ event_count: 0, build_run_count: 0 }] })
-      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
-      .mockResolvedValueOnce({})
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
-    })).resolves.toBe('superseded')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
   })
 
   it('rejects reuse of an existing replacement revision before superseding the current definition', async () => {
     const oldDigest = 'c'.repeat(64)
-    transactionQueryMock
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ rows: [
-        {
-          definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
-          manifest, created_by: 'admin-0', superseded_at: null,
-        },
-        {
-          definition_revision: 'v2', definition_status: 'superseded', manifest_sha256: 'd'.repeat(64),
-          manifest, created_by: 'admin-other', superseded_at: '2026-08-26T00:00:00.000Z',
-        },
-      ] })
-      .mockResolvedValueOnce({})
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      storedRows: [
+        { definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: null },
+        { definition_revision: 'v2', definition_status: 'superseded', manifest_sha256: 'd'.repeat(64), manifest, created_by: 'admin-other', superseded_at: '2026-08-26T00:00:00.000Z' },
+      ],
+    })
 
-    await expect(supersedeNirmanaElevationDefinition({
-      campaign_id: 'nirmana-elevation', expected_current_revision: 'v1', expected_current_manifest_sha256: oldDigest,
-      new_definition_revision: 'v2', new_manifest: manifest, new_manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-1',
-    })).rejects.toThrow(/revision already exists/i)
-    expect(transactionQueryMock).toHaveBeenCalledTimes(5)
-    expect(String(transactionQueryMock.mock.calls[4][0])).toBe('ROLLBACK')
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/fresh in-sync quiet/i)
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
   })
 
-  it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
+ it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
     const driftedRows = registryRowsFor(manifest)
     driftedRows[0].count_sql = 'SELECT count(*) FROM a_different_table'
     transactionQueryMock.mockResolvedValueOnce({ rows: driftedRows })
