@@ -132,6 +132,24 @@ describe('POST /api/panchang — cross-tenant native_context disclosure', () => 
     expect(mockFetch).toHaveBeenCalled()
   })
 
+  // Fail-closed on a malformed chart_id. The guard can only authorize a value
+  // it recognises as a chart id; anything else it must refuse rather than
+  // forward unchecked, because the body is passed to the sidecar VERBATIM and
+  // the sidecar's own parsing is not this route's to assume. A non-string
+  // chart_id that some downstream parser coerces back into one would otherwise
+  // be a guard bypass.
+  it.each([
+    ['a number', 12345],
+    ['an array', ['482012f1-710e-4a25-994a-93821f5871aa']],
+    ['an object', { toString: 'x' }],
+    ['null-ish empty string', ''],
+  ])('REFUSES a chart_id that is %s, and never calls the sidecar', async (_label, value) => {
+    mockRequireChartPermission.mockResolvedValue(null)
+    const res = await POST(req({ ...basePayload, chart_id: value }))
+    expect(res.status).toBe(400)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
   it('DENIES an unauthenticated caller outright', async () => {
     mockGetServerUser.mockResolvedValue(null)
     const res = await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))

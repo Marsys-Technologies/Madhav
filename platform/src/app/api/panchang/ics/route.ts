@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
   // ics_builder.ts happens never to render native_context; guarding here removes
   // the dependency on that downstream silence. `chart_id` is optional, and the
   // chart_id-less calendar stays open to any authenticated caller.
-  if (chartId) {
+  if (chartId !== undefined) {
+    if (chartId.trim() === '') return res.badRequest('chart_id must be a non-empty string')
     const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
     if (denied) return denied
   }

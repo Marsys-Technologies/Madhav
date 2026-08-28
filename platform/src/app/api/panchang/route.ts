@@ -51,12 +51,22 @@ export async function POST(request: Request) {
   // `chart_id` is OPTIONAL here. Without one the sidecar returns a
   // location-only panchang with no native_context, which is public-safe; that
   // path must keep working for any authenticated caller and is not gated.
-  const chartId =
-    body && typeof body === 'object' && typeof (body as { chart_id?: unknown }).chart_id === 'string'
-      ? (body as { chart_id: string }).chart_id
-      : null
-  if (chartId) {
-    const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  // Fail closed on a malformed chart_id rather than forwarding it unchecked:
+  // the body goes to the sidecar VERBATIM, so a value this guard declines to
+  // recognise but some downstream parser coerces back into a chart id would be
+  // a bypass. Absent is fine; present-and-not-a-non-empty-string is refused.
+  const rawChartId = body && typeof body === 'object'
+    ? (body as { chart_id?: unknown }).chart_id
+    : undefined
+  if (rawChartId !== undefined && rawChartId !== null) {
+    if (typeof rawChartId !== 'string' || rawChartId.trim() === '') {
+      return res.badRequest('chart_id must be a non-empty string')
+    }
+    const denied = await requireChartPermission({
+      uid: user.uid,
+      chartId: rawChartId,
+      access: 'read',
+    })
     if (denied) return denied
   }
 
