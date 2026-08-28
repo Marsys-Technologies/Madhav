@@ -803,6 +803,118 @@ class ControlPlaneTests(unittest.TestCase):
                 store.submit({"actor_id": "integrator", "idempotency_key": "accept-remediation", "event_type": "work_item_accepted", "payload": {"work_item_id": "S1:remediation", "verification_event_id": verification["event"]["event_id"]}, "stream_id": "S1", "expected_stream_seq": store.next_stream_seq("S1"), "evidence": EVIDENCE})
             self.assertEqual(missing_plan.exception.code, "REMEDIATION_PLAN_REQUIRED")
 
+    def _frozen_s5_plan(self):
+        """Reproduce the real S5 posture: a remediation plan frozen at `remediation_approved`,
+        after which every genuinely new post-freeze finding is FINDING_FREEZE-rejected."""
+        self.emit("lead-s5", "work_started", {"session_id": "s5-frozen-plan", "planned_scenarios": 1}, "S5")
+        self.emit("lead-s5", "finding_discovered", {"finding_id": "V3-E-019", "severity": "HIGH"}, "S5")
+        self.emit("surrogate", "finding_triaged", {"finding_id": "V3-E-019", "severity": "HIGH"}, "S5")
+        self.emit("surrogate", "remediation_approved", {"remediation_plan": [{"id": "fix-019", "finding_id": "V3-E-019"}]}, "S5")
+
+    def test_finding_freeze_still_blocks_a_stream_lead_and_only_a_surrogate_can_grant_the_exception(self):
+        """RED half: the freeze is NOT weakened — a stream lead's own post-freeze finding, and a
+        stream lead's attempt to authorize itself past the freeze, are both still rejected."""
+        self._frozen_s5_plan()
+        with self.assertRaises(RejectedEvent) as frozen:
+            self.emit("lead-s5", "finding_discovered", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S5")
+        self.assertEqual(frozen.exception.code, "FINDING_FREEZE")
+        for actor in ("lead-s5", "verifier", "integrator", "native"):
+            with self.assertRaises(RejectedEvent) as forbidden:
+                self.emit(actor, "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "self-authorized"}, "S5")
+            self.assertEqual(forbidden.exception.code, "ROLE_FORBIDDEN", f"{actor} must not be able to grant a freeze exception")
+        # An exception granted for a DIFFERENT finding does not unlock this one, and one granted
+        # on a different stream does not travel across streams.
+        self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-024", "reason": "assets route is dead code; separate lead"}, "S5")
+        with self.assertRaises(RejectedEvent) as still_frozen:
+            self.emit("lead-s5", "finding_discovered", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S5")
+        self.assertEqual(still_frozen.exception.code, "FINDING_FREEZE")
+        self.emit("lead-s1", "work_started", {"session_id": "s1-frozen-plan", "planned_scenarios": 1}, "S1")
+        self.emit("surrogate", "remediation_approved", {"remediation_plan": []}, "S1")
+        with self.assertRaises(RejectedEvent) as other_stream:
+            self.emit("lead-s1", "finding_discovered", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S1")
+        self.assertEqual(other_stream.exception.code, "FINDING_FREEZE")
+
+    def test_surrogate_authorized_freeze_exception_admits_one_named_post_freeze_finding(self):
+        """GREEN half: the governed plan-revision path. A NATIVE_SURROGATE names one finding_id,
+        with a reason and evidence; only that finding may then be recorded, and the resulting
+        tracker record shows who authorized it, why, and what it covers."""
+        self._frozen_s5_plan()
+        with self.assertRaises(RejectedEvent) as no_reason:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023"}, "S5")
+        self.assertEqual(no_reason.exception.code, "FINDING_FREEZE_EXCEPTION_SCHEMA")
+        with self.assertRaises(RejectedEvent) as no_evidence:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "live leak"}, "S5", evidence=[])
+        self.assertEqual(no_evidence.exception.code, "EVIDENCE_REQUIRED")
+        with self.assertRaises(RejectedEvent) as already_known:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "V3-E-019", "reason": "already discovered"}, "S5")
+        self.assertEqual(already_known.exception.code, "FINDING_ID_CONFLICT")
+
+        reason = "Post-freeze CRITICAL confirmed live after S5's plan froze; surrogate authorizes one plan revision."
+        grant = self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": reason, "added_remediations": [{"id": "fix-s5-023", "finding_id": "S5-V3-E-023"}]}, "S5")
+        self.assertTrue(grant["accepted"])
+        with self.assertRaises(RejectedEvent) as regrant:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "duplicate grant"}, "S5")
+        self.assertEqual(regrant.exception.code, "FINDING_FREEZE_EXCEPTION_CONFLICT")
+
+        discovered = self.emit("lead-s5", "finding_discovered", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S5")
+        self.assertTrue(discovered["accepted"])
+        # Still exactly one exception: an unnamed sibling finding remains frozen out.
+        with self.assertRaises(RejectedEvent) as sibling:
+            self.emit("lead-s5", "finding_discovered", {"finding_id": "S5-V3-E-025", "severity": "LOW"}, "S5")
+        self.assertEqual(sibling.exception.code, "FINDING_FREEZE")
+
+        canonical_projection = self.store.projection()["canonical"]
+        exception = next(x for x in canonical_projection["finding_freeze_exceptions"] if x["finding_id"] == "S5-V3-E-023")
+        self.assertEqual((exception["authorized_by"], exception["authorized_role"], exception["stream_id"]), ("surrogate", "NATIVE_SURROGATE", "S5"))
+        self.assertEqual(exception["reason"], reason)
+        self.assertTrue(exception["finding_recorded"]); self.assertEqual(exception["evidence"], EVIDENCE)
+        finding = next(f for f in canonical_projection["findings"] if f["id"] == "S5-V3-E-023")
+        self.assertEqual(finding["freeze_exception"]["authorized_by"], "surrogate")
+        self.assertEqual(finding["freeze_exception"]["event_id"], grant["event"]["event_id"])
+        self.assertIn(grant["event"]["event_id"], [d["event_id"] for d in canonical_projection["decisions"]])
+        self.assertTrue(self.store.verify_replay()["ok"])
+
+        # The revision is a real plan amendment: the added remediation is now implementable and
+        # independently verifiable, and it counts toward the stream's planned remediations.
+        self.emit("surrogate", "finding_triaged", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S5")
+        with self.assertRaises(RejectedEvent) as unplanned:
+            self.emit("lead-s5", "remediation_implemented", {"remediation_id": "fix-s5-999", "finding_id": "S5-V3-E-023"}, "S5")
+        self.assertEqual(unplanned.exception.code, "REMEDIATION_CONTRACT")
+        self.emit("lead-s5", "remediation_implemented", {"remediation_id": "fix-s5-023", "finding_id": "S5-V3-E-023"}, "S5")
+        self.emit("verifier", "verification_accepted", {"verification_id": "verify-s5-023", "remediation_id": "fix-s5-023", "finding_id": "S5-V3-E-023", "finder_actor_id": "lead-s5", "fixer_actor_id": "lead-s5"}, "S5")
+        stream = next(s for s in self.store.projection()["canonical"]["streams"] if s["id"] == "S5")
+        self.assertEqual(stream["remediations"], {"planned": 2, "implemented": 1, "verified": 1})
+
+    def test_freeze_exception_is_undefined_before_a_plan_is_frozen(self):
+        """The exception is narrow by construction: it cannot be pre-granted as a blanket
+        licence before a stream's remediation plan has actually been frozen."""
+        self.emit("lead-s5", "work_started", {"session_id": "s5-unfrozen", "planned_scenarios": 1}, "S5")
+        with self.assertRaises(RejectedEvent) as premature:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "pre-granted licence"}, "S5")
+        self.assertEqual(premature.exception.code, "FINDING_FREEZE_EXCEPTION_UNNECESSARY")
+
+    def test_freeze_exception_added_remediations_cannot_smuggle_another_finding_or_reuse_a_plan_id(self):
+        self._frozen_s5_plan()
+        with self.assertRaises(RejectedEvent) as foreign:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "r", "added_remediations": [{"id": "fix-other", "finding_id": "V3-E-019"}]}, "S5")
+        self.assertEqual(foreign.exception.code, "FINDING_FREEZE_EXCEPTION_SCHEMA")
+        with self.assertRaises(RejectedEvent) as reused:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "r", "added_remediations": [{"id": "fix-019", "finding_id": "S5-V3-E-023"}]}, "S5")
+        self.assertEqual(reused.exception.code, "FINDING_FREEZE_EXCEPTION_SCHEMA")
+        with self.assertRaises(RejectedEvent) as malformed:
+            self.emit("surrogate", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "r", "added_remediations": {"id": "fix-x"}}, "S5")
+        self.assertEqual(malformed.exception.code, "FINDING_FREEZE_EXCEPTION_SCHEMA")
+
+    def test_freeze_exception_forged_by_a_non_surrogate_ledger_row_grants_nothing(self):
+        """Server-side, not client-side: authority is read from the granting ledger row's stored
+        actor_role. A row carrying the right event_type but a STREAM_LEAD role — which only a
+        corrupted/hand-written ledger could produce — must still leave the freeze intact."""
+        self._frozen_s5_plan()
+        self._insert_raw_event("S5", "lead-s5", "STREAM_LEAD", "finding_freeze_exception_granted", {"finding_id": "S5-V3-E-023", "reason": "forged"}, "forged-exception")
+        with self.assertRaises(RejectedEvent) as forged:
+            self.emit("lead-s5", "finding_discovered", {"finding_id": "S5-V3-E-023", "severity": "CRITICAL"}, "S5")
+        self.assertEqual(forged.exception.code, "FINDING_FREEZE")
+
     def test_regression_requires_scenarios_and_completed_session_is_not_stale(self):
         self.emit("lead-s1", "work_started", {"session_id": "full-stream", "planned_scenarios": 1}, "S1")
         self.emit("surrogate", "remediation_approved", {"remediation_plan": []}, "S1")

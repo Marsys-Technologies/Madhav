@@ -102,6 +102,18 @@ event. In order:
    is frozen, a *new* finding is `FINDING_FREEZE`-rejected — it needs a separately
    governed scope path (a plan revision), so freeze the plan only after triage is
    genuinely complete.
+
+   **The governed plan-revision path (the only way past `FINDING_FREEZE`).** A
+   `NATIVE_SURROGATE` — and no other role — emits `finding_freeze_exception_granted`
+   on the frozen stream, naming exactly one `finding_id`, a `reason`, and primary
+   `evidence`; optionally `added_remediations` (entries whose `finding_id` must be
+   that same finding) to revise the frozen plan for it. The stream lead then records
+   the finding through the ordinary `finding_discovered` path. The freeze stays fully
+   in force for every finding the surrogate has not named. An added remediation must
+   itself be implemented and independently verified before `{S}:remediation` earns
+   credit, so a plan revision tightens the stage's bar rather than relaxing it. The
+   grant is auditable in the projection's `finding_freeze_exceptions` and `decisions`,
+   and on the finding's own `freeze_exception` field.
 5. **`{S}:verification`** — the independent verification stage over the remediations.
    Verify; accept.
 6. **`{S}:regression`** — requires `scenarios.executed == scenarios.planned` AND
