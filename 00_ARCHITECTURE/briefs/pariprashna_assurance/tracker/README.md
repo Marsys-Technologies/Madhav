@@ -58,7 +58,9 @@ surrogate/native separation, stale and paused behavior, stale-green prevention, 
 recovery/corruption detection, weighted evidence-only progress, scope-change reduction,
 ledger-linked work-item verification, phase/gate prerequisites, append-only corrections,
 snapshot reconciliation, external adapter degradation, lifecycle fixtures, end-to-end SSE
-delivery and latency, and dashboard accessibility source contracts.
+delivery and latency, dashboard accessibility source contracts, numeric-slot scenario
+deduplication, single-writer-per-stream scenario leasing (including stale-lease takeover),
+and distinct-slot projection counting under a historically-corrupted duplicate ledger.
 
 For a P3 stream, its first `work_started` event must include a positive
 `planned_scenarios` integer. Scenario execution is separately recorded by unique
@@ -67,6 +69,20 @@ must be present before regression credit can be accepted. Closure credit is earn
 an accepted result packet, never a direct work-item event. The dashboard exposes the frozen
 denominator, execution-session ownership/configuration, evidence timestamps, scope-change
 reduction explanations, and retained rejection records.
+
+Every `scenario_executed` event must also carry a `writer_instance_id`: a stable id for the
+submitting writer process (mint one nonce per process/session and reuse it for every
+scenario-execution write that process makes; `cli.py emit --writer-instance-id ...`).
+`DUPLICATE_SCENARIO` keys on the scenario's numeric slot (`S{N}-SC-{NN}`, extracted from the
+`scenario_id`), not the full slug, so a relabelled retry of an already-executed slot is still
+rejected. A stream's scenario-execution writes are further leased to one writer instance at a
+time: a second, different instance is rejected with `CONCURRENT_WRITER_LEASE_CONFLICT` while
+the incumbent's lease is fresh (`SCENARIO_WRITER_LEASE_TTL_SECONDS`), preventing two unaware
+concurrent sessions from both recording executions against the same stream. A stale lease
+(no scenario write from its holder within the TTL) may be taken over, so a genuinely dead
+writer never permanently blocks the stream. The projected `scenarios.executed` count is the
+distinct-slot count, never the raw event count; `scenarios.recorded_scenario_events` exposes
+the raw count separately for audit.
 
 After all discovered findings in a stream are triaged, the surrogate emits one
 `remediation_approved` event containing its `remediation_plan` (an explicit empty list is
