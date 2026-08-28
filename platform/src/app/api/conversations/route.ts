@@ -35,6 +35,10 @@ export async function GET(request: Request) {
   const moduleParam = url.searchParams.get('module') ?? 'consume'
   // archived=false by default — hide archived conversations
   const includeArchived = url.searchParams.get('archived') === 'true'
+  // V3-E-012a: opt-in only — see listConversations' readingsOnly docblock.
+  // The default (false) keeps every existing caller (e.g. the consume
+  // module's own ArchivedView.tsx) byte-identical to before this existed.
+  const readingsOnly = url.searchParams.get('readingsOnly') === 'true'
   if (!chartId) return res.badRequest('chartId required')
 
   let conversations
@@ -47,6 +51,7 @@ export async function GET(request: Request) {
       userId: user.uid,
       module: moduleParam as ConversationModule,
       includeArchived,
+      readingsOnly,
     })
   } catch {
     return res.dbError()
