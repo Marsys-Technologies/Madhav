@@ -830,6 +830,44 @@ await Native Surrogate triage.
   synthetic chart only) · banked to the S6 tracker stream as
   `scenario_executed` `S6-SC-M02-planning-stage-latency-segmentation` and
   `finding_discovered` `S6-V3-E-003`.
+- **Reconciliation with V3-E-015 (2026-08-29, code-read, no DB access
+  needed):** re-verified by reading the actual application code rather than
+  re-running the DB query. `platform/src/app/api/pariprashna/route.ts`
+  imports `runPlanStage` (`plan_stage.ts:236` — this is exactly what sets
+  `plan.planning_latency_ms`) and `runPersistenceStage`
+  (`persistence_stage.ts:326` — this is exactly what writes
+  `planning_latency_ms` into `conversation_messages.metadata_json`). This
+  confirms the DB finding traces to a real, named, in-charter-scope route
+  (`/api/pariprashna`, the exact route `probe/ask.ts` and the test plan
+  target), not an artifact of the query. Separately, the code path that
+  actually serves the `prashna_ask` MCP tool call has **zero** planning-stage
+  timer: `platform-mcp/src/lib/prashna_ask_bridge.ts` is a thin HTTP client
+  with no pipeline logic of its own (per its own header: "platform-mcp has no
+  import path to the FROZEN engine... So this file's ONLY job is the HTTP
+  call") that calls `platform/src/app/api/mcp/prashna_ask/route.ts` — a
+  THIRD, separate Next.js route (living in the same `platform`/`amjis-web`
+  deployable as `/api/pariprashna`, but a different file) whose only
+  `Date.now()` timers are `dispatchLoopStart`/`toolStart` (tool-dispatch
+  level, matching `completeness.tools_dispatched[].latency_ms` — the field
+  S6-V3-E-002/S4's `V3-E-015` already measured) — grep-confirmed zero
+  occurrences of a "planning"-labeled timer anywhere in that route. **This
+  is a more precise restatement of S4's own already-filed `V3-E-043`**
+  ("three independent, mutually-disjoint telemetry/persistence systems back
+  'the' 11-stage pipeline depending on which of three live routes serves the
+  turn"): V3-E-043 names the same three surfaces (`/api/chat/consult`,
+  `/api/pariprashna`, and the MCP door via `/api/mcp/prashna_ask/route.ts`)
+  from the trace-coherence/persistence angle; this entry corroborates it
+  from the latency-instrumentation angle — the planning-stage timer exists
+  on exactly one of the three (`/api/pariprashna`), consistent with V3-E-043
+  rather than contradicting it. The earlier "Portal door vs MCP door" binary
+  framing in this entry's Observed section above is not wrong for the two
+  surfaces it compared, but is imprecise against the real three-surface
+  architecture — read together with V3-E-043 for the complete picture. One
+  coherent instrumentation story for convergence: **the timer is real,
+  route-specific, and its absence on the MCP-serving surface is the same
+  structural gap V3-E-043 already named, not a second independent defect.**
+- **PPR/gap cross-reference (updated):** **V3-E-015**, **V3-E-043** (S4,
+  both on S4's branch pending merge).
 
 ---
 
