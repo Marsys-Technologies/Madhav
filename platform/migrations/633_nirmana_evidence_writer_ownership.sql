@@ -157,6 +157,11 @@ BEGIN
     OR NOT has_schema_privilege('nirmana_migrator', 'public', 'USAGE') THEN
     RAISE EXCEPTION 'migration 633 requires exact shared-schema writer access';
   END IF;
+  IF NOT has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'USAGE')
+    OR has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'SELECT')
+    OR has_sequence_privilege('nirmana_migrator', 'public._migrations_applied_id_seq', 'UPDATE') THEN
+    RAISE EXCEPTION 'migration 633 requires exact migration-ledger sequence access for the deployment-only migrator';
+  END IF;
   IF EXISTS (
     SELECT 1
       FROM pg_class relation
@@ -271,7 +276,9 @@ BEGIN
        AND namespace.nspname !~ '^pg_' AND namespace.nspname <> 'information_schema'
        AND relation.relkind = 'S'
        AND (has_sequence_privilege('nirmana_campaign_control_writer', relation.oid, 'USAGE, SELECT, UPDATE')
-         OR has_sequence_privilege('nirmana_migrator', relation.oid, 'USAGE, SELECT, UPDATE'))
+         OR has_sequence_privilege('nirmana_migrator', relation.oid, 'SELECT, UPDATE')
+         OR (has_sequence_privilege('nirmana_migrator', relation.oid, 'USAGE')
+           AND (namespace.nspname <> 'public' OR relation.relname <> '_migrations_applied_id_seq')))
   ) OR EXISTS (
     SELECT 1 FROM pg_attribute attribute
       JOIN pg_class relation ON relation.oid = attribute.attrelid

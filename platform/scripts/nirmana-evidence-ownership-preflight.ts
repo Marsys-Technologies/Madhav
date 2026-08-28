@@ -67,6 +67,24 @@ async function handoffState(client: PoolClient): Promise<HandoffState> {
   return result.rows[0]?.touched ? 'partial' : 'initial'
 }
 
+async function grantMarkerLedgerSequenceUsage(client: PoolClient): Promise<void> {
+  // The deployment-only marker writes one tracker row. INSERT on the ledger
+  // is insufficient for its SERIAL id: PostgreSQL calls nextval() on this
+  // exact sequence. Keep recovery bounded to the direct app-owned tracker
+  // sequence; a marked handoff is still attested rather than repaired.
+  const result = await client.query<{ verified: boolean }>(`
+    SELECT sequence.oid = 'public._migrations_applied_id_seq'::regclass
+             AND owner.rolname = current_user AS verified
+      FROM pg_class sequence
+      JOIN pg_roles owner ON owner.oid = sequence.relowner
+     WHERE sequence.oid = pg_get_serial_sequence('public._migrations_applied', 'id')::regclass
+  `)
+  if (result.rows[0]?.verified !== true) {
+    throw new Error('Nirmana ownership preflight requires amjis_app to own the expected migration-ledger sequence.')
+  }
+  await client.query('GRANT USAGE ON SEQUENCE public._migrations_applied_id_seq TO nirmana_migrator')
+}
+
 export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process.env[LEGACY_URL]): Promise<void> {
   if (!databaseUrl) throw new Error(`${LEGACY_URL} is required for the one-shot Nirmana ownership preflight.`)
   const pool = new Pool({ connectionString: databaseUrl, max: 1 })
@@ -81,7 +99,10 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       return
     }
     const state = await handoffState(client)
-    if (state === 'handed_off_unmarked') return
+    if (state === 'handed_off_unmarked') {
+      await grantMarkerLedgerSequenceUsage(client)
+      return
+    }
     if (state === 'partial') throw new Error('Nirmana ownership preflight found a partial handoff without marker; refusing recovery by mutation.')
     await assertControlWriterAuthentication()
 
@@ -248,6 +269,7 @@ export async function runNirmanaEvidenceOwnershipPreflight(databaseUrl = process
       END $$;
       GRANT USAGE ON SCHEMA public TO nirmana_campaign_control_writer, nirmana_migrator;
       GRANT SELECT, INSERT ON public._migrations_applied TO nirmana_migrator;
+      GRANT USAGE ON SEQUENCE public._migrations_applied_id_seq TO nirmana_migrator;
       GRANT SELECT ON public.asset_registry, public.nirmana_elevation_monitor_observations, public.build_runs, public.build_run_assets, public.asset_provenance_receipts, public._migrations_applied TO nirmana_campaign_control_writer;
       ALTER TABLE public.nirmana_elevation_campaign_definitions OWNER TO nirmana_evidence_owner;
       ALTER TABLE public.nirmana_elevation_campaign_events OWNER TO nirmana_evidence_owner;
