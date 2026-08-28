@@ -1,0 +1,30 @@
+[
+  {
+    "fixtureId": "disagreement-002-venus-exaltation",
+    "turnId": "cf8b146f-5284-4c09-b14c-73c5b24ad6d4",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": false
+  },
+  {
+    "fixtureId": "disagreement-003-jupiter-neecha-bhanga",
+    "turnId": "60a9f178-63af-4291-a9f3-40bf8344136c",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": false
+  },
+  {
+    "fixtureId": "disagreement-004-saturn-tenth-lord",
+    "turnId": "ca643e4e-35cd-4ff3-8999-25e100df732d",
+    "conversationId": "4a08987f-03c7-4cbe-9a9a-1f87519c7416",
+    "seedConversationId": null,
+    "realChart": false
+  },
+  {
+    "fixtureId": "disagreement-005-mercury-combustion",
+    "turnId": "7ba1377a-289c-4923-abf3-3ffc991cd2c3",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": false
+  }
+]

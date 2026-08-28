@@ -1004,6 +1004,28 @@ Stated plainly, not buried in prose elsewhere:
   ruling. Close rung: STATIC (a documented ruling, or a landed
   re-grounding PR with independent verification if ruled unauthorized).
 
+**RULING RECEIVED + EXECUTED (2026-08-29):** the native (Abhisek Mohanty)
+authorized real-chart use for the quality corpus specifically —
+`decision_recorded` `99421811-e13d-4b19-88f4-2cc16d7af220`, labeled
+"SURROGATE DECISION — not native acceptance" (recorded via the
+NATIVE_SURROGATE role, not a `native_acceptance` event; the decision's own
+text states it constitutes the test-data law's required "specific native
+authorization" and scopes itself explicitly: "the quality corpus
+(`fixtures.ts`) only — this does NOT broaden real-chart use to live probes
+or other streams"). This resuming session did not re-litigate the
+ruling's standing — it executes under it. All 10 runnable real-chart
+fixtures (11 total minus `door-parity-001`, `expected.runnable: false`,
+unaffected by the ruling) now executed at LIVE rung against current
+production, each citing this decision event as authorization evidence
+(see updated V3-E-032 entry for the resulting cross-chart corroboration).
+**Close rung reached: STATIC ruling received, EXECUTED.** Status updated
+to CLOSED-AS-RULED; the corpus's chart-grounding choice for these 11
+fixtures is no longer an open compliance question.
+- **Status:** CLOSED-AS-RULED (2026-08-29) — see execution record above.
+
+
+<!-- --- merged from origin/main (3rd sync, 2026-08-29) --- -->
+
 ---
 
 ### V3-E-016 — CRITICAL: deployed web door hallucinates the native's real, specific chart facts when answering an unrelated synthetic-chart factual query, and serves them with undisclosed confidence
@@ -1092,6 +1114,87 @@ Stated plainly, not buried in prose elsewhere:
   disclosure content. Close rung: LIVE (a seeded reproduction of this exact
   query turning honest/gapped instead of hallucinated, against the deployed
   route).
+
+**LIVE VERDICT (2026-08-29, S3 convergence-ready resume, NOT an inherited
+status):** re-reproduced fresh, this session, against CURRENT production
+(`https://amjis-web-938361928218.asia-south1.run.app`, confirmed via
+`gcloud run services describe amjis-web` to be the same service/revision as
+the legacy `amjis-web-qm256lasva-el.a.run.app` host — identical project
+number `938361928218`, identical `amjis-web-01775-lgg` revision at 100%
+traffic, both hosts return identical `/api/health` behavior). Same exact
+query ("What nakshatra is the Moon placed in for this chart, and which
+sign is the Lagna?"), synthetic chart `1c826d5a` (`chart_id_explicit:
+false`, correctly defaulted). Result: **reproduces identically** — prose
+serves "Purva Bhadrapada... third pada... Aries" (the native's real
+FORENSIC facts, not `1c826d5a`'s ground truth), receipt again shows
+`evidence_grades.hallucination_count: 2`, both facts graded `unverified`,
+`coverage`: 5 served / 9 empty / 14 floor_item_total, same MCP↔web
+namespace-gap channel note as the original 2026-08-28 finding. **STILL
+OPEN, unfixed, on current production.** Raw capture:
+`platform/scripts/probe/out/d1717dcb-9cc9-4275-8921-5c0cd5300214.json`
+(turn_id `d1717dcb-9cc9-4275-8921-5c0cd5300214`, worktree-local/gitignored
+per convention — cite by turn_id).
+
+**Overlap check against S5's now-fixed panchang leak (E-018, commits
+`82bb9294b`/`ace5192dd`/`9fb8941e5`, closed `#1635`) — CONFIRMED DISTINCT,
+not the same defect:** E-018 was `POST /api/panchang` / `GET
+/api/panchang/ics` forwarding a caller-supplied `chart_id` to the Python
+sidecar's `_fetch_native_context` with NO per-chart authorization check —
+a classical IDOR/broken-object-level-authorization bug: a caller
+**explicitly requested the real chart's `chart_id`** and, holding no grant
+on it, received it anyway (confirmed live pre-fix: a guest principal with
+one grant on a *different* chart POSTed the native's real `chart_id` and
+got `native_context.birth_nakshatra_name: "Purva Bhadrapada"` back
+verbatim). V3-E-016 is mechanically different: the caller requests the
+**synthetic** chart (`chart_id_explicit: false`, never overridden), the
+retrieval/authorization layer is never asked for the wrong chart at all —
+the leak is in the SYNTHESIS layer's own generated content serving
+real-chart facts under a citation marker that the receipt itself grades
+`unverified`. Different route (`/api/pariprashna` vs `/api/panchang`),
+different layer (citation/generation vs. database-read authorization),
+different fix shape (E-018: add an authz gate; V3-E-016: gate/disclose on
+`evidence_grades.hallucination_count`, or fix the underlying resolver
+per V3-E-032's root-cause narrowing). **Both may share a deeper common
+concern — SOMETHING is making the native's specific FORENSIC facts
+reachable from an unrelated chart's context, whether via a database
+authorization gap (E-018) or a generation/memorization pathway
+(V3-E-016) — worth S4/S5 jointly asking whether a shared upstream cause
+(e.g. a cache, a shared prompt fragment, or model-side memorization of
+this specific chart's data) explains both, but they are NOT the same bug
+and closing E-018 did NOT close V3-E-016.**
+
+**Numeric collision flagged:** `S4-V3-E-016` (S4's own document numbering,
+MEDIUM severity, tracker evidence citing
+`platform/src/lib/pariprashna/citations/register_leak_lint.ts:80`) is a
+**different, unrelated finding** that happens to share the "016" number —
+`register_leak_lint.ts` is about internal-register-id leakage into reader
+prose (a different concern from real-chart-fact hallucination). This is a
+pure ID collision (two streams' independent V3-E-0NN counters landing on
+the same number), not a duplicate finding or a severity-disagreement on
+the same defect. Session C should assign one of the two a fresh id; S3's
+CRITICAL should not be silently superseded by S4's unrelated MEDIUM of the
+same number.
+
+---
+
+### V3-E-032 — CRITICAL: live corpus sample shows 0 of 183 citation attempts reach a trustworthy grade across 24 turns/8 work classes on the deployed web door; S3 scorer bug that had masked this as 0.5 found and fixed; adversarially reviewed and CORRECTED; independently reproduced by a 2nd batch
+
+**2nd-batch update (2026-08-28, S3, later in the same stream session):** a
+FULLY INDEPENDENT second live batch of 17 fixtures (different queries,
+same 8 work classes, same synthetic chart) reproduced the identical
+pattern exactly: `citation_precision` mean `0` again, `b11_coverage` mean
+`0.184` again (vs. the first batch's `0.237`/corrected `0.189`-per-class).
+Combined across both batches: **24 of 33 fixtures** produced a measured
+`evidence_grades` block; across all 24, **183 total citation attempts, 0
+resolved to a trustworthy grade** (`primary=supporting=contextual=
+prior_reading=0` in every single one). This directly answers refuter #2's
+n=10-is-thin concern from the first-batch review: the pattern holds at
+more than double the sample, drawn from an independently-authored fixture
+set. Original single-batch numbers (0 of 80, 10 turns) preserved below for
+audit-trail continuity; treat the numbers in this update block as
+authoritative going forward.
+
+<!-- --- merged from origin/main (3rd sync, 2026-08-29) --- -->
 
 ---
 
@@ -1232,6 +1335,45 @@ Refuter #3 additionally found a second, DISTINCT scorer defect in
 `b11_coverage.ts` — filed separately as V3-E-033 below, not folded into this
 entry.
 
+**3rd/4th-batch update + CROSS-CHART CONFIRMATION (2026-08-29, S3
+convergence-ready resume):** the native (Abhisek Mohanty) authorized the
+quality corpus's use of the real chart `482012f1` for its own fixtures
+(`decision_recorded` `99421811-e13d-4b19-88f4-2cc16d7af220` — "V3-E-012
+RULING"). Ran the 10 runnable real-chart-grounded corpus fixtures (8
+single-turn + 2 conversation-history, standalone-degraded — see the
+seeding-infra park note below) against CURRENT production
+(`amjis-web-938361928218.asia-south1.run.app`, confirmed same
+service/revision as the legacy host). Identical pattern, a THIRD time:
+`citation_precision` mean `0`. Also ran 4 previously-missed synthetic
+`disagreement`-class fixtures (corrected exclusion — see below), a fourth
+independent confirmation. **Combined across all four batches: 28 of 43
+executed turns produced measured `evidence_grades`; across all 28, 210
+total citation attempts, 0 resolved to a trustworthy grade — on BOTH the
+synthetic test chart AND the native's own real chart.** This directly
+answers the one gap the 2026-08-28 refuter panel could not close ("n=10,
+one chart — a thin-data confound of the synthetic chart specifically
+cannot be excluded"): the pattern is now confirmed chart-independent.
+Formal routing to S4 recorded via `reproduction_recorded` event
+`f990078e-c52d-40a7-94c2-79358c30e982` (S3 stream_seq 58), cross-referenced
+as **S3-V3-E-001** for convergence naming — a genuinely new
+`finding_discovered` was blocked by this stream's own frozen remediation
+plan (`FINDING_FREEZE`, the same tracker/process gap S1 flagged before
+this session); recorded as a `reproduction_recorded` attachment to this
+existing finding instead of a duplicate finding_id, disclosed here rather
+than worked around silently.
+
+**Correction to the `disagreement` query-class exclusion (2026-08-29):**
+earlier batches wrongly excluded `disagreement` from the "single-turn,
+seedable-without-infra" set, assuming it needed `priorTurns` like `drift`/
+`prediction_capture_outcome`. Checked directly: all 5 `disagreement`
+fixtures have ZERO `priorTurns` — the "my last astrologer said X"
+counter-claim framing is baked directly into `queryText`, fully
+self-contained. All 5 now executed (1 real-chart in this update, 4
+synthetic) with no seeding infra needed at all.
+
+
+<!-- --- merged from origin/main (3rd sync, 2026-08-29) --- -->
+
 ---
 
 ### V3-E-033 — S3 scorer harness: `b11_coverage.ts` penalizes low `served` count directly, contradicting its own docblock
@@ -1342,7 +1484,13 @@ renamed `S1-V3-E-012` — is where its full body already lived.
 
 ---
 
-<!-- --- merged from origin/main (2nd sync, 2026-08-28) --- -->
+<!-- S3's own three earlier passes at cleaning up this same orphaned-stub
+     artifact (2026-08-28/29) are superseded by S1's own convergence-
+     readiness fix above, which resolves it properly with fresh
+     S1-V3-E-012/S1-V3-E-013 ids rather than a repeated stub-removal note.
+     S3's redundant notes dropped here in favor of S1's authoritative fix. -->
+
+<!-- --- merged from origin/main (4th sync, 2026-08-29) --- -->
 
 ### V3-E-021 — Composer's "Deep dive" depth override is silently ignored server-side; scope resolves to `standard` regardless
 
@@ -2143,6 +2291,58 @@ certified by this document.*
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
+SALVAGE 2); 19 V3 entries total (5 from the A3 census + 6 surfaced during
+A4's B-001/B-007/B-008 fix-and-verify chain + 2 surfaced by S1's frozen
+scenario run 2026-08-27 + 6 surfaced by S2's guided-execution J2/J5/J6
+passes, 2026-08-27/28): V3-E-006/B-007 and the B-008 CRITICAL routes fixed
+and independently verified; V3-E-007/E-008/E-010/E-011 filed to S5;
+V3-E-009 closed-as-benign; V3-E-012 (S1-severity, history persistence
+unwired) filed OPEN to S1 itself; V3-E-013 (S1-F-001, HIGH, conversations
+chart-authz gap) FIXED + INDEPENDENTLY VERIFIED at INTEGRATION rung;
+V3-E-021/E-014/E-015 filed to S4 (with E-015 also S2-owned for its surface
+half); V3-E-030 FIXED by S2 and independently verified merge-recommended
+(renumbered from a draft V3-E-013 on S2's own branch after this merge
+revealed S1 had independently claimed that id on main — see V3-E-030's own
+entry); V3-E-023 FIXED by S2 (corrected in place after independent
+verification caught the first pass's incompleteness — see its own entry);
+V3-E-024 FIXED by S2 — S2's highest-severity finding this session,
+independent verification pending. No gate is certified by this document.*
+
+---
+
+**S3 convergence-ready resume addendum (2026-08-29, appended, not
+replacing any of the above):** V3-E-012 (S3's, quality-corpus real-chart
+grounding question) CLOSED-AS-RULED — native authorization received
+(`decision_recorded` `99421811-e13d-4b19-88f4-2cc16d7af220`) and executed:
+all 10 runnable real-chart corpus fixtures now run at LIVE rung against
+current production. V3-E-016 given a fresh LIVE verdict this session
+(reproduces identically on current production; confirmed mechanically
+distinct from S5's now-fixed panchang/E-018 leak; its numeric collision
+with the unrelated `S4-V3-E-016` flagged for Session C). V3-E-032
+strengthened to 210 total citation attempts / 0 trustworthy across four
+independent batches spanning BOTH the synthetic and native real chart —
+the chart-independence question the 2026-08-28 refuter panel could not
+close is now closed. Formally routed to S4 (cross-referenced S3-V3-E-001;
+recorded as `reproduction_recorded` rather than a duplicate finding_id —
+this stream's remediation plan was already frozen, blocking a genuinely
+new `finding_discovered`, the same tracker/process gap S1 flagged earlier
+in this document). V3-E-033 unchanged, still OPEN pending a design ruling.
+`disagreement`-class fixtures corrected: all 5 have zero `priorTurns` and
+needed no seeding infra (an earlier-session exclusion error, now fixed).
+`returning_conversation_drift`/`prediction_capture_outcome` seeding
+infra assessed and found NOT reliably cheap this session — not an
+engineering-cost problem but a live-system behavior: standalone
+prior-turn seed questions get intercepted by the door's own
+`clarification_needed` classification path before real conversation
+state can be established (confirmed on 2 independent seed attempts, both
+flagged `clarification_needed`, neither produced a usable
+`conversation_id`); parked with a concrete resume note in the stream
+result packet rather than fabricated. Scenarios executed: 33 → 47 of 60
+planned. Stream remains PAUSED, not closed — convergence (Session C) owns
+closure. Full detail: `S3_RESULT_PACKET_v1_0.md`.*
+
+<!-- --- merged from origin/main (3rd sync, 2026-08-29) --- -->
+
 SALVAGE 2). **V3 finding bodies now live in this file: 29** — 23 carried on
 `main` from Session A + streams S1/S2/S3/S4, and 6 merged in from S5's own
 branch (`E-001`, `V3-E-017`, `V3-E-018`, `V3-E-019`, `V3-E-020`, `V3-E-022`).
