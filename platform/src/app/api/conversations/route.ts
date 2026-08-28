@@ -1,7 +1,30 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { listConversations, createConversation } from '@/lib/conversations'
+import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import type { DbLike } from '@/lib/auth/authorizeChartAccess'
+import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import type { ConversationModule } from '@/lib/db/types'
+
+/**
+ * S1-F-001 (Paripraśna v3 assurance, stream S1): before this check existed,
+ * neither GET nor POST verified the caller held any `chart_grants`/ownership
+ * for the caller-supplied `chartId` — a user could create and list
+ * conversation rows scoped to a chart they had zero entitlement to. Routes
+ * through the same `authorizeChartAccess` brain already used by
+ * `GET /api/charts/[id]` and the `cockpit`/`mcp` surface. A `view` grant is
+ * sufficient (creating/listing a conversation shell is read-adjacent, not
+ * destructive — unlike the cockpit `clear` routes, which require `all`).
+ */
+async function resolveChartPermission(userId: string, chartId: string) {
+  const profileResult = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [userId])
+  const isSuperAdmin = profileResult.rows[0]?.role === 'super_admin'
+  return authorizeChartAccess({
+    principal: { uid: userId, role: isSuperAdmin ? 'super_admin' : 'guest' },
+    chartId,
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then((r) => ({ rows: r.rows })) } as DbLike,
+  })
+}
 
 export async function GET(request: Request) {
   const user = await getServerUser()
@@ -16,6 +39,9 @@ export async function GET(request: Request) {
 
   let conversations
   try {
+    const permission = await resolveChartPermission(user.uid, chartId)
+    if (permission === 'deny') return res.forbidden()
+
     conversations = await listConversations({
       chartId,
       userId: user.uid,
@@ -44,6 +70,9 @@ export async function POST(request: Request) {
   if (!chartId) return res.badRequest('chartId required')
 
   try {
+    const permission = await resolveChartPermission(user.uid, chartId)
+    if (permission === 'deny') return res.forbidden()
+
     const conversation = await createConversation({
       chartId,
       userId: user.uid,
