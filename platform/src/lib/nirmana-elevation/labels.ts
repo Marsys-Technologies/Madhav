@@ -191,6 +191,65 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
   throw new Error('Label catalogue revision conflicts with an existing receipt.')
 }
 
+/**
+ * Verifies the immutable label receipt and rows without deriving new labels.
+ * This is used only by idempotent retry paths after the original transaction
+ * has already bound the labels to its monitor observation provenance.
+ */
+export async function verifyNirmanaElevationLabelCatalogueInTransaction(
+  client: PoolClient,
+  input: {
+    campaign_id: 'nirmana-elevation'
+    definition_revision: string
+    catalogue_revision: string
+    catalogue_sha256: string
+  },
+  rawBaselineProvenance: z.input<typeof NirmanaBaselineReceiptProvenanceSchema>,
+): Promise<boolean> {
+  const provenance = NirmanaBaselineReceiptProvenanceSchema.parse(rawBaselineProvenance)
+  const receipt = await client.query<{
+    event_type: string
+    entity_type: string
+    entity_id: string
+    layer: string | null
+    evidence_payload: { catalogue_sha256?: string; asset_count?: number } & Record<string, unknown>
+    source_kind: string
+    source_ref: string
+  }>(
+    `SELECT event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND definition_revision = $2
+        AND idempotency_key = $3
+      FOR SHARE`,
+    [input.campaign_id, input.definition_revision, `asset-label-catalogue:${input.catalogue_revision}`],
+  )
+  const stored = receipt.rows[0]
+  const expectedPayload = {
+    catalogue_sha256: input.catalogue_sha256,
+    asset_count: stored?.evidence_payload.asset_count,
+    audit_provenance: 'normative',
+    ...provenance,
+  }
+  if (!stored
+    || stored.event_type !== 'asset_label_catalogue_accepted'
+    || stored.entity_type !== 'label_catalogue'
+    || stored.entity_id !== input.catalogue_revision
+    || stored.layer !== null
+    || stored.source_kind !== 'governed_catalogue'
+    || stored.source_ref !== `label_catalogue:${input.catalogue_revision}`
+    || typeof stored.evidence_payload.asset_count !== 'number'
+    || stableJson(stored.evidence_payload) !== stableJson(expectedPayload)) return false
+  const labels = await client.query<{ label_count: number; digest_matches: boolean }>(
+    `SELECT count(*)::int AS label_count,
+            COALESCE(bool_and(label_digest = $4), false) AS digest_matches
+       FROM nirmana_evidence.nirmana_elevation_asset_labels
+      WHERE campaign_id = $1 AND definition_revision = $2 AND catalogue_revision = $3`,
+    [input.campaign_id, input.definition_revision, input.catalogue_revision, input.catalogue_sha256],
+  )
+  return labels.rows[0]?.label_count === stored.evidence_payload.asset_count
+    && labels.rows[0]?.digest_matches === true
+}
+
 export async function recordNirmanaElevationLabelCatalogue(
   raw: z.input<typeof NirmanaLabelCatalogueInputSchema>,
 ): Promise<'created' | 'idempotent'> {

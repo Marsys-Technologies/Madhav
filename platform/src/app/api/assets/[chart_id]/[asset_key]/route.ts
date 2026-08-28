@@ -15,6 +15,13 @@
  * chart's asset row_count/provenance/sample_rows to ANY authenticated caller
  * holding a chart_id — a cross-tenant read. Same root cause as B-001/B-007/
  * B-008.
+ *
+ * V3-E-020: the authz door above is necessary but not sufficient — the
+ * `chart_facts` reads below must ALSO constrain `chart_id`. They previously
+ * filtered on `category` alone, so row_count / provenance / sample_rows were
+ * computed across every chart in the database and returned under the
+ * requested chart's name. Each `chart_facts` read is now chart-scoped, the
+ * same shape the `pyramid_layers` read already used.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -82,8 +89,8 @@ export async function GET(
   const countResult = await query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM chart_facts
-     WHERE category = $1`,
-    [assetKey],
+     WHERE chart_id = $1 AND category = $2`,
+    [chartId, assetKey],
   )
   const rowCount = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
@@ -95,10 +102,10 @@ export async function GET(
   }>(
     `SELECT build_id, provenance, created_at
      FROM chart_facts
-     WHERE category = $1
+     WHERE chart_id = $1 AND category = $2
      ORDER BY created_at DESC
      LIMIT 1`,
-    [assetKey],
+    [chartId, assetKey],
   )
   const latestRow = provenanceResult.rows[0] ?? null
 
@@ -126,10 +133,10 @@ export async function GET(
   }>(
     `SELECT fact_id, category, divisional_chart, value_text, value_number, source_section, build_id, created_at
      FROM chart_facts
-     WHERE category = $1
+     WHERE chart_id = $1 AND category = $2
      ORDER BY created_at DESC
      LIMIT 3`,
-    [assetKey],
+    [chartId, assetKey],
   )
 
   const provenance = latestRow

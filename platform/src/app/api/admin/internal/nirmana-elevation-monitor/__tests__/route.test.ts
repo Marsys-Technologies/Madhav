@@ -75,6 +75,10 @@ function successfulSources({
   insertQueryMock.mockImplementation((statement: unknown, params?: unknown[]) => {
     const sql = String(statement)
     if (!sql.includes('INSERT INTO nirmana_elevation_monitor_observations')) throw new Error(`Unexpected pooled query: ${sql}`)
+    const sourceObservedAt = typeof params?.[11] === 'string' ? params[11] : null
+    const freshnessDeadlineAt = sourceObservedAt === null
+      ? null
+      : new Date(Date.parse(sourceObservedAt) + 15 * 60 * 1000).toISOString()
     return Promise.resolve({ rows: [{
       id: 'a8c01784-865f-4880-b91b-0988ab7f31de', observed_at: sourceObservedAt,
       status: params?.[0], affected_asset_ids: params?.[1], current_definition_sha256: params?.[2],
@@ -82,9 +86,9 @@ function successfulSources({
       registry_contract_sha256: params?.[5], candidate_catalogue_sha256: params?.[6],
       selected_catalogue_sha256: params?.[7], runtime_sha256: params?.[8], release_sha256: params?.[9],
       source_state: params?.[10], source_observed_at: params?.[11], source_age_seconds: params?.[12],
-      freshness_state: params?.[13], freshness_deadline_at: params?.[14], runtime_liveness: params?.[15],
-      release_state: params?.[16], release_observed_at: params?.[17], release_age_seconds: params?.[18],
-      public_detail: params?.[19], source_error_code: params?.[20],
+      freshness_state: params?.[13], freshness_deadline_at: freshnessDeadlineAt, runtime_liveness: params?.[14],
+      release_state: params?.[15], release_observed_at: params?.[16], release_age_seconds: params?.[17],
+      public_detail: params?.[18], source_error_code: params?.[19],
     }], rowCount: 1 })
   })
 }
@@ -189,6 +193,19 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       'build_substep_progress',
     ]) expect(sourceSql).toContain(table)
     expect(sourceSql).not.toMatch(/^\s*(INSERT|UPDATE|DELETE|TRUNCATE|MERGE)\b/im)
+  })
+
+  it('derives the freshness deadline in PostgreSQL from a microsecond source timestamp', async () => {
+    const sourceTimestamp = '2026-08-28T08:00:00.123456Z'
+    successfulSources({ observedAt: sourceTimestamp })
+    const { POST } = await import('../route')
+
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+
+    expect(response.status).toBe(200)
+    const [insertSql, insertParams] = insertQueryMock.mock.calls[0] ?? []
+    expect(String(insertSql)).toContain("$12::timestamptz + INTERVAL '15 minutes'")
+    expect(insertParams).toEqual(expect.arrayContaining([sourceTimestamp]))
   })
 
   it('keeps stale source freshness, active runtime, and unknown release state distinct', async () => {

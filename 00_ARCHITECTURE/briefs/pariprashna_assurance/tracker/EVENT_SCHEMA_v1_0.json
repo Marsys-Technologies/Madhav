@@ -11,7 +11,8 @@
     "expected_stream_seq": {"type": ["integer", "null"], "minimum": 0},
     "event_type": {"type": "string"},
     "payload": {"type": "object", "not": {"required": ["progress"]}},
-    "evidence": {"type": "array", "items": {"type": "object", "required": ["kind", "uri"], "properties": {"kind": {"type": "string"}, "uri": {"type": "string", "minLength": 1}}}}
+    "evidence": {"type": "array", "items": {"type": "object", "required": ["kind", "uri"], "properties": {"kind": {"type": "string"}, "uri": {"type": "string", "minLength": 1}}}},
+    "writer_instance_id": {"type": "string", "minLength": 1, "description": "Required when event_type is scenario_executed. A stable id for the submitting writer process, distinct from any other concurrently-running session, used to enforce a single-writer-per-stream lease over scenario execution recording."}
   },
   "additionalProperties": false
 }

@@ -66,31 +66,36 @@ alternate acceptance paths.
    candidate definition digests, and `affected_asset_ids` from the authenticated
    dashboard/API. This is a proposal signal, not a new plan and not execution
    authority.
-2. Review the registry/DAG change and prepare a reviewed, freezable replacement
-   manifest outside this monitor. The proposed manifest and its SHA-256 must match
-   the live registry; do not rebuild it from historical ledgers or mutate tables to
-   force a match. Confirm whether the current frozen definition has campaign events
-   or build runs: the governed supersession boundary refuses supersession once it
-   does.
+2. Review the registry/DAG change, then copy the observation ID plus its candidate
+   definition and catalogue digests. Do not calculate or submit a manifest: the
+   protected server re-derives the definition and labels from the live registry in
+   its serializable transaction. The observation must be fresh, source-available,
+   `release_state=in_sync`, and `runtime_liveness=quiet`; obtain a new observation
+   after any deployment before attempting this mutation. Confirm whether the current
+   frozen definition has campaign events or build runs: the boundary refuses a
+   supersession once it does.
 3. Only after explicit plan approval, submit one authenticated supersession command:
 
    ```json
    {
      "command": "supersede_definition",
-     "campaign_id": "nirmana-elevation",
-     "expected_current_revision": "<current frozen revision>",
-     "expected_current_manifest_sha256": "<exact current digest>",
-     "new_definition_revision": "<new unique revision>",
-     "new_manifest": "<reviewed manifest object>",
-     "new_manifest_sha256": "<SHA-256 of that exact manifest>"
+    "campaign_id": "nirmana-elevation",
+    "expected_current_revision": "<current frozen revision>",
+    "expected_current_manifest_sha256": "<exact current digest>",
+    "source_observation_id": "<fresh authenticated observation UUID>",
+    "expected_candidate_sha256": "<candidate definition digest>",
+    "expected_candidate_catalogue_sha256": "<candidate catalogue digest>",
+    "new_definition_revision": "<new unique revision>"
    }
    ```
 
-   Send it only to `POST /api/admin/nirmana-elevation/evidence`. A `409` is a
-   concurrency or eligibility guard, not permission to retry with altered values.
-   Re-read the dashboard/API, resolve the governed conflict, and resubmit only an
-   exact approved replacement. Do not use `record_definition`/`freeze_definition`
-   as a shortcut around explicit supersession.
+   Send it only to `POST /api/admin/nirmana-elevation/evidence`. The server writes
+   the frozen definition, its exact label catalogue, and the normative catalogue
+   receipt atomically. A `409` is a concurrency or eligibility guard, `429` is the
+   per-actor mutation limit, and `503` means the limiter is unavailable; none permit
+   an altered or direct-SQL retry. An exact completed retry verifies the stored
+   definition and normative label receipt without reusing a stale observation.
+   Do not use `record_definition`/`freeze_definition` as a shortcut.
 
 4. After a successful `superseded` response, wait for the next scheduler observation
    and confirm `program_sync.status` is no longer `plan_adaptation_required` before

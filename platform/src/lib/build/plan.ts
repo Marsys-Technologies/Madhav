@@ -81,9 +81,15 @@ export interface ResolveBuildPlanArgs {
   // an empty set (no protection) when omitted, so every existing caller keeps working
   // unchanged until it is updated to pass this.
   protectedAssetIds?: Set<AssetId>
+  // Known registry identities that may satisfy an upstream pre-flight but must
+  // never become ordinary dispatch candidates (for example, a service probe
+  // with no WriterBase implementation). The registry remains complete for DAG
+  // validation and readiness checks; only candidate selection excludes them.
+  nonCandidateAssetIds?: ReadonlySet<AssetId>
 }
 
 const EMPTY_PROTECTED_SET: ReadonlySet<AssetId> = new Set()
+const EMPTY_NON_CANDIDATE_SET: ReadonlySet<AssetId> = new Set()
 
 /**
  * Splits `candidates` into the ones the plan may act on and the ones withheld because
@@ -351,18 +357,25 @@ export function resolveBuildPlan({
   throughput,
   freshness,
   protectedAssetIds,
+  nonCandidateAssetIds,
 }: ResolveBuildPlanArgs): BuildPlan {
   const protectedSet: ReadonlySet<AssetId> = protectedAssetIds ?? EMPTY_PROTECTED_SET
+  const nonCandidateSet: ReadonlySet<AssetId> = nonCandidateAssetIds ?? EMPTY_NON_CANDIDATE_SET
+  const candidateAssetsInScope = (candidateScope: BuildScope, candidateScopeTarget: string | null) =>
+    assetsInScope(candidateScope, candidateScopeTarget, registry)
+      .filter(assetId => !nonCandidateSet.has(assetId))
 
   // asset_set: the scope_target list must resolve to at least one in-registry asset.
   // An empty/all-phantom list is a caller error, not a silent no-op.
-  if (scope === 'asset_set' && assetsInScope('asset_set', scope_target, registry).length === 0) {
+  if (scope === 'asset_set' && candidateAssetsInScope('asset_set', scope_target).length === 0) {
     throw new Error('asset_set scope requires a non-empty list of valid asset_ids')
   }
 
-  // update and cascade: no pre-flight, use existing behavior, return new shape
+  // Every action that produces a candidate must pass the same out-of-plan
+  // dependency preflight. Update/cascade used to bypass it, which could plan a
+  // consumer after its L0/service identity had been withheld from candidates.
   if (action === 'update') {
-    const scopeAssets = assetsInScope(scope, scope_target, registry)
+    const scopeAssets = candidateAssetsInScope(scope, scope_target)
     const stale = scopeAssets.filter(id =>
       throughput.get(id)?.state === 'stale' ||
       (freshness !== undefined && freshness.get(id)?.state !== 'fresh')
@@ -375,6 +388,13 @@ export function resolveBuildPlan({
     const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
     const rawCandidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+    if (blockers.length > 0) {
+      return {
+        status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
+        protected_assets: withheld,
+      }
+    }
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
     return {
@@ -385,13 +405,20 @@ export function resolveBuildPlan({
   }
 
   if (action === 'cascade') {
-    const scopeAssets = assetsInScope(scope, scope_target, registry)
+    const scopeAssets = candidateAssetsInScope(scope, scope_target)
     const stale = registry.filter(r =>
       throughput.get(r.asset_id)?.state === 'stale' ||
       (freshness !== undefined && freshness.get(r.asset_id)?.state !== 'fresh')
     ).map(r => r.asset_id)
     const rawCandidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
     const { kept: candidates, withheld } = withholdProtected(rawCandidates, protectedSet)
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+    if (blockers.length > 0) {
+      return {
+        status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
+        protected_assets: withheld,
+      }
+    }
     const sorted = topoSort(candidates, registry)
     const waves = computeWaves(sorted, registry, scope, scope_target)
     return {
@@ -402,7 +429,7 @@ export function resolveBuildPlan({
   }
 
   // build and rebuild: scope-aware candidates + pre-flight gate
-  const scopeAssets = assetsInScope(scope, scope_target, registry)
+  const scopeAssets = candidateAssetsInScope(scope, scope_target)
 
   let rawCandidates: AssetId[]
   if (action === 'build') {
@@ -435,12 +462,9 @@ export function resolveBuildPlan({
     return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null, protected_assets: withheld }
   }
 
-  // pre-flight gate: only for non-global scope (global has all assets as candidates)
-  if (scope !== 'global') {
-    const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
-    if (blockers.length > 0) {
-      return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
-    }
+  const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
+  if (blockers.length > 0) {
+    return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
   }
 
   const waves = computeWaves(candidates, registry, scope, scope_target)

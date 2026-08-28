@@ -179,7 +179,7 @@ export function Sidebar({ threads, onSelect, onRename }: SidebarProps) {
           ))}
 
         {groups.map((group) => (
-          <div key={group.chartId} className="mb-3">
+          <div key={group.chartId} className="mb-3" role="group" aria-label={group.chartName}>
             {!collapsed && (
               <div
                 className="flex items-center gap-1.5 px-1.5 mb-1"
