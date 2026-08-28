@@ -1028,12 +1028,246 @@ entry.
 
 ---
 
-*End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
-81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 15 V3 entries on this branch (5 from the A3 census + 6 surfaced
-during A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/
-B-007 and the B-008 CRITICAL routes fixed and independently verified,
-V3-E-007/E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 4 filed
+**Cross-stream id collision note (merge from `origin/main`, 2026-08-28):**
+the two entries immediately below (titled "V3-E-012" and "V3-E-013" by S1)
+collide in NUMBER ONLY with this document's own S3-filed `V3-E-012` above.
+Verified against the tracker's `/api/projection` (the globally-unique
+authority per elevation §5.5): `finding_id "V3-E-012"` is registered to
+**S3** (`lead-s3`, MEDIUM, event `481df17a-b499-4f3d-a080-b20d1ce85398`) —
+S1's two entries below were never submitted through the tracker's
+`finding_discovered` event type at all (S1's own entry text says its
+finding intake was `FINDING_FREEZE`-rejected after `S1-F-001`'s remediation
+plan froze it, so these are document-only prose numbers, not tracker-
+registered ids). Per elevation §5.5's one-register rule, this divergence is
+recorded here rather than silently resolved by either stream renumbering
+its own tracker-authoritative entries — Session C convergence should assign
+S1's two entries fresh, tracker-registered ids. Kept below verbatim,
+unmodified from `origin/main`.
+
+---
+
+### V3-E-012 (S1 document numbering — see collision note above; not a tracker-registered id) — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
+
+- **Class / severity:** DEFECT · **S1 (BLOCKING, proposed)** — this is the
+  literal charter subject of stream S1 ("Navigation, **Shell & History**"),
+  the plan's §5.1 "History, return, memory" row is named a release-blocking
+  battery (§11 exit criteria: "if any S1-severity EDIR entry is OPEN" →
+  NO-GO), and journey J7 ("history: return after reload, select a prior
+  thread... verify no other chart is accessible") cannot be performed AT ALL
+  today, not merely imperfectly.
+- **Lens / stage:** L-USER + L-CODE · SURFACE (shell/history region)
+- **Journey:** J7 (history return) — cannot complete; also breaks J2/J3's
+  "continue the conversation naturally" precondition and the plan's §5.2.6
+  interruption journey's "return via replay" promise for anything beyond a
+  same-tab reconnect.
+- **Provenance:** self-found by lead-s1 while executing S1's frozen scenario
+  #7 (device-return/refresh/relogin/reconnect persistence). NOT a
+  historical-EDIR reproduction; genuinely new to V3.
+- **Expected (test plan v2.1 §5.1 "History, return, memory" row + §5.2 J7 +
+  charter §Scope "Region battery" scenario 1):** "A settled reading survives
+  refresh, relogin, reconnect, device return, chart switch... History sidebar:
+  past readings grouped by chart then recency." Charter's exact language:
+  "revisit a saved reading after refresh and from a second session."
+- **Observed (2026-08-27, LIVE rung against the deployed Cloud Run service,
+  `amjis-web-qm256lasva-el.a.run.app`, test principal
+  `hunQRYVJ5Ec2mQnJnutK7AoQnsO2`, synthetic chart `1c826d5a`):**
+  1. Navigated to `/clients/1c826d5a…/pariprashna` (fresh load) — sidebar
+     correctly showed the honest empty state, "This reading will appear here
+     once it starts."
+  2. Clicked a sample prompt ("When should I not initiate anything new?") —
+     a real turn started; the sidebar correctly showed ONE row, grouped
+     under "Abhinandan Mohanty", title = the question, "now" as the
+     relative time, and a live/composing working-region state — this part
+     of J1 works correctly and is NOT part of this finding.
+  3. **Reloaded the same URL** (simulating exactly the charter's "device
+     return"/refresh scenario, no navigation elsewhere). Result: the sidebar
+     reverted COMPLETELY to the empty state — "This reading will appear here
+     once it starts." The just-created thread is gone from the UI. Full
+     accessibility-tree snapshot captured before and after the reload as
+     evidence (both states shown in the observed sequence above).
+  4. Independently confirmed via a read-only query against the live
+     application database (`amjis` on Cloud SQL, via the already-authorized
+     local proxy) that **the data was NOT lost** — TWO real `conversations`
+     rows exist for this principal on this chart
+     (`a5da478b-3eeb-45b1-ab30-0f3e7d3e23df` from the first turn,
+     `a02c4afe-2fa0-4185-a96e-afa5a362b5ea` created by the reload itself),
+     each with its own distinct id. This is a **frontend wiring gap, not
+     data loss** — confirmed root cause below.
+- **Root cause (L-CODE, read to file:line):**
+  - `platform/src/components/pariprashna/history/types.ts` (`ThreadSummary`
+    interface's own header comment, verbatim, dated to this lane's original
+    scope note): "There is today no backend surface that lists Paripraśna
+    threads distinctly from the older consult/consume chat trees...
+    `PariprashnaApp.tsx` therefore derives a `ThreadSummary[]` from the
+    CURRENT session's real, live `ThreadState` only (one real,
+    correctly-behaving entry)... Multi-thread / cross-session listing is a
+    genuine residual for the data-layer lane that owns `lib/pariprashna/store`
+    + a threads-listing endpoint."
+  - `platform/src/components/pariprashna/PariprashnaApp.tsx:162-182`: the
+    `threads` array fed to `<Sidebar>` is a `useMemo` derived PURELY from
+    in-memory `state.turns` (the current tab's live reducer state) — there is
+    NO `fetch`/`GET /api/conversations` call anywhere in this file, confirmed
+    by a full-file grep (`api/conversations`, `listConversations`: zero hits).
+    A reload discards all React state, so `state.turns` resets to `[]`,
+    which is exactly why the sidebar reverts to empty — it is working exactly
+    as the code is written, honestly labeled in its own comments; the label
+    was simply never re-verified live end-to-end after later work landed
+    a real, working `GET /api/conversations` route (the very route S1-F-001
+    above just hardened) that this component still doesn't call.
+  - Compounding defect, same root cause: `threadId` is computed as a stable
+    `session-${chartId}` string (`PariprashnaApp.tsx:167`) but the id
+    ACTUALLY sent to the backend per turn is `conversationId:
+    clientConversationId ?? crypto.randomUUID()`
+    (`platform/src/app/api/pariprashna/route.ts:103`), and
+    `clientConversationId` is never persisted client-side (no localStorage,
+    no URL param, no cookie) — so a reload doesn't just fail to SHOW history,
+    it also can't RESUME the same conversation id even if the user immediately
+    continues typing. Verified live: the reload's conversation id
+    (`a02c4afe…`) differs from the pre-reload conversation id
+    (`a5da478b…`) even though no message had yet been sent post-reload.
+- **Why this reads as a genuine defect, not an accepted historical residual:**
+  the `types.ts` comment frames this as a documented, in-scope-acknowledged
+  gap from an EARLIER lane (BRIEF_PB-4 Lane F-1) that explicitly says the
+  `Sidebar` component "is built to the full grouped-by-chart contract... and
+  is ready to render real data the moment that lane exists" — implying the
+  wiring was deferred, not that the plan accepted shipping without it. The
+  CURRENT test plan v2.1 (promoted AFTER that lane closed) makes "History,
+  return, memory" and J7 explicit release-blocking requirements with no
+  carve-out for this gap. Whether an out-of-date scope note still governs, or
+  whether the backend `GET /api/conversations` route (which now works
+  correctly, including its S1-F-001 authz fix) simply needs to be wired into
+  `PariprashnaApp.tsx`, is exactly the kind of product/scope question this
+  campaign reserves for Native Surrogate triage — not a call for the finder
+  to make unilaterally.
+- **Scope note (S1 vs S4 vs S2 boundary):** the fix is squarely in S1's
+  territory (`platform/src/components/pariprashna/PariprashnaApp.tsx` is the
+  shell composing the `Sidebar`, and the history-listing wiring is exactly
+  "history routes" work named in the charter) — NOT filed as a referral.
+- **Proposed fix class:** wire `PariprashnaApp.tsx` to call
+  `GET /api/conversations?chartId=…` on mount (and on chart switch), merge
+  the fetched history into (not replace) the current live session's own
+  thread so an in-flight turn's live state still wins for the active row,
+  and persist/restore `conversationId` across reloads (a URL param or
+  `localStorage` keyed per chart, mirroring how `chartId` itself is already
+  in the URL) so a mid-turn reload can rejoin the same backend conversation
+  instead of silently forking a new one. This is a real feature-completion
+  item, materially larger than a one-line authz gate — NOT attempted as an
+  inline fix in this pass; see disposition below.
+- **Evidence:**
+  - Live accessibility-tree snapshots (pre-turn empty state, mid-turn
+    populated state, post-reload reverted-empty state) captured via
+    Playwright MCP against the deployed service, 2026-08-27 23:41–23:43 UTC.
+  - `platform/src/app/api/pariprashna/route.ts:98-103` (conversationId
+    generation), `platform/src/components/pariprashna/PariprashnaApp.tsx:162-194`
+    (threads useMemo + handleSidebarSelect no-op), `platform/src/components/
+    pariprashna/history/types.ts:1-21` (the residual's own documentation).
+  - Live DB query confirming two orphaned-from-the-UI `conversations` rows
+    (`a5da478b-3eeb-45b1-ab30-0f3e7d3e23df`, `a02c4afe-2fa0-4185-a96e-
+    afa5a362b5ea`) for principal `hunQRYVJ5Ec2mQnJnutK7AoQnsO2` on chart
+    `1c826d5a`, 2026-08-27 23:41 and 23:43 UTC.
+- **Tracker note:** this is filed here first per the one-register rule
+  (elevation §5.5 — "the tracker holds lifecycle and pointers, the register
+  holds finding bodies") because the tracker's `finding_discovered` event
+  type is currently FINDING_FREEZE-rejected for stream S1 (S1-F-001's
+  `remediation_approved` already froze S1's finding intake, and the control
+  plane's `_remediation_contract` check has no unfreeze path once a plan is
+  frozen — confirmed by reading `tracker/control.py`). The corresponding
+  scenario execution (frozen scenario #7, device-return/refresh persistence)
+  is recorded via `scenario_executed` with an honest FAIL outcome instead,
+  which is NOT gated by the freeze. Flagged to the integrator as a tracker/
+  process gap in the closing result packet: the freeze-on-first-remediation
+  design does not fit a stream that legitimately discovers findings across
+  its whole scenario run, not only during one upfront triage pass.
+- **Status:** OPEN, S1 territory, own-fix candidate — NOT fixed in this pass
+  (see below). Close rung: INTEGRATION (component wired + tested against a
+  replay/integration harness) then LIVE re-proof (the exact refresh sequence
+  above, repeated against the deployed revision after merge+deploy).
+- **Disposition (lead-s1, 2026-08-27):** given remaining stream ceiling and
+  the S1-F-001 security fix already landed this session, this is filed
+  OPEN with full root-cause evidence and a concrete fix class rather than
+  attempted inline — it is a genuine feature-completion item (new fetch
+  wiring + conversation-id persistence design, touching state management
+  choices a Native Surrogate should weigh in on: e.g., should selecting a
+  past thread actually swap the live view, given `handleSidebarSelect` is
+  currently a documented no-op?) rather than a same-shape-as-B-007 one-line
+  authz gate. Recommended as S1's top follow-up item if the stream is
+  resumed or extended.
+
+---
+
+### V3-E-013 (S1 document numbering — see collision note above; not a tracker-registered id) — `POST`/`GET /api/conversations` created/listed chart-scoped rows with no `chart_grants`/ownership check (S1-F-001) — FIXED + INDEPENDENTLY VERIFIED
+
+- **Class / severity:** DEFECT · **HIGH** (Native Surrogate triage,
+  `decision_recorded`/`finding_triaged` event `e6a55098-d146-49b5-a0dc-
+  b17f081bf565`, escalated from the finder's proposed MEDIUM) — same
+  missing-ownership-check family as B-001/B-007/B-008; graded HIGH not
+  CRITICAL because live negative evidence bounds it (see below), not MEDIUM
+  because the route itself owned no safety margin — it was safe only because
+  a downstream layer happened to re-check.
+- **Lens / stage:** L-CODE + L-WIRE · S2 (EntitlementDecision)
+- **Journey:** cross-cutting (history/thread creation path underlying J1/J7)
+- **Expected:** every chart-scoped write/read resolves entitlement from the
+  authenticated call via the shared `authorizeChartAccess` brain (PPR-11;
+  the same discipline `GET /api/charts/[id]`, `chat/consult`, and the
+  `cockpit`/`mcp` surface already follow).
+- **Observed (2026-08-27, LIVE rung against the deployed Cloud Run service):**
+  test principal `hunQRYVJ5Ec2mQnJnutK7AoQnsO2` (exactly one `view` grant, on
+  synthetic chart `1c826d5a`) POSTed `chartId=cb73cd3d-9eba-4220-9902-
+  0de91566e980` (a real, unrelated chart it holds zero grant on) to
+  `/api/conversations` and received **HTTP 201** with the row created,
+  confirmed via a follow-up `GET` reflecting it. Bounding proof, same
+  session: attempting to actually ASK a question using that orphan
+  conversation (`POST /api/pariprashna`) was independently denied — real SSE
+  `error` event, `code: "FORBIDDEN"` — because `authorizeTurn`
+  (`safety_gate.ts`) re-checks `authorizeChartAccess` per turn and never
+  trusts the conversation's stored `chart_id`. No chart facts, names, or
+  reading content were ever reachable through this gap.
+- **Code anchor:** `platform/src/app/api/conversations/route.ts` (GET/POST,
+  pre-fix had no authz call at all); `platform/src/lib/conversations.ts`
+  (`listConversations`, `createConversation` — take `chartId` uncritically).
+- **Fix:** additive `authorizeChartAccess` gate in both handlers, 403 on
+  `deny`, routed through the same shared brain — commit `3082df9b6` on
+  `pariprashna/v3-s1-navigation-shell`. TDD: `platform/src/app/api/
+  conversations/__tests__/route.authz.test.ts` (RED pre-fix, independently
+  re-reproduced by the verifier against the actual parent commit
+  `28a157fb1` in a throwaway worktree — not merely asserted; GREEN
+  post-fix). `platform/tests/unit/chat-v2/persistence_routes.test.ts` mocks
+  updated to model the new authz queries (8/8 still pass).
+- **Independent verification:** `verification_accepted`, actor `verifier`
+  (distinct Opus subagent, security-reviewer role — finder ≠ fixer ≠
+  verifier all satisfied: finder/fixer = lead-s1, verifier = a separate
+  agent instance), event `7450b114-cd73-4fea-b094-5897a0756c06`, rung
+  INTEGRATION. The verifier's own 11-case adversarial probe specifically
+  targeted (and ruled out) a malformed-`chartId` regression (byte-identical
+  503 behavior pre/post-fix — the authz query and the pre-existing DB insert
+  hit the same Postgres `uuid`-column parse error either way), confirmed
+  zero new `tsc`/`eslint` diagnostics, and re-verified all sibling
+  history/thread routes independently — with one correction to the finder's
+  original sweep: `[id]/feedback/route.ts` is NOT `getConversation`-gated
+  (no ownership WHERE clause at all), but is a harmless authn-only stub
+  (`message_feedback` table dropped in WS-0 — GET returns `{feedback:[]}`,
+  POST echoes the body back, zero DB access) — not exploitable today, but
+  its `TODO(ws-2)` restore must add the gate when that table returns.
+- **LIVE re-proof:** explicitly NOT attempted this session — the fix is
+  merged to the stream branch but not yet deployed; deploying is the
+  harness's gated deploy-sync checkpoint (§6.3), out of a stream's own
+  authority. Honest gap, not a defect; carried to the result packet.
+- **Status:** FIXED, INTEGRATION-VERIFIED, merge-ready (PR pending CI green
+  per harness §6.2). Close rung: LIVE re-proof after the deploy-sync
+  checkpoint runs (Session C / native review), same pattern as S5's charter
+  for its own stale-deployment gap.
+
+---
+
+*End EDIR_V3_REGISTER v1.0 (merged from `origin/main` 2026-08-28 — this
+branch's own S3 filings below, plus S1's document-numbered entries carried
+in verbatim; see the cross-stream id collision note above V3-E-012) — 115
+historical entries imported by reference; 81 branches dispositioned
+(SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 · SALVAGE 2); 15 V3 entries
+tracker-registered to this branch (5 from the A3 census + 6 surfaced during
+A4's B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and
+the B-008 CRITICAL routes fixed and independently verified, V3-E-007/
+E-008/E-010/E-011 filed to S5, V3-E-009 closed-as-benign; + 4 filed
 2026-08-28 by stream S3: V3-E-012, real-chart-grounding question on the
 quality corpus's pre-existing fixtures, filed for native ruling; V3-E-016
 (originally drafted as E-013, renumbered on a live TRACKER-side
@@ -1047,11 +1281,16 @@ cause (`citation_resolver.ts`) after 3-way adversarial refuter review
 corrected its first-filed numbers; V3-E-033, MEDIUM, a second distinct S3
 scorer defect (`b11_coverage.ts` contradicting its own docblock) the same
 refuter panel surfaced, filed OPEN pending a design ruling, not rushed to a
-fix).
+fix); plus 2 document-numbered (non-tracker) entries merged in from S1's
+`origin/main` PRs under the SAME "V3-E-012"/"V3-E-013" numbers as this
+branch's own tracker-registered findings — a genuine cross-stream numbering
+collision, not silently resolved here, flagged for Session C to assign S1's
+two entries fresh ids (S1-severity history-persistence-unwired filed OPEN
+to S1 itself; S1-F-001 conversations chart-authz gap, FIXED + INDEPENDENTLY
+VERIFIED at INTEGRATION rung).
 Other streams (S1/S2/S4/S5/S6) file V3-E entries on their OWN branches per
-the harness's per-stream-branch model (§2.1) — this file's count is scoped
-to what S3 has filed on `pariprashna/v3-s3-answer-quality`; the tracker
-(global `finding_discovered` event stream, `finding_id` globally unique) is
-the cross-stream source of truth, reconciled into one register at Session
-C convergence (elevation §5.5's one-register rule + parity check). No gate
-is certified by this document.*
+the harness's per-stream-branch model (§2.1); the tracker (global
+`finding_discovered` event stream, `finding_id` globally unique) is the
+cross-stream source of truth, reconciled into one register at Session C
+convergence (elevation §5.5's one-register rule + parity check). No gate is
+certified by this document.*

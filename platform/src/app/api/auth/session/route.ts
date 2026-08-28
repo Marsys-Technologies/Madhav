@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSessionCookie, adminAuth } from '@/lib/firebase/server'
+import { createSessionCookie, adminAuth, getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 
@@ -72,6 +72,24 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  // V3-E-017: revoke the session server-side (not just clear the cookie
+  // client-side) so a captured `__session` cookie value can't outlive a
+  // "logout" for the rest of its 14-day TTL. `getServerUser()` resolves the
+  // uid via the same `__session` cookie + `verifySessionCookie()` path the
+  // rest of the app uses; `verifySessionCookie()`'s `checkRevoked: true` flag
+  // then rejects this exact cookie value on the very next request.
+  try {
+    const user = await getServerUser()
+    if (user?.uid) {
+      await adminAuth.revokeRefreshTokens(user.uid)
+    }
+  } catch (err) {
+    // Logging out of a session that's already gone/invalid, or a transient
+    // Firebase error, is not an error the caller should see — the cookie is
+    // cleared below regardless.
+    console.error('[session] revokeRefreshTokens failed', err)
+  }
+
   const response = NextResponse.json({ ok: true })
   response.cookies.set('__session', '', {
     httpOnly: true,
