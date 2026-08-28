@@ -164,6 +164,19 @@ export function renderSealCompleteLabel(sourceCount: number, elapsedSeconds: num
   return `Grounded in ${n} sources · ${t}s`
 }
 
+/**
+ * V3-E-024 fast-follow: a settled turn with NO `grounding` at all (e.g. a
+ * clarification-only turn, which never computes one) must not render
+ * `renderSealCompleteLabel(0, ...)` — "Grounded in 0 sources" conflates
+ * "nothing to ground was ever computed" with "zero sources were found" for a
+ * turn that DID find grounding but honestly has none (§N.7 item 6). Use this
+ * whenever `turn.grounding` is `null` at settle time instead.
+ */
+export function renderSealNoGroundingLabel(elapsedSeconds: number): string {
+  const t = Math.max(0, Math.round(elapsedSeconds))
+  return `Answered · ${t}s`
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Retrieval facets (band phase 5) — "Consulting the chart — ⟨facet⟩"
 // ─────────────────────────────────────────────────────────────────────────────

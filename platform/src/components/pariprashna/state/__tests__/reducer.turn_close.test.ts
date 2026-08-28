@@ -73,6 +73,16 @@ describe('turn.close settles a turn even when turn.commit never arrived (clarifi
     expect(t.status).toBe('interrupted')
   })
 
+  it('a turn.close arriving while reconnecting settles the turn (currently the correct behavior: useLiveStream.ts always dispatches "reconnected" before pumpBody can read a resumed stream, so a live turn.close cannot actually arrive mid-reconnecting today — this test pins that this reducer case, if it ever DID receive one, settles rather than getting stuck, matching turn.close being the authoritative done-signal)', () => {
+    const state = applyAll(initialThreadState, [
+      { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },
+      { type: 'reconnecting', turnId: 'T1', eventId: 'e1' },
+      { type: 'turn.close', turnId: 'T1', eventId: 'e2' },
+    ])
+    const t = turnOf(state, 'T1')
+    expect(t.status).toBe('settled')
+  })
+
   it('a turn.close arriving after an error does not overwrite the error state', () => {
     const state = applyAll(initialThreadState, [
       { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },

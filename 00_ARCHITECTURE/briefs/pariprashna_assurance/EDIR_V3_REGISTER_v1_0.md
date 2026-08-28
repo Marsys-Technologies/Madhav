@@ -1010,12 +1010,31 @@ investigated further here.)*
   three regression-guard cases actually protect what they claim to (not
   just that they pass), and consider any other status this change might
   reach that the four cases above don't cover, before this merges.
+- **Independent verification (2026-08-28, distinct verifier agent):**
+  confirmed the root cause (with one correction: `snapshot.apply`'s
+  closed-gap path also sets `'settling'`, not only `turn.commit` — the
+  fix's comment corrected in place, no functional change), confirmed the
+  fix closes it with no regression, independently re-ran all 4 tests
+  (reverting `reducer.ts` to its pre-fix parent commit to reproduce RED
+  itself, not trusting the claim), confirmed 1530/1530 territory suite,
+  clean `tsc`/`eslint`. Flagged two follow-ups, both addressed same
+  session: (a) the `'reconnecting'` interaction was safe only via an
+  untested cross-file call-order invariant in `useLiveStream.ts` — a new
+  regression-guard test now pins it explicitly; (b) `WorkingBand.tsx`'s
+  compact sealed-band label rendered "Grounded in 0 sources · Ts" for a
+  settled turn with `grounding: null` (newly reachable via this very fix),
+  conflating "never computed" with "zero found" — fixed with a distinct
+  `renderSealNoGroundingLabel` ("Answered · Ts"), TDD'd RED-then-GREEN in
+  `working/__tests__/WorkingBand.test.tsx`. Full suite after all follow-ups:
+  1533 passed, 0 regressions.
+- **Status:** FIXED and independently verified (with the two flagged
+  follow-ups also landed same session) — merge-ready pending CI green.
 - **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
   question on a deployed build post-merge; confirm the clarification turn
   settles promptly and the composer re-enables so the reader can answer).
-- **Close rung required:** LIVE re-proof (submit a deliberately ambiguous
-  question on a deployed build post-fix; confirm the clarification turn
-  settles promptly and the composer re-enables so the reader can answer).
+
+---
+
 ### V3-E-012 — History sidebar has no real cross-session/cross-load persistence: every reload loses "past readings" entirely, and every reload also mints a brand-new conversation id
 
 - **Class / severity:** DEFECT · **S1 (BLOCKING, proposed)** — this is the
@@ -1231,9 +1250,9 @@ investigated further here.)*
 
 *End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
 81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 20 V3 entries total (5 from the A3 census + 6 surfaced during
+SALVAGE 2); 19 V3 entries total (5 from the A3 census + 6 surfaced during
 A4's B-001/B-007/B-008 fix-and-verify chain + 2 surfaced by S1's frozen
-scenario run 2026-08-27 + 7 surfaced by S2's guided-execution J2/J5/J6
+scenario run 2026-08-27 + 6 surfaced by S2's guided-execution J2/J5/J6
 passes, 2026-08-27/28): V3-E-006/B-007 and the B-008 CRITICAL routes fixed
 and independently verified; V3-E-007/E-008/E-010/E-011 filed to S5;
 V3-E-009 closed-as-benign; V3-E-012 (S1-severity, history persistence
