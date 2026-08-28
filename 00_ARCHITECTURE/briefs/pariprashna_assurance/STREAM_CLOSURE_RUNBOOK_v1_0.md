@@ -1,12 +1,14 @@
 ---
 artifact: PARIPRASHNA_STREAM_CLOSURE_RUNBOOK
-version: 1.0
+version: 1.1
 status: CURRENT — the authoritative procedure a stream follows to legitimately
   CLOSE on the accepted tracker (emit result_packet_accepted). Written to
   resolve a systemic blocker S1 surfaced (no stream had ever closed) — after
   independent verification found the blocker to be PROCEDURAL, not a tracker
-  defect. No tracker code changed; this is the missing ceremony, documented.
-date: 2026-08-28
+  defect. v1.0 changed no tracker code; it was the missing ceremony, documented.
+  v1.1 documents one genuinely new tracker capability (the surrogate-only
+  FINDING_FREEZE plan-revision path) alongside that ceremony.
+date: 2026-08-29
 authoritative_side: claude
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/control.py
@@ -15,6 +17,14 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/AUTONOMOUS_EXECUTION_ELEVATION_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md
 changelog:
+  - "1.1 (2026-08-29, Paripraśna v3 closeout lane A2): step 4 gains the governed
+    FINDING_FREEZE plan-revision path. Previously the runbook could only tell a
+    stream that a post-freeze finding 'needs a separately governed scope path' —
+    a path that did not exist, leaving real findings (S5-V3-E-023/024, the S1
+    and S3/S4 register-only entries) stuck outside the tracker. The new
+    NATIVE_SURROGATE-only `finding_freeze_exception_granted` event is that path;
+    it admits exactly one named finding_id and leaves the freeze in force for
+    everything else. Tracker change: `tracker/control.py`."
   - "1.0 (2026-08-28, Claude Code): initial runbook. Corrects S1's closure-
     blocker finding from 'tracker defect requiring a central fix' to 'a real
     procedural gap: streams attempt closure before completing the lifecycle
