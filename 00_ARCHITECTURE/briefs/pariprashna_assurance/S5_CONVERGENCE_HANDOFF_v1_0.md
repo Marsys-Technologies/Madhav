@@ -219,6 +219,39 @@ worked around to manufacture ids.**
    hand-maintained lists; a new chart-scoped entry added without a list update
    silently bypasses. §N.8 pattern — the detector checks a proxy (name in list)
    rather than the claim (is chart-scoped).
+10. **`POST /api/prashna`** forwards its body verbatim including
+    `querent_natal_chart_id` behind only `getServerUser()`. Checked before
+    filing: it is INSERT-only into `prashna_charts` and never read back, and no
+    `FROM charts` exists outside `panchang.py`, so it is **not** a disclosure —
+    but any authenticated caller can write an arbitrary chart_id attribution
+    into a prashna row. Same family, lower severity.
+
+### Independent verification of the `/api/panchang` fix (PR #1633): ACCEPT
+
+A refute-instructed Opus verifier found **no bypass**. It mutation-tested four
+ways (guard removed on each route; `read`→`write`; always-gate instead of
+conditional) and confirmed the tests pin the level in *both* directions —
+under-gating and over-gating each fail. It then ran **33 hostile request bodies**
+(non-string types, aliases `chartId`/`CHART_ID`/`chart-id`, `__proto__`,
+`constructor.prototype`, nesting, duplicate keys in both orders, top-level array
+and string bodies, whitespace/NUL/surrogate values) through **real pydantic
+2.9.0** with a verbatim copy of `PanchangaRequest`, and found the guard's
+`typeof === 'string'` test **exactly congruent** with pydantic v2's acceptance
+set. The structural reason it holds: the guard reads and the forwarder writes
+from the same in-memory object, so no parser-differential can split them. It
+also confirmed the sidecar's `_fetch_native_context` is the *only* `FROM charts`
+read in the sidecar, and cleared a suspected regression against the Personalise
+picker's `client_id` scoping (both create paths set `client_id = owner_id`, and
+migration 081 backfilled legacy rows).
+
+Its one substantive residual — that nothing *asserted* the non-string case, so
+safety rested on an incidental congruence with pydantic's behaviour — **is
+already closed**: a later commit on the same branch makes both routes fail
+**closed** with a 400 on any `chart_id` that is present but not a non-empty
+string, rather than forwarding it ungated, with four new tests that were
+demonstrated to fail first (`expected 200 to be 400`, sidecar reached in every
+case). The verifier assessed the earlier commit; the shipped branch is stricter
+than what it approved.
 
 Source: an exhaustive **198-file** sweep (all 177 `route.ts` under `app/api`
 plus all 21 pages/layouts under `app/clients`), backfilled into
@@ -288,10 +321,90 @@ left open and documented. The decision is not "fix or don't fix" so much as
 "commission the 8-step plan, or record an explicit accepted-risk disposition so
 it stops being re-discovered every wave."
 
-## 9 — Independent closure verdict
+## 9 — Independent closure verdict: **NOT RECOMMENDED**
 
-*(Recorded verbatim in the session's final report; see `S5_STREAM_RESULT_PACKET_v1_0.md`
-v1.3 and the tracker ledger for the underlying evidence.)*
+A dedicated independent Opus verifier was asked the closure question directly,
+with "NOT RECOMMENDED" explicitly offered as a valued answer. **It returned NOT
+RECOMMENDED**, and this session emitted no `stream_closure_recommended`
+accordingly. Its four grounds, each verified by it against primary evidence
+rather than taken from the brief:
+
+1. **`S5:remediation` is structurally unreachable, not merely unfinished.**
+   `control.py` fails the stage for any planned remediation not at `VERIFIED`.
+   `S5-R-005` (E-001) *cannot* reach it: the plan is frozen (seq 122),
+   `REMEDIATION_PLAN_LOCKED` blocks revision, and #1615 is a production
+   migration held for the native. "Recommending closure of a stream whose
+   remediation stage is provably impossible under the frozen plan is
+   recommending something that cannot happen."
+2. **The one gate that would mechanically pass is the one that is measurably
+   false.** 45/45 would satisfy both `REGRESSION_INCOMPLETE` and
+   `RESULT_PACKET_PREREQUISITE`, but it is the sum of two uncoordinated runs
+   that both writing sessions disowned in the ledger. A recommendation emitted
+   today would sit above that 45 and read at convergence as an independent
+   party having blessed it — §N.8's defect class inside the campaign built to
+   catch it.
+3. **It would invert the ceremony.** The runbook places
+   `stream_closure_recommended` at step 7, after six accepted stages. S5 has
+   none, and a prior independent verifier WITHHELD even the charter.
+4. **The stream's worst finding is live and unfixed** (`/api/panchang`), with
+   no tracker id and therefore invisible to every gate, alongside five further
+   live-confirmed register-only defects and B-002 entirely open.
+
+**Its shortest honest path to RECOMMENDED**, reproduced because it is the
+actionable output convergence needs:
+
+*Structurally load-bearing — without these the ceremony cannot complete at all:*
+1. **Dispose R-005/E-001.** Either native + integrator sign off and #1615
+   merges, or a governed `scope_change_approved` removes it from the frozen
+   plan with the deferral recorded. There is no third option.
+2. **Repair the denominator.** A governed scope record enumerating the 45 (or
+   restating an honest one), plus explicit ledger marking of seq 408–415 as
+   re-proofs that do not increment.
+
+*Required to make the recommendation true rather than merely permitted:*
+3. Merge #1631 (R-007 → VERIFIED) and #1633, each with a LIVE denial re-proof
+   on the deployed revision; #1633 needs a real finding id first.
+4. File-or-formally-defer the register-only leads via the scope path, each with
+   a recorded decision.
+5. Record an explicit native/integrator deferral for B-002 — the charter
+   already scopes it "not forced closed", so a recorded decision suffices.
+6. Backfill V3-E-011's per-route verdicts *(done this session — see the register's
+   route table)*.
+7. Then the six stage acceptances in order, then the closure recommendation.
+
+**On the substance, assessed separately: SOUND.** The same verifier judged the
+security work itself defensible — controlled experiments rather than claims (the
+`/nirmana` control row that makes the V3-E-018 rows unambiguous; the revocation
+drill testing the same captured cookie value), adversarial mutation-tested
+remediations, and a pattern of self-reporting things that cost the session (the
+destructive-probe breach with intactness verified not assumed, the auto-merge
+near-miss, the `canWrite` test that survived a hostile mutation 6/6 green, and
+the V3-E-020 downgrade made against the finder's own interest). Its stated
+weaknesses in the substance: the main loop ran Sonnet 5 against an Opus-preferred
+charter (verifications were Opus — the load-bearing half), and **the merged
+#1629 has no LIVE re-proof** because it had not deployed by session end.
+
+**The split both verifiers independently reached:** the substance is
+well-evidenced and defensible; it is the *ceremony* proposed over it that would
+certify things that are not true as stated.
+
+## 9a — Control-plane defects surfaced by this session (NOT S5 defects)
+
+These are tracker/platform issues that convergence should own, not stream work:
+
+1. **The tracker has no single-writer-per-stream lock.** Two sessions ran as
+   `lead-s5` within ten minutes with zero mutual awareness. This is the root
+   enabler of the denominator incident and is a P0 control-plane defect.
+2. **`DUPLICATE_SCENARIO` keys on the full slug, not the numeric slot** — which
+   is exactly why eight colliding ids went undetected. Check whether other
+   streams share the shape.
+3. **A stream's `deployed_revision` cannot be corrected in-protocol.** S5's
+   projection card still shows the stale `cafa894ee`; the true value
+   (`eed62d1be`, revision `amjis-web-01766-ppj`) exists only inside a
+   `correction_recorded` payload, because `fold()` reads that field solely from
+   `work_started`, and a second `work_started` is `INVALID_TRANSITION` from
+   RUNNING. The database was correctly NOT hand-edited. Needs an integrator
+   mechanism or a governed tracker change.
 
 ## 10 — What convergence must not miss
 
