@@ -27,7 +27,13 @@ export function ThreadHeader({ chartPin }: { chartPin: ChartPin }) {
         </span>
         <span aria-hidden className="self-center rounded-full" style={{ width: 3, height: 3, background: 'var(--pp-gold-tertiary)' }} />
         <span style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, color: 'var(--pp-ink-dim)' }}>{chartPin.name}</div>
+          {/* V3-E-062 (S2): the Portal rendered zero h1-h6 elements anywhere,
+              leaving a screen-reader user with no heading-navigation shortcut
+              on any surface state. This chart-holder name is the page's own
+              de facto primary content anchor, so it now carries a real <h1>
+              (margin/weight explicitly reset to preserve the prior visual
+              rendering exactly -- this is a semantics-only change). */}
+          <h1 style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--pp-ink-dim)' }}>{chartPin.name}</h1>
           <div style={{ fontSize: 8.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--pp-gold-tertiary)' }}>
             {chartPin.bornLine}
           </div>

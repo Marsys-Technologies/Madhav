@@ -16,6 +16,7 @@ import { render, screen } from '@testing-library/react'
 import { Turn } from '../Turn'
 import { makeInitialTurnState } from '../state/reducer'
 import type { TurnState } from '../state/types'
+import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
 
 function interruptedTurn(reason: TurnState['interruptedReason']): TurnState {
   const turn = makeInitialTurnState('turn-1', 'Give me a comprehensive analysis of every yoga in my chart.')
@@ -24,6 +25,27 @@ function interruptedTurn(reason: TurnState['interruptedReason']): TurnState {
   turn.blocks = []
   return turn
 }
+
+function erroredTurn(): TurnState {
+  const turn = makeInitialTurnState('turn-1', 'What does this transit mean?')
+  turn.status = 'errored'
+  turn.error = classifyPariprashnaError('httpfail')
+  turn.blocks = []
+  return turn
+}
+
+// V3-E-060 (partial fix) — classifyPariprashnaError computes a fuller
+// `sentence` for every error kind, but only the short `bandLabel` ever
+// reached the reader (zero consumers of `.sentence`/`.actions` anywhere in
+// components/pariprashna). This is demonstrated-can-fail: reverting the
+// Turn.tsx caveat block back out makes this assertion fail again.
+describe('Turn — errored-state discloses the honest explanatory sentence, not just the band label', () => {
+  it('renders turn.error.sentence, not only the short bandLabel', () => {
+    const turn = erroredTurn()
+    render(<Turn turn={turn} />)
+    expect(screen.getByText(turn.error!.sentence)).toBeInTheDocument()
+  })
+})
 
 describe('Turn — interrupted-state caveat matches the ACTUAL cause', () => {
   it('user_stop: never claims "connection was lost" for a deliberate Stop click', () => {
