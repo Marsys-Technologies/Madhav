@@ -54,7 +54,9 @@ Corpus/rubric scoring is largely STATIC/REPLAY (deterministic checks where possi
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — file S3 findings as `V3-E-0NN`, `stream: S3`.
+`../EDIR_V3_REGISTER_v1_0.md` — S3's territory (quality-corpus / citation-grounding) findings, pre-split.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all NEW S3 findings in `../EDIR_V3_REGISTER_S3_v1_0.md` as `S3-V3-E-0NN` (next id: check that file's frontmatter `id_convention` — note `S3-V3-E-001` is already reserved by a pre-split cross-reference tag, so the next free id is `S3-V3-E-002`). S3's pre-split findings (V3-E-012, V3-E-016, both V3-E-032 headings, V3-E-033) stay in `../EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`.
 
 ## Posture
 
