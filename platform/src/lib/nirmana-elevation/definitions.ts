@@ -587,8 +587,7 @@ export async function acceptNirmanaBaselineCandidate(
               (freshness_state = 'fresh'
                 AND freshness_deadline_at >= transaction_timestamp()) AS currently_fresh
          FROM nirmana_elevation_monitor_observations
-        WHERE id = $1
-        FOR SHARE`,
+        WHERE id = $1`,
       [input.source_observation_id],
     )
     const sourceObservation = observations.rows[0]
@@ -818,7 +817,7 @@ export async function supersedeNirmanaElevationDefinition(
               source_state, source_observed_at, freshness_state, freshness_deadline_at, source_error_code,
               release_state, runtime_liveness,
               (freshness_state = 'fresh' AND freshness_deadline_at >= transaction_timestamp()) AS currently_fresh
-         FROM nirmana_elevation_monitor_observations WHERE id = $1 FOR SHARE`,
+         FROM nirmana_elevation_monitor_observations WHERE id = $1`,
       [input.source_observation_id],
     )
     const source = observation.rows[0]
