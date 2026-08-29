@@ -23,9 +23,14 @@ LIFECYCLES = {"NOT_STARTED", "READY", "RUNNING", "BLOCKED", "PAUSED", "IN_VERIFI
 HEALTH = {"HEALTHY", "ATTENTION_REQUIRED", "STALE", "INTEGRITY_DEGRADED", "UNKNOWN"}
 ROLES = {"STREAM_LEAD", "NATIVE_SURROGATE", "INDEPENDENT_VERIFIER", "PROGRAMME_INTEGRATOR", "NATIVE"}
 COMPLETION_EVENTS = {"work_item_accepted", "verification_accepted", "regression_accepted", "stream_closure_recommended", "result_packet_accepted", "gate_closed", "native_acceptance"}
+# The one governed exception to FINDING_FREEZE: a NATIVE_SURROGATE names a single finding_id
+# that a stream's already-frozen remediation plan is deliberately being re-opened for. It does
+# not lift the freeze for anything else, and no other role may emit it.
+FINDING_FREEZE_EXCEPTION_EVENT = "finding_freeze_exception_granted"
+FINDING_FREEZE_EXCEPTION_ROLE = "NATIVE_SURROGATE"
 ROLE_EVENTS = {
     "STREAM_LEAD": {"work_started", "scenario_executed", "finding_discovered", "reproduction_recorded", "remediation_proposed", "remediation_implemented", "paused", "blocked", "resumed", "verification_started", "failed", "regression_requested", "correction_recorded"},
-    "NATIVE_SURROGATE": {"decision_recorded", "finding_triaged", "remediation_approved", "improvement_parked"},
+    "NATIVE_SURROGATE": {"decision_recorded", "finding_triaged", "remediation_approved", "improvement_parked", FINDING_FREEZE_EXCEPTION_EVENT},
     "INDEPENDENT_VERIFIER": {"reproduction_accepted", "reproduction_rejected", "verification_accepted", "verification_rejected", "regression_accepted", "regression_rejected", "stream_closure_recommended"},
     "PROGRAMME_INTEGRATOR": {"work_item_accepted", "dependency_resolved", "result_packet_accepted", "integration_baseline_advanced", "gate_closed", "scope_change_approved", "campaign_bootstrapped"},
     "NATIVE": {"native_acceptance"},
@@ -405,7 +410,7 @@ class EventStore:
         if stream_id is not None and not isinstance(stream_id, str):
             raise RejectedEvent("SCHEMA", "stream_id must be string or null")
         evidence = request.get("evidence", [])
-        if request["event_type"] in COMPLETION_EVENTS | {"dependency_resolved"} and not evidence:
+        if request["event_type"] in COMPLETION_EVENTS | {"dependency_resolved", FINDING_FREEZE_EXCEPTION_EVENT} and not evidence:
             raise RejectedEvent("EVIDENCE_REQUIRED", f"{request['event_type']} requires primary evidence")
         if any(not isinstance(e, dict) or not e.get("uri") or not e.get("kind") for e in evidence):
             raise RejectedEvent("EVIDENCE_SCHEMA", "each evidence item requires kind and uri")
@@ -596,8 +601,38 @@ class EventStore:
                 raise RejectedEvent("FINDING_SCHEMA", "a finding needs an eligible target, unique non-empty id, and declared severity")
             if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
                 raise RejectedEvent("FINDING_ID_CONFLICT", "a finding identifier may be discovered once")
-            if self._remediation_contract(con, stream_id) is not None:
-                raise RejectedEvent("FINDING_FREEZE", "a new finding after the frozen remediation plan requires a separately governed scope path")
+            if self._remediation_contract(con, stream_id) is not None and self._finding_freeze_exception(con, stream_id, finding_id) is None:
+                raise RejectedEvent("FINDING_FREEZE", f"a new finding after the frozen remediation plan requires a {FINDING_FREEZE_EXCEPTION_ROLE}-authorized {FINDING_FREEZE_EXCEPTION_EVENT} naming this finding_id in this stream")
+        if typ == FINDING_FREEZE_EXCEPTION_EVENT:
+            # ROLE_EVENTS already gates emission to the surrogate. The role is re-asserted here
+            # because this is the one event whose whole purpose is to relax a governance freeze:
+            # it must not become emittable by a widened ROLE_EVENTS row alone (§N.8 — the check
+            # behind the claim, not a proxy for it).
+            if role != FINDING_FREEZE_EXCEPTION_ROLE:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_ROLE", f"only a {FINDING_FREEZE_EXCEPTION_ROLE} may authorize a post-freeze finding; {role} cannot self-authorize one")
+            finding_id = payload.get("finding_id")
+            if stream_id not in STREAM_IDS | {"P1"} or not isinstance(finding_id, str) or not finding_id.strip():
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "a freeze exception needs an eligible target stream and a non-empty finding_id")
+            if not isinstance(payload.get("reason"), str) or not payload["reason"].strip():
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "a freeze exception must record why the frozen plan is being re-opened for this finding")
+            frozen_plan = self._remediation_contract(con, stream_id)
+            if frozen_plan is None:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_UNNECESSARY", "a freeze exception is only defined for a stream whose remediation plan is already frozen; an unfrozen stream takes findings through the ordinary path")
+            if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
+                raise RejectedEvent("FINDING_ID_CONFLICT", "a freeze exception cannot re-open an already-discovered finding identifier")
+            if self._finding_freeze_exception(con, stream_id, finding_id) is not None:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_CONFLICT", "a finding identifier may be granted a freeze exception once")
+            additions = payload.get("added_remediations", [])
+            if not isinstance(additions, list):
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "added_remediations must be an array when supplied")
+            planned_ids = {entry["id"] for entry in frozen_plan if isinstance(entry, dict) and isinstance(entry.get("id"), str)}
+            added_ids: set[str] = set()
+            for entry in additions:
+                if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip() or entry.get("finding_id") != finding_id:
+                    raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "each added remediation needs a non-empty id and must name this exception's own finding_id")
+                if entry["id"] in planned_ids or entry["id"] in added_ids:
+                    raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "an added remediation id must be new to this stream's frozen plan")
+                added_ids.add(entry["id"])
         if typ == "remediation_approved" and "remediation_plan" in payload:
             plan = payload["remediation_plan"]
             if stream_id == "P1" and (not self.p0b_only or not self.p1_enabled or not isinstance(plan, list) or len(plan) != 1 or not isinstance(plan[0], dict) or plan[0].get("finding_id") != P1_F004):
@@ -808,12 +843,42 @@ class EventStore:
         return planned, scoped_ids, executed
 
     @staticmethod
+    def _finding_freeze_exception(con: sqlite3.Connection, stream_id: str | None, finding_id: Any) -> dict[str, Any] | None:
+        """The surrogate-authorized exception, if any, that re-opens exactly `finding_id` on an
+        already-frozen stream plan. Authority is read from the durable, hash-chained ledger row's
+        stored `actor_role` — never from the submitting client's claim — so a ledger row written
+        by any other role can never grant the exception even if it carries the right event_type."""
+        if not stream_id or not isinstance(finding_id, str) or not finding_id.strip():
+            return None
+        for row in con.execute("SELECT event_id,actor_id,actor_role,payload_json,occurred_at FROM events WHERE stream_id=? AND event_type=? ORDER BY ledger_seq", (stream_id, FINDING_FREEZE_EXCEPTION_EVENT)):
+            if row["actor_role"] != FINDING_FREEZE_EXCEPTION_ROLE:
+                continue
+            payload = json.loads(row["payload_json"])
+            if payload.get("finding_id") == finding_id:
+                return {"event_id": row["event_id"], "stream_id": stream_id, "finding_id": finding_id, "reason": payload.get("reason"), "authorized_by": row["actor_id"], "authorized_role": row["actor_role"], "added_remediations": payload.get("added_remediations", []), "at": row["occurred_at"]}
+        return None
+
+    @staticmethod
     def _remediation_contract(con: sqlite3.Connection, stream_id: str) -> list[dict[str, Any]] | None:
+        """The stream's frozen remediation plan, plus any entries a surrogate-authorized freeze
+        exception added to it. Returning the amended plan STRENGTHENS the downstream gates that
+        read it: a plan-revision entry must itself be implemented and independently verified
+        before the remediation stage can earn credit. It never loosens the freeze itself — the
+        return value is non-None only when an ordinary `remediation_approved` plan exists."""
+        plan: list[dict[str, Any]] | None = None
         for row in con.execute("SELECT payload_json FROM events WHERE stream_id=? AND event_type='remediation_approved' ORDER BY ledger_seq", (stream_id,)):
             payload = json.loads(row["payload_json"])
             if "remediation_plan" in payload:
-                return payload["remediation_plan"]
-        return None
+                plan = payload["remediation_plan"]
+                break
+        if plan is None or not isinstance(plan, list):
+            return plan
+        amended = list(plan)
+        for row in con.execute("SELECT actor_role,payload_json FROM events WHERE stream_id=? AND event_type=? ORDER BY ledger_seq", (stream_id, FINDING_FREEZE_EXCEPTION_EVENT)):
+            if row["actor_role"] != FINDING_FREEZE_EXCEPTION_ROLE:
+                continue
+            amended.extend(entry for entry in json.loads(row["payload_json"]).get("added_remediations", []) or [] if isinstance(entry, dict))
+        return amended
 
     @staticmethod
     def _row_event(row: sqlite3.Row) -> dict[str, Any]:
@@ -1066,6 +1131,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     dependencies = {(dependency["from"], dependency["to"]): {**copy.deepcopy(dependency), "status": "PENDING", "evidence": [], "resolved_by": None, "resolved_at": None} for dependency in definition["dependencies"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; started_sessions: dict[str, str] = {}; scope_changes: list[dict[str, Any]] = []
+    finding_freeze_exceptions: list[dict[str, Any]] = []; granted_freeze_exceptions: dict[tuple[Any, Any], dict[str, Any]] = {}
     bootstrapped = False; demonstration = False
     for event in events:
         typ, payload, evidence = event["event_type"], event["payload"], event["evidence"]
@@ -1109,7 +1175,17 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
                 sessions[session_id]["last_evidence_at"] = event["occurred_at"]
         elif typ == "finding_discovered":
             fid = payload.get("finding_id");
-            if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"]}
+            granted = granted_freeze_exceptions.get((event.get("stream_id"), fid))
+            if granted: granted["finding_recorded"] = True
+            if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"], "freeze_exception": {"event_id": granted["event_id"], "authorized_by": granted["authorized_by"], "authorized_role": granted["authorized_role"], "reason": granted["reason"]} if granted else None}
+        elif typ == FINDING_FREEZE_EXCEPTION_EVENT:
+            fid = payload.get("finding_id")
+            record = {"event_id": event["event_id"], "stream_id": event.get("stream_id"), "finding_id": fid, "reason": payload.get("reason"), "authorized_by": event["actor_id"], "authorized_role": event["actor_role"], "added_remediations": copy.deepcopy(payload.get("added_remediations", [])), "evidence": evidence, "at": event["occurred_at"], "finding_recorded": False}
+            finding_freeze_exceptions.append(record)
+            if fid: granted_freeze_exceptions[(event.get("stream_id"), fid)] = record
+            plan = streams[event["stream_id"]]["remediation_plan"] if event.get("stream_id") in streams else None
+            if isinstance(plan, list): plan.extend(copy.deepcopy(entry) for entry in payload.get("added_remediations", []) or [] if isinstance(entry, dict))
+            decisions.append({"event_id": event["event_id"], "label": "SURROGATE DECISION — not native acceptance", "decision": payload.get("reason") or typ, "kind": typ, "requires_a3": bool(payload.get("requires_a3")), "evidence": evidence})
         elif typ == "finding_triaged":
             fid = payload.get("finding_id");
             if fid in findings: findings[fid].update({"status": "TRIAGED", "severity": payload.get("severity", findings[fid]["severity"]), "surrogate_decision": True})
@@ -1198,7 +1274,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         phases["P3"]["lifecycle"] = "PAUSED"
     elif "FAILED" in stream_states:
         phases["P3"]["lifecycle"] = "FAILED"
-    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": list(dependencies.values()), "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
+    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": list(dependencies.values()), "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes, "finding_freeze_exceptions": finding_freeze_exceptions}
 
 
 def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[str, Any]], as_of: str, integrity_ok: bool) -> dict[str, Any]:

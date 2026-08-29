@@ -1,12 +1,15 @@
 ---
 artifact: PARIPRASHNA_STREAM_CLOSURE_RUNBOOK
-version: 1.1
+version: 1.2
 status: CURRENT — the authoritative procedure a stream follows to legitimately
   CLOSE on the accepted tracker (emit result_packet_accepted). Written to
   resolve a systemic blocker S1 surfaced (no stream had ever closed) — after
   independent verification found the blocker to be PROCEDURAL, not a tracker
-  defect. No tracker code changed; this is the missing ceremony, documented.
-date: 2026-08-28
+  defect. v1.0 changed no tracker code; it was the missing ceremony, documented.
+  v1.1 corrected step 4's event vocabulary against control.py. v1.2 documents
+  one genuinely new tracker capability (the surrogate-only FINDING_FREEZE
+  plan-revision path) alongside that ceremony.
+date: 2026-08-29
 authoritative_side: claude
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/control.py
@@ -15,6 +18,16 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/AUTONOMOUS_EXECUTION_ELEVATION_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md
 changelog:
+  - "1.2 (2026-08-29, Paripraśna v3 closeout lane A2): step 4 gains the governed
+    FINDING_FREEZE plan-revision path, appended to lane A1's v1.1 step-4 rewrite
+    (both kept; A1's corrected event vocabulary is authoritative and untouched).
+    Previously the runbook could only tell a stream that a post-freeze finding
+    'needs a separately governed scope path' — a path that did not exist, leaving
+    real findings (S5-V3-E-023/024, the S1 and S3/S4 register-only entries) stuck
+    outside the tracker. The new NATIVE_SURROGATE-only
+    `finding_freeze_exception_granted` event is that path; it admits exactly one
+    named finding_id and leaves the freeze in force for everything else. Tracker
+    change: `tracker/control.py`."
   - "1.1 (2026-08-29, Claude Code, lane A1): vocabulary correction only, no
     substance change. §3 step 4 described the remediation-verification ceremony
     using a phantom event type, `remediation_verified`, that does not exist in
@@ -33,7 +46,7 @@ changelog:
     ceremony.' Evidence and the exact ceremony below."
 ---
 
-# Paripraśna — Stream Closure Runbook v1.1
+# Paripraśna — Stream Closure Runbook v1.2
 
 ## 0 — Executive verdict (the correction)
 
@@ -123,6 +136,18 @@ event. In order:
    stage. NOTE: once the remediation plan is frozen, a *new* finding is
    `FINDING_FREEZE`-rejected — it needs a separately governed scope path (a plan
    revision), so freeze the plan only after triage is genuinely complete.
+
+   **The governed plan-revision path (the only way past `FINDING_FREEZE`).** A
+   `NATIVE_SURROGATE` — and no other role — emits `finding_freeze_exception_granted`
+   on the frozen stream, naming exactly one `finding_id`, a `reason`, and primary
+   `evidence`; optionally `added_remediations` (entries whose `finding_id` must be
+   that same finding) to revise the frozen plan for it. The stream lead then records
+   the finding through the ordinary `finding_discovered` path. The freeze stays fully
+   in force for every finding the surrogate has not named. An added remediation must
+   itself be implemented and independently verified before `{S}:remediation` earns
+   credit, so a plan revision tightens the stage's bar rather than relaxing it. The
+   grant is auditable in the projection's `finding_freeze_exceptions` and `decisions`,
+   and on the finding's own `freeze_exception` field.
 5. **`{S}:verification`** — the independent verification stage over the remediations.
    Verify; accept.
 6. **`{S}:regression`** — requires `scenarios.executed == scenarios.planned` AND

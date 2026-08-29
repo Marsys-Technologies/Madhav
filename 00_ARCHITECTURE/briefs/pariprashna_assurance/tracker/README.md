@@ -107,6 +107,26 @@ valid when no remediation is required). Each entry maps one triaged finding to o
 Only those entries may be implemented, each must be independently verified, and the remediation
 work item cannot earn credit until the complete frozen plan is verified.
 
+Once that plan is frozen, a genuinely new finding is `FINDING_FREEZE`-rejected. The one governed
+way past it is `finding_freeze_exception_granted`, and **only a `NATIVE_SURROGATE` may emit it**
+(`ROLE_FORBIDDEN` for every other role, re-asserted inside the transition validator so a widened
+`ROLE_EVENTS` row alone cannot open it). The exception is deliberately narrow: it names exactly
+one `finding_id` on one stream, requires a non-empty `reason` and primary `evidence`, is refused
+before a plan is actually frozen (`FINDING_FREEZE_EXCEPTION_UNNECESSARY` — no blanket pre-grants),
+may be granted once per identifier (`FINDING_FREEZE_EXCEPTION_CONFLICT`), and cannot re-open an
+already-discovered id (`FINDING_ID_CONFLICT`). Every other post-freeze finding stays rejected. The
+lead then records the finding through the ordinary `finding_discovered` path.
+
+An optional `added_remediations` array revises the frozen plan for that finding — each entry needs
+a plan-unique `id` and must name the exception's own `finding_id`, so nothing else can be smuggled
+in. Amended entries join the contract the downstream gates read, which *tightens* them: the added
+remediation must itself be implemented and independently verified before the remediation stage can
+earn credit. The projection exposes `finding_freeze_exceptions` (who authorized, why, what
+finding, evidence, and whether the finding was subsequently recorded), stamps the granting event
+onto the finding's `freeze_exception` field, and lists the grant among the surrogate `decisions`.
+Authority is read from the granting ledger row's own stored `actor_role`, never from a client
+claim — an event of this type written under any other role grants nothing.
+
 An integrator records a defined phase prerequisite through evidence-bearing
 `dependency_resolved` with `from` and `to`. The dependency panel preserves its resolved status
 and evidence. An active downstream phase with a pending predecessor is an explicit campaign
