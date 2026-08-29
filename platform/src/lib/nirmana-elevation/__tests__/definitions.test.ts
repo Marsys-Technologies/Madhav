@@ -1047,6 +1047,7 @@ it('atomically supersedes the exact current frozen definition with the server-de
     const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
     const observationSql = transactionSql.find((sql) => sql.includes('FROM nirmana_elevation_monitor_observations'))
     expect(observationSql).not.toContain('FOR SHARE')
+    expect(transactionSql.some((sql) => sql.startsWith('LOCK TABLE'))).toBe(false)
     expect(transactionSql).toEqual(expect.arrayContaining([
       expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
       expect.stringContaining('FROM asset_registry'),
