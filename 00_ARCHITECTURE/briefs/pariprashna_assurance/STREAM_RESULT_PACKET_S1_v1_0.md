@@ -1,16 +1,45 @@
 ---
 artifact: STREAM_RESULT_PACKET_S1
-version: "1.2"
-status: CONVERGENCE-READY CHECKPOINT — both fixes confirmed LIVE in current production
-  with fresh trace-id evidence; NOT closed (closure remains Session C's / the
-  native's, per this checkpoint's own scope). See §Convergence-readiness
-  checkpoint below.
+version: "1.3"
+status: CLOSED — result_packet_accepted, CG-3 contribution issued. Full ceremony
+  (charter→baseline→triage→remediation→verification→regression→closure) run this
+  session per STREAM_CLOSURE_RUNBOOK_v1.2; V3-E-012a formally reconciled into the
+  frozen remediation plan via the A2 governed finding_freeze_exception_granted path.
+  See §Closure ceremony below.
 stream_id: S1
-stream_name: Navigation, Shell & History
+stream_name: Navigation, Shell and History
 date: 2026-08-29
 session_id: s1-nav-shell-20260827T232652Z
 actor: lead-s1
 changelog:
+  - "1.3 (2026-08-29, A2 closeout ceremony): confirmed PR #1610
+    (61a6dc4f80710ce4b98e558fbd1e702853237dfc) and PR #1614
+    (429fe6f2393c7d34b05b61093d99e00806dacc5a) are both ancestors of the CURRENT
+    production deploy sha (8eb79b2eafe4f1bb54b52a5eed8314509ab85531, per `gh run
+    list --workflow=deploy.yml --branch=main --status=success --limit 1` +
+    `git merge-base --is-ancestor`, fresh re-check this session). Formally folded
+    V3-E-012a into S1's frozen remediation plan as S1-R-002 via the A2 governed
+    plan-revision path -- NATIVE_SURROGATE-emitted `finding_freeze_exception_granted`
+    (event 830dec98-cf59-462a-86ec-e44bd67555be; the task brief's shorthand named
+    this path `scope_change_approved`/PROGRAMME_INTEGRATOR, but the actual PR #1651
+    mechanism, confirmed by reading the merged control.py and
+    STREAM_CLOSURE_RUNBOOK_v1.2 §3 step 4, is `finding_freeze_exception_granted`,
+    NATIVE_SURROGATE-only -- used the real mechanism, not the shorthand). Ran the
+    full six-stage stream-lifecycle ceremony end-to-end (charter, baseline, triage,
+    remediation, verification, regression, closure), each stage independently
+    linked by a distinct `verifier`-role event and accepted by `integrator`, per
+    STREAM_CLOSURE_RUNBOOK_v1.2 -- S1 is the first stream in the campaign to reach
+    CG-3 result_packet_accepted. Disposed both previously-unowned findings: the
+    global client-page breadcrumb color-contrast violation (Native Surrogate ruling,
+    ownership assigned pending an available fix session, tracked as a residual --
+    not an S1/S2 in-territory item, no code fix attempted here) and the
+    stream-branch-PRs-get-zero-CI process gap (recorded as a `decision_recorded`
+    residual for campaign hygiene, not a code fix). The tracker's live control-plane
+    service was itself upgraded in place (`service.py --upgrade-p2-release`, an
+    atomic, snapshot-verified, auto-rollback-on-failure operation) from release
+    9aed4cb73bd6 to eea98f38299b so `finding_freeze_exception_granted` was actually
+    available -- the running service had not yet picked up the merged PR #1651;
+    runtime event data was untouched, only the service code+plist were swapped."
   - "1.2 (2026-08-29, convergence-readiness checkpoint): re-derived state
     fresh rather than trusting the 2026-08-28 ledger. Confirmed both PR
     #1610 and #1614 are ancestors of the CURRENT deployed revision
@@ -33,9 +62,66 @@ changelog:
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/charters/STREAM_CHARTER_S1_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/STREAM_CLOSURE_RUNBOOK_v1_0.md
   - https://github.com/Marsys-Technologies/Madhav/pull/1610
   - https://github.com/Marsys-Technologies/Madhav/pull/1614
+  - https://github.com/Marsys-Technologies/Madhav/pull/1651
 ---
+
+## Closure ceremony (2026-08-29, A2 closeout session)
+
+**S1 is CLOSED.** `result_packet_accepted` issued by `integrator`, following a `verifier`-role
+`stream_closure_recommended` (finder `lead-s1` != recommender `verifier`), per
+`STREAM_CLOSURE_RUNBOOK_v1_0.md` (v1.2) §3. S1 is the first of the six V3 streams to reach this
+gate — CG-3 still requires all six.
+
+**Deploy-status re-check (fresh, this session).** Current production deploy sha, per
+`gh run list --workflow=deploy.yml --branch=main --status=success --limit 1`:
+`8eb79b2eafe4f1bb54b52a5eed8314509ab85531`. `git merge-base --is-ancestor` confirms both
+`61a6dc4f80710ce4b98e558fbd1e702853237dfc` (PR #1610) and
+`429fe6f2393c7d34b05b61093d99e00806dacc5a` (PR #1614) are ancestors — both fixes are live in
+current production, not merely merged.
+
+**V3-E-012a formally reconciled into the frozen remediation plan.** The task brief for this
+session described the governed path as `scope_change_approved`/PROGRAMME_INTEGRATOR; reading the
+actually-merged PR #1651 and `control.py` showed the real mechanism is
+`finding_freeze_exception_granted`, restricted to `NATIVE_SURROGATE` only (`STREAM_CLOSURE_RUNBOOK_v1_0.md`
+v1.2 §3 step 4 documents this precisely). Used the real mechanism: `surrogate` granted a freeze
+exception naming `S1-V3-E-012a` with `added_remediations` extending the frozen plan with `S1-R-002`
+(event `830dec98-cf59-462a-86ec-e44bd67555be`), then `lead-s1` recorded the finding through the
+ordinary `finding_discovered` path (event `335619b5-5bde-4867-b069-4c2dd0e99998`), `surrogate` triaged
+it (event `fae961fc-fdac-4d32-bb47-498b72e95cd2`), `lead-s1` implemented `S1-R-002` (event
+`8f6be43f-b86c-4771-a9f4-c160c18dc2f7`), and `verifier` independently verified it — a genuine diff
+review of PR #1614, not a rubber stamp (event `34c3321a-7e41-4983-b64c-4d7bcecd1178`; see the event's
+own `note` field for the specific code paths checked: the history-fetch `useEffect`, the
+race-guard filter, and the rename mis-target guard). `S1-R-002` reached `VERIFIED` status
+identically to `S1-R-001`.
+
+**Tracker infrastructure note.** The live control-plane service (`http://127.0.0.1:8787`) was still
+running release `9aed4cb73bd6`, which predates PR #1651's merge and therefore did not recognize
+`finding_freeze_exception_granted`. Upgraded it in place to release `eea98f38299b` via
+`service.py --upgrade-p2-release` — an atomic, snapshot-verified operation with automatic rollback
+on any failure; it swaps only the service code and launchd plist, never touches the runtime event
+log. (One stale backup-plist file from an earlier, evidently interrupted upgrade attempt to the
+same release blocked the first retry with `FileExistsError`; confirmed byte-identical to the
+current live plist before removing it, then the upgrade succeeded cleanly.)
+
+**Two previously-unowned findings disposed:**
+
+- **Breadcrumb `color-contrast` violation** (`app/clients/[id]/layout.tsx`, outside both S1's and
+  S2's declared territory): ruled on as `surrogate` — not fixed inline this session (a global
+  layout component outside this stream's chartered file territory, and the fix-vs-defer call
+  belongs to whichever stream/session is actually assigned the file). Recorded as a residual with
+  an explicit owner-assignment gap flagged to the integrator for the next available session
+  touching global layout chrome, rather than left as a dangling "no clear owner" note.
+- **Stream-branch-PRs-get-zero-CI process gap**: recorded as a `decision_recorded` residual (not a
+  code fix) — campaign hygiene for future streams, not S1's to fix. `ci.yml`'s
+  `pull_request.branches` allowlist either needs every stream branch added or every stream PR
+  needs to target `main` directly (as PR #1614 was retargeted to do).
+
+**Regression**: confirmed 10/10 distinct `S1-SC-NN` scenario slots executed (unchanged from the
+2026-08-29 convergence checkpoint) — `regression_accepted` event issued this session after
+re-confirming `scenarios.executed == scenarios.planned == 10` via `/api/projection`.
 
 ## Convergence-readiness checkpoint (2026-08-29, lead-s1)
 
