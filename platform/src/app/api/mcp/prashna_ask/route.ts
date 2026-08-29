@@ -409,6 +409,16 @@ export async function POST(request: Request) {
     })
   }
 
+  // S6-V3-E-003 / S4's V3-E-043: the Portal door (plan_stage.ts) times and
+  // persists `planning_latency_ms` per turn; this MCP door called
+  // `callPipelinePlanner` with no timing anywhere, so S6's planner-stage-tail
+  // measurement (avg ~6-7s, max 99.3s on the Portal door) had no observation
+  // surface here at all. This does NOT attempt V3-E-043's larger convergence
+  // (one persisted, cross-door-joinable trace) -- that stays a deferred
+  // architecture item. This closes the narrower, additive gap: measure and
+  // DISCLOSE planning latency on the wire, on every outcome branch, no new DB
+  // write, no new dependency.
+  const planStartedAtMs = Date.now()
   const plannerOutcome = await callPipelinePlanner(
     question,
     [],
@@ -419,6 +429,7 @@ export async function POST(request: Request) {
     plannerFallbackModelId,
     suppliedScopeTuple,
   )
+  const planningLatencyMs = Date.now() - planStartedAtMs
 
   if (plannerOutcome.outcome === 'clarification_needed') {
     return NextResponse.json({
@@ -428,16 +439,23 @@ export async function POST(request: Request) {
       question: plannerOutcome.question,
       missing_scope_dims: plannerOutcome.missing_scope_dims ?? [],
       suggested_options: plannerOutcome.suggested_options ?? [],
+      planning_latency_ms: planningLatencyMs,
     })
   }
   if (plannerOutcome.outcome === 'fault') {
     return NextResponse.json(
-      buildErrorEnvelope({
-        trace_id: queryId,
-        error_class: 'orchestrator_error',
-        message: `Planner fault: ${plannerOutcome.reason}`,
-        remediation: plannerOutcome.retryable ? 'Retry the same request.' : 'Rephrase the question.',
-      }),
+      {
+        ...buildErrorEnvelope({
+          trace_id: queryId,
+          error_class: 'orchestrator_error',
+          message: `Planner fault: ${plannerOutcome.reason}`,
+          remediation: plannerOutcome.retryable ? 'Retry the same request.' : 'Rephrase the question.',
+        }),
+        // S6-V3-E-003 — additive to this route only; not part of the shared
+        // McpErrorEnvelope contract other /api/mcp/* routes build through the
+        // same helper.
+        planning_latency_ms: planningLatencyMs,
+      },
       { status: 422 },
     )
   }
@@ -811,6 +829,8 @@ export async function POST(request: Request) {
         query_class: plan.query_class,
         query_intent_summary: plan.query_intent_summary,
         chart_header: chartHeader,
+        // S6-V3-E-003 — see the timing block above `callPipelinePlanner`.
+        planning_latency_ms: planningLatencyMs,
         reading: synthesis.reading,
         completeness: {
           status: isPartial ? 'partial' : 'complete',
