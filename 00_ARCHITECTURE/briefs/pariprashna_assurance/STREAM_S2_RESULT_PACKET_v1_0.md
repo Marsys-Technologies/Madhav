@@ -1,11 +1,15 @@
 ---
 artifact: PARIPRASHNA_STREAM_S2_RESULT_PACKET
-version: "3.0"
-status: DRAFT — convergence-ready (30/30, truth-checked, not inflated);
-  awaiting integrator's `result_packet_accepted` event at Session C
-  convergence. This document remains a link set to primary evidence, not
-  acceptance itself. Per the recorded native decision, S2 does NOT
-  self-certify closure or CG-3 — that ceremony is Session C's job.
+version: "4.0"
+status: CLOSED — Session 4 (2026-08-30) ran S2's full ceremony for the
+  first time (charter->baseline->triage->remediation->verification->
+  regression->closure) and the integrator's `result_packet_accepted`
+  event is now live on the tracker. `S2.lifecycle == "COMPLETE"`,
+  `S2.completion_pct == 100.0`. See "Session 4 — closure ceremony" below
+  for the full account. Prior: v3.0 (2026-08-29, DRAFT, convergence-ready
+  but deliberately not self-certifying closure per the recorded native
+  decision deferring all per-stream closure to a batched convergence
+  session).
 stream_id: S2
 stream_name: Conversation & Reading Experience
 date: 2026-08-29
@@ -580,3 +584,86 @@ new verification pass.
 - G-gate harness run: `npm run pariprashna:gates` — 58/58 passed
   (`platform/tests/pariprashna/gates/*.spec.ts`, chromium +
   mobile-390x844 projects).
+
+## Session 4 — closure ceremony (2026-08-30)
+
+S2:triage had never been run before this session (`lifecycle_stage: charter`,
+zero remediations recorded, no frozen `remediation_plan`, despite 30/30
+scenarios genuinely executed). This session ran S2's full ceremony for the
+first time: charter → baseline → triage → remediation → verification →
+regression → closure.
+
+**PR #1640 rebase/merge.** The session-3 PR (docs/test-infra + 3 EDIR
+findings, no product code) had gone DIRTY/CONFLICTING against `main` after
+the 2026-08-29 A5 per-stream register split
+(`EDIR_V3_REGISTER_v1_0.md` → `EDIR_V3_REGISTER_S{N}_v1_0.md`). Rebased
+clean: the visual-baseline-store test-infra commit and both result-packet
+rewrites cherry-picked with zero conflicts; the three stranded finding
+bodies (V3-E-060, V3-E-061, V3-E-062) were manually re-homed into
+`EDIR_V3_REGISTER_S2_v1_0.md`, the now-authoritative S2 register file,
+verbatim, keeping their already-tracker-registered ids unchanged. Merged
+to `main` via the repo's merge queue.
+
+**V3-E-013 / V3-E-024 / V3-E-024-fixed reconciliation.** Investigated
+against the live tracker, the archive register, and `gh pr view`:
+- `V3-E-013` is NOT a duplicate-id collision — it is the tracker's sole,
+  correctly-registered `finding_id` for the settle-announcement
+  grade-disclosure defect, already FIXED and merged pre-triage (PR #1612,
+  squash-merge commit `86740c9cb`). Its only defect was a stale doc
+  anchor (the living narrative had been renumbered to the `V3-E-030`
+  heading during a merge-conflict cleanup) and two missing tracker events
+  (`remediation_implemented` + `verification_accepted`) — both supplied
+  this session, independently re-confirmed live in current `main`
+  (`GroundingRegion.tsx` branches on `gradeSummaryLabel`).
+- `V3-E-024-fixed` is confirmed a data-entry duplicate of `V3-E-024` (same
+  fix commit `41bc1f3d1`, part of the same PR #1612) — a mistyped attempt
+  to record a fix using `finding_discovered` instead of
+  `remediation_implemented`. Reconciled via `finding_triaged` with an
+  explicit `VOID_DUPLICATE` disposition (rather than `correction_recorded`,
+  since no GET endpoint exposes the raw `finding_discovered` event_id
+  `correction_recorded` requires — an honest tooling gap, not worked
+  around by inventing a UUID) — the frozen remediation plan accounts for
+  it with a void-disposition entry, closing it out rather than leaving a
+  confusing open duplicate.
+
+**Remediation plan (11 entries, all triaged findings, `V3-E-061` excluded
+from any new fix work but still triaged+planned since the tracker's
+`remediation_approved` validator requires every discovered stream finding
+to reach `TRIAGED` before a plan can freeze):**
+
+| id | finding | disposition |
+|---|---|---|
+| S2-REM-013 | V3-E-013 | ALREADY_FIXED (PR #1612, re-confirmed live) |
+| S2-REM-014 | V3-E-014 | REFER — S4 territory, S4 closed without covering this id |
+| S2-REM-015 | V3-E-015 | DEFER — needs a native/design decision on phase taxonomy |
+| S2-REM-021 | V3-E-021 | REFER — S4 territory |
+| S2-REM-023 | V3-E-023 | ALREADY_FIXED (PR #1612, re-confirmed live) |
+| S2-REM-024 | V3-E-024 | ALREADY_FIXED (PR #1612, re-confirmed live) |
+| S2-REM-024_fixed | V3-E-024-fixed | VOID_DUPLICATE of V3-E-024 |
+| S2-REM-031 | V3-E-031 | PARTIAL_FIX — S2-owned header-clip piece fixed+verified; hydration-error + sidebar-referral pieces disclosed as residuals |
+| S2-REM-060 | V3-E-060 | PARTIAL_FIX — error-sentence disclosure landed (PR #1661); actions-wiring residual disclosed |
+| S2-REM-061 | V3-E-061 | DEFERRED_EXTERNAL — fix in flight on PR #1659 (Native Surrogate-disposed COMMISSION_FIX_THIS_CAMPAIGN, event `d9fd0274`); not duplicated by S2 |
+| S2-REM-062 | V3-E-062 | FIXED — real `<h1>` landed (PR #1661), demonstrated-can-fail test added |
+
+2 real code fixes landed this session (PR #1661, `pariprashna/v3-s2-e060-e062-fixes`):
+V3-E-062 fully fixed (a real `<h1>` on `ThreadHeader.tsx`'s chart-holder
+name, covering every Portal surface state since `ThreadHeader` renders
+unconditionally ahead of both `EmptyState` and `Transcript`); V3-E-060
+partially fixed (`Turn.tsx` now renders `turn.error.sentence`, mirroring
+the existing V3-E-023 interrupted-caveat pattern — `turn.error.actions`
+wiring is disclosed as a residual, not forced, per the finding's own note
+that real click-handler wiring is a feature-completion item). Both
+demonstrated-can-fail; full territory suite 1568 passed, 0 regressions;
+`tsc`/`eslint` clean.
+
+11/11 remediations independently verified (`projection.remediations`:
+`{"implemented": 11, "planned": 11, "verified": 11}`), all 7 lifecycle
+work items (`S2:charter/baseline/triage/remediation/verification/
+regression/closure`) accepted in order, `result_packet_accepted` emitted
+by the integrator. `S2.lifecycle == "COMPLETE"`,
+`S2.lifecycle_stage == "closure"`, `S2.completion_pct == 100.0`.
+`GET /api/integrity` confirmed `ok: true` (hash-chain intact) throughout.
+
+Full closure event trail is on the live tracker (`GET /api/projection`),
+not restated here.
+
