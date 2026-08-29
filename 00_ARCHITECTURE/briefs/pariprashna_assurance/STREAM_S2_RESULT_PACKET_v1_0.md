@@ -642,7 +642,7 @@ to reach `TRIAGED` before a plan can freeze):**
 | S2-REM-024_fixed | V3-E-024-fixed | VOID_DUPLICATE of V3-E-024 |
 | S2-REM-031 | V3-E-031 | PARTIAL_FIX — S2-owned header-clip piece fixed+verified; hydration-error + sidebar-referral pieces disclosed as residuals |
 | S2-REM-060 | V3-E-060 | PARTIAL_FIX — error-sentence disclosure landed (PR #1661); actions-wiring residual disclosed |
-| S2-REM-061 | V3-E-061 | DEFERRED_EXTERNAL — fix in flight on PR #1659 (Native Surrogate-disposed COMMISSION_FIX_THIS_CAMPAIGN, event `d9fd0274`); not duplicated by S2 |
+| S2-REM-061 | V3-E-061 | DEFERRED_EXTERNAL at triage time (PR #1659 was OPEN, CI-green, not yet merged when this session checked it before starting the S2 ceremony); PR #1659 merged mid-ceremony (`d6c71b324`, 2026-08-29T19:15:32Z, a few minutes before this stream's own triage batch posted) — S2 did not duplicate that fix either way, and the disposition is updated here to the now-current, accurate state rather than left stale |
 | S2-REM-062 | V3-E-062 | FIXED — real `<h1>` landed (PR #1661), demonstrated-can-fail test added |
 
 2 real code fixes landed this session (PR #1661, `pariprashna/v3-s2-e060-e062-fixes`):
@@ -666,4 +666,15 @@ by the integrator. `S2.lifecycle == "COMPLETE"`,
 
 Full closure event trail is on the live tracker (`GET /api/projection`),
 not restated here.
+
+**Post-triage correction (same session, honesty note):** PR #1659 merged
+to `main` (`d6c71b324`, 2026-08-29T19:15:32Z) a few minutes before this
+stream's `finding_triaged`/`remediation_implemented` events for V3-E-061
+posted — the tracker's immutable event payloads still read "OPEN, not yet
+merged, as of this triage" (accurate at the moment this session checked,
+before starting the ceremony), which is now stale. Recorded here rather
+than silently left: V3-E-061 is FIXED and merged as of this document's
+writing; S2 still did not duplicate that fix (it was never S2's to write
+— filed to S4/S5 territory), so no remediation action changes, only the
+"merged" fact.
 
