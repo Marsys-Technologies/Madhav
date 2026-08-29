@@ -117,15 +117,15 @@ describe('V3-E-061 deeper risk: an UNRECOGNIZED internal token shape — genuine
     // "the next internal identifier format nobody has written a pattern for
     // yet" — the exact gap the pre-fix code's safety silently depended on
     // never existing.
-    const secret = 'cache_slot_9f3a_row_42_customer_pii_row'
-    const preflightLint = lintReaderProse(`⟦cite: ${secret}`, makeFixtureResolver())
+    const unrecognizedInternalToken = 'cache_slot_9f3a_row_42_customer_pii_row'
+    const preflightLint = lintReaderProse(`⟦cite: ${unrecognizedInternalToken}`, makeFixtureResolver())
     // Proves the premise: this shape is invisible to the lint today.
     expect(preflightLint.leakCount).toBe(0)
-    expect(preflightLint.clean).toBe(`⟦cite: ${secret}`)
+    expect(preflightLint.clean).toBe(`⟦cite: ${unrecognizedInternalToken}`)
 
     const rw = new CitationStreamRewriter({ resolver: makeFixtureResolver(), modelId: 'm' })
     rw.write(`Something about `, 0)
-    rw.write(`⟦cite: ${secret}`, 1)
+    rw.write(`⟦cite: ${unrecognizedInternalToken}`, 1)
     expect(rw.isHolding()).toBe(true)
     const flushed = rw.checkTimeout(TIMEOUT_MS + 2)
     const ended = rw.end()
@@ -134,7 +134,7 @@ describe('V3-E-061 deeper risk: an UNRECOGNIZED internal token shape — genuine
     // The deeper, more serious variant the finding asked to be assessed:
     // genuine unredacted internal content — not just empty bracket markup —
     // must never reach the reader via this path.
-    expect(fullText).not.toContain(secret)
+    expect(fullText).not.toContain(unrecognizedInternalToken)
     expect(fullText).not.toContain('⟦')
     expect(fullText).not.toContain('cite:')
   })
