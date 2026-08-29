@@ -883,7 +883,9 @@ export async function POST(request: Request) {
   )
 
   const composeStart = Date.now()
-  const bundle = await hydrateBundle(plan, manifest)
+  // V3-E-016: `chartId` scopes which native-bound corpus assets may enter this
+  // turn's synthesis prompt. Never omit it — the hydrator has no unscoped path.
+  const bundle = await hydrateBundle(plan, manifest, { chartId })
   const composeBundleMs = Date.now() - composeStart
   // Step 2 — hydrate bundle
   emit({

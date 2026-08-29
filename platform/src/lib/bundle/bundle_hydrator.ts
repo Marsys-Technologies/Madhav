@@ -30,6 +30,7 @@ import type {
   ManifestData,
 } from './types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
+import { decideAssetScope } from './native_corpus_scope'
 
 const FLOOR_ASSET_IDS: readonly string[] = ['CGM']
 
@@ -47,6 +48,19 @@ export interface HydratedBundle extends Bundle {
   total_bytes: number
   /** True when at least one floor asset was injected by the hydrator. */
   floor_enforced: boolean
+  /**
+   * V3-E-016. Assets withheld because they are bound to a DIFFERENT native's
+   * chart than the one this turn is about — an honest, inspectable record that
+   * something was deliberately not injected, rather than a silent drop.
+   * Empty on the bound native's own turns.
+   */
+  excluded_native_scoped: ExcludedNativeScopedAsset[]
+}
+
+export interface ExcludedNativeScopedAsset {
+  asset_id: string
+  reason: 'native_binding_mismatch' | 'native_binding_unknown'
+  was_floor: boolean
 }
 
 interface AssetSpec {
@@ -56,11 +70,23 @@ interface AssetSpec {
   is_floor: boolean
 }
 
+export interface HydrateBundleOptions {
+  /**
+   * The chart THIS turn is about. REQUIRED — there is deliberately no
+   * unscoped/default path, because the default is what leaked (V3-E-016):
+   * every caller already has the chart id in hand, and a call that cannot name
+   * its chart has no business receiving a native-bound corpus document.
+   */
+  chartId: string
+}
+
 export async function hydrateBundle(
   plan: PipelinePlan,
   manifest: ManifestData,
+  options: HydrateBundleOptions,
 ): Promise<HydratedBundle> {
   const storage = getStorageClient()
+  const { chartId } = options
 
   // 1. Build effective asset list and enforce floor assets.
   const declared = plan.asset_bundle ?? []
@@ -96,10 +122,42 @@ export async function hydrateBundle(
   // 3. Fetch each asset's content. Floor failures throw; non-floor failures warn+skip.
   const assets: HydratedAsset[] = []
   const mandatoryContext: BundleEntry[] = []
+  const excluded_native_scoped: ExcludedNativeScopedAsset[] = []
   let totalBytes = 0
 
   for (const spec of effective) {
     const entry: AssetEntry | undefined = manifest.byId.get(spec.asset_id)
+
+    // ── V3-E-016 — chart scoping, BEFORE any read. ───────────────────────────
+    // A native-bound corpus asset (CGM/MSR/CDLM/RM/UCN/LEL — the manifest's own
+    // `native_id` field) describes one specific person's chart. It may only
+    // enter a synthesis prompt for THAT person's chart. This runs ahead of the
+    // storage read so a withheld asset is never even loaded into memory for the
+    // wrong turn.
+    //
+    // Note the floor interaction: a floor asset that is inadmissible here is
+    // WITHHELD, not fatal. The existing floor `throw`s below are unchanged and
+    // still fire for what they were always about — a floor asset that is
+    // missing, path-less, or unreadable, i.e. a broken deployment. "Correctly
+    // refused for this chart" is a different condition from "broken", and
+    // crashing every non-native chart's turn would be a worse outcome than the
+    // honest, recorded absence. Nothing here widens any existing admission.
+    if (entry) {
+      const scope = decideAssetScope(entry, chartId)
+      if (!scope.admissible) {
+        excluded_native_scoped.push({
+          asset_id: spec.asset_id,
+          reason: scope.reason,
+          was_floor: spec.is_floor,
+        })
+        console.warn(
+          `[bundle_hydrator] asset '${spec.asset_id}' withheld from chart ${chartId}: ${scope.reason} ` +
+            `(asset is bound to native '${entry.native_id}')`,
+        )
+        continue
+      }
+    }
+
     if (!entry) {
       if (spec.is_floor) {
         throw new Error(`bundle_hydrator: floor asset '${spec.asset_id}' not found in manifest`)
@@ -168,6 +226,10 @@ export async function hydrateBundle(
     schema_version: '1.0',
     assets,
     total_bytes: totalBytes,
-    floor_enforced,
+    // A floor asset that was prepended and then withheld for scope was never
+    // actually injected — reporting `floor_enforced: true` for it would be a
+    // signal with no injection behind it (§N.8).
+    floor_enforced: floor_enforced && assets.some(a => FLOOR_ASSET_IDS.includes(a.asset_id)),
+    excluded_native_scoped,
   }
 }

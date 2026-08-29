@@ -73,7 +73,9 @@ export async function runEvidenceStage(args: {
   const { em, request, chartId, userUid, plan, queryPlan, manifest, toolsAuthorized, orientationPromise } = args
 
   em.phase({ phase: 'retrieve', status: 'start', pass_id: PASS_ONE })
-  const bundle = await hydrateBundle(plan, manifest)
+  // V3-E-016: `chartId` scopes which native-bound corpus assets may enter this
+  // turn's synthesis prompt. Never omit it — the hydrator has no unscoped path.
+  const bundle = await hydrateBundle(plan, manifest, { chartId })
 
   const plannerParamsMap = new Map<string, Record<string, unknown>>(
     plan.tool_calls.map((tc) => [tc.tool_name, tc.params]),
