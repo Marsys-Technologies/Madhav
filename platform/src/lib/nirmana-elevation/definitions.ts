@@ -878,7 +878,6 @@ export async function supersedeNirmanaElevationDefinition(
       .map((asset) => `${input.campaign_id}:${input.expected_current_revision}:${asset.layer}:wave-${asset.wave_index}`))].sort()) {
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key])
     }
-    await client.query('LOCK TABLE nirmana_evidence.nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
     const usage = await client.query<{ event_count: number; build_run_count: number }>(
       `SELECT (SELECT count(*)::int FROM nirmana_evidence.nirmana_elevation_campaign_events WHERE campaign_id = $1 AND definition_revision = $2) AS event_count,
               (SELECT count(*)::int FROM build_runs WHERE plan_manifest #>> '{campaign_control,campaign_id}' = $1 AND plan_manifest #>> '{campaign_control,definition_revision}' = $2) AS build_run_count`,
