@@ -268,6 +268,59 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
   })
 })
 
+/**
+ * S6-V3-E-003 / S4's V3-E-043 (Paripraśna Assurance Programme v3, S6 Performance
+ * stream): the Portal door (`/api/pariprashna/route.ts`) times `callPlanStage`
+ * and persists `planning_latency_ms` per turn; this MCP door called
+ * `callPipelinePlanner` with zero timing anywhere (grep-confirmed before this
+ * fix), so the planner-stage tail S6 measured on the Portal door (avg ~6-7s,
+ * max 99.3s) had no equivalent observation surface here at all. This does NOT
+ * attempt the larger V3-E-043 convergence (unifying the three disjoint
+ * telemetry surfaces into one persisted, joinable trace) — that is a much
+ * larger, explicitly-deferred architecture item. This closes the narrower,
+ * additive gap: the MCP door now measures and DISCLOSES its own planning
+ * latency on the wire, on every outcome branch, exactly like `persistence`
+ * already discloses the P2-B-004/E-119 gap. No new DB write, no new
+ * dependency — timing only, surfaced on the existing envelope.
+ */
+describe('POST /api/mcp/prashna_ask — planning-stage latency disclosure (S6-V3-E-003)', () => {
+  it('reports a non-negative planning_latency_ms on the final reading envelope', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.event).toBe('final')
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
+  })
+
+  it('reports planning_latency_ms on the clarification_needed early return too', async () => {
+    mockCallPipelinePlanner.mockResolvedValue({
+      outcome: 'clarification_needed',
+      question: 'Which chart do you mean?',
+      missing_scope_dims: ['chart_id'],
+      suggested_options: [],
+    })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'ambiguous' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('clarification_needed')
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
+  })
+
+  it('reports planning_latency_ms on the planner-fault error envelope too', async () => {
+    mockCallPipelinePlanner.mockResolvedValue({ outcome: 'fault', reason: 'boom', retryable: true })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(422)
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
+  })
+})
+
 describe('POST /api/mcp/prashna_ask — happy path', () => {
   it('runs the engine, dispatches every planned tool, and returns a complete result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
