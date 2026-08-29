@@ -214,6 +214,11 @@ above. The next genuinely NEW S2 finding still claims `S2-V3-E-001`.
   PR #1659 is OPEN (not yet merged) — S2 is not duplicating that fix here;
   see PR #1659 and the tracker's own remediation record for the
   authoritative close.
+- **Update (2026-08-30, same closeout session):** PR #1659 MERGED to
+  `main` (`d6c71b324`, 2026-08-29T19:15:32Z), a few minutes after the
+  disposition note above was written — corrected here rather than left
+  stale. V3-E-061 is FIXED as of this update. S2 still did not write or
+  duplicate that fix (it was never S2's own territory).
 - **Addendum — V3-E-024 (safety-hold turns also affected) (2026-08-28, S2,
   coverage-completion pass, J4 mobile sub-run):** the SAME root cause as
   V3-E-024 (the `turn.close`/`turn.commit` composer-lock bug, see the
