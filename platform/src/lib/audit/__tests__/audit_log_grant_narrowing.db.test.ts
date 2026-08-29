@@ -4,15 +4,15 @@
  * LIVE, read-only, against madhav-astrology:asia-south1:amjis-postgres /
  * db amjis, via cloud-sql-proxy). An audit log a credential can DELETE or
  * TRUNCATE is not append-only — it can destroy the evidence of its own prior
- * actions. Migration 634 revokes exactly DELETE and TRUNCATE from `amjis_app`
+ * actions. Migration 637 revokes exactly DELETE and TRUNCATE from `amjis_app`
  * on `audit_log`, leaving SELECT/INSERT/UPDATE/TRIGGER/REFERENCES untouched.
  *
  * RED THEN GREEN, on one scratch database:
- *   - RED  (`describe('before migration 634 …')`): a connection as the real
+ *   - RED  (`describe('before migration 637 …')`): a connection as the real
  *     `amjis_app` role — created here with the SAME privilege set confirmed
  *     live in production — CAN DELETE and CAN TRUNCATE audit_log rows.
- *   - GREEN (`describe('after migration 634 …')`): after applying migration
- *     634's actual SQL file (not a re-implementation) to the SAME scratch DB,
+ *   - GREEN (`describe('after migration 637 …')`): after applying migration
+ *     637's actual SQL file (not a re-implementation) to the SAME scratch DB,
  *     the SAME connection gets a real Postgres permission-denied error on both
  *     DELETE and TRUNCATE, while SELECT/INSERT/UPDATE keep working (no
  *     regression on the idempotent-upsert write path writer.ts depends on).
@@ -24,7 +24,7 @@
  * is self-contained: it builds its own `audit_log` fixture (columns + the
  * uq_audit_log_query_id constraint, copied verbatim from
  * platform/supabase/migrations/0001_brahma_baseline.sql lines 1094-1109 /
- * 4382-4386) and applies migration 634 itself by reading the real .sql file.
+ * 4382-4386) and applies migration 637 itself by reading the real .sql file.
  *
  *   createdb e001_scratch
  *   E001_DB_TEST=1 E001_DATABASE_URL=postgres://postgres@127.0.0.1:5599/e001_scratch \
@@ -34,7 +34,7 @@
  * accidentally inherit a `DATABASE_URL` pointing at anything real — the
  * connection string must be named explicitly, in its own variable.
  *
- * THIS IS NOT AN APPLY. Nothing in this file, or in migration 634 itself, is
+ * THIS IS NOT AN APPLY. Nothing in this file, or in migration 637 itself, is
  * run against production by this test or by CI. See the migration file's own
  * header and the PR description for the sign-off gate.
  */
@@ -50,11 +50,11 @@ const ENABLED = process.env.E001_DB_TEST === '1' && !!DB_URL
 
 const MIGRATION = path.resolve(
   __dirname,
-  '../../../../supabase/migrations/634_pariprashna_audit_log_grant_narrowing.sql',
+  '../../../../supabase/migrations/637_pariprashna_audit_log_grant_narrowing.sql',
 )
 
 // Verbatim from platform/supabase/migrations/0001_brahma_baseline.sql
-// lines 1094-1109 (columns) and 4382-4386 (the constraint migration 634's own
+// lines 1094-1109 (columns) and 4382-4386 (the constraint migration 637's own
 // REVOKE targets by name) — not a re-derived shape.
 const FIXTURE = `
 CREATE TABLE IF NOT EXISTS public.audit_log (
@@ -118,7 +118,7 @@ describe.skipIf(!ENABLED)('E-001 narrowed proof — amjis_app / audit_log DELETE
     pool = new Pool({ connectionString: DB_URL })
     await admin(FIXTURE)
 
-    // Recreate the REAL role name — migration 634's REVOKE is hardcoded to
+    // Recreate the REAL role name — migration 637's REVOKE is hardcoded to
     // `FROM amjis_app`, so the proof must use that exact name, not a
     // differently-named equivalent, to be a faithful reproduction.
     await admin(`
@@ -144,7 +144,7 @@ describe.skipIf(!ENABLED)('E-001 narrowed proof — amjis_app / audit_log DELETE
     await pool?.end()
   })
 
-  describe('before migration 634 — RED: amjis_app can destroy audit_log evidence', () => {
+  describe('before migration 637 — RED: amjis_app can destroy audit_log evidence', () => {
     it('confirms amjis_app holds DELETE and TRUNCATE on audit_log before the fix', async () => {
       const { rows } = await admin(
         `SELECT has_table_privilege('amjis_app', 'audit_log', 'DELETE') AS del,
@@ -169,7 +169,7 @@ describe.skipIf(!ENABLED)('E-001 narrowed proof — amjis_app / audit_log DELETE
     })
   })
 
-  describe('applying migration 634', () => {
+  describe('applying migration 637', () => {
     it('applies cleanly and is idempotent (safe to re-run)', async () => {
       const sql = readFileSync(MIGRATION, 'utf8')
       await admin(sql)
@@ -177,7 +177,7 @@ describe.skipIf(!ENABLED)('E-001 narrowed proof — amjis_app / audit_log DELETE
     })
   })
 
-  describe('after migration 634 — GREEN: amjis_app can no longer destroy audit_log evidence', () => {
+  describe('after migration 637 — GREEN: amjis_app can no longer destroy audit_log evidence', () => {
     it('confirms amjis_app no longer holds DELETE or TRUNCATE on audit_log', async () => {
       const { rows } = await admin(
         `SELECT has_table_privilege('amjis_app', 'audit_log', 'DELETE') AS del,
@@ -211,7 +211,7 @@ describe.skipIf(!ENABLED)('E-001 narrowed proof — amjis_app / audit_log DELETE
 
       // The real writer.ts upsert shape: INSERT ... ON CONFLICT ON CONSTRAINT
       // uq_audit_log_query_id DO UPDATE — proves UPDATE was deliberately left
-      // intact (migration 634 header item 1), not accidentally preserved.
+      // intact (migration 637 header item 1), not accidentally preserved.
       const upsert = await asApp(
         `INSERT INTO audit_log (query_id, query_text, query_class, synthesis_model, disclosure_tier)
          VALUES ($1, 'q1-updated', 'interpretive', 'claude-haiku-4-5', 'super_admin')

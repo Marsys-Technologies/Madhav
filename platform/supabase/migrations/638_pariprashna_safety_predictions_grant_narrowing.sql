@@ -1,4 +1,4 @@
--- Migration 635: narrow amjis_app's grant on pariprashna_safety_decisions
+-- Migration 638: narrow amjis_app's grant on pariprashna_safety_decisions
 -- (revoke DELETE, TRUNCATE, UPDATE) and on mimamsa_predictions
 -- (revoke TRUNCATE only — DELETE and UPDATE are genuinely used, kept).
 -- Pariparaśna v3 closeout, Phase C · extends E-001 / PPR-26 (PR #1615) · 2026-08-29
@@ -7,7 +7,7 @@
 -- WHY THIS EXISTS
 -- ══════════════════════════════════════════════════════════════════════════════
 -- Native Surrogate ruling (tracker event 5e1a5a17-f7c6-4c4c-820d-b591e38950d9)
--- directed PR #1615 (migration 634, audit_log grant narrowing) to be EXTENDED to
+-- directed PR #1615 (migration 637, audit_log grant narrowing) to be EXTENDED to
 -- cover two more tables before merge, once live DB reads confirmed `amjis_app`
 -- holds the IDENTICAL over-broad grant (DELETE, INSERT, REFERENCES, SELECT,
 -- TRIGGER, TRUNCATE, UPDATE) on BOTH of them — and unlike `audit_log` (empty),
@@ -31,7 +31,7 @@
 -- caught by a `BEFORE UPDATE OR DELETE` row trigger (TRUNCATE is a separate
 -- statement class with its own trigger event), so the TRUNCATE grant is a real,
 -- live exposure the trigger does nothing about — the same "destroy the evidence"
--- gap migration 634 closed for `audit_log`.
+-- gap migration 637 closed for `audit_log`.
 --
 -- Net effect: this migration revokes all three (DELETE, TRUNCATE, UPDATE) as
 -- belt-and-suspenders defense-in-depth for DELETE/UPDATE (trigger already blocks
@@ -95,7 +95,7 @@
 -- WHAT THIS MIGRATION DOES *NOT* DO
 -- ══════════════════════════════════════════════════════════════════════════════
 --   1. It does not touch SELECT, INSERT, TRIGGER, or REFERENCES on either
---      table — unimplicated by this finding, same scoping discipline as 634.
+--      table — unimplicated by this finding, same scoping discipline as 637.
 --   2. It does not revoke DELETE or UPDATE on mimamsa_predictions — see the
 --      independent per-table analysis above; both have live, scoped, tested
 --      callers running under amjis_app today.
@@ -119,19 +119,19 @@ DO $preflight$
 BEGIN
   IF to_regclass('public.pariprashna_safety_decisions') IS NULL THEN
     RAISE EXCEPTION
-      'E635_PREFLIGHT_MISSING_TABLE: migration 635 narrows a grant on '
+      'E638_PREFLIGHT_MISSING_TABLE: migration 638 narrows a grant on '
       'public.pariprashna_safety_decisions, which does not exist in this database.';
   END IF;
 
   IF to_regclass('public.mimamsa_predictions') IS NULL THEN
     RAISE EXCEPTION
-      'E635_PREFLIGHT_MISSING_TABLE: migration 635 narrows a grant on '
+      'E638_PREFLIGHT_MISSING_TABLE: migration 638 narrows a grant on '
       'public.mimamsa_predictions, which does not exist in this database.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app') THEN
     RAISE EXCEPTION
-      'E635_PREFLIGHT_MISSING_ROLE: migration 635 narrows amjis_app''s grants, '
+      'E638_PREFLIGHT_MISSING_ROLE: migration 638 narrows amjis_app''s grants, '
       'but role amjis_app does not exist in this database.';
   END IF;
 END
@@ -152,33 +152,33 @@ DO $postcondition_safety_decisions$
 BEGIN
   IF has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'DELETE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app still holds DELETE on pariprashna_safety_decisions after REVOKE.';
+      'E638_POSTCONDITION_FAILED: amjis_app still holds DELETE on pariprashna_safety_decisions after REVOKE.';
   END IF;
   IF has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'TRUNCATE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app still holds TRUNCATE on pariprashna_safety_decisions after REVOKE.';
+      'E638_POSTCONDITION_FAILED: amjis_app still holds TRUNCATE on pariprashna_safety_decisions after REVOKE.';
   END IF;
   IF has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'UPDATE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app still holds UPDATE on pariprashna_safety_decisions after REVOKE.';
+      'E638_POSTCONDITION_FAILED: amjis_app still holds UPDATE on pariprashna_safety_decisions after REVOKE.';
   END IF;
   -- Confirm the untouched privileges survived, so a future edit to this file
   -- cannot accidentally widen its blast radius without this check catching it.
   IF NOT has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'SELECT') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost SELECT on pariprashna_safety_decisions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost SELECT on pariprashna_safety_decisions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'INSERT') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost INSERT on pariprashna_safety_decisions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost INSERT on pariprashna_safety_decisions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'TRIGGER') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost TRIGGER on pariprashna_safety_decisions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost TRIGGER on pariprashna_safety_decisions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.pariprashna_safety_decisions', 'REFERENCES') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost REFERENCES on pariprashna_safety_decisions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost REFERENCES on pariprashna_safety_decisions.';
   END IF;
 END
 $postcondition_safety_decisions$;
@@ -188,36 +188,36 @@ DO $postcondition_mimamsa_predictions$
 BEGIN
   IF has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'TRUNCATE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app still holds TRUNCATE on mimamsa_predictions after REVOKE.';
+      'E638_POSTCONDITION_FAILED: amjis_app still holds TRUNCATE on mimamsa_predictions after REVOKE.';
   END IF;
   -- DELETE and UPDATE are deliberately NOT revoked (see header) — confirm both
   -- survived, alongside the other untouched privileges, so a future edit to
   -- this file cannot accidentally widen its blast radius unnoticed.
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'DELETE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost DELETE on mimamsa_predictions '
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost DELETE on mimamsa_predictions '
       '(DELETE is intentionally NOT revoked by this migration — see header).';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'UPDATE') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost UPDATE on mimamsa_predictions '
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost UPDATE on mimamsa_predictions '
       '(UPDATE is intentionally NOT revoked by this migration — see header).';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'SELECT') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost SELECT on mimamsa_predictions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost SELECT on mimamsa_predictions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'INSERT') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost INSERT on mimamsa_predictions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost INSERT on mimamsa_predictions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'TRIGGER') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost TRIGGER on mimamsa_predictions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost TRIGGER on mimamsa_predictions.';
   END IF;
   IF NOT has_table_privilege('amjis_app', 'public.mimamsa_predictions', 'REFERENCES') THEN
     RAISE EXCEPTION
-      'E635_POSTCONDITION_FAILED: amjis_app unexpectedly lost REFERENCES on mimamsa_predictions.';
+      'E638_POSTCONDITION_FAILED: amjis_app unexpectedly lost REFERENCES on mimamsa_predictions.';
   END IF;
 END
 $postcondition_mimamsa_predictions$;

@@ -1,9 +1,9 @@
 /**
  * Pariparaśna v3 closeout, Phase C — extends E-001 / PPR-26 (PR #1615, migration
- * 634) to two more tables where live DB reads confirmed `amjis_app` holds the
+ * 637) to two more tables where live DB reads confirmed `amjis_app` holds the
  * IDENTICAL over-broad grant (DELETE, INSERT, REFERENCES, SELECT, TRIGGER,
  * TRUNCATE, UPDATE): `pariprashna_safety_decisions` (369+ live rows) and
- * `mimamsa_predictions` (195 rows). Migration 635 narrows both.
+ * `mimamsa_predictions` (195 rows). Migration 638 narrows both.
  *
  * Per-table decision (independently verified, NOT assumed from audit_log):
  *   - pariprashna_safety_decisions: DELETE, TRUNCATE, UPDATE all revoked. No
@@ -13,7 +13,7 @@
  *     577, `trg_pariprashna_safety_decisions_append_only`) that already blocks
  *     UPDATE/DELETE for every role. THIS TEST DELIBERATELY DOES NOT INSTALL
  *     THAT TRIGGER on its scratch fixture — it isolates exactly what migration
- *     635 itself does (grant narrowing), not the trigger's own behaviour, which
+ *     638 itself does (grant narrowing), not the trigger's own behaviour, which
  *     already has its own coverage (review_db.integration.test.ts,
  *     consent.db.test.ts). A production DB has BOTH layers; this proof is for
  *     the grant layer only, so a future trigger edit/disable does not silently
@@ -35,35 +35,35 @@
  *
  * RED THEN GREEN, on one scratch database, mirroring
  * audit_log_grant_narrowing.db.test.ts's proof shape exactly:
- *   - RED  (`describe('before migration 635 …')`): a connection as the real
+ *   - RED  (`describe('before migration 638 …')`): a connection as the real
  *     `amjis_app` role — created here with the SAME privilege set confirmed
  *     live in production on both tables — CAN perform every privilege this
  *     migration is about to revoke.
- *   - GREEN (`describe('after migration 635 …')`): after applying migration
- *     635's actual SQL file (not a re-implementation) to the SAME scratch DB,
+ *   - GREEN (`describe('after migration 638 …')`): after applying migration
+ *     638's actual SQL file (not a re-implementation) to the SAME scratch DB,
  *     the SAME connection gets a real Postgres permission-denied error on
  *     every revoked privilege, while every KEPT privilege — including the two
  *     real write shapes above — keeps working (no regression).
  *
- * SKIPPED unless `E635_DB_TEST=1` AND `E635_DATABASE_URL` is set — same
+ * SKIPPED unless `E638_DB_TEST=1` AND `E638_DATABASE_URL` is set — same
  * reasoning as audit_log_grant_narrowing.db.test.ts: this CREATEs a ROLE and
  * REVOKEs real privileges, so it must run against a THROWAWAY / local database
  * and NEVER against the shared production DB. Self-contained: it builds its
  * own fixture tables (columns copied verbatim from the tables' own defining
  * migrations — 577_pariprashna_safety_gate.sql lines 65-91 for
  * pariprashna_safety_decisions, 347_mimamsa_bhavisya.sql lines 6-25 for
- * mimamsa_predictions) and applies migration 635 itself by reading the real
+ * mimamsa_predictions) and applies migration 638 itself by reading the real
  * .sql file.
  *
- *   createdb e635_scratch
- *   E635_DB_TEST=1 E635_DATABASE_URL=postgres://postgres@127.0.0.1:5599/e635_scratch \
+ *   createdb e638_scratch
+ *   E638_DB_TEST=1 E638_DATABASE_URL=postgres://postgres@127.0.0.1:5599/e638_scratch \
  *     npx vitest run src/lib/audit/__tests__/safety_predictions_grant_narrowing.db.test.ts
  *
  * Talks to `pg` directly rather than through `@/lib/db/client`, so it cannot
  * accidentally inherit a `DATABASE_URL` pointing at anything real — the
  * connection string must be named explicitly, in its own variable.
  *
- * THIS IS NOT AN APPLY. Nothing in this file, or in migration 635 itself, is
+ * THIS IS NOT AN APPLY. Nothing in this file, or in migration 638 itself, is
  * run against production by this test or by CI. See the migration file's own
  * header and the PR description for the sign-off gate.
  */
@@ -74,12 +74,12 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Pool } from 'pg'
 
-const DB_URL = process.env.E635_DATABASE_URL
-const ENABLED = process.env.E635_DB_TEST === '1' && !!DB_URL
+const DB_URL = process.env.E638_DATABASE_URL
+const ENABLED = process.env.E638_DB_TEST === '1' && !!DB_URL
 
 const MIGRATION = path.resolve(
   __dirname,
-  '../../../../supabase/migrations/635_pariprashna_safety_predictions_grant_narrowing.sql',
+  '../../../../supabase/migrations/638_pariprashna_safety_predictions_grant_narrowing.sql',
 )
 
 // Verbatim (columns only — no triggers, no FKs, no unrelated constraints) from
@@ -193,7 +193,7 @@ async function seedMimamsaPredictions() {
 }
 
 describe.skipIf(!ENABLED)(
-  'E-635 narrowed proof — amjis_app / pariprashna_safety_decisions + mimamsa_predictions',
+  'E-638 narrowed proof — amjis_app / pariprashna_safety_decisions + mimamsa_predictions',
   () => {
     beforeAll(async () => {
       pool = new Pool({ connectionString: DB_URL })
@@ -225,7 +225,7 @@ describe.skipIf(!ENABLED)(
       await pool?.end()
     })
 
-    describe('before migration 635 — RED', () => {
+    describe('before migration 638 — RED', () => {
       it('confirms amjis_app holds DELETE/TRUNCATE/UPDATE on pariprashna_safety_decisions', async () => {
         const { rows } = await admin(
           `SELECT has_table_privilege('amjis_app', 'pariprashna_safety_decisions', 'DELETE') AS del,
@@ -275,7 +275,7 @@ describe.skipIf(!ENABLED)(
       })
     })
 
-    describe('applying migration 635', () => {
+    describe('applying migration 638', () => {
       it('applies cleanly and is idempotent (safe to re-run)', async () => {
         const sql = readFileSync(MIGRATION, 'utf8')
         await admin(sql)
@@ -283,7 +283,7 @@ describe.skipIf(!ENABLED)(
       })
     })
 
-    describe('after migration 635 — GREEN', () => {
+    describe('after migration 638 — GREEN', () => {
       it('confirms amjis_app no longer holds DELETE/TRUNCATE/UPDATE on pariprashna_safety_decisions', async () => {
         const { rows } = await admin(
           `SELECT has_table_privilege('amjis_app', 'pariprashna_safety_decisions', 'DELETE') AS del,

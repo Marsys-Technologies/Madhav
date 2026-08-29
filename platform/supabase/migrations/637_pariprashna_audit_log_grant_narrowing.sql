@@ -1,4 +1,4 @@
--- Migration 634: narrow amjis_app's grant on audit_log — revoke DELETE, TRUNCATE.
+-- Migration 637: narrow amjis_app's grant on audit_log — revoke DELETE, TRUNCATE.
 -- Paripraśna v3 stream S5 (security/privacy), lane E-001 · finding E-001 / PPR-26 · 2026-08-28
 --
 -- ══════════════════════════════════════════════════════════════════════════════
@@ -72,14 +72,14 @@ DO $preflight$
 BEGIN
   IF to_regclass('public.audit_log') IS NULL THEN
     RAISE EXCEPTION
-      'E001_PREFLIGHT_MISSING_TABLE: migration 634 narrows a grant on public.audit_log, '
+      'E001_PREFLIGHT_MISSING_TABLE: migration 637 narrows a grant on public.audit_log, '
       'which does not exist in this database. Refusing to apply a grant change against a '
       'table that is not there.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app') THEN
     RAISE EXCEPTION
-      'E001_PREFLIGHT_MISSING_ROLE: migration 634 narrows amjis_app''s grant on audit_log, '
+      'E001_PREFLIGHT_MISSING_ROLE: migration 637 narrows amjis_app''s grant on audit_log, '
       'but role amjis_app does not exist in this database.';
   END IF;
 END
