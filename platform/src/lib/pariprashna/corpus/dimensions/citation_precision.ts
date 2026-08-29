@@ -3,15 +3,30 @@
  *
  * Grounded in G2-B's live citation rewriter, surfaced on the receipt as
  * `evidence_grades` (G3-A, merged): the turn's own grade-tier tally
- * (`primary`/`supporting`/`contextual`/`unverified`/`prior_reading`, i.e.
- * citations the rewriter actually RESOLVED against a real signal) alongside
- * `hallucination_count` (sentinels the model emitted that never resolved —
- * `TurnCitationStream.hallucinationCount`, `citations/stream_wiring.ts`).
- * Precision = resolved / (resolved + hallucinated): what fraction of the
- * turn's citation attempts pointed at something real. `evidence_grades` is
- * `unavailable` exactly when the live rewriter didn't run this turn (regex
- * fallback carries no per-citation grade tier), per schema.ts's own comment —
- * this scorer reports that as `not_yet_measurable`, not a fabricated 0 or 1.
+ * (`primary`/`supporting`/`contextual`/`unverified`/`prior_reading`).
+ *
+ * IMPORTANT — `grade_counts.unverified` and `hallucination_count` are the
+ * SAME event, not disjoint sets: `citations/rewriter.ts`'s `resolveSentinel`
+ * has exactly one branch for an unresolvable reference, and that branch both
+ * assigns `grade: 'unverified'` AND calls `this.counter.increment(...)` in
+ * the same block (rewriter.ts:263-278) — confirmed live 2026-08-28 against
+ * the deployed web door (S3 corpus run, 10/10 measured turns had
+ * `hallucination_count === grade_counts.unverified` exactly). An earlier
+ * version of this scorer treated `unverified` as "resolved" (numerator) and
+ * separately added `hallucination_count` to the denominator, double-counting
+ * every unresolvable citation and forcing the score toward ~0.5 regardless
+ * of true quality — masking a true 0.0 (zero citations ever reached a
+ * trustworthy grade) as a falsely reassuring 0.5. Fixed: only
+ * `primary`/`supporting`/`contextual`/`prior_reading` count as resolved-to-
+ * something-real; `unverified` is the hallucination bucket and belongs only
+ * in the denominator. `hallucination_count` itself is no longer read here —
+ * it is redundant with `grade_counts.unverified` by the rewriter's own
+ * construction, not an independent signal.
+ *
+ * `evidence_grades` is `unavailable` exactly when the live rewriter didn't
+ * run this turn (regex fallback carries no per-citation grade tier), per
+ * schema.ts's own comment — this scorer reports that as `not_yet_measurable`,
+ * not a fabricated 0 or 1.
  */
 
 import type { DimensionResult, TurnObservation } from '../types'
@@ -41,11 +56,12 @@ export function scoreCitationPrecision(obs: TurnObservation): DimensionResult {
     }
   }
 
-  const resolved = Object.values(grades.grade_counts).reduce((sum, n) => sum + n, 0)
-  const total = resolved + grades.hallucination_count
+  const { primary, supporting, contextual, unverified, prior_reading } = grades.grade_counts
+  const resolved = primary + supporting + contextual + prior_reading
+  const total = resolved + unverified
   const findings: string[] = []
-  if (grades.hallucination_count > 0) {
-    findings.push(`${grades.hallucination_count} citation sentinel(s) never resolved (hallucination_count > 0)`)
+  if (unverified > 0) {
+    findings.push(`${unverified} citation(s) never resolved to a trustworthy source (grade 'unverified')`)
   }
 
   if (total === 0) {

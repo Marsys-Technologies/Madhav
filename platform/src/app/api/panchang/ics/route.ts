@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { res } from '@/lib/errors'
 import { buildDayIcs } from '@/lib/panchang/ics_builder'
 import { mapSidecarResponse } from '@/lib/panchang/sidecar_mapper'
@@ -43,6 +44,19 @@ export async function GET(request: NextRequest) {
   const lat = parseFloat(searchParams.get('lat') ?? String(DEFAULT_LAT))
   const lon = parseFloat(searchParams.get('lon') ?? String(DEFAULT_LON))
   const chartId = searchParams.get('chart_id') ?? undefined
+
+  // Same cross-tenant guard as POST /api/panchang — see that route for the full
+  // rationale. This proxy also forwards a caller-supplied chart_id to the
+  // sidecar, whose _fetch_native_context reads the chart's birth row and trusts
+  // "the proxy" to have authorized it. Contained today only because
+  // ics_builder.ts happens never to render native_context; guarding here removes
+  // the dependency on that downstream silence. `chart_id` is optional, and the
+  // chart_id-less calendar stays open to any authenticated caller.
+  if (chartId !== undefined) {
+    if (chartId.trim() === '') return res.badRequest('chart_id must be a non-empty string')
+    const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+    if (denied) return denied
+  }
 
   // Fetch panchang from sidecar
   const sidecarUrl = process.env.PYTHON_SIDECAR_URL

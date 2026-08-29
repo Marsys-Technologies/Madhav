@@ -9,12 +9,25 @@
  *   - gate_verdict: 'passed' | 'amber' | 'failed'
  *   - sample_rows: first 3 rows
  *
- * Auth: requires authentication (any tier).
+ * Auth: requires authentication AND per-chart authorization ('read' level —
+ * owner, chart_grants 'view' grantee, or super_admin). See V3-E-010: this
+ * route used to require only "is there a logged-in user", returning any
+ * chart's asset row_count/provenance/sample_rows to ANY authenticated caller
+ * holding a chart_id — a cross-tenant read. Same root cause as B-001/B-007/
+ * B-008.
+ *
+ * V3-E-020: the authz door above is necessary but not sufficient — the
+ * `chart_facts` reads below must ALSO constrain `chart_id`. They previously
+ * filtered on `category` alone, so row_count / provenance / sample_rows were
+ * computed across every chart in the database and returned under the
+ * requested chart's name. Each `chart_facts` read is now chart-scoped, the
+ * same shape the `pyramid_layers` read already used.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,12 +79,18 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // V3-E-010: 'read' level (permission !== 'deny') — this endpoint discloses
+  // chart-scoped data, not a destructive/state-changing action, so a
+  // chart_grants 'view' grantee legitimately passes.
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  if (denied) return denied
+
   // Get row count and provenance from chart_facts for this asset
   const countResult = await query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM chart_facts
-     WHERE category = $1`,
-    [assetKey],
+     WHERE chart_id = $1 AND category = $2`,
+    [chartId, assetKey],
   )
   const rowCount = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
@@ -83,10 +102,10 @@ export async function GET(
   }>(
     `SELECT build_id, provenance, created_at
      FROM chart_facts
-     WHERE category = $1
+     WHERE chart_id = $1 AND category = $2
      ORDER BY created_at DESC
      LIMIT 1`,
-    [assetKey],
+    [chartId, assetKey],
   )
   const latestRow = provenanceResult.rows[0] ?? null
 
@@ -114,10 +133,10 @@ export async function GET(
   }>(
     `SELECT fact_id, category, divisional_chart, value_text, value_number, source_section, build_id, created_at
      FROM chart_facts
-     WHERE category = $1
+     WHERE chart_id = $1 AND category = $2
      ORDER BY created_at DESC
      LIMIT 3`,
-    [assetKey],
+    [chartId, assetKey],
   )
 
   const provenance = latestRow

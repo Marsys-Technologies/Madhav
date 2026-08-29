@@ -681,6 +681,20 @@ export async function POST(request: Request) {
         toolsAuthorized.push(tc.tool_name)
       }
     }
+    // V3-E-024 (extends PR #1621's plan_stage.ts fix to this door — identical
+    // pattern, this route runs its own copy of the W4 step-3 sequence rather than
+    // calling runPlanStage): the compiler's E-7 insight-mandate note was computed
+    // by compileContract on every call but had no field to survive through
+    // CompiledFloorResult until PR #1621 added it — it reached nowhere on THIS
+    // door either. Folded into `plan.synthesis_guidance`, the existing, tested
+    // mechanism this route already uses to carry planner-level hints to
+    // synthesis (see `buildConsultSystemContent`'s "SYNTHESIS GUIDANCE" section
+    // in run_adapter_dispatch.ts, called below via `plan.synthesis_guidance`).
+    if (compiledFloor.llm_extension_note) {
+      plan.synthesis_guidance = plan.synthesis_guidance
+        ? `${plan.synthesis_guidance}\n\n${compiledFloor.llm_extension_note}`
+        : compiledFloor.llm_extension_note
+    }
   }
   // else: no scope_tuple on the plan (defensive — callPipelinePlanner always attaches
   // one for a resolved plan). Fall through to the guarantees below, which reproduce
@@ -869,7 +883,9 @@ export async function POST(request: Request) {
   )
 
   const composeStart = Date.now()
-  const bundle = await hydrateBundle(plan, manifest)
+  // V3-E-016: `chartId` scopes which native-bound corpus assets may enter this
+  // turn's synthesis prompt. Never omit it — the hydrator has no unscoped path.
+  const bundle = await hydrateBundle(plan, manifest, { chartId })
   const composeBundleMs = Date.now() - composeStart
   // Step 2 — hydrate bundle
   emit({

@@ -13,6 +13,13 @@ const migrationPath = path.resolve(
 const integrityMigration = fs.existsSync(migrationPath)
   ? fs.readFileSync(migrationPath, 'utf8')
   : ''
+const dependencyMigrationPath = path.resolve(
+  process.cwd(),
+  'supabase/migrations/635_nirmana_l0_dependency_contracts.sql',
+)
+const dependencyMigration = fs.existsSync(dependencyMigrationPath)
+  ? fs.readFileSync(dependencyMigrationPath, 'utf8')
+  : ''
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_GOVERNANCE_TEST_DATABASE_URL
 
 if (TEST_DATABASE_URL) {
@@ -41,7 +48,6 @@ describe('migration 615 — scoped L0 governance integrity contracts', () => {
     for (const hash of Object.values(HASHES)) expect(integrityMigration).toContain(hash)
     for (const [assetId, sortOrder, floor] of [
       ['bg_class_priors', 67, 171],
-      ['bg_class_lifetime_counts', 21, 6],
       ['bg_formula_constants', 68, 17],
     ] as const) {
       expect(ASSETS.find(asset => asset.asset_id === assetId)).toMatchObject({
@@ -50,6 +56,33 @@ describe('migration 615 — scoped L0 governance integrity contracts', () => {
         depends_on: [],
       })
     }
+    expect(ASSETS.find(asset => asset.asset_id === 'bg_class_lifetime_counts')).toMatchObject({
+      sort_order: 21,
+      target_floor: 6,
+      depends_on: ['bg_ghatana'],
+    })
+    // 615 must keep validating its original pre-migration state. The new
+    // dependency is applied by a later immutable registry-contract migration.
+    expect(integrityMigration).toMatch(/asset_id='bg_class_lifetime_counts'[\s\S]*?registry_row\.depends_on=ARRAY\[\]::text\[\]/)
+  })
+})
+
+describe('migration 635 — source-backed L0 dependency contracts', () => {
+  it('is runner-owned, only converges known legacy arrays, and leaves 615 historical validation intact', () => {
+    expect(dependencyMigration).not.toBe('')
+    expect(dependencyMigration).not.toMatch(/^BEGIN;/m)
+    expect(dependencyMigration).not.toMatch(/^COMMIT;/m)
+    expect(dependencyMigration).toContain("depends_on = ARRAY[]::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['bg_ghatana']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions', 'bg_panchanga']::text[]")
+    expect(dependencyMigration).toContain("depends_on = ARRAY['ga_positions', 'bg_prashna_rules']::text[]")
+    expect(dependencyMigration).toContain('migration 635 refuses drifted')
+    expect(dependencyMigration).toContain('migration 635 requires CURRENT active source authorities')
+    expect(dependencyMigration).toContain('migration 635 requires CURRENT active target contracts')
+    expect(dependencyMigration).toContain("health_probe->>'probe_type' = 'panchanga_engine'")
+    expect(dependencyMigration).toContain('migration 635 refuses a cycle through a corrected L0 dependency contract')
+    expect(integrityMigration).toMatch(/asset_id='bg_class_lifetime_counts'[\s\S]*?registry_row\.depends_on=ARRAY\[\]::text\[\]/)
   })
 })
 
@@ -88,7 +121,7 @@ describe.skipIf(!TEST_DATABASE_URL)('L0 governance writers — real PostgreSQL c
         scope text,is_active boolean,has_writer boolean DEFAULT false,has_substeps boolean DEFAULT false,
         layer_name text,layer_index text,catalog_status text,asset_kind text DEFAULT 'data',
         integrity_check_sql text,volume_explanation text,natural_key_partition text,
-        data_disposition text
+        data_disposition text,asset_type text DEFAULT 'data',health_probe jsonb
       );
       CREATE TABLE brahma_class_priors (
         prior_version text NOT NULL,signal_type_class text NOT NULL,fact_kind text NOT NULL,
@@ -132,6 +165,41 @@ describe.skipIf(!TEST_DATABASE_URL)('L0 governance writers — real PostgreSQL c
       WHERE asset_id='bg_formula_constants';
     `)
     runWriters()
+  }
+
+  async function seedDependencyContracts(client: Client): Promise<void> {
+    await client.query(`
+      INSERT INTO asset_registry
+        (asset_id,layer,depends_on,scope,is_active,has_writer,catalog_status,asset_kind,asset_type,health_probe)
+      VALUES
+        ('bg_ghatana','brahmagyan',ARRAY[]::text[],'global',true,true,'CURRENT','data','data',NULL),
+        ('bg_panchanga','brahmagyan',ARRAY[]::text[],'global',true,false,'CURRENT','service','service','{"probe_type":"panchanga_engine"}'::jsonb),
+        ('bg_prashna_rules','brahmagyan',ARRAY[]::text[],'global',true,true,'CURRENT','data','data',NULL),
+        ('ga_positions','ganita',ARRAY[]::text[],'per_chart',true,true,'CURRENT','data','data',NULL),
+        ('ga_panchanga','ganita',ARRAY['ga_positions']::text[],'per_chart',true,true,'CURRENT','data','data',NULL),
+        ('ga_prashna','ganita',ARRAY['ga_positions']::text[],'per_chart',true,true,'CURRENT','data','data',NULL);
+    `)
+  }
+
+  async function applyMigration(client: Client, sql: string): Promise<void> {
+    await client.query('BEGIN')
+    try {
+      await client.query(sql)
+      await client.query('COMMIT')
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    }
+  }
+
+  async function dependencyArrays(client: Client): Promise<Record<string, string[]>> {
+    const result = await client.query<{ asset_id: string; depends_on: string[] }>(`
+      SELECT asset_id,depends_on
+        FROM asset_registry
+       WHERE asset_id IN ('bg_class_lifetime_counts','ga_panchanga','ga_prashna')
+       ORDER BY asset_id
+    `)
+    return Object.fromEntries(result.rows.map(row => [row.asset_id, row.depends_on]))
   }
 
   async function hashes(client: Client): Promise<Record<keyof typeof HASHES, string>> {
@@ -187,6 +255,74 @@ describe.skipIf(!TEST_DATABASE_URL)('L0 governance writers — real PostgreSQL c
     try {
       await reset(client)
       expect(await hashes(client)).toEqual(HASHES)
+    } finally {
+      await client.end()
+    }
+  })
+
+  it('applies migration 635 from exact legacy arrays and replays its exact corrected state', async () => {
+    const client = new Client({ connectionString: TEST_DATABASE_URL })
+    await client.connect()
+    try {
+      await reset(client)
+      await seedDependencyContracts(client)
+      await applyMigration(client, dependencyMigration)
+      expect(await dependencyArrays(client)).toEqual({
+        bg_class_lifetime_counts: ['bg_ghatana'],
+        ga_panchanga: ['ga_positions', 'bg_panchanga'],
+        ga_prashna: ['ga_positions', 'bg_prashna_rules'],
+      })
+
+      await applyMigration(client, dependencyMigration)
+      expect(await dependencyArrays(client)).toEqual({
+        bg_class_lifetime_counts: ['bg_ghatana'],
+        ga_panchanga: ['ga_positions', 'bg_panchanga'],
+        ga_prashna: ['ga_positions', 'bg_prashna_rules'],
+      })
+    } finally {
+      await client.end()
+    }
+  })
+
+  it('fails closed and rolls back migration 635 on an unknown dependency state', async () => {
+    const client = new Client({ connectionString: TEST_DATABASE_URL })
+    await client.connect()
+    try {
+      await reset(client)
+      await seedDependencyContracts(client)
+      await client.query(`UPDATE asset_registry SET depends_on=ARRAY['unreviewed']::text[] WHERE asset_id='ga_panchanga'`)
+
+      await expect(applyMigration(client, dependencyMigration)).rejects.toThrow(
+        'migration 635 refuses drifted ga_panchanga dependencies',
+      )
+      expect(await dependencyArrays(client)).toEqual({
+        bg_class_lifetime_counts: [],
+        ga_panchanga: ['unreviewed'],
+        ga_prashna: ['ga_positions'],
+      })
+    } finally {
+      await client.end()
+    }
+  })
+
+  it.each([
+    ['missing source', `DELETE FROM asset_registry WHERE asset_id='bg_prashna_rules'`, 'migration 635 requires CURRENT active source authorities'],
+    ['wrong Panchanga probe type', `UPDATE asset_registry SET health_probe='{"probe_type":"wrong"}'::jsonb WHERE asset_id='bg_panchanga'`, 'migration 635 requires the vetted bg_panchanga service-probe contract'],
+    ['cycle through corrected target', `UPDATE asset_registry SET depends_on=ARRAY['bg_class_lifetime_counts']::text[] WHERE asset_id='bg_ghatana'`, 'migration 635 refuses a cycle through a corrected L0 dependency contract'],
+  ])('fails closed and rolls back migration 635 on %s', async (_name, setupSql, expectedError) => {
+    const client = new Client({ connectionString: TEST_DATABASE_URL })
+    await client.connect()
+    try {
+      await reset(client)
+      await seedDependencyContracts(client)
+      await client.query(setupSql)
+
+      await expect(applyMigration(client, dependencyMigration)).rejects.toThrow(expectedError)
+      expect(await dependencyArrays(client)).toEqual({
+        bg_class_lifetime_counts: [],
+        ga_panchanga: ['ga_positions'],
+        ga_prashna: ['ga_positions'],
+      })
     } finally {
       await client.end()
     }

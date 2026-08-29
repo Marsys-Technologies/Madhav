@@ -710,7 +710,19 @@ export async function runSynthesisStage(args: {
   let citationStream: TurnCitationStream | null = null
   if (citationRewriteEnabled) {
     const candidateIds = extractCandidateSignalIds({ validToolResults: args.validToolResults ?? [] })
-    const labels = await fetchCandidateSignalLabels(candidateIds)
+    const { labels, faulted } = await fetchCandidateSignalLabels(queryPlan.chart_id, candidateIds)
+    if (faulted) {
+      // §N.8: a degraded prefetch (DB/infra fault on one or more source
+      // tables) is distinguishable from the honest "nothing to resolve"
+      // case — this turn's citations still fail closed to unverified
+      // either way, but a diagnostic layer reading this flag can tell the
+      // two apart instead of reading both as "the model cited nothing real."
+      em.flag({
+        code: 'citation_prefetch_db_fault',
+        level: 'warn',
+        detail: 'citation resolver prefetch faulted for one or more source tables this turn; affected sentinels resolve unverified (fail-closed), not necessarily hallucinated',
+      })
+    }
     citationStream = new TurnCitationStream({
       resolver: buildTurnCitationResolver(labels),
       modelId: params.modelId,

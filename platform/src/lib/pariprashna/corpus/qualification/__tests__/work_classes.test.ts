@@ -73,38 +73,51 @@ describe('getFixturesForWorkClass', () => {
     }
     const excludedCount = CORPUS_FIXTURES.filter((f) => getWorkClassForQueryClass(f.queryClass) === null).length
     expect(total).toBe(CORPUS_FIXTURES.length - excludedCount)
-    expect(excludedCount).toBe(2) // ambiguous_clarification + door_parity
+    // ambiguous_clarification + door_parity, 5 fixtures each per the test plan §7 floor (v2, 2026-08-28)
+    const excludedFixtureCount = CORPUS_FIXTURES.filter(
+      (f) => f.queryClass === 'ambiguous_clarification' || f.queryClass === 'door_parity',
+    ).length
+    expect(excludedCount).toBe(excludedFixtureCount)
   })
 
-  it('factual work class contains exactly the factual-001 fixture', () => {
+  it('factual work class contains exactly the factual-class fixtures, factual-001 among them', () => {
     const fixtures = getFixturesForWorkClass('factual')
-    expect(fixtures.map((f) => f.fixtureId)).toEqual(['factual-001-moon-nakshatra-lagna'])
+    const expected = CORPUS_FIXTURES.filter((f) => f.queryClass === 'factual').map((f) => f.fixtureId)
+    expect(fixtures.map((f) => f.fixtureId).sort()).toEqual(expected.sort())
+    expect(fixtures.map((f) => f.fixtureId)).toContain('factual-001-moon-nakshatra-lagna')
   })
 
-  it('sensitive work class contains exactly the sensitive-001 fixture', () => {
+  it('sensitive work class contains exactly the sensitive-class fixtures, sensitive-001 among them', () => {
     const fixtures = getFixturesForWorkClass('sensitive')
-    expect(fixtures.map((f) => f.fixtureId)).toEqual(['sensitive-001-ayurdaya-longevity'])
+    const expected = CORPUS_FIXTURES.filter((f) => f.queryClass === 'sensitive').map((f) => f.fixtureId)
+    expect(fixtures.map((f) => f.fixtureId).sort()).toEqual(expected.sort())
+    expect(fixtures.map((f) => f.fixtureId)).toContain('sensitive-001-ayurdaya-longevity')
   })
 
   it('predictive work class contains exactly the timing and outcome fixtures', () => {
     const fixtures = getFixturesForWorkClass('predictive')
-    expect(fixtures.map((f) => f.fixtureId).sort()).toEqual(
-      ['timing-001-mercury-md-saturn-ad', 'outcome-001-saturn-ad-2026-authority-transition'].sort(),
-    )
+    const expected = CORPUS_FIXTURES.filter(
+      (f) => f.queryClass === 'timing' || f.queryClass === 'prediction_capture_outcome',
+    ).map((f) => f.fixtureId)
+    expect(fixtures.map((f) => f.fixtureId).sort()).toEqual(expected.sort())
+    expect(fixtures.map((f) => f.fixtureId)).toContain('timing-001-mercury-md-saturn-ad')
+    expect(fixtures.map((f) => f.fixtureId)).toContain('outcome-001-saturn-ad-2026-authority-transition')
   })
 
-  it('interpretive work class contains the remaining 6 fixtures', () => {
+  it('interpretive work class contains the remaining 6 query classes\' fixtures', () => {
     const fixtures = getFixturesForWorkClass('interpretive')
-    expect(fixtures).toHaveLength(6)
-    expect(fixtures.map((f) => f.queryClass).sort()).toEqual(
-      [
-        'interpretive_whole_chart',
-        'cross_domain_contradiction',
-        'remedial',
-        'incomplete_evidence',
-        'returning_conversation_drift',
-        'disagreement',
-      ].sort(),
+    const interpretiveQueryClasses = [
+      'interpretive_whole_chart',
+      'cross_domain_contradiction',
+      'remedial',
+      'incomplete_evidence',
+      'returning_conversation_drift',
+      'disagreement',
+    ]
+    const expected = CORPUS_FIXTURES.filter((f) => interpretiveQueryClasses.includes(f.queryClass)).map(
+      (f) => f.fixtureId,
     )
+    expect(fixtures.map((f) => f.fixtureId).sort()).toEqual(expected.sort())
+    expect(new Set(fixtures.map((f) => f.queryClass))).toEqual(new Set(interpretiveQueryClasses))
   })
 })

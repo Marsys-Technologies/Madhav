@@ -41,7 +41,16 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
         <AnswerRegion turn={turn} chartId={chartId} />
         {turn.status === 'interrupted' && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
-            The connection was lost partway. What arrived is above; nothing was altered.
+            {/* V3-E-023: `interrupted` has two genuinely different causes
+                (turn.interruptedReason) — a deliberate Stop click, or a real
+                stale-connection/server-died timeout. The band label two
+                lines above already states the honest cause
+                (EDGE_STATE_LABELS.user_stopped /
+                EDGE_STATE_LABELS.connection_lost_final); this caveat must
+                not contradict it by asserting the other cause unconditionally. */}
+            {turn.interruptedReason === 'connection_lost'
+              ? 'The connection was lost partway. What arrived is above; nothing was altered.'
+              : 'What arrived is above; nothing was altered.'}
           </p>
         )}
         <PersistenceNotice turn={turn} />

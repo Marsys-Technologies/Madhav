@@ -1,4 +1,5 @@
 from ..runner import execute_dag
+import pytest
 
 def test_on_complete_called_for_each_successful_asset():
     calls = []
@@ -40,3 +41,30 @@ def test_on_complete_exception_does_not_crash_scheduler():
     # Both assets complete despite the callback error
     assert failed == set()
     assert terminal is None
+
+
+@pytest.mark.parametrize(
+    ('upstream', 'downstream'),
+    [
+        ('bg_panchanga', 'ga_panchanga'),
+        ('bg_ghatana', 'bg_class_lifetime_counts'),
+        ('bg_prashna_rules', 'ga_prashna'),
+    ],
+)
+def test_l0_contract_failure_blocks_its_downstream_writer(upstream, downstream):
+    """A failed L0 contract must keep its dependent writer out of execution."""
+    executed = []
+    blocks = []
+
+    failed, terminal = execute_dag(
+        plan=[upstream, downstream],
+        deps_of={upstream: [], downstream: [upstream]},
+        run_fn=lambda asset: (executed.append(asset) or ('error' if asset == upstream else 'lit')),
+        worker_limit=1,
+        on_block=lambda asset, dependencies: blocks.append((asset, dependencies)),
+    )
+
+    assert terminal is None
+    assert failed == {upstream, downstream}
+    assert executed == [upstream]
+    assert blocks == [(downstream, [upstream])]

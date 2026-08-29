@@ -21,6 +21,8 @@ function baselineMissingSnapshot(): NirmanaElevationSnapshotV2 {
     current_definition_sha256: null,
     candidate_definition_sha256: definitionDigest,
     candidate_catalogue_sha256: catalogueDigest,
+    supersession_eligible: false,
+    supersession_blockers: [],
   }
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
   if (!monitor) throw new Error('Fixture must include the program monitor source.')

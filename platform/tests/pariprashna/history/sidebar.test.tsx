@@ -124,4 +124,74 @@ describe('Sidebar row selection + rename', () => {
     expect(renamed).toEqual(['t-1', 'New title'])
     expect(selected).toBeNull()
   })
+
+  it('activates a row via Enter and Space (keyboard parity with click)', () => {
+    const selections: string[] = []
+    render(<Sidebar threads={[thread({ id: 't-1' })]} onSelect={(id) => selections.push(id)} />)
+    const row = screen.getByTestId('pp-sidebar-row')
+    fireEvent.keyDown(row, { key: 'Enter' })
+    fireEvent.keyDown(row, { key: ' ' })
+    expect(selections).toEqual(['t-1', 't-1'])
+  })
+})
+
+describe('Sidebar accessibility structure', () => {
+  it('nests each chart group as an ARIA group (list > group > listitem — a bare list > div > listitem tree fails aria-required-children)', () => {
+    const threads = [thread({ id: 't-1', chartId: CHART_A, chartName: 'Abhisek Mohanty' })]
+    render(<Sidebar threads={threads} onSelect={() => {}} />)
+    const list = screen.getByRole('list', { name: /past readings/i })
+    const group = screen.getByRole('group', { name: 'Abhisek Mohanty' })
+    expect(list.contains(group)).toBe(true)
+    expect(group.contains(screen.getByTestId('pp-sidebar-row'))).toBe(true)
+  })
+
+  it('carries the full untruncated title as a tooltip on both the collapsed glyph and the expanded label, for CSS-truncated long titles', () => {
+    const longTitle = 'A'.repeat(200)
+    render(<Sidebar threads={[thread({ id: 't-1', title: longTitle })]} onSelect={() => {}} />)
+    expect(screen.getByText(longTitle)).toHaveAttribute('title', longTitle)
+  })
+})
+
+describe('Sidebar large-history-list performance (test plan §5.1 "History sidebar" row)', () => {
+  function makeThreads(count: number, groups: number): ThreadSummary[] {
+    const now = Date.now()
+    return Array.from({ length: count }, (_, i) => {
+      const chartIndex = i % groups
+      return thread({
+        id: `t-${i}`,
+        chartId: `chart-${chartIndex}`,
+        chartName: `Chart ${chartIndex}`,
+        title: `Question ${i}`,
+        updatedAtMs: now - i * 1000,
+      })
+    })
+  }
+
+  it('groups, sorts, and renders 2000 threads across 200 charts scaling sub-quadratically, not by an absolute wall-clock budget', () => {
+    // A fixed-ms ceiling is exactly the flaky-under-CI-load shape (a shared,
+    // throttled CI runner legitimately took >3x a local dev machine's time
+    // for this same render — 1649ms vs. an earlier 500ms ceiling, no code
+    // regression involved). What actually needs guarding against is an
+    // ACCIDENTAL O(n²) (e.g. a re-sort or re-group per row instead of once)
+    // — that shows up as a scaling-RATIO blowup, not an absolute number, so
+    // measure a 10x size increase in the SAME run/environment and assert the
+    // time ratio stays well under a quadratic (10x size → ~100x time) blowup.
+    const small = makeThreads(200, 20)
+    const smallStart = performance.now()
+    const { unmount } = render(<Sidebar threads={small} onSelect={() => {}} />)
+    const smallElapsedMs = Math.max(performance.now() - smallStart, 1) // avoid div-by-~0 on a sub-ms clock tick
+    unmount()
+
+    const large = makeThreads(2000, 200)
+    const largeStart = performance.now()
+    render(<Sidebar threads={large} onSelect={() => {}} />)
+    const largeElapsedMs = performance.now() - largeStart
+
+    // 10x the input; linear-ish (or n log n) work stays well under a 30x
+    // time increase in practice, while a real O(n²) defect lands near 100x.
+    // 30x leaves comfortable slack for jsdom/GC noise without masking a
+    // genuine quadratic regression.
+    expect(largeElapsedMs).toBeLessThan(smallElapsedMs * 30)
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2000)
+  })
 })

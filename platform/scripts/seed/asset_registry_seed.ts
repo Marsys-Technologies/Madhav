@@ -572,7 +572,7 @@ export const ASSETS: AssetDef[] = [
     // SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md § ADJUDICATION-2 item 5.
     // Mirrors migration 522's asset_registry INSERT exactly — a clean reseed must
     // not silently drop this asset (the ga_vichara / bo_pratijna defect class).
-    // Global L0, `depends_on: []`, super-admin-triggered only (brief §2.5.2).
+    // Global L0, after the event/activity ontology it classifies, super-admin-triggered only (brief §2.5.2).
     //
     // `count_sql` counts the ROWS AT THE RESERVED COORDINATE, not the whole table:
     // brahma_class_priors also holds 164 signal-salience priors from
@@ -612,7 +612,7 @@ export const ASSETS: AssetDef[] = [
       '6 achieved Tier N-i/N-ii lifetime-count rows at the writer-owned ne_v01 ' +
       'coordinate. Unseeded event classes remain an explicit coverage gap; this ' +
       'floor must rise only with defensible cited sources, never fabricated rows.',
-    depends_on: [],
+    depends_on: ['bg_ghatana'],
     scope: 'global', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -1283,7 +1283,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one panchanga row per ayanamsha" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).',
-    depends_on: ['ga_positions'],
+    depends_on: ['ga_positions', 'bg_panchanga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1522,7 +1522,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '0 for natal charts (horary only). Actual prashna count depends on number of prashna charts submitted.',
-    depends_on: ['ga_positions'],
+    depends_on: ['ga_positions', 'bg_prashna_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 

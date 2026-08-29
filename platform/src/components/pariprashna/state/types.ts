@@ -132,6 +132,13 @@ export type ClassifiedErrorKind =
   | 'timeout'
   | 'network'
   | 'auth'
+  // V3-E-041 fix: entitlement/consent refusal kinds — mirrors
+  // `PariprashnaErrorKind` in `lib/pariprashna/errors/classify.ts`, the
+  // sole place that constructs a `ClassifiedError`.
+  | 'not_authorized'
+  | 'chart_not_found'
+  | 'consent_required'
+  | 'conversation_not_found'
   | 'unknown'
 
 export interface ClassifiedError {
@@ -245,6 +252,17 @@ export interface TurnState {
    * is rendered as an honest absence, never a guessed value (§N.7 item 6).
    */
   readingDepthReceived: string | null
+  /**
+   * V3-E-023 (Paripraśna assurance, S2). `status === 'interrupted'` is
+   * reached via TWO genuinely different causes that must not share the same
+   * reader-facing copy: `'user_stop'` (CLIENT_STOP — a deliberate Stop
+   * click) and `'connection_lost'` (`snapshot.apply` forwarding
+   * `ring_buffer.ts`'s `finalizeInterruptedIfStale` — a real server-died/
+   * no-wire-activity timeout, `resume/route.ts`). `null` for every other
+   * status. Consumers (`WorkingBand.tsx`, `Turn.tsx`) branch on this rather
+   * than assuming the cause.
+   */
+  interruptedReason: 'user_stop' | 'connection_lost' | null
   /** Most-recently-applied event id (debug/telemetry only — NOT the dedup key). */
   lastEventId: string | null
   /**

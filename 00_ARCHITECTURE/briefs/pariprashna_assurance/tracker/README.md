@@ -58,7 +58,9 @@ surrogate/native separation, stale and paused behavior, stale-green prevention, 
 recovery/corruption detection, weighted evidence-only progress, scope-change reduction,
 ledger-linked work-item verification, phase/gate prerequisites, append-only corrections,
 snapshot reconciliation, external adapter degradation, lifecycle fixtures, end-to-end SSE
-delivery and latency, and dashboard accessibility source contracts.
+delivery and latency, dashboard accessibility source contracts, numeric-slot scenario
+deduplication, single-writer-per-stream scenario leasing (including stale-lease takeover),
+and distinct-slot projection counting under a historically-corrupted duplicate ledger.
 
 For a P3 stream, its first `work_started` event must include a positive
 `planned_scenarios` integer. Scenario execution is separately recorded by unique
@@ -68,11 +70,62 @@ an accepted result packet, never a direct work-item event. The dashboard exposes
 denominator, execution-session ownership/configuration, evidence timestamps, scope-change
 reduction explanations, and retained rejection records.
 
+Every `scenario_executed` event must also carry a `writer_instance_id`: a stable id for the
+submitting writer process (mint one nonce per process/session and reuse it for every
+scenario-execution write that process makes; `cli.py emit --writer-instance-id ...`).
+`DUPLICATE_SCENARIO` keys on the scenario's numeric slot (`S{N}-SC-{NN}`, extracted from the
+`scenario_id`), not the full slug, so a relabelled retry of an already-executed slot is still
+rejected. A stream's scenario-execution writes are further leased to one writer instance at a
+time: a second, different instance is rejected with `CONCURRENT_WRITER_LEASE_CONFLICT` while
+the incumbent's lease is fresh (`SCENARIO_WRITER_LEASE_TTL_SECONDS`), preventing two unaware
+concurrent sessions from both recording executions against the same stream. A stale lease
+(no scenario write from its holder within the TTL) may be taken over, so a genuinely dead
+writer never permanently blocks the stream. The projected `scenarios.executed` count is the
+distinct-slot count, never the raw event count; `scenarios.recorded_scenario_events` exposes
+the raw count separately for audit.
+
+**Where the lease is enforced, and what it does and does not cover.** Both the lease and the
+numeric-slot dedup guard live in the shared `EventStore` (`control.py`), backed by the
+`stream_scenario_write_leases` SQLite table — *not* in the HTTP request handler. Every caller
+therefore inherits them: `POST /api/events`, `cli.py emit`, `demo.py`, and any future writer.
+`cli.py` instantiates `EventStore` directly and never touches the server process, so this
+placement is what stops it being a single-writer bypass; `tests/pariprashna_assurance_tracker/
+test_cli_writer_lease.py` proves it cross-process (a separate `cli.py` OS process is rejected
+while an HTTP writer holds the lease — impossible unless enforcement is DB-backed) and fails
+red if the check is ever relocated into `server.py`. Honest scope limit: the lease covers
+`scenario_executed` writes only. A stream's other `STREAM_LEAD` events (`finding_discovered`,
+`paused`, `blocked`, `verification_started`, …) are *not* leased — a second, unaware writer
+instance can still record those against a stream whose scenario lease another instance holds.
+`expected_stream_seq` prevents lost updates there, but not two concurrent sessions both
+recording work. Broadening the lease is a live-control-plane design decision (it must not
+break the verifier, surrogate, and integrator writing to the same stream concurrently by
+design) and is deliberately left open rather than changed unreviewed.
+
 After all discovered findings in a stream are triaged, the surrogate emits one
 `remediation_approved` event containing its `remediation_plan` (an explicit empty list is
 valid when no remediation is required). Each entry maps one triaged finding to one remediation.
 Only those entries may be implemented, each must be independently verified, and the remediation
 work item cannot earn credit until the complete frozen plan is verified.
+
+Once that plan is frozen, a genuinely new finding is `FINDING_FREEZE`-rejected. The one governed
+way past it is `finding_freeze_exception_granted`, and **only a `NATIVE_SURROGATE` may emit it**
+(`ROLE_FORBIDDEN` for every other role, re-asserted inside the transition validator so a widened
+`ROLE_EVENTS` row alone cannot open it). The exception is deliberately narrow: it names exactly
+one `finding_id` on one stream, requires a non-empty `reason` and primary `evidence`, is refused
+before a plan is actually frozen (`FINDING_FREEZE_EXCEPTION_UNNECESSARY` — no blanket pre-grants),
+may be granted once per identifier (`FINDING_FREEZE_EXCEPTION_CONFLICT`), and cannot re-open an
+already-discovered id (`FINDING_ID_CONFLICT`). Every other post-freeze finding stays rejected. The
+lead then records the finding through the ordinary `finding_discovered` path.
+
+An optional `added_remediations` array revises the frozen plan for that finding — each entry needs
+a plan-unique `id` and must name the exception's own `finding_id`, so nothing else can be smuggled
+in. Amended entries join the contract the downstream gates read, which *tightens* them: the added
+remediation must itself be implemented and independently verified before the remediation stage can
+earn credit. The projection exposes `finding_freeze_exceptions` (who authorized, why, what
+finding, evidence, and whether the finding was subsequently recorded), stamps the granting event
+onto the finding's `freeze_exception` field, and lists the grant among the surrogate `decisions`.
+Authority is read from the granting ledger row's own stored `actor_role`, never from a client
+claim — an event of this type written under any other role grants nothing.
 
 An integrator records a defined phase prerequisite through evidence-bearing
 `dependency_resolved` with `from` and `to`. The dependency panel preserves its resolved status
@@ -83,8 +136,13 @@ Run it with:
 
 ```sh
 python3 -m unittest -v tests/pariprashna_assurance_tracker/test_control.py
+python3 -m unittest -v tests/pariprashna_assurance_tracker/test_cli_writer_lease.py
 tests/pariprashna_assurance_tracker/browser_smoke.sh
 ```
+
+`test_cli_writer_lease.py` runs `cli.py` as a real subprocess against an isolated temporary
+runtime; it is the cross-process proof that the single-writer lease is DB-backed rather than
+HTTP-handler-local.
 
 The browser/SSE integration test binds a loopback socket. In a sandboxed environment it may
 require local socket permission; it never opens a non-loopback listener. The Chrome smoke

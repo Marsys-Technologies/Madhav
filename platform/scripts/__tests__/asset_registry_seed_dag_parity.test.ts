@@ -81,6 +81,14 @@ const POST_626_DEPENDENCIES: Record<string, string[]> = {
   mi_sambandha: ['mi_pramana', 'mi_pariksha', 'mi_bhavisya'],
 }
 
+// L0 dependency-contract corrections. These edges ensure a downstream writer
+// cannot be planned before the L0 asset that supplies its source contract.
+const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
+  ga_panchanga: ['ga_positions', 'bg_panchanga'],
+  bg_class_lifetime_counts: ['bg_ghatana'],
+  ga_prashna: ['ga_positions', 'bg_prashna_rules'],
+}
+
 describe('asset_registry_seed — post-626 DAG parity', () => {
   const assetsById = new Map(ASSETS.map((asset) => [asset.asset_id, asset]))
 
@@ -102,6 +110,22 @@ describe('asset_registry_seed — post-626 DAG parity', () => {
       'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
       'ga_sensitive', 'ga_strength', 'ga_vargas',
     ])
+  })
+
+  it('pins the three L0 upstream contracts required by downstream assets', () => {
+    expect(Object.keys(L0_CONTRACT_DEPENDENCIES)).toHaveLength(3)
+
+    for (const [assetId, dependencies] of Object.entries(L0_CONTRACT_DEPENDENCIES)) {
+      expect(assetsById.get(assetId)?.depends_on, assetId).toEqual(dependencies)
+    }
+  })
+
+  it('keeps ga_vastu dependent only on the condition data it reads', () => {
+    expect(assetsById.get('ga_vastu')).toMatchObject({
+      target_table: 'ga_vastu_planet_direction_map',
+      depends_on: ['ga_condition'],
+    })
+    expect(assetsById.has('ga_vastu_planet_direction_map')).toBe(false)
   })
 
   it('includes the migration-owned static citation-resolution asset', () => {

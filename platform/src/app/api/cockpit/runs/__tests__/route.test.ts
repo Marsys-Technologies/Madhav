@@ -69,6 +69,18 @@ const REGISTRY_PANCHANGA_SERVICE = [{
   has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'panchanga_engine' },
 }]
 
+const REGISTRY_UNTRUSTED_NO_WRITER_SERVICE = [{
+  asset_id: 'bg_untrusted_no_writer_service', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'untrusted' },
+}]
+
+// The registry must retain bg_panchanga as a dependency identity for ga_panchanga,
+// while the route must never select it in an ordinary build plan.
+const REGISTRY_PANCHANGA_DEPENDENT = [
+  { asset_id: 'ga_panchanga', layer: 'ganita', scope: 'per_chart', depends_on: ['bg_panchanga'], estimated_seconds: 30 },
+  ...REGISTRY_PANCHANGA_SERVICE,
+]
+
 // Bodha registry: includes bo_* assets for G4 precondition gate tests
 const REGISTRY_BODHA = [
   { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
@@ -123,6 +135,16 @@ function seedSuccessfulBuild(registryRows: typeof REGISTRY_WITH_L0) {
   mockInvokeRunJob.mockResolvedValue(undefined)
 }
 
+function freshnessRow(assetId: string, state: 'fresh' | 'stale') {
+  const writerDigests = writerDigestInventory.writers as Record<string, string>
+  return {
+    asset_id: assetId,
+    state,
+    reasons: state === 'fresh' ? [] : ['probe receipt is stale'],
+    code_digest: assetId === 'bg_panchanga' ? writerDigestInventory.probe_digest : writerDigests[assetId],
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -165,6 +187,7 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
       ...REGISTRY_WITH_L0,
       ...REGISTRY_EPHEMERIS_SERVICE,
       ...REGISTRY_PANCHANGA_SERVICE,
+      ...REGISTRY_UNTRUSTED_NO_WRITER_SERVICE,
     ] as typeof REGISTRY_WITH_L0)
 
     const { POST } = await import('../route')
@@ -173,6 +196,7 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     const body = await res.json()
     expect(body.data.plan).not.toContain('bg_ephemeris_engine')
     expect(body.data.plan).not.toContain('bg_panchanga')
+    expect(body.data.plan).not.toContain('bg_untrusted_no_writer_service')
   })
 
   it('persists the ordered waves and registry dependency snapshot with the run', async () => {
@@ -671,6 +695,206 @@ describe('POST /api/cockpit/runs — governed global service probes', () => {
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 
+})
+
+describe('POST /api/cockpit/runs — service probe dependency identities', () => {
+  function seedPanchangaDependentBuild(
+    throughputRows: ReadonlyArray<{ asset_id: string; state: string }>,
+    freshnessRows: ReadonlyArray<ReturnType<typeof freshnessRow>>,
+    scope: 'asset' | 'layer' | 'global' = 'asset',
+  ) {
+    seedRole('client')
+    // scope=asset checks the target before the normal dispatch reads. A client
+    // must retain the global probe as a dependency identity without gaining an
+    // L0/service selection path.
+    if (scope === 'asset') {
+      mockQuery.mockResolvedValueOnce({ rows: [{ scope: 'per_chart' }], rowCount: 1 })
+    }
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_PANCHANGA_DEPENDENT, rowCount: REGISTRY_PANCHANGA_DEPENDENT.length })
+      .mockResolvedValueOnce({ rows: throughputRows, rowCount: throughputRows.length })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce({ rows: freshnessRows, rowCount: freshnessRows.length })
+      .mockResolvedValue({ rows: [{ id: 'run-panchanga-001' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+  }
+
+  it('allows ga_panchanga only when its retained service probe identity is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'fresh')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest.assets.map((asset: { asset_id: string }) => asset.asset_id)).toEqual(['ga_panchanga'])
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is missing', async () => {
+    seedPanchangaDependentBuild([], [])
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'unknown', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is stale', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'stale')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('never dispatches a no-writer service in an L0 layer build', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      ...REGISTRY_WITH_L0.filter(row => row.layer === 'brahmagyan'),
+      ...REGISTRY_PANCHANGA_SERVICE,
+    ] as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'brahmagyan', action: 'rebuild' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['bg_ephemeris', 'bg_ontology'])
+  })
+
+  it('allows a client ganita-layer build when the out-of-scope Panchanga probe is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'fresh')],
+      'layer',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each([
+    ['missing', [], []],
+    ['stale', [{ asset_id: 'bg_panchanga', state: 'service_ok' }], [freshnessRow('bg_panchanga', 'stale')]],
+  ] as const)('blocks a client ganita-layer build when the Panchanga probe is %s', async (_state, throughputRows, freshnessRows) => {
+    seedPanchangaDependentBuild(throughputRows, freshnessRows, 'layer')
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('allows global update only when the excluded Panchanga probe is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'update' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each(['build', 'rebuild'] as const)('allows global %s when the excluded Panchanga probe is healthy and fresh', async (action) => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each(['build', 'rebuild'] as const)('blocks global %s when its planned consumer has a stale excluded Panchanga probe', async (action) => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('blocks global update and cascade when their planned consumer has a stale excluded Panchanga probe', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const update = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'update' }))
+    expect(update.status).toBe(422)
+    expect((await update.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+
+    vi.clearAllMocks()
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'lit' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+    const cascade = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'cascade' }))
+    expect(cascade.status).toBe(422)
+    expect((await cascade.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+  })
+
+  it('keeps global cascade as a no-op when all dependency identities are fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'lit' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'cascade' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).code).toBe('ALL_LIT')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
 })
 
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──

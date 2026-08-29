@@ -82,6 +82,19 @@ export interface SynthesizeReadingInput {
   nowContextDate: string
   /** chart_header.current_maha_antar (e.g. "Mercury MD / Saturn AD"), or null if unresolved. */
   currentMahaAntar: string | null
+  /**
+   * V3-E-024: planner/compiler-authored synthesis framing (`plan.synthesis_guidance`,
+   * with the compiler's E-7 insight-mandate `llm_extension_note` folded in by the
+   * call site — see `platform/src/app/api/mcp/prashna_ask/route.ts`'s floor-adoption
+   * block). Deterministic, trusted text — same category as `queryIntentSummary`,
+   * not user-controlled — so no `guard()`/neutralization needed. This route has no
+   * OTHER path for this guidance to reach the model: unlike consult's agentic door
+   * (`buildConsultSystemContent`'s "SYNTHESIS GUIDANCE" section), this is a
+   * single non-agentic call with its own system-prompt assembly, so the field is
+   * threaded straight into `systemPrompt` below under the same framing, for voice
+   * parity between the two doors. `null`/absent is honest omission, not a defect —
+   * not every plan carries guidance. */
+  synthesisGuidance?: string | null
 }
 
 export interface SynthesizeReadingResult {
@@ -369,6 +382,13 @@ export async function synthesizeReading(
   const systemPrompt =
     consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) +
     NO_LIVE_TOOLS_OVERRIDE +
+    // V3-E-024: same "SYNTHESIS GUIDANCE:" framing + placement consult's
+    // `buildConsultSystemContent` uses (run_adapter_dispatch.ts) — the closest
+    // this door has to an equivalent mechanism, so voice stays aligned between
+    // the two doors per this module's own "one brain, second door" design
+    // intent (see header). Deterministic/trusted, so it sits ahead of the
+    // containment clause rather than through `guard()`.
+    (input.synthesisGuidance ? `\n\n---\n\nSYNTHESIS GUIDANCE:\n${input.synthesisGuidance}` : '') +
     // Lane G1-G: the clause that turns this door's existing attribution tags
     // into containment. In the SYSTEM channel deliberately — a clause carried
     // in the user message would sit inside the same envelope as the payload it
@@ -441,7 +461,21 @@ export async function synthesizeReading(
       judgmentFlags.push('synthesis_returned_empty')
       return { reading: null, model_id: synthesisModelId, judgment_flags: judgmentFlags }
     }
-    return { reading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
+    // EDIR E-004 (S4 pipeline-parity re-verification, S4_stage_S8_report.md):
+    // `formatEvidenceBlock` above only ASKS the model (via the inline
+    // "[TRUNCATED ...]" instruction in the evidence block) to disclose
+    // truncation in its prose — nothing verified it actually did. A model
+    // response can be fluent, confident, and completely silent about a
+    // truncated evidence set while `judgment_flags` alone carries the
+    // honest signal (demonstrated at INTEGRATION rung: a realistic mocked
+    // model response with zero truncation language passed straight
+    // through). Since the model cannot be relied on for this, the
+    // disclosure is appended deterministically, server-side, whenever the
+    // flag is set — never left to model compliance.
+    const finalReading = judgmentFlags.includes('synthesis_evidence_truncated')
+      ? `${reading}\n\n*Note: some retrieved evidence for this reading was truncated due to length; the interpretation above may not reflect the complete evidence set.*`
+      : reading
+    return { reading: finalReading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
   } catch (err) {
     console.error('[prashna_ask_synthesis] synthesis call failed', err instanceof Error ? err.message : String(err))
     return { reading: null, model_id: synthesisModelId, judgment_flags: ['synthesis_call_failed'] }

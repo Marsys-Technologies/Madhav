@@ -136,7 +136,7 @@ export function registryContractFingerprintInput(row: NirmanaRegistryContractRow
   return RegistryFingerprintInputSchema.parse({
     asset_id: row.asset_id,
     layer: registryLayers[row.layer],
-    depends_on: row.depends_on ?? [],
+    depends_on: [...(row.depends_on ?? [])].sort(),
     registry_contract: {
       sort_order: row.sort_order,
       scope: row.scope,
@@ -159,6 +159,14 @@ export function registryContractFingerprintInput(row: NirmanaRegistryContractRow
 export function canonicalRegistryContractDigest(input: unknown): string {
   const parsed = RegistryFingerprintInputSchema.parse(input)
   return createHash('sha256').update(stableJson(parsed)).digest('hex')
+}
+
+function canonicalRegistryContractComparisonInput(input: unknown) {
+  const parsed = RegistryFingerprintInputSchema.parse(input)
+  return {
+    ...parsed,
+    depends_on: [...parsed.depends_on].sort(),
+  }
 }
 
 export const NirmanaElevationManifestSchema = z.object({
@@ -344,8 +352,14 @@ export function assertManifestMatchesRegistry(
   for (const [assetId, asset] of manifestById) {
     const registryRow = registryById.get(assetId)
     if (!registryRow) throw new Error(`Frozen manifest asset ${assetId} is absent from the live registry.`)
-    const liveFingerprint = canonicalRegistryContractDigest(registryContractFingerprintInput(registryRow))
-    if (liveFingerprint !== asset.registry_fingerprint_sha256) {
+    const frozenContract = canonicalRegistryContractComparisonInput({
+      asset_id: asset.asset_id,
+      layer: asset.layer,
+      depends_on: asset.depends_on ?? [],
+      registry_contract: asset.registry_contract,
+    })
+    const liveContract = canonicalRegistryContractComparisonInput(registryContractFingerprintInput(registryRow))
+    if (stableJson(frozenContract) !== stableJson(liveContract)) {
       throw new Error(`Frozen manifest asset ${assetId} does not match the live registry contract.`)
     }
   }
@@ -490,12 +504,13 @@ export interface FreezeNirmanaElevationDefinitionInput {
 }
 
 export interface SupersedeNirmanaElevationDefinitionInput {
-  campaign_id: string
+  campaign_id: 'nirmana-elevation'
   expected_current_revision: string
   expected_current_manifest_sha256: string
+  source_observation_id: string
+  expected_candidate_sha256: string
+  expected_candidate_catalogue_sha256: string
   new_definition_revision: string
-  new_manifest: unknown
-  new_manifest_sha256: string
   created_by: string
 }
 
@@ -572,8 +587,7 @@ export async function acceptNirmanaBaselineCandidate(
               (freshness_state = 'fresh'
                 AND freshness_deadline_at >= transaction_timestamp()) AS currently_fresh
          FROM nirmana_elevation_monitor_observations
-        WHERE id = $1
-        FOR SHARE`,
+        WHERE id = $1`,
       [input.source_observation_id],
     )
     const sourceObservation = observations.rows[0]
@@ -776,121 +790,135 @@ interface StoredNirmanaDefinition {
 export async function supersedeNirmanaElevationDefinition(
   input: SupersedeNirmanaElevationDefinitionInput,
 ): Promise<'superseded' | 'idempotent'> {
-  if (input.expected_current_revision === input.new_definition_revision) {
+  if (input.expected_current_revision === input.new_definition_revision
+    || !/^[a-f0-9]{64}$/.test(input.expected_current_manifest_sha256)
+    || !z.string().uuid().safeParse(input.source_observation_id).success
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_sha256)
+    || !/^[a-f0-9]{64}$/.test(input.expected_candidate_catalogue_sha256)) {
     throw new NirmanaElevationDefinitionConflictError()
   }
-  if (!/^[a-f0-9]{64}$/.test(input.expected_current_manifest_sha256)) {
-    throw new NirmanaElevationDefinitionConflictError()
-  }
-  const manifest = NirmanaElevationManifestSchema.parse(input.new_manifest)
-  assertFreezableManifest(manifest)
-  const canonicalDigest = canonicalManifestDigest(manifest)
-  if (input.new_manifest_sha256 !== canonicalDigest) {
-    throw new Error('Replacement campaign definition manifest digest does not match its canonical manifest.')
-  }
-
-  const pool = await getNirmanaCampaignControlWriterPool()
-  const client = await pool.connect()
+  const client = await (await getNirmanaCampaignControlWriterPool()).connect()
   try {
     await client.query('BEGIN')
     await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
     await acquireNirmanaRevisionLock(client, input.campaign_id, input.expected_current_revision)
     const stored = await client.query<StoredNirmanaDefinition>(
-      `SELECT definition_revision, definition_status, manifest, manifest_sha256,
-              created_by, superseded_at
+      `SELECT definition_revision, definition_status, manifest, manifest_sha256, created_by, superseded_at
          FROM nirmana_evidence.nirmana_elevation_campaign_definitions
-        WHERE campaign_id = $1
-          AND definition_revision = ANY($2::text[])
-        ORDER BY definition_revision
-        FOR UPDATE`,
+        WHERE campaign_id = $1 AND definition_revision = ANY($2::text[])
+        ORDER BY definition_revision FOR UPDATE`,
       [input.campaign_id, [input.expected_current_revision, input.new_definition_revision]],
     )
     const current = stored.rows.find((row) => row.definition_revision === input.expected_current_revision)
     const replacement = stored.rows.find((row) => row.definition_revision === input.new_definition_revision)
-
-    const exactRetry = current?.definition_status === 'superseded'
-      && current.superseded_at !== null
+    const observation = await client.query<StoredNirmanaBaselineObservation & { release_state: string; runtime_liveness: string }>(
+      `SELECT id::text, observed_at, status, current_definition_sha256, candidate_definition_sha256,
+              registry_identity_sha256, registry_contract_sha256, candidate_catalogue_sha256,
+              source_state, source_observed_at, freshness_state, freshness_deadline_at, source_error_code,
+              release_state, runtime_liveness,
+              (freshness_state = 'fresh' AND freshness_deadline_at >= transaction_timestamp()) AS currently_fresh
+         FROM nirmana_elevation_monitor_observations WHERE id = $1`,
+      [input.source_observation_id],
+    )
+    const source = observation.rows[0]
+    const observedAt = canonicalObservationInstant(source?.observed_at ?? null)
+    const sourceObservedAt = canonicalObservationInstant(source?.source_observed_at ?? null)
+    const deadlineAt = canonicalObservationInstant(source?.freshness_deadline_at ?? null)
+    const registryIdentitySha256 = source?.registry_identity_sha256 ?? null
+    const registryContractSha256 = source?.registry_contract_sha256 ?? null
+    const provenance = observedAt && sourceObservedAt && deadlineAt
+      && typeof registryIdentitySha256 === 'string' && typeof registryContractSha256 === 'string' ? {
+      source_observation_id: input.source_observation_id,
+      source_observation_observed_at: observedAt,
+      source_snapshot_observed_at: sourceObservedAt,
+      source_freshness_deadline_at: deadlineAt,
+      candidate_manifest_sha256: input.expected_candidate_sha256,
+      registry_identity_sha256: registryIdentitySha256,
+      registry_contract_sha256: registryContractSha256,
+      candidate_catalogue_sha256: input.expected_candidate_catalogue_sha256,
+    } : null
+    const observationMatches = source?.id === input.source_observation_id
+      && source.status === 'plan_adaptation_required'
+      && source.current_definition_sha256 === input.expected_current_manifest_sha256
+      && source.candidate_definition_sha256 === input.expected_candidate_sha256
+      && source.candidate_catalogue_sha256 === input.expected_candidate_catalogue_sha256
+      && source.source_state === 'available' && source.source_error_code === null
+      && source.freshness_state === 'fresh'
+      && source.release_state === 'in_sync'
+      && source.runtime_liveness === 'quiet'
+      && provenance !== null
+      && typeof source.registry_identity_sha256 === 'string'
+      && typeof source.registry_contract_sha256 === 'string'
+    if (!observationMatches) {
+      throw new NirmanaElevationDefinitionConflictError('Supersession requires the exact plan-adaptation monitor observation and candidate digests.')
+    }
+    const exactRetry = current?.definition_status === 'superseded' && current.superseded_at !== null
       && current.manifest_sha256 === input.expected_current_manifest_sha256
-      && replacement?.definition_status === 'frozen'
-      && replacement.superseded_at === null
-      && replacement.manifest_sha256 === canonicalDigest
-      && stableJson(replacement.manifest) === stableJson(manifest)
+      && replacement?.definition_status === 'frozen' && replacement.superseded_at === null
+      && replacement.manifest_sha256 === input.expected_candidate_sha256
     if (exactRetry) {
+      const replacementManifest = NirmanaElevationManifestSchema.parse(replacement.manifest)
+      if (canonicalManifestDigest(replacementManifest) !== replacement.manifest_sha256) throw new NirmanaElevationDefinitionConflictError()
+      const { verifyNirmanaElevationLabelCatalogueInTransaction } = await import('./labels')
+      if (!await verifyNirmanaElevationLabelCatalogueInTransaction(client, {
+        campaign_id: input.campaign_id, definition_revision: input.new_definition_revision,
+        catalogue_revision: input.new_definition_revision, catalogue_sha256: input.expected_candidate_catalogue_sha256,
+      }, provenance)) throw new NirmanaElevationDefinitionConflictError('Supersession retry does not have the exact accepted label catalogue.')
       await client.query('COMMIT')
       return 'idempotent'
     }
-
-    if (replacement
-      || current?.definition_status !== 'frozen'
-      || current.superseded_at !== null
-      || current.manifest_sha256 !== input.expected_current_manifest_sha256) {
-      throw new NirmanaElevationDefinitionConflictError()
+    if (replacement || current?.definition_status !== 'frozen' || current.superseded_at !== null
+      || current.manifest_sha256 !== input.expected_current_manifest_sha256
+      || source.freshness_state !== 'fresh' || source.currently_fresh !== true
+      || source.release_state !== 'in_sync' || source.runtime_liveness !== 'quiet') {
+      throw new NirmanaElevationDefinitionConflictError('Supersession requires a fresh in-sync quiet plan-adaptation observation.')
     }
-
-    const currentManifest = NirmanaElevationManifestSchema.parse(current.manifest)
-    const dispatcherWaveLocks = [...new Set(currentManifest.assets
-      .filter((asset) => asset.execution_obligation === 'build' && asset.wave_index !== undefined)
-      .map((asset) => `${input.campaign_id}:${input.expected_current_revision}:${asset.layer}:wave-${asset.wave_index}`))]
-      .sort()
-    for (const lockKey of dispatcherWaveLocks) {
-      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [lockKey])
+    const oldManifest = NirmanaElevationManifestSchema.parse(current.manifest)
+    for (const key of [...new Set(oldManifest.assets.filter((asset) => asset.execution_obligation === 'build' && asset.wave_index !== undefined)
+      .map((asset) => `${input.campaign_id}:${input.expected_current_revision}:${asset.layer}:wave-${asset.wave_index}`))].sort()) {
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key])
     }
-
-    // The evidence ingress takes the same revision lock before any provenance
-    // read or insert. The dispatcher takes the per-wave locks before reading the
-    // definition. Together these close races within the governed ingresses;
-    // table locks also stabilize the count while this transaction runs. Direct
-    // writers outside these protocols still require a future DB trigger/FK.
-    await client.query('LOCK TABLE nirmana_evidence.nirmana_elevation_campaign_events, build_runs IN SHARE MODE')
     const usage = await client.query<{ event_count: number; build_run_count: number }>(
-      `SELECT (SELECT count(*)::int
-                 FROM nirmana_evidence.nirmana_elevation_campaign_events
-                WHERE campaign_id = $1 AND definition_revision = $2) AS event_count,
-              (SELECT count(*)::int
-                 FROM build_runs
-                WHERE plan_manifest #>> '{campaign_control,campaign_id}' = $1
-                  AND plan_manifest #>> '{campaign_control,definition_revision}' = $2) AS build_run_count`,
+      `SELECT (SELECT count(*)::int FROM nirmana_evidence.nirmana_elevation_campaign_events WHERE campaign_id = $1 AND definition_revision = $2) AS event_count,
+              (SELECT count(*)::int FROM build_runs WHERE plan_manifest #>> '{campaign_control,campaign_id}' = $1 AND plan_manifest #>> '{campaign_control,definition_revision}' = $2) AS build_run_count`,
       [input.campaign_id, input.expected_current_revision],
     )
-    if ((usage.rows[0]?.event_count ?? 0) !== 0) {
-      throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has campaign events and cannot be superseded.')
+    if ((usage.rows[0]?.event_count ?? 0) !== 0 || (usage.rows[0]?.build_run_count ?? 0) !== 0) {
+      throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has campaign events or build runs and cannot be superseded.')
     }
-    if ((usage.rows[0]?.build_run_count ?? 0) !== 0) {
-      throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has build runs and cannot be superseded.')
-    }
-
     const registry = await client.query<NirmanaRegistryContractRow>(
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
-              sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
-              target_table, count_sql, integrity_check_sql, health_probe,
-              natural_key_partition, superseded_by, data_disposition, dead_flag
-         FROM asset_registry
-        ORDER BY asset_id
-        FOR SHARE`,
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
+              sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
+              integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag
+         FROM asset_registry ORDER BY asset_id FOR SHARE`,
     )
-    assertManifestMatchesRegistry(manifest, registry.rows)
-
+    const { buildNirmanaBaselineCandidate } = await import('./monitor')
+    const candidate = buildNirmanaBaselineCandidate(registry.rows)
+    if (candidate.manifest_sha256 !== input.expected_candidate_sha256
+      || candidate.catalogue_sha256 !== input.expected_candidate_catalogue_sha256
+      || source.registry_identity_sha256 !== candidate.registry_identity_sha256
+      || source.registry_contract_sha256 !== candidate.registry_contract_sha256) {
+      throw new NirmanaElevationDefinitionConflictError('Supersession candidate changed; refresh the monitor observation before retrying.')
+    }
     const superseded = await client.query(
-      `UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions
-          SET definition_status = 'superseded', superseded_at = clock_timestamp()
-        WHERE campaign_id = $1
-          AND definition_revision = $2
-          AND definition_status = 'frozen'
-          AND superseded_at IS NULL
-          AND manifest_sha256 = $3
-      RETURNING definition_revision`,
+      `UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions SET definition_status = 'superseded', superseded_at = clock_timestamp()
+        WHERE campaign_id = $1 AND definition_revision = $2 AND definition_status = 'frozen' AND superseded_at IS NULL AND manifest_sha256 = $3 RETURNING definition_revision`,
       [input.campaign_id, input.expected_current_revision, input.expected_current_manifest_sha256],
     )
     if (superseded.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
-
     const inserted = await client.query(
       `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions
          (campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_by)
-       VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5)
-       RETURNING definition_revision`,
-      [input.campaign_id, input.new_definition_revision, JSON.stringify(manifest), canonicalDigest, input.created_by],
+       VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5) RETURNING definition_revision`,
+      [input.campaign_id, input.new_definition_revision, JSON.stringify(candidate.manifest), candidate.manifest_sha256, input.created_by],
     )
     if (inserted.rowCount !== 1) throw new NirmanaElevationDefinitionConflictError()
+    const { recordNirmanaElevationLabelCatalogueInTransaction } = await import('./labels')
+    if (await recordNirmanaElevationLabelCatalogueInTransaction(client, {
+      campaign_id: input.campaign_id, definition_revision: input.new_definition_revision,
+      catalogue_revision: input.new_definition_revision, labels: candidate.labels, catalogue_sha256: candidate.catalogue_sha256,
+      recorded_by: input.created_by,
+    }, provenance) !== 'created') throw new NirmanaElevationDefinitionConflictError('Supersession candidate label catalogue conflicts with existing evidence.')
     await client.query('COMMIT')
     return 'superseded'
   } catch (error) {

@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +83,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // V3-E-011 finding 4: this route returned another tenant's per-layer build
+  // status to any authenticated user — a cross-tenant read disclosure. Gate
+  // added immediately after the existing user check (order of the chart_id
+  // presence check running before getServerUser() is preserved above).
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  if (denied) return denied
 
   // Query pyramid_layers table for this chart
   const result = await query<{ layer: string; sublayer: string | null; status: string | null }>(

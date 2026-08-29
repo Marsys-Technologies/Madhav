@@ -387,6 +387,16 @@ export async function POST(request: Request) {
         cap_tripped: null,
       },
       persistence: MCP_TURN_PERSISTENCE_NONE,
+      // V3-E-049: the FK fields an auditor follows to `pariprashna_safety_decisions`
+      // (and, when a review was opened, `pariprashna_safety_reviews`). The full
+      // `SafetyDecision` object is already in scope from `classifyTurnSafety` above
+      // — this is a read of fields already computed, not a new computation, and
+      // carries no matched text or rule ids (gate 11 [integrity] is unaffected).
+      safety_decision: {
+        decision_id: safetyDecision.decision_id,
+        review_id: safetyDecision.review_id,
+        audit_written: safetyDecision.audit_written,
+      },
       // Counts and the action only — never the matched text and never the rule
       // ids (gate 11 [integrity], the same discipline the web door follows).
       judgment_flags: [
@@ -461,6 +471,24 @@ export async function POST(request: Request) {
         toolsAuthorized.push(tc.tool_name)
       }
     }
+    // V3-E-024 (extends PR #1621's plan_stage.ts fix to this door): the
+    // compiler's E-7 insight-mandate note was computed by compileContract on
+    // every call but had no field to survive through CompiledFloorResult until
+    // PR #1621 added it — it reached nowhere on the MCP door either. Folded
+    // into `plan.synthesis_guidance` for the same reason plan_stage.ts and
+    // consult/route.ts do — but UNLIKE those two doors, this route's synthesis
+    // is `synthesizeReading` (prashna_ask_synthesis.ts), a separate
+    // non-agentic single-shot call with its OWN system-prompt assembly, not
+    // `buildConsultSystemContent`. `plan.synthesis_guidance` has no prior path
+    // into `synthesizeReading` at all — so it is threaded through explicitly
+    // below via the new `synthesisGuidance` param, which that module folds
+    // into its system prompt under the same "SYNTHESIS GUIDANCE:" framing
+    // consult uses, for voice parity between the two doors.
+    if (compiledFloor.llm_extension_note) {
+      plan.synthesis_guidance = plan.synthesis_guidance
+        ? `${plan.synthesis_guidance}\n\n${compiledFloor.llm_extension_note}`
+        : compiledFloor.llm_extension_note
+    }
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
@@ -508,6 +536,13 @@ export async function POST(request: Request) {
           cap_tripped: null,
         },
         persistence: MCP_TURN_PERSISTENCE_NONE,
+        // V3-E-049: same FK-field addition as the pre-plan safety_withheld branch
+        // above — `postPlanSafety` is already in scope from `reclassifyAfterPlan`.
+        safety_decision: {
+          decision_id: postPlanSafety.decision_id,
+          review_id: postPlanSafety.review_id,
+          audit_written: postPlanSafety.audit_written,
+        },
         judgment_flags: [
           `safety_decision:${postPlanSafety.action}`,
           'safety_reading_withheld',
@@ -755,6 +790,10 @@ export async function POST(request: Request) {
           capTripped: costCapTripped?.reason ?? null,
           nowContextDate,
           currentMahaAntar: chartHeader?.current_maha_antar ?? null,
+          // V3-E-024: carries the floor-discipline note (and, at depth:'deepdive',
+          // the E-7 INSIGHT MANDATE prefix) folded into plan.synthesis_guidance
+          // above — this door's only path for that guidance to reach the model.
+          synthesisGuidance: plan.synthesis_guidance ?? null,
         })
       }
       judgmentFlags.push(...synthesis.judgment_flags)
@@ -784,6 +823,18 @@ export async function POST(request: Request) {
         },
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
+        // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`
+        // above, closed over from the POST handler's scope) already computed and
+        // gated dispatch with the full `SafetyDecision` object — only its derived,
+        // lossy `safety_*` judgment_flags reached the wire before this fix. These
+        // are the FK fields an auditor follows to `pariprashna_safety_decisions`
+        // (and `pariprashna_safety_reviews` when a review was opened): a pure read
+        // of already-computed fields, no new computation, no new DB call.
+        safety_decision: {
+          decision_id: postPlanSafety.decision_id,
+          review_id: postPlanSafety.review_id,
+          audit_written: postPlanSafety.audit_written,
+        },
         judgment_flags: judgmentFlags,
       }
 

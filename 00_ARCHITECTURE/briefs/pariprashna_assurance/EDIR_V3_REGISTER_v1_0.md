@@ -1,26 +1,41 @@
 ---
 artifact: PARIPRASHNA_EDIR_V3_REGISTER
-version: 1.0
+version: 1.1
 status: LIVING — opened by Session A phase A3-ABSORB. Append-only; an entry
   closes only at its named verification rung with dated evidence; a RETRACTED
   entry keeps its full history; severity is assigned at triage by the Native
   Surrogate, not by the finder. This register never self-certifies a gate.
-date: 2026-08-28
+  As of v1.1 this file is the INDEX: §0-§3 (historical import + branch
+  census) are unchanged closed artifacts; §4's former live entries moved to
+  a frozen archive and a new §4a routes every stream to its OWN per-stream
+  live file — see §4a for why and the pointer table.
+date: 2026-08-29
 authoritative_side: claude
 role: >
-  The v3 campaign's single accumulation point for divergences, and the carrier
-  of the §6 prior-work absorption census. §0 imports the historical EDIR BY
-  REFERENCE ONLY (ids, titles, classes, proposed severities, status at
-  self-pause) — the full bodies stay on the quarantined swarm branch and are
-  never restated here as if proven on current main. §3 is the branch census:
-  every unmerged pariprashna branch, exactly one disposition each, with the
-  evidence that disposition rests on. §4 holds this register's own V3 entries.
+  The v3 campaign's index and governance surface for divergences, and the
+  carrier of the §6 prior-work absorption census. §0 imports the historical
+  EDIR BY REFERENCE ONLY (ids, titles, classes, proposed severities, status
+  at self-pause) — the full bodies stay on the quarantined swarm branch and
+  are never restated here as if proven on current main. §3 is the branch
+  census: every unmerged pariprashna branch, exactly one disposition each,
+  with the evidence that disposition rests on. §4 points to the frozen
+  pre-2026-08-29 archive of this register's own V3 entries; §4a is the live
+  pointer table to each stream's own per-stream register file, where new
+  findings are actually filed as of the 2026-08-29 A5 split (see §4a for the
+  concurrent-write conflict history that motivated it).
 governs:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/AUTONOMOUS_EXECUTION_ELEVATION_v1_0.md §6
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_EXPERIENCE_ASSURANCE_TEST_PLAN_v2_1.md §6.2, §6.3
 relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/P2_BLOCKER_INTAKE_v1_0.md
   - 00_ARCHITECTURE/briefs/pariprashna_assurance/P1_CONTRADICTION_AND_NONRELIANCE_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S1_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S2_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S3_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S4_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S5_v1_0.md
+  - 00_ARCHITECTURE/briefs/pariprashna_assurance/EDIR_V3_REGISTER_S6_v1_0.md
 baseline:
   origin_main_sha: cc6b1a55e85b21c4a3865b335061d5d9dc510474
   census_taken: 2026-08-28
@@ -31,6 +46,19 @@ changelog:
     origin/pariprashna/* and origin/codex/pariprashna-* branches with one
     disposition each; §4 seeded with five V3 entries surfaced by the census
     itself."
+  - "1.1 (2026-08-29, A5 split, lane pariprashna/v3-a5-edir-split): six
+    concurrent streams appending to §4 of this one file had already produced
+    repeated merge conflicts and one self-caught near-loss (2026-08-24
+    digest addendum) plus two standing unrepaired id collisions
+    (duplicate V3-E-032 heading; the V3-E-012/013 cross-stream collision S1
+    renamed around). §4's content (every entry + convergence note six
+    streams had appended) moved verbatim, byte-for-byte, to
+    EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md — lossless-migration
+    proof: platform/scripts/pariprashna/verify_edir_split_lossless.py. New
+    §4a opens six per-stream live files (EDIR_V3_REGISTER_S1..S6_v1_0.md),
+    each written only by its own stream, removing the shared-append
+    conflict surface by construction. §0-§3 untouched (verified byte-
+    identical to v1.0 by the same script)."
 ---
 
 # Paripraśna EDIR V3 — Experience Defect & Improvement Register (v3 campaign)
@@ -392,286 +420,51 @@ for review — explicitly **done: disposition + evidence; deferred: PR**.
 
 ---
 
-## §4 — V3 entries opened by A3-ABSORB
+## §4 — Historical V3 entries (FROZEN, moved 2026-08-29)
 
-Five entries. Each is a finding of the census itself, evidenced against
-`origin/main@cc6b1a55e` on 2026-08-28. Severities are finder-proposed and
-await Native Surrogate triage.
+Everything that used to live in this section — the entries A3-ABSORB opened
+plus every entry, correction, and convergence note six streams appended to
+this file afterward — has been split out verbatim, byte-for-byte, to
+`EDIR_V3_REGISTER_ARCHIVE_PRECONVERGENCE_v1_0.md`. Nothing was reworded,
+reordered, summarized, or dropped; the split's lossless-migration proof is
+`platform/scripts/pariprashna/verify_edir_split_lossless.py` (run output in
+the A5 PR description). Read that file for any pre-2026-08-29 finding; do
+not append to it.
 
-### V3-E-001 — No unmerged branch contains any change to the P2-B-001 authorization surface
+## §4a — Per-stream live register files (LIVE, this is where you file a new finding)
 
-- **Class / severity:** PROCESS · S2 (proposed)
-- **Lens / stage:** L-CODE · CROSS
-- **Expected:** elevation §6.3 states the `p2`-family, `g1-*`, `hs4-fix` and
-  `citation-leak-fix` branches "bear directly on P2 blockers", which would make
-  A3 a source of candidate fixes for A4.
-- **Observed (2026-08-28, exhaustive scan of all 81 branches' changed-file
-  sets):** **not one** of the 81 branches touches
-  `platform/src/app/api/charts/[id]/route.ts` — the exact surface P2-B-001 names
-  (historical `GET /api/charts/[id]` lacked per-chart authorization, EDIR E-012,
-  native-disposed PARKED). There is therefore **no historical fix to salvage for
-  B-001**; A4 must originate it. The same scan finds no branch adding
-  `verify_heartbeat_provenance.sh` (P2-B-005's named detector, EDIR E-122) —
-  that script exists only in the quarantined swarm harness
-  `00_ARCHITECTURE/autonomy_pariprashna/bin/`, which has **0 files on
-  `origin/main`**. B-002's arming scripts (`platform/scripts/pariprashna/
-  g1c_arm_rls.sql`) and B-004's reproduction instrument
-  (`platform/scripts/probe/ask.ts`) *are* on main, but both are instruments, not
-  fixes.
-- **Code anchor:** `platform/src/app/api/charts/[id]/route.ts` (main, unchanged
-  by any branch); `00_ARCHITECTURE/autonomy_pariprashna/` (absent from main).
-- **Cross-refs:** P2-B-001 (E-012), P2-B-004 (E-119), P2-B-005 (E-122);
-  elevation §6.3.
-- **Proposed fix class:** none — this is a denominator correction for A4. A4's
-  blocker denominator must not assume an absorbed fix exists for B-001 or a
-  present detector for B-005.
-- **Status:** OPEN · close rung: A4 records the correction in its frozen
-  blocker denominator.
+**Why this section exists.** Six streams (S1-S6) were each appending finding
+entries to §4 of this ONE file, concurrently, overnight. That produced
+repeated git merge conflicts (e.g. commit `5340f7438`, "resolve EDIR
+register append conflict") and at least one self-caught near-miss where an
+in-progress edit silently deleted an entry header, merging two findings into
+one unlabeled section before the same session's own after-edit check caught
+and fixed it (2026-08-24 digest addendum, "self-caught editing slip"). The
+archive itself also carries two STANDING id collisions that predate any
+repair — a duplicate `V3-E-032` heading and the `V3-E-012`/`V3-E-013`
+cross-stream collision S1 had to rename around — direct evidence that a
+shared append point *will* eventually produce exactly this failure mode
+again if left as-is, not a hypothetical risk.
 
-### V3-E-002 — `pariprashna/p4-g` holds 2,384 lines of unmerged, test-covered feature work absent from main
+**The fix: one file per stream, each stream writes only its own.** No two
+streams' concurrent commits can ever touch the same file again, which
+removes the git-merge-conflict opportunity by construction (not by
+discipline or a "please don't" convention).
 
-- **Class / severity:** PROCESS · S3 (proposed)
-- **Lens / stage:** L-CODE · SURFACE/CROSS
-- **Expected:** absorption leaves nothing of value stranded on an unmerged branch.
-- **Observed (2026-08-28):** `platform/src/lib/pariprashna/samiksha/window_ask/`
-  — 12 modules (`classify`, `compose`, `select`, `capture`, `turn_hook`, `flag`,
-  …) plus 5 test files (199+ unit tests, one DB-integration) — **does not exist
-  on main**: `git ls-tree origin/main platform/src/lib/pariprashna/samiksha/`
-  returns 25 files, none under `window_ask/`. Residue vs main is +2384/-5, the
-  only branch in the census whose insertions dominate. Flag-gated
-  (`window_ask/flag.ts`).
-- **Code anchor:** `origin/pariprashna/p4-g` commits `7b63249bb`, `c8d31c9ba`,
-  `0bf74e448`.
-- **Proposed fix class:** replay onto a fresh lane branch off current main, with
-  its own failing-test justification, if a current work item wants the feature.
-  **Not a P2 blocker**; no PR opened by this lane.
-- **Status:** OPEN · close rung: a Session C integration decision (land, or
-  record a deliberate drop).
+| Stream | File | Next id to claim |
+| --- | --- | --- |
+| S1 | `EDIR_V3_REGISTER_S1_v1_0.md` | `S1-V3-E-015` |
+| S2 | `EDIR_V3_REGISTER_S2_v1_0.md` | `S2-V3-E-001` |
+| S3 | `EDIR_V3_REGISTER_S3_v1_0.md` | `S3-V3-E-002` |
+| S4 | `EDIR_V3_REGISTER_S4_v1_0.md` | `S4-V3-E-017` |
+| S5 | `EDIR_V3_REGISTER_S5_v1_0.md` | `S5-V3-E-001` |
+| S6 | `EDIR_V3_REGISTER_S6_v1_0.md` | `S6-V3-E-001` |
 
-### V3-E-003 — `/api/conversations/[id]/feedback` POST is still an unconditional stub on current main: a reader's dispute is silently discarded
+**Rules, unchanged from the register law above, plus one addition:**
 
-- **Class / severity:** DEFECT · S2 (proposed)
-- **Lens / stage:** L-CODE + L-WIRE · SURFACE (S11 persistence)
-- **Expected:** a reader disputing a claim the instrument made must leave a
-  durable record; test plan §9 / J8 (feedback & dispute) and the campaign's own
-  G8 feedback/dispute obligation.
-- **Observed (2026-08-28, read directly from `origin/main@cc6b1a55e`):**
-  `platform/src/app/api/conversations/[id]/feedback/route.ts` is still the WS-0
-  stub — `POST` parses the body, returns `{ ok: true, rating }`, and touches no
-  database; `GET` always returns `{ feedback: [] }`. Its own header comment says
-  so ("`message_feedback` table dropped in WS-0. Endpoint returns empty/ok
-  stubs."). It is also the only `[id]/*` sibling that does not run
-  `getConversation`'s ownership check — with no data read or written today that
-  is not itself a leak, but it is a live divergence from sibling-route
-  discipline. `pariprashna/p4-h` restored this path and was **REFUTED and
-  PARKED** by native-surrogate ruling because the restored write to
-  `conversation_messages.metadata_json` is erased wholesale by the next ordinary
-  turn (DD-28, already on main); so the honest current state is that neither the
-  stub nor the attempted restore delivers a durable dispute.
-- **Code anchor:** `platform/src/app/api/conversations/[id]/feedback/route.ts:1-3`
-  (the header comment that states the stub), `:7-11` (GET returns a constant
-  empty array), `:13-22` (POST; `:18` is the unconditional
-  `Response.json({ ok: true, rating })` that touches no database).
-- **Cross-refs:** DD-28 / DD-29 / DD-30 (on main via
-  `pariprashna/dd28-30-split`); `pariprashna/p4-h`'s `it.skip`-quarantined red
-  detector `feedback_dispute_survives_turn.db.test.ts`.
-- **Proposed fix class:** owning-stream decision (S5 data integrity or S2
-  conversation experience) — the DD-30 recommendation of a dedicated
-  `conversation_disputes` table is explicitly a native decision, not assumed here.
-- **Status:** OPEN · close rung: INTEGRATION (the parked red detector un-skipped
-  and green against a real Postgres) then LIVE.
+1. A stream files a new finding **only** in its own `EDIR_V3_REGISTER_S<n>_v1_0.md`, never in this index, never in another stream's file, never in the archive.
+2. The Register law and Entry schema above apply verbatim to every per-stream file — they are not restated there, only referenced.
+3. A cross-territory finding is filed by the FINDING stream in its own file, then referred to the OWNING stream per the referral protocol (elevation §8.3) — the owning stream opens its own entry in its own file, cross-referencing the referring one by id. Neither stream edits the other's file.
+4. This index's per-stream pointer table (above) is the only place that changes when a stream's next-id counter advances, and it changes rarely (roughly once per stream per session, not once per finding) — it is not itself a concurrent-write hotspot the way §4 was, because updating it is a single-line edit contended by at most one writer at a time in practice (a convergence/consolidation pass), not six.
+5. §0-§3 above (historical EDIR reference import, branch census) are closed, one-time artifacts from the A3-ABSORB session — never a concurrent-write site — and stay exactly where they are; they were not part of this split.
 
-### V3-E-004 — One census disposition is preliminary: `codex/pariprashna-shadow-deploy`'s `elevation_service.py` has no counterpart on main
-
-- **Class / severity:** PROCESS · S4 (proposed)
-- **Lens / stage:** L-CODE · CROSS (campaign infrastructure)
-- **Expected:** every branch disposition rests on evidence, and a disposition
-  that does not is labelled as such rather than rounded to a confident class.
-- **Observed (2026-08-28):**
-  `00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/elevation_service.py`
-  (83 lines; a loopback-only launchd spec for an isolated shadow dashboard on
-  port 8788, runtime `/Users/Dev/.pariprashna-assurance-elevation-shadow`) is the
-  only file in the entire codex family with no same-named counterpart on main.
-  Main carries `elevation_operations.py` (whose `ShadowOperations` emits
-  `com.marsys.pariprashna-assurance.shadow` launchd job specs) and
-  `elevation_server.py`, which **may** already satisfy its intent — that
-  equivalence was **not** established in this pass, so the branch is graded
-  SALVAGE/PRELIM rather than SUPERSEDED on an assumption.
-- **Code anchor:** `origin/codex/pariprashna-shadow-deploy` @ `ea081d3b3`.
-- **Proposed fix class:** a 15-minute targeted comparison in A4 or Session C;
-  then either SUPERSEDED with cited evidence, or a replay lane.
-- **Status:** OPEN · close rung: STATIC (the comparison performed and recorded).
-
-### V3-E-005 — The v3 campaign's own governing register (this one) is the first artifact of the programme that exists on neither main nor a pushed branch
-
-- **Class / severity:** DOC · S4 (proposed)
-- **Lens / stage:** L-CODE · CROSS (governance)
-- **Expected:** §N.8 / the register law — a governance surface a downstream
-  session is told to rely on must be reachable from where that session starts.
-- **Observed (2026-08-28):** the historical EDIR, the swarm harness
-  (`00_ARCHITECTURE/autonomy_pariprashna/`, 0 files on main) and the swarm
-  tracker's live state all exist only in local worktrees on local-only branches.
-  The census could read them only because those worktrees happen to still be
-  checked out on this machine. This register's §0 is a pointer *into that same
-  quarantine*; if the worktree is removed before Session C's cleanup step, §0's
-  references become unresolvable and 115 findings lose their bodies.
-- **Proposed fix class:** Session C's cleanup (elevation §9 C4) must not remove
-  the `pariprashna-assurance` worktree until the historical EDIR bodies are
-  either landed, archived, or explicitly ruled not-needed — a named precondition,
-  not an assumption.
-- **Status:** OPEN · close rung: Session C records the precondition in its
-  cleanup checklist.
-
-### V3-E-006 — `cockpit/clear`/`clear/execute` have no chart ownership check at all (P2-B-007)
-
-- **Class / severity:** DEFECT · S1 (CRITICAL — surrogate-assigned; added to the
-  P2 blocker denominator as **B-007**, tracker decision `465a692c-f1f6-459a-
-  8974-292015ba6436`)
-- **Lens / stage:** L-CODE · A4 (P2 blocker clearance)
-- **Provenance:** surfaced as a collateral finding during the B-001/E-012
-  independent verifier's adversarial sibling-bypass search on PR #1597 — not
-  originally in the P2 intake.
-- **Expected:** a destructive, chart-scoped operation requires the caller to
-  own (or hold a grant on) the target chart before either previewing or
-  executing it.
-- **Observed (2026-08-27):** `platform/src/app/api/cockpit/clear/route.ts` and
-  `clear/execute/route.ts` gate only on `requireUser()` — no `owner_id`/grant
-  check on `chart_id` anywhere. For the `per_chart` scope tier (almost all
-  chart-scoped assets) and non-`global`/non-brahmagyan `asset`/`layer`
-  requests, any authenticated user (default `guest` role included) can preview
-  and then **execute an irreversible DELETE** of another user's — or the
-  native's real chart `482012f1`'s — build-derived data. Separately, the
-  `scope: 'global'` preview branch returns the target chart's real
-  `subject_name` to any authenticated caller regardless of ownership, and that
-  value is exactly what `typed_confirmation` needs to satisfy the one
-  confirmation gate `execute` has.
-- **Code anchor:** `clear/route.ts` (preview `requires_typed_confirmation`
-  branch), `clear/execute/route.ts:157-165,180-225` (the per-asset `DELETE`
-  transaction), `clearScopeFilter.ts` (`filterScopeAssets` narrowing a
-  non-admin's `global` request instead of rejecting it).
-- **Proposed fix class:** reuse `authorizeChartAccess` (the same helper B-001
-  uses) on `chart_id` before both routes proceed, for all non-`super_admin`
-  callers; reject non-admin `scope: 'global'` outright rather than silently
-  narrowing it.
-- **Status:** IN REMEDIATION — fix dispatched same session; independent
-  verification and PR/CI/merge pending. Close rung: LIVE deployed re-proof
-  (cross-user denial) after merge, per the same rigor as B-001/B-002.
-
-### V3-E-007 — `clients/[id]/nirmana/page.tsx`'s `generateMetadata` leaks `subject_name` with no auth guard
-
-- **Class / severity:** DEFECT · S2 (MEDIUM-HIGH, proposed)
-- **Lens / stage:** L-CODE · CROSS (no app-level `middleware.ts` exists)
-- **Observed (2026-08-27):** `generateMetadata` runs a raw
-  `SELECT subject_name FROM charts WHERE id=$1` outside the page body's
-  `resolveChartPageAccess`/`canBuild` guard. Any unauthenticated request for a
-  known `chart_id` (curl, a link-preview crawler) returns the real subject
-  name in the rendered `<title>` tag. Blast radius bounded by needing the
-  chart's UUID (not enumerable), but directly exploitable for any id an
-  attacker already holds.
-- **Proposed fix class:** move the guard check ahead of the metadata query, or
-  have `generateMetadata` return a generic title when the caller cannot be
-  authorized (metadata generation has no request-scoped session by default in
-  Next.js — needs the same session-resolution path the page body uses).
-- **Status:** OPEN, filed to stream **S5** (Security, Privacy & Data
-  Integrity) territory — not fixed in Session A. Close rung: LIVE
-  unauthenticated-denial proof.
-
-### V3-E-008 — `share/[slug]/page.tsx`: by-design unguessable-token sharing, one minor follow-up
-
-- **Class / severity:** IMPROVEMENT · S4 (proposed, informational)
-- **Observed (2026-08-27):** the share page requires a 58-bit random `slug`
-  (`crypto.getRandomValues`) and correctly checks `revoked_at`/`expires_at` —
-  the standard capability-link pattern, not a defect. Minor: no rate-limiting
-  on slug lookups was found; impractical to brute-force at 58 bits, so this is
-  a non-blocking follow-up, not a finding requiring a fix.
-- **Status:** OPEN, filed to stream **S5** as a low-priority improvement lead
-  only. No close rung required to unblock anything.
-
-### V3-E-009 — `charts/[id]/route.ts` DELETE's `client_id` check is legacy, not an escalation path
-
-- **Class / severity:** DOC · S4 (proposed, informational)
-- **Observed (2026-08-27):** DELETE checks `owner_id === uid || client_id ===
-  uid`; `client_id` is a legacy pre-081 column confirmed (via
-  `clients/create/route.ts` and migration history) to always equal `owner_id`
-  for this app's actual data model — not a third-party designation, so not an
-  exploitable privilege-escalation path. Documented for completeness given it
-  surfaced during the B-001/DELETE-vs-GET asymmetry check.
-- **Status:** CLOSED-AS-BENIGN at STATIC rung (code-read proof above) — no
-  further action; filed for the record only.
-
----
-
-*End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
-### V3-E-010 — Two more confirmed `chart_id`-ownership gaps outside the B-007/B-008 fix scope
-
-- **Class / severity:** DEFECT · S2 (MEDIUM, proposed — auth-gated but not
-  ownership-gated; narrower than B-007/B-008's zero-auth cases)
-- **Lens / stage:** L-CODE · CROSS
-- **Provenance:** surfaced by the B-008 fixer while sweeping `cockpit/*` for
-  the same root cause (no per-route `chart_id` ownership check) already
-  confirmed three times (B-001, B-007, B-008).
-- **Observed (2026-08-27):**
-  - `POST /api/build/rebuild-all` and `POST /api/build/rebuild` require login
-    (`requireUser`) but insert `build_events` rows for any caller-supplied
-    `chart_id` — a cross-tenant write, not read/delete.
-  - `GET /api/assets/[chart_id]/[asset_key]` requires login but returns
-    per-chart asset data for any `chart_id` in the path — a cross-tenant read.
-- **Proposed fix class:** same pattern as B-007/B-008 — gate with
-  `requireChartPermission`/`authorizeChartAccess` (the shared helper B-008
-  introduced), `'all'` for the write path, `'read'` for the asset read.
-- **Status:** OPEN, filed to stream **S5** — not fixed in Session A.
-
-### V3-E-011 — Systemic: ~30 further routes take a `chart_id` with no verified ownership check
-
-- **Class / severity:** PROCESS · S2 (MEDIUM, proposed — this is a coverage
-  gap, not itself a proven exploit; severity of any individual route within it
-  is unknown until triaged)
-- **Lens / stage:** L-CODE · CROSS
-- **Expected:** given the SAME root cause has now been independently confirmed
-  four times in one session (`charts/[id]` GET → B-001; `cockpit/clear`+
-  `execute` → B-007; `cockpit/runs`+`atlas/sample` → B-008; `build/rebuild*`+
-  `assets/[chart_id]/[asset_key]` → V3-E-010 above), a bounded per-instance
-  response is no longer proportionate — a systematic audit is needed.
-- **Observed (2026-08-27):** the B-008 fixer's broader scan (not a full triage)
-  flagged roughly 30 additional routes accepting a `chart_id` parameter with
-  no independently-confirmed ownership check. The fixer explicitly declined to
-  triage these individually within B-008's scope — "many are probably fine
-  (owner-scoped SQL, admin-gated) but I did not triage them." One claimed
-  instance (the `watchdog` route) was investigated and DISPROVEN as a gap — it
-  is correctly gated by an `x-watchdog-auth` shared secret for Cloud
-  Scheduler — demonstrating the list needs real per-route verification, not a
-  grep-count treated as a defect count.
-- **Why this is NOT fixed in Session A:** A4's mandate is the P2 blocker
-  denominator (B-001..B-006) plus severity-driven additions where a live,
-  CONFIRMED critical surfaces collaterally (B-007, B-008 both met that bar via
-  independent reproduction of a real unauthorized DELETE). An unconfirmed list
-  of ~30 candidates is exactly the open-ended "keep chasing every new lead"
-  pattern the elevation's bounded-scope discipline (§5.3: scope changes are
-  authorized and registered, not chased indefinitely) warns against — chasing
-  it further here would prevent A4 from ever closing CG-2 and starting the
-  campaign's actual six streams, which is Session A's real purpose.
-- **Proposed fix class:** a dedicated, systematic authorization audit —
-  per-route: (1) does it accept a `chart_id`; (2) is there a verified
-  ownership/grant/role check before any sensitive read or any write; (3) fix
-  or confirm-safe, one at a time, with the same TDD discipline B-001/B-007/
-  B-008 used. This is squarely stream **S5**'s mandate (§9 security/privacy/
-  data-integrity battery) — filed there as a named, evidenced work item, not
-  silently dropped.
-- **Status:** OPEN, filed to stream **S5** as its highest-priority lead. Close
-  rung: every candidate route individually triaged with a cited verdict
-  (fixed / confirmed-safe-with-reason), not a re-statement of this count.
-- **Addendum (2026-08-27, B-008 independent verifier):** three more confirmed
-  members of the same family: `cockpit/runs/active`, `cockpit/sse`, and
-  `cockpit/runs/[id]/assets` — auth-only, no ownership check, disclosing the
-  same build-state the now-fixed `GET /api/cockpit/runs` protects. Added to
-  this list rather than fixed in Session A, for the same bounded-scope reason.
-
----
-
-*End EDIR_V3_REGISTER v1.0 — 115 historical entries imported by reference;
-81 branches dispositioned (SUPERSEDED 70 · ARCHIVE 7 · EVIDENCE-ONLY 2 ·
-SALVAGE 2); 11 V3 entries (5 from the A3 census + 6 surfaced during A4's
-B-001/B-007/B-008 fix-and-verify chain, 2026-08-27: V3-E-006/B-007 and the
-B-008 CRITICAL routes fixed and independently verified, V3-E-007/E-008/E-010/
-E-011 filed to S5, V3-E-009 closed-as-benign). No gate is certified by this
-document.*

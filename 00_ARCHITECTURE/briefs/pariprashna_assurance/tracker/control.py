@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -22,9 +23,14 @@ LIFECYCLES = {"NOT_STARTED", "READY", "RUNNING", "BLOCKED", "PAUSED", "IN_VERIFI
 HEALTH = {"HEALTHY", "ATTENTION_REQUIRED", "STALE", "INTEGRITY_DEGRADED", "UNKNOWN"}
 ROLES = {"STREAM_LEAD", "NATIVE_SURROGATE", "INDEPENDENT_VERIFIER", "PROGRAMME_INTEGRATOR", "NATIVE"}
 COMPLETION_EVENTS = {"work_item_accepted", "verification_accepted", "regression_accepted", "stream_closure_recommended", "result_packet_accepted", "gate_closed", "native_acceptance"}
+# The one governed exception to FINDING_FREEZE: a NATIVE_SURROGATE names a single finding_id
+# that a stream's already-frozen remediation plan is deliberately being re-opened for. It does
+# not lift the freeze for anything else, and no other role may emit it.
+FINDING_FREEZE_EXCEPTION_EVENT = "finding_freeze_exception_granted"
+FINDING_FREEZE_EXCEPTION_ROLE = "NATIVE_SURROGATE"
 ROLE_EVENTS = {
     "STREAM_LEAD": {"work_started", "scenario_executed", "finding_discovered", "reproduction_recorded", "remediation_proposed", "remediation_implemented", "paused", "blocked", "resumed", "verification_started", "failed", "regression_requested", "correction_recorded"},
-    "NATIVE_SURROGATE": {"decision_recorded", "finding_triaged", "remediation_approved", "improvement_parked"},
+    "NATIVE_SURROGATE": {"decision_recorded", "finding_triaged", "remediation_approved", "improvement_parked", FINDING_FREEZE_EXCEPTION_EVENT},
     "INDEPENDENT_VERIFIER": {"reproduction_accepted", "reproduction_rejected", "verification_accepted", "verification_rejected", "regression_accepted", "regression_rejected", "stream_closure_recommended"},
     "PROGRAMME_INTEGRATOR": {"work_item_accepted", "dependency_resolved", "result_packet_accepted", "integration_baseline_advanced", "gate_closed", "scope_change_approved", "campaign_bootstrapped"},
     "NATIVE": {"native_acceptance"},
@@ -39,6 +45,11 @@ P1_F004 = "P1-F-004"
 P2_PHASE_IDS = ["P2", "P3", "P4", "P5", "P6", "P7"]
 P2_GENERAL_STREAMS = P2_PHASE_IDS + [stream_id for stream_id, _ in STREAMS]
 P2_ACTOR_IDS = {f"lead-{pid.lower()}" for pid in P2_PHASE_IDS} | {f"lead-{sid.lower()}" for sid in STREAM_IDS} | {"surrogate", "verifier", "integrator", "native"}
+_SCENARIO_SLOT_RE = re.compile(r"^S(\d+)-SC-(\d+)", re.IGNORECASE)
+# Lower bound is empirical: the S5 concurrency incident (D-127-class collision) had its two
+# writer instances' scenario-lease-relevant writes ~392s apart; the TTL must exceed that gap
+# for the guard to have caught it, while still recovering promptly from a genuinely dead writer.
+SCENARIO_WRITER_LEASE_TTL_SECONDS = 1800
 
 
 class RejectedEvent(ValueError):
@@ -60,11 +71,26 @@ def digest(value: Any) -> str:
 
 
 def request_fingerprint(request: dict[str, Any]) -> str:
-    """Bind idempotency to the actor's complete, server-timestamp-free intent."""
+    """Bind idempotency to the actor's complete, server-timestamp-free intent.
+    writer_instance_id is deliberately excluded: a retry of the same logical request
+    (same idempotency_key, same payload) after a writer-process restart legitimately
+    mints a new writer_instance_id, and must still be recognized as the same request."""
     return digest({key: request.get(key) for key in (
         "actor_id", "idempotency_key", "event_type", "payload", "stream_id",
         "expected_stream_seq", "evidence",
     )})
+
+
+def scenario_slot(scenario_id: str) -> str:
+    """Canonical numeric-slot key for a scenario_id (S{N}-SC-{NN}), independent of any
+    descriptive suffix or writer-specific prefix. Falls back to the raw id for scenario_ids
+    that do not follow the convention, so pre-existing non-conforming ids keep dedupling
+    exactly as before."""
+    match = _SCENARIO_SLOT_RE.search(scenario_id)
+    if not match:
+        return scenario_id
+    stream_num, scenario_num = match.groups()
+    return f"S{int(stream_num)}-SC-{int(scenario_num):02d}"
 
 
 def parse_time(value: str | None) -> float | None:
@@ -167,6 +193,7 @@ class EventStore:
                 CREATE TABLE IF NOT EXISTS p1_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS p2_actors (actor_id TEXT PRIMARY KEY, role TEXT NOT NULL, streams_json TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE);
                 CREATE TABLE IF NOT EXISTS presences (session_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, stream_id TEXT, state TEXT NOT NULL, observed_at TEXT NOT NULL, detail TEXT);
+                CREATE TABLE IF NOT EXISTS stream_scenario_write_leases (stream_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, writer_instance_id TEXT NOT NULL, acquired_at TEXT NOT NULL, last_seen_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projection_state (id INTEGER PRIMARY KEY CHECK (id=1), canonical_json TEXT NOT NULL, projection_hash TEXT NOT NULL, as_of TEXT NOT NULL, event_count INTEGER NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS projector_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT, lag_events INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS monitor_health (id INTEGER PRIMARY KEY CHECK (id=1), status TEXT NOT NULL, last_error TEXT, last_success_at TEXT);
@@ -383,10 +410,12 @@ class EventStore:
         if stream_id is not None and not isinstance(stream_id, str):
             raise RejectedEvent("SCHEMA", "stream_id must be string or null")
         evidence = request.get("evidence", [])
-        if request["event_type"] in COMPLETION_EVENTS | {"dependency_resolved"} and not evidence:
+        if request["event_type"] in COMPLETION_EVENTS | {"dependency_resolved", FINDING_FREEZE_EXCEPTION_EVENT} and not evidence:
             raise RejectedEvent("EVIDENCE_REQUIRED", f"{request['event_type']} requires primary evidence")
         if any(not isinstance(e, dict) or not e.get("uri") or not e.get("kind") for e in evidence):
             raise RejectedEvent("EVIDENCE_SCHEMA", "each evidence item requires kind and uri")
+        if request["event_type"] == "scenario_executed" and (not isinstance(request.get("writer_instance_id"), str) or not request["writer_instance_id"].strip()):
+            raise RejectedEvent("WRITER_INSTANCE_ID_REQUIRED", "scenario execution requires a non-empty writer_instance_id to enforce the single-writer-per-stream lease")
         if "occurred_at" in request:
             raise RejectedEvent("OCCURRED_AT_FORBIDDEN", "the server assigns event occurrence time")
         with self._lock, self.connection() as con:
@@ -444,9 +473,14 @@ class EventStore:
                 con.execute("INSERT INTO stream_sequences(stream_id,current_seq) VALUES(?,?) ON CONFLICT(stream_id) DO UPDATE SET current_seq=excluded.current_seq", (stream_id, stream_seq))
             previous = con.execute("SELECT last_hash FROM ledger_meta WHERE id=1").fetchone()[0]
             occurred_at = now_iso()
-            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "request_fingerprint": fingerprint, "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": request["payload"], "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
+            # writer_instance_id is folded into the durably-stored, hash-chain-protected
+            # payload (rather than a new top-level events column) so the historical
+            # hash-chain body composition for every pre-existing event is untouched — this
+            # only adds a new payload key on newly-written scenario_executed events.
+            stored_payload = {**request["payload"], "writer_instance_id": request["writer_instance_id"]} if event_type == "scenario_executed" else request["payload"]
+            body = {"schema_version": EVENT_SCHEMA, "event_id": str(uuid.uuid4()), "idempotency_key": request["idempotency_key"], "request_fingerprint": fingerprint, "stream_id": stream_id, "stream_seq": stream_seq, "actor_id": request["actor_id"], "actor_role": role, "event_type": event_type, "payload": stored_payload, "evidence": evidence, "occurred_at": occurred_at, "prev_hash": previous}
             event_hash = digest(body)
-            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], fingerprint, stream_id, stream_seq, body["actor_id"], role, event_type, canonical(request["payload"]), canonical(evidence), occurred_at, previous, event_hash))
+            con.execute("INSERT INTO events(event_id,schema_version,idempotency_key,request_fingerprint,stream_id,stream_seq,actor_id,actor_role,event_type,payload_json,evidence_json,occurred_at,prev_hash,event_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (body["event_id"], EVENT_SCHEMA, body["idempotency_key"], fingerprint, stream_id, stream_seq, body["actor_id"], role, event_type, canonical(stored_payload), canonical(evidence), occurred_at, previous, event_hash))
             con.execute("UPDATE ledger_meta SET last_hash=? WHERE id=1", (event_hash,))
             row = con.execute("SELECT * FROM events WHERE event_id=?", (body["event_id"],)).fetchone()
             con.execute("COMMIT")
@@ -500,12 +534,14 @@ class EventStore:
         if typ == "scenario_executed":
             if stream_id not in STREAM_IDS or not isinstance(payload.get("scenario_id"), str) or not payload["scenario_id"].strip():
                 raise RejectedEvent("SCENARIO_SCHEMA", "scenario execution requires a known stream and non-empty scenario_id")
+            self._enforce_scenario_writer_lease(con, stream_id, request["actor_id"], request["writer_instance_id"])
             planned, scoped_ids, previous = self._scenario_contract(con, stream_id)
             if not isinstance(planned, int):
                 raise RejectedEvent("SCENARIO_DENOMINATOR_REQUIRED", "scenario execution requires a chartered planned_scenarios denominator")
-            if payload["scenario_id"] in previous:
-                raise RejectedEvent("DUPLICATE_SCENARIO", "a scenario can be executed only once per stream")
-            if len(previous) >= planned + len(scoped_ids):
+            previous_slots = {scenario_slot(pid) for pid in previous}
+            if scenario_slot(payload["scenario_id"]) in previous_slots:
+                raise RejectedEvent("DUPLICATE_SCENARIO", "a scenario numeric slot can be executed only once per stream, regardless of slug")
+            if len(previous_slots) >= planned + len(scoped_ids):
                 raise RejectedEvent("SCENARIO_DENOMINATOR_EXCEEDED", "executed scenarios cannot exceed the frozen denominator")
         if typ == "work_item_accepted":
             item = payload.get("work_item_id")
@@ -565,8 +601,38 @@ class EventStore:
                 raise RejectedEvent("FINDING_SCHEMA", "a finding needs an eligible target, unique non-empty id, and declared severity")
             if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
                 raise RejectedEvent("FINDING_ID_CONFLICT", "a finding identifier may be discovered once")
-            if self._remediation_contract(con, stream_id) is not None:
-                raise RejectedEvent("FINDING_FREEZE", "a new finding after the frozen remediation plan requires a separately governed scope path")
+            if self._remediation_contract(con, stream_id) is not None and self._finding_freeze_exception(con, stream_id, finding_id) is None:
+                raise RejectedEvent("FINDING_FREEZE", f"a new finding after the frozen remediation plan requires a {FINDING_FREEZE_EXCEPTION_ROLE}-authorized {FINDING_FREEZE_EXCEPTION_EVENT} naming this finding_id in this stream")
+        if typ == FINDING_FREEZE_EXCEPTION_EVENT:
+            # ROLE_EVENTS already gates emission to the surrogate. The role is re-asserted here
+            # because this is the one event whose whole purpose is to relax a governance freeze:
+            # it must not become emittable by a widened ROLE_EVENTS row alone (§N.8 — the check
+            # behind the claim, not a proxy for it).
+            if role != FINDING_FREEZE_EXCEPTION_ROLE:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_ROLE", f"only a {FINDING_FREEZE_EXCEPTION_ROLE} may authorize a post-freeze finding; {role} cannot self-authorize one")
+            finding_id = payload.get("finding_id")
+            if stream_id not in STREAM_IDS | {"P1"} or not isinstance(finding_id, str) or not finding_id.strip():
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "a freeze exception needs an eligible target stream and a non-empty finding_id")
+            if not isinstance(payload.get("reason"), str) or not payload["reason"].strip():
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "a freeze exception must record why the frozen plan is being re-opened for this finding")
+            frozen_plan = self._remediation_contract(con, stream_id)
+            if frozen_plan is None:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_UNNECESSARY", "a freeze exception is only defined for a stream whose remediation plan is already frozen; an unfrozen stream takes findings through the ordinary path")
+            if any(json.loads(row["payload_json"]).get("finding_id") == finding_id for row in con.execute("SELECT payload_json FROM events WHERE event_type='finding_discovered'")):
+                raise RejectedEvent("FINDING_ID_CONFLICT", "a freeze exception cannot re-open an already-discovered finding identifier")
+            if self._finding_freeze_exception(con, stream_id, finding_id) is not None:
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_CONFLICT", "a finding identifier may be granted a freeze exception once")
+            additions = payload.get("added_remediations", [])
+            if not isinstance(additions, list):
+                raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "added_remediations must be an array when supplied")
+            planned_ids = {entry["id"] for entry in frozen_plan if isinstance(entry, dict) and isinstance(entry.get("id"), str)}
+            added_ids: set[str] = set()
+            for entry in additions:
+                if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip() or entry.get("finding_id") != finding_id:
+                    raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "each added remediation needs a non-empty id and must name this exception's own finding_id")
+                if entry["id"] in planned_ids or entry["id"] in added_ids:
+                    raise RejectedEvent("FINDING_FREEZE_EXCEPTION_SCHEMA", "an added remediation id must be new to this stream's frozen plan")
+                added_ids.add(entry["id"])
         if typ == "remediation_approved" and "remediation_plan" in payload:
             plan = payload["remediation_plan"]
             if stream_id == "P1" and (not self.p0b_only or not self.p1_enabled or not isinstance(plan, list) or len(plan) != 1 or not isinstance(plan[0], dict) or plan[0].get("finding_id") != P1_F004):
@@ -711,7 +777,7 @@ class EventStore:
                 if not isinstance(scenario, dict) or not isinstance(scenario.get("id"), str) or not scenario["id"].strip() or scenario.get("stream_id") not in STREAM_IDS or scenario["id"] in known_scenarios or scenario["id"] in new_scenario_ids:
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "each added scenario needs a globally unique id and known stream_id")
                 _, _, executed = self._scenario_contract(con, scenario["stream_id"])
-                if scenario["id"] in executed:
+                if scenario_slot(scenario["id"]) in {scenario_slot(pid) for pid in executed}:
                     raise RejectedEvent("SCOPE_CHANGE_SCHEMA", "a scope-approved scenario cannot already have been executed")
                 new_scenario_ids.add(scenario["id"])
         if typ == "correction_recorded":
@@ -731,6 +797,40 @@ class EventStore:
                     raise RejectedEvent("EVIDENCE_REQUIRED", "a session ceiling correction requires authority evidence")
                 if not isinstance(payload["ceiling"], (int, float)) or isinstance(payload["ceiling"], bool) or payload["ceiling"] <= 0:
                     raise RejectedEvent("CORRECTION_SCHEMA", "a corrected session ceiling must be a positive number of seconds")
+            if "deployed_revision" in payload:
+                # Unlike the ceiling correction above, this is deliberately NOT restricted to
+                # "only when unset" / "only once": a session may need to re-prove its result
+                # against successive fresher revisions as later deploys land (the S5 case this
+                # exists for), so each correction_recorded event is just one more additive fold
+                # step layered onto the immutable work_started receipt — never a rewrite of it.
+                if target["event_type"] != "work_started" or target["actor_id"] != request["actor_id"] or target["stream_id"] != stream_id:
+                    raise RejectedEvent("CORRECTION_TARGET", "a deployed_revision correction may target only this actor's work-start in this stream")
+                if not isinstance(payload["deployed_revision"], str) or not payload["deployed_revision"].strip():
+                    raise RejectedEvent("CORRECTION_SCHEMA", "a corrected deployed_revision must be a non-empty revision identifier")
+                if not request.get("evidence"):
+                    raise RejectedEvent("EVIDENCE_REQUIRED", "a deployed_revision correction requires deploy-log evidence proving the fresher revision")
+
+    @staticmethod
+    def _enforce_scenario_writer_lease(con: sqlite3.Connection, stream_id: str, actor_id: str, writer_instance_id: str) -> None:
+        """A stream's scenario-execution writes are leased to one writer instance at a time.
+        A second, different instance is rejected while the lease is fresh; a stale lease
+        (no scenario write in SCENARIO_WRITER_LEASE_TTL_SECONDS) may be taken over, so a
+        genuinely dead writer never permanently deadlocks the stream."""
+        now = now_iso()
+        row = con.execute("SELECT actor_id, writer_instance_id, acquired_at, last_seen_at FROM stream_scenario_write_leases WHERE stream_id=?", (stream_id,)).fetchone()
+        if row and row["writer_instance_id"] != writer_instance_id:
+            last_seen = parse_time(row["last_seen_at"])
+            # An unparsable last_seen_at must never be treated as "infinitely stale" —
+            # fail closed (reject the takeover) rather than silently granting it.
+            stale = last_seen is not None and (parse_time(now) or 0) - last_seen >= SCENARIO_WRITER_LEASE_TTL_SECONDS
+            if not stale:
+                raise RejectedEvent("CONCURRENT_WRITER_LEASE_CONFLICT", f"{stream_id} scenario-execution writes are actively leased to another writer instance ({row['writer_instance_id']}); this write from {writer_instance_id} is rejected to prevent a duplicate-recording collision")
+        acquired_at = row["acquired_at"] if row and row["writer_instance_id"] == writer_instance_id else now
+        con.execute(
+            "INSERT INTO stream_scenario_write_leases(stream_id,actor_id,writer_instance_id,acquired_at,last_seen_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(stream_id) DO UPDATE SET actor_id=excluded.actor_id, writer_instance_id=excluded.writer_instance_id, acquired_at=excluded.acquired_at, last_seen_at=excluded.last_seen_at",
+            (stream_id, actor_id, writer_instance_id, acquired_at, now),
+        )
 
     @staticmethod
     def _scenario_contract(con: sqlite3.Connection, stream_id: str) -> tuple[int | None, list[str], list[str]]:
@@ -743,12 +843,42 @@ class EventStore:
         return planned, scoped_ids, executed
 
     @staticmethod
+    def _finding_freeze_exception(con: sqlite3.Connection, stream_id: str | None, finding_id: Any) -> dict[str, Any] | None:
+        """The surrogate-authorized exception, if any, that re-opens exactly `finding_id` on an
+        already-frozen stream plan. Authority is read from the durable, hash-chained ledger row's
+        stored `actor_role` — never from the submitting client's claim — so a ledger row written
+        by any other role can never grant the exception even if it carries the right event_type."""
+        if not stream_id or not isinstance(finding_id, str) or not finding_id.strip():
+            return None
+        for row in con.execute("SELECT event_id,actor_id,actor_role,payload_json,occurred_at FROM events WHERE stream_id=? AND event_type=? ORDER BY ledger_seq", (stream_id, FINDING_FREEZE_EXCEPTION_EVENT)):
+            if row["actor_role"] != FINDING_FREEZE_EXCEPTION_ROLE:
+                continue
+            payload = json.loads(row["payload_json"])
+            if payload.get("finding_id") == finding_id:
+                return {"event_id": row["event_id"], "stream_id": stream_id, "finding_id": finding_id, "reason": payload.get("reason"), "authorized_by": row["actor_id"], "authorized_role": row["actor_role"], "added_remediations": payload.get("added_remediations", []), "at": row["occurred_at"]}
+        return None
+
+    @staticmethod
     def _remediation_contract(con: sqlite3.Connection, stream_id: str) -> list[dict[str, Any]] | None:
+        """The stream's frozen remediation plan, plus any entries a surrogate-authorized freeze
+        exception added to it. Returning the amended plan STRENGTHENS the downstream gates that
+        read it: a plan-revision entry must itself be implemented and independently verified
+        before the remediation stage can earn credit. It never loosens the freeze itself — the
+        return value is non-None only when an ordinary `remediation_approved` plan exists."""
+        plan: list[dict[str, Any]] | None = None
         for row in con.execute("SELECT payload_json FROM events WHERE stream_id=? AND event_type='remediation_approved' ORDER BY ledger_seq", (stream_id,)):
             payload = json.loads(row["payload_json"])
             if "remediation_plan" in payload:
-                return payload["remediation_plan"]
-        return None
+                plan = payload["remediation_plan"]
+                break
+        if plan is None or not isinstance(plan, list):
+            return plan
+        amended = list(plan)
+        for row in con.execute("SELECT actor_role,payload_json FROM events WHERE stream_id=? AND event_type=? ORDER BY ledger_seq", (stream_id, FINDING_FREEZE_EXCEPTION_EVENT)):
+            if row["actor_role"] != FINDING_FREEZE_EXCEPTION_ROLE:
+                continue
+            amended.extend(entry for entry in json.loads(row["payload_json"]).get("added_remediations", []) or [] if isinstance(entry, dict))
+        return amended
 
     @staticmethod
     def _row_event(row: sqlite3.Row) -> dict[str, Any]:
@@ -1001,6 +1131,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
     gates = {g["id"]: {**copy.deepcopy(g), "status": "OPEN", "evidence": [], "closed_by": None} for g in definition["gates"]}
     dependencies = {(dependency["from"], dependency["to"]): {**copy.deepcopy(dependency), "status": "PENDING", "evidence": [], "resolved_by": None, "resolved_at": None} for dependency in definition["dependencies"]}
     findings: dict[str, Any] = {}; remediations: dict[str, Any] = {}; verifications: dict[str, Any] = {}; decisions: list[dict[str, Any]] = []; sessions: dict[str, Any] = {}; started_sessions: dict[str, str] = {}; scope_changes: list[dict[str, Any]] = []
+    finding_freeze_exceptions: list[dict[str, Any]] = []; granted_freeze_exceptions: dict[tuple[Any, Any], dict[str, Any]] = {}
     bootstrapped = False; demonstration = False
     for event in events:
         typ, payload, evidence = event["event_type"], event["payload"], event["evidence"]
@@ -1032,9 +1163,29 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
                 sessions[session_id]["ceiling"] = ceiling
                 sessions[session_id]["last_evidence"] = evidence
                 sessions[session_id]["last_evidence_at"] = event["occurred_at"]
+            deployed_revision = payload.get("deployed_revision")
+            if session_id and isinstance(deployed_revision, str) and deployed_revision.strip():
+                # Additive fold-forward only: the work_started event this corrects is never
+                # touched (events are append-only, enforced by the DB trigger); the projector
+                # simply lets the latest correction_recorded event win when it replays the log
+                # in ledger order, so the original value stays reconstructable from the raw log
+                # at any point in history even though the live projection now shows the update.
+                sessions[session_id]["deployed_revision"] = deployed_revision
+                sessions[session_id]["last_evidence"] = evidence
+                sessions[session_id]["last_evidence_at"] = event["occurred_at"]
         elif typ == "finding_discovered":
             fid = payload.get("finding_id");
-            if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"]}
+            granted = granted_freeze_exceptions.get((event.get("stream_id"), fid))
+            if granted: granted["finding_recorded"] = True
+            if fid: findings[fid] = {"id": fid, "stream_id": event.get("stream_id"), "severity": payload.get("severity", "UNTRIAGED"), "status": "OPEN", "root_cause_group": payload.get("root_cause_group"), "evidence": evidence, "finder": event["actor_id"], "freeze_exception": {"event_id": granted["event_id"], "authorized_by": granted["authorized_by"], "authorized_role": granted["authorized_role"], "reason": granted["reason"]} if granted else None}
+        elif typ == FINDING_FREEZE_EXCEPTION_EVENT:
+            fid = payload.get("finding_id")
+            record = {"event_id": event["event_id"], "stream_id": event.get("stream_id"), "finding_id": fid, "reason": payload.get("reason"), "authorized_by": event["actor_id"], "authorized_role": event["actor_role"], "added_remediations": copy.deepcopy(payload.get("added_remediations", [])), "evidence": evidence, "at": event["occurred_at"], "finding_recorded": False}
+            finding_freeze_exceptions.append(record)
+            if fid: granted_freeze_exceptions[(event.get("stream_id"), fid)] = record
+            plan = streams[event["stream_id"]]["remediation_plan"] if event.get("stream_id") in streams else None
+            if isinstance(plan, list): plan.extend(copy.deepcopy(entry) for entry in payload.get("added_remediations", []) or [] if isinstance(entry, dict))
+            decisions.append({"event_id": event["event_id"], "label": "SURROGATE DECISION — not native acceptance", "decision": payload.get("reason") or typ, "kind": typ, "requires_a3": bool(payload.get("requires_a3")), "evidence": evidence})
         elif typ == "finding_triaged":
             fid = payload.get("finding_id");
             if fid in findings: findings[fid].update({"status": "TRIAGED", "severity": payload.get("severity", findings[fid]["severity"]), "surrogate_decision": True})
@@ -1096,7 +1247,8 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         stream_sessions.sort(key=lambda session: session.get("started_at") or "", reverse=True)
         stream["execution_session"] = stream_sessions[0] if stream_sessions else None
         planned_scenarios = stream["execution_session"].get("planned_scenarios") if stream["execution_session"] else None
-        stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(stream["scenario_ids"])}
+        distinct_scenario_slots = {scenario_slot(raw_scenario_id) for raw_scenario_id in stream["scenario_ids"]}
+        stream["scenarios"] = {"planned": planned_scenarios + len(stream["scope_scenario_ids"]) if planned_scenarios is not None else None, "executed": len(distinct_scenario_slots), "recorded_scenario_events": len(stream["scenario_ids"])}
         next_stage = next((stage_id for stage_id, _, _ in STAGES if not items[f"{sid}:{stage_id}"]["accepted"]), "closure")
         stream["lifecycle_stage"] = {"id": next_stage, "name": STAGE_NAMES[next_stage]}
         if stream["execution_session"]:
@@ -1122,7 +1274,7 @@ def fold(definition: dict[str, Any], events: list[dict[str, Any]], as_of: str) -
         phases["P3"]["lifecycle"] = "PAUSED"
     elif "FAILED" in stream_states:
         phases["P3"]["lifecycle"] = "FAILED"
-    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": list(dependencies.values()), "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes}
+    return {"schema_version": "campaign-canonical-projection@1", "campaign": definition["campaign"], "as_of": as_of, "bootstrapped": bootstrapped, "runtime_mode": "DEMONSTRATION" if demonstration else "CAMPAIGN", "completion": {"earned_campaign_points": round(earned, 4), "planned_campaign_points": round(total, 4), "completion_pct": round(100 * earned / total, 2) if total else 0, "readiness": "GATES_ONLY"}, "phases": list(phases.values()), "streams": list(streams.values()), "work_items": list(items.values()), "findings": list(findings.values()), "root_cause_groups": sorted({f["root_cause_group"] for f in findings.values() if f["root_cause_group"]}), "remediations": list(remediations.values()), "verifications": list(verifications.values()), "gates": list(gates.values()), "dependencies": list(dependencies.values()), "decisions": decisions, "execution_sessions": list(sessions.values()), "agent_roles": sorted(ROLES), "scope_changes": scope_changes, "finding_freeze_exceptions": finding_freeze_exceptions}
 
 
 def presence_overlay(canonical_projection: dict[str, Any], presences: list[dict[str, Any]], as_of: str, integrity_ok: bool) -> dict[str, Any]:

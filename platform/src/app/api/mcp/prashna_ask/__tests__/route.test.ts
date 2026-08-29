@@ -56,7 +56,7 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
-  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false })),
+  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false, llm_extension_note: '' })),
   ensureB11WholeChartReadFloor: vi.fn(() => false),
   ensureDashaContextFloor: vi.fn(() => false),
 }))
@@ -102,9 +102,14 @@ import { query as dbQuery } from '@/lib/db/client'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
+import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
 import { POST } from '../route'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+// Synthetic test chart — used by the new V3-E-024 tests below only (never the
+// native's real chart), per the repo's test-data law. Auth/DB are fully mocked
+// in this file regardless, so this distinction is belt-and-suspenders.
+const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 
 function makeReq(body: object, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/mcp/prashna_ask', {
@@ -497,6 +502,56 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.capTripped).toBeNull()
   })
 
+  /**
+   * V3-E-024 (extends PR #1621's plan_stage.ts fix to this door). PR #1621
+   * fixed the Vidhi compiler's E-7 `llm_extension_note` reaching nowhere at
+   * ONE of three production `compileFloorForPlan` call sites. This asserts
+   * the fix at THIS site (route.ts ~line 456): the note is folded into
+   * `plan.synthesis_guidance`, and — since this door's synthesis
+   * (`synthesizeReading`) has no other path for planner/compiler guidance to
+   * reach it, unlike consult's `buildConsultSystemContent` — threaded through
+   * explicitly as the new `synthesisGuidance` param.
+   */
+  it('V3-E-024: folds compileFloorForPlan().llm_extension_note into plan.synthesis_guidance and passes it to synthesizeReading as synthesisGuidance', async () => {
+    const outcome = {
+      outcome: 'plan' as const,
+      plan: {
+        ...planOutcome(['chart_facts_query']).plan,
+        scope_tuple: { intent: 'domain_assessment', domains: ['career'], width: 'standard', depth: 'deep' },
+        synthesis_guidance: 'Lead with the dominant career yoga.',
+      },
+    }
+    mockCallPipelinePlanner.mockResolvedValue(outcome)
+    ;(compileFloorForPlan as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      compilerIntent: 'career_deepdive',
+      toolCalls: [],
+      mappedPrimitives: [],
+      unmappedPrimitives: [],
+      compileFailed: false,
+      llm_extension_note:
+        'INSIGHT MANDATE (E-7): go beyond acharya-grade pattern recognition. ' +
+        'Band 3 (question-specific extension) is LLM-owned: pursue beyond-floor context.',
+    })
+
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'Give me a deep dive on my career.' }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toContain('Lead with the dominant career yoga.')
+    expect(call.synthesisGuidance).toContain('INSIGHT MANDATE (E-7)')
+    expect(call.synthesisGuidance).toContain('Band 3 (question-specific extension) is LLM-owned')
+  })
+
+  it('V3-E-024: passes synthesisGuidance: null (never undefined) to synthesizeReading when the plan carries no synthesis_guidance and the compiled floor has no note', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'What is my ascendant?' }))
+    await readNdjson(res)
+
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toBeNull()
+  })
+
   it('W6.3: threads chart_header.current_maha_antar and today\'s date into the synthesis call as the temporal anchor', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my current dasha?' }))
@@ -840,5 +895,104 @@ describe('PPR-12 safety gate (MCP door)', () => {
     // tool dispatched and no reading was synthesized.
     expect(mockCallPipelinePlanner).toHaveBeenCalled()
     expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  /**
+   * ── V3-E-049 ───────────────────────────────────────────────────────────────
+   * The full `SafetyDecision` object (`classifyTurnSafety` / `reclassifyAfterPlan`)
+   * was already computed and used to gate dispatch on this door, but only lossy
+   * derived strings (`safety_decision:<action>`, counts) ever reached the wire —
+   * `decision_id`/`review_id`/`audit_written`, the FK fields an auditor needs to
+   * correlate a turn back to `pariprashna_safety_decisions` (and
+   * `pariprashna_safety_reviews` when a review was opened), were silently
+   * dropped. These tests prove the envelope NOW carries them, and that the
+   * values are the REAL decision's — not a stub — by asserting the differential
+   * behaviour a stub could not reproduce: `review_id` is null when no review was
+   * required (hard stop) and a real id when one was opened (seal).
+   *
+   * Uses the synthetic test chart, never the native's real chart — this suite's
+   * pre-existing `CHART` constant predates this fix and is left untouched.
+   */
+  const SYNTHETIC_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  it('V3-E-049: HS-2 hard stop carries decision_id (real uuid) and a null review_id (no review needed)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'I want to kill myself.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    // Before this fix, `safety_decision` was entirely absent from the envelope
+    // — only the lossy `safety_decision:<action>` string flag existed.
+    expect(body.safety_decision).toBeDefined()
+    expect(typeof body.safety_decision.decision_id).toBe('string')
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Hard stop does not open a review — a stubbed/hardcoded field could not
+    // tell this case apart from the seal case below.
+    expect(body.safety_decision.review_id).toBeNull()
+    expect(typeof body.safety_decision.audit_written).toBe('boolean')
+  })
+
+  it('V3-E-049: HS-4 seal carries a real, non-null review_id matching the opened review', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'When will I die?' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_decision:seal_pending_signoff')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // The seal path DOES open a review — this is the differential proof that
+    // `review_id` on the wire is the live decision's own value, not a constant.
+    expect(typeof body.safety_decision.review_id).toBe('string')
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+    expect(body.safety_decision.review_id).not.toBe(body.safety_decision.decision_id)
+  })
+
+  it('V3-E-049: PLAN-TIME escalation to seal also carries the FK fields (postPlanSafety, not the pre-plan decision)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['ganita_ayurdaya_get', 'chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'Tell me about my constitution.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_escalated_at_plan_time')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Escalated at plan time → this action also requires a review.
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+  })
+
+  it('V3-E-049: the successful "plan" envelope also carries safety_decision (proceed action, no review)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'What does my chart say about my career?' }),
+    )
+
+    expect(res.status).toBe(200)
+    const lines = await readNdjson(res)
+    const final = lines[lines.length - 1] as Record<string, unknown>
+    expect(final.event).toBe('final')
+    expect(final.outcome).toBe('plan')
+    // Before this fix, the successful envelope carried NO safety_decision field
+    // at all (not even a lossy string flag) — the gap this finding names.
+    const safetyDecision = final.safety_decision as { decision_id: string; review_id: string | null; audit_written: boolean }
+    expect(safetyDecision).toBeDefined()
+    expect(safetyDecision.decision_id).toMatch(UUID_RE)
+    expect(safetyDecision.review_id).toBeNull()
+    expect(typeof safetyDecision.audit_written).toBe('boolean')
   })
 })

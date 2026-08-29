@@ -50,7 +50,9 @@ Baselines and load/chaos results are inherently LIVE-rung (real measurement agai
 
 ## EDIR_V3 seeds
 
-`../EDIR_V3_REGISTER_v1_0.md` — file S6 findings as `V3-E-0NN`, `stream: S6`.
+`../EDIR_V3_REGISTER_v1_0.md` — S6 had not filed any findings there as of the A5 split.
+
+**Superseded 2026-08-29 (A5 split):** the shared register's §4 stopped being a live append point — six streams appending there concurrently was producing repeated merge conflicts (see the index's own §4a for the full history). File all S6 findings in `../EDIR_V3_REGISTER_S6_v1_0.md` as `S6-V3-E-0NN` (next id: check that file's frontmatter `id_convention` — S6-V3-E-001 is free, nothing to skip).
 
 ## Posture
 

@@ -12,6 +12,7 @@ import {
   type NirmanaElevationManifest,
   type NirmanaRegistryContractRow,
 } from './definitions'
+import { buildNirmanaBaselineCandidate } from './monitor'
 import {
   canonicalizeCampaignStageTransitions,
   deriveEligibleNextAssetIds,
@@ -70,15 +71,18 @@ interface NirmanaMonitorObservationRow {
   freshness_deadline_at: string | null
   source_error_code: string | null
   runtime_liveness: 'active' | 'quiet' | 'unavailable'
+  release_state: 'in_sync' | 'out_of_sync' | 'unknown' | 'unavailable'
+  registry_identity_sha256: string | null
+  registry_contract_sha256: string | null
 }
 
 export interface NirmanaElevationRawSources {
   asset_registry: Array<NirmanaRegistryContractRow & { english_name: string | null; asset_type: string | null }>
   asset_throughput: Array<{ asset_id: string; chart_id: string | null; state: string; last_built_at: string | null }>
-  build_runs: Array<{ id: string; chart_id: string | null; action?: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null; triggered_by?: string | null }>
+  build_runs: Array<{ id: string; chart_id: string | null; action?: string | null; state: string; current_asset_id: string | null; created_at: string; started_at: string | null; triggered_by?: string | null; campaign_id?: string | null; definition_revision?: string | null }>
   build_run_assets: Array<{ run_id: string; asset_id: string; position: number; state: string; started_at: string | null; ended_at: string | null; error: string | null }>
   build_substep_progress: Array<{ chart_id: string; asset_id: string; committed: string | number; last_progress_at: string | null }>
-  campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string }>
+  campaign_definitions: Array<{ campaign_id: string; definition_revision: string; definition_status: 'reconciling' | 'frozen' | 'superseded'; manifest: unknown; manifest_sha256: string; created_at: string; superseded_at?: string | null }>
   campaign_events: Array<{ event_id?: string; idempotency_key?: string; campaign_id: string; definition_revision: string; event_type: string; entity_type: string; entity_id: string; layer: string | null; evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string; writer_identity?: string | null }>
   asset_labels: Array<{
     campaign_id: string
@@ -124,16 +128,22 @@ async function loadSource<K extends RawSourceId>(sourceId: K, sql: string): Prom
 
 /** Only primary build tables plus tracker-owned evidence tables feed this projection. */
 export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevationRawSources> {
-  const registry = await loadSource('asset_registry', `SELECT asset_id, english_name, layer, scope, sort_order, has_writer,
+  const registry = await loadSource('asset_registry', `SELECT asset_id, sanskrit_name, english_name, english_description, layer, scope, sort_order, has_writer,
     asset_type, asset_kind, catalog_status, is_active, COALESCE(depends_on, '{}') AS depends_on,
     target_table, count_sql, integrity_check_sql, health_probe, natural_key_partition,
     superseded_by, data_disposition, dead_flag
     FROM asset_registry ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
-  const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by FROM build_runs ORDER BY created_at DESC`)
+  const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by,
+    plan_manifest #>> '{campaign_control,campaign_id}' AS campaign_id,
+    plan_manifest #>> '{campaign_control,definition_revision}' AS definition_revision
+    FROM build_runs ORDER BY created_at DESC`)
   const runAssets = await loadSource('build_run_assets', `SELECT bra.run_id, bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id ORDER BY br.created_at DESC, br.id DESC, bra.position ASC, bra.asset_id ASC`)
   const substeps = await loadSource('build_substep_progress', `SELECT bsp.chart_id, bsp.asset_id, COUNT(*)::text AS committed, MAX(bsp.completed_at) AS last_progress_at FROM build_substep_progress bsp WHERE EXISTS (SELECT 1 FROM build_runs br WHERE br.chart_id = bsp.chart_id AND br.state IN ('planned', 'running', 'paused')) GROUP BY bsp.chart_id, bsp.asset_id`)
-  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at FROM nirmana_evidence.nirmana_elevation_campaign_definitions WHERE campaign_id = 'nirmana-elevation' AND superseded_at IS NULL ORDER BY created_at DESC LIMIT 1`)
+  const definitions = await loadSource('campaign_definitions', `SELECT campaign_id, definition_revision, definition_status, manifest, manifest_sha256, created_at, superseded_at
+    FROM nirmana_evidence.nirmana_elevation_campaign_definitions
+    WHERE campaign_id = 'nirmana-elevation'
+    ORDER BY superseded_at IS NULL DESC, created_at DESC, definition_revision DESC`)
   const events = await loadSource('campaign_events', `SELECT event_id, idempotency_key, campaign_id, definition_revision, event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref, observed_at, recorded_at, writer_identity FROM nirmana_evidence.nirmana_elevation_campaign_events WHERE campaign_id = 'nirmana-elevation' ORDER BY recorded_at ASC, event_id ASC`)
   const labels = await loadSource('asset_labels', `SELECT campaign_id, definition_revision, catalogue_revision, asset_id,
        sanskrit_name, english_name, description, legacy_aliases,
@@ -142,9 +152,9 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
  WHERE campaign_id = 'nirmana-elevation'
  ORDER BY catalogue_revision, asset_id`)
   const monitor = await loadSource('monitor_observations', `SELECT id, observed_at, status, affected_asset_ids,
-       current_definition_sha256, candidate_definition_sha256, candidate_catalogue_sha256,
+       current_definition_sha256, candidate_definition_sha256, registry_identity_sha256, registry_contract_sha256, candidate_catalogue_sha256,
        source_state, source_observed_at, freshness_state, freshness_deadline_at,
-       source_error_code, runtime_liveness
+       source_error_code, runtime_liveness, release_state
   FROM nirmana_elevation_monitor_observations
  ORDER BY observed_at DESC, id DESC
  LIMIT 1`)
@@ -185,9 +195,72 @@ const PROGRAM_SYNC_GAPS: Partial<Record<NirmanaProgramSyncStatus, string>> = {
   source_unavailable: 'The authoritative program monitor source is unavailable.',
 }
 
+function deterministicSupersessionRevision(observationId: string, observedAt: string): string {
+  return `ntap-${observedAt.slice(0, 10).replaceAll('-', '')}-${observationId}`
+}
+
+function currentDefinition(rows: NirmanaElevationRawSources['campaign_definitions']) {
+  return rows.find((row) => (row.superseded_at === null || row.superseded_at === undefined)
+    && row.definition_status !== 'superseded')
+}
+
+function supersessionEligibility(input: {
+  raw: NirmanaElevationRawSources
+  definition: ReturnType<typeof currentDefinition>
+  observation: NirmanaMonitorObservationRow | undefined
+  generatedAt: string
+}): Pick<NirmanaElevationSnapshotV2['program_sync'], 'supersession_eligible' | 'supersession_blockers'> {
+  const { raw, definition, observation, generatedAt } = input
+  const blockers: NirmanaElevationSnapshotV2['program_sync']['supersession_blockers'] = []
+  if (observation?.status !== 'plan_adaptation_required') blockers.push('not_plan_adaptation')
+  if (!definition || definition.definition_status !== 'frozen') blockers.push('current_definition_not_frozen')
+  if (!definition || observation?.current_definition_sha256 !== definition.manifest_sha256) blockers.push('current_definition_mismatch')
+  if (observation?.source_state !== 'available') blockers.push('source_unavailable')
+  if (observation?.source_error_code !== null) blockers.push('source_error')
+
+  const observedAt = asIso(observation?.observed_at)
+  const sourceObservedAt = asIso(observation?.source_observed_at)
+  const deadlineAt = asIso(observation?.freshness_deadline_at)
+  if (!observedAt || !sourceObservedAt || !deadlineAt
+    || !observation?.registry_identity_sha256 || !observation.registry_contract_sha256) {
+    blockers.push('observation_incomplete')
+  }
+  if (observation?.freshness_state !== 'fresh' || !deadlineAt || Date.parse(deadlineAt) < Date.parse(generatedAt)) {
+    blockers.push('observation_stale')
+  }
+  if (observation?.release_state !== 'in_sync') blockers.push('release_not_in_sync')
+  if (observation?.runtime_liveness !== 'quiet') blockers.push('runtime_not_quiet')
+
+  if (definition) {
+    if (raw.campaign_events.some((event) => event.campaign_id === definition.campaign_id
+      && event.definition_revision === definition.definition_revision)) blockers.push('campaign_events_present')
+    if (raw.build_runs.some((run) => run.campaign_id === definition.campaign_id
+      && run.definition_revision === definition.definition_revision)) blockers.push('definition_build_runs_present')
+    if (observation && raw.campaign_definitions.some((row) => row.definition_revision === deterministicSupersessionRevision(observation.id, observation.observed_at))) {
+      blockers.push('revision_not_unique')
+    }
+  }
+
+  try {
+    const candidate = buildNirmanaBaselineCandidate(raw.asset_registry)
+    if (observation?.candidate_definition_sha256 !== candidate.manifest_sha256
+      || observation?.candidate_catalogue_sha256 !== candidate.catalogue_sha256
+      || observation?.registry_identity_sha256 !== candidate.registry_identity_sha256
+      || observation?.registry_contract_sha256 !== candidate.registry_contract_sha256) {
+      blockers.push('candidate_mismatch')
+    }
+  } catch {
+    blockers.push('candidate_reconstruction_failed')
+  }
+
+  const boundedBlockers = [...new Set(blockers)].sort()
+  return { supersession_eligible: boundedBlockers.length === 0, supersession_blockers: boundedBlockers }
+}
+
 function projectProgramSync(
   rows: NonNullable<NirmanaElevationRawSources['monitor_observations']>,
   generatedAt: string,
+  supersession: Pick<NirmanaElevationSnapshotV2['program_sync'], 'supersession_eligible' | 'supersession_blockers'>,
 ): {
   programSync: NirmanaElevationSnapshotV2['program_sync']
   source: NirmanaElevationSnapshotV2['sources'][number]
@@ -200,6 +273,7 @@ function projectProgramSync(
       programSync: {
         status: 'unknown', source_observation_id: null, observed_at: null, age_seconds: null, affected_asset_ids: [],
         current_definition_sha256: null, candidate_definition_sha256: null, candidate_catalogue_sha256: null,
+        ...supersession,
       },
       source: {
         source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
@@ -236,6 +310,7 @@ function projectProgramSync(
       current_definition_sha256: latest.current_definition_sha256,
       candidate_definition_sha256: latest.candidate_definition_sha256,
       candidate_catalogue_sha256: unavailable ? null : latest.candidate_catalogue_sha256,
+      ...supersession,
     },
     source: {
       source_id: 'program_monitor', provenance: SOURCE_PROVENANCE.program_monitor,
@@ -671,8 +746,11 @@ function projectAudit(
 
 export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString(), releaseStatus = null }: { generatedAt?: string; releaseStatus?: NirmanaReleaseStatus | null } = {}): NirmanaElevationSnapshotV2 {
   const generated_at = new Date(generatedAt).toISOString()
-  const programProjection = projectProgramSync(raw.monitor_observations ?? [], generated_at)
-  const definition = raw.campaign_definitions[0]
+  const latestObservation = [...(raw.monitor_observations ?? [])].sort((left, right) => timestamp(right.observed_at) - timestamp(left.observed_at)
+    || right.id.localeCompare(left.id))[0]
+  const definition = currentDefinition(raw.campaign_definitions)
+  const supersession = supersessionEligibility({ raw, definition, observation: latestObservation, generatedAt: generated_at })
+  const programProjection = projectProgramSync(raw.monitor_observations ?? [], generated_at, supersession)
   const rawWithLabels = raw.asset_labels ? raw : { ...raw, asset_labels: [] }
   const registryById = new Map(raw.asset_registry.map((asset) => [asset.asset_id, asset]))
   const manifest = validManifest(definition, registryById)
@@ -1237,6 +1315,8 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     current_definition_sha256: null,
     candidate_definition_sha256: null,
     candidate_catalogue_sha256: null,
+    supersession_eligible: false,
+    supersession_blockers: ['source_unavailable'],
   }
   const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit })
   return NirmanaElevationSnapshotV2Schema.parse({

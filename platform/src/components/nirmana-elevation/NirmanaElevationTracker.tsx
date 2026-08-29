@@ -11,6 +11,7 @@ import { AuditDrawer } from './AuditDrawer'
 import { BaselineAcceptancePanel } from './BaselineAcceptancePanel'
 import { CampaignSnapshotStrip } from './CampaignSnapshotStrip'
 import { CampaignSpine } from './CampaignSpine'
+import { DefinitionSupersessionPanel } from './DefinitionSupersessionPanel'
 import {
   NIRMANA_V1_PUBLIC_SOURCE_ERROR,
   NirmanaElevationTrackerV1,
@@ -134,6 +135,11 @@ function NirmanaElevationTrackerV2View({ snapshot, onBaselineAccepted }: {
       key={snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}
       snapshot={snapshot}
       onAccepted={onBaselineAccepted}
+    />
+    <DefinitionSupersessionPanel
+      key={`supersession:${snapshot.program_sync.source_observation_id ?? snapshot.program_sync.status}`}
+      snapshot={snapshot}
+      onRefresh={onBaselineAccepted}
     />
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
       <CampaignSpine snapshot={snapshot} onOpenAudit={openAudit} />

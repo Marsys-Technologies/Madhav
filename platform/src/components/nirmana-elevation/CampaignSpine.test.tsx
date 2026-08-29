@@ -100,6 +100,8 @@ describe('CampaignSpine', () => {
       current_definition_sha256: null,
       candidate_definition_sha256: null,
       candidate_catalogue_sha256: null,
+      supersession_eligible: false,
+      supersession_blockers: [],
     }
     const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
     if (!monitor) throw new Error('Fixture must include the program monitor source.')
@@ -132,6 +134,8 @@ describe('CampaignSpine', () => {
       current_definition_sha256: definitionHash,
       candidate_definition_sha256: definitionHash,
       candidate_catalogue_sha256: null,
+      supersession_eligible: false,
+      supersession_blockers: [],
     }
     snapshot.release = {
       main_sha: 'a'.repeat(40),
