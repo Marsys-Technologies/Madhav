@@ -91,7 +91,7 @@ describe('TurnCitationStream', () => {
     expect(events.filter((e) => e.type === 'citation.define')).toHaveLength(1)
   })
 
-  it('a held sentinel flushes as plain text once the hold-back timeout elapses (tick)', () => {
+  it('a held sentinel is DROPPED (fail closed) once the hold-back timeout elapses (tick) — V3-E-061', () => {
     const events: UnstampedCitationWireEvent[] = []
     let clock = 0
     const s = new TurnCitationStream({
@@ -104,7 +104,15 @@ describe('TurnCitationStream', () => {
     expect(s.tick()).toBe('') // well within the 400ms budget — still holding
     clock = 500
     const flushed = s.tick()
-    expect(flushed).toContain('cite')
+    // Fail closed (V3-E-061 fix, 2026-08-30): the held bytes — including the
+    // literal `cite`/`⟦` markup — are DROPPED, never forwarded as text. This
+    // is the exact production defect: a timeout used to flush the held
+    // sentinel's surviving (lint-cleaned) text straight into reader prose,
+    // observed live as a malformed `⟦cite: ⟧` token in the rendered turn.
+    expect(flushed).toBe('')
+    expect(flushed).not.toContain('cite')
+    expect(flushed).not.toContain('⟦')
+    expect(flushed).not.toContain('SIG.MSR.413')
     expect(events.some((e) => e.type === 'flag' && e.code === 'malformed_sentinel')).toBe(true)
     // No citation.define fired — the sentinel never closed.
     expect(events.some((e) => e.type === 'citation.define')).toBe(false)
