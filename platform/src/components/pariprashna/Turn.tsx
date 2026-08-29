@@ -39,6 +39,26 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
           </div>
         )}
         <AnswerRegion turn={turn} chartId={chartId} />
+        {turn.status === 'errored' && turn.error && (
+          <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
+            {/* V3-E-060 (partial fix): `classifyPariprashnaError` computes a
+                fuller explanatory `sentence` for every error kind (§7.5), but
+                the working band above only ever rendered the short
+                `bandLabel` — the reader saw "The connection was lost" with
+                no explanation of what was preserved or what to do next. This
+                renders the honest §7.5 sentence the pipeline already
+                computed. NOT fixed by this pass: `turn.error.actions`
+                (retry/switch_model/continue/settings) still has zero
+                consumers — real click-handler wiring (re-submit, open model
+                picker, reopen stream, open settings) needs callback
+                threading down from `PariprashnaApp.tsx` through
+                `Transcript`/`Turn`, which is a genuine feature-completion
+                item, not a one-line fix; carried forward as this defect
+                class's next unit, same disposition V3-E-030 used for
+                `WorkingBand.tsx`'s sealed-band label. */}
+            {turn.error.sentence}
+          </p>
+        )}
         {turn.status === 'interrupted' && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
             {/* V3-E-023: `interrupted` has two genuinely different causes
