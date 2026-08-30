@@ -154,6 +154,11 @@ GRANT USAGE ON SCHEMA nirmana_evidence TO nirmana_evidence_verifier_writer;
 GRANT SELECT ON nirmana_evidence.nirmana_elevation_conductor_policies,
   nirmana_evidence.nirmana_elevation_conductor_leases,
   nirmana_evidence.nirmana_elevation_campaign_definitions TO nirmana_evidence_verifier_writer;
+-- The verifier may inspect only the two fields needed to prove that an
+-- append-only conductor action actually completed; it cannot inspect request
+-- digests, arbitrary detail, or receipt identity data.
+GRANT SELECT (action, outcome) ON nirmana_evidence.nirmana_elevation_conductor_receipts
+  TO nirmana_evidence_verifier_writer;
 GRANT INSERT ON nirmana_evidence.nirmana_elevation_conductor_readiness_receipts TO nirmana_evidence_verifier_writer;
 GRANT SELECT ON TABLE public.nirmana_elevation_monitor_observations, public._migrations_applied
   TO nirmana_evidence_verifier_writer;

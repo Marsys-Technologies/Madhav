@@ -75,8 +75,12 @@ run('migration 639 non-browser conductor contract', () => {
     await client.query('RESET ROLE')
   })
 
-  it('gives the distinct verifier only readiness insertion and no lease mutation', async () => {
+  it('gives the distinct verifier only readiness insertion, narrow receipt reads, and no lease mutation', async () => {
     await client.query('SET ROLE nirmana_evidence_verifier_writer')
+    const permittedReceiptFields = await client.query(`SELECT action, outcome FROM nirmana_evidence.nirmana_elevation_conductor_receipts`)
+    expect(permittedReceiptFields.rowCount).toBeGreaterThanOrEqual(0)
+    await expect(client.query(`SELECT receipt_id FROM nirmana_evidence.nirmana_elevation_conductor_receipts`))
+      .rejects.toThrow(/permission denied/i)
     await expect(client.query(`UPDATE nirmana_evidence.nirmana_elevation_conductor_leases SET expires_at = clock_timestamp() WHERE lease_id = $1::uuid`, [leaseId]))
       .rejects.toThrow(/permission denied/i)
     await client.query('RESET ROLE')

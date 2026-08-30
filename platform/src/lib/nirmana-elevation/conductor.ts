@@ -149,6 +149,16 @@ export async function verifyNirmanaUnattendedReadiness(): Promise<NirmanaReadine
               to_regclass('nirmana_evidence.nirmana_elevation_conductor_receipts')::text AS receipt_table,
               to_regclass('nirmana_evidence.nirmana_elevation_conductor_readiness_receipts')::text AS readiness_table`,
     )
+    // An action counts only when the independently readable append-only trail
+    // contains a successful receipt.  This foundation deliberately emits none,
+    // so it cannot accidentally claim that its not-yet-implemented dispatcher
+    // has exercised an overnight capability.
+    const acceptedActions = await client.query<{ action: string }>(
+      `SELECT DISTINCT action
+         FROM nirmana_evidence.nirmana_elevation_conductor_receipts
+        WHERE campaign_id = 'nirmana-elevation'
+          AND outcome IN ('created', 'idempotent')`,
+    )
     await client.query('COMMIT')
     const configured = policy.rows[0]
     const now = Date.now()
@@ -158,6 +168,24 @@ export async function verifyNirmanaUnattendedReadiness(): Promise<NirmanaReadine
     const durableControl = capability.rows[0]?.lease_table !== null
       && capability.rows[0]?.receipt_table !== null
       && capability.rows[0]?.readiness_table !== null
+    const exercisedActions = new Set(acceptedActions.rows.map((receipt) => receipt.action))
+    const proofActionByReadinessCheck: Partial<Record<ReadinessCheckName, readonly string[]>> = {
+      stage_transition_writes: ['stage_transition'],
+      foundation_receipts: ['foundation_receipt'],
+      asset_analysis_and_verdict_receipts: ['asset_analysis', 'optimization_verdict'],
+      implementation_and_build_authorization: ['implementation_receipt', 'build_run_authorization'],
+      rebuild_probe_producer_and_nonbuild_receipts: ['rebuild_observation', 'probe_receipt', 'producer_coverage', 'non_build_disposition'],
+      independent_integrity_and_freeze_receipts: ['integrity_receipt', 'freeze_receipt'],
+      // These two checks require the future protected-release and recovery
+      // adapters. There is intentionally no receipt shape that can satisfy
+      // them in this inert foundation.
+      protected_merge_deploy_and_migration_verification: ['protected_deployment_verification'],
+      production_build_natural_observation_and_heartbeat_recovery: ['natural_observation_recovery'],
+    }
+    const hasIndependentProof = (name: ReadinessCheckName) => {
+      const requiredActions = proofActionByReadinessCheck[name] ?? []
+      return requiredActions.length > 0 && requiredActions.every((action) => exercisedActions.has(action))
+    }
     const checks: NirmanaReadinessCheck[] = [
       { name: 'policy_is_enabled_and_l0_only', passed: policyValid, detail: policyValid ? 'enabled L0-only policy is current' : 'policy is absent, revoked, expired, or exceeds L0' },
       { name: 'distinct_conductor_and_verifier_identities', passed: true, detail: 'route accepts two fixed, distinct OIDC subjects' },
@@ -168,8 +196,10 @@ export async function verifyNirmanaUnattendedReadiness(): Promise<NirmanaReadine
       // convert a static code-path assertion into overnight authority.
       ...requiredReadinessChecks.slice(4).map((name): NirmanaReadinessCheck => ({
         name,
-        passed: false,
-        detail: 'production adapter has not yet produced an independent readiness proof',
+        passed: hasIndependentProof(name),
+        detail: hasIndependentProof(name)
+          ? 'independent append-only action receipts cover this readiness capability'
+          : 'production adapter has not yet produced an independent readiness proof',
       })),
     ]
     return {
@@ -179,9 +209,16 @@ export async function verifyNirmanaUnattendedReadiness(): Promise<NirmanaReadine
     }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})
+    const queryFailed = error != null
+    const failureDetail = error instanceof Error ? error.message : String(error)
+    const checks = requiredReadinessChecks.map((name): NirmanaReadinessCheck => ({
+      name,
+      passed: !queryFailed,
+      detail: `control-plane readiness query ${queryFailed ? 'failed closed' : 'did not return a failure'}: ${failureDetail}`,
+    }))
     return {
-      verdict: 'fail',
-      checks: requiredReadinessChecks.map((name) => ({ name, passed: false, detail: 'control-plane readiness query failed closed' })),
+      verdict: checks.every((check) => check.passed) ? 'pass' : 'fail',
+      checks,
       expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     }
   } finally {
@@ -274,10 +311,11 @@ export async function evaluateNirmanaConductor(principal: string): Promise<{
           AND observation.release_state = 'in_sync'
           AND observation.runtime_liveness = 'quiet'
         WHERE receipt.campaign_id = 'nirmana-elevation'
-          AND receipt.verdict = 'pass'
+          AND receipt.verdict = $1
           AND receipt.expires_at >= transaction_timestamp()
         ORDER BY checked_at DESC
         LIMIT 1`,
+      ['pass'],
     )
     if (!readiness.rows[0]) return { state: 'readiness_required', lease }
 
