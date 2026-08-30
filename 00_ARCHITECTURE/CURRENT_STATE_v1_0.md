@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.65
+version: 6.66
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,18 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.66 (2026-08-30, PARIPRASHNA-V3-FINAL-CLOSE): Paripraśna Experience Assurance Programme
+    v3.0 SEALED. New §2 top entry. All 8 gates CG-0..CG-7 CLOSED; campaign 100.0%; tracker
+    replay integrity ok:true. Native acceptance fired by the native's own native_acceptance
+    event (949026fb, P6 seq 5) — the one gate the control plane reserves to NATIVE. Both native
+    rulings recorded verbatim in substance (V3-E-016: NO DISCLOSURE, closed; V3-E-054
+    SUBJECT_CONSENT_ENFORCEMENT: stays OFF by design, no trigger condition). Headline finding
+    V3-E-016 (real-chart context leak, ~79KB native corpus into 5 of 6 production charts, 4
+    belonging to other real people, ~16+h live) fixed, deployed, live-re-proofed, twice ratified.
+    Residuals carried forward with owners or accepted-risk notes (R-1 absent S6 load/chaos/CWV
+    harness and R-2 conversation-replay re-hydration gap both need named owners). Honest scenario
+    accounting stated: S3 47+13 excluded, S6 14+17 excluded, and "73 VERIFIED" is not "73 fixed".
+    Sealed record: 00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md
   - v6.65 (2026-08-22, PARISESA-V4-CONDUCTOR-20260822T023000Z close): Final native-scoped
     close-out of this conductor session's implementation waves. Executed the Opus-5-authored
     PARISESA_V4_FIX_PLAN.md across Waves 1-5 via Sonnet-5 implementer agents (high effort,
@@ -5857,6 +5869,80 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **PARIPRAŚNA EXPERIENCE ASSURANCE PROGRAMME v3.0 — SEALED (2026-08-30).** All eight campaign
+> gates CG-0 … CG-7 are CLOSED; campaign completion 100.0%; control-plane replay integrity `ok: true`
+> at seal. **Native acceptance was fired by the native's own `native_acceptance` event**
+> (`949026fb-e2f2-412a-bc69-e826d4bb285e`, 2026-08-30T03:14:33Z, stream P6 seq 5) — the one gate the
+> control plane refuses to let any other actor close (`NATIVE_REQUIRED`). CG-7 closed by
+> ``fc190e0e-7f12-4a35-a17e-51418868ffad`` (`2026-08-30T03:23:25Z`). **Sealed record:
+> `00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md`**;
+> pre-acceptance decision packet: `CG6_NATIVE_ACCEPTANCE_PACKET_v1_0.md`; plan of record:
+> `PARIPRASHNA_AUTONOMOUS_CLOSEOUT_PLAN_v2_0.md`.
+>
+> **What it proved.** A live hash-chained, role-separated event ledger whose validator *rejects*
+> malformed ceremony (266 rejected writes: `SELF_VERIFICATION`, `FINDING_FREEZE`, `ROLE_FORBIDDEN`,
+> `DUPLICATE_SCENARIO`, 226 × `SEQUENCE_CONFLICT`) can hold an autonomous multi-session campaign to
+> honest accounting against its own sessions. Six assurance streams (S1 Navigation/Shell · S2
+> Conversation/Reading · S3 Answer Quality · S4 Pipeline/Door Parity · S5 Security/Privacy · S6
+> Performance/Resilience) closed with 73 findings recorded, 73 remediations `VERIFIED`, 124/124
+> independent verifications `ACCEPTED`, and 6/6 result packets. **The headline: V3-E-016**, a real
+> production privacy leak — the native's ~79 KB private chart corpus injected unscoped into the
+> synthesis prompt of 5 of 6 production charts, 4 belonging to other real people, live ~16+ hours —
+> found, root-caused, fixed (PR #1655, `native_corpus_scope.ts`), deployed, live-re-proofed, and
+> independently ratified twice. A DB forensic check found zero evidence any exposed content was ever
+> captured. The related red-team find **V3-E-061** (citation redaction failing *open*) was fixed to
+> fail closed architecturally (PR #1659).
+>
+> **Both native rulings recorded on the ledger (P6 seq 1–2), verbatim in substance:** (1) V3-E-016
+> disclosure — **NO DISCLOSURE required**, no follow-up actions; the exposed corpus was the native's
+> own data, transmission of chart data to the AI provider is inherent to the product, other subjects'
+> data was not exposed; CLOSED. (2) V3-E-054 `SUBJECT_CONSENT_ENFORCEMENT` — **stays OFF; confirmed as
+> the intended production posture**, `posture: OFF_BY_DESIGN`, no consent mechanism required, **no
+> trigger condition** (intended posture, not a deferral); CLOSED.
+>
+> **What it did NOT prove — residuals carried forward** (full table: final close report §5): **R-1**
+> the S6 §10.3 load/chaos/CWV harness does not exist anywhere in the repo (no load generator, fault
+> injector, or scriptable-reconnect SSE client), blocking 16 of S6's 31 scenarios — deferred per the
+> closeout plan's own instruction, spec written, **needs a named owner**; **R-2** the
+> conversation-replay re-hydration gap — `/consult/continue`, `/regenerate`, `/resume` replay
+> persisted content verbatim with no re-hydration or re-lint, so pre-fix leaked content *would* still
+> be served had any been captured (none was) — architecturally real, unfixed, **needs a named owner**;
+> **R-3** six cross-stream referrals re-opened by the Phase E audit after being marked "referral
+> filed = VERIFIED" without any target stream picking them up (V3-E-042→S1, V3-E-044→S5, V3-E-031→S6,
+> V3-E-053→S6, V3-E-014→S4, V3-E-021→S4); **R-4** the B-002 RLS gap, **accepted risk** by Surrogate
+> ruling (not exploitable as a cross-tenant leak per `B002_NARROWED_PROOF_v1_0.md`); **R-8** CI does
+> not run at all on stream-branch PRs unless retargeted to `main` or allowlisted in `ci.yml` — a PR
+> can read "green" having had no checks; plus R-5…R-7, R-9…R-12 (low/documentation/tooling).
+>
+> **Honest scenario accounting.** The tracker has no denominator-reduction event type, so genuinely
+> unreachable scenarios are recorded as `scenario_executed` with `outcome: STRUCTURALLY_EXCLUDED` and
+> a per-item reason. The projection therefore reads S3 60/60 and S6 31/31 where the truthful reading
+> is **S3 47 executed + 13 excluded** and **S6 14 measured + 17 excluded**. Likewise
+> `remediations[].status: VERIFIED` covers both real code fixes and honestly-verified "no fix,
+> deferred" dispositions — roughly half of the 73 are the latter, so **"73 VERIFIED" is not "73
+> fixed."** Both caveats are stated in the close report rather than left to a dashboard read.
+>
+> **Process lessons (close report §6).** (a) The v1.0 run **stalled silently** ~12h, then again ~16h
+> with the CRITICAL fix merged-ready but unmerged — nobody knew until the native asked; the
+> Anti-Stall/Liveness Protocol (plan v2.0 §1) makes a stall a first-class failure, not silence. This
+> is §N.8's Earned-Signal Principle at campaign scale: liveness was being inferred from the absence of
+> an error. (b) A **concurrent-writer/false-count defect** — two sessions wrote S5 as the same actor
+> within ten minutes, both allocating `S5-SC-14..21`, together producing a perfect-looking 45/45 by
+> collision; both self-disclosed independently, and the control plane now dedups by canonical numeric
+> slot (`scenario_slot()`, `DUPLICATE_SCENARIO`). (c) A **phantom event type** — v1.0's runbook told
+> streams to emit `remediation_verified`, which does not exist; **S4 correctly refused** rather than
+> improvising a nearby event that did. (d) **Verify before trust** — self-reports were wrong
+> repeatedly (a PR claimed merged that was open, a referral justification copy-pasted from a different
+> finding, a stale `deployed_revision`, an over-claimed evidence rung) and independent verification
+> caught every one.
+>
+> **What this unblocks.** The Paripraśna product surface is released and closed; the assurance
+> instrument (control plane, EDIR register, stream charters, closure runbook) is now a reusable
+> campaign harness rather than a one-off. Next work is picked from the residual table above — R-1 and
+> R-2 are the two that need named owners before they age. This entry is scoped strictly to the
+> Paripraśna v3 arc and does not backfill any other campaign's activity; the concurrent Nirmana
+> campaign's own surfaces remain authoritative for its state.
+
 > 🟢 **PARIPRASHNA-P3-PREFLIGHT (Parts A–H) close (2026-08-22) — the pre-flight queue standing
 > in front of P3 (ONE ENGINE, ONE DOOR) is drained.** Full campaign ledger:
 > `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`; per-part evidence and the full DD register:
@@ -9883,3 +9969,16 @@ the prior §2 entry, 2026-08-10). DD-13 closed by direct native ruling; DD-27 fi
 register-accuracy pass; Baseline v1.2->v1.3. Full account: campaign-coordination's per-part
 entries; PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md's amended DD entries. See §2/§3 above for
 the full close summary this footer line points to, not duplicates.*
+
+*v6.66 2026-08-30: Paripraśna Experience Assurance Programme v3.0 **SEALED**. All 8 gates CG-0…CG-7
+CLOSED, campaign 100.0%, tracker replay integrity `ok: true`. Native acceptance fired by the native's
+own `native_acceptance` event (`949026fb`, P6 seq 5). Headline: V3-E-016 real-chart context leak
+(~79 KB native corpus into 5 of 6 production charts, 4 belonging to other real people, ~16+h live) —
+fixed (PR #1655), deployed, live-re-proofed, twice ratified; zero evidence any exposed content was
+ever captured. Both native rulings on the ledger (no disclosure; `SUBJECT_CONSENT_ENFORCEMENT` stays
+OFF by design, no trigger condition). Residuals carried forward with owners or accepted-risk notes —
+R-1 (absent S6 load/chaos/CWV harness) and R-2 (conversation-replay re-hydration gap) both still need
+named owners. Honest accounting stated rather than rounded: S3 47 executed + 13 structurally excluded,
+S6 14 measured + 17 excluded, and "73 VERIFIED remediations" is not "73 defects fixed". Seal artifact:
+`00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md`. See §2 above
+for the full close summary this footer line points to, not duplicates.*
