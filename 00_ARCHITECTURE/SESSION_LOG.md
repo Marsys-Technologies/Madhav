@@ -37187,3 +37187,250 @@ rather than assuming a common cause. Separately, investigate the provenance of t
 pre-existing staged-but-uncommitted diff on `platform-mcp/src/tools/register_p1_aliases.ts`
 (F-125 `requiresOrientation`/B.11 orientation-gate work) found in the conductor worktree at
 this session's start, before acting on it.
+
+---
+
+## PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30 — native acceptance fired, CG-7 closed, campaign sealed
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30
+  cowork_thread_name: "Paripraśna v3 — Final Close and Seal"
+  opened_at: "2026-08-30T03:06Z"
+  tool: Claude Code
+  model: claude-opus-5[1m]
+  worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-closeout
+  branch_at_open: main
+  branch_worked: pariprashna/v3-final-close
+  baseline_sha: 5f112179373a16ccffbd18aa3347f0771bf86bd4
+  campaign: pariprashna-experience-assurance-v3
+  authority: >
+    Native reviewed the CG-6 acceptance packet, ruled both open questions, and explicitly
+    instructed that native acceptance be fired. This session executed that instruction; it did
+    not originate the acceptance decision.
+  honest_process_note: >
+    This session did not begin with a fingerprint-audited SESSION_OPEN handshake. It opened
+    mid-campaign on a direct native instruction carrying its own scope, in the closeout worktree.
+    Rather than fabricate a retroactive formal open (which §N.7 item 6 forbids), this block states
+    what actually happened. Every state claim the instruction carried was independently re-derived
+    against the live tracker, the live DB (read-only), git, gh and gcloud before any write.
+  may_touch:
+    - "00_ARCHITECTURE/briefs/pariprashna_assurance/**"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "tracker events via HTTP POST http://127.0.0.1:8787/api/events only"
+  must_not_touch:
+    - "platform/**"          # no product code changed by this close
+    - "00_ARCHITECTURE/autonomy/**"   # concurrent Nirmana campaign's live state
+    - "00_ARCHITECTURE/control/**"    # concurrent Nirmana campaign's tracker
+    - "**/control-plane.sqlite3"      # never hand-edited; HTTP API is the only write path
+    - "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/**"  # frozen control-plane source
+  red_team_due: false   # campaign red-team already discharged pre-CG-5 (see body)
+```
+
+### Body
+
+**Step 1 — Native acceptance fired (CG-6).** Every precondition was re-derived first rather than
+trusted: gates CG-0…CG-5 CLOSED; P6 at 100% with `P6:completion` accepted (verifier
+`7e32a45f-…`, integrator seq 4); both native rulings present at P6 seq 1–2; `native_acceptance`
+count 0; tracker integrity `ok: true`; the CG-6 packet present on `origin/main`; and the V3-E-016
+fix commit `693536e93` confirmed an **ancestor** of the deployed Cloud Run image
+(`amjis-web-01805-mhr`, `commit-sha` label `5f112179…` — production equal to `main`). Only then was
+`native_acceptance` posted as actor `native` (the only actor the validator admits for it —
+`gate_closed` on CG-6 is refused with `NATIVE_REQUIRED`), stream P6, `expected_stream_seq: 4`.
+Accepted as event `949026fb-e2f2-412a-bc69-e826d4bb285e`, P6 seq 5, 2026-08-30T03:14:33Z. CG-6
+confirmed CLOSED via `/api/projection`, `closed_by: native`.
+
+**Step 2 — P7 driven in the tracker's real order, evidence first.** The close report and the two
+roadmap-reconnect updates were written *before* P7 was accepted, so no empty phase was signed off.
+Then: `verification_accepted` (actor `verifier`, `INDEPENDENT_VERIFIER`) carrying both
+`work_item_id: P7:completion` and `gate_id: CG-7` with distinct finder/fixer ids; `work_item_accepted`
+(actor `integrator`) referencing it; `gate_closed` for CG-7. CG-7 CLOSED; campaign completion
+**100.0%**; integrity `ok: true`.
+
+**Step 3 — Campaign sealed.** `PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md` (status SEALED) written
+from the live ledger — the CG-0…CG-7 gate table with closing event ids and timestamps; V3-E-016's
+blast radius, fix, live re-proof and the related V3-E-061 fail-open fix; per-stream S1–S6 outcomes
+including all 30 structurally-excluded scenarios enumerated **individually with their own reasons**;
+every Surrogate ruling and both native rulings; 12 residuals each with an owner or accepted-risk
+note; the campaign's four process lessons; and the closing integrity hash.
+
+Two honesty caveats were written into the report rather than left to a dashboard read: the tracker
+has no denominator-reduction event type, so `scenarios.executed` reads 60/60 for S3 and 31/31 for S6
+where the truth is 47+13 and 14+17; and `remediations[].status: VERIFIED` covers honest deferrals as
+well as real fixes, so "73 VERIFIED" is not "73 fixed".
+
+**Steps 4–5 — Roadmap reconnect and land.** `CURRENT_STATE_v1_0.md` v6.65 → v6.66 (new §2 top entry,
+frontmatter changelog row, footer line); this SESSION_LOG entry; then branch → PR → CI → merge, with
+the deploy and `production == main` confirmed live.
+
+**Prior campaign red-team.** Discharged before CG-5, three angles: leak-completeness (surfaced the
+conversation-replay re-hydration gap, residual R-2), ceremony-integrity (surfaced the audit-trail
+thinness and the `VERIFIED`-terminology ambiguity, R-9/R-10; one full stream walked end-to-end with
+no illegitimate transition found), and production-safety (clean — migrations correctly scoped across
+all ~350 grantable tables, deploy state three-way aligned, no interference with the concurrent
+Nirmana campaign). Not re-run this session; no new code was written to re-expose.
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30
+  closed_at: "2026-08-30T03:25Z"
+  outcome: COMPLETE
+  artifacts_produced:
+    - path: 00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md
+      version: 1.0
+      status: SEALED
+      within_declared_scope: true
+  tracker_events_written:
+    - event_id: 949026fb-e2f2-412a-bc69-e826d4bb285e
+      type: native_acceptance
+      actor: native
+      stream: P6
+      seq: 5
+      effect: "CG-6 CLOSED"
+    - event_id: 809df40d-df38-487c-84a5-ebe4900a6986
+      type: verification_accepted
+      actor: verifier
+      stream: P7
+      effect: "P7:completion + CG-7 independent verification"
+    - event_id: 27fd05c4-1894-4bd4-85b8-d7c0cfcfd060
+      type: work_item_accepted
+      actor: integrator
+      stream: P7
+      effect: "P7 completion 100%"
+    - event_id: fc190e0e-7f12-4a35-a17e-51418868ffad
+      type: gate_closed
+      actor: integrator
+      stream: P7
+      effect: "CG-7 CLOSED; campaign 100.0%"
+  registry_updates_made:
+    file_registry: []
+    canonical_artifacts:
+      - canonical_id: CURRENT_STATE
+        change: version_bumped
+        details: "v6.65 -> v6.66; new §2 top entry, frontmatter changelog row, footer line"
+  mirror_updates_propagated: []  # Mirror Discipline (MP.1/ND.1) RETIRED 2026-05-27; not applicable
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    note: >
+      The campaign's mandatory red-team was discharged before CG-5 (three angles, findings folded
+      into residuals R-2, R-9, R-10). This close wrote no product code, so nothing new to red-team.
+    artifact_path: 00_ARCHITECTURE/briefs/pariprashna_assurance/CG6_NATIVE_ACCEPTANCE_PACKET_v1_0.md
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/drift_close.md
+    divergences_found: 79
+    note:  >
+      Run against this session's worktree at origin/main + this branch's docs-only changes.
+      Breakdown: 0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW -- byte-identical in count to the
+      baseline recorded at the previous close (v6.65, 2026-08-22): the same pre-existing
+      canonical-artifact / CAPABILITY_MANIFEST registration-gap findings. This session
+      introduced zero new drift findings. Report path is session-local (scratchpad), matching
+      the /tmp-path precedent of prior close entries. See known_residuals below.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/schema_close2.md
+    violations_found: 43
+    note:  >
+      Breakdown: 0 CRITICAL, 0 HIGH, 20 MEDIUM, 23 LOW -- matching the 43-violation baseline
+      recorded at the previous close. HONEST NOTE: the first run of this validator returned 45
+      violations including 2 genuine HIGHs introduced by this session -- this entry's own H2
+      heading was written as `## Session: <ID> — ...`, which the schema's heading regex
+      (`^##\s+([A-Za-z0-9_.\-]+)\s+—`) cannot parse, so this entry's session_open/session_close
+      blocks were being attributed to the PREVIOUS entry's heading and flagged as a session_id
+      disagreement. The heading was corrected to `## <ID> — ...` per SESSION_LOG_SCHEMA §1.4 and
+      the validator re-run clean of both HIGHs. A second self-inflicted defect was caught the
+      same way: a substituted `closed_at` value arrived double-quoted (`""..."" `), which made
+      this very session_close block fail YAML parse and the validator report it as MISSING
+      (CRITICAL, exit=1) -- fixed, re-run, exit=3. Both are recorded rather than quietly fixed,
+      because a silently-reformatted heading or a silently-repaired block is exactly the class of
+      unlogged correction this campaign's §6.4 lesson is about; and the second one is a live
+      instance of §N.8 in miniature -- the checklist LOOKED complete while the detector could not
+      read it at all. See known_residuals below.
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: "pariprashna-assurance control plane (http://127.0.0.1:8787), streams P6/P7"
+    lease_release_recorded: true    # no stream write-lease held; P6/P7 writes are phase-stream, not scenario-lease
+    lease_release_verified_on_remote: true
+    next_session_can_resume_from:
+      - "00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 (residual table)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md §2 (top entry)"
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification:
+    - directive: "Fire native acceptance (CG-6)"
+      verified: "Preconditions re-derived from live tracker + read-only DB replay before writing; CG-6 confirmed CLOSED after, closed_by: native"
+    - directive: "Weaken no gate; earned-signal only"
+      verified: "Every assertion in the acceptance summary independently re-derived this session — leak-fix ancestry via git merge-base, deployed SHA via gcloud, packet presence via git cat-file on origin/main"
+    - directive: "Do not accept an empty P7"
+      verified: "Close report + CURRENT_STATE + SESSION_LOG all written before verification_accepted was emitted"
+  build_state_serialized:
+    serialized: false
+    output_path: null
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: null
+    note: "Not applicable — this is a campaign close, not a chart build. The event ledger is the build-state record."
+  close_criteria_met: true
+  unblocks: >
+    The Paripraśna product surface is released and closed. The assurance instrument (control plane,
+    EDIR register, stream charters, closure runbook) is now a reusable campaign harness. Next work is
+    picked from the close report's §5 residual table — R-1 (absent S6 load/chaos/CWV harness) and R-2
+    (conversation-replay re-hydration gap) are the two that need named owners before they age.
+  handoff_notes: >
+    All eight gates CG-0..CG-7 are CLOSED with their closing event ids recorded in the seal report's
+    §1 table. Campaign completion is a genuine 100.0% — the 97% that stood beforehand was honest, not
+    a bookkeeping gap: P7's 3 points were unearned because P7's evidence did not exist yet. Twelve
+    residuals are carried forward, each with an owner or an explicit accepted-risk note; two of them
+    (R-1, R-2) are marked owner-unassigned and should not be allowed to age silently. The report
+    deliberately records two places where the tracker's own numbers overstate reality (scenario
+    denominators; VERIFIED terminology) so a future reader is not misled by a dashboard glance.
+  known_residuals:
+    - finding_id: "PARIPRASHNA-V3-R1-S6-HARNESS"
+      finding: "S6 §10.3 load/chaos/CWV harness does not exist; 16 of S6's 31 scenarios structurally unreachable"
+      severity: HIGH
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-1; spec written; owner unassigned"
+    - finding_id: "PARIPRASHNA-V3-R2-REPLAY-REHYDRATION"
+      finding: "Conversation-replay paths (/consult/continue, /regenerate, /resume) replay persisted content verbatim with no re-hydration or re-lint"
+      severity: HIGH
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-2; no actual harm (DB forensic: zero captured content); architectural gap unfixed; owner unassigned"
+    - finding_id: "PARIPRASHNA-V3-R3-REFERRALS"
+      finding: "Six cross-stream referrals re-opened by the Phase E audit (V3-E-042/044/031/053/014/021)"
+      severity: MEDIUM
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-3; named target streams"
+    - finding_id: "PARIPRASHNA-V3-R4-RLS-GAP"
+      finding: "B-002 / E-002 / E-015 RLS gap on chart_facts / chart_dashas"
+      severity: MEDIUM
+      booking_reference: "ACCEPTED RISK per Surrogate ruling 9f5e1658; PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-4"
+    - finding_id: "PARIPRASHNA-V3-R8-STREAM-BRANCH-CI"
+      finding: "Stream-branch PRs get zero CI unless retargeted to main or allowlisted in ci.yml pull_request.branches — a PR can read green having had no checks"
+      severity: MEDIUM
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-8; ruling 026445b6"
+    - finding_id: "GOVERNANCE-DRIFT-BASELINE-79-20260830"
+      finding: "79 pre-existing drift findings (0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW) -- canonical-artifact / CAPABILITY_MANIFEST cross-registration gaps"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/drift_close.md; count byte-identical to the v6.65 baseline -- not introduced by this session"
+    - finding_id: "GOVERNANCE-SCHEMA-BASELINE-43-20260830"
+      finding: "43 pre-existing schema violations (0 CRITICAL, 0 HIGH, 20 MEDIUM, 23 LOW)"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/schema_close2.md; matches the prior close baseline -- not introduced by this session"
+```
+
+### Next session objective
+
+Assign named owners to residuals **R-1** (build the S6 §10.3 load/chaos/CWV harness — no load
+generator, fault injector, or scriptable-reconnect SSE client exists anywhere in the repo, and its
+absence is what blocked 16 of S6's 31 scenarios) and **R-2** (add re-hydration / re-lint to the
+conversation-replay paths). Read `PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md` §5 directly for the full
+residual table rather than assuming a common cause — R-3's six referrals each carry their own target
+stream, and R-4 is a recorded accepted risk, not open work.
