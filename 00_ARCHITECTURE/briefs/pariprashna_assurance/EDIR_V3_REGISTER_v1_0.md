@@ -281,6 +281,54 @@ scoped to P2-relevant SALVAGE. `pariprashna/p4-g` and
 `codex/pariprashna-shadow-deploy` are recorded with their commits and deferred
 for review — explicitly **done: disposition + evidence; deferred: PR**.
 
+**Post-census reconciliation (verification-closeout session, 2026-08-28,
+later same day; folded here 2026-08-30 from PR #1513 — that PR's own target
+file no longer exists post-split, so this content is re-homed to its
+successor, this §1).** An independent check after this census counted 87
+unmerged branches matching `origin/pariprashna/*` OR
+`origin/codex/pariprashna-*` live (68 for `pariprashna/*` alone), against
+this section's 81 — reconciled here rather than left as an unexplained
+drift. **Method re-run exactly as stated above:** `git fetch origin --prune`
+against then-current `origin/main` (`b63abc7592233536757c5f1ffa0103f86247ee43`,
+a descendant of this census's `cc6b1a55e` baseline), then the same
+two-pattern `git branch -r` match. Result: 87 (68 + 19), matching the
+independent check's own figure exactly. Diffing the live 87 against this
+census's named 81 (`comm` on the sorted branch-name lists): **all 81 census
+branches were still present — zero were merged-and-deleted or otherwise
+disappeared.** The gap was entirely additive: 6 branches not in the
+original 81 — `pariprashna/p2-b001-chart-authz-fix`,
+`pariprashna/p2-b002-narrowed-proof`, `pariprashna/p2-b004-mcp-turn-record`,
+`pariprashna/p2-b007-cockpit-clear-authz`,
+`pariprashna/p2-b008-cockpit-authz-sweep`,
+`pariprashna/session-a-governance-docs` — created 2026-08-28 between 00:25
+and 03:03 IST, i.e. **after** this census's stated `census_taken:
+2026-08-28` snapshot, as the P2-B-001/B-002/B-004/B-007/B-008 fix branches
+and the Session A governance-docs branch themselves (see the B00x outcome
+docs and PR #1597/#1599/#1602/#1603). Per-branch `git diff --numstat`
+against then-current main confirmed all 6 were byte-identical to main on
+every file they touched — each was squash-merged, and origin never deleted
+their refs. `81 − 0 + 6 = 87`, balances exactly. **No coverage gap was
+found; no new V3 entry was opened.** This §1's 81 baseline is left as the
+historically accurate count at the census's own timestamp, not restated as
+a live figure — by the time of this fold (2026-08-30, campaign v3.0
+sealed), the live branch count has moved further still and is out of this
+census's scope to keep re-measuring.
+
+**Correction to the EVIDENCE-ONLY row below for `pariprashna/dd-credential-
+misdiagnosis`** (folded here 2026-08-30): that row's own "Notes" column
+claimed "its DD-46 text is already merged on main, so there is nothing to
+merge." That claim was checked before this fold and found **false** — no
+text matching the branch's diagnosis-discipline finding existed anywhere in
+`00_ARCHITECTURE/` on `main` at check time. The branch's actual content
+(DD-46, "a credential-repair diagnosis that named the wrong system twice")
+has now been landed directly into
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+in this same commit. The branch's PR (#1513) is closed as superseded by
+this direct fold rather than merged as-is (its `CAPABILITY_MANIFEST.json`
+fingerprint hunk was stale and not applied — a fingerprint needs live
+re-verification against current file content, not a copy from a week-old
+branch).
+
 ---
 
 ## §2 — Disposition classes (elevation §6.2)
