@@ -119,6 +119,7 @@ this is RELEASED or expired.*
 | 576–587 | (various) | applied to main since this table was last updated (verified live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` at claim time, tip `07ed2433f`) | HISTORICAL |
 | 588 | PARIPRAŚNA | 588_samiksha_digest_journal.sql (P4-I, digest-journal DB table — additive, expand-only) | CLAIMED — pariprashna/p4-i, PR not yet opened |
 | 592 | NIRMANA_ELEVATION_TRACKER | 592_nirmana_elevation_campaign_evidence.sql (add versioned campaign definitions and append-only evidence events) | CLAIMED — elevation tracker v1; read-only projection; PR pending. Corrected from 590 after fresh full-ref audit found paused Nirmāṇa branch already owns 589–591. |
+| 639 | NIRMĀṆA ELEVATION / Codex | 639_nirmana_nonbrowser_conductor.sql (T0-only durable conductor policy, lease/fence, append-only action receipts, expiry/revocation) | CLAIMED — `codex/nirmana-autonomy-conductor-20260830`; allocation rechecked against both migration directories at `origin/main` `5f112179373a16ccffbd18aa3347f0771bf86bd4`; no L0 asset write before readiness proof. |
 | 589+ | — | next free; claim here before use — **the "next free" number drifts fast under concurrent campaigns; re-verify live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` before trusting this table** | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
