@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-01
+last_updated: 2026-09-01T-post-P1-P2-verification
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -15,14 +15,14 @@ start/resume; trust it; continue from the recorded position. Once the P3 ops pla
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
 
-## Current phase: P1 in flight, P2 in flight, P0 substantially complete
+## Current phase: P0/P1/P2 complete and verified; P3 next
 
 | Phase | Status | Notes |
 |---|---|---|
-| P0 Bootstrap | ✅ substantially done | Worktrees `codex/nirmana-velocity-reset` (revert) + `docs/nirmana-velocity-reset-governance` (P2) created from fresh `origin/main` (`1ba236dec`). Grounding facts re-verified live (see decisions log D-VR-1..4). This file created. |
-| P1 Restore deployability | 🟡 in flight | PR #1674 (revert of #1673) open, auto-merge armed. Awaiting CI + merge queue + deploy verification. |
-| P2 Land governance | 🟡 in flight | PR #1675 open (prompt + v6.1 amendment + CURRENT_STATE pointer + this file), auto-merge armed. |
-| P3 Minimal substrate | ⬜ not started | Blocked on P1/P2 merging first (keep diffs disjoint / avoid queue thrash). |
+| P0 Bootstrap | ✅ done | Worktrees created from fresh `origin/main` (`1ba236dec`). Grounding facts re-verified live (D-VR-1..4). State file created. |
+| P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
+| P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
+| P3 Minimal substrate | 🟡 starting | Prep done: confirmed `nirmana_evidence` schema owned by `nirmana_evidence_owner`; reverted 639's design used per-action service-account principals (`amjis-nirmana-conductor@…`, `amjis-nirmana-verifier@…`) with a lease/fence pattern — reusable per §5 P3 ("lift the lease/fence design from 639, drop its policy/readiness tables"). Target ≤2 PRs, tripwire at 4. |
 | P4 Rehearsals | ⬜ not started | |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0`, but monitor last reported `plan_adaptation_required` with 6 drifted assets — must reconcile at P4-A₀ before trusting wave membership. |
@@ -44,16 +44,21 @@ narrative + pointers only.
 
 ## Open items / next actions
 
-1. Watch PR #1674 (revert) through CI → merge queue → merge → deploy. On green: verify new Cloud
-   Run revision Ready at 100%, `commit-sha` label matches new main, `639` still absent from
-   `_migrations_applied`, `production_in_sync` true.
-2. Watch PR #1675 (governance) through CI → merge queue → merge.
-3. Begin P3 (ops plane + capsule path + verifier + supersession path) only after P1/P2 are merged.
-4. At P4-A₀, reconcile the 6 drifted assets in the stale `t0-2026-08-26-faa4d6b0` definition before
+1. Begin P3: design `nirmana_ops` schema (queue/state/lease/fence/cost, enum-checked), the
+   `asset_terminal_accepted`/`layer_frozen` capsule vocabulary addition to the evidence ingress
+   with zod validation, a non-browser authenticated submission path, and the definition
+   supersession path. Target ≤2 PRs (tripwire at 4 per §7.5/§5 P3).
+2. Then P4: rehearsals A₀ (supersede stale definition, reconcile 6 drifted assets), A (probe
+   rehearsal on `bg_ephemeris_engine`/`bg_panchanga`), B (build rehearsal on
+   `bg_formula_constants`, full route incl. one induced rejection + kill-switch drill).
+3. At P4-A₀, reconcile the 6 drifted assets in the stale `t0-2026-08-26-faa4d6b0` definition before
    trusting L0 wave membership.
-5. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
+4. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
    `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior campaigns
    (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0.
+5. Housekeeping: this session's own worktrees (`codex/nirmana-velocity-reset`,
+   `docs/nirmana-velocity-reset-governance`, `docs/nirmana-state-p1-p2-verified`) can be removed
+   once their PRs are merged — routine, not deferred to P5.
 
 ## Decisions log
 
@@ -72,18 +77,30 @@ narrative + pointers only.
   `gh pr view --json autoMergeRequest` confirms auto-merge is armed (method MERGE) — treating this
   as successful queue arming, not a failure, since GitHub's auto-merge will submit to the queue
   once required checks pass. Basis: live API state, not just CLI stdout.
+- `D-VR-5` (2026-09-01): Merge queue took ~4.5 min for #1674 and ~16.5 min for #1675 (queue
+  re-runs the 5 required checks against a synthetic merge ref, min 5 min batch wait per repo
+  ruleset). Treated as normal queue latency, not a stall — verified via GraphQL
+  `isInMergeQueue`/`mergeQueue.entries` rather than assuming a problem from `gh pr checks`
+  showing pending. Basis: repo ruleset `min_entries_to_merge_wait_minutes: 5`.
+- `D-VR-6` (2026-09-01): Left the `_migrations_applied` vs. repo-file discrepancy (632/633/636
+  recorded as applied but no longer present as files on `main`) as `DEFER_TO_LAYER_BACKLOG` — it
+  predates this campaign, does not affect the #1674 revert (639 was never applied), and
+  investigating it further is not required for P1 closure. Basis: §4 item 7 finding fence.
 
 ## Finding-fence backlog
 
-(none yet — no findings surfaced during P0/P1/P2 investigation beyond the already-diagnosed
-migration-639 grant gap, which is the P1 fix itself, not a backlog item)
+- `_migrations_applied` records `632_nirmana_evidence_server_writer_guard.sql`,
+  `633_nirmana_evidence_writer_ownership.sql`, and `636_nirmana_campaign_control_monitor_read.sql`
+  as applied, but these files do not exist in the repo at `origin/main` (only 630, 631, 634, 635,
+  637, 638 remain from that range, plus 639 which was just reverted). Disposition:
+  `DEFER_TO_LAYER_BACKLOG` — pre-existing, does not block P1, affects replay-from-scratch fidelity
+  not live production. Needs an owner before any full-DB rebuild/replay is trusted.
 
-## Tripwire readings (2026-09-01, end of this session's work so far)
+## Tripwire readings (2026-09-01, end of P0/P1/P2)
 
-- Governance share of effort: this session's work so far is P0 (bootstrap/verification) + P2
-  (governance docs) + P1 (the one real fix), all required by the phase plan itself — not
-  additional machinery. Not yet at a >15% steady-state to evaluate; will self-measure at each
-  future microbatch boundary per §7.5.
-- Substrate PR count: 0 of the P3 substrate PRs opened yet (correctly — P3 hasn't started).
-- Days since last new capsule: N/A — no capsule mechanism exists yet (P3 not started); zero
+- Governance share of effort: P0 (bootstrap/verification) + P1 (one real production fix, merged
+  and deployed) + P2 (required governance landing) — all phase-plan-mandated, no discretionary
+  machinery added. Under the 15% threshold; will re-measure at each future microbatch boundary.
+- Substrate PR count: 0 of the P3 substrate PRs opened yet (correctly — P3 starts next).
+- Days since last new capsule: N/A — capsule mechanism doesn't exist until P3 ships it; zero
   capsules is expected at this point, not a stall.
