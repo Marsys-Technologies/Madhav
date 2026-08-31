@@ -5869,6 +5869,15 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🔵 **ACTIVE CAMPAIGN (2026-09-01): Nirmāṇa L0→L5 velocity-reset.** Native-authorized, full
+> execution authority delegated per `00_ARCHITECTURE/briefs/nirmana/
+> NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` (doctrine amendments in
+> `NIRMANA_ELEVATION_PLAN_v6_1_AMENDMENT.md`, same directory). P1 (revert PR #1673 to restore
+> deployability — migration 639 lacked the `nirmana_evidence` schema grant, breaking every deploy
+> since 2026-08-30T07:58) is in flight as PR #1674. State/progress tracked in
+> `00_ARCHITECTURE/briefs/nirmana/CAMPAIGN_STATE.md`, updated at least daily — that file, not this
+> banner, is authoritative for phase/asset-level status. This banner is a pointer only.
+
 > 🟢 **PARIPRAŚNA EXPERIENCE ASSURANCE PROGRAMME v3.0 — SEALED (2026-08-30).** All eight campaign
 > gates CG-0 … CG-7 are CLOSED; campaign completion 100.0%; control-plane replay integrity `ok: true`
 > at seal. **Native acceptance was fired by the native's own `native_acceptance` event**
