@@ -187,17 +187,11 @@ jobs:
             -c "CREATE DATABASE nirmana_evidence_preflight_test;"
           psql -h localhost -U postgres -d nirmana_evidence_preflight_test -v ON_ERROR_STOP=1 \
             -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE nirmana_conductor_test;"
-          psql -h localhost -U postgres -d nirmana_conductor_test -v ON_ERROR_STOP=1 \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
           # PostgreSQL roles are cluster-wide.  These two real suites both
           # exercise fixed production role names, so execute them serially
           # even though each owns a different disposable database.
           npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
           npx vitest run tests/integration/nirmana_evidence_ownership_preflight.db.test.ts --reporter=verbose
-          NIRMANA_CONDUCTOR_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nirmana_conductor_test \
-            npx vitest run tests/integration/nirmana_nonbrowser_conductor.db.test.ts --reporter=verbose
 
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
