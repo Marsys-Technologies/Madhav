@@ -564,6 +564,14 @@ describe('Nirmana elevation definition repository', () => {
     const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
     const observationSql = transactionSql.find((sql) => sql.includes('FROM nirmana_elevation_monitor_observations'))
     expect(observationSql).not.toContain('FOR SHARE')
+    // See the identical regression guard in the supersede_definition test:
+    // nirmana_campaign_control_writer is deliberately SELECT-only on
+    // asset_registry; FOR SHARE/FOR UPDATE require UPDATE privilege and
+    // would fail closed in production, as this call's real first
+    // invocation did before this fix.
+    const registrySql = transactionSql.find((sql) => sql.includes('FROM asset_registry'))
+    expect(registrySql).not.toContain('FOR SHARE')
+    expect(registrySql).not.toContain('FOR UPDATE')
     expect(transactionSql).toEqual(expect.arrayContaining([
       expect.stringContaining('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE'),
       expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
@@ -1048,6 +1056,16 @@ it('atomically supersedes the exact current frozen definition with the server-de
     const observationSql = transactionSql.find((sql) => sql.includes('FROM nirmana_elevation_monitor_observations'))
     expect(observationSql).not.toContain('FOR SHARE')
     expect(transactionSql.some((sql) => sql.startsWith('LOCK TABLE'))).toBe(false)
+    // nirmana_campaign_control_writer is deliberately SELECT-only (no
+    // UPDATE) on asset_registry; FOR SHARE/FOR UPDATE require UPDATE
+    // privilege in Postgres and would fail closed with "permission denied
+    // for table asset_registry" in production, as this call's live-DB first
+    // invocation actually did before this fix. SERIALIZABLE isolation
+    // (asserted above via the observation query, same transaction) already
+    // provides the conflict protection a row lock would have added.
+    const registrySql = transactionSql.find((sql) => sql.includes('FROM asset_registry'))
+    expect(registrySql).not.toContain('FOR SHARE')
+    expect(registrySql).not.toContain('FOR UPDATE')
     expect(transactionSql).toEqual(expect.arrayContaining([
       expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
       expect.stringContaining('FROM asset_registry'),

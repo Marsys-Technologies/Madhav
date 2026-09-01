@@ -591,6 +591,16 @@ export async function acceptNirmanaBaselineCandidate(
       [input.source_observation_id],
     )
     const sourceObservation = observations.rows[0]
+    // Plain SELECT, not FOR SHARE: nirmana_campaign_control_writer is
+    // deliberately granted SELECT-only (no UPDATE) on asset_registry, and
+    // PostgreSQL's row-locking clauses require UPDATE privilege, not just
+    // SELECT -- FOR SHARE would fail closed with "permission denied for
+    // table asset_registry" for this role, by the same design that keeps it
+    // read-only here. No lock is needed for correctness either way: this
+    // transaction already runs at SERIALIZABLE isolation, which detects any
+    // conflicting concurrent write to asset_registry via SSI and aborts the
+    // transaction -- the same protection FOR SHARE would add under a weaker
+    // isolation level, already provided here without it.
     const registry = await client.query<NirmanaRegistryContractRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
               sanskrit_name, english_name, english_description,
@@ -598,8 +608,7 @@ export async function acceptNirmanaBaselineCandidate(
               target_table, count_sql, integrity_check_sql, health_probe,
               natural_key_partition, superseded_by, data_disposition, dead_flag
          FROM asset_registry
-        ORDER BY asset_id
-        FOR SHARE`,
+        ORDER BY asset_id`,
     )
 
     let candidate: Awaited<ReturnType<typeof import('./monitor')['buildNirmanaBaselineCandidate']>>
@@ -886,11 +895,16 @@ export async function supersedeNirmanaElevationDefinition(
     if ((usage.rows[0]?.event_count ?? 0) !== 0 || (usage.rows[0]?.build_run_count ?? 0) !== 0) {
       throw new NirmanaElevationDefinitionConflictError('Expected frozen campaign definition already has campaign events or build runs and cannot be superseded.')
     }
+    // Plain SELECT, not FOR SHARE -- see the identical comment in
+    // acceptNirmanaBaselineCandidate above: nirmana_campaign_control_writer
+    // is deliberately SELECT-only on asset_registry, and the SERIALIZABLE
+    // isolation this transaction already runs under provides the same
+    // conflict protection FOR SHARE would, without needing UPDATE privilege.
     const registry = await client.query<NirmanaRegistryContractRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
               integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag
-         FROM asset_registry ORDER BY asset_id FOR SHARE`,
+         FROM asset_registry ORDER BY asset_id`,
     )
     const { buildNirmanaBaselineCandidate } = await import('./monitor')
     const candidate = buildNirmanaBaselineCandidate(registry.rows)
