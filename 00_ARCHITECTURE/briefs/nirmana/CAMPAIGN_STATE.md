@@ -23,7 +23,7 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
-| P4 Rehearsals | 🟡 A₀ ready to fire | Drift root-caused (below); supersession call proceeding now that credentials are live. |
+| P4 Rehearsals | 🟡 A₀ done, A/B next | A₀ supersession executed and independently verified live — 2 real production bugs found+fixed en route (PRs #1682, #1683). Current frozen definition: `t0-2026-09-01-0e5b06fb`. Proceeding to rehearsal A (probe). |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
@@ -238,6 +238,49 @@ fix. **Analysis is complete; ready to supersede the moment a submission path exi
 `supersede_definition` call needs the same credential this campaign's P3 gap blocks (see above) —
 recording this here rather than re-deriving it in a future session.
 
+## P4-A₀ SUPERSESSION EXECUTED — the campaign's first real write (2026-09-01)
+
+With the executor SA live (above), submitted the actual `supersede_definition` call. Two real,
+previously-unexercised production bugs blocked it in sequence — both root-caused, fixed, deployed,
+and the call retried successfully after each. Full technical detail (both are genuine defects in
+already-merged pre-session code, not anything introduced this session) lives in PR descriptions
+#1682 and #1683; summary:
+
+1. **`permission denied for table asset_registry`** (PR #1682). `acceptNirmanaBaselineCandidate`
+   and `supersedeNirmanaElevationDefinition` both read `asset_registry` with `FOR SHARE`, but
+   `nirmana_campaign_control_writer` is deliberately SELECT-only (no UPDATE) there — Postgres's
+   row-locking clauses require UPDATE privilege, not just SELECT. Fixed by dropping `FOR SHARE`
+   (no grant change): both transactions already run `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`,
+   which provides the same conflict protection via SSI without needing a lock.
+2. **`permission denied for table nirmana_elevation_campaign_events`** (PR #1683). Same bug class,
+   one query later: `recordNirmanaElevationLabelCatalogueInTransaction` and
+   `verifyNirmanaElevationLabelCatalogueInTransaction` (both reached from the supersede path) did
+   the identical `FOR SHARE` pattern on `nirmana_elevation_campaign_events`, where this role also
+   has SELECT+INSERT only. Fixed the same way; correctness held by a pre-existing
+   `pg_advisory_xact_lock` on the exact `(campaign_id, definition_revision, catalogue_revision)`,
+   which already serializes concurrent callers for that idempotency key.
+
+**Why these were never caught before today:** both existing frozen definitions
+(`t0-2026-08-25`, `t0-2026-08-26`) were created via direct `record_definition` +
+`freeze_definition` submission with a pre-computed manifest — a path that never touches
+`asset_registry` or does the reconstruct-and-verify read. Only `accept_baseline_candidate` and
+`supersede_definition` do, and neither had ever run in production before today — no non-browser
+submission path existed until #1677/#1680 landed this session.
+
+**Result, independently re-verified against the live DB (not just trusted from the API
+response):**
+```
+HTTP 201 {"outcome":"superseded"}
+```
+`nirmana_evidence.nirmana_elevation_campaign_definitions` now shows `t0-2026-09-01-0e5b06fb`
+`frozen`/current (128 assets, `manifest_sha256 = 0e5b06fb...`), and `t0-2026-08-26-faa4d6b0`
+correctly `superseded` (same instant). Spot-checked the new manifest's `depends_on` for all 6
+previously-drifted assets — matches the live registry exactly, confirming the candidate genuinely
+reflects current reality, not a stale or partial reconstruction.
+
+**Campaign status: P4-A₀ closed.** Proceeding to rehearsal A (probe: `bg_ephemeris_engine` or
+`bg_panchanga`) next.
+
 ## Open items / next actions
 
 1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
@@ -340,6 +383,20 @@ recording this here rather than re-deriving it in a future session.
   the report alone, even though the report was detailed and specific. Basis: §3.7 hard-floor spirit
   applied generally — verify state before acting on it, especially before the campaign's first real
   write to production evidence.
+- `D-VR-15` (2026-09-01): On hitting `permission denied for table asset_registry` from the live
+  supersession call, root-caused it before attempting any workaround — specifically did NOT grant
+  UPDATE to `nirmana_campaign_control_writer` on `asset_registry` to make the error go away, since
+  that role's SELECT-only restriction there was a deliberate migration-633 security choice. Fixed
+  the application code (drop the redundant `FOR SHARE`) instead, preserving the grant exactly as
+  designed. Basis: campaign §3 hard floor — never weaken a gate to make something pass; the fix
+  belongs wherever the actual defect is, and here that was the query, not the grant.
+- `D-VR-16` (2026-09-01): Found and fixed a second instance of the identical bug class (`labels.ts`,
+  `nirmana_elevation_campaign_events`) by pattern-matching from the first fix rather than treating
+  each failure as an isolated incident — grepped the whole `nirmana-elevation` lib for every
+  `FOR SHARE`/`FOR UPDATE` occurrence up front and checked each one's actual granted privilege
+  before deciding whether it needed fixing (one, on `campaign_definitions`, didn't — that role has
+  UPDATE there). Basis: §N.8 Earned-Signal Principle — a bug found once in a pattern warrants
+  checking the whole pattern, not just the one call site that happened to fail first.
 
 ## Finding-fence backlog
 
