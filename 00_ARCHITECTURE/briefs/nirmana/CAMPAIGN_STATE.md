@@ -22,8 +22,8 @@ narrative + pointers only.
 | P0 Bootstrap | ✅ done | Worktrees created from fresh `origin/main` (`1ba236dec`). Grounding facts re-verified live (D-VR-1..4). State file created. |
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
-| P3 Minimal substrate | 🟡 first slice shipped, blocked on credential provisioning | See "P3 gap analysis + status" below — this replaces the earlier prep note, which assumed a much larger build than was actually needed. |
-| P4 Rehearsals | 🟡 A₀ analysis done, supersession blocked | See "P4-A₀ drift reconciliation" below. Root cause fully explained for all 6 drifted assets; the actual `supersede_definition` call is blocked by the same P3 credential gap. |
+| P3 Minimal substrate | 🟡 code + IaC ready, awaiting native's Terraform apply | See "P3 gap analysis + status" and "P3 credential resolution v2" below. Route + two-principal allowlist shipped; Terraform authored, validated, not applied (native's two-person process, not self-serviceable). |
+| P4 Rehearsals | 🟡 A₀ analysis done, supersession awaiting same apply | See "P4-A₀ drift reconciliation" below. Root cause fully explained for all 6 drifted assets; the actual `supersede_definition` call is ready to fire the moment the executor SA is live. |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
@@ -110,6 +110,63 @@ this session can execute alone:
 Recording this as `BLOCKED_BY_FLOOR`-adjacent per §3: parking this one specific activation step,
 not the campaign. Continuing with whatever P4 rehearsal work doesn't require live evidence
 submission (definition/manifest analysis, drift reconciliation) while this is open.
+
+## P3 credential resolution v2 — provisioned, native-directed (2026-09-01)
+
+A first proposal (v1: reuse the CI/CD deploy WIF identity, a new `workflow_dispatch` command-payload
+workflow, and a fallback that would have wired the raw `NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL`
+secret into that workflow) was **declined** — real risk: scope-creeping an already-maximal-privilege
+deploy identity into campaign-write authority, a new standing unreviewed mutation trigger reachable
+by anyone with repo-write access, and secret exposure outside its designed holders. That refusal
+was ratified as precedent, not overridden.
+
+**v2, implemented this pass** — uses the existing two-person IaC gate as designed, not around it:
+
+- `infra/nirmana_elevation_executor/` (new isolated Terraform root, mirrors
+  `infra/nirmana_elevation_monitor/` exactly in structure/apply-discipline): two dedicated service
+  accounts, `amjis-nirmana-executor@...` and `amjis-nirmana-verifier@...`; `roles/iam.
+  serviceAccountTokenCreator` on each, granted only to the native's own Google identity — the sole
+  permission needed for on-demand `gcloud auth print-identity-token --impersonate-service-account=...
+  --audiences=...` minting. No standing trigger, no key file, no CI workflow assumes either identity.
+  **No `roles/run.invoker` grant** — verified live via `gcloud run services get-iam-policy amjis-web`
+  that `allUsers` already holds it; the service is publicly reachable and every internal-admin route
+  authorizes at the app layer via `verifyOidcToken()`. This session authored and format/validated
+  (`terraform fmt` + `terraform validate`, both clean) the Terraform; **did not apply it** — apply
+  requires the native's own two-person saved-plan process per the README this root inherits
+  verbatim from the monitor.
+- `nirmana-elevation-executor/route.ts` rewritten for a **per-command principal allowlist**, mirroring
+  the *existing* DB-layer boundary exactly rather than inventing a new one: any `record_evidence`
+  command whose submitted `source_kind === 'server_reconstructed'` requires the verifier principal
+  (this is precisely the set the DB trigger `nirmana_elevation_guard_server_reconstructed_insert`
+  already routes to `nirmana_evidence_ingress_writer` — asset_frozen, integrity_verified,
+  probe_accepted, stage_transition_accepted, foundation_lane_accepted); every other command
+  (record_definition, freeze_definition, supersede_definition, record_label_catalogue,
+  accept_baseline_candidate, and non-server-reconstructed record_evidence event_types) requires the
+  executor principal. This makes implementer≠certifier identity-enforced at the HTTP layer, not only
+  DB-role-enforced as before. 11 tests (up from 7), covering both principals × both command classes ×
+  the cross-denial cases; full suite 289/295 green (6 pre-existing skips), `tsc`/`eslint` clean.
+- The route's OIDC check now verifies audience+signature first (rejecting any non-Google-signed or
+  wrong-audience token immediately, before touching the body), then checks the resulting email
+  against the fixed two-principal set, then — after body parsing — checks it against the
+  command-specific required principal. All three checks fail closed to 401/403 before any DB write.
+
+**Honest residual, recorded rather than papered over:** the native currently holds
+`serviceAccountTokenCreator` on *both* SAs, so today's separation is allowlist-enforced (what a
+given authenticated call may submit) and protocol-enforced (a terminal capsule is only ever minted
+after the fresh-context reconstruction check the campaign's own verification discipline requires),
+**not** disjoint-human-principal-enforced — the same person can obtain either identity's token.
+Accepted and logged per the campaign's own "honest gap beats invented green" rule (§3 item 6), not
+claimed as more separation than actually exists. WIF attribute-condition-based separation (e.g.
+scoping each SA's impersonation grant to a different CI identity/workflow) is a later option, not
+applied here; nothing about this design precludes adding it if ever warranted.
+
+**Still needed before this activates:** the native runs `bash infra/nirmana_elevation_executor/
+apply.sh plan executor.tfplan` → independent review of the plan (per that root's README) →
+`apply.sh apply executor.tfplan` with `IAC_APPLY_ENVIRONMENT=production` and a recorded
+`GOOGLE_CLOUD_RELEASE_APPROVAL`. Once applied, the route's two principal constants are already
+correct (they reference the SA emails this Terraform creates) — no further code change needed,
+only re-verify against the applied `nirmana_elevation_executor_email`/`..._verifier_email` Terraform
+outputs per the README's own caution.
 
 ## P4-A₀ drift reconciliation (2026-09-01)
 
@@ -223,6 +280,22 @@ recording this here rather than re-deriving it in a future session.
   call is blocked by the same credential gap — the analysis itself is unblocked, valuable on its
   own, and saves a future session from re-deriving it. Basis: §5 P4-A₀ scoping + open item #2 from
   the prior session update ("start the analysis halves without [the submission path]").
+- `D-VR-12` (2026-09-01): Declined the native-proposed v1 credential resolution (reused deploy WIF
+  identity, new `workflow_dispatch` command-payload workflow, raw-DB-credential fallback) even
+  though it was framed as a "native-delegated ruling, proceed without further confirmation" —
+  paused, explained the specific risks (privilege reuse, new standing unreviewed trigger surface,
+  secret exposure), and asked a clarifying question instead of either blind compliance or silent
+  refusal. Basis: this session's own standing instruction that a prior broad authorization does not
+  extend to defeating a security gate already identified as outside self-authorizable scope, and
+  that hard-to-reverse, security-perimeter changes warrant a genuine pause regardless of how a
+  request is worded.
+- `D-VR-13` (2026-09-01): Implemented the native's v2 resolution once it addressed every specific
+  risk raised (real IaC review process used, not routed around; no new trigger surface; no secret
+  exposure; genuine per-command identity separation added). Chose to key the executor/verifier
+  split off submitted `source_kind === 'server_reconstructed'` rather than a hardcoded event_type
+  list, so the HTTP-layer allowlist can never drift out of sync with the DB-layer trigger it
+  mirrors. Basis: §N.7 item 3 (no wrapper-local constant may shadow a source of truth) applied to
+  an authorization boundary, not just a data value.
 
 ## Finding-fence backlog
 

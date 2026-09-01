@@ -1,44 +1,57 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { verifyOidcToken } from '@/lib/auth/oidc'
-import { handleNirmanaEvidenceCommand, nirmanaEvidenceCommand } from '@/lib/nirmana-elevation/evidence-command'
+import { handleNirmanaEvidenceCommand, nirmanaEvidenceCommand, type NirmanaEvidenceCommand } from '@/lib/nirmana-elevation/evidence-command'
 
 // Non-browser submission path for the Nirmana elevation campaign's evidence
 // and definition commands (record_definition, freeze_definition,
 // supersede_definition, record_label_catalogue, accept_baseline_candidate,
 // record_evidence). Mirrors the proven nirmana-elevation-monitor OIDC
-// pattern: a fixed Cloud Run audience and a fixed expected principal, both
-// hardcoded rather than environment-configurable, so a misconfigured
-// deployment cannot widen who this route accepts. This authenticates *who
-// may call the route*; the underlying writers still separately enforce
-// DB-role identity separation by source_kind (server_reconstructed ->
-// nirmana_evidence_ingress_writer, else -> nirmana_campaign_control_writer)
-// regardless of which HTTP-layer principal made the call.
+// pattern: a fixed Cloud Run audience, both hardcoded rather than
+// environment-configurable, so a misconfigured deployment cannot widen who
+// this route accepts.
 const EXECUTOR_OIDC_AUDIENCE = 'https://amjis-web-938361928218.asia-south1.run.app'
-// The native's own Google identity. No dedicated service account exists for
-// this route yet: provisioning one is a GCP IAM change and, per
-// infra/nirmana_elevation_monitor/README.md, requires the two-person
-// saved-plan apply discipline (named approved operator + independent
-// reviewer + recorded approval reference) that this session cannot satisfy
-// itself.
+
+// Two dedicated identities, not one -- see infra/nirmana_elevation_executor
+// (Terraform: two service accounts, serviceAccountTokenCreator granted only
+// to the native's own Google identity for on-demand impersonation; no
+// standing trigger, no key file, no invoker grant -- amjis-web already
+// grants roles/run.invoker to allUsers, verified live, so every route here
+// does its own app-layer authorization).
 //
-// IMPORTANT (confirmed live, 2026-09-01): a *human* Google identity cannot
-// mint an audience-bound OIDC ID token at all -- `gcloud auth
-// print-identity-token --audiences=...` fails with "Invalid account type
-// ... Requires valid service account" for a user account, and there is no
-// other GCP-supported path to one: `iam.serviceAccounts.getOpenIdToken`
-// (what backs audience-scoped ID token minting) is a service-account-only
-// capability. This is a GCP IAM design constraint, not a CLI inconvenience.
-// So while the auth check below is correctly implemented and this route is
-// live and reachable (unauthenticated calls confirmed 401 in production),
-// nothing -- not even the native himself, from a shell -- can currently
-// present a token this route would accept. This is not yet the "non-browser
-// authenticated submission path" the campaign asked for; it is the route
-// half of it, waiting on the credential half: either the dedicated
-// service-account identity (the two-person IaC path above) or a change to
-// this route's auth model. Until one of those lands, this constant stays
-// a placeholder, not a functioning credential path.
-const EXECUTOR_PRINCIPAL = 'mail.abhisek.mohanty@gmail.com'
+// This makes implementer != certifier identity-enforced at the HTTP layer,
+// not only DB-role-enforced: `requiredPrincipalFor` below mirrors the exact
+// same split the DB-layer trigger already makes
+// (nirmana_elevation_guard_server_reconstructed_insert: source_kind =
+// 'server_reconstructed' -> must be the ingress writer session; else -> must
+// be the control writer session). The executor SA is the HTTP-layer
+// counterpart of the control writer; the verifier SA is the HTTP-layer
+// counterpart of the ingress writer.
+//
+// HONEST RESIDUAL (recorded in CAMPAIGN_STATE.md): the native currently
+// holds serviceAccountTokenCreator on both identities, so this allowlist
+// enforces separation of *what a given authenticated call may submit*, not
+// separation between disjoint human principals. The campaign's own
+// fresh-context-verification protocol (a terminal capsule is only ever
+// minted after independent reconstruction, never by the session that did
+// the implementation) is what carries the rest of implementer != certifier
+// today. WIF attribute-condition-based separation is a later option, not
+// applied here.
+const EXECUTOR_PRINCIPAL = 'amjis-nirmana-executor@madhav-astrology.iam.gserviceaccount.com'
+const VERIFIER_PRINCIPAL = 'amjis-nirmana-verifier@madhav-astrology.iam.gserviceaccount.com'
+
+function requiredPrincipalFor(command: NirmanaEvidenceCommand): string {
+  // Every record_evidence event_type whose schema requires
+  // source_kind='server_reconstructed' (probe_accepted, integrity_verified,
+  // asset_frozen, stage_transition_accepted, foundation_lane_accepted) is
+  // exactly the set the DB trigger already routes to the ingress writer.
+  // Checking the actual submitted source_kind (rather than hardcoding an
+  // event_type list) keeps this in sync with that schema by construction.
+  if (command.command === 'record_evidence' && command.source_kind === 'server_reconstructed') {
+    return VERIFIER_PRINCIPAL
+  }
+  return EXECUTOR_PRINCIPAL
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -51,13 +64,17 @@ export async function POST(request: Request) {
     )
   }
 
+  // Verify the token is a genuine, non-expired, correctly-audienced Google ID
+  // token before touching the body -- but do not pin expectedServiceAccount
+  // yet: which of the two principals is *required* depends on the command,
+  // which lives in the body. This still rejects any caller without a valid
+  // token for this audience up front, regardless of body content.
   let actorEmail: string
   try {
     const identity = await verifyOidcToken(authorization.slice('Bearer '.length), {
       expectedAudience: EXECUTOR_OIDC_AUDIENCE,
-      expectedServiceAccount: EXECUTOR_PRINCIPAL,
     })
-    if (!identity) {
+    if (!identity || ![EXECUTOR_PRINCIPAL, VERIFIER_PRINCIPAL].includes(identity.email)) {
       return NextResponse.json(
         { error: 'forbidden' },
         { status: 403, headers: { 'Cache-Control': 'no-store' } },
@@ -80,6 +97,13 @@ export async function POST(request: Request) {
   const parsed = nirmanaEvidenceCommand.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid Nirmana evidence command', issues: parsed.error.issues }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+  }
+
+  if (actorEmail !== requiredPrincipalFor(parsed.data)) {
+    return NextResponse.json(
+      { error: 'principal not authorized for this command' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 
   const response = await handleNirmanaEvidenceCommand(parsed.data, `nirmana-executor:${actorEmail}`)
