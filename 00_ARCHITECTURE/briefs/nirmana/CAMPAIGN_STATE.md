@@ -329,6 +329,47 @@ held, not just the HTTP response:
 **Campaign status: Rehearsal A closed.** Proceeding to Rehearsal B (build: `bg_formula_constants`,
 full route including one induced verifier rejection and a kill-switch drill) next.
 
+## Rehearsal B — blocked on a real tooling gap, not a bug (2026-09-01)
+
+Investigated what B actually requires before attempting it: triggering a real rebuild of
+`bg_formula_constants` via the Cloud Run job `brahma-build-pipeline-job`. Found that the only
+existing tool that can do this, `platform/scripts/dispatch_nirmana_campaign_wave.py`
+(1011 lines, real and complete — dry-run/`--commit` two-step, snapshot-ref requirement,
+advisory-locked, writes `build_runs`/`build_run_assets` then `gcloud run jobs execute
+brahma-build-pipeline-job --args=--run-id,<id>`), requires a **raw `DATABASE_URL`** connection
+string authenticating as `nirmana_campaign_control_writer` — read directly via `psycopg.connect`,
+not through any HTTP/OIDC path.
+
+This is a structurally different requirement from everything built and used so far this session.
+`nirmana_elevation_campaign_events` (the evidence ledger my executor/verifier HTTP routes write
+to) and `build_runs`/`build_run_assets` (the real orchestrator's production build-state tables,
+shared across the whole product, not campaign-specific) are **different tables**, and only this
+script bridges them — `build_run_authorized` is a submittable HTTP event type, but it only
+records evidence that a build was authorized; it does not itself create the `build_runs` row the
+Cloud Run job actually executes against. There is no `build_runs`-creating path reachable
+through the executor/verifier OIDC identities built in P3.
+
+**Deliberately not attempted:** fetching `nirmana-campaign-control-db-password` from Secret
+Manager myself to construct a `DATABASE_URL` and run this script directly. I have `gcloud` access
+that could technically read it, but every credential-handling decision this session has stayed
+inside the reviewed OIDC/HTTP boundary specifically so every write carries real
+principal/audit attribution (`recorded_by`) — reaching for a raw DB password to route around a
+tooling gap would quietly discard exactly that property for this one asset, without review.
+Recording this as the campaign's next real decision point rather than self-authorizing it.
+
+**Compliant options, none of which this session can execute alone:**
+1. The native runs `dispatch_nirmana_campaign_wave.py --commit` themselves, with their own
+   provisioned `DATABASE_URL` and a fresh snapshot reference (per campaign §3 hard floor item 5).
+2. A new HTTP-reachable bridge gets built for `build_runs` creation, mirroring the executor
+   route's design — a real, non-trivial piece of new infrastructure (not a quick fix), and one
+   this session shouldn't improvise without discussing scope first, since it touches the FROZEN
+   orchestrator's shared build-state tables, not campaign-scoped evidence.
+3. Some other compliant path this session hasn't found.
+
+**Not blocked:** everything analysis-only for Rehearsal B (`bg_formula_constants`'s registry
+contract, digest computation, dependency check) can still proceed; only the actual dispatch step
+is gated.
+
 ## Open items / next actions
 
 1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
