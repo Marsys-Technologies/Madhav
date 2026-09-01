@@ -533,6 +533,13 @@ jobs:
             # writes closed; neither the migrator nor legacy-owner credential
             # is ever present in the serving revision.
             NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
+            # Server-reconstructed evidence (probe_accepted, integrity_verified,
+            # asset_frozen, stage_transition_accepted, foundation_lane_accepted)
+            # uses this distinct Cloud-SQL principal instead. Its absent secret
+            # fails those writes closed the same way -- this was missing from
+            # the serving revision from when the ingress writer role and its
+            # secret were first provisioned (2026-08-27) until this line.
+            NIRMANA_EVIDENCE_INGRESS_DB_USER=nirmana_evidence_ingress_writer
             GCP_PROJECT=madhav-astrology
             GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
@@ -561,6 +568,7 @@ jobs:
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
             NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
+            NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:1
