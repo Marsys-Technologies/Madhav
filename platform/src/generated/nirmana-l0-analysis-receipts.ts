@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import writerDigestInventory from './nirmana-writer-digests.json'
 
-export const NIRMANA_L0_CONVERGENCE_COMMIT = '5f47906bce9148563cc57764b21a2c06415d9f49' as const
+export const NIRMANA_L0_CONVERGENCE_COMMIT = '49bb5c98b864a2cb2fee037cdb7f14f6892a8263' as const
 export const NIRMANA_L0_ANALYSIS_RECEIPT_COUNT = 40 as const
-export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '6c4962804c0c6a6973b7107f7662c75eae69e982e278453be6b07b097b5a85f2' as const
+export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '4edfaa7290184cd637bd53bdb97079a797c617a757360a5f43d11d3ea509f07c' as const
 // This is a durable receipt identifier, not a SQL relation reference.  Keep
 // existing accepted L0 bases stable after the physical table moves into the
 // nirmana_evidence schema; the evidence parser resolves both identifiers.
