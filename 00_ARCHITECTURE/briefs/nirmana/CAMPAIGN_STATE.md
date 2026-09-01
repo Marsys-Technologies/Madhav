@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-01T-post-P1-P2-verification
+last_updated: 2026-09-01T-post-P3-first-slice
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -22,7 +22,7 @@ narrative + pointers only.
 | P0 Bootstrap | ✅ done | Worktrees created from fresh `origin/main` (`1ba236dec`). Grounding facts re-verified live (D-VR-1..4). State file created. |
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
-| P3 Minimal substrate | 🟡 starting | Prep done: confirmed `nirmana_evidence` schema owned by `nirmana_evidence_owner`; reverted 639's design used per-action service-account principals (`amjis-nirmana-conductor@…`, `amjis-nirmana-verifier@…`) with a lease/fence pattern — reusable per §5 P3 ("lift the lease/fence design from 639, drop its policy/readiness tables"). Target ≤2 PRs, tripwire at 4. |
+| P3 Minimal substrate | 🟡 first slice shipped, blocked on credential provisioning | See "P3 gap analysis + status" below — this replaces the earlier prep note, which assumed a much larger build than was actually needed. |
 | P4 Rehearsals | ⬜ not started | |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0`, but monitor last reported `plan_adaptation_required` with 6 drifted assets — must reconcile at P4-A₀ before trusting wave membership. |
@@ -42,23 +42,92 @@ narrative + pointers only.
   `git ls-tree` + grep before reverting. Revert is clean.
 - `NIRMANA_HOLD` kill-switch file absent — confirmed.
 
+## P3 gap analysis + status (2026-09-01)
+
+Before building anything, did a gap analysis against the campaign prompt's P3 ask (ops plane /
+capsule event vocabulary / verifier path / definition supersession). Found that most of it
+**already exists**, built during the pre-#1673 campaign work (2026-08-25 onward,
+`platform/migrations/592_nirmana_elevation_campaign_evidence.sql` +
+`platform/src/lib/nirmana-elevation/definitions.ts`, ~2500 lines):
+
+- `asset_frozen` is already the terminal-capsule event type (strict `NirmanaFreezeEvidenceSchema`,
+  requires `source_kind=server_reconstructed` + exact `source_ref` pattern). No new event type
+  (`asset_terminal_accepted`) was needed.
+- `stage_transition_accepted` already handles layer-level transitions (entity_type=campaign_stage,
+  entity_id ∈ `NIRMANA_STAGE_IDS` which includes L0-L5). No separate `layer_frozen` event needed.
+- `supersede_definition` already implements definition supersession with strict expected-state
+  preconditions (expected_current_revision/manifest_sha256, source_observation_id, expected
+  candidate digests). §4 item 8 ("supersession is routine") is already satisfied.
+- Identity separation for terminal/server-reconstructed evidence (§3.7: implementer ≠ certifier)
+  is already enforced **at the DB layer**, independent of the HTTP caller: a trigger requires
+  `session_user = nirmana_evidence_ingress_writer` for any row with `source_kind=server_reconstructed`,
+  else `nirmana_campaign_control_writer` — both are separate Postgres login roles with disjoint,
+  narrowly-scoped grants (audited in migration 633's assertion-only marker). `event_type text NOT
+  NULL` on `nirmana_elevation_campaign_events` has **no CHECK constraint** — vocabulary is
+  app-layer (zod) only, so extending it never needs a `nirmana_evidence` DDL migration at all
+  (which is important: `nirmana_migrator`, the deploy-time role, deliberately has NO usage grant
+  on the `nirmana_evidence` schema — this is *why* #1673/639 failed, and it's permanent by design,
+  not a bug to route around).
+
+**The one real gap:** the only existing submission route
+(`platform/src/app/api/admin/nirmana-elevation/evidence/route.ts`) requires `requireSuperAdmin()`
+— a browser session. No machine-callable path existed.
+
+**Shipped (PR #1677, merged `adc04fe02`, deployed and confirmed live in production):**
+- `platform/src/lib/nirmana-elevation/evidence-command.ts` — the existing route's command schema +
+  dispatch logic, extracted verbatim (zero behavior change; the pre-existing 34-test suite for
+  the browser route passed unmodified against the refactor).
+- `platform/src/app/api/admin/internal/nirmana-elevation-executor/route.ts` — the same command
+  contract, OIDC-authenticated (mirrors the proven `nirmana-elevation-monitor` pattern: fixed
+  Cloud Run audience, fixed expected principal) instead of browser session.
+- 7 new tests for the executor route's auth gating + dispatch delegation. Full suite (285/291,
+  6 pre-existing skips) green. `tsc --noEmit` and `eslint` clean.
+- **Live-verified in production** (not just unit tests): unauthenticated POST → 401; GET → 405
+  (proving the route is registered and reachable, ruling out a deploy/build gap); confirmed via a
+  local `next build` that `app-paths-manifest.json` lists the route identically to the working
+  monitor route.
+
+**Blocked (credential provisioning, not code):** the route's `EXECUTOR_PRINCIPAL` constant names
+the native's own Google identity, chosen specifically to avoid provisioning new GCP IAM (which
+`infra/nirmana_elevation_monitor/README.md` gates behind a two-person saved-plan Terraform apply
+— named approved operator + independent reviewer + recorded approval reference — that this
+session cannot self-satisfy, and which the campaign's own hard floor says to route around rather
+than weaken). **That choice turned out to be structurally unworkable**, confirmed live: a human
+Google identity cannot mint an audience-bound OIDC ID token at all —
+`gcloud auth print-identity-token --audiences=...` fails with "Invalid account type ... Requires
+valid service account" for a user account, and there is no other GCP-supported path (audience-
+scoped ID token minting is a service-account-only IAM capability,
+`iam.serviceAccounts.getOpenIdToken`). This is a GCP design constraint, not a CLI inconvenience —
+confirmed and documented in the route's own source comment (follow-up PR, doc-fix only).
+So: the route is correctly built, deployed, and live, but **nothing can currently authenticate to
+it** — not code debt, a credential-provisioning gap. Two compliant paths forward, neither of which
+this session can execute alone:
+1. Provision a dedicated service account (e.g. `amjis-nirmana-executor@...`) via the existing
+   two-person Terraform-apply discipline, then swap `EXECUTOR_PRINCIPAL` to that SA's email
+   (one-line change) — mirrors the monitor service exactly.
+2. The native mints a token for the existing constant through some GCP-supported human-identity
+   flow this session hasn't found (if one exists) — unconfirmed as of this writing.
+Recording this as `BLOCKED_BY_FLOOR`-adjacent per §3: parking this one specific activation step,
+not the campaign. Continuing with whatever P4 rehearsal work doesn't require live evidence
+submission (definition/manifest analysis, drift reconciliation) while this is open.
+
 ## Open items / next actions
 
-1. Begin P3: design `nirmana_ops` schema (queue/state/lease/fence/cost, enum-checked), the
-   `asset_terminal_accepted`/`layer_frozen` capsule vocabulary addition to the evidence ingress
-   with zod validation, a non-browser authenticated submission path, and the definition
-   supersession path. Target ≤2 PRs (tripwire at 4 per §7.5/§5 P3).
-2. Then P4: rehearsals A₀ (supersede stale definition, reconcile 6 drifted assets), A (probe
-   rehearsal on `bg_ephemeris_engine`/`bg_panchanga`), B (build rehearsal on
-   `bg_formula_constants`, full route incl. one induced rejection + kill-switch drill).
+1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
+   something this session can self-serve without weakening the two-person IaC gate).
+2. P4 rehearsals A₀/A/B still need a working submission path to actually record evidence/capsules.
+   Can start the *analysis* halves (definition drift reconciliation, registry/manifest inspection)
+   without it; the *acceptance* halves (record_evidence, supersede_definition calls) are blocked
+   by item 1.
 3. At P4-A₀, reconcile the 6 drifted assets in the stale `t0-2026-08-26-faa4d6b0` definition before
-   trusting L0 wave membership.
+   trusting L0 wave membership — this is pure analysis, not blocked by item 1.
 4. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
    `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior campaigns
    (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0.
-5. Housekeeping: this session's own worktrees (`codex/nirmana-velocity-reset`,
-   `docs/nirmana-velocity-reset-governance`, `docs/nirmana-state-p1-p2-verified`) can be removed
-   once their PRs are merged — routine, not deferred to P5.
+5. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
+   5,000/hr `gh` rate limit mid-session from merge-queue polling. Future sessions should poll less
+   aggressively (60s+ intervals, prefer `gcloud run services describe` over `gh run list` for
+   deploy-completion checks where possible, since Cloud Run state isn't rate-limited the same way).
 
 ## Decisions log
 
@@ -82,25 +151,59 @@ narrative + pointers only.
   ruleset). Treated as normal queue latency, not a stall — verified via GraphQL
   `isInMergeQueue`/`mergeQueue.entries` rather than assuming a problem from `gh pr checks`
   showing pending. Basis: repo ruleset `min_entries_to_merge_wait_minutes: 5`.
-- `D-VR-6` (2026-09-01): Left the `_migrations_applied` vs. repo-file discrepancy (632/633/636
-  recorded as applied but no longer present as files on `main`) as `DEFER_TO_LAYER_BACKLOG` — it
-  predates this campaign, does not affect the #1674 revert (639 was never applied), and
-  investigating it further is not required for P1 closure. Basis: §4 item 7 finding fence.
+- `D-VR-6` (2026-09-01, **superseded same session, see below**): Initially left the
+  `_migrations_applied` vs. repo-file discrepancy for 632/633/636 as `DEFER_TO_LAYER_BACKLOG`.
+- `D-VR-6-correction` (2026-09-01): The "discrepancy" was a false alarm from incomplete
+  investigation — `migrate.ts` reads from **two** legitimate migration directories
+  (`platform/migrations/` and `platform/supabase/migrations/`), and 632/633/636 simply live in
+  the first one (confirmed: `grep -n "migrations" migrate.ts` shows both
+  `path.resolve(scriptDir, '../migrations')` and `'../supabase/migrations'`). No backlog item;
+  removing it below rather than leaving a wrong claim on record (§N.7/§N.8: an honest correction
+  beats a stale finding). Basis: direct file-listing check across both directories.
+- `D-VR-7` (2026-09-01): Before writing any P3 code, spent the first pass on gap analysis against
+  the existing `definitions.ts`/evidence-route implementation rather than building from the
+  campaign prompt's P3 spec at face value — found most of the asked-for substrate already exists
+  (see "P3 gap analysis" below). Basis: §4 item 8 / general "supersession and event vocabulary
+  are routine, not ceremony" framing — building a second, redundant implementation would itself
+  have been the governance-creep the campaign's own §7.5 tripwire warns against.
+- `D-VR-8` (2026-09-01): Refactored the browser evidence route to extract its command
+  schema/dispatch into a shared module rather than duplicating ~350 lines into the new executor
+  route, and verified the refactor was behavior-preserving by running the existing 34-test suite
+  unmodified against it (all passed) before adding anything new. Basis: §N.7/§N.8 — a refactor of
+  security-load-bearing code needs the pre-existing test suite as a regression oracle, not just a
+  read-through.
+- `D-VR-9` (2026-09-01): Chose the native's own Google identity as the OIDC principal for the new
+  executor route instead of provisioning a dedicated service account, specifically to avoid the
+  two-person Terraform-apply gate documented in `infra/nirmana_elevation_monitor/README.md` — that
+  gate requires a named approved operator + independent reviewer + recorded approval reference
+  this session cannot supply, and IAM/service-account creation is exactly the kind of
+  security-perimeter change worth routing around rather than self-authorizing. Basis: campaign §3
+  hard floor ("route around, never weaken the gate") + this session's general standing instruction
+  to treat IAM changes as higher-scrutiny than code/DB changes.
+- `D-VR-10` (2026-09-01): That choice (D-VR-9) turned out to be structurally unworkable — live-
+  confirmed a human Google identity cannot mint an audience-bound OIDC ID token via any
+  GCP-supported path, this being an IAM capability restricted to service accounts. Recorded as
+  `BLOCKED_BY_FLOOR`-adjacent (see "P3 gap analysis" below) rather than pursuing a workaround (e.g.
+  hand-rolling a token-exchange call against Google's internal APIs to route around gcloud's
+  restriction) — that would have been trying to defeat a deliberate platform boundary, not routing
+  around a blocked path, which the hard floor does not authorize. Basis: campaign §3 hard floor +
+  live `gcloud auth print-identity-token` verification.
 
 ## Finding-fence backlog
 
-- `_migrations_applied` records `632_nirmana_evidence_server_writer_guard.sql`,
-  `633_nirmana_evidence_writer_ownership.sql`, and `636_nirmana_campaign_control_monitor_read.sql`
-  as applied, but these files do not exist in the repo at `origin/main` (only 630, 631, 634, 635,
-  637, 638 remain from that range, plus 639 which was just reverted). Disposition:
-  `DEFER_TO_LAYER_BACKLOG` — pre-existing, does not block P1, affects replay-from-scratch fidelity
-  not live production. Needs an owner before any full-DB rebuild/replay is trusted.
+(none currently open — the one prior entry, migration-directory "discrepancy", was a false alarm;
+see `D-VR-6-correction`)
 
-## Tripwire readings (2026-09-01, end of P0/P1/P2)
+## Tripwire readings (2026-09-01, end of P0/P1/P2/P3-first-slice)
 
-- Governance share of effort: P0 (bootstrap/verification) + P1 (one real production fix, merged
-  and deployed) + P2 (required governance landing) — all phase-plan-mandated, no discretionary
-  machinery added. Under the 15% threshold; will re-measure at each future microbatch boundary.
-- Substrate PR count: 0 of the P3 substrate PRs opened yet (correctly — P3 starts next).
-- Days since last new capsule: N/A — capsule mechanism doesn't exist until P3 ships it; zero
-  capsules is expected at this point, not a stall.
+- Governance share of effort: P0/P1/P2 phase-mandated + P3's one shipped PR was net-negative on
+  machinery (extracted/reused existing code, added one new route, no new schema/tables) after the
+  gap analysis correctly avoided building the larger substrate the prompt assumed was needed.
+  Under the 15% threshold.
+- Substrate PR count: 1 of the ≤2 target (tripwire at 4) — `#1677`. A 2nd (doc-fix, this PR) is
+  documentation only, not new substrate.
+- Days since last new capsule: N/A — capsule mechanism (`asset_frozen`) already existed
+  pre-campaign; no new capsule written yet because the submission path isn't activatable (see P3
+  status). Not a stall — it's the recorded blocker.
+- This session hit GitHub's shared 5,000/hr API rate limit from merge-queue polling — logged as an
+  operational note (open items #5), not a campaign finding.
