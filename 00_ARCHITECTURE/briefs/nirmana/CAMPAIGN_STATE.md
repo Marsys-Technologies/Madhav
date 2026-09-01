@@ -23,7 +23,7 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
-| P4 Rehearsals | 🟡 A₀ done, A/B next | A₀ supersession executed and independently verified live — 2 real production bugs found+fixed en route (PRs #1682, #1683). Current frozen definition: `t0-2026-09-01-0e5b06fb`. Proceeding to rehearsal A (probe). |
+| P4 Rehearsals | 🟡 A₀ + A done, B next | A₀ supersession + rehearsal A (probe, `bg_ephemeris_engine`) both executed and independently verified live — 4 real production bugs found+fixed en route (PRs #1682, #1683, #1685, #1686). Current frozen definition: `t0-2026-09-01-0e5b06fb`. Proceeding to rehearsal B (build, `bg_formula_constants`). |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
@@ -281,6 +281,54 @@ reflects current reality, not a stale or partial reconstruction.
 **Campaign status: P4-A₀ closed.** Proceeding to rehearsal A (probe: `bg_ephemeris_engine` or
 `bg_panchanga`) next.
 
+## Rehearsal A EXECUTED and independently verified — the campaign's first terminal capsule (2026-09-01)
+
+Ran the full probe rehearsal on `bg_ephemeris_engine` (asset_kind=service, health_probe set,
+`execution_obligation: probe`). Two more real production bugs blocked it in sequence before
+success, both root-caused, fixed, deployed, and the sequence retried after each:
+
+3. **`NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE = false`** (PR #1685). `BLOCKS_CURRENT_ASSET` for
+   **all 40 L0 assets**, not just this one — the entire `asset_analysis_accepted`/
+   `optimization_verdict_accepted`/`probe_accepted` path was gated shut. Root cause: the
+   checked-in `nirmana-writer-digests.json` is current and correct (confirmed live:
+   `python -m pipeline.orchestrator.provenance_inventory --check` exits 0 against the real
+   sidecar writer source) — only the JS-side pinned constants
+   (`NIRMANA_L0_CONVERGENCE_COMMIT`/`NIRMANA_L0_WRITER_INVENTORY_SHA256`) were stale, last
+   updated for #1571 and never re-pinned. Self-verified per-writer attribution by diffing the
+   JSON at each commit myself (not taken on report) — full table in the PR. Re-pinned to
+   `49bb5c98b864a2cb2fee037cdb7f14f6892a8263` (#1571's merge commit, confirmed the last commit
+   that actually changed the aggregate's input — #1580 also touched the file but only its
+   separate `probe_digest` field, outside the aggregate). Added the missing §N.8 detector: a
+   self-consistency test that fails on a future un-re-pinned writer digest change instead of
+   silently closing this gate again. Zero lifecycle events existed anywhere to invalidate.
+4. **Missing `NIRMANA_EVIDENCE_INGRESS_DB_USER`/`PASSWORD` in the deployed Cloud Run revision**
+   (PR #1686). `BLOCKS_TERMINAL_EVIDENCE` — every `source_kind=server_reconstructed` write
+   (i.e. every terminal capsule and layer-freeze event) failed closed. Root cause: the DB role
+   and its Secret Manager secret were both correctly provisioned 2026-08-27, with correct IAM
+   access already granted to the runtime SA — only `deploy.yml`'s env/secrets wiring was
+   missing (its sibling, the control-writer credential, has this wiring; this one never did).
+   Fixed with the identical two-line pattern; no new secret, no rotation, no IAM change.
+
+**Result, independently re-verified against the live DB:** all three lifecycle events recorded
+in sequence — `asset_analysis_accepted` → `optimization_verdict_accepted` → `probe_accepted`
+(the terminal capsule). The `probe_accepted` row confirms every claimed design property actually
+held, not just the HTTP response:
+- `writer_identity = nirmana_evidence_ingress_writer` — the DB trigger correctly routed this
+  `server_reconstructed` write to the distinct ingress-writer role.
+- `recorded_by = nirmana-executor:amjis-nirmana-verifier@...` — the per-command principal
+  allowlist correctly required the verifier SA, not the executor SA that submitted the two
+  prior (non-terminal) events.
+- `response_digest` in the stored row is **completely different** from the placeholder value
+  submitted in the request — confirms the server genuinely overwrote it with its own
+  independently-computed value (`normalizeDetectorEvidence`), not the client's claim.
+- `detector_observation` is a real payload from the live sidecar probe runner
+  (`amjis-sidecar-probe-...`), with every check `GREEN`: Swiss Ephemeris file hashes match,
+  sidereal Sun sign = 10 (Capricorn) matching the FORENSIC birth-anchor fact from CLAUDE.md §B,
+  mean-node Rahu sign = 2 matching the expected invariant.
+
+**Campaign status: Rehearsal A closed.** Proceeding to Rehearsal B (build: `bg_formula_constants`,
+full route including one induced verifier rejection and a kill-switch drill) next.
+
 ## Open items / next actions
 
 1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
@@ -397,6 +445,26 @@ reflects current reality, not a stale or partial reconstruction.
   before deciding whether it needed fixing (one, on `campaign_definitions`, didn't — that role has
   UPDATE there). Basis: §N.8 Earned-Signal Principle — a bug found once in a pattern warrants
   checking the whole pattern, not just the one call site that happened to fail first.
+- `D-VR-17` (2026-09-01): When native-directed to fix the L0 convergence-pin blocker in one
+  scope-capped PR, verified every technical claim in that directive before building on it rather
+  than trusting the framing — confirmed the cited sidecar functions actually exist (they did, in
+  a fuller form than described: a complete generator with its own `--check` CI mode already
+  existed, so no new ~30-line script was needed), and independently re-derived the per-writer PR
+  attribution myself by diffing the JSON at each commit rather than repeating the directive's
+  citation verbatim. Found and corrected one gap in that citation (a 4th commit, #1580, also
+  touched the file, but only an unrelated field) before it could ship as a wrong claim in the PR
+  description. Basis: same discipline applied to the earlier v1/v2 credential-resolution
+  exchange — a confidently-worded directive is not a substitute for independent verification,
+  especially for a security/integrity-anchor change.
+- `D-VR-18` (2026-09-01): Fixed the missing evidence-ingress credential wiring as a `deploy.yml`
+  code change (mirroring the exact pattern already used for the sibling credential) rather than
+  an imperative `gcloud run services update` command, even though the latter would have been
+  faster — keeps the change reviewed, in CI, and in git history rather than an unreviewed
+  production mutation. Verified first that no new secret or IAM grant was needed (both already
+  existed, provisioned 2026-08-27) before writing the fix, since creating/rotating a credential
+  would have needed a different, higher-scrutiny path. Basis: campaign §3 hard floor
+  (credential handling) + this session's standing practice of routing infrastructure changes
+  through the same PR process as everything else.
 
 ## Finding-fence backlog
 
