@@ -62,6 +62,14 @@ describe('Nirmana label catalogue', () => {
     expect(clientQuery).toHaveBeenNthCalledWith(2,
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       ['nirmana-elevation:r1:labels-v1'])
+    // nirmana_campaign_control_writer is deliberately SELECT+INSERT only (no
+    // UPDATE) on nirmana_elevation_campaign_events; FOR SHARE requires
+    // UPDATE privilege in Postgres and fails closed for this role in
+    // production (confirmed live before this fix landed) -- guard against
+    // reintroducing it on the existing-receipt read.
+    const existingReceiptSelect = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('SELECT event_type') && String(sql).includes('FROM nirmana_evidence.nirmana_elevation_campaign_events'))
+    expect(existingReceiptSelect?.[0]).not.toContain('FOR SHARE')
     const receiptCall = clientQuery.mock.calls.find(([sql]) =>
       String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))
     expect(receiptCall).toBeDefined()
