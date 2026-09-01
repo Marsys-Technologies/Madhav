@@ -98,12 +98,25 @@ export async function recordNirmanaElevationLabelCatalogueInTransaction(
     throw new Error('Label catalogue contains an asset absent from the frozen definition.')
   }
 
+  // Plain SELECT, not FOR SHARE: nirmana_campaign_control_writer is
+  // deliberately SELECT+INSERT only (no UPDATE) on
+  // nirmana_elevation_campaign_events, and Postgres's row-locking clauses
+  // require UPDATE privilege -- see the identical fix in definitions.ts's
+  // accept/supersede asset_registry reads. No lock is needed for
+  // correctness here either: the pg_advisory_xact_lock above, keyed on this
+  // exact (campaign_id, definition_revision, catalogue_revision), already
+  // serializes every concurrent caller down to one at a time for this
+  // receipt's idempotency key -- the same mutual exclusion FOR SHARE would
+  // add, already provided without it. (The two call sites of this function
+  // differ in isolation level -- the standalone recordNirmanaElevationLabelCatalogue
+  // uses the default READ COMMITTED, while definitions.ts's accept/supersede
+  // paths additionally run this under SERIALIZABLE -- but the advisory lock
+  // alone is sufficient here regardless.)
   const existingReceipt = await client.query(
     `SELECT event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref
        FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
-        AND idempotency_key = $3
-      FOR SHARE`,
+        AND idempotency_key = $3`,
     [input.campaign_id, input.definition_revision, receiptIdempotencyKey],
   )
   const existingReceiptRow = existingReceipt.rows[0] as {
@@ -216,11 +229,12 @@ export async function verifyNirmanaElevationLabelCatalogueInTransaction(
     source_kind: string
     source_ref: string
   }>(
+    // Plain SELECT, not FOR SHARE -- see the identical comment above in
+    // recordNirmanaElevationLabelCatalogueInTransaction.
     `SELECT event_type, entity_type, entity_id, layer, evidence_payload, source_kind, source_ref
        FROM nirmana_evidence.nirmana_elevation_campaign_events
       WHERE campaign_id = $1 AND definition_revision = $2
-        AND idempotency_key = $3
-      FOR SHARE`,
+        AND idempotency_key = $3`,
     [input.campaign_id, input.definition_revision, `asset-label-catalogue:${input.catalogue_revision}`],
   )
   const stored = receipt.rows[0]
