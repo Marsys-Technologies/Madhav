@@ -22,8 +22,8 @@ narrative + pointers only.
 | P0 Bootstrap | ✅ done | Worktrees created from fresh `origin/main` (`1ba236dec`). Grounding facts re-verified live (D-VR-1..4). State file created. |
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
-| P3 Minimal substrate | 🟡 code + IaC ready, awaiting native's Terraform apply | See "P3 gap analysis + status" and "P3 credential resolution v2" below. Route + two-principal allowlist shipped; Terraform authored, validated, not applied (native's two-person process, not self-serviceable). |
-| P4 Rehearsals | 🟡 A₀ analysis done, supersession awaiting same apply | See "P4-A₀ drift reconciliation" below. Root cause fully explained for all 6 drifted assets; the actual `supersede_definition` call is ready to fire the moment the executor SA is live. |
+| P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
+| P4 Rehearsals | 🟡 A₀ ready to fire | Drift root-caused (below); supersession call proceeding now that credentials are live. |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
@@ -168,6 +168,45 @@ correct (they reference the SA emails this Terraform creates) — no further cod
 only re-verify against the applied `nirmana_elevation_executor_email`/`..._verifier_email` Terraform
 outputs per the README's own caution.
 
+## P3 credential ACTIVATED — independently verified live (2026-09-01)
+
+The native applied the Terraform above. Before treating the campaign as unblocked, this session
+independently re-verified every claim rather than trusting the report of completion:
+
+- `gcloud iam service-accounts describe` on both `amjis-nirmana-executor@...` and
+  `amjis-nirmana-verifier@...` — both exist, display name/description exactly match the applied
+  Terraform.
+- `gcloud iam service-accounts get-iam-policy` on both — exactly one binding each,
+  `roles/iam.serviceAccountTokenCreator` for `user:mail.abhisek.mohanty@gmail.com` only. No other
+  role, no other member. Matches the plan exactly; nothing extra was granted.
+- Live route test: an executor-SA token minted via `--impersonate-service-account` +
+  `--include-email`, POSTed with an intentionally invalid command body, returned `HTTP 400 invalid
+  Nirmana evidence command` — proving OIDC auth passed (a 403 would mean auth failed) and body
+  validation correctly rejected the request before any write.
+
+**Operationally load-bearing finding, recorded here so no successor session rediscovers it the
+hard way:** `gcloud auth print-identity-token --impersonate-service-account=<sa-email>
+--audiences=<audience>` **must** include `--include-email`, or the minted JWT has no `email` claim
+at all (confirmed by decoding both token variants — the no-flag token carries only `sub`, a numeric
+OAuth2 client ID; the flagged token carries `email` + `email_verified: true`). `verifyOidcToken()`
+(`platform/src/lib/auth/oidc.ts`) does `if (!payload?.email) return null`, so an unflagged token
+silently authenticates as *nobody* and the route returns 403 forbidden — indistinguishable from a
+genuinely wrong/expired token unless you know to check this. The exact minting command:
+```
+gcloud auth print-identity-token \
+  --impersonate-service-account=amjis-nirmana-executor@madhav-astrology.iam.gserviceaccount.com \
+  --audiences=https://amjis-web-938361928218.asia-south1.run.app \
+  --include-email
+```
+(swap the SA email for `amjis-nirmana-verifier@...` for verifier-scoped commands.) Also: retry once
+on `PERMISSION_DENIED` immediately after any IAM change — token-creator grants take a short time to
+propagate.
+
+Campaign status: **unblocked.** Proceeding directly to P4-A₀ supersession, then rehearsals A/B, then
+L0 execution. The next artifacts this campaign produces are DB-recorded capsules/events via the
+executor/verifier routes, not PRs — CAMPAIGN_STATE.md will be updated periodically to reflect
+progress, but individual evidence submissions are not themselves code changes.
+
 ## P4-A₀ drift reconciliation (2026-09-01)
 
 The monitor has consistently reported `status: plan_adaptation_required` since before this
@@ -296,6 +335,11 @@ recording this here rather than re-deriving it in a future session.
   list, so the HTTP-layer allowlist can never drift out of sync with the DB-layer trigger it
   mirrors. Basis: §N.7 item 3 (no wrapper-local constant may shadow a source of truth) applied to
   an authorization boundary, not just a data value.
+- `D-VR-14` (2026-09-01): Independently re-verified the native's report that the SAs were applied
+  correctly (IAM policies, live route probe, `--include-email` behavior) rather than proceeding on
+  the report alone, even though the report was detailed and specific. Basis: §3.7 hard-floor spirit
+  applied generally — verify state before acting on it, especially before the campaign's first real
+  write to production evidence.
 
 ## Finding-fence backlog
 
