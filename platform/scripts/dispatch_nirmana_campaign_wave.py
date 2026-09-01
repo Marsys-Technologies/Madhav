@@ -595,6 +595,14 @@ def _load_definition(cur, definition_revision: str) -> dict[str, Any]:
 
 
 def _load_candidates(cur, asset_ids: list[str]) -> list[dict[str, Any]]:
+    # Plain SELECT, not FOR SHARE OF ar: nirmana_campaign_control_writer is
+    # deliberately SELECT-only (no UPDATE) on asset_registry, and Postgres's
+    # row-locking clauses require UPDATE privilege -- see the identical fix
+    # in platform/src/lib/nirmana-elevation/definitions.ts's accept/supersede
+    # asset_registry reads and dispatch_nirmana_f0_canary.py's _load_candidate.
+    # create_campaign_run runs this transaction under SERIALIZABLE isolation
+    # (set immediately after connecting, before this call), which provides
+    # the same conflict protection via SSI without needing a lock.
     cur.execute(
         """
         SELECT ar.asset_id, ar.layer, COALESCE(ar.depends_on, '{}') AS depends_on,
@@ -611,7 +619,6 @@ def _load_candidates(cur, asset_ids: list[str]) -> list[dict[str, Any]]:
                ) AS has_cowriters
           FROM asset_registry ar
          WHERE ar.asset_id = ANY(%s)
-         FOR SHARE OF ar
         """,
         (asset_ids,),
     )
@@ -643,6 +650,10 @@ def create_campaign_run(
 
     connection = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
     connection.autocommit = False
+    # SERIALIZABLE, not the psycopg/Postgres default READ COMMITTED: this is
+    # what lets _load_candidates's asset_registry read safely drop
+    # FOR SHARE OF ar (see that function's comment).
+    connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
     try:
         cur = connection.cursor()
         triggered_by = _triggered_by(definition_revision, layer, wave_index)

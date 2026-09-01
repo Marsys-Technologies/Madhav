@@ -94,6 +94,14 @@ def _load_writer_digest(asset_id: str) -> str:
 
 
 def _load_candidate(cur, asset_id: str) -> dict[str, Any]:
+    # Plain SELECT, not FOR SHARE: nirmana_campaign_control_writer is
+    # deliberately SELECT-only (no UPDATE) on asset_registry, and Postgres's
+    # row-locking clauses require UPDATE privilege -- see the identical fix
+    # in platform/src/lib/nirmana-elevation/definitions.ts's accept/supersede
+    # asset_registry reads. create_canary_run runs this transaction under
+    # SERIALIZABLE isolation (set immediately after connecting, before this
+    # call), which provides the same conflict protection via SSI without
+    # needing a lock or elevated privilege.
     cur.execute(
         """
         SELECT ar.asset_id, ar.layer, ar.scope, ar.asset_kind,
@@ -108,7 +116,6 @@ def _load_candidate(cur, asset_id: str) -> dict[str, Any]:
                ) AS has_cowriters
           FROM asset_registry ar
          WHERE ar.asset_id = %s AND ar.is_active = true AND ar.has_writer = true
-         FOR SHARE
         """,
         (asset_id,),
     )
@@ -124,6 +131,12 @@ def create_canary_run(*, database_url: str, chart_id: str, asset_id: str, commit
 
     connection = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
     connection.autocommit = False
+    # SERIALIZABLE, not the psycopg/Postgres default READ COMMITTED: this is
+    # what lets _load_candidate's asset_registry read safely drop FOR SHARE
+    # (see that function's comment) -- SSI conflict detection covers the same
+    # concurrent-write case a lock would, without needing UPDATE privilege on
+    # a table this role is deliberately SELECT-only on.
+    connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
     try:
         cur = connection.cursor()
         cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", ("nirmana-f0-canary",))
