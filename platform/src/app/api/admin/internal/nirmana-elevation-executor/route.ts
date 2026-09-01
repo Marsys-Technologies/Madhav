@@ -20,10 +20,24 @@ const EXECUTOR_OIDC_AUDIENCE = 'https://amjis-web-938361928218.asia-south1.run.a
 // infra/nirmana_elevation_monitor/README.md, requires the two-person
 // saved-plan apply discipline (named approved operator + independent
 // reviewer + recorded approval reference) that this session cannot satisfy
-// itself. Until that identity is provisioned, this route accepts only the
-// native's own already-privileged principal, minted directly (e.g. `gcloud
-// auth print-identity-token --audiences=...`) rather than through a browser
-// session.
+// itself.
+//
+// IMPORTANT (confirmed live, 2026-09-01): a *human* Google identity cannot
+// mint an audience-bound OIDC ID token at all -- `gcloud auth
+// print-identity-token --audiences=...` fails with "Invalid account type
+// ... Requires valid service account" for a user account, and there is no
+// other GCP-supported path to one: `iam.serviceAccounts.getOpenIdToken`
+// (what backs audience-scoped ID token minting) is a service-account-only
+// capability. This is a GCP IAM design constraint, not a CLI inconvenience.
+// So while the auth check below is correctly implemented and this route is
+// live and reachable (unauthenticated calls confirmed 401 in production),
+// nothing -- not even the native himself, from a shell -- can currently
+// present a token this route would accept. This is not yet the "non-browser
+// authenticated submission path" the campaign asked for; it is the route
+// half of it, waiting on the credential half: either the dedicated
+// service-account identity (the two-person IaC path above) or a change to
+// this route's auth model. Until one of those lands, this constant stays
+// a placeholder, not a functioning credential path.
 const EXECUTOR_PRINCIPAL = 'mail.abhisek.mohanty@gmail.com'
 
 export const dynamic = 'force-dynamic'
