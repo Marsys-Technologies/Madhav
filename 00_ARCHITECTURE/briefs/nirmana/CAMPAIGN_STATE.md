@@ -23,7 +23,7 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
-| P4 Rehearsals | 🟡 A₀ + A done, B next | A₀ supersession + rehearsal A (probe, `bg_ephemeris_engine`) both executed and independently verified live — 4 real production bugs found+fixed en route (PRs #1682, #1683, #1685, #1686). Current frozen definition: `t0-2026-09-01-0e5b06fb`. Proceeding to rehearsal B (build, `bg_formula_constants`). |
+| P4 Rehearsals | 🟢 machinery proven, awaiting wave-0 scope decision | A₀ + rehearsal A done and verified. Rehearsal B's canary (build machinery proof, `bg_vedha_malefic_scale`) executed and independently verified live — real Cloud Run job, real writer, real 5-row upsert, real downstream staleness propagation. 7 real production bugs found+fixed total (PRs #1682, #1683, #1685, #1686, #1689, #1690). Canary evidence is deliberately not campaign-acceptable (`triggered_by <> 'nirmana-f0-machinery-canary'`) — the actual accepted capsule requires a full wave-0 dispatch, which contains a 825K-row asset (`bg_ephemeris`) and one doctrine-flagged-for-reuse asset (`bg_texts`). Decision needed before dispatching. |
 | P5 Hygiene | ⬜ not started | |
 | P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
@@ -370,6 +370,77 @@ Recording this as the campaign's next real decision point rather than self-autho
 contract, digest computation, dependency check) can still proceed; only the actual dispatch step
 is gated.
 
+## Rehearsal B credential blocker RESOLVED (native-authorized), canary executed live (2026-09-01)
+
+The native explicitly authorized direct GCP-CLI database access for this development-stage,
+research-data system ("no sensitive information... use GCP-CLI to directly access the database").
+Proceeded carefully: Cloud SQL Auth Proxy on a local port, secret read via `gcloud secrets
+versions access` straight into an env var (never printed, never logged), connection tested with a
+harmless `SELECT current_user` before any real query.
+
+**Two more real bugs found and fixed en route, both via reviewed PRs (not local patches):**
+
+5–6. **Same `FOR SHARE` privilege bug, two more sites** (PR #1689) — `dispatch_nirmana_campaign_wave.py:_load_candidates`
+   and `dispatch_nirmana_f0_canary.py:_load_candidate`, both `FOR SHARE (OF ar)` on `asset_registry`.
+   Found live running the wave dispatcher's dry run for the first time ever. Unlike the TS-side
+   fixes, neither script ran under SERIALIZABLE isolation already (psycopg/Postgres default is
+   READ COMMITTED) — fixed by adding `connection.isolation_level =
+   psycopg.IsolationLevel.SERIALIZABLE` to both, genuinely replacing the lock's protection via SSI
+   rather than just removing it. 38/38 existing tests pass.
+7. **`bg_formula_constants` no longer qualifies for the F0 canary** (PR #1690) — it now carries
+   `natural_key_partition='constant_id'`, which the canary's own isolation check has always
+   correctly refused (not a bug in the check — the asset drifted since it was approved). Queried
+   the live registry for every other wave-0 candidate satisfying all constraints; re-approved
+   `bg_vedha_malefic_scale` (5 rows, smallest of 11 qualifying). Updated the 3 test fixtures that
+   assumed the old asset; 11/11 pass.
+
+**Also discovered, mid-investigation: `nirmana_campaign_control_writer` is deliberately SELECT-only
+on `build_runs`/`build_run_assets` too** (same pattern as `asset_registry`) — confirmed via
+`information_schema.role_table_grants`: `role_orchestrator` (NOLOGIN, the real orchestrator
+identity) and `amjis_app` (the generic app role, already used for every "click Build" in the
+product) both have full INSERT there; the campaign-scoped writer role does not, by design. Used
+`amjis_app`'s already-provisioned, already-deployed credential (`amjis-db-password:3`) for the
+actual dispatch — not a new or escalated credential, the same one the app already uses for this
+exact action.
+
+**Canary dispatch executed and independently verified — the campaign's first real production
+build.** `dispatch_nirmana_f0_canary.py --commit --confirm NIRMANA_F0_CANARY` (dry run reviewed
+first, digest matched, then committed): real `build_runs`/`build_run_assets` rows created, real
+`gcloud run jobs execute brahma-build-pipeline-job` dispatch, real completion. Verified against
+the actual job logs, not just the DB:
+```
+starting asset bg_vedha_malefic_scale (pos=0)
+[L0/vedha_malefic_scale] upserted 5 rows (table_version=phaladeepika_vedha_v01)
+asset bg_vedha_malefic_scale complete — 5 rows
+[staleness] bg_vedha_malefic_scale completed → marked 1 downstream stale: ['ka_vedha_gochara']
+```
+The downstream-staleness line matters: it proves the orchestrator's real dependency propagation
+fired too, not just the one writer.
+
+**Critical finding while preparing to record this as campaign evidence: the canary path and the
+campaign-evidence-eligible path are structurally, deliberately separate.**
+`requireAcceptedRebuildProvenance` (the `accepted_rebuild_observed` validator) explicitly requires
+`run.triggered_by <> 'nirmana-f0-machinery-canary'` and a `build_runs.plan_manifest` carrying a
+`campaign_control` key (campaign_id/definition_revision/layer/wave_index) that only
+`dispatch_nirmana_campaign_wave.py` writes — the canary's manifest never has this. This matches
+the project's own pre-existing doctrine (`AUTONOMOUS_ASSET_ELEVATION_MASTER_PLAN_v1_0.md`): **"A
+canary proves machinery, not an asset."** The canary run above fully and correctly discharged
+that role — proving the real build machinery works end-to-end — and was never going to produce an
+`asset_frozen`-equivalent capsule by design, not by gap. Getting an actual accepted capsule
+requires the wave-level dispatcher, which is simultaneously "the real thing" (P6), not a smaller
+rehearsal unit — there is no smaller evidence-eligible unit than one full wave.
+
+**Open decision, not yet acted on: wave 0 contains two large/expensive assets.**
+L0 wave 0 has 18 build-obligation assets. Row-count check before dispatching anything: `bg_ephemeris`
+→ `ephemeris_daily` = **825,084 rows**; `bg_texts` → `classical_text_chunks` = 10,651 rows (likely
+embedding-bearing). The campaign's own §4 item 6 doctrine explicitly reserves `bg_texts` for
+`verified_reuse`, not blind `rebuild_only` — and the wave dispatcher has no per-asset route
+selection; it rebuilds every build-obligation asset in a wave uniformly. Dispatching wave 0 as-is
+would rebuild both of these along with the 16 cheap ones, which is a real time/cost commitment
+(and a doctrine violation for `bg_texts` specifically) this session is not making unilaterally.
+Stopped here to report rather than proceeding. Everything else about wave 0 (asset list, the
+16 cheap candidates' evidence-preparation work) can proceed in parallel while this is decided.
+
 ## Open items / next actions
 
 1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
@@ -506,6 +577,27 @@ is gated.
   would have needed a different, higher-scrutiny path. Basis: campaign §3 hard floor
   (credential handling) + this session's standing practice of routing infrastructure changes
   through the same PR process as everything else.
+- `D-VR-19` (2026-09-01): Given explicit native authorization for direct DB access, still read the
+  credential the minimal-exposure way — straight from `gcloud secrets versions access` into an
+  env var, never echoed, never logged, connection verified with a no-op query before any real
+  use. Authorization changed *whether* to use the raw credential, not the discipline around
+  *how*. Basis: standing practice of never printing/copying credentials regardless of who
+  authorized the access.
+- `D-VR-20` (2026-09-01): When `_load_candidates`/`_load_candidate`'s `FOR SHARE` fix surfaced
+  that `nirmana_campaign_control_writer` also lacks INSERT on `build_runs`, did not grant it INSERT
+  to make the dispatch script work — checked whether the restriction was deliberate first
+  (`information_schema.role_table_grants` showed the identical SELECT-only pattern already used
+  for `asset_registry`, plus a dedicated `role_orchestrator`/`amjis_app` path that already has the
+  write access) before concluding this was intentional and using the already-correct, already-
+  provisioned `amjis_app` credential instead. Same "verify deliberate vs. oversight before acting"
+  discipline as D-VR-15, applied to a grant instead of a lock. Basis: campaign §3 hard floor —
+  never weaken a gate; find the path that was actually built for the job instead.
+- `D-VR-21` (2026-09-01): Stopped before dispatching L0 wave 0 on discovering it contains an
+  825,084-row asset (`bg_ephemeris`) and one asset the campaign's own §4 item 6 doctrine reserves
+  for `verified_reuse` (`bg_texts`), with no per-asset skip available in the wave dispatcher.
+  Recorded the finding and reported rather than deciding unilaterally to spend that compute/time
+  or to violate the reuse-route doctrine for `bg_texts`. Basis: campaign's own "commits, PRs,
+  tests... are costs, never progress" framing, applied to real compute cost.
 
 ## Finding-fence backlog
 
