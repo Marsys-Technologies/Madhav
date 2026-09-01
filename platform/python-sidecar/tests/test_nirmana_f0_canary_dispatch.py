@@ -29,7 +29,7 @@ def test_builds_runner_compatible_single_asset_frozen_manifest() -> None:
     manifest, digest = module.build_canary_manifest(
         chart_id="482012f1-710e-4a25-994a-93821f5871aa",
         candidate={
-            "asset_id": "bg_formula_constants",
+            "asset_id": "bg_vedha_malefic_scale",
             "layer": "brahmagyan",
             "scope": "global",
             "asset_kind": "data",
@@ -44,11 +44,11 @@ def test_builds_runner_compatible_single_asset_frozen_manifest() -> None:
         "version": "nirmana-run-manifest/v1",
         "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
         "scope": "asset_set",
-        "scope_target": "bg_formula_constants",
+        "scope_target": "bg_vedha_malefic_scale",
         "action": "rebuild",
-        "waves": [["bg_formula_constants"]],
+        "waves": [["bg_vedha_malefic_scale"]],
         "assets": [{
-            "asset_id": "bg_formula_constants",
+            "asset_id": "bg_vedha_malefic_scale",
             "scope": "global",
             "depends_on": [],
             "natural_key_partition": None,
@@ -56,7 +56,7 @@ def test_builds_runner_compatible_single_asset_frozen_manifest() -> None:
             "expected_code_digest": "6441652129a1c35e3759a4beb83830b1f470a12bae93ee218abb9091aa00469f",
         }],
     }
-    assert digest == "84d1e29be83800082ac741422437610a0a82d0fd4028d93d0ce6310dbd0b16b0"
+    assert digest == "a57cb88591b9873400e9ea2999bf683ffac8bfe00c4c29227809d8b3777761de"
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def test_rejects_a_canary_that_cannot_isolate_foundation_machinery(override, mes
     module = _load_dispatch_module()
     assert module is not None, "the governed F0 canary dispatcher is missing"
     candidate = {
-        "asset_id": "bg_formula_constants",
+        "asset_id": "bg_vedha_malefic_scale",
         "layer": "brahmagyan",
         "scope": "global",
         "asset_kind": "data",
@@ -102,7 +102,7 @@ def test_rejects_any_chart_other_than_the_frozen_campaign_chart() -> None:
         module.build_canary_manifest(
             chart_id="11111111-1111-4111-8111-111111111111",
             candidate={
-                "asset_id": "bg_formula_constants",
+                "asset_id": "bg_vedha_malefic_scale",
                 "layer": "brahmagyan",
                 "scope": "global",
                 "asset_kind": "data",

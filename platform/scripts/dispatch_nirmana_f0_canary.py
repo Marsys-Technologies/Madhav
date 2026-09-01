@@ -20,7 +20,17 @@ from typing import Any, Mapping
 
 
 DEFAULT_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-DEFAULT_ASSET_ID = "bg_formula_constants"
+# bg_formula_constants (the originally approved canary asset) now carries a
+# non-null natural_key_partition ("constant_id") in the live registry --
+# confirmed live, 2026-09-01 -- so it no longer satisfies this canary's own
+# "whole-asset partition only" isolation requirement (build_canary_manifest
+# refuses any asset with a partition key). That requirement is deliberate
+# and is not weakened here. Re-approved bg_vedha_malefic_scale instead: the
+# smallest (5 rows) of the 11 other wave-0 L0 assets that independently
+# satisfy every existing constraint (global scope, data kind, no
+# dependencies, no co-writers, null partition) -- confirmed live via the
+# same query this script's own checks encode.
+DEFAULT_ASSET_ID = "bg_vedha_malefic_scale"
 TRIGGERED_BY = "nirmana-f0-machinery-canary"
 CONFIRMATION = "NIRMANA_F0_CANARY"
 WRITER_DIGESTS_PATH = Path(__file__).resolve().parents[1] / "src" / "generated" / "nirmana-writer-digests.json"
