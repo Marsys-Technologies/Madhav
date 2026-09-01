@@ -23,9 +23,9 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | 🟡 first slice shipped, blocked on credential provisioning | See "P3 gap analysis + status" below — this replaces the earlier prep note, which assumed a much larger build than was actually needed. |
-| P4 Rehearsals | ⬜ not started | |
+| P4 Rehearsals | 🟡 A₀ analysis done, supersession blocked | See "P4-A₀ drift reconciliation" below. Root cause fully explained for all 6 drifted assets; the actual `supersede_definition` call is blocked by the same P3 credential gap. |
 | P5 Hygiene | ⬜ not started | |
-| P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0`, but monitor last reported `plan_adaptation_required` with 6 drifted assets — must reconcile at P4-A₀ before trusting wave membership. |
+| P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
 | P7 L1-L5 | ⬜ not started | |
 
 ## Grounding facts re-verified live (2026-09-01, this session)
@@ -111,20 +111,50 @@ Recording this as `BLOCKED_BY_FLOOR`-adjacent per §3: parking this one specific
 not the campaign. Continuing with whatever P4 rehearsal work doesn't require live evidence
 submission (definition/manifest analysis, drift reconciliation) while this is open.
 
+## P4-A₀ drift reconciliation (2026-09-01)
+
+The monitor has consistently reported `status: plan_adaptation_required` since before this
+session started, naming the same 6 assets every 5-minute tick:
+`bg_class_lifetime_counts, bg_rules, bg_text_index, bg_yogas, ga_panchanga, ga_prashna`
+(current definition `faa4d6b0...`, candidate `0e5b06fb...`). Compared each asset's frozen-manifest
+entry (`nirmana_evidence.nirmana_elevation_campaign_definitions`, revision
+`t0-2026-08-26-faa4d6b0`) against its live `asset_registry` row. Root cause, fully explained —
+every drift is a real `depends_on` (DAG edge) addition made to the live registry after the Aug 26
+freeze, not corruption or an error:
+
+| Asset | Manifest `depends_on` | Live `depends_on` | `registry_contract` also changed? |
+|---|---|---|---|
+| `bg_class_lifetime_counts` | `[]` | `[bg_ghatana]` | No |
+| `bg_rules` | `[bg_texts]` | `[bg_texts, bg_yogas, bg_dasha_systems]` | No |
+| `bg_text_index` | `[bg_texts]` | `[bg_texts, bg_reference]` | No |
+| `bg_yogas` | `[bg_ontology]` | `[bg_texts, bg_ontology]` | **Yes** — `count_sql`/`integrity_check_sql`/`natural_key_partition` all now also cover a 4th source table, `brahma_yoga_source_chunks` (85 rows), that didn't exist in the frozen contract |
+| `ga_panchanga` | `[ga_positions]` | `[ga_positions, bg_panchanga]` | No |
+| `ga_prashna` | `[ga_positions]` | `[ga_positions, bg_prashna_rules]` | No |
+
+All other manifest fields for these 6 assets (scope, count_sql, catalog_status, sort_order, etc.
+outside `bg_yogas`) are byte-identical between manifest and live registry — the drift is narrowly
+scoped to added dependency edges (plus the one real contract change on `bg_yogas`). This reads as
+legitimate downstream work from other campaigns/worktrees active in this window (e.g. the various
+`codex/*l0-dag-contracts*`/`codex/nirmana-l0-dependency-contracts` branches visible in `git
+worktree list`) correctly adding missing DAG edges and a missing source table to the live
+registry — exactly the kind of change a definition supersession exists to absorb, not a fault to
+fix. **Analysis is complete; ready to supersede the moment a submission path exists.** The actual
+`supersede_definition` call needs the same credential this campaign's P3 gap blocks (see above) —
+recording this here rather than re-deriving it in a future session.
+
 ## Open items / next actions
 
 1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
    something this session can self-serve without weakening the two-person IaC gate).
-2. P4 rehearsals A₀/A/B still need a working submission path to actually record evidence/capsules.
-   Can start the *analysis* halves (definition drift reconciliation, registry/manifest inspection)
-   without it; the *acceptance* halves (record_evidence, supersede_definition calls) are blocked
-   by item 1.
-3. At P4-A₀, reconcile the 6 drifted assets in the stale `t0-2026-08-26-faa4d6b0` definition before
-   trusting L0 wave membership — this is pure analysis, not blocked by item 1.
-4. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
+2. Once unblocked: call `supersede_definition` with `source_observation_id` = the latest monitor
+   observation id, `expected_candidate_sha256` = `0e5b06fbfb5b2542e3e2a35e9564410fbd6633de914d933b491e847061fe8ea0`
+   (re-verify against the freshest monitor observation before submitting — it ticks every 5
+   minutes and the candidate digest will change if further drift accrues), then proceed to P4-A
+   (probe rehearsal) and P4-B (build rehearsal).
+3. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
    `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior campaigns
    (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0.
-5. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
+4. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
    5,000/hr `gh` rate limit mid-session from merge-queue polling. Future sessions should poll less
    aggressively (60s+ intervals, prefer `gcloud run services describe` over `gh run list` for
    deploy-completion checks where possible, since Cloud Run state isn't rate-limited the same way).
@@ -188,6 +218,11 @@ submission (definition/manifest analysis, drift reconciliation) while this is op
   restriction) — that would have been trying to defeat a deliberate platform boundary, not routing
   around a blocked path, which the hard floor does not authorize. Basis: campaign §3 hard floor +
   live `gcloud auth print-identity-token` verification.
+- `D-VR-11` (2026-09-01): Did the P4-A₀ drift-reconciliation analysis (read-only DB comparison of
+  manifest vs. live registry for the 6 flagged assets) even though the resulting `supersede_definition`
+  call is blocked by the same credential gap — the analysis itself is unblocked, valuable on its
+  own, and saves a future session from re-deriving it. Basis: §5 P4-A₀ scoping + open item #2 from
+  the prior session update ("start the analysis halves without [the submission path]").
 
 ## Finding-fence backlog
 
