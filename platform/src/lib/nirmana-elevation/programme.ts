@@ -39,12 +39,13 @@ export interface ProgrammeOWaveWpDeclaration {
  * Repo-declared, not evidence-derived (CLAUDE.md §N.8 / plan Ruling R5). Updated by the
  * O-wave PRs themselves as they merge — this file's values are a snapshot as of the PR
  * that introduces it, verified against live PR state at write time (see Task 1 Step 1).
+ * Verified via `gh pr view` (gh search is unreliable for these titles).
  */
 export const PROGRAMME_O_WAVE_WPS: readonly ProgrammeOWaveWpDeclaration[] = [
   {
     wp_id: 'WP-1',
     name: 'Truthful invalidation (delta-directional staleness)',
-    status: 'not_started',
+    status: 'merged',
     note: 'repo-declared — flipped by the WP-1 PR on merge, not evidence-derived',
   },
   {
@@ -56,7 +57,7 @@ export const PROGRAMME_O_WAVE_WPS: readonly ProgrammeOWaveWpDeclaration[] = [
   {
     wp_id: 'WP-3',
     name: 'Total plans',
-    status: 'not_started',
+    status: 'in_progress',
     note: 'repo-declared — flipped by the WP-3 PR on merge, not evidence-derived',
   },
 ]
