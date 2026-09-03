@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-01T-post-P3-first-slice
+last_updated: 2026-09-03T-post-P4-close
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -15,7 +15,7 @@ start/resume; trust it; continue from the recorded position. Once the P3 ops pla
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
 
-## Current phase: P0/P1/P2 complete and verified; P3 next
+## Current phase: P4 CLOSED (first accepted build capsule); P5/P6 next
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -23,9 +23,9 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
-| P4 Rehearsals | 🟢 machinery proven, awaiting wave-0 scope decision | A₀ + rehearsal A done and verified. Rehearsal B's canary (build machinery proof, `bg_vedha_malefic_scale`) executed and independently verified live — real Cloud Run job, real writer, real 5-row upsert, real downstream staleness propagation. 7 real production bugs found+fixed total (PRs #1682, #1683, #1685, #1686, #1689, #1690). Canary evidence is deliberately not campaign-acceptable (`triggered_by <> 'nirmana-f0-machinery-canary'`) — the actual accepted capsule requires a full wave-0 dispatch, which contains a 825K-row asset (`bg_ephemeris`) and one doctrine-flagged-for-reuse asset (`bg_texts`). Decision needed before dispatching. |
-| P5 Hygiene | ⬜ not started | |
-| P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition `t0-2026-08-26-faa4d6b0` — see P4-A₀ note; wave membership should be re-derived from the *candidate* manifest once superseded, not the stale one. |
+| P4 Rehearsals | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
+| P5 Hygiene | 🟡 partial | The two stale lines this row and the P6 row below carried are fixed in this edit. Broader P5 items (the ~90 stale/prunable git worktrees noted in prior "Open items" #3, GitHub API polling cadence note #4) remain open — not touched this session, still P5/L0-close scope. |
+| P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition **`t0-2026-09-01-0e5b06fb`** (current; supersedes `t0-2026-08-26-faa4d6b0`, which the P4-A₀ supersession retired same-session on 2026-09-01 — see "P4-A₀ SUPERSESSION EXECUTED" below). Wave membership should be derived from this current manifest, not the retired one. `bg_vedha_malefic_scale` (P4's proof asset) is now `asset_frozen` under this revision — its wave-0 dispatch should exclude it as already-complete when P6 begins wave-0 proper. |
 | P7 L1-L5 | ⬜ not started | |
 
 ## Grounding facts re-verified live (2026-09-01, this session)
@@ -441,19 +441,102 @@ would rebuild both of these along with the 16 cheap ones, which is a real time/c
 Stopped here to report rather than proceeding. Everything else about wave 0 (asset list, the
 16 cheap candidates' evidence-preparation work) can proceed in parallel while this is decided.
 
+## P4 CLOSED — first accepted build capsule (2026-09-03)
+
+Per native directive `D-VR-WAVE0-SCOPE` (2026-09-03): do not dispatch full wave 0 (25 assets would
+build before their analyses/verdicts are individually accepted — backwards under the ratified
+evidence-chain ordering, and specifically wrong for `bg_ephemeris`/`bg_texts` per the open decision
+above). Instead: (1) extend the dispatcher for scoped per-asset dispatch — durable equipment for
+P6/L0-W4, not throwaway; (2) run `bg_vedha_malefic_scale` through the complete accepted chain on
+its own, closing P4 with the campaign's first real `asset_frozen` capsule and burning down the
+remaining evidence-chain risk on a 5-row asset rather than mid-layer.
+
+**Dispatcher scoped-subset feature (PR #1692).** `_select_frozen_build_assets`,
+`build_campaign_wave_manifest`, and `create_campaign_run` now take an optional asset-ID subset,
+narrowing a wave's build obligation to named assets without reordering it; an unknown/typo'd/
+out-of-wave asset_id is refused loudly, never silently dropped. `_triggered_by` appends a
+deterministic `:assets-<sorted>` suffix when scoped, so a subset dispatch never consumes the wave's
+one-run-per-`triggered_by` slot and block dispatching the rest of the wave later. `main()` gained
+`--assets` (comma-separated). 32/32 tests pass (27 existing + 5 new).
+
+**Two more real production bugs found and fixed on this path (8th and 9th of the campaign, both via
+reviewed PRs, both independently verified live before and after):**
+
+8. **Same `FOR SHARE`-needs-UPDATE bug, one more site** (PR #1693) — `_load_definition`'s `FOR SHARE`
+   on `nirmana_elevation_campaign_definitions`. `create_campaign_run` connects as `amjis_app` (the
+   role with INSERT on `build_runs`/`build_run_assets`; `nirmana_campaign_control_writer`
+   deliberately lacks that grant), and `amjis_app` has only SELECT — not UPDATE — on the
+   definitions table. First code path ever to query it under `amjis_app` credentials; failed
+   closed with `permission denied for table nirmana_elevation_campaign_definitions`. Fixed
+   identically to the prior three FOR-SHARE fixes (the connection already runs SERIALIZABLE).
+   Verified live: before the fix, permission denied; after, dry-run dispatch progressed past the
+   read and correctly surfaced the real next issue (`bg_ephemeris` lacking accepted evidence in
+   the full wave-0 set) — confirming the failure moved to its expected location, not a new one.
+9. **`integrityDetectorVerdict` required a named result column** (PR #1694) —
+   `integrity_passed`/`passed`/`ok`/`success` — but the FROZEN orchestrator's own convention
+   (`asset_runner.py`'s integrity/health check) has always been positional: "a single row whose
+   first column is truthy," no name required. Most existing `integrity_check_sql` values (e.g.
+   migration 611's `bg_vedha_malefic_scale`/`bg_phaladeepika_latta`/`bg_kota_chakra_rings`
+   row-count + content-digest checks) were authored against that real, working, frozen convention
+   and don't alias their boolean result — the newer evidence-chain validator rejected them before
+   ever reaching the actual pass/fail check. Found live: submitting `integrity_verified` for
+   `bg_vedha_malefic_scale` failed with "requires an explicit true integrity verdict..." even
+   though the asset's own real detector query (run server-side) correctly evaluates to `true`.
+   Fixed by adding a positional fallback for an explicit `integrity_check_sql` when no named
+   column matches (never for the `count_sql` fallback path, unchanged) — this only widens what the
+   validator recognizes as a genuine pass; a real false/failing result, named or positional, still
+   throws exactly as before. First unit-test attempt for this fix itself failed CI (the "true"
+   case needs the same `optimization_verdict_accepted` + disposition prerequisite chain as the
+   asset's real obligation, which the first draft omitted) — caught by CI, fixed same session, no
+   weakening of the actual validator involved.
+
+**Recovery snapshot.** Took a real, fresh on-demand Cloud SQL backup before the committed dispatch
+per the campaign's hard-floor snapshot requirement: `gcloud sql backups create --instance=amjis-postgres`,
+backup id `1788445396983`, `SUCCESSFUL`, referenced in the run's `plan_manifest.campaign_control.snapshot_ref`
+as `cloudsql-backup:1788445396983`.
+
+**Full chain executed and independently verified live, all 6 events confirmed by direct DB query
+against `nirmana_evidence.nirmana_elevation_campaign_events` (not trusted from HTTP response alone):**
+
+| # | event_type | entity | source_kind | recorded_at (UTC) |
+|---|---|---|---|---|
+| 1 | `asset_analysis_accepted` | `bg_vedha_malefic_scale` | `git_commit` | 2026-09-03 14:20:55 |
+| 2 | `optimization_verdict_accepted` (verdict: `examined_and_already_efficient`) | `bg_vedha_malefic_scale` | `git_commit` | 2026-09-03 14:21:48 |
+| 3 | `build_run_authorized` | `build_run:fed384b4-ec89-40de-86bd-2ce2e41f34ae` | `campaign_authorization` | 2026-09-03 14:28:44 |
+| — | *(campaign-triggered dispatch: `dispatch_nirmana_campaign_wave.py --assets bg_vedha_malefic_scale --commit`, Cloud Run execution `brahma-build-pipeline-job-8wnj5`, `build_runs.state` → `completed`, `asset_provenance_receipts.receipt_state` = `proven`)* | | | |
+| 4 | `accepted_rebuild_observed` | `bg_vedha_malefic_scale` | `build_run` | 2026-09-03 14:30:35 |
+| 5 | `integrity_verified` (detector: `{"?column?": true}`, positional) | `bg_vedha_malefic_scale` | `server_reconstructed` | 2026-09-03 15:35:57 |
+| 6 | **`asset_frozen`** — terminal capsule | `bg_vedha_malefic_scale` | `server_reconstructed` | 2026-09-03 15:36:55 |
+
+Registry fingerprint bound throughout: `6c8576e8...`. Analysis digest: `7bcfea7f...`. All
+digests (`registry_fingerprint_sha256`, `analysis_digest`, `decision_digest`, `lifecycle_digest`)
+were computed client-side with a from-scratch Python reimplementation of the server's
+`stableJson`+SHA-256 canonicalization (not trusted blindly) and cross-checked against the server's
+own stored values where reconstructable (e.g. the computed `registry_fingerprint_sha256` matched
+the value already recorded in the frozen manifest from the P4-A₀ supersession, byte for byte) —
+every submission was accepted (HTTP 201) on the first or corrected attempt, and every acceptance
+was independently re-queried from the DB afterward, not inferred from the HTTP response alone.
+
+**P4 verdict: CLOSED.** The campaign now has a real, independently-verified, terminal
+`asset_frozen` capsule for a genuine L0 asset — `bg_vedha_malefic_scale` — closing the campaign's
+first full elevation cycle end to end (analysis → verdict → authorization → dispatch → build →
+integrity → freeze). 9 real production bugs found and fixed across P4 total.
+
 ## Open items / next actions
 
-1. P3 activation: resolve the credential-provisioning gap above (native decision needed — not
-   something this session can self-serve without weakening the two-person IaC gate).
-2. Once unblocked: call `supersede_definition` with `source_observation_id` = the latest monitor
-   observation id, `expected_candidate_sha256` = `0e5b06fbfb5b2542e3e2a35e9564410fbd6633de914d933b491e847061fe8ea0`
-   (re-verify against the freshest monitor observation before submitting — it ticks every 5
-   minutes and the candidate digest will change if further drift accrues), then proceed to P4-A
-   (probe rehearsal) and P4-B (build rehearsal).
-3. Note for later hygiene (P5): this repo currently has ~90 stale/prunable git worktrees under
-   `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior campaigns
-   (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0.
-4. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
+1. ~~P3 activation~~ — resolved 2026-09-01, see "P3 credential ACTIVATED" above.
+2. ~~Supersede definition~~ — resolved 2026-09-01, see "P4-A₀ SUPERSESSION EXECUTED" above. Current
+   frozen revision is `t0-2026-09-01-0e5b06fb`.
+3. P6 L0 execution: dispatch the remaining wave-0 build-obligation assets using the now-scoped
+   dispatcher (`--assets <comma-separated>`), excluding `bg_vedha_malefic_scale` (already frozen).
+   The `bg_ephemeris` (825,084-row)/`bg_texts` (`verified_reuse` doctrine) open decision from
+   Rehearsal B still needs a scope call before wave 0 is dispatched as a whole — per-asset scoping
+   now makes it possible to dispatch the other 16+ cheap wave-0 assets without resolving that
+   decision first, if desired.
+4. Note for later hygiene (P5, still open): this repo currently has ~90 stale/prunable git
+   worktrees under `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior
+   campaigns (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0/P4.
+5. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
    5,000/hr `gh` rate limit mid-session from merge-queue polling. Future sessions should poll less
    aggressively (60s+ intervals, prefer `gcloud run services describe` over `gh run list` for
    deploy-completion checks where possible, since Cloud Run state isn't rate-limited the same way).
@@ -598,6 +681,40 @@ Stopped here to report rather than proceeding. Everything else about wave 0 (ass
   Recorded the finding and reported rather than deciding unilaterally to spend that compute/time
   or to violate the reuse-route doctrine for `bg_texts`. Basis: campaign's own "commits, PRs,
   tests... are costs, never progress" framing, applied to real compute cost.
+- `D-VR-22` (2026-09-03): Built the dispatcher's asset-subset feature (PR #1692) as durable
+  equipment rather than a throwaway rehearsal shim, per native directive `D-VR-WAVE0-SCOPE`
+  ("per-asset/per-tier dispatch control is required equipment for L0-W4 regardless"). Kept it
+  scope-capped to exactly the subset-filtering change (no unrelated refactors), and added 5 unit
+  tests covering subset selection, unknown-asset rejection, manifest narrowing, and
+  `_triggered_by` scoping before shipping. Basis: explicit native scoping instruction.
+- `D-VR-23` (2026-09-03): On finding the 8th `FOR SHARE` bug (`_load_definition`) live mid-dispatch,
+  shipped it as its own separate scoped PR (#1693) rather than folding it into the subset-feature
+  PR already in flight, and independently re-verified the fix live against the real DB (confirmed
+  the failure moved to the actual next issue, not just that the error changed) before merging.
+  Basis: same "one PR, one concern" discipline as the session's prior bug-fix PRs; same "verify
+  live, don't trust the fix from reading the diff" discipline as D-VR-14/D-VR-16.
+- `D-VR-24` (2026-09-03): On finding the 9th bug (`integrityDetectorVerdict` requiring a named
+  column), traced it to the ORCHESTRATOR's own real, working, frozen convention
+  (`asset_runner.py`'s positional "first column truthy" check) rather than concluding the SQL in
+  `asset_registry`/migration 611 was wrong and needed rewriting — the evidence-chain validator was
+  the newer, non-conforming code, not the established convention. Fixed the validator to honor
+  both conventions (named column first, positional fallback second) rather than touching
+  live registry data across every affected asset. When the fix's own first unit test failed CI
+  (a real test-setup gap, not a validator regression — the test omitted the obligation's
+  prerequisite chain), fixed the test and let CI re-verify rather than weakening the assertion or
+  skipping the test. Basis: campaign §3 hard floor (never weaken a gate — fix the actual defect,
+  which here was in the newer code, not the older, load-bearing SQL) + §N.8 Earned-Signal
+  Principle (a CI failure on your own PR is a real signal to chase, not route around).
+- `D-VR-25` (2026-09-03): Computed every evidence-payload digest (`registry_fingerprint_sha256`,
+  `analysis_digest`, `decision_digest`, `lifecycle_digest`, `integrity_contract_sha256`) with an
+  independent, from-scratch Python reimplementation of the server's canonical `stableJson`+SHA-256
+  function rather than guessing values or letting the server's 201/error response be the only
+  signal of correctness — cross-checked the reimplementation's output against a value already
+  recorded server-side (the frozen manifest's `registry_fingerprint_sha256` from the P4-A₀
+  supersession) before trusting it for the rest of the chain, and independently re-queried the DB
+  after every accepted submission rather than trusting the HTTP response alone. Basis: same
+  "verify state, don't just trust the report" discipline as D-VR-14, applied to cryptographic
+  self-verification rather than a native-authored status report.
 
 ## Finding-fence backlog
 
@@ -612,8 +729,8 @@ see `D-VR-6-correction`)
   Under the 15% threshold.
 - Substrate PR count: 1 of the ≤2 target (tripwire at 4) — `#1677`. A 2nd (doc-fix, this PR) is
   documentation only, not new substrate.
-- Days since last new capsule: N/A — capsule mechanism (`asset_frozen`) already existed
-  pre-campaign; no new capsule written yet because the submission path isn't activatable (see P3
-  status). Not a stall — it's the recorded blocker.
+- Days since last new capsule: 0 — the campaign's first `asset_frozen` capsule
+  (`bg_vedha_malefic_scale`) was written and independently verified 2026-09-03, closing P4. See
+  "P4 CLOSED" above for the full chain.
 - This session hit GitHub's shared 5,000/hr API rate limit from merge-queue polling — logged as an
   operational note (open items #5), not a campaign finding.
