@@ -44,7 +44,7 @@ export const PROGRAMME_O_WAVE_WPS: readonly ProgrammeOWaveWpDeclaration[] = [
   {
     wp_id: 'WP-1',
     name: 'Truthful invalidation (delta-directional staleness)',
-    status: 'merged',
+    status: 'not_started',
     note: 'repo-declared — flipped by the WP-1 PR on merge, not evidence-derived',
   },
   {
@@ -56,7 +56,7 @@ export const PROGRAMME_O_WAVE_WPS: readonly ProgrammeOWaveWpDeclaration[] = [
   {
     wp_id: 'WP-3',
     name: 'Total plans',
-    status: 'in_progress',
+    status: 'not_started',
     note: 'repo-declared — flipped by the WP-3 PR on merge, not evidence-derived',
   },
 ]
