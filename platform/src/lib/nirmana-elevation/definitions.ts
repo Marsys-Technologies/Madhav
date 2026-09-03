@@ -1567,6 +1567,21 @@ function integrityDetectorVerdict(
       return { kind: 'boolean', value: true }
     }
   }
+  if (explicitIntegrityCheck) {
+    // No named column matched. Fall back to the orchestrator's own frozen
+    // convention (asset_runner.py's integrity/health check: "a single row
+    // whose first column is truthy") rather than requiring a rename --
+    // most integrity_check_sql values predate this evidence-chain validator
+    // and were authored against that convention (e.g. migration 611's
+    // unaliased row-count + content-digest boolean expression).
+    const [firstValue] = Object.values(row)
+    if (firstValue === true) {
+      return { kind: 'boolean', value: true }
+    }
+    if (typeof firstValue === 'boolean') {
+      throw new NirmanaElevationEvidenceValidationError('integrity_verified authoritative detector returned a failing boolean verdict.')
+    }
+  }
   if (!explicitIntegrityCheck && 'count' in row) {
     const raw = row.count
     const count = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN
