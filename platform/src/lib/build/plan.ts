@@ -7,6 +7,34 @@ export type AssetState =
 export type BuildAction = 'build' | 'update' | 'rebuild' | 'cascade'
 export type BuildScope = 'global' | 'layer' | 'asset' | 'asset_set'
 
+// O-wave WP-3 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.3, "total plans"). Every
+// asset in the scope's registry rows gets EXACTLY one of these -- a plan that
+// exposes only what it will run silently drops everything else. `build` covers
+// candidates in plan_waves; `skip_no_delta` covers both "already fresh, no need
+// to build" (assigned here, at plan time) and, once O-wave WP-2 lands, the
+// writer's own pre-execution delta-skip (assigned at execution time) -- the
+// same disposition, two different enforcement points for the same claim: no
+// delta, nothing to do.
+export type AssetDisposition =
+  | 'build'
+  | 'skip_no_delta'
+  | 'deferred_no_writer'
+  | 'withheld_protected'
+  | 'dormant'
+  | 'out_of_domain'
+  | 'blocked_dependency'
+
+export interface DispositionEntry {
+  disposition: AssetDisposition
+  reason?: string
+}
+
+// asset_registry.domain (migration 590): 'shared' | 'chart' | null. The
+// planner's shared/chart split axis -- distinct from `scope` (a request-time
+// selector) even though today every 'shared' row also has scope='global' and
+// vice versa; domain is the field WP-3's domain-aware scoping reads.
+export type AssetDomain = 'shared' | 'chart' | null
+
 /**
  * Parses the comma-separated asset_id list carried by scope_target for scope='asset_set'.
  * Trims, drops empties, and de-dupes while preserving first-seen order.
@@ -30,6 +58,11 @@ export interface RegistryEntry {
   layer: string
   depends_on: AssetId[]
   estimated_seconds: number | null
+  // Optional so every pre-WP-3 caller that builds a RegistryEntry without it
+  // keeps compiling unchanged; resolveBuildPlan treats a missing/undefined
+  // domain as 'chart' (the conservative default -- never silently excludes an
+  // asset whose domain wasn't supplied at all).
+  domain?: AssetDomain
 }
 
 export interface ThroughputEntry {
@@ -64,6 +97,15 @@ export interface BuildPlan {
   // Always present — empty when nothing was withheld. A protected candidate never appears
   // in plan_waves; it appears here instead, once per withheld asset_id.
   protected_assets: ProtectedAssetBlocker[]
+  // O-wave WP-3 (plan §3.3 "total plans"): every registry row scoped by this
+  // resolution gets exactly one disposition here -- computed ONLY for
+  // scope='layer' today (the acceptance criterion's own scope: "a layer
+  // plan's dispositions sum to the layer's registry count"). undefined for
+  // every other scope, not an empty map -- a caller must not read an absent
+  // computation as "zero dispositions"; §3.3's own selector-gap discipline
+  // (throw rather than drop) is enforced inside resolveBuildPlan itself, not
+  // deferred to callers reading this field.
+  dispositions?: ReadonlyMap<AssetId, DispositionEntry>
 }
 
 
@@ -138,13 +180,28 @@ function topoSort(ids: AssetId[], registry: RegistryEntry[]): AssetId[] {
   return result
 }
 
+// O-wave WP-3 (plan §3.3): a layer sweep excludes domain='shared' rows by
+// default -- a chart's layer rebuild must not silently ride along a global
+// reference asset that belongs to every chart. `scope='asset'`/`'asset_set'`
+// name their targets explicitly and are never filtered here (an explicit
+// request always honors the exact id named, shared or not); `scope='global'`
+// is unfiltered too ("global scope owns shared", plan §3.3 build spec).
+// Missing/undefined domain defaults to 'chart' (never silently excluded).
+function isLayerSweepExcludedDomain(entry: RegistryEntry): boolean {
+  return (entry.domain ?? 'chart') === 'shared'
+}
+
 function assetsInScope(
   scope: BuildScope,
   scope_target: string | null,
   registry: RegistryEntry[]
 ): AssetId[] {
   if (scope === 'global') return registry.map(r => r.asset_id)
-  if (scope === 'layer') return registry.filter(r => r.layer === scope_target).map(r => r.asset_id)
+  if (scope === 'layer') {
+    return registry
+      .filter(r => r.layer === scope_target && !isLayerSweepExcludedDomain(r))
+      .map(r => r.asset_id)
+  }
   if (scope === 'asset') return scope_target ? [scope_target] : []
   if (scope === 'asset_set') {
     // scope_target carries a comma-separated asset_id list. Filter to registry
@@ -349,6 +406,79 @@ function estimateSeconds(ids: AssetId[], registry: RegistryEntry[]): number | nu
   return total
 }
 
+/**
+ * O-wave WP-3 (plan §3.3, "total plans"): every registry row in `scope_target`'s
+ * layer gets exactly one disposition. `rawCandidateIds` is the action's OWN
+ * pre-block, pre-protection-withholding candidate set (what it decided it
+ * wants to build); `blocked` is true when the whole plan refused to proceed
+ * (status='blocked') -- in that case every raw candidate is `blocked_dependency`
+ * rather than `build`, since none of them run this round.
+ */
+function computeLayerDispositions(
+  scope_target: string,
+  registry: RegistryEntry[],
+  throughput: Map<AssetId, ThroughputEntry>,
+  nonCandidateSet: ReadonlySet<AssetId>,
+  protectedSet: ReadonlySet<AssetId>,
+  rawCandidateIds: ReadonlySet<AssetId>,
+  blocked: boolean,
+  blockers: BlockerEntry[],
+): ReadonlyMap<AssetId, DispositionEntry> {
+  const blockerReasonByAsset = new Map<AssetId, string>()
+  for (const blocker of blockers) {
+    for (const requiredBy of blocker.required_by) {
+      if (!blockerReasonByAsset.has(requiredBy)) {
+        blockerReasonByAsset.set(
+          requiredBy,
+          `upstream ${blocker.dep_asset_id} is ${blocker.dep_state}`,
+        )
+      }
+    }
+  }
+
+  const dispositions = new Map<AssetId, DispositionEntry>()
+  for (const row of registry) {
+    if (row.layer !== scope_target) continue
+    const id = row.asset_id
+    if (isLayerSweepExcludedDomain(row)) {
+      dispositions.set(id, { disposition: 'out_of_domain' })
+    } else if (nonCandidateSet.has(id)) {
+      dispositions.set(id, { disposition: 'deferred_no_writer' })
+    } else if (protectedSet.has(id)) {
+      dispositions.set(id, { disposition: 'withheld_protected' })
+    } else if (rawCandidateIds.has(id)) {
+      dispositions.set(id, blocked
+        ? { disposition: 'blocked_dependency', reason: blockerReasonByAsset.get(id) ?? 'plan blocked' }
+        : { disposition: 'build' })
+    } else if (throughput.get(id)?.state === 'dormant') {
+      // Not this action's candidate (e.g. a cascade/update pass that never
+      // reached it) but genuinely dormant -- distinct from "nothing to do".
+      dispositions.set(id, { disposition: 'dormant' })
+    } else {
+      // In-domain, writer-present, unprotected, not this action's candidate,
+      // not blocked, not dormant: this action's own selection logic already
+      // decided there is nothing for it to do here (lit/fresh, or a state
+      // this particular action doesn't address -- e.g. 'build' deliberately
+      // leaves staleness to update/cascade). No delta from this plan's
+      // perspective.
+      dispositions.set(id, { disposition: 'skip_no_delta' })
+    }
+  }
+  // Defensive: the walk above assigns every in-scope registry row exactly
+  // one disposition by construction. Kept as an explicit check (plan §3.3:
+  // "a selector gap throws rather than drops") rather than trusting the
+  // construction never to grow a hole under a future edit.
+  const gaps = registry
+    .filter(r => r.layer === scope_target && !dispositions.has(r.asset_id))
+    .map(r => r.asset_id)
+  if (gaps.length > 0) {
+    throw new Error(
+      `resolveBuildPlan: disposition selector gap for layer '${scope_target}': ${gaps.join(', ')}`
+    )
+  }
+  return dispositions
+}
+
 export function resolveBuildPlan({
   scope,
   scope_target,
@@ -374,6 +504,18 @@ export function resolveBuildPlan({
   // Every action that produces a candidate must pass the same out-of-plan
   // dependency preflight. Update/cascade used to bypass it, which could plan a
   // consumer after its L0/service identity had been withheld from candidates.
+  // O-wave WP-3 (plan §3.3): computed only for scope='layer', matching the
+  // acceptance criterion's own scope ("a layer plan's dispositions sum to the
+  // layer's registry count"). Other scopes get no dispositions field at all
+  // -- not an empty map, an absent computation (see BuildPlan's own doc).
+  const dispositionsFor = (rawCandidates: AssetId[], blocked: boolean, blockers: BlockerEntry[]) =>
+    scope === 'layer' && scope_target
+      ? computeLayerDispositions(
+          scope_target, registry, throughput, nonCandidateSet, protectedSet,
+          new Set(rawCandidates), blocked, blockers,
+        )
+      : undefined
+
   if (action === 'update') {
     const scopeAssets = candidateAssetsInScope(scope, scope_target)
     const stale = scopeAssets.filter(id =>
@@ -392,7 +534,7 @@ export function resolveBuildPlan({
     if (blockers.length > 0) {
       return {
         status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
-        protected_assets: withheld,
+        protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, true, blockers),
       }
     }
     const sorted = topoSort(candidates, registry)
@@ -400,7 +542,7 @@ export function resolveBuildPlan({
     return {
       status: 'ok', plan_waves: waves, blockers: [],
       estimated_seconds: estimateSeconds(waves.flat(), registry),
-      protected_assets: withheld,
+      protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, false, []),
     }
   }
 
@@ -416,7 +558,7 @@ export function resolveBuildPlan({
     if (blockers.length > 0) {
       return {
         status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
-        protected_assets: withheld,
+        protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, true, blockers),
       }
     }
     const sorted = topoSort(candidates, registry)
@@ -424,7 +566,7 @@ export function resolveBuildPlan({
     return {
       status: 'ok', plan_waves: waves, blockers: [],
       estimated_seconds: estimateSeconds(waves.flat(), registry),
-      protected_assets: withheld,
+      protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, false, []),
     }
   }
 
@@ -459,16 +601,25 @@ export function resolveBuildPlan({
   // withheld; a build that consists ENTIRELY of protected candidates still reports
   // them via protected_assets rather than reading identically to a true no-op.
   if (action === 'build' && candidates.length === 0) {
-    return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null, protected_assets: withheld }
+    return {
+      status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null,
+      protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, false, []),
+    }
   }
 
   const blockers = preflight(candidates, scope, scope_target, registry, throughput, freshness)
   if (blockers.length > 0) {
-    return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null, protected_assets: withheld }
+    return {
+      status: 'blocked', plan_waves: [], blockers, estimated_seconds: null,
+      protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, true, blockers),
+    }
   }
 
   const waves = computeWaves(candidates, registry, scope, scope_target)
   const flat = waves.flat()
   const estimated = estimateSeconds(flat, registry)
-  return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimated, protected_assets: withheld }
+  return {
+    status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimated,
+    protected_assets: withheld, dispositions: dispositionsFor(rawCandidates, false, []),
+  }
 }
