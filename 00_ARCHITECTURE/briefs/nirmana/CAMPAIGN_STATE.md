@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-03T-post-P4-close
+last_updated: 2026-09-04T-unified-plan-v2-0-ratified-O-wave-opening
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -15,7 +15,13 @@ start/resume; trust it; continue from the recorded position. Once the P3 ops pla
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
 
-## Current phase: P4 CLOSED (first accepted build capsule); P5/P6 next
+## Current phase: Unified Elevation Plan v2.0 RATIFIED; O-wave opening; L0-W1 analysis concurrent
+
+Phase tracking from here follows `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §1`'s programme map
+(PHASE A → O-WAVE → L0→L1→L2→L3→L4→L5, each W1-ANALYZE→W2-DECIDE→W3-IMPLEMENT→W4-EXECUTE→
+W5-VERIFY+CAPSULE→W6-FREEZE → PHASE Z), which supersedes the execution prompt's P5/P6/P7 phase
+plan (relationship note, plan frontmatter). P0-P4 below are historical and unchanged; P4 = the
+plan's "PHASE A (COMPLETE)".
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -23,10 +29,11 @@ narrative + pointers only.
 | P1 Restore deployability | ✅ done, verified | PR #1674 merged via queue (squash `621efd792`). Deploy to Cloud Run run succeeded (conclusion=success). Cloud Run `amjis-web` latest ready revision `amjis-web-01809-zn5` at 100% traffic, `commit-sha` label = `621efd7928a07f886399f86f81c5bb1d96a58443` — matches. `639` confirmed still absent from `_migrations_applied` post-deploy (query returned 0 rows). `nirmana_evidence` schema/grants untouched (revert only removed app code + the never-applied migration file). |
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
-| P4 Rehearsals | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
-| P5 Hygiene | 🟡 partial | The two stale lines this row and the P6 row below carried are fixed in this edit. Broader P5 items (the ~90 stale/prunable git worktrees noted in prior "Open items" #3, GitHub API polling cadence note #4) remain open — not touched this session, still P5/L0-close scope. |
-| P6 L0 execution | ⬜ not started | 40 L0 assets per frozen definition **`t0-2026-09-01-0e5b06fb`** (current; supersedes `t0-2026-08-26-faa4d6b0`, which the P4-A₀ supersession retired same-session on 2026-09-01 — see "P4-A₀ SUPERSESSION EXECUTED" below). Wave membership should be derived from this current manifest, not the retired one. `bg_vedha_malefic_scale` (P4's proof asset) is now `asset_frozen` under this revision — its wave-0 dispatch should exclude it as already-complete when P6 begins wave-0 proper. |
-| P7 L1-L5 | ⬜ not started | |
+| P4 Rehearsals = **PHASE A** | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
+| **O-WAVE** — orchestrator truth core | 🟢 opening now | WP-1 truthful invalidation · WP-2 delta-skip · WP-3 total plans, under the native-authorized §N.2 freeze exception scoped exactly to plan §3.5's register. Target ≤3 PRs, hard tripwire at 5. Exit rehearsal per plan §3.4 (a)-(d). See "Unified Plan v2.0 RATIFIED" section below for the freeze-exception grant record. |
+| **L0 — Brahmagyan** (W1→W6) | 🟡 W1 analysis running concurrently (read-only, per plan §1 bounded-pipelining default) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. `bg_vedha_malefic_scale` already `asset_frozen` from P4 — W1 analysis reuses that capsule per the W1 rubric's "reuse committed analysis bases" rule rather than re-analyzing. W4 EXECUTE waits for O-wave to close (plan §1: "N+1's W4 always waits for N's W6" — O-wave functions as the gating predecessor here). |
+| **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
+| **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
 ## Grounding facts re-verified live (2026-09-01, this session)
 
@@ -522,21 +529,82 @@ was independently re-queried from the DB afterward, not inferred from the HTTP r
 first full elevation cycle end to end (analysis → verdict → authorization → dispatch → build →
 integrity → freeze). 9 real production bugs found and fixed across P4 total.
 
+## Unified Elevation Plan v2.0 RATIFIED — landed, O-wave opening (2026-09-04)
+
+The native ratified `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md` (frontmatter `authorized_by`: full
+decision delegation 2026-09-01 + depth-per-layer structure 2026-09-03 + eight pillar rulings
+2026-09-03 + orchestrator approach B + §N.2 freeze exception 2026-09-04). It extends
+`NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` (whose §1-§4/§6-§9 remain in force unchanged) and
+supersedes the prompt's §5 phase plan from P6 onward, adding the O-wave ahead of the layer arc.
+Landed alongside this state-file update per the plan's own §9 instruction ("this plan lands via
+the governance PR that also updates CAMPAIGN_STATE and records the freeze-exception grant").
+
+**§N.2 freeze-exception grant (native-authorized 2026-09-04).** The orchestrator freeze
+(`ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2`, campaign hard floor) is lifted **only** for the
+O-wave's three work packages (WP-1 truthful invalidation, WP-2 delta-skip, WP-3 total plans), and
+**only** for the exact files enumerated in the plan's §3.5 register below — reproduced here in
+full per the ratification instruction, so this state file stays self-sufficient without requiring
+a second open of the plan document to know the exact grant boundary:
+
+| Surface | Permitted change |
+|---|---|
+| `pipeline/orchestrator/staleness.py` | delta-directional propagation; `refreshed_no_delta` event |
+| `pipeline/orchestrator/asset_runner.py` | universal receipt capture; pre-execution delta gate |
+| `pipeline/orchestrator/provenance.py` | previous-receipt lookup helpers (read-side) |
+| `pipeline/orchestrator/runner.py` / `global_runner.py` | disposition-total plan walk; DEFERRED surfacing |
+| `platform/src/lib/build/plan.ts` | disposition taxonomy; `domain`-aware scoping; selector-gap throw |
+| `platform/src/app/api/cockpit/runs/route.ts` | receipt-authoritative freshness read; disposition pass-through |
+
+Everything else — above all the writer-facing contract (`@register`, `WriterBase`,
+`run(ctx)`/substeps, `ctx.db_conn` never committed by writers, orchestrator as sole
+`asset_throughput` writer) — **remains frozen**; a contract-stability test ships with the O-wave
+(exit-rehearsal criterion (d), plan §3.4) to make that assertion mechanically checked, not just
+stated. WP-4's later scheduler tuning (width, LPT ordering, at L1/L3) rides this same exception
+per-layer with its own logged decision, touching only `runner.py` scheduling constants/ordering.
+Any need beyond this register → STOP, log, request a scope extension from the native — this
+session will not self-authorize widening it.
+
+**Scope discipline for the O-wave itself:** target ≤3 PRs (one per WP is the working assumption;
+may combine if a WP turns out trivial, may not split a single WP across more than needed), hard
+tripwire at 5 — a breach stops work, logs one decision entry, and re-scopes rather than plowing
+through. Exit rehearsal (plan §3.4, all four required before the O-wave is considered closed):
+(a) the rehearsal-B asset (`bg_vedha_malefic_scale`) built twice, second run recording
+`skip_no_delta`; (b) one true-delta propagation demonstrated end-to-end into tracker reasons;
+(c) one full-layer plan snapshot showing total dispositions summing to the layer's registry
+count; (d) the writer-contract stability test green.
+
+**Concurrent, unblocked work:** L0-W1 analysis (read-only, per-asset rubric application against
+the plan §4 template) may run in parallel with O-wave implementation — it needs no orchestrator
+and requires no freeze exception. `bg_vedha_malefic_scale` already carries an accepted analysis
+digest + `asset_frozen` capsule from P4; W1's own "reuse committed analysis bases where writer
+digest + registry contract + dependencies are unchanged" rule applies to it directly rather than
+re-running the rubric from scratch.
+
 ## Open items / next actions
 
 1. ~~P3 activation~~ — resolved 2026-09-01, see "P3 credential ACTIVATED" above.
 2. ~~Supersede definition~~ — resolved 2026-09-01, see "P4-A₀ SUPERSESSION EXECUTED" above. Current
    frozen revision is `t0-2026-09-01-0e5b06fb`.
-3. P6 L0 execution: dispatch the remaining wave-0 build-obligation assets using the now-scoped
-   dispatcher (`--assets <comma-separated>`), excluding `bg_vedha_malefic_scale` (already frozen).
-   The `bg_ephemeris` (825,084-row)/`bg_texts` (`verified_reuse` doctrine) open decision from
-   Rehearsal B still needs a scope call before wave 0 is dispatched as a whole — per-asset scoping
-   now makes it possible to dispatch the other 16+ cheap wave-0 assets without resolving that
-   decision first, if desired.
-4. Note for later hygiene (P5, still open): this repo currently has ~90 stale/prunable git
-   worktrees under `/private/tmp/`, `~/.codex/worktrees/`, and `.clone/worktrees/` from prior
-   campaigns (nirmana-*, pariprashna-*). Not touched this session — P5/L0-close scope, not P0/P4.
-5. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
+3. **O-wave (next, this session):** implement WP-1/WP-2/WP-3 per plan §3.1-§3.3, scope-capped to
+   the §3.5 register above. Suggested split: one PR per WP (WP-1 staleness/provenance first, since
+   WP-2's delta-skip gate depends on WP-1's receipt-comparison authority being real; WP-3's
+   disposition-total plan walk is independent and can run in parallel). Run the four exit-rehearsal
+   criteria before declaring the O-wave closed and moving to L0-W4.
+4. **L0-W1 analysis (concurrent, unblocked):** apply the plan §4 W1 rubric to the 40 L0 assets
+   (read-only, no orchestrator dependency). `bg_vedha_malefic_scale` reuses its P4 capsule per the
+   rubric's reuse rule rather than re-analyzing.
+5. L0-W4 EXECUTE (dispatch the remaining wave-0 build-obligation assets using the scoped
+   dispatcher, `--assets <comma-separated>`, excluding `bg_vedha_malefic_scale`) is gated on the
+   O-wave closing (plan §1 bounded-pipelining rule) — do not dispatch real builds under the old
+   unconditional-rebuild path once W1/W2/W3 are decided; wait for WP-1/WP-2's delta authority to
+   land first, per the plan's own rebuild-avoidance-economics rationale. The `bg_ephemeris`
+   (825,084-row)/`bg_texts` (`verified_reuse` doctrine) route decision from Rehearsal B is now a
+   plan §5 L0 W2-DECIDE item, not a standalone open question — carry it into W2.
+6. Note for later hygiene (now PHASE Z scope per the ratified plan, still open): this repo
+   currently has ~90 stale/prunable git worktrees under `/private/tmp/`, `~/.codex/worktrees/`,
+   and `.clone/worktrees/` from prior campaigns (nirmana-*, pariprashna-*). Not touched this
+   session.
+7. GitHub API usage note: this session hit the platform's *shared* (cross-session/cross-agent)
    5,000/hr `gh` rate limit mid-session from merge-queue polling. Future sessions should poll less
    aggressively (60s+ intervals, prefer `gcloud run services describe` over `gh run list` for
    deploy-completion checks where possible, since Cloud Run state isn't rate-limited the same way).
@@ -715,6 +783,15 @@ integrity → freeze). 9 real production bugs found and fixed across P4 total.
   after every accepted submission rather than trusting the HTTP response alone. Basis: same
   "verify state, don't just trust the report" discipline as D-VR-14, applied to cryptographic
   self-verification rather than a native-authored status report.
+- `D-VR-26` (2026-09-04): Landed `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md` and this state-file
+  update as one governance PR per the plan's own §9 instruction, and reproduced the §3.5
+  freeze-exception register verbatim in this file rather than only linking to the plan doc — so a
+  future session (or a mid-O-wave scope check) can see the exact grant boundary without a second
+  file open, and so a diff against the plan's own table catches any accidental drift between the
+  two copies. Recorded the grant as scoped exactly to WP-1/WP-2/WP-3 and the six enumerated files,
+  explicitly re-stating that the writer-facing contract stays frozen and that any need beyond the
+  register is a STOP-and-request-extension event, not a self-authorization. Basis: plan §9 +
+  campaign hard floor (never weaken or silently widen an authorized exception).
 
 ## Finding-fence backlog
 
