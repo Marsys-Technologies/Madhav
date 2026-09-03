@@ -900,7 +900,16 @@ describe('POST /api/cockpit/runs — service probe dependency identities', () =>
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
 
 describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () => {
-  it('rebuilds a lit asset when the checked-in sidecar digest differs from its receipt', async () => {
+  it('O-wave WP-1: trusts a fresh receipt classification even when the asset is absent from the generated writer-digest inventory', async () => {
+    // Before the WP-1 fix, this route re-derived its own "expected" code_digest
+    // from the generated nirmana-writer-digests.json and treated any asset the
+    // inventory didn't cover (the large majority -- it only ever listed L0's
+    // bg_* writers) as 'unknown', overriding the sidecar's own 'fresh'
+    // classification. asset_freshness.freshness_state is now the sole runtime
+    // authority (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1 "one authority");
+    // the inventory remains campaign-evidence pinning only. A ga_* asset (never
+    // in the inventory) reported 'fresh' by the sidecar must stay ALL_LIT, not
+    // silently reclassified to 'unknown'/'stale' and rebuilt.
     seedRole('client')
     const registry = [REGISTRY_GANITA_ONLY[0]]
     mockQuery
@@ -909,16 +918,15 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: [{ asset_id: registry[0].asset_id, state: 'lit' }], rowCount: 1 })
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
       .mockResolvedValueOnce({
-        rows: [{ asset_id: registry[0].asset_id, state: 'fresh', reasons: [], code_digest: 'old-code' }],
+        rows: [{ asset_id: registry[0].asset_id, state: 'fresh', reasons: [] }],
         rowCount: 1,
       })
-      .mockResolvedValue({ rows: [{ id: 'run-code-change' }], rowCount: 1 })
-    mockInvokeRunJob.mockResolvedValue(undefined)
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
-    expect(res.status).toBe(201)
-    expect((await res.json()).data.plan).toEqual([registry[0].asset_id])
+    expect(res.status).toBe(422)
+    expect((await res.json()).code).toBe('ALL_LIT')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 
   it('RED — action=build on all-lit layer returns 422 with generic error (before G1 fix)', async () => {

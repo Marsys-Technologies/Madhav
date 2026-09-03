@@ -14,6 +14,7 @@ from pipeline.orchestrator.provenance import (
     canonical_digest,
     classify_receipt,
     persist_successful_receipt,
+    previous_output_digest,
     reconcile_receipt,
 )
 from pipeline.orchestrator.provenance_inventory import DEFAULT_OUTPUT
@@ -145,3 +146,41 @@ def test_successful_receipt_replaces_receipt_and_restores_fresh_idempotently():
     assert all("ON CONFLICT" in sql for sql, _ in cursor.executed)
     assert "asset_provenance_receipts" in cursor.executed[0][0]
     assert "asset_freshness" in cursor.executed[1][0]
+
+
+# ── previous_output_digest (O-wave WP-1, read-side lookup helper) ─────────────
+
+def test_previous_output_digest_returns_none_when_no_receipt_exists():
+    cursor = _Cursor([None])
+    result = previous_output_digest(
+        cursor, asset_id="ga_positions", chart_id="chart-1", partition_key=WHOLE_ASSET_PARTITION,
+    )
+    assert result is None
+    assert "SELECT output_digest" in cursor.executed[0][0]
+    assert cursor.executed[0][1] == ("ga_positions", "chart-1", WHOLE_ASSET_PARTITION)
+
+
+def test_previous_output_digest_reads_the_stored_value_dict_row():
+    cursor = _Cursor([{"output_digest": "output-a"}])
+    result = previous_output_digest(
+        cursor, asset_id="ga_positions", chart_id="chart-1", partition_key=WHOLE_ASSET_PARTITION,
+    )
+    assert result == "output-a"
+
+
+def test_previous_output_digest_reads_the_stored_value_tuple_row():
+    cursor = _Cursor([("output-b",)])
+    result = previous_output_digest(
+        cursor, asset_id="ga_positions", chart_id="chart-1", partition_key=WHOLE_ASSET_PARTITION,
+    )
+    assert result == "output-b"
+
+
+def test_previous_output_digest_never_mutates():
+    """A read-side helper must never INSERT/UPDATE -- only the one SELECT."""
+    cursor = _Cursor([{"output_digest": "output-a"}])
+    previous_output_digest(
+        cursor, asset_id="ga_positions", chart_id="chart-1", partition_key=WHOLE_ASSET_PARTITION,
+    )
+    assert len(cursor.executed) == 1
+    assert cursor.executed[0][0].strip().upper().startswith("SELECT")
