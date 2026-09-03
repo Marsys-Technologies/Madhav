@@ -603,6 +603,110 @@ def test_refuses_empty_or_nonbuild_only_wave() -> None:
         )
 
 
+def test_selects_only_the_requested_asset_subset_of_the_wave() -> None:
+    """Per-asset dispatch control: narrows the wave without reordering it."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+
+    selected = module._select_frozen_build_assets(
+        chart_id=CHART_ID,
+        definition_revision=REVISION,
+        definition_manifest=definition,
+        definition_manifest_digest=_digest(definition),
+        layer="L0",
+        wave_index=0,
+        asset_ids=frozenset({"bg_formula_constants"}),
+    )
+
+    assert [asset["asset_id"] for asset in selected] == ["bg_formula_constants"]
+
+
+def test_refuses_a_subset_naming_an_asset_outside_the_wave_build_obligation() -> None:
+    """A typo'd or out-of-wave asset_id must fail loudly, never silently drop."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+
+    with pytest.raises(ValueError, match="no build obligation for: bg_reference_typo"):
+        module._select_frozen_build_assets(
+            chart_id=CHART_ID,
+            definition_revision=REVISION,
+            definition_manifest=definition,
+            definition_manifest_digest=_digest(definition),
+            layer="L0",
+            wave_index=0,
+            asset_ids=frozenset({"bg_formula_constants", "bg_reference_typo"}),
+        )
+
+
+def test_refuses_a_subset_naming_a_probe_only_or_other_wave_asset() -> None:
+    """bg_panchanga is probe-only and bg_text_index is wave 1 -- neither is a build
+    obligation of L0 wave 0, so requesting either must be refused the same as a typo."""
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+
+    with pytest.raises(ValueError, match="no build obligation for: bg_text_index"):
+        module._select_frozen_build_assets(
+            chart_id=CHART_ID,
+            definition_revision=REVISION,
+            definition_manifest=definition,
+            definition_manifest_digest=_digest(definition),
+            layer="L0",
+            wave_index=0,
+            asset_ids=frozenset({"bg_text_index"}),
+        )
+
+
+def test_build_campaign_wave_manifest_narrows_to_the_requested_asset_subset() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    selected = [definition["assets"][1]]  # bg_formula_constants only
+
+    manifest, digest, asset_ids = module.build_campaign_wave_manifest(
+        chart_id=CHART_ID,
+        definition_revision=REVISION,
+        definition_manifest=definition,
+        definition_manifest_digest=_digest(definition),
+        layer="L0",
+        wave_index=0,
+        candidates=[_candidate(asset) for asset in selected],
+        writer_digests={"bg_formula_constants": "b" * 64},
+        requested_asset_ids=frozenset({"bg_formula_constants"}),
+    )
+
+    assert asset_ids == ["bg_formula_constants"]
+    assert manifest["scope_target"] == "bg_formula_constants"
+    assert manifest["waves"] == [["bg_formula_constants"]]
+    assert digest == _digest(manifest)
+
+
+def test_triggered_by_is_wave_scoped_without_a_subset_and_asset_scoped_with_one() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+
+    wave_scoped = module._triggered_by(REVISION, "L0", 0)
+    subset_scoped = module._triggered_by(
+        REVISION, "L0", 0, asset_ids=frozenset({"bg_formula_constants"})
+    )
+    reordered_subset_scoped = module._triggered_by(
+        REVISION, "L0", 0, asset_ids=frozenset({"bg_formula_constants"})
+    )
+
+    assert wave_scoped == f"{module.CAMPAIGN_ID}:{REVISION}:L0:wave-0"
+    assert subset_scoped == f"{wave_scoped}:assets-bg_formula_constants"
+    # A scoped run must never collide with (or be confused for) the full-wave slot.
+    assert subset_scoped != wave_scoped
+    # Deterministic regardless of set iteration/construction order.
+    assert subset_scoped == reordered_subset_scoped
+    two_asset_scoped = module._triggered_by(
+        REVISION, "L0", 0, asset_ids=frozenset({"bg_reference", "bg_formula_constants"})
+    )
+    assert two_asset_scoped == f"{wave_scoped}:assets-bg_formula_constants,bg_reference"
+
+
 def test_derives_strict_prior_layer_and_wave_freeze_prerequisites() -> None:
     module = _load_dispatch_module()
     assert module is not None
