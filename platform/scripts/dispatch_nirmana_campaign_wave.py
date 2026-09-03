@@ -576,13 +576,20 @@ def _triggered_by(definition_revision: str, layer: str, wave_index: int) -> str:
 
 
 def _load_definition(cur, definition_revision: str) -> dict[str, Any]:
+    # Plain SELECT, not FOR SHARE: not every caller of create_campaign_run
+    # holds UPDATE on nirmana_elevation_campaign_definitions (e.g. amjis_app,
+    # used for the build_runs/build_run_assets INSERT, has only SELECT
+    # there) -- same fix as _load_candidates below and the identical bug
+    # already fixed on asset_registry/campaign_events elsewhere in this repo.
+    # create_campaign_run runs this transaction under SERIALIZABLE isolation
+    # (set immediately after connecting, before this call), which provides
+    # the same conflict protection via SSI without needing a lock.
     cur.execute(
         """
         SELECT definition_revision, definition_status, manifest, manifest_sha256
           FROM nirmana_elevation_campaign_definitions
          WHERE campaign_id=%s AND definition_revision=%s
            AND superseded_at IS NULL
-         FOR SHARE
         """,
         (CAMPAIGN_ID, definition_revision),
     )
