@@ -460,6 +460,100 @@ describe('Nirmana elevation definition repository', () => {
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
   })
 
+  it('accepts an unaliased boolean integrity_check_sql result via the orchestrator\'s positional convention', async () => {
+    // Mirrors asset_runner.py's own frozen "single row, first column truthy"
+    // convention (no named column required) -- most integrity_check_sql
+    // values (e.g. migration 611's row-count + content-digest checks)
+    // predate this validator and were authored against that convention.
+    // Uses the same empty-acceptance disposition prerequisite chain as
+    // "accepts exactly zero from the frozen empty-acceptance count contract"
+    // below -- only the detector contract/result differs (explicit
+    // unaliased boolean integrity_check_sql instead of the count_sql
+    // fallback), proving the positional path composes with a real
+    // obligation's prerequisite check, not just the raw detector in
+    // isolation.
+    const explicitContract = {
+      ...registry_contract, has_writer: false, target_table: 'bg_sarvatobhadra_grid',
+      integrity_check_sql: 'SELECT (count(*) = 5) FROM bg_sarvatobhadra_grid',
+    }
+    const explicitAsset = {
+      ...manifestAsset, asset_id: 'bg_sarvatobhadra_grid', execution_obligation: 'empty_acceptance' as const,
+      registry_contract: explicitContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_sarvatobhadra_grid', layer: 'L0', depends_on: [], registry_contract: explicitContract }),
+    }
+    const explicitManifest = { ...manifest, assets: [explicitAsset] }
+    const explicitRegistryRow = { ...registryRowsFor(explicitManifest)[0], frozen_manifest_asset: explicitAsset }
+    const binding = {
+      registry_fingerprint_sha256: explicitAsset.registry_fingerprint_sha256,
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_sarvatobhadra_grid', explicitRegistryRow, explicitAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [explicitRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: explicitManifest, manifest_sha256: canonicalManifestDigest(explicitManifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT (count(*) = 5) FROM bg_sarvatobhadra_grid')) return Promise.resolve({ rows: [{ '?column?': true }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{
+        evidence_payload: {
+          ...binding, verdict: 'non_build_disposition',
+          basis: { measurement: { status: 'not_applicable', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+          proposal: { action: 'formal_disposition', summary: 'Intentional empty asset.', output_contract: 'not_applicable' },
+        },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z',
+      }] })
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{
+        evidence_payload: { ...binding, disposition: 'empty_acceptance', disposition_digest: 'd'.repeat(64) },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z',
+      }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_sarvatobhadra_grid:integrity:positional-true',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_sarvatobhadra_grid', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(explicitContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_sarvatobhadra_grid',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+  })
+
+  it('rejects an unaliased boolean integrity_check_sql result that is positionally false', async () => {
+    const explicitContract = { ...registry_contract, integrity_check_sql: 'SELECT (count(*) = 5) FROM bg_prashna_rules' }
+    const explicitAsset = {
+      ...manifestAsset, registry_contract: explicitContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: 'bg_prashna_rules', layer: 'L0', depends_on: [], registry_contract: explicitContract,
+      }),
+    }
+    const explicitManifest = { ...manifest, assets: [explicitAsset] }
+    const explicitRegistryRow = { ...registryRowsFor(explicitManifest)[0], frozen_manifest_asset: explicitAsset }
+    const binding = {
+      registry_fingerprint_sha256: explicitAsset.registry_fingerprint_sha256,
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', explicitRegistryRow, explicitAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [explicitRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: explicitManifest, manifest_sha256: canonicalManifestDigest(explicitManifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT (count(*) = 5) FROM bg_prashna_rules')) return Promise.resolve({ rows: [{ '?column?': false }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:positional-false',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(explicitContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/failing boolean verdict/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
   it('accepts exactly zero from the frozen empty-acceptance count contract', async () => {
     const emptyContract = {
       ...registry_contract, has_writer: false, target_table: 'bg_sarvatobhadra_grid',
