@@ -294,6 +294,13 @@ describe('POST /api/cockpit/runs — client + scope=layer/ganita', () => {
     expect(body.data.plan).not.toContain('bg_ontology')
     // Ganita assets must appear
     expect(body.data.plan).toContain('ga_positions')
+    // O-wave WP-3 disposition pass-through (plan §3.3): a layer-scoped build's
+    // response carries a total disposition map covering every ganita registry
+    // row, JSON-serialized as a plain object (a Map would silently vanish).
+    expect(body.data.dispositions).toBeTruthy()
+    expect(body.data.dispositions.ga_positions).toEqual({ disposition: 'build' })
+    const ganitaAssetIds = REGISTRY_WITH_L0.filter(r => r.layer === 'ganita').map(r => r.asset_id)
+    expect(Object.keys(body.data.dispositions).sort()).toEqual([...ganitaAssetIds].sort())
   })
 
   it('maps the durable one-active-run constraint to 409 under a concurrent insert race', async () => {
