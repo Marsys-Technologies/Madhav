@@ -276,3 +276,31 @@ def capture_and_persist_receipt(
         output_digest=output_digest, output_digest_spec_sha256=output_digest_spec_sha256,
     )
     return persist_successful_receipt(cur, receipt, build_id)
+
+
+def previous_output_digest(
+    cur, *, asset_id: str, chart_id: str | None, partition_key: str,
+) -> str | None:
+    """Read-side lookup: the output_digest of the last successfully persisted
+    receipt for (asset_id, chart_id, partition_key), or None if no receipt
+    exists yet for this exact key.
+
+    Used by the delta-directional staleness authority (O-wave WP-1,
+    NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1) to detect whether a writer's
+    output actually changed since its last complete receipt, without exposing
+    the receipt-persistence machinery itself to callers outside this module.
+    Never mutates; safe to call from a savepoint the caller may still roll
+    back.
+    """
+    cur.execute(
+        """
+        SELECT output_digest
+          FROM asset_provenance_receipts
+         WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        """,
+        (asset_id, chart_id, partition_key),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    return row.get("output_digest") if isinstance(row, dict) else row[0]

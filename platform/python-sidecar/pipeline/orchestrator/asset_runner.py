@@ -1069,13 +1069,26 @@ def _run_data_writer(
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
-    # Only digest-verified F0 runs supply declared_deps. Direct helper calls are
-    # retained for legacy unit fixtures, but cannot be reached from main.py.
+    # declared_deps is supplied by the orchestrator's sole production caller
+    # (_schedule_parallel, via run_asset) for every asset in every real run;
+    # None only occurs from direct helper calls in legacy unit fixtures.
     if declared_deps is not None:
         try:
             from .output_digest import compute_output_digest
-            from .provenance import capture_and_persist_receipt
+            from .provenance import (
+                WHOLE_ASSET_PARTITION,
+                capture_and_persist_receipt,
+                previous_output_digest,
+            )
             output_digest, output_digest_spec_sha256 = compute_output_digest(cur, asset_id=asset_id)
+            # O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1): read the
+            # prior receipt's output_digest BEFORE capture_and_persist_receipt
+            # overwrites it below -- this is the only point where "did this
+            # write's output actually change" can still be answered.
+            partition_key = natural_key_partition or WHOLE_ASSET_PARTITION
+            prior_output_digest = previous_output_digest(
+                cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
+            )
             capture_and_persist_receipt(
                 cur,
                 asset_id=asset_id,
@@ -1089,6 +1102,16 @@ def _run_data_writer(
                 output_digest_spec_sha256=output_digest_spec_sha256,
                 partition_declaration=natural_key_partition,
                 has_cowriters=has_cowriters,
+            )
+            # Record the delta decision durably so staleness.py's propagation
+            # (a fresh connection in the orchestrator's on_complete callback,
+            # with no access to this transaction's local state) can read it
+            # back. No prior receipt at all counts as changed -- fail-open,
+            # never fake-fresh (plan §3.1 point 4 / CLAUDE.md §N.8).
+            output_changed = prior_output_digest is None or prior_output_digest != output_digest
+            cur.execute(
+                "UPDATE build_run_assets SET output_changed = %s WHERE run_id = %s AND asset_id = %s",
+                (output_changed, run_id, asset_id),
             )
         except Exception as exc:
             conn.rollback()

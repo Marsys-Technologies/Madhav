@@ -37,7 +37,6 @@ interface FreshnessRow {
   asset_id: string
   state: 'fresh' | 'stale' | 'unknown'
   reasons: string[]
-  code_digest: string | null
 }
 
 const EXPECTED_WRITER_DIGESTS = writerDigestInventory.writers as Record<string, string>
@@ -261,12 +260,8 @@ export async function POST(req: NextRequest) {
     ),
     query<FreshnessRow>(
       `SELECT DISTINCT ON (asset_id)
-              af.asset_id, af.freshness_state AS state, af.reasons, apr.code_digest
+              af.asset_id, af.freshness_state AS state, af.reasons
          FROM asset_freshness af
-         LEFT JOIN asset_provenance_receipts apr
-           ON apr.asset_id = af.asset_id
-          AND apr.scope_key = af.scope_key
-          AND apr.partition_key = af.partition_key
         WHERE af.chart_id=$1 OR af.chart_id IS NULL
         ORDER BY af.asset_id, (af.chart_id = $1) DESC NULLS LAST, af.observed_at DESC`,
       [chart_id]
@@ -318,18 +313,22 @@ export async function POST(req: NextRequest) {
     .map(row => row.asset_id))
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const allRegistryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
-  const freshness = new Map(freshnessResult.rows.map(r => {
-    const expected = expectedCodeDigest(allRegistryByAssetId.get(r.asset_id))
-    const recordedReasons = Array.isArray(r.reasons) ? r.reasons : []
-    if (expected === null) {
-      return [r.asset_id, { state: 'unknown' as const, reasons: [...recordedReasons, 'expected_code_digest_missing'] }]
-    }
-    if (r.code_digest !== expected) {
-      return [r.asset_id, { state: 'stale' as const, reasons: [...recordedReasons, 'code_digest_changed'] }]
-    }
-    return [r.asset_id, { state: r.state, reasons: recordedReasons }]
-  }))
+  // O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1, "one authority"):
+  // trust the sidecar's own receipt classification (af.freshness_state) directly
+  // rather than re-deriving a second, disagreeing verdict from the generated
+  // writer-digest inventory. That inventory only ever covered L0's bg_* writers,
+  // so this override read `expected_code_digest_missing` -- an UNKNOWN state --
+  // for the large majority of assets regardless of their real receipt freshness.
+  // The inventory remains authoritative for campaign-evidence pinning (its own
+  // CI drift detector) and for the release-safety manifest freeze below
+  // (expectedCodeDigest / EXPECTED_WRITER_DIGESTS, unchanged) -- it is retired
+  // ONLY as a runtime freshness-classification input. A missing freshness row
+  // (no receipt ever reconciled) is handled by resolveBuildPlan's own default:
+  // `freshness.get(id)` returning undefined already reads as "needs build".
+  const freshness = new Map(freshnessResult.rows.map(r => [
+    r.asset_id,
+    { state: r.state, reasons: Array.isArray(r.reasons) ? r.reasons : [] },
+  ]))
   const buildPlan = resolveBuildPlan({
     scope, scope_target, action, registry: registryResult.rows, throughput, freshness, protectedAssetIds,
     nonCandidateAssetIds,
