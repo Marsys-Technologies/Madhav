@@ -13,6 +13,7 @@ import {
   canonicalNirmanaRebuildEvidenceDigest,
   type NirmanaElevationManifest,
 } from './definitions'
+import { PROGRAMME_WAVES, type ProgrammeWaveId } from './programme'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from './types'
 import { NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
@@ -647,4 +648,113 @@ export function deriveEligibleNextAssetIds(input: {
     }))
     .map((asset) => asset.asset_id)
     .sort((left, right) => left.localeCompare(right))
+}
+
+export interface WaveProgressCount {
+  wave_id: ProgrammeWaveId
+  label: string
+  milestone_id: string
+  earned: number
+  required: number
+}
+
+/**
+ * Re-aggregates the existing per-asset 6-milestone projection into per-layer W1..W6
+ * wave counts (Task 2, programme-model presentational grouping). Always returns exactly
+ * 6 entries, in W1..W6 order — one per PROGRAMME_WAVES entry, 1:1 onto NIRMANA_MILESTONE_IDS.
+ * A milestone in state 'not_applicable' is excluded from both earned and required (it was
+ * never owed by that asset), matching the same convention `milestones_required` already uses
+ * in `projectAssetMilestones` above.
+ */
+export function projectLayerWaveProgress(
+  assets: { layer: NirmanaLayerId; milestones: { milestone_id: string; state: string }[] }[],
+  layerId: NirmanaLayerId,
+): WaveProgressCount[] {
+  const layerAssets = assets.filter((asset) => asset.layer === layerId)
+  return PROGRAMME_WAVES.map((wave) => {
+    let earned = 0
+    let required = 0
+    for (const asset of layerAssets) {
+      const milestone = asset.milestones.find((candidate) => candidate.milestone_id === wave.milestone_id)
+      if (!milestone || milestone.state === 'not_applicable') continue
+      required += 1
+      if (milestone.state === 'earned') earned += 1
+    }
+    return { wave_id: wave.wave_id, label: wave.label, milestone_id: wave.milestone_id, earned, required }
+  })
+}
+
+type NirmanaCampaignStageState = NirmanaCampaignStage['state']
+
+/**
+ * Collapses a group of campaign stages (e.g. the PRE_L0 group folding into PHASE A) into a
+ * single presentational state. 'unknown' both for an empty group and for one where none of
+ * groupIds resolve against the supplied stages. Priority order below completed:
+ * blocked > paused > active > locked > unknown — a single blocked or paused member should
+ * never be masked by an otherwise-quiet group.
+ */
+export function summarizeStageGroupState(
+  stages: { stage_id: NirmanaStageId; state: NirmanaCampaignStageState }[],
+  groupIds: readonly NirmanaStageId[],
+): NirmanaCampaignStageState {
+  const members = groupIds
+    .map((id) => stages.find((stage) => stage.stage_id === id))
+    .filter((stage): stage is { stage_id: NirmanaStageId; state: NirmanaCampaignStageState } => stage !== undefined)
+  if (members.length === 0) return 'unknown'
+  if (members.every((stage) => stage.state === 'completed')) return 'completed'
+  if (members.some((stage) => stage.state === 'blocked')) return 'blocked'
+  if (members.some((stage) => stage.state === 'paused')) return 'paused'
+  if (members.some((stage) => stage.state === 'active')) return 'active'
+  if (members.some((stage) => stage.state === 'locked')) return 'locked'
+  return 'unknown'
+}
+
+export interface ProgrammePosition {
+  phase_id: 'PHASE_A' | 'O_WAVE' | NirmanaLayerId | 'PHASE_Z'
+  label: string
+}
+
+/**
+ * Maps the campaign's current stage onto the v2 programme model's coarse phase grouping
+ * (PHASE_A collapsed pre-L0 history, the six L0..L5 build layers, PHASE_Z close). A
+ * currently-open O-wave work package (openWp) is surfaced as its own O_WAVE phase only
+ * when the campaign isn't inside a concrete layer/PHASE_Z stage — once execution has
+ * reached a specific layer, that layer's identity (and, within it, its active W1..W6 wave)
+ * takes precedence and the open work package is folded into the label as a prefix instead.
+ */
+export function projectProgrammePosition(args: {
+  currentStage: NirmanaStageId | null
+  layerWaveProgress: Partial<Record<NirmanaLayerId, WaveProgressCount[]>>
+  layerNames: Partial<Record<NirmanaLayerId, string>>
+  openWp: { wp_id: string } | null
+}): ProgrammePosition {
+  const { currentStage, layerWaveProgress, layerNames, openWp } = args
+  const isLayerStage = (stage: NirmanaStageId): stage is NirmanaLayerId =>
+    (LAYER_IDS as readonly string[]).includes(stage)
+
+  if (currentStage !== null && isLayerStage(currentStage)) {
+    const layerId = currentStage
+    const progress = layerWaveProgress[layerId] ?? []
+    const activeWave = progress.find((wave) => wave.required > 0 && wave.earned < wave.required)
+    const layerName = layerNames[layerId] ?? layerId
+    const openWpPrefix = openWp ? `O-WAVE · ${openWp.wp_id} · ` : ''
+    if (activeWave) {
+      return {
+        phase_id: layerId,
+        label: `${openWpPrefix}${layerId} · ${activeWave.wave_id} (${activeWave.earned}/${activeWave.required} ${activeWave.milestone_id})`,
+      }
+    }
+    return { phase_id: layerId, label: `${openWpPrefix}${layerId} · ${layerName}` }
+  }
+
+  if (currentStage === 'CLOSING' || currentStage === 'COMPLETE') {
+    return { phase_id: 'PHASE_Z', label: currentStage === 'COMPLETE' ? 'PHASE Z · Complete' : 'PHASE Z · Closing' }
+  }
+
+  if (openWp) return { phase_id: 'O_WAVE', label: `O-WAVE · ${openWp.wp_id}` }
+
+  return {
+    phase_id: 'PHASE_A',
+    label: currentStage ? `PHASE A · ${currentStage}` : 'PHASE A · Execution not yet evidenced',
+  }
 }
