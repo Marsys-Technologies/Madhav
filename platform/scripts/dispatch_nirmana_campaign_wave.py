@@ -386,6 +386,7 @@ def _select_frozen_build_assets(
     definition_manifest_digest: str,
     layer: str,
     wave_index: int,
+    asset_ids: frozenset[str] | None = None,
 ) -> list[dict[str, Any]]:
     if chart_id != DEFAULT_CHART_ID:
         raise ValueError("campaign dispatch is restricted to the approved chart")
@@ -415,6 +416,19 @@ def _select_frozen_build_assets(
     ]
     if not selected:
         raise ValueError(f"{layer} wave {wave_index} has no build obligations")
+    if asset_ids is not None:
+        # Per-asset/per-tier dispatch control: narrow to an explicit subset of
+        # this wave's build obligations rather than requiring every asset in
+        # the wave to be ready at once. Never silently drop a requested ID --
+        # a typo or an asset genuinely outside this wave/layer must fail
+        # loudly, not select fewer assets than asked for.
+        available = {asset["asset_id"] for asset in selected}
+        unknown = sorted(asset_ids - available)
+        if unknown:
+            raise ValueError(
+                f"{layer} wave {wave_index} has no build obligation for: {', '.join(unknown)}"
+            )
+        selected = [asset for asset in selected if asset["asset_id"] in asset_ids]
     return selected
 
 
@@ -461,6 +475,7 @@ def build_campaign_wave_manifest(
     candidates: Sequence[Mapping[str, Any]],
     writer_digests: Mapping[str, str],
     snapshot_ref: str | None = None,
+    requested_asset_ids: frozenset[str] | None = None,
 ) -> tuple[dict[str, Any], str, list[str]]:
     """Validate frozen/live/code identity and create a runner manifest."""
     selected = _select_frozen_build_assets(
@@ -469,6 +484,7 @@ def build_campaign_wave_manifest(
         definition_manifest=definition_manifest,
         definition_manifest_digest=definition_manifest_digest,
         layer=layer,
+        asset_ids=requested_asset_ids,
         wave_index=wave_index,
     )
     candidate_by_id = {
@@ -571,8 +587,20 @@ def _load_writer_digests() -> dict[str, str]:
     return writers
 
 
-def _triggered_by(definition_revision: str, layer: str, wave_index: int) -> str:
-    return f"{CAMPAIGN_ID}:{definition_revision}:{layer}:wave-{wave_index}"
+def _triggered_by(
+    definition_revision: str,
+    layer: str,
+    wave_index: int,
+    asset_ids: frozenset[str] | None = None,
+) -> str:
+    base = f"{CAMPAIGN_ID}:{definition_revision}:{layer}:wave-{wave_index}"
+    if asset_ids is None:
+        return base
+    # A scoped subset must not consume the wave's "one run per triggered_by"
+    # slot -- dispatching one asset now must never block dispatching the rest
+    # of the wave (or a different subset) later. Keying on the exact sorted
+    # asset set, not a hash, keeps this readable directly from the DB.
+    return f"{base}:assets-{','.join(sorted(asset_ids))}"
 
 
 def _load_definition(cur, definition_revision: str) -> dict[str, Any]:
@@ -636,6 +664,7 @@ def create_campaign_run(
     snapshot_ref: str | None = None,
     expected_manifest_digest: str | None = None,
     reviewed_deployment_sha: str | None = None,
+    requested_asset_ids: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     if commit and not snapshot_ref:
         raise ValueError("committed campaign wave requires a recovery snapshot reference")
@@ -656,7 +685,9 @@ def create_campaign_run(
     connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
     try:
         cur = connection.cursor()
-        triggered_by = _triggered_by(definition_revision, layer, wave_index)
+        triggered_by = _triggered_by(
+            definition_revision, layer, wave_index, asset_ids=requested_asset_ids
+        )
         cur.execute(
             "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
             (triggered_by,),
@@ -669,6 +700,7 @@ def create_campaign_run(
             definition_manifest_digest=definition["manifest_sha256"],
             layer=layer,
             wave_index=wave_index,
+            asset_ids=requested_asset_ids,
         )
         asset_ids = [asset["asset_id"] for asset in selected]
 
@@ -812,6 +844,7 @@ def create_campaign_run(
             candidates=candidates,
             writer_digests=writer_digests,
             snapshot_ref=snapshot_ref,
+            requested_asset_ids=requested_asset_ids,
         )
         if expected_manifest_digest is not None:
             if not _valid_sha256(expected_manifest_digest):
@@ -961,7 +994,23 @@ def main() -> int:
         help="Commit and dispatch the run; omission is a rollback-only dry run",
     )
     parser.add_argument("--confirm", help=f"Required with --commit: {CONFIRMATION}")
+    parser.add_argument(
+        "--assets",
+        help=(
+            "Optional comma-separated asset_id subset of the frozen wave to dispatch "
+            "(e.g. for staged per-asset rollout ahead of a full wave). Omit to dispatch "
+            "the wave's full build obligation."
+        ),
+    )
     args = parser.parse_args()
+
+    requested_asset_ids: frozenset[str] | None = None
+    if args.assets:
+        requested_asset_ids = frozenset(
+            asset_id.strip() for asset_id in args.assets.split(",") if asset_id.strip()
+        )
+        if not requested_asset_ids:
+            parser.error("--assets must name at least one asset_id")
 
     if args.commit and args.confirm != CONFIRMATION:
         parser.error(f"--commit requires --confirm {CONFIRMATION}")
@@ -991,6 +1040,7 @@ def main() -> int:
             snapshot_ref=args.snapshot_ref,
             expected_manifest_digest=args.expected_manifest_digest,
             reviewed_deployment_sha=args.reviewed_deployment_sha,
+            requested_asset_ids=requested_asset_ids,
         )
     except Exception as exc:
         print(f"ERROR: campaign wave run not created: {exc}", file=sys.stderr)
