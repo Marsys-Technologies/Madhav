@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.salience_rank import set_salience_pctl_in_class
 from bodha_writers.nakshatra_semantic_emitter import (
     GRAHAS,
     build_signal_row,
@@ -105,6 +106,13 @@ class BoNakshatraSemanticWriter(WriterBase):
 
             if not rows:
                 continue
+
+            # NIRMĀṆA L2-W3 (N-16): this writer owns its signal_type_class outright
+            # for this (chart, ayanamsha), so a percentile over its own rows IS the
+            # true class-scoped percentile. Without this call the class shipped a NULL
+            # salience_pctl_in_class — and these are among the layer's rarest classes,
+            # i.e. exactly the rows the D-SALIENCE rare-class-leader predicate ranks on.
+            set_salience_pctl_in_class(rows)
 
             deleted = replace_prior_msr_for_chart(
                 conn, chart_id, aya, BO_NAKSHATRA_SEMANTIC_OWNED_SIGNAL_TYPE_CLASSES,

@@ -52,6 +52,7 @@ from typing import Any
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
 from brahmagyan.graha_vocabulary import norm_graha, to_title
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from bodha_writers.salience_rank import set_salience_pctl_in_class
 from bodha_writers.formulas import (
     salience_formula_v2,
     SalienceInputsV2,
@@ -3146,42 +3147,17 @@ def _normalize_by_chart_max(rows: list[dict]) -> None:
 
 
 def _set_salience_pctl_in_class(rows: list[dict]) -> None:
-    """Set salience_pctl_in_class in place — the in-memory equivalent of
-    PERCENT_RANK() OVER (PARTITION BY chart_id, ayanamsha_id, signal_type_class
-    ORDER BY computed_salience). Rows here are already scoped to a single
-    (chart_id, ayanamsha_id) — the writer processes one ayanamsha per substep —
-    so partitioning by signal_type_class alone is equivalent.
+    """Delegates to bodha_writers.salience_rank — the ONE implementation.
 
-    BA-P3 (2026-07-06): replaces a post-insert `UPDATE bodha_msr_signals SET
-    salience_pctl_in_class = ...` that ran pathologically long (600s+, CPU/IO
-    bound, no lock) because updating one scalar column on ~28K freshly-inserted
-    rows forces a full-row rewrite against this table's 20 indexes (incl. 3 GIN
-    on jsonb arrays). Computing it here from the rows already in memory writes
-    the value in the single INSERT pass — zero extra DB work. PERCENT_RANK uses
-    RANK() (ties share the minimum rank); a single-row partition is 0.0.
+    NIRMĀṆA L2-W3 (N-16): this pass used to live here and only here, which is why
+    the six satellite MSR writers left salience_pctl_in_class NULL on the layer's
+    149 rarest rows — the exact population the D-SALIENCE tail lane ranks on. The
+    body moved to bodha_writers/salience_rank.py so those writers can call it
+    without a second copy; this wrapper stays so bo_laksana's own call sites and
+    tests are unchanged. See that module for the PERCENT_RANK semantics and for the
+    measured reason it is in-memory rather than a post-insert UPDATE.
     """
-    from collections import defaultdict
-    by_class: dict[Any, list[dict]] = defaultdict(list)
-    for row in rows:
-        by_class[row.get("signal_type_class")].append(row)
-    for cls_rows in by_class.values():
-        n = len(cls_rows)
-        if n <= 1:
-            for row in cls_rows:
-                row["salience_pctl_in_class"] = 0.0
-            continue
-        # RANK with ties sharing the minimum rank: in ascending order, the rank of
-        # a value is 1 + (count of rows with strictly smaller computed_salience),
-        # i.e. the 1-based index of that value's first occurrence.
-        ordered = sorted(cls_rows, key=lambda r: r["computed_salience"])
-        rank_by_salience: dict[Any, int] = {}
-        for i, row in enumerate(ordered):
-            sal = row["computed_salience"]
-            if sal not in rank_by_salience:
-                rank_by_salience[sal] = i + 1
-        for row in cls_rows:
-            rank = rank_by_salience[row["computed_salience"]]
-            row["salience_pctl_in_class"] = round((rank - 1) / (n - 1), 6)
+    set_salience_pctl_in_class(rows)
 
 
 # ── WriterBase subclass ───────────────────────────────────────────────────────

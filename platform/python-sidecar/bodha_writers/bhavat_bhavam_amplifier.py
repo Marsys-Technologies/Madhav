@@ -336,7 +336,14 @@ def to_msr_row(
         "constituent_facts_array": list(signal.constituent_facts_array),
         "constituent_signals_array": list(signal.constituent_signals_array),
         "classical_sources_array": None,
-        "source_corroboration_count_by_text": 2,
+        # NIRMĀṆA L2-W3 (M-08). This was the literal 2 — on a row whose
+        # classical_sources_array is None, one line above. It claimed two classical
+        # texts corroborate a signal that carries no citation at all, and no program
+        # input could ever have made it read otherwise (CLAUDE.md §N.8). None is the
+        # honest value: nothing was checked, so nothing is claimed. Sibling of the
+        # same defect in bo_laksana, which derived its count from the L1 fact's
+        # verification tier rather than from any actual source.
+        "source_corroboration_count_by_text": None,
         "source_corroboration_count_by_verse": None,
         "orb_tightness": 1.0,
         "shadbala_norm": 1.0,
