@@ -385,6 +385,32 @@ def event_anchors(
 
 def seed_native_anchors(chart_id: str) -> dict[str, Any]:
     """
+    DEPRECATED AND DELIBERATELY UNREACHABLE. Do not call, and do not repair.
+
+    CONDUCTOR ruling on adjudication #1739 (D-CND-08): "a fabrication path disabled by
+    accident is not disabled." This function calls seed_native_phala_anchors(), a deployed
+    SQL function that inserts HAND-AUTHORED predictions with HAND-ASSIGNED confidence
+    values into phala_anchors -- the L4 root table -- citing the FORENSIC v8.0 markdown
+    that PR #187 deleted. Once written, such a row is indistinguishable from a derived one.
+
+    It currently raises UndefinedColumn because migration 330 replaced the columns it
+    targets (theme, confidence, contributing_dashas, contributing_signals). That is an
+    ACCIDENT, not a control: a migration restoring any of those names, or a well-meaning
+    repair of "a broken function", re-arms it. So every call site has been removed --
+    the FastAPI route, the MCP caller, and the legacy brahma_pipeline _l4_phala step.
+
+    REPAIRING THIS IS FORBIDDEN. The ruling rejects it on the record: it would take a write
+    path whose entire purpose is inserting hand-authored predictions with hand-assigned
+    confidences and return it to service, which is the fabrication CLAUDE.md's hard floor
+    forbids and which the parked-P7 mandate ("nothing may make the later loop harder")
+    forbids twice over. Predictive anchors come from ph_nimitta, deterministically.
+
+    The SQL object itself is left in place; dropping a deployed database object is deferred
+    to Phase Z's debris register, where it will be done with a verified snapshot rather than
+    as a side effect of a W3 lane.
+
+    Original docstring follows, for the record:
+
     Trigger the native anchor seed function in the DB for a given chart_id.
 
     Calls the SQL function seed_native_phala_anchors(chart_id::UUID)
@@ -428,7 +454,8 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
       AC2 — all anchor.falsifier values are non-empty strings (Learning Layer rule #4).
       AC3 — all anchor.source_citation values are non-empty strings (B.3 mandate).
       AC4 — all anchor.confidence values are in [0.0, 1.0].
-      AC5 — seed idempotency: calling seed twice does not increase count.
+      (AC5 — seed idempotency — REMOVED, adjudication #1739: the seed path it exercised
+       is now deliberately unreachable.)
 
     Returns:
         {"chart_id": str, "gate_passed": bool, "checks": list[dict]}
@@ -506,23 +533,15 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
     except Exception as exc:
         checks.append({"id": "AC4", "desc": "confidence range", "passed": False, "error": str(exc)})
 
-    # AC5: Seed idempotency
-    try:
-        seed_result_1 = seed_native_anchors(chart_id)
-        seed_result_2 = seed_native_anchors(chart_id)
-        # Second call should insert 0 (ON CONFLICT DO NOTHING)
-        idempotent = seed_result_2["rows_inserted"] == 0
-        checks.append({
-            "id": "AC5",
-            "desc": "seed_native_anchors is idempotent (2nd call inserts 0 rows)",
-            "passed": idempotent,
-            "value": {
-                "first_call_inserted": seed_result_1["rows_inserted"],
-                "second_call_inserted": seed_result_2["rows_inserted"],
-            },
-        })
-    except Exception as exc:
-        checks.append({"id": "AC5", "desc": "seed idempotency", "passed": False, "error": str(exc)})
+    # AC5 REMOVED (adjudication #1739). It exercised seed_native_anchors(), which is now
+    # deliberately unreachable -- so the check has nothing left to assert.
+    #
+    # A correction to the record, since the ruling and the W1 analysis that fed it both
+    # described AC5 as a PASS a broken function could not earn: it was NOT. The call raises
+    # UndefinedColumn, `except Exception` catches it, and the check appended
+    # `"passed": False` with the error text. Verified live before removing it. AC5 reported
+    # FAILED, correctly and loudly, every time it ran. It is removed because the path it
+    # tested has been severed on purpose, not because it was an unearned signal.
 
     gate_passed = all(c["passed"] for c in checks)
     if gate_passed:
@@ -554,8 +573,8 @@ class EventAnchorsRequest(BaseModel):
     )
 
 
-class SeedAnchorsRequest(BaseModel):
-    chart_id: str = Field(..., description="Chart UUID to seed native anchors for")
+# SeedAnchorsRequest REMOVED with its route (adjudication #1739). Left as a marker so the
+# next reader does not reintroduce the model and wonder where its endpoint went.
 
 
 # ── FastAPI endpoints ─────────────────────────────────────────────────────────
@@ -585,18 +604,11 @@ def api_event_anchors(req: EventAnchorsRequest) -> dict[str, Any]:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
-@router.post("/phala/seed_anchors")
-def api_seed_anchors(req: SeedAnchorsRequest) -> dict[str, Any]:
-    """
-    Seed pre-calibrated phala anchors for a chart.
-
-    Calls seed_native_phala_anchors(chart_id) in the DB (idempotent).
-    Inserts 9 anchors for 2026-2030 for the native's chart.
-    """
-    try:
-        return seed_native_anchors(req.chart_id)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+# POST /phala/seed_anchors REMOVED -- CONDUCTOR ruling on adjudication #1739 (D-CND-08).
+# It was a live endpoint into seed_native_phala_anchors(), which writes hand-authored
+# predictions with hand-assigned confidence into phala_anchors. Only a schema mismatch
+# stopped it, and an accident is not a control. Do not reinstate: see the deprecation
+# notice on seed_native_anchors() above.
 
 
 @router.get("/phala/acceptance_gate/{chart_id}")
@@ -608,7 +620,7 @@ def api_acceptance_gate(chart_id: str) -> dict[str, Any]:
     AC2: All falsifiers non-empty (Learning Layer rule #4).
     AC3: All source_citations non-empty (B.3 mandate).
     AC4: All confidence values in [0.0, 1.0].
-    AC5: seed_native_anchors is idempotent.
+    (AC5 removed — adjudication #1739.)
     """
     try:
         return run_acceptance_gate(chart_id)
