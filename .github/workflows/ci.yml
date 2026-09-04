@@ -1381,6 +1381,12 @@ jobs:
           # sidecar-owned writer hashes. Any Python writer change must regenerate
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
+          # Nirmana #1715: the per-layer analysis-receipt pins are derived FROM
+          # that inventory. Checking them here (offline; no DB) is what keeps the
+          # generalised receipt spine fail-closed -- a writer change that lands
+          # without re-pinning its layer fails the build instead of silently
+          # letting a stale analysis authorise a rebuild.
+          python ../scripts/generate/nirmana_analysis_layer_pins.py --check
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
