@@ -79,6 +79,7 @@ import {
   canonicalRegistryContractDigest,
   createNirmanaElevationDefinition,
   freezeNirmanaElevationDefinition,
+  nirmanaReadOnlyDetectorSqlAcceptable,
   recordNirmanaElevationEvidence,
   registryContractFingerprintInput,
   supersedeNirmanaElevationDefinition,
@@ -388,6 +389,37 @@ describe('Nirmana elevation definition repository', () => {
 
   it('derives one canonical SHA-256 digest for the validated manifest', () => {
     expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  describe('read-only integrity detector SQL guard', () => {
+    it('accepts a single SELECT whose string literal contains a semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        "SELECT count(*) > 0 FROM t WHERE source = 'a via b; c'")).toBe(true)
+    })
+    it('accepts a read-only WITH ... SELECT CTE', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        'WITH s AS (SELECT count(*) AS n FROM t) SELECT n = 15 FROM s')).toBe(true)
+    })
+    it('accepts a query whose -- comment contains an empty string and a semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        "SELECT a = '' -- generates '' for null; reject otherwise\n  FROM t")).toBe(true)
+    })
+    it('accepts a plain SELECT and one with a trailing semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT count(*) FROM t')).toBe(true)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT count(*) FROM t;')).toBe(true)
+    })
+    it('rejects a genuine multi-statement script', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT 1; DROP TABLE t')).toBe(false)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT 1; SELECT 2')).toBe(false)
+    })
+    it('rejects a data-modifying CTE and bare DML even without a separator', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        'WITH d AS (DELETE FROM t RETURNING 1) SELECT count(*) FROM d')).toBe(false)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('UPDATE t SET x = 1')).toBe(false)
+    })
+    it('rejects a statement separator hidden after a closed string literal', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable("SELECT 'a''b'; DROP TABLE t")).toBe(false)
+    })
   })
 
   it('canonicalizes live registry dependency order while preserving real dependency changes', () => {

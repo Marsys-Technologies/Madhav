@@ -1535,6 +1535,62 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
   return { payload: payload.data, request_started_at, request_ended_at }
 }
 
+/**
+ * Structural read-only guard for a registry integrity/count detector query.
+ *
+ * The naive `!/^\s*select\b/ || includes(';')` check false-rejects legitimate
+ * single read-only queries in the real registry corpus: a `source_citation`
+ * string literal may contain a `;`, an integrity_check_sql may be a read-only
+ * `WITH ... SELECT` CTE, and a `--` comment may contain both `''` and `;`.
+ *
+ * This walks the SQL once, correctly resolving the `''` empty-string vs
+ * escaped-quote ambiguity and skipping `--` line and block comments, to build
+ * a "code-only" view with string-literal contents removed. It then requires:
+ *  - the statement to start with SELECT or WITH (read-only shapes),
+ *  - no statement-separator `;` outside literals/comments (single statement;
+ *    one trailing `;` is tolerated), and
+ *  - no DML/DDL keyword outside literals/comments -- an explicit read-only
+ *    guarantee the original guard LACKED, so this is a hardening, not a
+ *    relaxation: it accepts richer real queries while rejecting anything that
+ *    could modify data.
+ *
+ * Known limitation: E-string backslash-escaped quotes (`E'...\''...'`) are not
+ * modeled (the corpus uses only `E'\n'`-style escapes); a mis-pairing there
+ * tends toward rejection, never a false accept of a modifying statement.
+ */
+function nirmanaDetectorSqlCodeOnly(sql: string): string {
+  let out = ''
+  let inStr = false
+  for (let i = 0; i < sql.length; i++) {
+    const c = sql[i]
+    if (!inStr && c === '-' && sql[i + 1] === '-') {
+      while (i < sql.length && sql[i] !== '\n') i++
+      continue
+    }
+    if (!inStr && c === '/' && sql[i + 1] === '*') {
+      i += 2
+      while (i < sql.length && !(sql[i] === '*' && sql[i + 1] === '/')) i++
+      i++
+      continue
+    }
+    if (c === "'") {
+      if (inStr && sql[i + 1] === "'") { i++; continue }
+      inStr = !inStr
+      if (!inStr) out += "''"
+      continue
+    }
+    if (!inStr) out += c
+  }
+  return out
+}
+
+export function nirmanaReadOnlyDetectorSqlAcceptable(detectorSql: string): boolean {
+  const code = nirmanaDetectorSqlCodeOnly(detectorSql).trim().replace(/;\s*$/, '')
+  return /^\s*(select|with)\b/i.test(code)
+    && !code.includes(';')
+    && !/\b(insert|update|delete|drop|alter|truncate|create|grant|revoke|merge|call|do)\b/i.test(code)
+}
+
 async function collectIntegrityObservation(
   client: PoolClient,
   assetId: string,
@@ -1561,7 +1617,7 @@ async function collectIntegrityObservation(
     return { observation: probe.observation, observed_at: probe.observed_at }
   }
   const detectorSql = registryContract.integrity_check_sql ?? registryContract.count_sql
-  if (typeof detectorSql !== 'string' || !/^\s*select\b/i.test(detectorSql) || detectorSql.includes(';')) {
+  if (typeof detectorSql !== 'string' || !nirmanaReadOnlyDetectorSqlAcceptable(detectorSql)) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a read-only current registry integrity detector query.')
   }
   const result = await client.query(detectorSql)
