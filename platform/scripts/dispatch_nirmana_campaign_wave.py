@@ -49,6 +49,22 @@ REGISTRY_CONTRACT_FIELDS = (
     "data_disposition",
     "dead_flag",
 )
+# Charter C5's ratified concurrency budget. Until v2.1 this guard was an unconditional
+# `if active:` -- refuse if ANY build run is in flight anywhere -- which was correct when
+# the campaign ran one wave at a time by design, and which makes slots 2 and 3 of the
+# charter's published three-slot ledger unreachable: the second session to claim a slot
+# gets a RuntimeError after posting a valid claim.
+#
+# The value is measured, not inherited. Cloud SQL `max_connections` is 50 with 9 in use
+# at the time of writing (4 reserved for cloudsqladmin), so three concurrent build runs
+# sit well inside the budget the charter derived the number from. Heavy/monster writers
+# count double and run solo -- that remains ledger-enforced on the coordination issue,
+# because "is this writer a monster" is a judgement the dispatcher cannot make from the
+# manifest. Raising this constant without re-measuring headroom would be exactly the
+# unearned-signal move the campaign's doctrines forbid.
+MAX_CONCURRENT_CAMPAIGN_RUNS = 3
+
+
 BUILD_AUTHORIZING_VERDICTS = frozenset(
     {
         "optimize",
@@ -445,14 +461,40 @@ def campaign_prerequisite_asset_ids(
     definition_manifest: Mapping[str, Any],
     layer: str,
     wave_index: int,
+    dispatch_asset_ids: Sequence[str],
 ) -> list[str]:
-    """Return every asset that strict layer/wave sequencing requires frozen."""
+    """Return the transitive depends_on ancestors the E-gate requires frozen.
+
+    This is charter C2 condition 1, and it is deliberately NOT what this function
+    used to compute. Until v2.1 the campaign ran strictly sequentially, so this
+    returned *every* asset of every lower-ranked layer plus every earlier wave of
+    the same layer -- dependency edges were never consulted. That was correct for
+    the topology it was written for and is wrong for the one the native ratified.
+
+    Concretely, under the old rule an L3 wave-0 dispatch required all 81 assets of
+    L0+L1+L2 frozen, while `ka_gochara_resonance`'s real ancestor closure is one
+    asset (`bg_transit_rules`) which is already frozen. Under the old rule no layer
+    session could dispatch anything at all, and asset-frontier pipelining degraded
+    to the sequential campaign with five sessions waiting on each other.
+
+    The gate is not loosened, it is re-aimed: an asset whose ancestors are unfrozen
+    is still refused, just as loudly, and an asset with no dependencies is no longer
+    made to wait for assets it does not depend on. Layers still FREEZE strictly in
+    order (charter C2, W6 ceremonies) -- that ordering lives in the freeze-ack
+    protocol, not here.
+
+    Ancestors are resolved over the FROZEN definition manifest, never the live
+    registry, so a live `depends_on` edit cannot silently widen or narrow the gate.
+    `depends_on` is sorted at every hash site for the same reason (see
+    `_live_registry_fingerprint`); here order is irrelevant since the result is a set.
+    """
     if layer not in LAYERS:
         raise ValueError(f"unsupported campaign layer: {layer}")
     assets = definition_manifest.get("assets")
     if not isinstance(assets, list):
         raise ValueError("definition manifest assets are invalid")
-    prerequisites: list[str] = []
+
+    dependencies_by_asset: dict[str, list[str]] = {}
     for asset in assets:
         if not isinstance(asset, dict):
             raise ValueError("definition manifest contains an invalid asset")
@@ -465,11 +507,39 @@ def campaign_prerequisite_asset_ids(
             or not isinstance(asset_wave, int)
         ):
             raise ValueError("definition manifest contains an invalid asset identity")
-        if LAYER_RANK[asset_layer] < LAYER_RANK[layer] or (
-            asset_layer == layer and asset_wave < wave_index
+        dependencies = asset.get("depends_on") or []
+        if not isinstance(dependencies, list) or any(
+            not isinstance(dependency, str) for dependency in dependencies
         ):
-            prerequisites.append(asset_id)
-    return prerequisites
+            raise ValueError(f"definition manifest has invalid depends_on for {asset_id}")
+        dependencies_by_asset[asset_id] = dependencies
+
+    for asset_id in dispatch_asset_ids:
+        if asset_id not in dependencies_by_asset:
+            raise ValueError(f"dispatch asset is not in the frozen definition: {asset_id}")
+
+    # Breadth-first transitive closure. Visiting each asset once terminates even if
+    # a manifest ever contained a cycle -- fail-closed on data, not a hang.
+    ancestors: set[str] = set()
+    frontier = [
+        dependency
+        for asset_id in dispatch_asset_ids
+        for dependency in dependencies_by_asset[asset_id]
+    ]
+    while frontier:
+        current = frontier.pop()
+        if current in ancestors:
+            continue
+        ancestors.add(current)
+        if current not in dependencies_by_asset:
+            raise ValueError(
+                f"frozen definition has a dangling depends_on edge: {current}"
+            )
+        frontier.extend(dependencies_by_asset[current])
+
+    # An asset never gates itself, even via a cycle.
+    ancestors.difference_update(dispatch_asset_ids)
+    return sorted(ancestors)
 
 
 def build_campaign_wave_manifest(
@@ -779,6 +849,7 @@ def create_campaign_run(
             definition_manifest=definition["manifest"],
             layer=layer,
             wave_index=wave_index,
+            dispatch_asset_ids=asset_ids,
         )
         if prerequisites:
             cur.execute(
@@ -798,8 +869,10 @@ def create_campaign_run(
             ]
             if missing_prerequisites:
                 raise RuntimeError(
-                    "strict campaign sequencing requires all prior layers/waves frozen "
-                    f"({len(missing_prerequisites)} assets remain)"
+                    "E-gate refused: the dispatched assets have unfrozen DAG ancestors "
+                    f"({len(missing_prerequisites)} remain): "
+                    + ", ".join(missing_prerequisites[:10])
+                    + ("," if len(missing_prerequisites) > 10 else "")
                 )
 
         cur.execute(
@@ -808,8 +881,12 @@ def create_campaign_run(
                  ORDER BY created_at"""
         )
         active = cur.fetchall()
-        if active:
-            raise RuntimeError(f"active build runs exist; campaign wave refused ({len(active)})")
+        if len(active) >= MAX_CONCURRENT_CAMPAIGN_RUNS:
+            raise RuntimeError(
+                "concurrent build-run cap reached; campaign wave refused "
+                f"({len(active)} active, cap {MAX_CONCURRENT_CAMPAIGN_RUNS}). "
+                "Release a run slot on the coordination issue before retrying."
+            )
 
         cur.execute(
             "SELECT id, state FROM build_runs WHERE triggered_by=%s ORDER BY created_at",
