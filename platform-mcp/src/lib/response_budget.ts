@@ -85,6 +85,21 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // (currently health/relationship). Must never be silently trimmed away either.
   'domain_completeness_empty_reason',
   'coverage_map',
+  // NIRMĀṆA L2-W3 (D-SALIENCE tail clause): "every umbrella envelope reserves a
+  // hard-floored `tail_watch` section ... that no budget trim may zero."
+  //
+  // Membership here is NOT a substitute for the explicit hardFloor declaration in
+  // registry_bridge.ts's tailWatchSection() — the two protect against different
+  // things and the doctrine needs both. This set is consulted in exactly two
+  // places: autoDetectTrimmableSections (so `tail_watch` is never picked up as a
+  // generic biggest-section-first casualty) and truncateLongStringsInPlace (so the
+  // prose inside a surviving tail row is never mangled mid-sentence by the
+  // last-resort walk). Neither of those respects minKeep, and hardFloor does not
+  // reach either of them — which is why hardFloor ALONE does not satisfy "no trim
+  // may zero it", and why the explicit declaration alone does not satisfy it
+  // either. The declaration governs the controlled shed down to minKeep; this
+  // entry governs everything that would bypass the declaration.
+  'tail_watch',
   // F-179 (audit): the same "_empty_reason" honesty-disclosure convention as
   // domain_completeness_empty_reason above, for register_p1_synthesis.ts's ranked-themes
   // `weaknesses` array — a real, per-call-derived narrative (never a fixed template) that
