@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { NirmanaLegacyAliasSchema } from './label-contract'
+import { PROGRAMME_WAVE_IDS } from './programme'
 import { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
 export { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
@@ -173,12 +174,25 @@ const V2WaveSchema = z.object({
   }
 })
 
+const WaveProgressSchema = z.object({
+  wave_id: z.enum(PROGRAMME_WAVE_IDS),
+  label: z.string(),
+  milestone_id: z.enum(NIRMANA_MILESTONE_IDS),
+  earned: z.number().int().nonnegative(),
+  required: z.number().int().nonnegative(),
+}).superRefine((wave, context) => {
+  if (wave.earned > wave.required) {
+    context.addIssue({ code: 'custom', path: ['earned'], message: 'A wave cannot have earned more than its required count.' })
+  }
+})
+
 const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.extend({
   layer_id: LayerIdSchema,
   layer_name: LayerNameSchema,
   required_gate: z.string(),
   eligible_next_asset_ids: z.array(z.string()),
   waves: z.array(V2WaveSchema),
+  wave_progress: z.array(WaveProgressSchema).length(6),
 }).superRefine((layer, context) => {
   if (layer.layer_name !== NIRMANA_LAYER_NAMES[layer.layer_id]) {
     context.addIssue({ code: 'custom', path: ['layer_name'], message: `${layer.layer_id} must use its governed layer name.` })
@@ -318,6 +332,33 @@ const ProgramSyncSchema = z.object({
   ])),
 })
 
+const ProgrammeOWaveWpSchema = z.object({
+  wp_id: z.enum(['WP-1', 'WP-2', 'WP-3']),
+  name: z.string(),
+  status: z.enum(['not_started', 'in_progress', 'merged']),
+  note: z.string(),
+})
+
+const ProgrammeOperationalStateSchema = z.enum(['completed', 'active', 'locked', 'blocked', 'paused', 'unknown'])
+
+const ProgrammeSnapshotSchema = z.object({
+  position_label: z.string(),
+  o_wave: z.object({
+    provenance: z.literal('repo_declared'),
+    state: ProgrammeOperationalStateSchema,
+    wps: z.array(ProgrammeOWaveWpSchema).length(3),
+  }),
+  phase_a: z.object({
+    provenance: z.literal('evidence_derived'),
+    state: ProgrammeOperationalStateSchema,
+    collapsed_stage_ids: z.array(z.enum(NIRMANA_STAGE_IDS)),
+  }),
+  phase_z: z.object({
+    provenance: z.literal('evidence_derived'),
+    state: ProgrammeOperationalStateSchema,
+  }),
+})
+
 /** Version 2 adds governed campaign stages and display identities without changing v1. */
 export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema.extend({
   schema_version: z.literal('2.0'),
@@ -333,6 +374,7 @@ export const NirmanaElevationSnapshotV2Schema = NirmanaElevationSnapshotV1Schema
     receipts: z.array(AuditReceiptSchema),
     raw_ledger_refs: z.array(AuditLedgerRefSchema),
   }),
+  programme: ProgrammeSnapshotSchema,
 })
 
 export const NirmanaElevationSnapshotSchema = z.discriminatedUnion('schema_version', [

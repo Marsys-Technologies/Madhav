@@ -1,11 +1,14 @@
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
+import type { WaveProgressCount } from '@/lib/nirmana-elevation/projection'
 import { WaveLane } from './WaveLane'
+import { WaveProgressBar } from './WaveProgressBar'
 import { assetCompactLabel } from './vocab'
 
-export function LayerStage({ layer, assets, onOpenAudit }: {
+export function LayerStage({ layer, assets, onOpenAudit, waveProgress }: {
   layer: NirmanaElevationSnapshotV2['layers'][number]
   assets: NirmanaElevationSnapshotV2['assets']
   onOpenAudit: (assetId: string) => void
+  waveProgress: WaveProgressCount[]
 }) {
   const waves = [...layer.waves].sort((left, right) => left.wave_index - right.wave_index)
   const total = layer.assets_total
@@ -18,6 +21,7 @@ export function LayerStage({ layer, assets, onOpenAudit }: {
       <p>Required gate: {layer.required_gate}</p>
       <p className="capitalize">{layer.state === 'unknown' ? 'No layer evidence yet' : layer.state}</p>
     </div>
+    <WaveProgressBar waveProgress={waveProgress} />
     <div>
       <div
         role="progressbar"

@@ -9,6 +9,7 @@ import {
 } from '../snapshot'
 import { canonicalManifestDigest, canonicalNirmanaOptimizationVerdictDigest, canonicalNirmanaRebuildEvidenceDigest, canonicalRegistryContractDigest } from '../definitions'
 import { buildNirmanaBaselineCandidate } from '../monitor'
+import { PROGRAMME_O_WAVE_WPS } from '../programme'
 
 const observedAt = '2026-08-25T09:00:00.000Z'
 const milestoneAt = '2026-08-25T09:01:00.000Z'
@@ -426,6 +427,149 @@ describe('projectNirmanaElevationSnapshot', () => {
         source_ref: 'redacted:unsafe-reference', payload_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     ]))
+  })
+
+  it('projects the programme spine alongside per-layer wave progress', () => {
+    const manifest = defaultManifest()
+    const lifecycleEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 })
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [...foundationLaneEvents(), ...stageEventsThrough('L0'), ...lifecycleEvents],
+      build_runs: [{ id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: runOne, asset_id: 'bg_prashna_rules', position: 0, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(typeof snapshot.programme.position_label).toBe('string')
+    expect(snapshot.programme.position_label.length).toBeGreaterThan(0)
+    expect(snapshot.programme.o_wave.wps).toHaveLength(3)
+    expect(snapshot.programme.phase_a.collapsed_stage_ids).toEqual([
+      'BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN', 'DENOMINATOR_FROZEN', 'F0_FOUNDATION',
+    ])
+
+    expect(snapshot.layers).toHaveLength(6)
+    for (const layer of snapshot.layers) {
+      expect(layer.wave_progress).toHaveLength(6)
+      for (const wave of layer.wave_progress) {
+        expect(wave.earned).toBeLessThanOrEqual(wave.required)
+      }
+    }
+
+    // bg_prashna_rules is the sole L0 asset and earns every milestone in this fixture,
+    // so every L0 wave should read 1/1 earned/required.
+    const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
+    expect(l0.wave_progress.map((wave) => wave.wave_id)).toEqual(['W1', 'W2', 'W3', 'W4', 'W5', 'W6'])
+    expect(l0.wave_progress.every((wave) => wave.earned === 1 && wave.required === 1)).toBe(true)
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  // NOTE on the three tests below: `assertManifestMatchesRegistryIdentity` (invoked by
+  // `validManifest` on every snapshot read, not just at freeze time) requires the frozen
+  // manifest's asset-id set to match the ENTIRE live registry's asset-id set exactly — so a
+  // registry asset "absent from the manifest" or a manifest asset carrying
+  // `execution_obligation: 'unresolved'` (forbidden by `assertFreezableManifest`) can never
+  // coexist with an otherwise-valid `manifestAssets` for other assets: either defect
+  // invalidates the WHOLE campaign's manifest, not just the one offending asset. That
+  // whole-manifest-null state is exactly the "manifestAssets is null for the whole snapshot"
+  // fallback the fix instructions call out, and every registry asset then correctly falls
+  // into the `milestones_required: null` branch (snapshot.ts's `!manifestAsset` fallback for
+  // "absent from manifest" / `projectAssetMilestones`'s own `obligation === 'unresolved'`
+  // branch for the rejected-manifest case) — so both cases are exercised here, just via the
+  // one reachable route rather than as an isolated one-asset exclusion.
+  it('does not fabricate wave_progress denominators from live registry assets when no valid frozen manifest exists (registry asset "absent from manifest" case)', () => {
+    const registry = [
+      registryAsset({ asset_id: 'bg_prashna_rules', sort_order: 0 }),
+      registryAsset({ asset_id: 'bg_second', sort_order: 1, target_table: 'bg_second', count_sql: 'SELECT count(*) FROM bg_second' }),
+    ]
+    // No campaign_definitions at all — there is no frozen manifest, so both registry
+    // assets are "absent from the manifest" in the fullest sense.
+    const snapshot = projectNirmanaElevationSnapshot(sources({ asset_registry: registry }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.every((asset) => asset.milestones_required === null)).toBe(true)
+    const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
+    expect(l0.assets_total).toBeNull()
+    // Pre-fix, projectLayerWaveProgress received these two pending-everywhere registry
+    // assets directly and fabricated required: 2 for every wave; post-fix it is 0.
+    expect(l0.wave_progress.every((wave) => wave.required === 0 && wave.earned === 0)).toBe(true)
+  })
+
+  it('does not fabricate wave_progress denominators when the only candidate manifest is rejected for carrying execution_obligation "unresolved"', () => {
+    const registry = [registryAsset({ asset_id: 'bg_prashna_rules', sort_order: 0 })]
+    // assertFreezableManifest forbids 'unresolved' on a frozen manifest asset — so this
+    // manifest is rejected at read time (parseFreezableNirmanaElevationManifest returns
+    // null), and the whole snapshot falls back to manifestAssets === null.
+    const manifest = manifestFor(registry, [{ asset_id: 'bg_prashna_rules', execution_obligation: 'unresolved' }])
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: registry,
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+    }), { generatedAt: observedAt })
+
+    const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')!
+    expect(asset.milestones_required).toBeNull()
+    const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
+    expect(l0.wave_progress.every((wave) => wave.required === 0)).toBe(true)
+  })
+
+  it('integration: the whole pipeline reports zero, not a fabricated positive count, for every layer when the live registry has more assets than the frozen manifest', () => {
+    const registry = [
+      registryAsset({ asset_id: 'bg_manifest_a', sort_order: 0, target_table: 'bg_manifest_a', count_sql: 'SELECT count(*) FROM bg_manifest_a' }),
+      registryAsset({ asset_id: 'bg_manifest_b', sort_order: 1, target_table: 'bg_manifest_b', count_sql: 'SELECT count(*) FROM bg_manifest_b' }),
+      registryAsset({ asset_id: 'bg_registry_only', sort_order: 2, target_table: 'bg_registry_only', count_sql: 'SELECT count(*) FROM bg_registry_only' }),
+    ]
+    // The live registry has 3 L0 assets; the frozen manifest only covers 2 of them — the
+    // registry has grown since the T0 freeze. `assertManifestMatchesRegistryIdentity`
+    // correctly refuses to treat this drifted manifest as authoritative for ANY asset
+    // (campaign-wide, not just the drifted layer), which is itself the honest outcome: the
+    // whole pipeline must report "unknown," never a fabricated positive count derived from
+    // the live registry.
+    const manifest = manifestFor(registry, [
+      { asset_id: 'bg_manifest_a', execution_obligation: 'build' },
+      { asset_id: 'bg_manifest_b', execution_obligation: 'build' },
+    ])
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: registry,
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets).toHaveLength(3)
+    expect(snapshot.assets.every((asset) => asset.milestones_required === null)).toBe(true)
+    for (const layer of snapshot.layers) {
+      expect(layer.assets_total).toBeNull()
+      for (const wave of layer.wave_progress) {
+        expect(wave.required).toBe(0)
+        expect(wave.earned).toBe(0)
+      }
+    }
+  })
+
+  it('selects the in-progress WP over a not-started one for the position chip, given the real non-monotonic PROGRAMME_O_WAVE_WPS', () => {
+    // Pin against the real manifest values (not a hand-built fixture): WP-1 merged,
+    // WP-2 not_started (no PR), WP-3 in_progress (open PR) — non-monotonic. "First
+    // non-merged" would incorrectly select WP-2; the fix prefers in_progress.
+    expect(PROGRAMME_O_WAVE_WPS.map((wp) => [wp.wp_id, wp.status])).toEqual([
+      ['WP-1', 'merged'], ['WP-2', 'not_started'], ['WP-3', 'in_progress'],
+    ])
+    const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+    expect(snapshot.programme.position_label).toContain('WP-3')
+    expect(snapshot.programme.position_label).not.toContain('WP-2')
+  })
+
+  it('derives o_wave.state purely from PROGRAMME_O_WAVE_WPS, independent of phase_a.state (Ruling R2)', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+    // No frozen definition exists in this fixture, so phase_a.state is real evidence of
+    // "not completed" — o_wave.state must still read 'active' (WPs open, none merged is
+    // false since WP-1 is merged but not all are) regardless of phase_a's own state.
+    expect(snapshot.programme.phase_a.state).not.toBe('completed')
+    expect(snapshot.programme.o_wave.state).toBe('active')
+    expect(snapshot.programme.o_wave.state).not.toBe('locked')
   })
 
   it('starts in takeover/catalogue reconciliation and refuses denominator claims before a frozen definition', () => {

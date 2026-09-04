@@ -4,7 +4,12 @@ import {
   deriveEligibleNextAssetIds,
   projectAssetMilestones,
   projectCampaignStages,
+  projectLayerWaveProgress,
+  projectProgrammePosition,
+  summarizeStageGroupState,
   type CampaignEvent,
+  type NirmanaLayerId,
+  type NirmanaStageId,
 } from '../projection'
 
 type ManifestAsset = NirmanaElevationManifest['assets'][number]
@@ -716,5 +721,94 @@ describe('deriveEligibleNextAssetIds', () => {
       currentLayer: 'L1',
       currentWave: 0,
     })).toEqual([])
+  })
+})
+
+describe('projectLayerWaveProgress', () => {
+  const asset = (layer: NirmanaLayerId, states: Record<string, 'earned' | 'current' | 'pending' | 'not_applicable'>) => ({
+    layer,
+    milestones: Object.entries(states).map(([milestone_id, state]) => ({ milestone_id, state })),
+  })
+
+  it('returns exactly 6 entries in W1..W6 order for a layer with no assets', () => {
+    const result = projectLayerWaveProgress([], 'L0')
+    expect(result.map((w) => w.wave_id)).toEqual(['W1', 'W2', 'W3', 'W4', 'W5', 'W6'])
+    expect(result.every((w) => w.earned === 0 && w.required === 0)).toBe(true)
+  })
+
+  it('counts earned/required per milestone, excluding not_applicable from the denominator', () => {
+    const assets = [
+      asset('L0', { analysed: 'earned', decision_accepted: 'earned', built_or_dispositioned: 'earned', deployed_and_executed: 'not_applicable', verified: 'current', frozen: 'pending' }),
+      asset('L0', { analysed: 'earned', decision_accepted: 'pending', built_or_dispositioned: 'pending', deployed_and_executed: 'earned', verified: 'pending', frozen: 'pending' }),
+    ]
+    const result = projectLayerWaveProgress(assets, 'L0')
+    const byWave = Object.fromEntries(result.map((w) => [w.wave_id, w]))
+    expect(byWave.W1).toMatchObject({ earned: 2, required: 2 })
+    expect(byWave.W2).toMatchObject({ earned: 1, required: 2 })
+    expect(byWave.W4).toMatchObject({ earned: 1, required: 1 }) // one asset's deployed_and_executed is not_applicable, excluded
+  })
+
+  it('ignores assets from other layers', () => {
+    const assets = [asset('L1', { analysed: 'earned', decision_accepted: 'pending', built_or_dispositioned: 'pending', deployed_and_executed: 'pending', verified: 'pending', frozen: 'pending' })]
+    const result = projectLayerWaveProgress(assets, 'L0')
+    expect(result.every((w) => w.required === 0)).toBe(true)
+  })
+})
+
+describe('summarizeStageGroupState', () => {
+  const stage = (stage_id: string, state: string) => ({
+    stage_id: stage_id as NirmanaStageId,
+    state: state as 'completed' | 'active' | 'locked' | 'blocked' | 'paused' | 'unknown',
+  })
+
+  it('is completed only when every member is completed', () => {
+    const stages = [stage('BOOTSTRAP', 'completed'), stage('T0_CENSUS', 'completed')]
+    expect(summarizeStageGroupState(stages, ['BOOTSTRAP', 'T0_CENSUS'])).toBe('completed')
+  })
+
+  it('surfaces blocked over any other non-completed state', () => {
+    const stages = [stage('BOOTSTRAP', 'completed'), stage('T0_CENSUS', 'blocked'), stage('PLAN_FROZEN', 'locked')]
+    expect(summarizeStageGroupState(stages, ['BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN'])).toBe('blocked')
+  })
+
+  it('surfaces active when nothing is blocked or paused', () => {
+    const stages = [stage('BOOTSTRAP', 'completed'), stage('T0_CENSUS', 'active'), stage('PLAN_FROZEN', 'locked')]
+    expect(summarizeStageGroupState(stages, ['BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN'])).toBe('active')
+  })
+
+  it('is unknown for an empty or unmatched group', () => {
+    expect(summarizeStageGroupState([], ['BOOTSTRAP'])).toBe('unknown')
+  })
+})
+
+describe('projectProgrammePosition', () => {
+  it('reports execution not yet evidenced when there is no current stage', () => {
+    const position = projectProgrammePosition({ currentStage: null, layerWaveProgress: {}, layerNames: {}, openWp: null })
+    expect(position.phase_id).toBe('PHASE_A')
+  })
+
+  it('reports PHASE_A for any pre-L0 stage', () => {
+    const position = projectProgrammePosition({ currentStage: 'F0_FOUNDATION', layerWaveProgress: {}, layerNames: {}, openWp: null })
+    expect(position.phase_id).toBe('PHASE_A')
+  })
+
+  it('reports the layer id for a layer stage, independent of openWp', () => {
+    const layerWaveProgress = { L0: [{ wave_id: 'W1' as const, label: 'ANALYZE', milestone_id: 'analysed', earned: 17, required: 40 }] }
+    const position = projectProgrammePosition({ currentStage: 'L0', layerWaveProgress, layerNames: { L0: 'Brahmagyan' }, openWp: { wp_id: 'WP-1' } })
+    expect(position.phase_id).toBe('L0')
+    expect(position.label).toContain('L0')
+    expect(position.label).toContain('W1')
+    expect(position.label).toContain('17/40')
+  })
+
+  it('reports PHASE_Z for CLOSING/COMPLETE', () => {
+    expect(projectProgrammePosition({ currentStage: 'CLOSING', layerWaveProgress: {}, layerNames: {}, openWp: null }).phase_id).toBe('PHASE_Z')
+    expect(projectProgrammePosition({ currentStage: 'COMPLETE', layerWaveProgress: {}, layerNames: {}, openWp: null }).phase_id).toBe('PHASE_Z')
+  })
+
+  it('reports O_WAVE when there is an open WP and no current stage yet (previously untested branch)', () => {
+    const position = projectProgrammePosition({ currentStage: null, layerWaveProgress: {}, layerNames: {}, openWp: { wp_id: 'WP-3' } })
+    expect(position.phase_id).toBe('O_WAVE')
+    expect(position.label).toContain('WP-3')
   })
 })

@@ -1,6 +1,5 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Radio } from 'lucide-react'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
-import { stageDisplayName } from './vocab'
 
 type ProgramSyncStatus = NirmanaElevationSnapshotV2['program_sync']['status']
 
@@ -33,13 +32,7 @@ function formatObservedAt(value: string): string {
 }
 
 function stagePosition(snapshot: NirmanaElevationSnapshotV2): string {
-  const stageId = snapshot.campaign.current_stage
-  if (!stageId) return 'Execution not yet evidenced'
-  if (!/^L[0-5]$/.test(stageId)) return stageDisplayName(stageId, snapshot)
-
-  const layer = snapshot.layers.find((candidate) => candidate.layer_id === stageId)
-  const wave = snapshot.campaign.current_wave
-  return `${stageId} · ${layer?.layer_name ?? 'Unknown'}${wave === null ? '' : ` · Wave ${wave}`}`
+  return snapshot.programme.position_label
 }
 
 function activeAssetCount(snapshot: NirmanaElevationSnapshotV2): number {

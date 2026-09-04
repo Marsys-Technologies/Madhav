@@ -21,12 +21,16 @@ describe('LayerStage', () => {
     const layer = snapshot.layers.find((candidate) => candidate.layer_id === 'L0')
     if (!layer) throw new Error('Fixture must include L0.')
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} waveProgress={layer.wave_progress} />)
 
     const progress = screen.getByRole('progressbar', { name: /L0 · Brahmagyan layer progress/i })
     expect(progress).toHaveAttribute('aria-valuenow', String(layer.frozen))
     expect(progress).toHaveAttribute('aria-valuemax', String(layer.assets_total))
     expect(screen.getByText(`${layer.frozen} / ${layer.assets_total} assets frozen`)).toBeVisible()
+    const subWaveProgress = screen.getByLabelText(/programme sub-wave progress/i)
+    for (const waveId of ['W1', 'W2', 'W3', 'W4', 'W5', 'W6']) {
+      expect(within(subWaveProgress).getByText(waveId)).toBeVisible()
+    }
     const legend = screen.getByLabelText(/asset state legend/i)
     for (const label of ['Frozen', 'Active', 'Blocked', 'Eligible next', 'Locked', 'Unknown']) {
       expect(within(legend).getByText(label)).toBeVisible()
@@ -43,7 +47,7 @@ describe('LayerStage', () => {
     if (!layer) throw new Error('Fixture must include L0.')
     Object.assign(layer, { state: 'unknown', assets_total: null, frozen: 0, waves: [] })
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} waveProgress={layer.wave_progress} />)
 
     expect(screen.getByText(`Required gate: ${layer.required_gate}`)).toBeVisible()
     expect(screen.getByText('Progress unknown — no layer total has been observed.')).toBeVisible()
@@ -55,7 +59,7 @@ describe('LayerStage', () => {
     const snapshot = snapshotFixture()
     const layer = layerFixture(snapshot)
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} waveProgress={layer.wave_progress} />)
 
     const lockedSummary = screen.getByText(/Wave 0.*locked/i)
     expect(lockedSummary.closest('details')).not.toHaveAttribute('open')
@@ -82,7 +86,7 @@ describe('LayerStage', () => {
       { wave_index: 1, state: 'completed', asset_ids: ['ka_wave_one'], completed_asset_ids: ['ka_wave_one'], active_asset_ids: [], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: [], eligible_next_asset_ids: [] },
     ]
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} waveProgress={layer.wave_progress} />)
 
     fireEvent.click(screen.getByText(/Wave 1.*completed/i))
     fireEvent.click(screen.getByText(/Wave 3.*locked/i))
@@ -105,7 +109,7 @@ describe('LayerStage', () => {
     layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_smriti', 'ka_uncatalogued'], completed_asset_ids: [], active_asset_ids: ['ka_smriti'], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: ['ka_uncatalogued'], eligible_next_asset_ids: ['ka_uncatalogued'] }]
     const onOpenAudit = vi.fn()
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} waveProgress={layer.wave_progress} />)
 
     expect(screen.getByText('System ID: ka_smriti')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Kāla Smṛti' })).toBeVisible()
@@ -156,7 +160,7 @@ describe('LayerStage', () => {
     snapshot.assets = [asset, fiveOfSix] as NirmanaElevationSnapshotV2['assets']
     layer.waves = [{ wave_index: 0, state: 'active', asset_ids: ['ka_disclosure', 'ka_five_of_six'], completed_asset_ids: [], active_asset_ids: ['ka_disclosure'], blocked_asset_ids: [], locked_asset_ids: [], unknown_asset_ids: ['ka_five_of_six'], eligible_next_asset_ids: ['ka_five_of_six'] }]
 
-    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    render(<LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={vi.fn()} waveProgress={layer.wave_progress} />)
 
     const card = screen.getByText('System ID: ka_disclosure').closest('article')!
     expect(within(card).getAllByRole('listitem', { name: /^(analysed|decision accepted|built or dispositioned|deployed and executed|verified|frozen):/i })).toHaveLength(6)

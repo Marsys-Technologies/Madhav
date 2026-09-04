@@ -11,6 +11,25 @@ import {
   NirmanaElevationTrackerView,
 } from './NirmanaElevationTracker'
 
+// jsdom has no EventSource implementation. The tracker now always subscribes
+// to the cockpit SSE bus on mount (see the SSE-triggered-refetch effect in
+// NirmanaElevationTracker.tsx), so every test that renders the live
+// <NirmanaElevationTracker /> component (not just the SSE-specific tests
+// below) needs this shim in place or the render itself throws. Stubbed once
+// at module scope; instances are cleared per-test in the shared afterEach.
+class MockEventSource {
+  static instances: MockEventSource[] = []
+  listeners: Record<string, ((event: MessageEvent) => void)[]> = {}
+  onerror: (() => void) | null = null
+  constructor(public url: string) { MockEventSource.instances.push(this) }
+  addEventListener(type: string, listener: (event: MessageEvent) => void) {
+    this.listeners[type] = [...(this.listeners[type] ?? []), listener]
+  }
+  close() {}
+  emit(type: string) { this.listeners[type]?.forEach((listener) => listener(new MessageEvent(type))) }
+}
+vi.stubGlobal('EventSource', MockEventSource)
+
 const remainingLayerIds = ['L1', 'L2', 'L3', 'L4', 'L5'] as const
 const unsafeDatabaseUri = `postgresql${'://tracker_admin:secret-password@db.private.internal/nirmana'}`
 const unsafeGithubToken = `gh${'p_abcdefghijklmnopqrstuvwxyz1234567890ABCD'}`
@@ -103,6 +122,7 @@ function baselineMissingV2(): NirmanaElevationSnapshotV2 {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
+  MockEventSource.instances = []
 })
 
 describe('NirmanaElevationTracker', () => {
@@ -413,6 +433,13 @@ describe('NirmanaElevationTracker', () => {
     later.campaign.current_wave = 3
     later.layers[0].waves[0].wave_index = 3
     later.assets[0].wave_index = 3
+    // The position chip (CampaignSnapshotStrip) now renders `programme.position_label` verbatim
+    // instead of re-deriving it from `campaign.current_wave` at render time (Task 4 Step 5,
+    // controller ruling on 2026-09-04: authorized one-line fix, file kept out of Task 4's
+    // normal scope otherwise). Restamp the label here so it still distinguishes this "later"
+    // snapshot from the default fixture — this test's actual subject is unchanged: it verifies
+    // only the newest of two in-flight responses replaces the rendered snapshot.
+    later.programme = { ...later.programme, position_label: 'L0 · Brahmagyan · Wave 3' }
     vi.stubGlobal('fetch', vi.fn()
       .mockReturnValueOnce(first)
       .mockResolvedValueOnce(jsonResponse(later)))
@@ -521,5 +548,50 @@ describe('NirmanaElevationTracker', () => {
     expect(within(drawer).getAllByText('build_run:33333333-3333-4333-8333-333333333333').length).toBeGreaterThan(0)
     expect(within(drawer).getByText('unrelated:ka_smriti')).toBeVisible()
     expect(within(drawer).getAllByText('build_run:11111111-1111-4111-8111-111111111111').length).toBeGreaterThan(0)
+  })
+
+  it('subscribes to the chart-scoped cockpit SSE bus on mount', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(snapshotV2())))
+
+    render(<NirmanaElevationTracker />)
+    await screen.findByText('Praśna Rules')
+
+    expect(MockEventSource.instances).toHaveLength(1)
+    expect(MockEventSource.instances[0].url).toContain('chart_id=482012f1-710e-4a25-994a-93821f5871aa')
+  })
+
+  it('debounces an SSE event into exactly one additional snapshot refetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshotV2()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<NirmanaElevationTracker />)
+    await screen.findByText('Praśna Rules')
+    const callsAfterMount = fetchMock.mock.calls.length
+    const source = MockEventSource.instances[0]
+
+    vi.useFakeTimers()
+    act(() => { source.emit('run.state_change') })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount)
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount + 1)
+  })
+
+  it('coalesces a burst of SSE events within the debounce window into one refetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshotV2()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<NirmanaElevationTracker />)
+    await screen.findByText('Praśna Rules')
+    const callsAfterMount = fetchMock.mock.calls.length
+    const source = MockEventSource.instances[0]
+
+    vi.useFakeTimers()
+    act(() => { source.emit('run.state_change') })
+    act(() => { source.emit('asset.state_change') })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount)
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount + 1)
   })
 })

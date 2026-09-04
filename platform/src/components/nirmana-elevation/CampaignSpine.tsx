@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight, CircleHelp, LockKeyhole, PauseCircle, XCircle } from 'lucide-react'
 import { FoundationStage } from './FoundationStage'
 import { LayerStage } from './LayerStage'
+import { ProvenanceChip } from './ProvenanceChip'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import type { NirmanaStageId } from '@/lib/nirmana-elevation/projection'
+import { POST_L5_STAGE_IDS, PRE_L0_STAGE_IDS } from '@/lib/nirmana-elevation/programme'
 import { stageDisplayName } from './vocab'
 
 function stageName(stage: NirmanaCampaignStage, snapshot: NirmanaElevationSnapshotV2): string {
@@ -37,7 +39,7 @@ function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignSta
   if (stage.kind === 'layer') {
     const layer = snapshot.layers.find((candidate) => candidate.layer_id === stage.stage_id)
     return layer
-      ? <LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} />
+      ? <LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} waveProgress={layer.wave_progress} />
       : <p className="text-sm text-brand-text-3">Layer projection unavailable.</p>
   }
 
@@ -48,13 +50,23 @@ function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignSta
   </div>
 }
 
-export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
-  const [expanded, setExpanded] = useState<Set<NirmanaStageId>>(
-    () => new Set(snapshot.campaign.current_stage ? [snapshot.campaign.current_stage] : ['L0']),
-  )
-  const stages = [...snapshot.stages].sort((left, right) => left.order - right.order)
+/** Sentinel toggle keys for the two collapsed-history summary rows (plan Ruling R1). */
+type SpineGroupId = 'PHASE_A_GROUP' | 'PHASE_Z_GROUP'
 
-  const toggle = (stageId: NirmanaStageId) => {
+export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
+  const [expanded, setExpanded] = useState<Set<NirmanaStageId | SpineGroupId>>(() => {
+    const currentStage = snapshot.campaign.current_stage
+    const initial = new Set<NirmanaStageId | SpineGroupId>(currentStage ? [currentStage] : ['L0'])
+    if (currentStage && PRE_L0_STAGE_IDS.includes(currentStage)) initial.add('PHASE_A_GROUP')
+    if (currentStage && POST_L5_STAGE_IDS.includes(currentStage)) initial.add('PHASE_Z_GROUP')
+    return initial
+  })
+  const stages = [...snapshot.stages].sort((left, right) => left.order - right.order)
+  const phaseAStages = stages.filter((stage) => PRE_L0_STAGE_IDS.includes(stage.stage_id))
+  const layerStages = stages.filter((stage) => /^L[0-5]$/.test(stage.stage_id))
+  const phaseZStages = stages.filter((stage) => POST_L5_STAGE_IDS.includes(stage.stage_id))
+
+  const toggle = (stageId: NirmanaStageId | SpineGroupId) => {
     setExpanded((open) => {
       const next = new Set(open)
       if (next.has(stageId)) next.delete(stageId)
@@ -63,39 +75,105 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
     })
   }
 
+  const renderStageItem = (stage: NirmanaCampaignStage, isLast: boolean) => {
+    const open = expanded.has(stage.stage_id)
+    const name = stageName(stage, snapshot)
+    const panelId = `campaign-stage-${stage.stage_id}`
+    const isCurrent = stage.stage_id === snapshot.campaign.current_stage
+    const count = countLabel(stage)
+    return <li key={stage.stage_id} className="relative pb-3 last:pb-0">
+      <article className={`rounded-xl border bg-brand-bg ${isCurrent ? 'border-brand-gold-1/70' : 'border-brand-border'}`}>
+        <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => toggle(stage.stage_id)} onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggle(stage.stage_id)
+          }
+        }} className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">
+          <span className="mt-0.5 shrink-0">{open ? <ChevronDown aria-hidden="true" className="size-4 text-brand-gold-2" /> : <ChevronRight aria-hidden="true" className="size-4 text-brand-text-3" />}</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`text-sm font-semibold ${isCurrent ? 'text-brand-gold-2' : 'text-brand-text-1'}`}>{name}</span><span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(stage.state)}{statusLabel(stage.state)}</span>{count && <span className="text-xs text-brand-text-3">{count}</span>}</span>
+            {!/^L[0-5]$/.test(stage.stage_id) && <span className="mt-1 block font-mono text-[10px] text-brand-text-3">Stage ID: {stage.stage_id}</span>}
+            {stage.state === 'locked' && <span className="mt-1 block text-xs text-brand-text-3">Prerequisite: {stage.required_gate}</span>}
+            {stage.state === 'blocked' && stage.blocked_reason && <span className="mt-1 block text-xs text-brand-err">Blocked: {stage.blocked_reason}</span>}
+          </span>
+        </button>
+        {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} onOpenAudit={onOpenAudit} /></div>}
+      </article>
+      {!isLast && <div aria-hidden="true" className="ml-5 h-3 border-l border-brand-border" />}
+    </li>
+  }
+
+  const renderGroupRow = (args: {
+    groupId: SpineGroupId
+    title: string
+    state: NirmanaCampaignStage['state']
+    memberStages: NirmanaCampaignStage[]
+  }) => {
+    const { groupId, title, state, memberStages } = args
+    const open = expanded.has(groupId)
+    const panelId = `campaign-group-${groupId}`
+    return <li className="relative pb-3 last:pb-0">
+      <article className="rounded-xl border border-brand-border bg-brand-bg">
+        <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => toggle(groupId)} onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggle(groupId)
+          }
+        }} className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">
+          <span className="mt-0.5 shrink-0">{open ? <ChevronDown aria-hidden="true" className="size-4 text-brand-gold-2" /> : <ChevronRight aria-hidden="true" className="size-4 text-brand-text-3" />}</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm font-semibold text-brand-text-1">{title}</span>
+              <span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(state)}{statusLabel(state)}</span>
+              <ProvenanceChip kind="evidence_derived" />
+            </span>
+            <span className="mt-1 block text-xs text-brand-text-3">{memberStages.length} collapsed {memberStages.length === 1 ? 'stage' : 'stages'}</span>
+          </span>
+        </button>
+        {open && <div id={panelId} className="border-t border-brand-border px-3 py-3">
+          <ol className="space-y-0">{memberStages.map((stage, index) => renderStageItem(stage, index === memberStages.length - 1))}</ol>
+        </div>}
+      </article>
+    </li>
+  }
+
   return <section aria-labelledby="campaign-spine-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
     <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
       <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-gold-1">Sequential state machine</p><h2 id="campaign-spine-heading" className="text-lg font-semibold text-brand-text-1">Campaign spine</h2></div>
       <p className="text-xs text-brand-text-3">Opening a stage is a local view preference, not execution state.</p>
     </div>
-    <ol className="space-y-0" aria-label="Nirmāṇa campaign stages">
-      {stages.map((stage, index) => {
-        const open = expanded.has(stage.stage_id)
-        const name = stageName(stage, snapshot)
-        const panelId = `campaign-stage-${stage.stage_id}`
-        const isCurrent = stage.stage_id === snapshot.campaign.current_stage
-        const count = countLabel(stage)
-        return <li key={stage.stage_id} className="relative pb-3 last:pb-0">
-          <article className={`rounded-xl border bg-brand-bg ${isCurrent ? 'border-brand-gold-1/70' : 'border-brand-border'}`}>
-            <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => toggle(stage.stage_id)} onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                toggle(stage.stage_id)
-              }
-            }} className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">
-              <span className="mt-0.5 shrink-0">{open ? <ChevronDown aria-hidden="true" className="size-4 text-brand-gold-2" /> : <ChevronRight aria-hidden="true" className="size-4 text-brand-text-3" />}</span>
-              <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`text-sm font-semibold ${isCurrent ? 'text-brand-gold-2' : 'text-brand-text-1'}`}>{name}</span><span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(stage.state)}{statusLabel(stage.state)}</span>{count && <span className="text-xs text-brand-text-3">{count}</span>}</span>
-                {!/^L[0-5]$/.test(stage.stage_id) && <span className="mt-1 block font-mono text-[10px] text-brand-text-3">Stage ID: {stage.stage_id}</span>}
-                {stage.state === 'locked' && <span className="mt-1 block text-xs text-brand-text-3">Prerequisite: {stage.required_gate}</span>}
-                {stage.state === 'blocked' && stage.blocked_reason && <span className="mt-1 block text-xs text-brand-err">Blocked: {stage.blocked_reason}</span>}
-              </span>
-            </button>
-            {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} onOpenAudit={onOpenAudit} /></div>}
-          </article>
-          {index < stages.length - 1 && <div aria-hidden="true" className="ml-5 h-3 border-l border-brand-border" />}
-        </li>
-      })}
-    </ol>
+    <div className="space-y-4">
+      <section aria-label="Phase A">
+        <ol className="space-y-0" aria-label="Phase A stages">
+          {renderGroupRow({ groupId: 'PHASE_A_GROUP', title: 'PHASE A', state: snapshot.programme.phase_a.state, memberStages: phaseAStages })}
+        </ol>
+      </section>
+      <section aria-label="O-Wave">
+        <ol className="space-y-0" aria-label="O-Wave work packages">
+          <li className="relative pb-3 last:pb-0">
+            <article className="rounded-xl border border-brand-border bg-brand-bg px-3 py-3">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h3 className="text-sm font-semibold text-brand-text-1">O-WAVE</h3>
+                <span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(snapshot.programme.o_wave.state)}{statusLabel(snapshot.programme.o_wave.state)}</span>
+                <ProvenanceChip kind="repo_declared" />
+              </div>
+              <ul className="mt-2 space-y-1 text-xs text-brand-text-2">
+                {snapshot.programme.o_wave.wps.map((wp) => <li key={wp.wp_id}>{wp.name}: {wp.status}</li>)}
+              </ul>
+            </article>
+          </li>
+        </ol>
+      </section>
+      <section aria-label="Layers">
+        <ol className="space-y-0" aria-label="Nirmāṇa campaign stages">
+          {layerStages.map((stage, index) => renderStageItem(stage, index === layerStages.length - 1))}
+        </ol>
+      </section>
+      <section aria-label="Phase Z">
+        <ol className="space-y-0" aria-label="Phase Z stages">
+          {renderGroupRow({ groupId: 'PHASE_Z_GROUP', title: 'PHASE Z', state: snapshot.programme.phase_z.state, memberStages: phaseZStages })}
+        </ol>
+      </section>
+    </div>
   </section>
 }
