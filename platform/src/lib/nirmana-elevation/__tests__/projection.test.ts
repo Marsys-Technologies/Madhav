@@ -805,4 +805,10 @@ describe('projectProgrammePosition', () => {
     expect(projectProgrammePosition({ currentStage: 'CLOSING', layerWaveProgress: {}, layerNames: {}, openWp: null }).phase_id).toBe('PHASE_Z')
     expect(projectProgrammePosition({ currentStage: 'COMPLETE', layerWaveProgress: {}, layerNames: {}, openWp: null }).phase_id).toBe('PHASE_Z')
   })
+
+  it('reports O_WAVE when there is an open WP and no current stage yet (previously untested branch)', () => {
+    const position = projectProgrammePosition({ currentStage: null, layerWaveProgress: {}, layerNames: {}, openWp: { wp_id: 'WP-3' } })
+    expect(position.phase_id).toBe('O_WAVE')
+    expect(position.label).toContain('WP-3')
+  })
 })

@@ -7,7 +7,7 @@ import { LayerStage } from './LayerStage'
 import { ProvenanceChip } from './ProvenanceChip'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import type { NirmanaStageId } from '@/lib/nirmana-elevation/projection'
-import { PRE_L0_STAGE_IDS } from '@/lib/nirmana-elevation/programme'
+import { POST_L5_STAGE_IDS, PRE_L0_STAGE_IDS } from '@/lib/nirmana-elevation/programme'
 import { stageDisplayName } from './vocab'
 
 function stageName(stage: NirmanaCampaignStage, snapshot: NirmanaElevationSnapshotV2): string {
@@ -58,13 +58,13 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
     const currentStage = snapshot.campaign.current_stage
     const initial = new Set<NirmanaStageId | SpineGroupId>(currentStage ? [currentStage] : ['L0'])
     if (currentStage && PRE_L0_STAGE_IDS.includes(currentStage)) initial.add('PHASE_A_GROUP')
-    if (currentStage === 'CLOSING' || currentStage === 'COMPLETE') initial.add('PHASE_Z_GROUP')
+    if (currentStage && POST_L5_STAGE_IDS.includes(currentStage)) initial.add('PHASE_Z_GROUP')
     return initial
   })
   const stages = [...snapshot.stages].sort((left, right) => left.order - right.order)
   const phaseAStages = stages.filter((stage) => PRE_L0_STAGE_IDS.includes(stage.stage_id))
   const layerStages = stages.filter((stage) => /^L[0-5]$/.test(stage.stage_id))
-  const phaseZStages = stages.filter((stage) => stage.stage_id === 'CLOSING' || stage.stage_id === 'COMPLETE')
+  const phaseZStages = stages.filter((stage) => POST_L5_STAGE_IDS.includes(stage.stage_id))
 
   const toggle = (stageId: NirmanaStageId | SpineGroupId) => {
     setExpanded((open) => {

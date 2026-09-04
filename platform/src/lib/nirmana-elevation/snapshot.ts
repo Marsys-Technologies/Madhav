@@ -762,11 +762,18 @@ function buildProgrammeSnapshot(
 ): NirmanaElevationSnapshotV2['programme'] {
   const phaseAState = summarizeStageGroupState(stages, PRE_L0_STAGE_IDS)
   const phaseZState = summarizeStageGroupState(stages, POST_L5_STAGE_IDS)
-  const oWaveState: 'locked' | 'active' | 'completed' =
-    phaseAState !== 'completed' ? 'locked'
-      : PROGRAMME_O_WAVE_WPS.every((wp) => wp.status === 'merged') ? 'completed'
-        : 'active'
-  const openWp = oWaveState === 'active' ? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status !== 'merged') ?? null : null
+  // O-wave state is derived purely from the manifest's WP statuses — it never gates or is
+  // gated by Phase A (or any other) stage evidence (plan Ruling R2).
+  const oWaveState: 'active' | 'completed' =
+    PROGRAMME_O_WAVE_WPS.every((wp) => wp.status === 'merged') ? 'completed' : 'active'
+  // Prefer an in-progress WP over a not-started one — WP statuses are not guaranteed
+  // monotonic (e.g. WP-2 not_started while WP-3 is already in_progress), so "first
+  // non-merged" would misreport which WP is actually open.
+  const openWp = oWaveState === 'active'
+    ? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status === 'in_progress')
+      ?? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status === 'not_started')
+      ?? null
+    : null
   const layerWaveProgress = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.wave_progress]))
   const layerNames = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.layer_name]))
   const position = projectProgrammePosition({
@@ -1207,6 +1214,12 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     }
   })
   const campaignAssetById = new Map(assets.map((asset) => [asset.asset_id, asset]))
+  // Only assets with a manifest-authoritative milestone denominator (i.e. `milestones_required
+  // !== null`) may contribute to a layer's wave-progress denominators. `milestones_required` is
+  // null for both an asset absent from the frozen manifest and one with
+  // `execution_obligation: 'unresolved'` (see `projectAssetMilestones`) — either case is an
+  // honest "unknown," never a fabricated 6-milestone default.
+  const wavableAssets = assets.filter((asset) => asset.milestones_required !== null)
   const baseLayers = layerEvidence.map((layer) => {
     const layerManifest = manifestAssets?.filter((asset) => asset.layer === layer.layer_id) ?? []
     const waves = [...new Set(layerManifest.map((asset) => asset.wave_index).filter((value): value is number => value != null))]
@@ -1242,7 +1255,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
       layer_name: NIRMANA_LAYER_NAMES[layer.layer_id],
       required_gate: layerStage.required_gate,
       eligible_next_asset_ids: isCurrent ? eligibleNextAssetIds : [],
-      wave_progress: projectLayerWaveProgress(assets, layer.layer_id),
+      wave_progress: projectLayerWaveProgress(wavableAssets, layer.layer_id),
     }
   })
   const active_runs = activeRuns.map((run) => {
