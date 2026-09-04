@@ -28,6 +28,31 @@ calibrated against the two documented ground-truth defects
 (`bo_laksana.py:831` / `registry_bridge.ts:3498`, SUDDHA_VACA_FIX_LEDGER_v1_0
 P0-5/P0-1) rather than a literal parse of the brief sentence.
 
+TIGHTENED 2026-09-05 (F-C14, issue #1750, Conductor ruling). The disjunction
+above was too weak in one specific shape, and the calibration note explains
+why the hole was not obvious: a query that REDUCES TO ONE ROW was allowed to
+do so on `ORDER BY ... LIMIT 1` alone. That reasoning conflates DETERMINISM
+with CORRECTNESS. `deriveShadbalaWeakestGraha` (L2_bodha/query_ucd.ts) takes
+the MIN over `fact_category='graha_shadbala_total'`, which holds two
+incommensurable `fact_key` populations -- every `ratio` (0.84-1.69) sorts
+below every `rupa` (4.64-8.47) -- so the MIN can never land in `rupa` and a
+ratio is reproducibly served under a field named `shadbala_rupa`. Stable,
+repeatable, and wrong every single time.
+
+So the rule now splits:
+  * a query that reduces to one row MUST pin fact_key (the brief's literal
+    conjunction -- and the ~90 false positives never had a LIMIT 1, so this
+    branch costs none of them);
+  * a query that does not reduce keeps the original calibrated disjunction.
+
+The same fix opened the second hole: TS SQL template literals were never
+scanned at all (only `.find()`/`.filter()[0]`), so the canonical instance of
+the defect class this guard exists for was invisible to it on two independent
+counts. `scan_ts_sql_text` closes that, reusing `_is_unsafe_sql_block` so the
+SQL rule cannot drift between host languages, and `run_self_test` now runs
+BOTH TS scanners -- running only one is how a green self-test shipped
+alongside a blind scanner.
+
 Python (scanned under python_scan_globs, default platform/python-sidecar/**/*.py):
     Any string literal that looks like a SQL SELECT against `chart_facts`
     filtering on `fact_category` (`fact_category = ...` / `fact_category IN
@@ -242,6 +267,31 @@ def _is_unsafe_sql_block(sql: str) -> bool:
     has_fact_key = bool(_RE_FACT_KEY_FILTER.search(sql))
     has_order_limit = bool(_RE_ORDER_BY.search(sql)) and bool(_RE_LIMIT_1.search(sql))
     has_distinct_on = bool(_RE_DISTINCT_ON.search(sql))
+    reduces_to_one_row = has_order_limit or has_distinct_on
+
+    # TIGHTENED (F-C14, issue #1750). A query that REDUCES TO ONE ROW must ALSO
+    # pin fact_key -- the reduction is no longer independently sufficient.
+    #
+    # The original rule accepted `ORDER BY ... LIMIT 1` on its own, reasoning
+    # that "the total order makes the one surviving row reproducible". That
+    # reasoning conflates DETERMINISM with CORRECTNESS. Reproducibly taking the
+    # extremum across two incommensurable fact_key populations is deterministic,
+    # stable, and wrong every single time -- which is exactly
+    # deriveShadbalaWeakestGraha (L2_bodha/query_ucd.ts), where every `ratio`
+    # (0.84-1.69) sorts below every `rupa` (4.64-8.47), so MIN can never land in
+    # `rupa` and a ratio is served under a field named `shadbala_rupa`.
+    #
+    # CLAUDE.md §N.7 item 2 states it as a conjunction -- "pins fact_key AND
+    # carries a total ORDER BY" -- and this branch is that conjunction.
+    if reduces_to_one_row:
+        return not has_fact_key
+
+    # NON-reducing queries keep the ORIGINAL calibrated disjunction. This is
+    # deliberate, not an oversight: the module docstring records that an
+    # AND-form draft produced ~90 false positives on the legitimate, widespread
+    # "fact_key-pinned multi-row subject lookup" pattern. Those queries do not
+    # reduce to one row, so they cannot exhibit the defect above, and the
+    # calibration that excluded them stands.
     return not (has_fact_key or has_order_limit or has_distinct_on)
 
 
@@ -296,6 +346,29 @@ def _has_sort_before(text: str, call_start: int) -> bool:
         window_start = bm.end()
     window = text[window_start:call_start]
     return ".sort(" in window
+
+
+def scan_ts_sql_text(text: str) -> List[tuple]:
+    """Return (line, kind, snippet) for unsafe chart_facts SQL in TS template literals.
+
+    scan_ts_text below only ever inspected `.find(...)` / `.filter(...)[0]` over
+    an in-memory fact array. Raw SQL in a backtick template literal -- which is
+    how the serving layer actually queries chart_facts -- was never scanned at
+    all, so `deriveShadbalaWeakestGraha` (L2_bodha/query_ucd.ts) was invisible
+    to this guard on top of being permitted by the pre-tightening rule.
+
+    `_is_unsafe_sql_block` is reused deliberately rather than reimplemented:
+    one rule, two host languages, so the SQL rule cannot drift between them.
+    """
+    hits: List[tuple] = []
+    for m in re.finditer(r"`[^`]*`", text, re.S):
+        sql = m.group(0)
+        if not _is_unsafe_sql_block(sql):
+            continue
+        line = text.count("\n", 0, m.start()) + 1
+        snippet = " ".join(sql.split())[:160]
+        hits.append((line, "sql_select", snippet))
+    return hits
 
 
 def scan_ts_text(text: str) -> List[tuple]:
@@ -356,9 +429,10 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                     snippet=snippet,
                     message=(
                         "SELECT against chart_facts filters by fact_category "
-                        "with NONE of: a fact_key pin, a deterministic "
-                        "ORDER BY ... LIMIT 1, or a DISTINCT ON reduction "
-                        "(brief §5 C.7 — the D1 defect class)."
+                        "without a fact_key pin. A deterministic ORDER BY ... "
+                        "LIMIT 1 / DISTINCT ON is NOT sufficient on its own: it "
+                        "makes the result reproducible, not correct (§N.7 item 2 "
+                        "— the D1 defect class; F-C14 / issue #1750)."
                     ),
                 )
             )
@@ -383,6 +457,24 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                         "with NEITHER a fact_key check in the predicate NOR a "
                         ".sort(...) deterministic tiebreak chained beforehand "
                         "(brief §5 C.7 — the D1 defect class)."
+                    ),
+                )
+            )
+
+        for line, kind, snippet in scan_ts_sql_text(text):
+            violations.append(
+                Violation(
+                    file=rel,
+                    line=line,
+                    lang="typescript",
+                    kind=kind,
+                    snippet=snippet,
+                    message=(
+                        "SQL template literal against chart_facts filters by "
+                        "fact_category without a fact_key pin. A deterministic "
+                        "ORDER BY ... LIMIT 1 / DISTINCT ON is NOT sufficient on "
+                        "its own: it makes the result reproducible, not correct "
+                        "(§N.7 item 2 — the D1 defect class; F-C14 / issue #1750)."
                     ),
                 )
             )
@@ -459,7 +551,13 @@ def run_self_test() -> int:
         if fixture.suffix == ".py":
             hits = scan_python_text(text)
         elif fixture.suffix == ".ts":
-            hits = [(line, snippet) for line, _kind, snippet in scan_ts_text(text)]
+            # Both TS scanners, so a fixture exercising SQL template literals is
+            # actually covered. Running only scan_ts_text here is how the F-C14
+            # gap could have shipped a green self-test alongside a blind scanner.
+            hits = [
+                (line, snippet)
+                for line, _kind, snippet in (scan_ts_text(text) + scan_ts_sql_text(text))
+            ]
         else:
             continue
         if hits:
@@ -472,7 +570,10 @@ def run_self_test() -> int:
         if fixture.suffix == ".py":
             hits = scan_python_text(text)
         elif fixture.suffix == ".ts":
-            hits = [(line, snippet) for line, _kind, snippet in scan_ts_text(text)]
+            hits = [
+                (line, snippet)
+                for line, _kind, snippet in (scan_ts_text(text) + scan_ts_sql_text(text))
+            ]
         else:
             continue
         if not hits:
