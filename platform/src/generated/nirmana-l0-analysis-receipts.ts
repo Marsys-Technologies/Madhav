@@ -3,7 +3,7 @@ import writerDigestInventory from './nirmana-writer-digests.json'
 
 export const NIRMANA_L0_CONVERGENCE_COMMIT = '49bb5c98b864a2cb2fee037cdb7f14f6892a8263' as const
 export const NIRMANA_L0_ANALYSIS_RECEIPT_COUNT = 40 as const
-export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '4edfaa7290184cd637bd53bdb97079a797c617a757360a5f43d11d3ea509f07c' as const
+export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = '8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae' as const
 // This is a durable receipt identifier, not a SQL relation reference.  Keep
 // existing accepted L0 bases stable after the physical table moves into the
 // nirmana_evidence schema; the evidence parser resolves both identifiers.
