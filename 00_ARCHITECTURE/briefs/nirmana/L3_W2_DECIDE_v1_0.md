@@ -59,12 +59,13 @@ whether the asset's own writer output changes**:
 | 17 | `ka_kala_darshana` | build | **changed** | correct | `conv_score or 0.5` — the §N.7 item-6 computed-zero defect verbatim |
 | 18 | `ka_jivana_parva` | build | **changed** | correct | mixes MD/AD/PD with no level column; 100 rows against a registry note of "typically 9" |
 | 19 | `ka_bhavishya_lekha` | build | **changed** | correct | all 100 projections share one `peak_date`, one score, one tier; narrates calibration over an uncalibrated substrate |
-| 20 | `ka_graha_sancara` | probe | **probe** | correct | probe cannot pass until two real defects land (§4 M3) — route honours the frozen obligation, the fix is its precondition |
+| 20 | `ka_graha_sancara` | probe | **changed** | correct | *(route corrected 2026-09-05 per the Conductor's ruling on #1734, which upheld the diagnosis and ruled `changed`, not `probe`.)* I had routed it `probe` on the reasoning that the frozen `execution_obligation` binds. Both are true and they are different vocabularies: the **route** is `changed` because real code must change before anything about this asset can be accepted, while its **terminal evidence** is still `probe_accepted` per the frozen obligation. Routing it `probe` understated that the work is a code fix, not a re-run |
 | 21 | `ka_muhurta_seva` | probe | **probe** | correct | healthy; its declared edge is fictional and its only consumer gets 0.0 on 1128/1128 rows |
 | 22 | `ka_dasha_kala` | probe | **probe** | examined_and_already_efficient | sound, real consumers, best L1 drill path; serving default `ayanamsha_id='lahiri'` returns 0 rows |
 | 23 | `ka_tulana` | probe | **probe** | correct | self-test ranks two synthetic objects where all four factors favour A — it cannot fail |
 
-**Distribution:** `changed` 11 · `rebuild_only` 6 · `probe` 4 · `verified_reuse` 1 · `retired` 1.
+**Distribution:** `changed` **12** · `rebuild_only` 6 · `probe` **3** · `verified_reuse` 1 · `retired` 1.
+*(Was 11/6/4/1/1 before `ka_graha_sancara` was re-routed `probe → changed` per the #1734 ruling.)*
 
 **No asset is routed `rebuild_only` merely to look cheap, and none is routed `changed` merely to
 look thorough.** The eleven `changed` assets each have a named correctness defect with a measured
@@ -163,6 +164,8 @@ this table, and a batch rebuild silently destroys `record_evidence()` rows.
 
 | held | on | note |
 |---|---|---|
+| **`ka_gochara_resonance` + `ka_graha_sancara`** | **#1734 RULED — HELD** | the Conductor upheld the finding in full and ruled both held: *"Do not run a canary through a gate you have proved is not measuring anything. Report zero; that is the honest number and I am accepting it as the layer's status, not as a shortfall."* |
+| **every L3 asset, until its `depends_on` is audited** | **D-CND-07** (standing, campaign-wide) | *"A green E-gate is a necessary condition for W4, never a sufficient one… Where it does not [match what the writer reads], or where it has not been checked, the asset is HELD regardless of what the gate says."* L3's full both-directions audit is in flight |
 | every W2 **acceptance event** (23) | **#1715** (ruled; L1 authoring) | the routes above are *decided*; only the evidence writes wait. Per the ruling, writing them early would force re-acceptance |
 | every W4 dispatch (23) | **#1730** / #1725 | the dispatcher enforces strict layer sequencing, not C2's gate |
 | an honest gate canary | **#1734** | L3 has none until the DAG is reconciled; I will not manufacture one |
