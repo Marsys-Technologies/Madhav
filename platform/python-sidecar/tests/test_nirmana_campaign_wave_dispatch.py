@@ -865,3 +865,36 @@ def test_terminalizes_a_run_when_dispatch_fails_without_acceptance() -> None:
     assert "UPDATE build_run_assets SET state='aborted'" in sql
     assert "accept" not in sql.lower()
     assert params[1] == "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
+
+def test_live_registry_fingerprint_is_insensitive_to_depends_on_array_order() -> None:
+    """depends_on is a set; only its ORDER may differ between the stored row and the freeze.
+
+    The TypeScript authority (registryContractFingerprintInput, definitions.ts) sorts
+    depends_on before hashing. If this dispatcher hashes the raw stored order, then for any
+    asset whose stored array is not already alphabetical no single fingerprint value can
+    satisfy both sides: the sorted value makes the dispatcher refuse to dispatch, and the
+    unsorted value makes the tracker report permanent contract drift. Measured on L3 at the
+    time this test was written, that deadlock covered 15 of 23 ka_* assets while all 23
+    matched the frozen manifest under the sorted computation -- i.e. pure array order, no
+    semantic contract change anywhere.
+
+    This test fails on the unsorted implementation and passes on the sorted one, so the fix
+    has a detector behind it rather than resting on inspection.
+    """
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    contract = _contract(sort_order=10, target_table="kala_avadhi")
+    ordered = {
+        "asset_id": "ka_avadhi",
+        "layer": "kala",
+        "depends_on": ["ga_positions", "ka_kalasutra", "bg_reference"],
+        **contract,
+    }
+    shuffled = {**ordered, "depends_on": ["ka_kalasutra", "bg_reference", "ga_positions"]}
+
+    assert module._live_registry_fingerprint(
+        ordered, campaign_layer="L3"
+    ) == module._live_registry_fingerprint(shuffled, campaign_layer="L3")

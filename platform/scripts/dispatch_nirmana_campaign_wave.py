@@ -230,7 +230,11 @@ def _current_l0_analysis_receipt_digests(
             current_registry_contract={
                 "asset_id": asset_id,
                 "layer": "L0",
-                "depends_on": candidate.get("depends_on") or [],
+                # Sort to match the canonical server computation
+                # (registryContractFingerprintInput sorts depends_on); an
+                # unsorted multi-dependency list here diverges from the digest
+                # the evidence route accepted, breaking dispatch for such assets.
+                "depends_on": sorted(candidate.get("depends_on") or []),
                 "registry_contract": _live_registry_contract(candidate),
             },
             writer_digest=writer_digest,
@@ -262,7 +266,11 @@ def _live_registry_fingerprint(
         {
             "asset_id": asset_id,
             "layer": campaign_layer,
-            "depends_on": dependencies,
+            # Sort to match the canonical server fingerprint
+            # (registryContractFingerprintInput sorts depends_on); an unsorted
+            # multi-dependency list diverges from the frozen manifest's stored
+            # fingerprint and the accepted analysis, breaking dispatch.
+            "depends_on": sorted(dependencies),
             "registry_contract": _live_registry_contract(candidate),
         },
         ensure_ascii=False,
