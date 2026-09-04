@@ -216,11 +216,13 @@ class PhNimittaWriter(WriterBase):
 
         # Step 6: batch insert
         rows_inserted = 0
+        identity_collapsed = 0
         with conn.cursor() as cur:
             for a in anchors:
                 cur.execute(
                     """
                     INSERT INTO phala_anchors (
+                        anchor_id,
                         chart_id, anchor_source, convergence_id, discovery_id,
                         bhavishya_id, signal_id, subsystem_source,
                         event_type, direction, domain, horizon_tier,
@@ -235,6 +237,12 @@ class PhNimittaWriter(WriterBase):
                         school_consensus_jsonb, ayanamsha_robustness,
                         falsifier, derivation_ledger_jsonb, source_citation
                     ) VALUES (
+                        -- D-CND-04 (#1732): the anchor's identity is DERIVED, not random.
+                        -- Computed by the single source of truth in migration 680 rather
+                        -- than reimplemented here, so the two can never drift.
+                        phala_anchor_identity(
+                            %s::uuid, %s, %s, %s, %s, %s, %s::date, %s::date, %s::date, %s
+                        ),
                         %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s, %s, %s,
@@ -249,9 +257,13 @@ class PhNimittaWriter(WriterBase):
                         %s::jsonb, %s,
                         %s, %s::jsonb, %s
                     )
-                    ON CONFLICT DO NOTHING
+                    ON CONFLICT (anchor_id) DO NOTHING
                     """,
                     (
+                        # -- the identity tuple (grade-free; see migration 680) --
+                        chart_id, a.anchor_source, a.event_type, a.direction, a.domain,
+                        a.horizon_tier, a.window_start, a.peak_date, a.window_end, a.falsifier,
+                        # -- the row itself --
                         chart_id, a.anchor_source, a.convergence_id, a.discovery_id,
                         a.bhavishya_id, a.signal_id, a.subsystem_source,
                         a.event_type, a.direction, a.domain, a.horizon_tier,
@@ -267,8 +279,25 @@ class PhNimittaWriter(WriterBase):
                         a.falsifier, json.dumps(a.derivation_ledger_jsonb), a.source_citation,
                     ),
                 )
-                rows_inserted += 1
+                # §N.8: count what the database actually accepted, never assume the
+                # insert landed. An unconditional `rows_inserted += 1` beside an
+                # ON CONFLICT DO NOTHING is a claimed count with no measurement behind
+                # it -- the defect this layer's W1 found live in ph_muhurta (139
+                # claimed / 134 stored).
+                if cur.rowcount == 1:
+                    rows_inserted += 1
+                else:
+                    identity_collapsed += 1
 
+        if identity_collapsed:
+            # Never silent. Two anchors sharing a computed identity are, by the
+            # definition in migration 680, the same predicted event -- which is
+            # CR-46's own doctrine. Collapsing them is correct; hiding it is not.
+            logger.warning(
+                "ph_nimitta: %d anchor(s) collapsed onto an existing deterministic "
+                "identity (same predicted event). See issue #1748.",
+                identity_collapsed,
+            )
         logger.info("ph_nimitta: inserted %d rows into phala_anchors for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_nimitta', rows_inserted=rows_inserted)
 
