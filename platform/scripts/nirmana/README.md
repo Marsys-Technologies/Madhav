@@ -108,3 +108,34 @@ is hardcoded here rather than left to each caller.
 
 A **409** is surfaced with a note rather than treated as a plain failure: it means the event already
 exists, which is usually correct idempotent behaviour. Check the ledger before re-submitting.
+
+## `capsule_audit.sql` — capsule integrity audit (Phase-Z instrument, run continuously)
+
+```bash
+psql "$DATABASE_URL" -f platform/scripts/nirmana/capsule_audit.sql
+```
+
+The Phase-Z 128/128 audit instrument, written early and run every loop so terminal claims are
+checked **as they are made** rather than all at once at the end. Three sections, all answered by
+SQL and never from any session's narration:
+
+| § | question | pass condition |
+|---|---|---|
+| 1 | does every frozen asset have a complete evidence chain? | **0 rows** |
+| 2 | was the implementer ≠ certifier identity split ever crossed? | every row `ok`, none `*** CROSSED ***` |
+| 3 | where does the campaign actually stand, per layer? | (informational) |
+
+§1 and §2 are the load-bearing ones. Both are written so a PASS requires a **real absence of
+violations** and both would surface a violation if one existed — an audit that could only ever
+print "clean" would be the §N.8 defect wearing an auditor's coat.
+
+A §2 crossing is a **hard-floor breach** (an implementer certifying its own asset), not a style
+issue. It is not something to fix quietly and move on from: stop, and file it.
+
+### One thing to know about §3
+
+The `COALESCE(e.routed, false)` in §3 is load-bearing, not defensive noise. An asset with **no
+events at all** yields NULL from the lateral join, and `NOT NULL` is NULL — so a bare
+`NOT e.routed` counts zero, making a layer that has *not started* look identical to one that is
+*fully routed*. This was caught by running the audit against L1–L5 while they were still empty and
+getting `unrouted = 0` for 88 assets that had never been touched. Do not simplify it away.
