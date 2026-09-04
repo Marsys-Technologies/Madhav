@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L4
 layer: L4 — Phala
 owner: the L4 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — L4-W1 in flight
+last_updated: 2026-09-05 — L4-W2 complete; W3-0 next
 ---
 
 # L4 — Phala — SESSION STATE
@@ -24,21 +24,29 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-`L4-W1` — ANALYZE in flight (4 read-only subagents fanned out over the 9 assets).
+`L4-W2` — **DECIDE COMPLETE (9/9 routed; 85 findings triaged, plus M-31 from ruling #1732).**
+Next: **W3-0**, the deterministic anchor identity — the layer's highest-priority unheld item, and the
+one that lifts the campaign-wide hold on `phala_anchors`.
+
+- **W1 ANALYZE** ✅ COMPLETE 9/9 — `L4_W1_ANALYSIS_{INDEX,BATCH_A..D}.md`, PR **#1735** (docs-only, auto-merge armed).
+- **W2 DECIDE** ✅ COMPLETE — `L4_W2_DECIDE_v1_0.md`. **All nine route `changed`**: no `rebuild_only`,
+  no `verified_reuse`, no services. Every asset carries at least one MUST correctness finding, so a
+  rebuild of current code would faithfully reproduce the defect. Said plainly rather than routing the
+  cleanest asset `rebuild_only` to make the layer look cheaper (D-L4-11).
 
 ## Asset table (9 assets — frozen definition `t0-2026-09-01-0e5b06fb`, live-verified)
 
 | asset_id | route | status | E-gate | capsule | notes |
 |---|---|---|---|---|---|
-| `ph_nimitta` | TBD | W1 | wave 0 · **37/46 ancestors unfrozen** | — | **the layer root + my canary**; `phala_anchors`; canonical `stale` 139 rows |
-| `ph_muhurta` | TBD | W1 | wave 1 · 38/47 unfrozen | — | `phala_muhurta`; `stale` 139 rows |
-| `ph_pratikara` | TBD | W1 | wave 1 · 40/49 unfrozen | — | `phala_mitigation`; `stale` 536 rows (Abhinandan 741 — inversion to explain) |
-| `ph_rectification` | TBD | W1 | wave 1 · 38/47 unfrozen | — | `phala_rectification` + `_best`; 186 rows on **both** charts |
-| `ph_sankrama` | TBD | W1 | wave 1 · 38/47 unfrozen | — | `phala_sankrama`; `stale` **2,510 rows** — the layer's largest |
-| `ph_sodhana` | TBD | W1 | wave 1 · 38/47 unfrozen | — | `phala_sodhana`; `stale` 97 rows |
-| `ph_suddha_sodhana` | TBD | W1 | wave 2 · 39/48 unfrozen | — | `phala_suddha_sodhana`; `stale` 139 rows |
-| `ph_pramana` | TBD | W1 | wave 3 · 45/54 unfrozen | — | `phala_pramana`; the D5 NO-SCORING honest-probability surface |
-| `ph_phaladesa` | TBD | W1 | wave 4 · 46/55 unfrozen | — | `phala_phaladesa`; the verdict surface; 13 rows on **both** charts |
+| `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **REBUILD HELD campaign-wide (ruling #1732)** | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity) |
+| `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
+| `ph_pratikara` | **changed** | W2 done | wave 1 · 40/49 unfrozen | — | **7 MUST**, incl. the layer's hard-floor item (fabricated citation on 100% of 1,277 rows); needs a rerun **after** its writer fix |
+| `ph_rectification` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 1 MUST: `load_bearing: true` on a fit that is 0.0000 across all 95 scored candidates |
+| `ph_sankrama` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: 250 rows (10%) destroyed by a stale domain map; `trajectory` constant from an `or 0.0` |
+| `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
+| `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
+| `ph_pramana` | **changed** | W2 done | wave 3 · 45/54 unfrozen | — | 1 MUST: `life_event_miss` is a refutation from a detector that cannot return a match. D5 gate verified CLEAN — do not add a score |
+| `ph_phaladesa` | **changed** | W2 done | wave 4 · 46/55 unfrozen | — | 2 MUST: **zero MCP consumers**; headline anchor ignores the purification verdict |
 
 All 9: `asset_kind=artifact` · `asset_type=data` · `scope=per_chart` · `has_writer=true` ·
 `has_substeps=false` · `domain=chart` · `rung=R4` · `is_active=true` · `catalog_status=DRAFT` ·
@@ -75,6 +83,17 @@ manifest's own `wave_index`): 0:{nimitta} · 1:{muhurta, pratikara, rectificatio
 - **F-L4-B (all 9 assets):** `catalog_status='DRAFT'` across the entire layer, while all nine have
   real build history on two charts and live serving consumers. Labelling drift to triage in W2.
 
+## Conductor rulings binding on L4
+
+- **#1732 — D-CND-04 (BINDING, effective immediately, campaign-wide).** `ph_nimitta` /
+  `phala_anchors` rebuilds are **HELD** until L4 announces the deterministic-key capability under
+  `## CAPABILITIES LANDED` on `main`. L4 owns the key's shape, the one-time remap of the existing 195,
+  and a D-CND-03-partitioned referential-integrity detector. Blast radius verified by the Conductor:
+  **6,606 rows across 9 tables — seven of them L4's own.** L4's tables self-heal on a whole-layer
+  rebuild; **L5's never do** (`mi_bhavisya` deliberately preserves adjudicated rows, so the safeguard
+  becomes an orphan generator). ACK + verified design refinement posted; **W3-0 in flight.**
+  My W1 had graded this *verify-only, handed to L5* — **withdrawn, ownership accepted** (D-L4-13).
+
 ## Adjudication issues filed (C3/C7)
 
 - **#1718 — ADJ-L4-01** *(not blocking L4; L1 meets it first)* — charter C2.3's writer-digest
@@ -97,6 +116,13 @@ manifest's own `wave_index`): 0:{nimitta} · 1:{muhurta, pratikara, rectificatio
   Recommendation: per-layer chart-agnostic `integrity_check_sql` (C12 requires it anyway) + harden
   the fallback to reject a parameterized detector with an actionable message instead of an opaque
   Postgres error.
+- **#1739 — ADJ-L4-04** — `seed_native_phala_anchors()`: a deployed function inserting hand-authored
+  predictions with hand-assigned confidences into `phala_anchors`, citing the deleted FORENSIC v8.0,
+  **live-routed** at `POST /api/compute/phala/seed_anchors` and held back only by a schema mismatch —
+  while its acceptance gate asserts an idempotency PASS over a function that cannot run. Raised rather
+  than fixed: it sits inside the native-ruled P7 parking and would require dropping a deployed DB
+  object. Recommendation: sever the route, keep the function, fix the false PASS regardless.
+  **Not blocking.**
 - **#1725 — ADJ-L4-03** — two contradictions between the ratified charter and the shared dispatcher.
   (1) `campaign_prerequisite_asset_ids` (`:435–:464`) requires **every asset in every lower-ranked
   layer**, never consulting dependency edges, and `:786–:794` makes a miss fatal with no override —
@@ -132,6 +158,26 @@ Charter C6 — each NEW capability downstream layers may consume, one line, with
 
 _(none yet — L5 Mīmāṃsā is my only downstream consumer)_
 
+## Handed across to other sessions (W2 §8)
+
+- **L5** — `mi_bhavisya.py:178` writes an **anchor_id into `source_pramana_id`** (195/195 resolve as
+  `phala_anchors.anchor_id`, **0/195** as `phala_pramana.pramana_id`, both written in the same build
+  8 s apart — never staleness), while five generated projections advertise the ph_pramana link. Also
+  `mimamsa_anchor_adjustment.multiplier = 0.95` on all 195 rows with `evidence_n = 0`.
+- **L2** — is `bodha_discoveries.discovery_id` stable across a `bo_anveshana` rebuild? It has no column
+  default, so a writer assigns it; if it is fresh-per-build, D-CND-04 applies to `bo_anveshana` and my
+  discovery-sourced anchors inherit the problem. Also: `bodha_cdlm_cells.cell_evolution_gradient_score`
+  is 100% NULL across 280 and 75 cells (disposition needed — my fix is correct either way); `bo_upaya`'s
+  real chapter-level citations sit unpropagated on 135/135 rows.
+- **L3** — `kala_convergence.convergence_id` and `kala_bhavishya.id` are **`bigserial`** and neither
+  table declares a natural-key index; **anything storing a `convergence_id` across a rebuild has the
+  D-CND-04 problem.** Separately, **the election seam**: four live surfaces answer election-adjacent
+  questions and **no arbiter exists anywhere** (`grep partially_aligned|adjudicated_by|temporal_concordance`
+  → 0 matches across all three trees); the one wire between `ph_muhurta` and `kala_elect_get` queries
+  three columns that do not exist and has been dead since the schema changed. Write-set overlap to
+  agree before either of us touches it: `kala_upaya_diagnosis.ts`, `kala_views/upaya.ts`,
+  `kala_views/elect.ts`, `muhurta_finder.ts` — Kāla names over L4 assets.
+
 ## Cost ledger
 
 | asset | wall-clock | tokens | notes |
@@ -139,7 +185,9 @@ _(none yet — L5 Mīmāṃsā is my only downstream consumer)_
 | _(layer-wide)_ bootstrap + live registry/E-gate/manifest read | ~10 min | — | 8 read-only DB queries, 0 writes |
 | _(layer-wide)_ `npm ci` in worktree (C4 local-verification prereq) | ~6 min | — | background, exit 0 |
 | _(layer-wide)_ shared-tooling audit → 3 adjudication issues | ~35 min | — | read-only; #1718, #1723, #1725 |
-| _(layer-wide)_ W1 fan-out | in flight | — | 4 concurrent read-only subagents |
+| _(layer-wide)_ W1 fan-out | ~11 min wall | ~702k subagent | 4 concurrent read-only subagents, 232 tool uses |
+| _(layer-wide)_ W1 deliverables + PR #1735 | ~25 min | — | 5 documents, ~2,400 lines |
+| _(layer-wide)_ W2 DECIDE + #1739 + the #1732 design | ~40 min | — | 9 routes, 85 findings triaged, 13 decisions |
 
 ## Slot claims (C5)
 
@@ -152,3 +200,9 @@ _(none — no L4 asset is E-gate-open; `ph_nimitta` has 37/46 ancestors unfrozen
   dispatched, #1718 filed.
 - `2026-09-05T~04:40Z` — L4-W1 — shared-tooling audit complete; #1723 (campaign-blocking) and #1725
   filed; state file rebased onto the Conductor's stub shape. No slot claimed (nothing dispatchable).
+- `2026-09-05T~05:20Z` — L4-W1 — all four subagents returned; five W1 deliverables written; PR #1735
+  opened with auto-merge armed.
+- `2026-09-05T~06:00Z` — L4-W2 — DECIDE complete (9/9 `changed`); #1739 filed; ruling #1732 read,
+  accepted, and answered with a **verified** design refinement — the obvious deterministic key would
+  not in fact have been deterministic, because it embeds two `bigserial`s. W3-0 next. No slot claimed
+  (nothing dispatchable; `ph_nimitta` is additionally held by #1732 until I lift it).
