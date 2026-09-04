@@ -131,23 +131,64 @@ session's decision log already establishes (D-VR-14/24/27/28 precedent). 8 items
 
 D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
 
-12. `bg_concordance` — WIRE `classical_attribution_lookup.ts` to live `classical_attributions`
-    (currently a hardcoded stub returning `[]`) — this is plan §5's own named work item
-    ("disposition here is WIRE, not retire"). Cite D-SERVICE. Bounded cost: repoint one TS query
-    function, no new schema.
-13. `bg_concordance` — verify live whether `bg_text_index`'s topic-tag coverage has progressed past
-    35% before treating the 721-row floor as current — cite D-SERVICE; cheap, verification-only.
-14. `bg_sky_calendar` — add a dedicated MCP/retrieval query capability (currently one narrow
-    internal Python consumer, no general-purpose surface, unlike sibling `bg_muhurta_lattice`) —
-    cite D-SERVICE; bounded cost, mirrors `query_muhurta_lattice.ts`'s existing pattern.
+12. ~~`bg_concordance` — WIRE `classical_attribution_lookup.ts` to live `classical_attributions`~~
+    **RESCOPED to NEVER/LATER, L2 (2026-09-04, L0-W3 Batch 1).** Investigated the actual wiring
+    work before implementing it: `classical_attribution_lookup.ts`'s interface is keyed by MSR
+    `signal_id` (input: `signal_ids: string[]`; output rows carry `msr_signal_id`,
+    `attribution_type`, `content`, `chapter`, `verse_range`), but `classical_attributions`
+    (bg_concordance's own table) is keyed by `(topic_id, school)` and has no `signal_id` column
+    or join path to one — repointing the stub to bg_concordance's table as originally proposed is
+    not a valid fix, it would be a schema mismatch masquerading as a repoint. The real target is
+    almost certainly `bodha_msr_signals.classical_sources_jsonb`/`rule_ids`/`text_chunk_ids` (an
+    L2-Bodha table, migration 325, explicitly documented as "structured L0 bridge" — this is very
+    likely what the stub's own `TODO(ws-2): repoint to... bodha_signals citation scaffolds` names),
+    joined against `classical_text_chunks`/`sutravali_rules` for the display fields — plus a real
+    design question (how `attribution_type`'s confirms/contradicts/partial/extends/silent grading
+    derives from a flat citation list, which nothing in the current schema answers). This is
+    genuine L2-Bodha design work, not a bounded L0-W3 repoint. Re-reading the plan's own text
+    confirms the original W1/W2 scoping was wrong here too: "its consumer lands at L2" (plan §5)
+    means the CONSUMER-SIDE wiring is L2's job — L0's job (already done, verified in W1) is
+    keeping `bg_concordance`'s own 720 rows correct and fresh. Handed to L2-W3 with this
+    investigation's findings attached so that work starts from a real lead, not a re-derivation.
+13. `bg_concordance` — **verified 2026-09-04 (L0-W3 Batch 1), live against production:**
+    `bg_text_index` coverage is UNCHANGED — `classical_text_chunks`: 10,651 total, 7,010 tagged
+    (still 34% unclassified), 361 distinct topic_tag values, exactly matching the historical
+    figure. So the 721-row floor question this item asked about is answered: no, coverage has not
+    progressed, the floor doesn't need raising for that reason. **New finding surfaced by this
+    verification, not previously known:** live `classical_attributions` row count is **720**, one
+    row short of the registry's `target_floor=721` (distinct topic count matches exactly at 361
+    on both sides — the discrepancy is specifically in row count, not topic coverage). Small,
+    not urgent, but real — added as new item 13a below rather than silently noted and dropped.
+14. **DONE (2026-09-04, L0-W3 Batch 1, PR pending).** `bg_sky_calendar` — new capability
+    `query_sky_calendar.ts` (table `bg_sky_events`), mirroring `query_muhurta_lattice.ts`'s
+    structure exactly: interval filter, `event_type`/`primary_body` optional filters, honest
+    `empty_reason` naming the rolling-horizon cause, explicit disclaimer that chart-contact
+    interpretation is out of scope. 11 new tests, all passing; full `src/lib/retrieval/` suite
+    (1922 tests) unaffected; `tsc`/`eslint` clean. Registered in `L0_brahmagyan/index.ts`.
 15. `bg_reference` — re-verify at sub-table granularity whether `reference_houses` and
     `reference_strength_systems` are genuinely INPUT-ONLY-by-design or orphaned — cite D-SERVICE.
 16. `bg_reference` — resolve the `reference_nakshatra` vs `reference_nakshatras` one-character
     naming-collision hazard already flagged in `ZERO_CONSUMER_EVIDENCE_v1_0.md` — cite D-SERVICE.
-17. `bg_vidhi_primitives` / `bg_vidhi_floors` — verify the writer docstrings' "V-2 MCP-resource
-    face" claim is actually live/reachable (no resource registration found beyond the TS types
-    file in this read-only pass) — cite D-SERVICE ("every active asset has a consumer or a
-    recorded disposition").
+17. **DONE via verification (2026-09-04, L0-W3 Batch 1) — confirmed live, real, reachable, no
+    code change needed.** `bg_vidhi_primitives` / `bg_vidhi_floors` — the "V-2 MCP-resource face"
+    is real: `platform-mcp/src/resources/vidhi_registry_resource.ts` registers
+    `marsys://vidhi/registry` (full registry) and `marsys://vidhi/floor/{intent}` (per-intent,
+    all 8 enumerated) as live, listed, readable MCP resources. It serves the TS-vendored mirror
+    (`platform-mcp/src/resources/vidhi/`, drift-guarded against `platform/src/lib/vidhi/` by
+    `vidhi_registry_parity.test.ts`), not a direct read of the `vidhi_primitives`/
+    `vidhi_intent_floors` DB tables — an intentional, established pattern (the same
+    mirror-plus-CI-parity-gate design both writers already use), not a gap. The writer docstrings'
+    "V-2 MCP-resource face" phrasing is accurate in substance; W2's original framing ("no resource
+    registration found... beyond the TS types file") was itself a read-only-pass artifact — the
+    actual resource file (`vidhi_registry_resource.ts`) lives one directory up from where that
+    pass looked (`resources/vidhi/types.ts`), not inside it.
+13a. **NEW (2026-09-04, surfaced by item 13's verification).** `bg_concordance`'s live row count
+    (720) is one short of its registry `target_floor` (721), while distinct-topic coverage matches
+    exactly (361/361) on both sides. Small, not urgent — cite CLAUDE.md §N.4 (floors track
+    achieved counts; a 1-row gap needs a look, not a guess at which side is wrong). W3 follow-up:
+    diff the writer's computed topic set against the 361 currently in `classical_attributions` to
+    find the specific missing topic/school combination, or confirm 721 was itself a stale
+    over-count from before a legitimate single-topic consolidation.
 18. `bg_kota_chakra_rings` — confirm the `ka_kota_chakra` → `kala_kota_chakra` serving path reads
     this L0 table's rows correctly end-to-end (lineage-proof exercise, cheap given the existing
     byte-identity check) — cite D-SERVICE.
