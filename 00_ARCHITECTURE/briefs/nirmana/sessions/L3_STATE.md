@@ -113,6 +113,34 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | 2026-09-05 | poll `L2_STATE.md` §CAPABILITIES LANDED on `origin/main` |
 | 18 of 23 assets' W4 | L0/L1/L2 freezes (E-gate, C2) | 2026-09-05 | `ga_positions` is the single highest-leverage unlock (5 assets) |
 
+## Rulings received (binding — Conductor, ADHIKĀRIN precedent)
+
+- **#1721 → GRANTED (my filing).** Registry-fingerprint ordering: the code is the deviation, the
+  data is not. **L0's data-normalisation remedy is explicitly NOT extended to L1–L5 — no layer
+  session may normalise `asset_registry.depends_on` to route around it.** The L0 session's unopened
+  fix (`4381eb66b`) was opened as **PR #1728** with auto-merge armed, plus a mutation-proof
+  regression test the original fix lacked. **Binding on me: record the SORTED fingerprint** in
+  analysis receipts — the value the TS authority, the frozen manifest and (post-#1728) the
+  dispatcher all agree on. Re-verify deploy ancestry (C4) before the first dispatch that depends
+  on it. My 15 deadlocked assets unblock when #1728 lands.
+- **#1723 / #1727 → GRANTED as D-CND-03** (my #1724 was the same finding; I withdrew it as a
+  duplicate and recorded L3's acceptance there). Binding standard for every integrity contract:
+  **prefer chart-partitioned invariants** — `NOT EXISTS (SELECT 1 FROM <t> GROUP BY chart_id
+  HAVING <violation>)` — over whole-table aggregates, because a corruption confined to one chart
+  can be numerically swamped in a whole-table aggregate and missed. A non-partitionable aggregate
+  is permitted only with a SQL comment naming why. **D-CND-01**: `expected_volume_formula` +
+  `expected_volume_inputs` are REQUIRED where a count equality is the volume assertion.
+  **L3 owns 19 contracts** (23 assets − 4 services, which take the health-probe path). The
+  ruling's L3 count matches my independent measurement exactly.
+- **#1715 → GRANTED, Option A.** The evidence spine is generalised from L0-only to all layers;
+  **L1 authors, Conductor merges**; L4's #1718 folded in (`writer_digest_sha256` carried in the
+  `asset_analysis_accepted` payload and compared layer-agnostically). **Binding on me: no W2
+  acceptance event may be written until that PR is merged and deployed** — otherwise the payload
+  shape changes under us and analyses must be re-accepted. W1 and W2 *decisions* are unaffected
+  and continue (C8).
+- **#1730 (mine) / #1725 (L4)** — dispatcher strict-layer sequencing vs C2's asset frontier:
+  **still open. This is L3's remaining W4 blocker.**
+
 ## Findings ledger (W1 — running; batch analyses fold in as they land)
 
 - **F-L3-1 (MUST, campaign-blocking, filed #1721)** — Registry-fingerprint ordering deadlock. The
@@ -144,6 +172,32 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
   defect. Volume expectations must be DERIVED or set as achieved-count floors (§N.4) in W3.
 - **F-L3-5 (observation, feeds W2)** — All 6 artifact-kind assets are `catalog_status='DRAFT'`.
   Batch E is establishing whether DRAFT is honest or stale.
+- **F-L3-6 (MUST, filed #1730, OPEN)** — The shared dispatcher enforces pre-v2.1 strict layer/wave
+  sequencing (`campaign_prerequisite_asset_ids`, hard `raise` at line 770), not C2's asset frontier.
+  An L3 wave-0 dispatch demands **all 81 L0+L1+L2 assets frozen (52 unfrozen)**, while
+  `ka_gochara_resonance`'s true transitive closure is **one asset, already frozen**. Two further
+  conflicts in the same neighbourhood: a campaign-wide **single**-active-run lock (line 797) against
+  C5's ≤3, and a one-shot-per-wave guard (line 806) upstream of C8's `force=true`. L4 filed the same
+  finding independently as #1725.
+- **F-L3-7 (NOW, raw material gathered)** — Constraint reconnaissance for the 19 D-CND-03 contracts.
+  **8 L3 target tables already carry a DB-enforced natural-key UNIQUE** (`gochara_resonance_map`
+  chart+event_class+target_type+target_ref · `kala_avadhi` chart+system+level+period_start ·
+  `kala_field` chart+event_class+segment_index · `kala_kota_chakra` and `kala_moorti_nirnaya`
+  chart+ayanamsha+graha+window_start · `kala_sudarshana_varsha` chart+ayanamsha+varsha_year ·
+  `kala_taranga` chart+month+scope_kind+scope_id · `kala_tithi_pravesha` chart+ayanamsha+
+  pravesha_year · `kala_vedha_gochara` chart+ayanamsha+vedha_kind+graha+window_start). For those a
+  distinctness invariant is **redundant with the constraint** and would fail C12's rewrite-floor
+  test — their contracts must assert something the constraint cannot (contiguity, tiling,
+  cross-table consistency, range/NULL guards).
+  **9 tables have only a surrogate `id` PK and no natural key**: `kala_activation`,
+  `kala_activation_predicates`, `kala_bhavishya`, `kala_convergence`, `kala_darshana`,
+  `kala_gochara_windows`, `kala_gochara_windows_v2`, `kala_jivana_parva`, `kala_obstruction`. For
+  those a natural-key distinctness invariant **is** load-bearing: it is the only thing that would
+  detect cross-build accretion, which §N.3 (per-chart delete-then-insert) forbids but nothing
+  currently checks. `kala_activation` is the one to watch — 671K rows, no natural key.
+- **F-L3-8 (NOW)** — `natural_key_partition` is NULL on all 23 L3 assets. Not L3-specific (L1 0/19,
+  L2 0/22, L4 0/9, L5 0/15 — only L0 populates it, 21/40), so this is a campaign-wide pattern rather
+  than an L3 omission; recorded here so W2 rules on it deliberately rather than by silence.
 
 ## CAPABILITIES LANDED
 
@@ -164,4 +218,5 @@ your layer close.
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
+- `2026-09-05T…Z — L3-W1 — rulings absorbed (#1721 GRANTED/PR #1728; D-CND-03 binding; #1715 Option A — no W2 acceptance until it deploys); #1724 withdrawn as duplicate with acceptance recorded; constraint reconnaissance done for the 19 owed contracts; per-loop gate poll scripted; #1730 remains the open W4 blocker.`
 - `2026-09-05T…Z — L3-W1 — bootstrap complete; DB read path live; C10 gate run (2 assets OPEN); 5 read-only W1 batch subagents dispatched (A gochara / B overlays / C services / D heavy+ssv / E artifact spine); 2 campaign-blocking findings filed as #1721 and #1724; deploy ancestry verified execution-safe.`
