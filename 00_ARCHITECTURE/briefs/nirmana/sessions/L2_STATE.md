@@ -43,7 +43,7 @@ the invariant sketches in `L2_W2_DECIDE_v1_0.md` were written to satisfy it.
 
 ## POSITION
 
-`L2-W2 complete → L2-W3 open` (opened 2026-09-04T22:30Z). 22 assets, none terminal.
+`L2-W3 in flight` (was: `L2-W2 complete -> L2-W3 open`) (opened 2026-09-04T22:30Z). 22 assets, none terminal.
 W1 deliverable `L2_W1_ANALYSIS_v1_0.md`; W2 ruling `L2_W2_DECIDE_v1_0.md` (22 routes, 14 MUST,
 25 NOW, 8 LATER). W4 gated on L1 freezes — `bo_sudarshana` is the frontier at 1 unfrozen
 ancestor (`ga_positions`) and is the designated canary.
@@ -54,6 +54,8 @@ ancestor (`ga_positions`) and is the designated canary.
 |---|---|---|---|
 | 1 | 2026-09-04T22:30Z | L2-W1 | worktree created; charter + plan 4/5 read; 22-asset roster pulled from frozen definition; first census run; 5 read-only W1 subagents dispatched |
 | 2 | 2026-09-04T23:20Z | L2-W2 | all 5 W1 lanes returned; `L2_W1_ANALYSIS_v1_0.md` + `L2_W2_DECIDE_v1_0.md` written; 3 adjudications filed (#1716 tooling, #1720 system_convergence_count, #1726 sruti/verse-addressability); PR #1717 (state bootstrap) in queue |
+| 3 | 2026-09-05T00:10Z | L2-W3 | five W3 PRs open (#1741 salience truth, #1752 registry accuracy + CI guard, #1755 tail-lane percentile, #1760 tail_watch trim-proofing, #1767 L1-handoff fixes); rulings received on all three of my adjudications; cross-layer DRAFT finding filed (#1753) |
+| 4 | 2026-09-05T00:45Z | L2-W3 | **W4 HELD** -- verified L4's #1748 and found its grading wrong in the dangerous direction: a `bo_laksana` rebuild CASCADE-deletes 710,899 L3 rows. Filed #1770 TIME-CRITICAL. Replied to #1748 and #1750. Migration 661 (corroboration null-out, D-CND-06 pairing) authored |
 
 ## ASSET TABLE (22)
 
@@ -117,6 +119,84 @@ Routes assigned in W2. `--` = not yet ruled.
   chunks / 361 topics) directly and hands `bg_concordance`'s own repair back as a named backlog
   item rather than silently routing around it. `bg_concordance.py` is L0's write-set (C5).
   Recorded in adjudication #1726 in case the Conductor prefers to rule on it.
+
+## W3 SHIPPED (five PRs)
+
+| PR | what | W2 items |
+|---|---|---|
+| #1741 | **salience truth** -- bind 6 computed-but-never-written columns; AV scale fix at the feed; argala reinstated; vargottama from L1; honest NULLs for cancellation/neechabhanga; corroboration fabrication removed; dead shadow tables deleted | M-01, M-02, M-04, M-08, N-01..N-06 |
+| #1752 | **registry accuracy** -- `catalog_status` sweep (9), `target_table` (2), `sort_order` collisions (2), `expected_volume_formula` (2 wrong cleared, 6 derived) + a **static CI guard** so the DRAFT bug cannot return | M-09, M-11, N-20, N-21 |
+| #1755 | **tail-lane percentile** -- one shared `salience_rank` module; the five satellite writers now set `salience_pctl_in_class`, so the six rarest classes stop shipping NULL on the column the tail predicate ranks on | N-16 |
+| #1760 | **`tail_watch` trim-proofing** -- hardFloor section declared once in both budget entry points + `IMMUNE_HONESTY_FIELDS` membership; both are needed and they guard different paths | N-14 |
+| #1767 | **L1 handoff (#1750)** -- shadbala selector pinned to `fact_key='rupa'`; `salience_formula_version` literals unified to the constant | (L1 handoff) |
+
+## CORRECTIONS TO MY OWN W1 FINDINGS
+
+Recorded because W1 shipped them as findings and the close report must not repeat them.
+
+- **A9/A10/A11 were all one defect, and a different one than I reported.** Six salience
+  columns (`class_prior`, `salience_inputs_complete`, `present_but_enfeebled`, `bala_gate`,
+  `functional_context_score`, `verification_rescale`) are computed by `_build_signal_row` and
+  were **never bound into `_INSERT_SQL`**. Every stored row carried the DB default. Proof: the
+  writer hardcodes `class_prior: 1.2` for `varga_ratification_divergence` and all 16 such rows
+  read 1.000000 -- a literal cannot miss a lookup.
+  - **A10 was wrong.** `salience_inputs_complete = false` on 100% of rows was reported as an
+    alarming measurement; it is the column DEFAULT on an unbound column. Never a measurement.
+  - **A11 was wrong about the cause.** The 0% `class_prior` variance was attributed to the
+    join key convention -- which is what the in-code guard itself speculates. The join may be
+    fine. And because that guard reads the in-memory dict, it can report a healthy hit rate
+    while the stored column stays 1.0: a guard measuring something other than what ships.
+- **L1's #1750 item 3 was off by three orders of magnitude**, and I verified rather than
+  relayed it: `v2.0` 149,391 / `v2` 444 / `v1.0` 315 -- not "150,150 rows at v1.0". The real
+  defect is smaller and in two parts; one fixed, one deliberately deferred as a vocabulary
+  question with a live consumer.
+
+## ADJUDICATIONS
+
+### Raised by L2
+
+| # | subject | state |
+|---|---|---|
+| #1716 | shared evidence-submission helper (`nrec`) -- Conductor-owned tooling | RULED, Option 1: `platform/scripts/nirmana/nrec` landed (PR #1731). **L2 uses it; the inline fallback is void.** It requires `--as` and CHECKS it rather than inferring, so a session cannot mint a verifier capsule for work it implemented without noticing it crossed the line |
+| #1720 | `system_convergence_count` has no honest per-signal definition as plan 5 specifies | RULED, Option 1 conditionally; Option 2 the mandated fallback. **All four pre-committed tests PASSED** -- see below |
+| #1726 | D-GROUNDING's `sruti` = "verse refs" is not emittable | RULED, Option 1: `sruti` scoped to text-direct + `citation_granularity`. Option 3 **rejected on the record**. Precedent **D-CND-06**: writer fix and data correction ship together |
+| #1753 | cross-layer: 46 assets are `catalog_status='DRAFT'`, L3/L4/L5 entirely so | filed for routing; not L2's to fix |
+| #1770 | **TIME-CRITICAL** -- an L2 rebuild CASCADE-deletes 710,899 L3 rows | OPEN. **W4 held on this** |
+
+### Addressed to L2
+
+| # | from | outcome |
+|---|---|---|
+| #1750 | L1 | 2 of 3 fixed in PR #1767; item 2 (AV multiplier) already fixed independently in #1741, and at the feed rather than by re-banding; item 3 verified and found 3 orders of magnitude smaller than reported. Replied in full |
+| #1748 | L4 | Verified against my own table; **grading corrected** -- the table replaces rather than accretes, and the FKs are CASCADE not NO ACTION. Escalated as #1770. Its identity-instability point and its "stale-but-resolving is harder to detect than an orphan" framing both stand and are what prompted me to check the delete path |
+
+## DEGENERACY THRESHOLD FOR `system_convergence_count` -- AND ITS RESULT
+
+**Threshold pre-committed and pushed at 2026-09-04T23:14:31Z (commit `d13ef67f4`), before any
+measurement of the proposed definition ran** -- ruling #1720 condition 2, on the reasoning that a
+threshold chosen after seeing the numbers is not a test. Verifiable in git rather than asserted.
+
+Definition under test: for each signal, the count of OTHER signals in the same
+`(chart_id, ayanamsha_id)` sharing at least one `constituent_facts_array -> chart_facts.fact_subject`.
+
+| # | test | degenerate if | measured (canonical chart, lahiri) | verdict |
+|---|---|---|---|---|
+| T1 | spread | CV < 0.25 | **CV = 2.0020** (mean 29.82, sd 59.70) | PASS |
+| T2 | dominant value | any value > 60% of populated rows | top value `1` at **21.24%** | PASS |
+| T3 | resolution | fewer than 8 distinct values | **74**, range 1-997 | PASS |
+| T4 | within-class variation | fewer than 5 distinct inside `composite_state` | **52** across 5,497 rows, range 1-345 | PASS |
+
+T4 is the one that decides it: the variation lives INSIDE the largest class, not merely between
+classes, which is what makes it a per-signal quantity rather than a class proxy -- the exact
+property the rejected domain-level definition lacked. I also committed to abandoning the
+definition if a coarser grouping explained a passing distribution; I looked and could not find
+one, and reported that as a negative result I searched for rather than an absence I assumed.
+
+**Three-way storage split the measurement forced** (one ayanamsha, 10,003 signals):
+7,012 rows get the count · **2,860 get a measured `0`** (facts resolve, no sharing neighbour --
+real information about the signal) · **131 get `NULL`** (no resolvable constituent facts --
+nothing checked, nothing claimed). Collapsing the last two would repeat the defect the standing
+NULL-not-`'{}'` convention exists to prevent.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
@@ -208,7 +288,19 @@ post-insert UPDATE of one scalar salience column over ~28K rows took **600 s+** 
 
 ## HELD ITEMS
 
-None. Charter C6: L2 has **no inbound** capability dependency -- L2 is the publisher others wait on.
+- **`bo_laksana` W4 dispatch -- HELD on adjudication #1770 (TIME-CRITICAL).** Not a capability
+  hold (C6) and not an E-gate hold (C2): a hard-floor hold. Verifying L4's #1748 against my own
+  table showed its grading wrong in the direction that matters. `bodha_msr_signals` REPLACES
+  (explicit `DELETE` in `replace_prior_msr_for_chart`; the canonical chart's three `build_id`s
+  hold 49,955/104/45 rows, not nine accumulated generations), and all eight FKs onto it are
+  **`ON DELETE CASCADE`**, not `NO ACTION` as `_idempotency.py`'s own docstring claims. So an
+  ordinary L2 rebuild silently destroys **710,899 L3 rows** (`kala_activation` 672,551 +
+  `kala_convergence` 35,365 + `kala_darshana` 1,500 + `kala_obstruction` 1,283 +
+  `kala_bhavishya` 200) and orphans ~152,000 more in the five referencing tables that carry no
+  FK. The DAG models ancestors; the exposure here is descendants.
+  **Nothing else is held** -- all W3 work continues; none of it writes a row.
+- Charter C6: L2 still has **no inbound** capability dependency. L2 is the publisher others
+  wait on.
 
 ## CAPABILITIES LANDED
 
@@ -217,7 +309,17 @@ None. Charter C6: L2 has **no inbound** capability dependency -- L2 is the publi
 Expected publications: consensus columns populated - grounding fields populated - `tail_watch`
 shipped - adjudication table live.
 
-- *(none yet -- W3 in progress)*
+- *(none yet on `main` -- the five W3 PRs are in the merge queue. Each is announced here the
+  moment it merges, per C6.)*
+
+**Ruled definition, to be carried here verbatim when the grounding lane lands (#1726 condition 3):**
+`sruti` means **text-direct at the finest granularity the corpus supports** -- NOT verse-direct.
+`classical_text_chunks.chapter` is a page number and `verse_start`/`verse_end` are column
+indices, so a chapter-verse citation cannot be honestly composed from this corpus. The
+limitation is carried machine-readably by `citation_granularity IN ('page_column',
+'chapter_verse')`, NOT NULL with no writer default, and the rendered citation string is
+self-describing ("p.211 col.1", never "211.1"). Plan §2's D-GROUNDING wording says "verse
+refs"; this is the ruled reading of it.
 
 ## COST LEDGER
 
