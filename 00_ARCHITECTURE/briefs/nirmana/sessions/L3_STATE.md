@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L3
 layer: L3 — Kāla
 owner: the L3 session (this file is yours alone — charter C5)
-last_updated: (none yet — stub created by CONDUCTOR at v2.1 bootstrap)
+last_updated: 2026-09-05T00:00Z — L3 session bootstrapped, W1 opened
 ---
 
 # L3 — Kāla — SESSION STATE
@@ -35,24 +35,115 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-`L3-W1` — not started.
+`L3-W1` — IN PROGRESS (opened 2026-09-05, this session).
+
+**Bootstrap facts established live (not assumed):**
+- Worktree `~/nirmana-s/l3` created from `origin/main` = `20323fae4`. Branch `codex/nirmana-l3-w1-analysis`.
+- `NIRMANA_HOLD` absent at the shared checkout root — standing authorization confirmed (C3).
+- DB read path live via the already-running Cloud SQL proxy (`127.0.0.1:5433`, `amjis_app`).
+- Frozen definition `t0-2026-09-01-0e5b06fb` carries **23/23** L3 assets; live `asset_registry`
+  also has exactly 23 `ka_*` rows. No manifest/registry count drift at L3.
+- L3 wave_index distribution in the frozen manifest: W0=10 · W1=5 · W2=1 · W3=3 · W4=1 · W5=3.
+- Charter C10 batch gate run live: **`ka_gochara_resonance` and `ka_graha_sancara` are the only
+  two L3 assets with 0 unfrozen ancestors today** — exactly as the session prompt predicted.
+  Everything else is gated behind L0/L1/L2 freezes (`ga_positions` alone unblocks 5 more).
 
 ## Asset table (23 assets)
 
-Populate from the frozen definition `t0-2026-09-01-0e5b06fb`, one row per asset:
-`asset_id | W2 route | status | E-gate | capsule ref | notes`.
+Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the timestamp below
+(unfrozen-ancestor count; 0 = OPEN). Routes fill in at W2.
 
-| asset_id | route | status | E-gate | capsule | notes |
-|---|---|---|---|---|---|
-| _(populate at W1)_ | | | | | |
+| asset_id | kind | obl. | wave | route | status | E-gate | capsule | notes |
+|---|---|---|---|---|---|---|---|---|
+| ka_gochara_resonance | data | build | 0 | _W2_ | W1 | **0 — OPEN** | — | **canary candidate**; fingerprint clean |
+| ka_graha_sancara | service | probe | 0 | _W2_ | W1 | **0 — OPEN** | — | **canary candidate**; but `service_health='unhealthy'` — see F-L3-3 |
+| ka_kota_chakra | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
+| ka_moorti_nirnaya | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
+| ka_sudarshana_varsha | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
+| ka_tithi_pravesha | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
+| ka_vedha_gochara | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
+| ka_muhurta_seva | service | probe | 1 | _W2_ | W1 | 1 (ka_graha_sancara) | — | opens the moment the canary freezes |
+| ka_gochara_sweep | data | retired_with_disposition | 1 | _W2_ | W1 | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
+| ka_dasha_kala | service | probe | 0 | _W2_ | W1 | 2 | — | |
+| ka_gochara | data | build | 1 | _W2_ | W1 | 2 | — | v2/v3 authority question |
+| ka_gochara_v3_century_materialize | data | build | 1 | _W2_ | W1 | 6 | — | **MONSTER — solo slot** |
+| ka_avadhi | data | build | 0 | _W2_ | W1 | 20 | — | |
+| ka_yojaka | data | build | 0 | _W2_ | W1 | 20 | — | |
+| ka_kshetra | data | build | 1 | _W2_ | W1 | 25 | — | **MONSTER — solo slot**; 11.0M rows / 5.0 GB |
+| ka_sangam | artifact | build | 2 | _W2_ | W1 | 28 | — | arbiter's likely home |
+| ka_kalasutra | artifact | build | 3 | _W2_ | W1 | 29 | — | 671K rows vs 33s estimate — check |
+| ka_vighnakara | artifact | build | 3 | _W2_ | W1 | 29 | — | |
+| ka_taranga | data | build | 3 | _W2_ | W1 | 30 | — | **derived-view vs witness decision owed** |
+| ka_kala_darshana | artifact | build | 4 | _W2_ | W1 | 31 | — | |
+| ka_bhavishya_lekha | artifact | build | 5 | _W2_ | W1 | 32 | — | |
+| ka_jivana_parva | artifact | build | 5 | _W2_ | W1 | 32 | — | |
+| ka_tulana | service | probe | 5 | _W2_ | W1 | 32 | — | |
+
+E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every loop (C8.6) —
+`ga_positions` alone unblocks 5 assets, and `ka_gochara_resonance` freezing unblocks 2 more.
 
 ## Decisions log
 
-One line per decision you take under delegated authority (C3): what, why, evidence.
+- **D-L3-1 (2026-09-05)** — Bootstrapped from `origin/main` `20323fae4` rather than waiting for the
+  Conductor's governance PR (#1714) to merge. Charter §preamble authorises reading the charter from
+  the shared checkout until it lands. I copied the Conductor's `L3_STATE.md` stub verbatim as my
+  base so the eventual rebase is a clean fast-forward, not a conflicting parallel authorship.
+- **D-L3-2 (2026-09-05)** — Did **not** unilaterally fix the registry-fingerprint ordering defect
+  (finding F-L3-1) even though a migration in my own 670–679 range would unblock my 15 assets. The
+  correct fix is in `dispatch_nirmana_campaign_wave.py`, which C5 makes Conductor-owned shared
+  tooling. Filed adjudication **#1721** with both options costed and continued. Evidence: my two
+  E-gate-open assets are unaffected, so this costs L3 zero wall-clock.
+- **D-L3-3 (2026-09-05)** — On finding F-L3-2 (integrity detector runs unparameterised) I
+  explicitly declined to propose the available tool fix (bind the chart id, letting `count_sql`
+  serve as the detector). It would let 81 assets across five layers freeze on a `positive_count`
+  verdict — "this table has >0 rows" — which is a gate weakening under the hard floor and exactly
+  the un-earned green signal C12/§N.8 forbid. Recommended instead that every per-chart layer author
+  real invariants in its own W3, which C12 already requires. Filed as cross-layer **#1724**.
+- **D-L3-4 (2026-09-05)** — Accepted the build job's image `7f6ab3add` as execution-safe for L3 W4
+  dispatch despite being 4 commits behind `main`, on measured ancestry evidence rather than on the
+  version number: `git diff 7f6ab3add..origin/main -- platform/python-sidecar/` is **empty**. The
+  intervening commits are docs plus `definitions.ts` (which runs in the web service, already at
+  main). Writer code in the image is byte-identical to main. Re-check before every dispatch (C4).
 
 ## Held items
 
-Anything blocked, with the specific gate it waits on (E-gate ancestor, capability-delta, adjudication #).
+| item | blocked on | since | note |
+|---|---|---|---|
+| W4 for 15 of 23 assets | adjudication **#1721** (fingerprint ordering) | 2026-09-05 | none of the 15 is E-gate-open today, so the hold is free |
+| Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | 2026-09-05 | poll `L2_STATE.md` §CAPABILITIES LANDED on `origin/main` |
+| 18 of 23 assets' W4 | L0/L1/L2 freezes (E-gate, C2) | 2026-09-05 | `ga_positions` is the single highest-leverage unlock (5 assets) |
+
+## Findings ledger (W1 — running; batch analyses fold in as they land)
+
+- **F-L3-1 (MUST, campaign-blocking, filed #1721)** — Registry-fingerprint ordering deadlock. The
+  TS authority sorts `depends_on` (`definitions.ts:135`); the Python dispatcher does not
+  (`dispatch_nirmana_campaign_wave.py:246`), though the same file *does* sort when comparing
+  dependency sets (line 518). For an asset whose live `depends_on` is not already alphabetical,
+  **no single fingerprint value satisfies both**: the sorted value makes the dispatcher refuse to
+  dispatch (line 325 skips the receipt, then raises); the unsorted value makes `snapshot.ts:854`
+  report permanent contract drift. Same defect class L0 hit on `bg_yogas`; L0 fixed the *data* for
+  5 assets and left the *code* defect armed. Measured live over all 23 L3 assets:
+  **sorted fingerprint == frozen manifest for 23/23** (so L3 has zero real contract drift — the
+  divergence is purely array order), live/unsorted matches for only 8/23. The 15 affected are
+  listed in #1721. Both canary candidates are in the clean 8.
+- **F-L3-2 (MUST, cross-layer, filed #1724)** — `integrity_verified` is mandatory on every route
+  (all 30 frozen L0 assets show it), and its detector executes registry SQL **with no bind
+  parameters** (`definitions.ts:1594`). Every per-chart layer's `count_sql` is `$1`-bound, so the
+  `integrity_check_sql ?? count_sql` fallback cannot fire for L1–L5 at all. Measured: L0 has 0
+  parameterised `count_sql` and 37 integrity contracts; L1/L2/L3/L4/L5 have 19/22/19/9/12
+  parameterised and **0/0/0/0/0** contracts. Consequence for L3: **19 real integrity contracts must
+  be authored in W3** (the 4 services take the health-probe path instead and are unaffected).
+  Declined the tool-side shortcut — see D-L3-3.
+- **F-L3-3 (open, batch C owns the diagnosis)** — `ka_graha_sancara` carries
+  `service_health='unhealthy'` while being one of only two E-gate-open L3 assets and the intended
+  gate canary. Under C12 a service is "lit" only on a current GREEN probe, so an unhealthy probe
+  blocks it, `ka_muhurta_seva` behind it, and the whole artifact spine behind that. C12 also
+  directs checking provenance first: a check that has never been green is a proposal, not a gate.
+- **F-L3-4 (NOW)** — All 23 L3 assets have `expected_volume_formula` NULL and
+  `expected_volume_inputs` NULL; 0 have a non-zero `target_floor`. C12 names the NULL itself the
+  defect. Volume expectations must be DERIVED or set as achieved-count floors (§N.4) in W3.
+- **F-L3-5 (observation, feeds W2)** — All 6 artifact-kind assets are `catalog_status='DRAFT'`.
+  Batch E is establishing whether DRAFT is honest or stale.
 
 ## CAPABILITIES LANDED
 
@@ -72,3 +163,5 @@ your layer close.
 ## Heartbeat
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
+
+- `2026-09-05T…Z — L3-W1 — bootstrap complete; DB read path live; C10 gate run (2 assets OPEN); 5 read-only W1 batch subagents dispatched (A gochara / B overlays / C services / D heavy+ssv / E artifact spine); 2 campaign-blocking findings filed as #1721 and #1724; deploy ancestry verified execution-safe.`
