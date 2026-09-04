@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-04T-l0-w3-must-fixes-plus-w2-grounding-scope-correction
+last_updated: 2026-09-05T-v2.1-parallel-sessions-active-conductor-bootstrap
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -14,6 +14,84 @@ Authoritative live state for the campaign defined in
 start/resume; trust it; continue from the recorded position. Once the P3 ops plane
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
+
+## ⟢ v2.1 ACTIVE — seven parallel sessions (2026-09-05, CONDUCTOR)
+
+**Read this section first.** The campaign is now running under
+`sessions/SESSION_CHARTER_V21.md` (native-ratified 2026-09-05) and
+`NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §1.1`. Everything below this section is the historical
+record of PHASE A → O-WAVE → L0, unchanged and still true; only the execution topology changed.
+
+**Coordination issue: [#1713](https://github.com/Marsys-Technologies/Madhav/issues/1713)** —
+run-slot claims/releases, freeze-ordering acks, monster scheduling. Adjudication questions go to
+separate issues labeled `nirmana-adjudication`; the CONDUCTOR rules them (surrogate authority,
+charter C3/C7).
+
+### Session roster
+
+| Session | Layer | Assets | Worktree | Branch prefix | Migrations | State file |
+|---|---|---:|---|---|---|---|
+| **L0** (pre-existing) | L0 Brahmagyan | 40 | `/Users/Dev/Vibe-Coding/Apps/Madhav` + `/private/tmp/madhav-nirmana-l0-*` | `feat/nirmana-l0-*` | — | this file's L0 sections |
+| **CONDUCTOR** | shared surfaces | — | `~/nirmana-s/conductor` | `codex/nirmana-conductor-*` | 645–649 | this section |
+| **L1** | L1 Gaṇita | 19 | `~/nirmana-s/l1` | `codex/nirmana-l1-*` | 650–659 | `sessions/L1_STATE.md` |
+| **L2** | L2 Bodha | 22 | `~/nirmana-s/l2` | `codex/nirmana-l2-*` | 660–669 | `sessions/L2_STATE.md` |
+| **L3** | L3 Kāla | 23 | `~/nirmana-s/l3` | `codex/nirmana-l3-*` | 670–679 | `sessions/L3_STATE.md` |
+| **L4** | L4 Phala | 9 | `~/nirmana-s/l4` | `codex/nirmana-l4-*` | 680–689 | `sessions/L4_STATE.md` |
+| **L5** | L5 Mīmāṃsā | 15 | `~/nirmana-s/l5` | `codex/nirmana-l5-*` | 690–699 | `sessions/L5_STATE.md` |
+
+L0's session finishes L0 and its close report, then ends. L1–L5 each own all six waves W1–W6 for
+their layer. The CONDUCTOR owns shared surfaces, adjudication, freeze ordering, and Phase Z.
+
+### What changed
+
+- **Gating moved from the LAYER to the ASSET.** An asset enters W4 when its own DAG ancestors are
+  frozen (charter §C10 gate SQL, queried never assumed), its W2 route is recorded, and its
+  generation-pins still match. W1/W2 are never gated; W3 is gated only by capability-deltas and
+  write-set disjointness.
+- **Layers still FREEZE strictly in order** L0→L1→L2→L3→L4→L5. Only the W6 ceremony is ordered —
+  asset-level work is never held for it. Acks are granted by the CONDUCTOR on #1713 after
+  verifying the layer's terminal state **by SQL, not by narration**.
+- **≤3 concurrent build runs campaign-wide** (DB max connections = 50 is the binding constraint);
+  monster writers count double and run solo. Slots are claimed/released by comment on #1713.
+- **No session ever asks the native anything** (charter C3). The native is asleep. Questions
+  become `nirmana-adjudication` issues and the session continues with other work meanwhile.
+
+### File ownership under v2.1 (charter C5)
+
+This file, the unified plan, the tracker, and the charter/session files are **CONDUCTOR-owned**;
+layer sessions record their state in their own `sessions/L<N>_STATE.md` and never edit this one.
+**Standing CONDUCTOR ruling, so nothing stalls on a technicality:** the pre-existing L0 session
+continues to append its own L0 narration sections here through its close, as it has been doing
+since P0 — that lane predates v2.1 and rewriting its habits mid-flight would buy nothing. The
+CONDUCTOR confines its own edits to this section and the phase table to keep the conflict surface
+small.
+
+### Live position at v2.1 bootstrap
+
+Verified by SQL against the frozen definition `t0-2026-09-01-0e5b06fb` (128 assets), 2026-09-05:
+
+| Layer | Assets | `asset_frozen` |
+|---|---:|---:|
+| L0 Brahmagyan | 40 | 29 |
+| L1 Gaṇita | 19 | 0 |
+| L2 Bodha | 22 | 0 |
+| L3 Kāla | 23 | 0 |
+| L4 Phala | 9 | 0 |
+| L5 Mīmāṃsā | 15 | 0 |
+| **Total** | **128** | **29** |
+
+The `## Current phase:` heading immediately below is the L0 session's own narration and lags its
+live position (it reads W2-complete while L0 is in fact well into W4, 29/40 frozen). Under the
+v2.1 topology there is no single "current phase" for the campaign anyway — six lanes advance at
+once. **Position is authoritative from the events table, not from any prose heading**, here or in
+a layer state file; that is exactly why freeze acks are granted on SQL.
+
+### CONDUCTOR log
+
+- `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
+  (`20323fae4`); labels `nirmana-adjudication` + `nirmana-coordination` created; coordination
+  issue #1713 opened; this governance PR raised (sessions dir, plan §1.1, this section, L1–L5
+  state stubs).
 
 ## Current phase: L0-W2 DECIDE COMPLETE (40/40 routed); L0-W3 IMPLEMENT next
 
