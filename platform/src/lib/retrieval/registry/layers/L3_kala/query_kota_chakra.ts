@@ -51,6 +51,13 @@ export const queryKotaChakraCapability: CapabilityDescriptor = {
     },
     as_of: { type: 'string', description: "Date (YYYY-MM-DD) to mark as 'current' (default: today)." },
     limit: { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
+    current_only: {
+      type: 'boolean',
+      description:
+        'When true, restrict the result to rows whose window contains `as_of` — i.e. apply the '
+        + 'currency filter in SQL, BEFORE the row cap, instead of leaving the caller to filter a '
+        + 'capped page afterwards. Default false (unchanged paging behaviour for existing callers).',
+    },
   },
 
   required_inputs: ['chart_id'],
@@ -75,11 +82,19 @@ export const queryKotaChakraCapability: CapabilityDescriptor = {
     const graha = args['graha'] ? String(args['graha']) : null
     const as_of = args['as_of'] ? String(args['as_of']) : new Date().toISOString().slice(0, 10)
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+    const current_only = args['current_only'] === true
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
     if (graha) { filters.push(`graha = $${p++}`); params.push(graha) }
+    // Currency filter applied in SQL, not after the cap. Without this, a caller that wants only
+    // the current rings gets the first `limit` rows by (graha, window_start) and then filters
+    // them — so a chart with more ring-runs than the cap silently loses current rings, and the
+    // caller cannot tell that from a genuine absence. `total_matching` + `truncated` below let
+    // the caller distinguish the two in every case (§N.8: a claim of absence needs a detector
+    // that could report presence).
+    if (current_only) { filters.push(`window_start <= $${p}::date AND window_end >= $${p}::date`) }
     const where = filters.join(' AND ')
 
     // WP-1.5 F-DATE-TZ discipline: window_start/window_end are DATE columns — to_char
@@ -98,11 +113,14 @@ export const queryKotaChakraCapability: CapabilityDescriptor = {
       LIMIT $${p + 1}`
 
     try {
+      // The count query shares `where`, which may now reference $p (as_of); bind it the same way.
+      const countParams = current_only ? [...params, as_of] : params
       const [rowsRes, countRes] = await Promise.all([
         query(sql, [...params, as_of, limit]),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_kota_chakra WHERE ${where}`, params),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_kota_chakra WHERE ${where}`, countParams),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      const truncated = total_matching > rowsRes.rows.length
       return {
         content: {
           chart_id,
@@ -110,8 +128,11 @@ export const queryKotaChakraCapability: CapabilityDescriptor = {
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
-          more_available: total_matching > rowsRes.rows.length,
-          filters: { graha: graha ?? 'all', as_of, limit },
+          more_available: truncated,
+          // Explicit, machine-readable truncation signal so a consumer can never report an empty
+          // or short result as a substantive absence when the real cause is the row cap (§N.8).
+          truncated,
+          filters: { graha: graha ?? 'all', as_of, limit, current_only },
           provenance: {
             tables: ['kala_kota_chakra'],
             source: 'ṢAḌ-DARŚANA W3 item 16 — Kota-Chakra fort chart; served chart-scoped.',

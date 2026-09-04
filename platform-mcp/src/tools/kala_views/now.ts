@@ -418,13 +418,17 @@ async function fetchKotaChakraNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: KotaChakraRow[] }> {
+): Promise<{ reachable: boolean; rows: KotaChakraRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_kota_chakra',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: KotaChakraRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -443,7 +447,9 @@ async function fetchKotaChakraNow(
       ring_table_citation: String(r['ring_table_citation']),
       uncited_extension: Boolean(r['uncited_extension']),
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 export interface SudarshanaVarshaYearNow {
@@ -516,13 +522,17 @@ async function fetchMoortiNirnayaNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: MoortiNirnayaRow[] }> {
+): Promise<{ reachable: boolean; rows: MoortiNirnayaRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_moorti_nirnaya',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: MoortiNirnayaRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -537,7 +547,9 @@ async function fetchMoortiNirnayaNow(
       phala_brief: r['phala_brief'] != null ? String(r['phala_brief']) : null,
       moorti_classical_citation: r['moorti_classical_citation'] != null ? String(r['moorti_classical_citation']) : null,
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 export interface VedhaGocharaRow {
@@ -567,13 +579,17 @@ async function fetchVedhaGocharaNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: VedhaGocharaRow[] }> {
+): Promise<{ reachable: boolean; rows: VedhaGocharaRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_vedha_gochara',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: VedhaGocharaRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -588,7 +604,9 @@ async function fetchVedhaGocharaNow(
       grid_school_tag: r['grid_school_tag'] != null ? String(r['grid_school_tag']) : null,
       detail: (r['detail'] as Record<string, unknown> | undefined) ?? {},
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 // ── W3 item 13 (Tithi-Praveśa, lunar-return annual chart) — SHAD_DARSHANA_BRIEF_v2_0.md
@@ -1971,6 +1989,9 @@ export async function computeKalaNow(
           'kota_chakra',
           !kotaChakraNow.reachable
             ? 'L3 registry (query_kota_chakra) could not be dispatched this call.'
+            : kotaChakraNow.truncated
+            ? 'query_kota_chakra truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence. Do not read it as "no current ring occupancy".'
             : `ka_kota_chakra has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
         ),
     // Item 17 (wave W3): Sudarśana-Chakra year-wheel.
@@ -1989,19 +2010,28 @@ export async function computeKalaNow(
           'moorti_nirnaya',
           !moortiNirnayaNow.reachable
             ? 'L3 registry (query_moorti_nirnaya) could not be dispatched this call.'
+            : moortiNirnayaNow.truncated
+            ? 'query_moorti_nirnaya truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence.'
             : `ka_moorti_nirnaya has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
         ),
     // Item 5 (wave W3, closes R-19): vedha application (house_vedha + sarvatobhadra). An
     // empty result is the classically NORMAL state on most days (no vedha-checkable transit
-    // or sarvatobhadra-vedha dwelling currently active) — this coverage entry cannot
-    // distinguish that from "chart not yet built", matching the same honest ambiguity
-    // kota_chakra/sudarshana_varsha already carry (see their own coverage messages above).
+    // or sarvatobhadra-vedha dwelling currently active). This entry previously could not
+    // distinguish that from "chart not yet built", and — the defect actually found in L3-W1 —
+    // could not distinguish either from "the row cap dropped the current rows", which was the
+    // real cause: measured, 0 of 1 current vedha rows were reachable through the capped page.
+    // The currency filter now runs in SQL (current_only) and `truncated` is reported explicitly,
+    // so the classical-absence claim is only made when it is earned (§N.8, §N.7 item 4).
     vedhaGocharaNow.reachable && vedhaGocharaNow.rows.length > 0
       ? computedCoverage('vedha_gochara')
       : honestEmptyCoverage(
           'vedha_gochara',
           !vedhaGocharaNow.reachable
             ? 'L3 registry (query_vedha_gochara) could not be dispatched this call.'
+            : vedhaGocharaNow.truncated
+            ? 'query_vedha_gochara truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence. The classical-absence sentence below is NOT earned here.'
             : `ka_vedha_gochara has not built this chart, or no vedha-checkable transit / `
               + `sarvatobhadra-vedha dwelling is currently active for ${asOfDate} — honest `
               + 'empty (the classically normal state on most days), not fabricated.',
