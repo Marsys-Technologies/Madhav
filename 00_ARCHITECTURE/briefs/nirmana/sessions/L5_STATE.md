@@ -11,7 +11,11 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W3` IN FLIGHT — W1 (15/15) and W2 (15/15 routed) COMPLETE. W3 batch 1 (registry accuracy, migration 690) authored and under review; batch 2 (integrity contracts) and batch 3 (writer `notes` audit) in flight. **W4 blocked on #1715/PR #1736** (receipt spine) **and #1723** (per-chart detector).
+**Position:** `L5-W3` — W1 (15/15) and W2 (15/15 routed) COMPLETE. **Three PRs open, all auto-merge
+armed:** #1745 (docs: W1+W2+audit+state), #1768 (migration 690, registry accuracy), #1769 (writer
+honesty fixes: 9 raises + 2 fabricated-value repairs). W3 batch 2 (integrity contracts) in flight.
+**W4 blocked on #1715/PR #1736** (receipt spine — now CLEAN and ready to merge) **and #1723**
+(per-chart detector).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -215,7 +219,7 @@ word. #1719 and #1732 both proved larger than first stated after that re-verific
 |---|---|---|
 | **W3-1** registry accuracy | migration **690** — `mi_sankalpa`/`mi_bhara` `target_floor` NULL→0 (ends a perpetual `dormant` re-queue); `mi_bhara.target_table` → `kala_field_skill`; `mi_jivanaghatana` volume formula **corrected** (was wrong on three counts); 4 more volume formulas derived; 5 `estimated_seconds` re-measured | authored, under independent review |
 | **W3-2** integrity contracts | 15 chart-partitioned invariants per D-CND-03, each **verified live** before shipping | in flight |
-| **W3-3** writer `notes` audit | per #1738 ruling — classify every `notes=` site A/B/C, convert disguised failures to raises, report counts | in flight |
+| **W3-3** writer `notes` audit | per #1738 ruling — A 10 / B 17 / C 10 / UNKNOWN 1 over 38 sites; **9 raises + 2 fabricated-value repairs implemented** (A5 held pending Conductor word rather than guessed); counts posted to #1738 | **PR #1769** |
 | **W3-4** serving-plane honesty | `empty_reason` + `density_contract` sweep (**0 of 16** L5 capabilities declare one); `qa_fail_count` prefix fix; `compute_spine_bundle` always-NULL filter; `buildEfficacyReport` nulls | queued |
 | **W3-5** narration/label + idempotency | label corrections that move no number; the `neg_control` DELETE that also wipes `tail_only` | queued |
 | **DROPPED** | all 32 `depends_on` corrections — **immutable per D-CND-09**, recorded in the #1734 register instead | posted |
@@ -227,6 +231,26 @@ directly rather than write a registry number on a subagent's word, and corrected
 measures avg 31.2 s / **max 843 s** against a registry estimate of 11 (77× on the tail), and
 `mi_bhara` avg 17.3 s / **max 597 s** against 2 (298×). Those two would break any W4 slot plan built
 on the registry's numbers.
+
+## Cross-layer contributions made (not just filings)
+
+- **#1734 DAG register** — L5's complete 32-correction contribution, both directions, with the
+  observation that false edges are not merely untidy: `mi_bhavisya`'s canonical build **actually
+  failed** blocked on two dependencies it never reads, and `mi_seva` has **12** BLOCKED terminations
+  on an edge whose target it does not even probe. Under D-CND-09 those blocks are now permanent for
+  this campaign, so W4 must sequence around known-spurious blocks.
+- **#1748 (L4's signal-id finding)** — added the surface a column-name sweep cannot see:
+  `mimamsa_predictions.driving_signals` holds **975 signal refs across all 195 predictions** inside
+  JSONB (L5's true total is 2,409, not the 1,434 their table showed). Also supplied live
+  corroboration of their "identity not stable across builds" grading: **my predictions already
+  reference signals from two different `bo_laksana` build_ids** (25 + 20), all resolving today
+  thanks to accretion, but not comparable across generations.
+- **PR #1736 review** — verified the receipt-spine generalisation does not weaken the detector, and
+  checked L5's own edge case specifically (`lel_events` correctly in `non_writer_assets`,
+  `receipt_count: 15`, so the canary is not silently dropped by the `mi_` prefix filter).
+- **#1764** — filed a red-baseline notice: `main` has 3 failing writer tests (L0 ×2, L2 ×1),
+  confirmed pre-existing by stashing this entire tree and re-running. Every session's local C4
+  verification is red through no fault of its diff.
 
 ## Held items
 
@@ -247,6 +271,9 @@ on the registry's numbers.
 - **H-L5-03 — every per-chart `integrity_verified` (13 of 15 assets)** → **#1723** (CD-3, L4-raised,
   Conductor-owned). Sequential with #1719: fixing only one moves every layer from blocked-at-W2 to
   blocked-at-W5, burning build slots on runs that cannot be certified.
+- **H-L5-05 — any L5 rebuild's signal provenance** → **#1748** (L2-owned). Not blocking (nothing is
+  orphaned today, 0/975 unresolvable), but if L2's `signal_id` fix lands after mine I **re-verify the
+  975 refs before any L5 rebuild** rather than assume they still resolve.
 - **H-L5-04 — `mi_bhara` registry correction** → **#1743** (CD-5, L3 ack). Fallback if held: route
   `probe` and re-decide.
 
