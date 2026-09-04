@@ -1085,13 +1085,18 @@ export const ASSETS: AssetDef[] = [
     // emitter is ga_positions.) DISCLOSED ADJACENT GAP, deliberately left open because it
     // is outside the Lane-1 scope statement: `house_chalit` and `sandhi_flag`, from the
     // same pass, are still uncounted.
-    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps')",
+    // L1-W3 (migration 650, L1-W1 F-A4): closes the DISCLOSED ADJACENT GAP named in the
+    // comment above -- house_chalit (225) and sandhi_flag (90) are emitted by
+    // ga_positions_writer.py:481,511 and were counted by no asset. 890 -> 1,205.
+    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')",
     size_sql: "SELECT pg_total_relation_size('chart_facts')",
     // Floor = achieved canonical count for chart 482012f1 (D2 deprecation: ganita_positions dual-write removed, count_sql now queries chart_facts).
     // Floor NOT raised for the newly-counted bhava_cusps rows: floors are aspirational and
     // are set from a measured build, never from an estimate (§N.4).
-    target_floor: 50,
-    expected_volume_formula: 'GRAHAS * AYANAMSHAS * FACT_KEYS',
+    // L1-W3 (migration 650): 1,205 is now a MEASURED achieved count, identical on all
+    // three built charts -- not the estimate the comment above rightly refused (§N.4).
+    target_floor: 1205,
+    expected_volume_formula: 'BODIES * AYANAMSHAS * FACT_KEYS + BHAVA_CUSPS + HOUSE_CHALIT + SANDHI_FLAG',
     expected_volume_inputs: null,
     volume_explanation: '10 bodies × 5 ayanamshas × atomic fact keys per body (graha_position + graha_sign_attributes)',
     depends_on: [],
@@ -1130,7 +1135,10 @@ export const ASSETS: AssetDef[] = [
     count_sql: 'SELECT count(*) FROM chart_dashas WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('chart_dashas')",
     // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
-    target_floor: 536471,
+    // L1-W3 (migration 650, L1-W1 F-A9): 536,471 encoded ~71k Kalachakra rows that register
+    // M-6 / PR #527 deliberately removed as fabricated cycle repetition. Count is legitimately
+    // chart-dependent (471,767 / 483,859 / 505,348), so only a floor can be honest here.
+    target_floor: 471767,
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS ≈ 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130×.',
@@ -1164,7 +1172,9 @@ export const ASSETS: AssetDef[] = [
 `,
     size_sql: null,
     // Floor = achieved canonical count for chart 482012f1 (migration 307, 2026-06-18).
-    target_floor: 11936,
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 13621,
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS', // STALE_FORMULA: naive expansion gives (54+864+72)*5=4950 which over-counts by ~2×; actual=2184 because not all ashtakavarga sign×graha combos are stored and vimsopaka/bhava_bala sub-families are smaller than the theoretical max
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
@@ -1180,7 +1190,8 @@ export const ASSETS: AssetDef[] = [
     english_name: 'Sensitive points',
     english_description: 'Per-chart sensitive point positions computed from the catalog × ayanamshas',
     storage_type: 'postgres_table',
-    target_table: null,
+    // L1-W3 (migration 650, L1-W1 F-B4): was null; the asset demonstrably writes chart_facts.
+    target_table: 'chart_facts',
     // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 3 adds Tier-1 sensitive
     // points: sensitive_point_gulika_mandi, sun_derived_upagraha, special_lagna (new IN entries);
     // esoteric_point_sphuta_fertility + esoteric_point_yogi_system covered by esoteric_point_%.
@@ -1217,7 +1228,10 @@ export const ASSETS: AssetDef[] = [
 `,
     size_sql: null,
     // Floor = achieved canonical count for chart 482012f1 (migration 307, 2026-06-18).
-    target_floor: 8610,
+    // L1-W3 (migration 650, L1-W1 F-B1/F-B2): 8,610 was an achieved measurement from
+    // migration 307 taken under a count_sql that no longer exists. With bhava_arudha (210)
+    // restored to the counted set, 8,775 matches asset_throughput.rows_written exactly.
+    target_floor: 8775,
     expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',
@@ -1237,7 +1251,9 @@ export const ASSETS: AssetDef[] = [
     target_table: 'chart_facts',
     count_sql: "SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='sensitive_degree_check'",
     size_sql: null,
-    target_floor: 0,
+    // L1-W3 (migration 650, L1-W1 F-B13): floor was 0 -- unfalsifiable. Derived
+    // (5 facets x 9 grahas + neecha_bhanga x 7 + 3 chart-level + 12 yogi) x 5 = 335.
+    target_floor: 335,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Per-graha sensitive-degree check rows — count depends on classical rule applicability per chart.',
@@ -1256,7 +1272,9 @@ export const ASSETS: AssetDef[] = [
     target_table: 'chart_facts',
     count_sql: "SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='ayurdaya'",
     size_sql: null,
-    target_floor: 0,
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 130,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Ayurdaya rows — count depends on method applicability per chart.',
@@ -1280,7 +1298,11 @@ export const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
     target_floor: 221,
-    expected_volume_formula: 'AYANAMSHAS',
+    // L1-W3 (migration 650, L1-W1 F-B31): 'AYANAMSHAS' evaluated to 5 against 437 rows.
+    // NOT replaced with another formula: measured 417 / 437 / 415 across the three built
+    // charts, so the per-ayanamsha figure is genuinely chart-dependent and no fixed-input
+    // formula can be correct. Per C12 the volume assertion here is the floor, not a derivation.
+    expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one panchanga row per ayanamsha" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).',
     depends_on: ['ga_positions', 'bg_panchanga'],
@@ -1294,7 +1316,8 @@ export const ASSETS: AssetDef[] = [
     english_name: 'Sade Sati periods',
     english_description: 'Saturn transit-over-natal-Moon Sade Sati + Dhaiya window calculations per ayanamsha',
     storage_type: 'postgres_table',
-    target_table: null,
+    // L1-W3 (migration 650, L1-W1 F-D16): was null; rows live in chart_facts.
+    target_table: 'chart_facts',
     // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
     // stats route (reads asset_registry.count_sql, $1 = chart_id).
     count_sql: `
@@ -1312,7 +1335,10 @@ export const ASSETS: AssetDef[] = [
 `,
     size_sql: null,
     // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
-    target_floor: 11019,
+    // L1-W3 (migration 650, L1-W1 F-D14): 11,019 was achieved by a since-proven-defective
+    // writer (PR #522 removed retrograde-shadow duplicate cycles). 6,287 reconciles exactly
+    // as 5 x (240 x 4 + 299) - 8; 6,120 is the minimum across the three built charts.
+    target_floor: 6120,
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 11,019 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one row per ayanamsha" formula predates the full Sade Sati fact family (cycle / phase / phase_quarter / dhaiya / kantaka / ashtama / janma-shani periods + overlays).',
@@ -1368,7 +1394,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     //   - 2,835 graha_avastha_%_per_varga (ga_condition)
     //   - 9,690 bala per_varga (ga_strength)
     //   - 80 nakshatra_pada_sensitive (ga_sensitive)
-    target_floor: 77821,
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 98446,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts — floor 77,821 post-Phase-2 rebuild (2026-06-18). All 14 depth categories active: sambandha_grade(180), nakshatra_dispositor_chain(45), dispositor_tree(50), bhava_significance_link(180), karaka_bhava_concordance(150), net_argala(60), nway_configuration(5), chart_center_of_gravity(10), graha_centrality(45), chart_cluster(45), convergence_count(105), contradiction_pair(1810), dispositor_cycle(0 — no cycles), varga_provenance_meta(0 — no issues).',
@@ -1382,6 +1410,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // asset (the gap this entry closes was flagged by Night-1 verification).
     asset_id: 'ga_vichara',
     layer: 'ganita', sort_order: 29,
+    // L1-W3 (migration 650, L1-W1 F-D9): DRAFT -> CURRENT. 8,249 exactly-reconciling rows,
+    // three L2 production consumers, nine live MSR signals. The label was the only draft part.
     catalog_status: 'CURRENT',
     sanskrit_name: 'Vichāra',
     english_name: 'Gaṇita — Vichāra (judged structure)',
@@ -1390,7 +1420,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     target_table: 'chart_vichara',
     count_sql: 'SELECT COUNT(*) FROM chart_vichara WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('chart_vichara')",
-    target_floor: 0, // aspirational per §N.4 — set after first prod build measurement
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 8240,
     expected_volume_formula: 'GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas.',
@@ -1412,7 +1444,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ADJUDICATION-7 Part 2 ("NO NEW ASSET … W3K EXTENDS it").
     count_sql: `SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha','kp_house_significators','kp_planet_significations')`,
     size_sql: "SELECT pg_total_relation_size('chart_facts')",
-    target_floor: 1802,  // set after first prod build 2026-06-17 (§N.4)
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 1813,
     expected_volume_formula: 'BODIES * AYANAMSHAS * FACT_CATEGORIES + CROSS_AYANAMSHA',
     expected_volume_inputs: null,
     volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1). W3K adds 108 house-significator + ~100 planet-signification rows per ayanamsha; target_floor stays at the last MEASURED build until the next prod build re-measures it (§N.4 — floors are never set from an estimate).',
@@ -1461,7 +1495,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     size_sql: `SELECT pg_total_relation_size('ga_yoga_firings')`,
     // Floor = 5 (only Yuga Nabhasa fires for native chart 482012f1; confirmed by Phase 1 L1 closure audit).
     // Migration 308 corrected from 50 (generic estimate) to 5.
-    target_floor: 5,
+    // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
+    // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
+    target_floor: 63,
     expected_volume_formula: 'YOGAS_IN_CATALOG * AYANAMSHAS_COUNT',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
@@ -1481,7 +1517,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     size_sql: `SELECT pg_total_relation_size('ga_vastu_planet_direction_map')`,
     // Floor = 40 (confirmed prod count, migration 294 corrected from 45; Ketu skipped — no classical direction).
     target_floor: 40,
-    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
+    // L1-W3 (migration 650, L1-W1 F-E13): 'GRAHAS * AYANAMSHAS' evaluated to 45; reality is 40.
+    expected_volume_formula: 'DIRECTIONS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
     depends_on: ['ga_condition'],
