@@ -204,7 +204,26 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 Charter C6 — announce here, on `main`, each NEW capability downstream layers may consume.
 One line per capability with its PR number. Consumers poll `origin/main` for this section.
 
-_(none yet)_
+**LANDED:** _(none yet — nothing has merged)_
+
+### PLANNED (published early per the session prompt's "publish your capability-delta list immediately")
+
+This is L3's side of the C6 contract, declared at W1 so L4/L5 can plan against it rather than
+discover it. Nothing here is consumable until it appears under **LANDED** with a PR number.
+
+| capability | shape | who would consume it | status |
+|---|---|---|---|
+| **Temporal engine question-declarations** | a per-engine declaration in the registry: the one question each temporal engine answers, its granularity and range (D-TIME item 1) | L4 verdict surfaces choosing which clock to cite; any layer disambiguating two timing answers | planned, W3 |
+| **Concordance verdict** on the arbiter surface | `aligned \| partially_aligned(reasons) \| disputed(adjudicated_by, reasons)` per (domain, range), with per-engine testimony as a drill (D-TIME item 2) | L4 outlook/anchor surfaces wanting one temporal voice instead of N | planned, W3 |
+| **Authority profiles as stored data** | generalised from `kala_gochara_authority` + `kala_paddhati_profile` into a per-engine authority × strength-in-chart profile (D-TIME item 3) | anything needing to know *why* one engine outranked another | planned, W3 |
+| **Temporal-confidence multiplier** | the concordance verdict exposed as a salience multiplier (D-TIME item 5) | **this one is a consumer, not a product**: it is HELD on L2's consensus/salience capabilities (C6) | held on L2 |
+| **19 chart-partitioned integrity contracts** (D-CND-03) | a worked, live-verified set of `NOT EXISTS (… GROUP BY chart_id HAVING …)` invariants | not a runtime capability — a **pattern** L1/L2/L4/L5 can copy rather than re-derive, per the ruling on #1723 | planned, W3 |
+
+### What L3 CONSUMES from upstream (the other side of the same contract)
+
+| needed from | capability | blocks |
+|---|---|---|
+| **L2** | populated consensus / salience columns | the temporal-confidence multiplier wiring only. Everything else in the L3 mandate is upstream-independent — confirmed against the mandate item by item, not assumed. |
 
 ## Cost ledger
 
