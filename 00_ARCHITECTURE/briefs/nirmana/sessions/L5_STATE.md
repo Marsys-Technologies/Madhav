@@ -11,7 +11,7 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W1` (ANALYZE, in flight)
+**Position:** `L5-W2` COMPLETE — W1 ANALYZE done (15/15), W2 DECIDE published. **W3 next**; W4 fully blocked on #1719.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -41,21 +41,21 @@ source_acceptance`). This layer's freeze closes the build arc.
 
 | asset | kind | domain/scope | table | rows (2026-09-05) | anc / unfrozen | route | status |
 |---|---|---|---|---|---|---|---|
-| lel_events | data (no writer) | chart/per_chart | — (source) | — | 0/0 **E-GATE OPEN** | TBD-W2 | W1 |
-| mi_vistara | data | **shared/global** | mimamsa_export_log | 0 | 0/0 **E-GATE OPEN** | TBD-W2 | W1 |
-| mi_jivanaghatana | data | chart/per_chart | mimamsa_event_provenance | 64 | 1/0 **E-GATE OPEN** | TBD-W2 | W1 |
-| mi_kula | data | **shared/global** | mimamsa_signal_families | 11 | 6/3 | TBD-W2 | W1 |
-| mi_bhara | data | chart/per_chart | **kala_field_weight_versions** | 1 | 36/26 | TBD-W2 | W1 |
-| mi_sankalpa | data | chart/per_chart | mimamsa_intervention_ledger | 0 | 36/26 | TBD-W2 | W1 |
-| mi_bhavisya | data | chart/per_chart | mimamsa_predictions | 195 | 59/49 | TBD-W2 | W1 |
-| mi_abhilekha | **service** | chart/per_chart | mimamsa_journal | 0 | 60/50 | TBD-W2 | W1 |
-| mi_pramana | data | chart/per_chart | mimamsa_calibration | 57 | 61/50 | TBD-W2 | W1 |
-| mi_gunanaka | data | chart/per_chart | mimamsa_multipliers | 18 | 62/51 | TBD-W2 | W1 |
-| mi_pariksha | data | chart/per_chart | mimamsa_qa_eval | 174 | 62/51 | TBD-W2 | W1 |
-| mi_adhilepa | data | chart/per_chart | mimamsa_load_bearing | 9 | 63/52 | TBD-W2 | W1 |
-| mi_sambandha | data | chart/per_chart | mimamsa_manifestation_grammar | 47 | 63/52 | TBD-W2 | W1 |
-| mi_seva | **service** | chart/per_chart | mimamsa_preferences | 0 | 64/53 | TBD-W2 | W1 |
-| mi_darshana | data | chart/per_chart | mimamsa_insight_units | 150 | 66/55 | TBD-W2 | W1 |
+| lel_events | data (no writer) | chart/per_chart | — (source) | — | 0/0 **E-GATE OPEN** | `static` | W2 ✓ — CANARY 2 — disposition, not build; blocked on #1719 |
+| mi_vistara | data | **shared/global** | mimamsa_export_log | 0 | 0/0 **E-GATE OPEN** | `rebuild_only` | W2 ✓ — **CANARY 1** — cheapest in campaign (0.287s), zero deps |
+| mi_jivanaghatana | data | chart/per_chart | mimamsa_event_provenance | 64 | 1/0 **E-GATE OPEN** | `changed` | W2 ✓ — CANARY 3 — demoted; needs A-F-09/A-F-10 first |
+| mi_kula | data | **shared/global** | mimamsa_signal_families | 11 | 6/3 | `changed` | W2 ✓ — global re-seed; C-F-01 grounding badge |
+| mi_bhara | data | chart/per_chart | **kala_field_weight_versions** | 1 | 36/26 | `changed` | W2 ✓ — registry-only; #1743 filed |
+| mi_sankalpa | data | chart/per_chart | mimamsa_intervention_ledger | 0 | 36/26 | `rebuild_only` | W2 ✓ — floor fix D-F-D15 must land first |
+| mi_bhavisya | data | chart/per_chart | mimamsa_predictions | 195 | 59/49 | `changed` | W2 ✓ — **HELD** on #1732 |
+| mi_abhilekha | **service** | chart/per_chart | mimamsa_journal | 0 | 60/50 | `probe` | W2 ✓ — real GREEN probe needed (B-F-03) |
+| mi_pramana | data | chart/per_chart | mimamsa_calibration | 57 | 61/50 | `changed` | W2 ✓ — **HELD** on #1732; STRUCTURAL doc route |
+| mi_gunanaka | data | chart/per_chart | mimamsa_multipliers | 18 | 62/51 | `changed` | W2 ✓ — C-F-05 literal flags in stored rows |
+| mi_pariksha | data | chart/per_chart | mimamsa_qa_eval | 174 | 62/51 | `rebuild_only` | W2 ✓ — B-F-07/B-F-08 |
+| mi_adhilepa | data | chart/per_chart | mimamsa_load_bearing | 9 | 63/52 | `changed` | W2 ✓ — C-F-13/C-F-14 |
+| mi_sambandha | data | chart/per_chart | mimamsa_manifestation_grammar | 47 | 63/52 | `changed` | W2 ✓ — B-F-14 unearned empirical grade at rest |
+| mi_seva | **service** | chart/per_chart | mimamsa_preferences | 0 | 64/53 | `rebuild_only` | W2 ✓ — **not** probe — path unreachable (D-F-D09) |
+| mi_darshana | data | chart/per_chart | mimamsa_insight_units | 150 | 66/55 | `rebuild_only` | W2 ✓ — code correct at HEAD; data stale (B-F-21) |
 
 ## Decisions log
 
@@ -63,6 +63,21 @@ source_acceptance`). This layer's freeze closes the build arc.
   `20323fae4`; charter read from the shared checkout (C1: sessions/ not yet on main);
   `NIRMANA_HOLD` absent (standing authorization); coordination issue = **#1713**; no open
   `nirmana-adjudication` issues at open. DB read path = read-only postgres MCP.
+- **D-L5-09** (2026-09-05) — The L5 seal's own gates are **re-verified, not inherited**: G8 is a false
+  PASS (`structural_no_calibration` exists in no code, only in four markdown files) and G11 has
+  regressed (live `mi_seva.count_sql` contradicts the sealed null). A predecessor seal is evidence,
+  not authority.
+- **D-L5-08** (2026-09-05) — `integrity_check_sql` authored for all 15 assets but shipped as
+  **proposals, not gates** (C12: "a check that has never been green is a PROPOSAL"). Where a check
+  passes vacuously on an empty table, that caveat ships with it into the capsule.
+- **D-L5-07** (2026-09-05) — `mi_sankalpa` is the P7 **substrate**, NOT plan §7.3's parked
+  "remedy-efficacy ledger" (which is the *analysis over* it). Recorded because conflating them would
+  have wrongly parked a live, tested, correctly-guarded serve-time write path.
+- **D-L5-06** (2026-09-05) — `mi_seva` routes `rebuild_only`, **not** `probe`, against the shape its
+  `asset_kind='service'` suggests: the probe path is unreachable through four independent gates, so
+  `probe` would claim a verification mechanism that does not exist. `mi_abhilekha` *does* route
+  `probe` — a truthful probe claim exists for it.
+- **D-L5-05 / D-L5-04** — see Route summary above.
 - **D-L5-03** (2026-09-05) — Filed adjudication **#1719** (cross-layer). Chose to raise it at W1
   rather than at my own W4 because it is on every layer's critical path and the fix lives in
   Conductor-owned shared surfaces (C5). Explicitly did NOT route around it by relaxing C2.2 —
@@ -135,17 +150,80 @@ be chart-conditional or left at the honest `0` (§N.4: floors are aspirational, 
 This also means `lel_events`' `source_acceptance` disposition is intrinsically single-chart, which
 is a point in favour of it being a disposition rather than a build.
 
+## Route summary (W2, full detail in `L5_W2_DECIDE_v1_0.md`)
+
+`changed` **8** · `rebuild_only` **5** · `probe` **1** · `static` **1** · `verified_reuse` **0**.
+
+**Deviation logged (D-L5-04):** plan §5 forecast "mostly `verified_reuse`/`static`" for L5. **No asset
+takes `verified_reuse`.** The served data predates three merged narration fixes (last good build
+2026-08-12/13; F-143/F-147/F-148 landed 2026-08-21/22; the intervening rebuild was BLOCKED), so rows
+carry `*_v1.0` formula versions against `v1.2` code and the layer is *serving today* sentences those
+PRs removed. The digest lineage `verified_reuse` requires does not hold; certifying it would broadcast
+repudiated text (§N.8). **Cost consequence: L5 is not the cheap closing layer it was forecast to be.**
+
+**Deviation logged (D-L5-05):** canary order changed to `mi_vistara` → `lel_events` →
+`mi_jivanaghatana` (prompt nominated the reverse). `mi_vistara` is the cheapest execution in the whole
+campaign, has zero deps, needs no code change, and would capture the first `mi_*` provenance receipt
+ever. `mi_jivanaghatana` is disqualified as *first* canary by A-F-09 (volume formula wrong on three
+counts) and A-F-10 (`admissible_clean` true 64/64 with no code path that can produce false).
+
+## Findings ledger (W1 → W2)
+
+**~109 findings across 4 batches; 34 MUST, ~60 NOW, 15 NEVER/LATER.** Finding IDs are **batch-prefixed**
+(`A-F-15`, `B-F-14`, `C-F-05`, `D-F-D09`) because the batches numbered independently and `L5-F-01`
+occurs in three of them. Full triage in `L5_W2_DECIDE_v1_0.md` §4.
+
+**Mandate scorecard (plan §5's five L5 items):** 1 STRUCTURAL re-documentation — *determined, writes in
+W3*. 2 provenance retention — **VERIFIED HEALTHY**, 0 orphans on all four links, one live threat
+(#1732). 3 journal/adjudication seams — **CONFIRMED with precision**: journal empty because
+*unwritable* (no `INSERT INTO mimamsa_journal` exists anywhere in the repo), adjudication log written
+correctly but never read back into L5. 4 insight-embedding path — **NOTED in full** (B-F-20): schema
+✓, serve path ✓ and honest, producer MISSING, MCP reachability MISSING. 5 no invented calibration
+values — **HELD ABSOLUTE**; every evidence-absent case recommends an honest NULL or a rename.
+
+## Adjudication issues filed (4)
+
+| # | subject | blocks |
+|---|---|---|
+| **#1719** | Evidence ingress is structurally L0-only — **all nine terminal event types** for L1–L5 | **all 15 L5 assets at W4** |
+| **#1732** | `ph_nimitta` rebuild destroys the L5 prediction-provenance chain (`anchor_id` = `gen_random_uuid()`) — TIME-CRITICAL, cross-posted to L4's #1718/#1723 | `mi_bhavisya`, `mi_pramana` rebuilds |
+| **#1738** | `WriterResult.notes` is write-only — 87 writers report degradation into a void, builds go green | campaign-wide honesty; `mi_seva` capsule |
+| **#1743** | `kala_field_weight_versions` L3↔L5 shared write-set + acyclicity guard | `mi_bhara` registry correction only |
+
+Each was **independently re-verified by this session** before filing — not escalated on a subagent's
+word. #1719 and #1732 both proved larger than first stated after that re-verification.
+
 ## Held items
 
-- **H-L5-01 — ALL 12 non-canary assets + the two gating events for all 15.** Adjudication issue
+- **H-L5-01 — ALL 15 assets (widened from 12 after tracing the full lifecycle).** Adjudication issue
   **#1719** filed with the Conductor: `asset_analysis_accepted` and `optimization_verdict_accepted`
   are structurally L0-only in the deployed evidence ingress
   (`platform/src/lib/nirmana-elevation/definitions.ts:1223-1231` throws when `input.layer !== 'L0'`;
   the digest fn and receipt schema carry two further `L0` literals; the generated receipt module is
   L0-only with no generator script). Charter C2.2 requires both events before W4, so **no L1–L5
   asset can enter W4 until this lands** — this blocks all five layer sessions, not just L5.
-  Recommended Option A (generalize the receipt spine, Conductor-owned per C5). Not blocking W1/W2,
-  which continue.
+  Recommended Option A (generalize the receipt spine, Conductor-owned per C5). **Widened after
+  filing:** `loadCurrentLifecycleContext` calls the same L0-only function and `analysis_digest` is a
+  *required* field on the lifecycle binding schema every terminal event extends — so
+  `implementation_accepted`, `accepted_rebuild_observed`, `probe_accepted`, `integrity_verified`,
+  `asset_frozen`, `static_accepted`, `source_accepted`, `empty_accepted` and `producer_covered` are
+  **all** unrecordable for L1–L5, not just the two W2 events. W1/W2 were unaffected and completed.
+- **H-L5-02 — `mi_bhavisya`, `mi_pramana` rebuilds** → **#1732** (CD-2, L4-owned).
+- **H-L5-03 — every per-chart `integrity_verified` (13 of 15 assets)** → **#1723** (CD-3, L4-raised,
+  Conductor-owned). Sequential with #1719: fixing only one moves every layer from blocked-at-W2 to
+  blocked-at-W5, burning build slots on runs that cannot be certified.
+- **H-L5-04 — `mi_bhara` registry correction** → **#1743** (CD-5, L3 ack). Fallback if held: route
+  `probe` and re-decide.
+
+## Capability-delta list (charter C6) — published 2026-09-05
+
+**CONSUMED (I wait on these):** CD-1 generalised receipt spine (Conductor, #1719) · CD-2 deterministic
+`anchor_id` (L4, #1732) · CD-3 per-chart `count_sql` parameterisation (Conductor, #1723) · CD-4
+`WriterResult.notes` ruling (Conductor, #1738) · CD-5 `kala_field_weight_versions` arbitration (L3,
+#1743).
+
+**PUBLISHED: none.** L5 is the terminal layer; no session consumes an L5 capability. My
+`## CAPABILITIES LANDED` section will stay empty — that is the correct final state, not an omission.
 
 ## Cost ledger
 
@@ -155,8 +233,13 @@ is a point in favour of it being a disposition rather than a build.
 | W1 fan-out (4 read-only SAs, 15 assets) | in flight | — |
 | dispatch/evidence-path study + #1719 | ~20 min | found the campaign's top blocker |
 | seal re-read + live multiplier check | ~10 min | found F-L5-G (STRUCTURAL staleness) |
+| W1 fan-out, 4 SAs, 15 assets | ~13 min wall / ~821k SA tokens | ~109 findings |
+| W1 persistence + W2 authoring | ~35 min | 5 docs, 4 adjudication issues |
 
 ## Heartbeat
 
+- 2026-09-05 — **W1 COMPLETE (15/15), W2 COMPLETE (15/15 routed).** 4 adjudication issues filed, all
+  independently re-verified first. Next: W3 batches (registry corrections, integrity proposals,
+  serving-plane honesty sweep, narration/label fixes) — none blocked by #1719, which gates W4 only.
 - 2026-09-05 — F-L5-G surfaced and routed to the two owning W1 subagents (no duplication).
 - 2026-09-05 — L5-W1 opened; 4 read-only analysis subagents dispatched over the 15 assets.
