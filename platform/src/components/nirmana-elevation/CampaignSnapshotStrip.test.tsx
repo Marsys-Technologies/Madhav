@@ -37,4 +37,21 @@ describe('CampaignSnapshotStrip', () => {
     expect(within(strip).getByText('Unknown — monitor not observed')).toBeVisible()
     expect(within(strip).getByText('Affected assets: Unknown')).toBeVisible()
   })
+
+  it('renders the current-position metric as the programme-derived position label verbatim', () => {
+    // The position chip no longer re-derives its text from `campaign.current_stage`/
+    // `current_wave` — it renders `snapshot.programme.position_label` as-is. That
+    // derivation is Task 2's `projectProgrammePosition` unit-test surface, not this
+    // component test's job, so the fixture just declares the label directly.
+    const snapshot = structuredClone(fixtureV2) as unknown as NirmanaElevationSnapshotV2
+    snapshot.programme = {
+      ...snapshot.programme,
+      position_label: 'O-WAVE · WP-2 · L0 · W3 (3/4 built_or_dispositioned)',
+    }
+
+    render(<CampaignSnapshotStrip snapshot={snapshot} />)
+
+    const strip = screen.getByRole('region', { name: /nirmāṇa campaign/i })
+    expect(within(strip).getByText('O-WAVE · WP-2 · L0 · W3 (3/4 built_or_dispositioned)')).toBeVisible()
+  })
 })

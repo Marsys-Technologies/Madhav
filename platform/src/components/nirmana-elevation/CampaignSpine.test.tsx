@@ -22,13 +22,23 @@ function CampaignSurface({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 })
 
 describe('CampaignSpine', () => {
   it('renders the executive truth, current stage, and every governed stage in sequence', () => {
-    render(<CampaignSurface snapshot={snapshotFixture()} />)
+    // `programme.position_label` is now the sole source for the position chip (Step 5); its
+    // derivation is covered by Task 2's `projectProgrammePosition` unit tests, not here — this
+    // fixture value is set directly so this test's job stays "does the chip render the field".
+    const snapshot = snapshotFixture()
+    snapshot.programme.position_label = 'L0 · Brahmagyan · Wave 2'
+
+    render(<CampaignSurface snapshot={snapshot} />)
 
     expect(screen.getByText('L0 · Brahmagyan · Wave 2')).toBeVisible()
     expect(screen.getByText('3 / 5')).toBeVisible()
     expect(screen.getByText('Unknown — monitor not observed')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /L1 · Ganita/i })).toHaveAttribute('aria-expanded', 'false')
+    // PHASE A and PHASE Z fold their member stages behind a collapsed summary row (v2 programme
+    // grouping) — expand both before counting every individually-rendered stage button.
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE Z/i }))
     expect(screen.getAllByRole('button', { name: /BOOTSTRAP|T0_CENSUS|PLAN_FROZEN|DENOMINATOR_FROZEN|F0_FOUNDATION|L[0-5]|CLOSING|COMPLETE/ })).toHaveLength(13)
   })
 
@@ -39,6 +49,9 @@ describe('CampaignSpine', () => {
     snapshot.campaign.current_stage = null
     snapshot.campaign.current_layer = null
     snapshot.campaign.current_wave = null
+    // See the note in the previous test: the position chip now renders `programme.position_label`
+    // verbatim, so this fixture must declare the unknown-position copy directly.
+    snapshot.programme.position_label = 'Execution not yet evidenced'
 
     render(<CampaignSurface snapshot={snapshot} />)
 
@@ -56,6 +69,7 @@ describe('CampaignSpine', () => {
     foundation.required = 5
 
     render(<CampaignSurface snapshot={snapshot} />)
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     expect(screen.getByRole('button', { name: /F0 · Foundation readiness/i })).toBeVisible()
     expect(screen.queryByText('0 / 5')).not.toBeInTheDocument()
@@ -82,6 +96,7 @@ describe('CampaignSpine', () => {
 
   it('uses human plan labels for T0 and F0 while retaining exact stage ids as secondary metadata', () => {
     render(<CampaignSurface snapshot={snapshotFixture()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     expect(screen.getByRole('button', { name: /T0 · Asset and DAG census/i })).toBeVisible()
     expect(screen.getByRole('button', { name: /F0 · Foundation readiness/i })).toBeVisible()
@@ -307,6 +322,7 @@ describe('CampaignSpine', () => {
     }
 
     render(<CampaignSurface snapshot={snapshot} />)
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     const foundationButton = screen.getByRole('button', { name: /F0_FOUNDATION/i })
     expect(foundationButton).toHaveAttribute('aria-expanded', 'false')
@@ -316,5 +332,43 @@ describe('CampaignSpine', () => {
     expect(screen.getByText('Asset and DAG census')).toBeVisible()
     expect(screen.getByText(/Unknown — acceptance checkpoints are not recorded/i)).toBeVisible()
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
+  })
+
+  it('renders the O-Wave declared row and provenance chips beside the collapsed Phase A/Z summaries', () => {
+    const snapshot = snapshotFixture()
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    expect(screen.getByRole('heading', { name: 'O-WAVE' })).toBeVisible()
+    const oWaveSection = screen.getByRole('heading', { name: 'O-WAVE' }).closest('article')
+    if (!oWaveSection) throw new Error('O-Wave section is missing.')
+    for (const wp of snapshot.programme.o_wave.wps) {
+      expect(within(oWaveSection).getByText(`${wp.name}: ${wp.status}`)).toBeVisible()
+    }
+    expect(within(oWaveSection).getByText('Repo-declared')).toBeVisible()
+
+    const phaseAButton = screen.getByRole('button', { name: /^PHASE A/i })
+    expect(within(phaseAButton).getByText('Evidence-derived')).toBeVisible()
+    const phaseZButton = screen.getByRole('button', { name: /^PHASE Z/i })
+    expect(within(phaseZButton).getByText('Evidence-derived')).toBeVisible()
+  })
+
+  it("keeps L0's row rendered exactly as before, now receiving its sub-wave progress", () => {
+    const snapshot = snapshotFixture()
+    const l0Layer = snapshot.layers.find((layer) => layer.layer_id === 'L0')
+    if (!l0Layer) throw new Error('Fixture must include L0.')
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    const l0Button = screen.getByRole('button', { name: /L0 · Brahmagyan/i })
+    expect(l0Button).toHaveAttribute('aria-expanded', 'true')
+    const panelId = l0Button.getAttribute('aria-controls')
+    const l0Panel = panelId ? document.getElementById(panelId) : null
+    if (!l0Panel) throw new Error("L0's expanded panel is missing.")
+    expect(within(l0Panel).getByLabelText(/programme sub-wave progress/i)).toBeVisible()
+    for (const wave of l0Layer.wave_progress) {
+      expect(within(l0Panel).getByText(wave.wave_id)).toBeVisible()
+      expect(within(l0Panel).getByText(wave.label)).toBeVisible()
+    }
   })
 })
