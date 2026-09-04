@@ -430,3 +430,110 @@ class TestCentralityFormulaV1:
     def test_version_stamp(self):
         r = centrality_formula_v1(CentralityInputs())
         assert r["centrality_formula_version"] == VERSION_CENTRALITY_FORMULA
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# NIRMĀṆA L2-W3 — D-SALIENCE static terms (argala / AV / vargottama /
+# cancellation / neechabhanga). Regression cover for the W1 finding that all
+# four static terms were inert on 150,150 production rows.
+# ──────────────────────────────────────────────────────────────────────────────
+
+from bodha_writers.formulas import SalienceInputsV2, salience_formula_v2, _av_multiplier
+
+
+def test_av_multiplier_is_bhinna_scale_not_sarva():
+    """The bucket table is bhinnāṣṭakavarga (0..8), and must DISCRIMINATE there.
+
+    The production defect: sarvāṣṭakavarga values (measured 23–33 per house) were
+    fed to this table, so every row landed in the >=7 bucket and the multiplier was
+    the constant 1.15 on 149,375 of 150,150 rows.
+    """
+    assert _av_multiplier(8) == 1.15
+    assert _av_multiplier(6) == 1.05
+    assert _av_multiplier(4) == 1.00
+    assert _av_multiplier(2) == 0.85
+    assert _av_multiplier(0) == 0.70
+    # discriminates across the real bhinna range — 5 distinct outcomes, not 1
+    assert len({_av_multiplier(b) for b in range(0, 9)}) == 5
+    # a sarva-scale value is indistinguishable from any other sarva-scale value,
+    # which is exactly why the caller must supply bhinna
+    assert _av_multiplier(23) == _av_multiplier(33) == 1.15
+
+
+def test_av_multiplier_none_is_none_not_a_favourable_default():
+    """§N.7 item 6: an unresolved bindu count must not become the top bucket.
+
+    The production defect was `int(fact_value_num or 28)` — a NULL silently
+    becoming 28, which is >=7, i.e. the most favourable bucket available.
+    """
+    assert _av_multiplier(None) is None
+
+
+def test_unmeasured_static_terms_store_none_but_rank_neutrally():
+    """A term with no detector is NULL, not 1.0 (§N.8) — and must not move salience."""
+    bare = salience_formula_v2(SalienceInputsV2())
+    for key in (
+        "ashtakavarga_support_multiplier",
+        "vargottama_amplification",
+        "neechabhanga_modifier",
+        "cancellation_modifier",
+        "argala_modifier",
+    ):
+        assert bare[key] is None, f"{key} must store None when no detector ran"
+
+    # ...and an all-unmeasured row ranks exactly as a row whose detectors all
+    # returned the neutral value, so honesty costs nothing in the ordering.
+    neutral = salience_formula_v2(SalienceInputsV2(
+        ashtakavarga_bindus=4,          # bucket 1.00
+        vargottama_amplification=0.0,
+        neechabhanga_modifier=1.0,
+        cancellation_modifier=1.0,
+        argala_modifier=0.0,
+    ))
+    assert bare["computed_salience"] == neutral["computed_salience"]
+    # but the stored decomposition differs — that is the whole point
+    assert neutral["ashtakavarga_support_multiplier"] == 1.0
+    assert bare["ashtakavarga_support_multiplier"] is None
+
+
+def test_argala_modifier_is_live_in_v2():
+    """argala was dropped from the v2 input contract at the v1→v2 upgrade.
+
+    41,760 L1 argala facts existed unconsumed. Reinstated as (1 + argala),
+    mirroring vargottama.
+    """
+    base = salience_formula_v2(SalienceInputsV2(argala_modifier=0.0))
+    boosted = salience_formula_v2(SalienceInputsV2(argala_modifier=0.20))
+    assert boosted["computed_salience"] > base["computed_salience"]
+    assert math.isclose(
+        boosted["computed_salience"], base["computed_salience"] * 1.20, rel_tol=1e-9
+    )
+    assert boosted["argala_modifier"] == 0.2
+
+
+def test_vargottama_zero_is_neutral_not_annihilating():
+    """`vargottama_amplification` enters as (1 + x), so 0 is the identity.
+
+    Worth pinning: the column reads 0 on all 150,150 production rows, and a reader
+    who assumed it was a bare multiplicand would conclude every salience was zero.
+    """
+    zero = salience_formula_v2(SalienceInputsV2(vargottama_amplification=0.0))
+    amped = salience_formula_v2(SalienceInputsV2(vargottama_amplification=0.25))
+    assert zero["computed_salience"] > 0
+    assert math.isclose(
+        amped["computed_salience"], zero["computed_salience"] * 1.25, rel_tol=1e-9
+    )
+
+
+def test_cancellation_and_neechabhanga_still_bite_when_measured():
+    """Honest-null must not become honest-nothing: a real detector still moves salience."""
+    neutral = salience_formula_v2(SalienceInputsV2(cancellation_modifier=1.0))
+    cancelled = salience_formula_v2(SalienceInputsV2(cancellation_modifier=0.1))
+    assert math.isclose(
+        cancelled["computed_salience"], neutral["computed_salience"] * 0.1, rel_tol=1e-9
+    )
+    redeemed = salience_formula_v2(SalienceInputsV2(neechabhanga_modifier=1.3))
+    plain = salience_formula_v2(SalienceInputsV2(neechabhanga_modifier=1.0))
+    assert math.isclose(
+        redeemed["computed_salience"], plain["computed_salience"] * 1.3, rel_tol=1e-9
+    )
