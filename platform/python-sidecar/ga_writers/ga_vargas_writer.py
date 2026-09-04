@@ -2668,11 +2668,46 @@ def _check_already_written(conn, chart_id: str, ayanamsha_id: str, varga_id: str
     return count > 10  # > 10 rows means varga was written
 
 
-def _write_rows_batch(conn, rows: list[dict]) -> int:
-    """Write a batch of rows to chart_divisionals, return count written."""
-    # Idempotency: replace this chart's prior rows for the (ayanamsha, varga) scope
-    # in this batch so a rebuild replaces rather than leaving stale values.
-    replace_prior_chart_divisionals(conn, rows)
+def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int:
+    """Write a batch of rows to chart_divisionals, return count written.
+
+    `cleared` carries the (chart_id, ayanamsha_id, varga) scopes this RUN has
+    already deleted. It exists because the delete grain and the insert grain do
+    not match (Nirmāṇa L1-W1 finding F-A3).
+
+    replace_prior_chart_divisionals deletes everything for the (chart, ayanamsha,
+    varga) scopes present in `rows`, but this writer calls _write_rows_batch up
+    to five times per ayanamsha — the main varga loop, the D30-lords pass, the
+    cross-varga harmonics, and two scope-cap sentinels. Any later pass carrying a
+    varga an earlier pass already wrote therefore DELETED that earlier pass's
+    rows.
+
+    Measured live before the fix, chart 482012f1 / lahiri_chitrapaksha:
+    D30 held 10 rows across 1 fact_category while every peer varga held 147
+    across 10 — the D30-lords pass had erased the main loop's D30 output. Nothing
+    detected it, because this function returned len(rows) rather than the number
+    of rows that actually survived (asset_throughput.rows_written 38,620 against
+    23,542 live, a 39% loss reported as success).
+
+    Deleting once per scope per run preserves §N.3 exactly — a rebuild still
+    REPLACES rather than accretes — while letting the passes that legitimately
+    add rows to a varga do so.
+    """
+    # Idempotency (§N.3): replace this chart's prior rows for the (ayanamsha,
+    # varga) scopes in this batch, but only for scopes this run has not already
+    # cleared -- see the note above.
+    if cleared is None:
+        replace_prior_chart_divisionals(conn, rows)
+    else:
+        pending = [
+            r for r in rows
+            if (r.get("chart_id"), r.get("ayanamsha_id"), r.get("varga")) not in cleared
+        ]
+        if pending:
+            replace_prior_chart_divisionals(conn, pending)
+            cleared.update(
+                (r.get("chart_id"), r.get("ayanamsha_id"), r.get("varga")) for r in pending
+            )
     if not rows:
         return 0
     # chart_divisionals carries a REAL CHECK constraint on
@@ -2696,8 +2731,29 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
         try:
             cur.execute("SAVEPOINT ga_vargas_batch_sp")
             cur.executemany(_UPSERT_WITH_FACT_ID_SQL, rows)
+            # Report rows that ACTUALLY landed, not rows attempted (F-A3).
+            # _UPSERT_WITH_FACT_ID_SQL is ON CONFLICT DO NOTHING, so a row that
+            # collides on the unique index is silently skipped; returning
+            # len(rows) reported those skips as successes and is why a 39% loss
+            # (38,620 written vs 23,542 live) surfaced as a clean build. rowcount
+            # after executemany is the driver's affected-row total; fall back to
+            # len(rows) only if the driver declines to report one (-1/None), and
+            # say so rather than quietly substituting the optimistic number.
+            affected = getattr(cur, "rowcount", None)
+            if affected is None or affected < 0:
+                logger.warning(
+                    "[ga_vargas] driver reported no rowcount for a %d-row batch; "
+                    "falling back to attempted count, which may overstate",
+                    len(rows),
+                )
+                affected = len(rows)
+            elif affected < len(rows):
+                logger.info(
+                    "[ga_vargas] %d of %d rows landed (%d skipped on conflict)",
+                    affected, len(rows), len(rows) - affected,
+                )
             cur.execute("RELEASE SAVEPOINT ga_vargas_batch_sp")
-            return len(rows)
+            return int(affected)
         except Exception as batch_exc:
             cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_batch_sp")
             logger.warning("[ga_vargas] batch write failed (%s), falling back to per-row", batch_exc)
@@ -2820,6 +2876,10 @@ def build_ga_vargas(
 
     total_rows = 0
     total_batches = len(VARGA_BATCHES)
+    # (chart_id, ayanamsha_id, varga) scopes already delete-cleared by THIS run.
+    # Scoped to the run, never persisted: each fresh build clears again, so
+    # rebuild-replaces (§N.3) is preserved. See _write_rows_batch (F-A3).
+    cleared_scopes: set = set()
 
     # INVARIANT sentinel deletion: remove any prior scope-cap sentinel rows
     # written under ayanamsha_id='INVARIANT' for this chart before inserting new ones.
@@ -2976,7 +3036,7 @@ def build_ga_vargas(
 
                 # Write batch
                 if batch_rows:
-                    written = _write_rows_batch(conn, batch_rows)
+                    written = _write_rows_batch(conn, batch_rows, cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -2997,7 +3057,7 @@ def build_ga_vargas(
                 d30_rows = _build_d30_lord_per_amsa_rows(
                     chart_id, ayan_id, build_id, str(build_id))
                 if d30_rows:
-                    written = _write_rows_batch(conn, d30_rows)
+                    written = _write_rows_batch(conn, d30_rows, cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -3007,7 +3067,7 @@ def build_ga_vargas(
             cross_rows = _build_cross_varga_harmonic_rows(
                 chart_id, ayan_id, build_id, all_varga_signs)
             if cross_rows:
-                written = _write_rows_batch(conn, cross_rows)
+                written = _write_rows_batch(conn, cross_rows, cleared_scopes)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -3052,7 +3112,7 @@ def build_ga_vargas(
                     "formula_provenance_text": "scope_cap/locked_decision_J",
                     "cross_ayanamsha_divergence_arcsec": None,
                 }
-                written = _write_rows_batch(conn, [scope_cap_row])
+                written = _write_rows_batch(conn, [scope_cap_row], cleared_scopes)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -3101,7 +3161,7 @@ def build_ga_vargas(
                         "formula_provenance_text": "scope_cap/floored_bodies",
                         "cross_ayanamsha_divergence_arcsec": None,
                     }
-                    written = _write_rows_batch(conn, [outer_cap_row])
+                    written = _write_rows_batch(conn, [outer_cap_row], cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
