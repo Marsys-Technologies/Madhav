@@ -13,6 +13,18 @@ ZERO LLM. ZERO fabrication.
 Per holistic design v1.1 and brief CLAUDECODE_BRIEF_BG_REMEDIES_v1_0 (v1.1).
 
 BRAHMA-BG-0-9 writer
+
+Registry depends_on: [bg_texts] disposition note (L0-W3, 2026-09-04): this
+declaration is accurate but materially overstates the live coupling for MOST
+of this writer's rows. Only step 2 above (the classical_text_chunks sweep,
+~16% of rows) actually reads bg_texts' output at build time; steps 1 and 3
+(~84% of rows) are static Python literals / a curated YAML fixture with no
+live read of classical_text_chunks. A future O-wave delta-skip/staleness
+consumer should not treat every bg_texts change as invalidating 100% of
+bg_remedies -- only the sweep-derived rows are actually affected. This is a
+documentation-only disclosure (WP-1/WP-2's staleness/delta-skip machinery
+itself is frozen O-wave code and is not touched here); it does not change
+build behavior.
 """
 from __future__ import annotations
 

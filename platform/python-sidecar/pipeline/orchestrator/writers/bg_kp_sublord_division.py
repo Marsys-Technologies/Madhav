@@ -17,9 +17,17 @@ L1 (`ga_nakshatra`) concern, not this table's.
 §N.2: FROZEN orchestrator contract — run(ctx) -> WriterResult, runs on
 ctx.db_conn and never commits or closes it.
 
-depends_on: [] — pure reference geometry, no upstream dependency. (The star-lord
-cross-check READS `reference_nakshatra` when present, but does not require it:
-an absent reference table yields an honest `unverified` status, never a pass.)
+Registry depends_on: [bg_nakshatra] — NOT `[]` (L0-W3 correction, 2026-09-04:
+this line previously read "no upstream dependency", which understated the real,
+registered edge). The geometry itself needs nothing upstream, but the
+registry's hard `depends_on: [bg_nakshatra]` is the correct entry: it
+guarantees `bg_nakshatra` builds first, which is what lets the star-lord
+cross-check below actually run instead of silently degrading to `unverified`
+every time. The cross-check READS `reference_nakshatra` (one of the three
+tables `bg_nakshatra` writes) when present, but does not require it: an
+absent reference table yields an honest `unverified` status, never a pass —
+so the dependency is a fail-open soft READ at runtime, correctly expressed
+as a hard registry edge for build-ordering purposes.
 Downstream: `ga_nakshatra` (L1 natal KP projection + KP significators).
 """
 from __future__ import annotations

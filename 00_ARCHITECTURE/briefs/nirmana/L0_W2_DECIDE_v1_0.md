@@ -165,10 +165,27 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
     `empty_reason` naming the rolling-horizon cause, explicit disclaimer that chart-contact
     interpretation is out of scope. 11 new tests, all passing; full `src/lib/retrieval/` suite
     (1922 tests) unaffected; `tsc`/`eslint` clean. Registered in `L0_brahmagyan/index.ts`.
-15. `bg_reference` — re-verify at sub-table granularity whether `reference_houses` and
-    `reference_strength_systems` are genuinely INPUT-ONLY-by-design or orphaned — cite D-SERVICE.
-16. `bg_reference` — resolve the `reference_nakshatra` vs `reference_nakshatras` one-character
-    naming-collision hazard already flagged in `ZERO_CONSUMER_EVIDENCE_v1_0.md` — cite D-SERVICE.
+15. **VERIFIED, findings recorded (2026-09-04, L0-W3 Batch 3) — no destructive action taken.**
+    `reference_houses` and `reference_strength_systems`: a full repo grep (`platform/src`,
+    `platform/python-sidecar`, `platform-mcp/src`) found **zero** references anywhere outside
+    `bg_reference`'s own writer/tests — not even a writer-side read (unlike every other
+    `INPUT-ONLY` sub-table in this asset, which IS read by at least one other writer). This is a
+    materially different finding than plain INPUT-ONLY: these two specifically appear genuinely
+    unconsumed, not just unconsumed-at-serve-time. Per the campaign's own discipline (no
+    destructive action without a native call), this is recorded as a finding for W2/native
+    disposition, not silently dropped or unilaterally retired — cite D-SERVICE ("every active
+    asset has a consumer or a recorded disposition"; today's honest disposition for these two
+    sub-tables is "none found", not a claimed one).
+16. **DONE (2026-09-04, L0-W3 Batch 3).** `reference_nakshatra` vs `reference_nakshatras`: fixed
+    a real inaccuracy the investigation surfaced, not just the one-character-collision hazard
+    itself. `register_p1_reference.ts`'s own F04 comment called `reference_nakshatras` (plural,
+    bg_reference's table) "the deprecated plural" table — but it is NOT deprecated: it remains a
+    real, live dependency of 4 L1 writers (`ga_sensitive_writer.py`, `ga_sensitive_degree_writer.py`,
+    `ga_dashas_writer.py`, `_vimshottari_independent_verifier.py`), confirmed by grep. Corrected
+    the comment to state the true relationship: two genuinely different, both-live tables, one
+    character apart in name — a real naming-collision risk, not a dead-table risk. Cite §B.8
+    (a comment claiming "deprecated" for a table 4 writers depend on is itself a registry-class
+    disagreement between code and reality).
 17. **DONE via verification (2026-09-04, L0-W3 Batch 1) — confirmed live, real, reachable, no
     code change needed.** `bg_vidhi_primitives` / `bg_vidhi_floors` — the "V-2 MCP-resource face"
     is real: `platform-mcp/src/resources/vidhi_registry_resource.ts` registers
@@ -182,6 +199,11 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
     registration found... beyond the TS types file") was itself a read-only-pass artifact — the
     actual resource file (`vidhi_registry_resource.ts`) lives one directory up from where that
     pass looked (`resources/vidhi/types.ts`), not inside it.
+18. **DONE via verification (2026-09-04, L0-W3 Batch 3), confirmed live.** `bg_kota_chakra_rings`
+    → `ka_kota_chakra` → `kala_kota_chakra` lineage: `kala_kota_chakra` is real and populated
+    (1,173 rows). Its `kota_ring` column's 4 distinct values (`bahya`, `durgantara`, `prakara`,
+    `stambha`) match `bg_kota_chakra_rings.ring_name`'s 4 distinct values EXACTLY — direct,
+    verified evidence the L0→L3 lineage is real, not just code-reachable. No code change needed.
 13a. **NEW (2026-09-04, surfaced by item 13's verification).** `bg_concordance`'s live row count
     (720) is one short of its registry `target_floor` (721), while distinct-topic coverage matches
     exactly (361/361) on both sides. Small, not urgent — cite CLAUDE.md §N.4 (floors track
@@ -189,47 +211,56 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
     diff the writer's computed topic set against the 361 currently in `classical_attributions` to
     find the specific missing topic/school combination, or confirm 721 was itself a stale
     over-count from before a legitimate single-topic consolidation.
-18. `bg_kota_chakra_rings` — confirm the `ka_kota_chakra` → `kala_kota_chakra` serving path reads
-    this L0 table's rows correctly end-to-end (lineage-proof exercise, cheap given the existing
-    byte-identity check) — cite D-SERVICE.
-19. `bg_muhurta_lattice` (separate from its MUST) — reconcile `target_floor` (91,477, stale) against
-    the writer's own binding v2-corpus minimum (164,575, post-migration-530) — cite CLAUDE.md §N.4
-    (floors are aspirational/achieved-count, never fabricated, and should track what the writer
-    itself now guarantees).
-20. `bg_sign_medical` — disclose the shared-writer (multi-`@register`) pattern in the W2 ledger
-    (this entry) so a future dependency change to `bg_medical_mappings` doesn't silently affect
-    `bg_sign_medical`/`bg_nakshatra_medical` — cite D-SERVICE hygiene. Considered closed by this
-    disclosure; no code change required.
+19. **DONE (2026-09-04, L0-W3 Batch 2, migration 643).** `bg_muhurta_lattice` `target_floor`
+    corrected 91,477 → 164,575 (the writer's own binding v2-corpus minimum, post-migration-530/
+    628). Verified live: production row count is 164,886, comfortably above the corrected floor.
+20. `bg_sign_medical` — disclosed via this ledger entry (unchanged from original W2). No code
+    change required; considered closed.
 
 §N.8 (earned-signal) / B.8 (registry accuracy) — cheap, concrete, checkable:
 
-21. `bg_ephemeris` — distinguish "0 rows because pre-populated" from "0 rows because `pyswisseph`
-    unavailable" in `WriterResult.notes` — cite §N.8 (a signal needs a real detector, not an
-    inferred proxy); improves O-wave WP-1 receipt/staleness signal quality.
+21. **RESOLVED — already correct on `main`, no code change (2026-09-04, L0-W3 Batch 3).**
+    Investigated before implementing: the current `bg_ephemeris.py` does NOT have the
+    "graceful-degradation... returns rows_inserted=0" path this finding described — a missing
+    `pyswisseph` import, or a missing pinned ephemeris file, both raise `RuntimeError` (loud
+    failure) via `_require_swiss_file_backend`/`_require_pinned_ephemeris_files`, matching
+    `bg_sky_calendar.py`'s sibling hardening. `rows_inserted=0` on a real completed run already
+    means specifically "nothing changed" (the `ON CONFLICT DO UPDATE ... WHERE ROW(...) IS
+    DISTINCT FROM ROW(...)` clause only counts genuine changes in `cur.rowcount`) — a precise,
+    correct signal, not an ambiguous one. Git blame points to PR #1559 ("converge L0 wave zero
+    writers") as the likely source of this hardening. Same branch-staleness artifact class as
+    D-VR-27/D-VR-30 — the W1 finding was accurate against an older code state, not the current one.
 22. `bg_rules` — investigate the zero-yield `bg_dasha_systems` linkage (0/3,002 rules carry a
     `dasha_system_id` despite live FK validation against it; only one hardcoded
     `"dasha_system_id": "vimshottari"` literal found in a quick grep, suggesting the
     dasha-detection pattern in `l0_rules.py` may be incomplete) — cite D-GROUNDING + §N.8.
-23. `bg_remedies` — disclose that `depends_on: ["bg_texts"]` is accurate for only 16% of rows
-    (`corpus_sweep`, 54/341) — the other 84% are static Python literals; a one-line disposition
-    note so a future delta-skip/staleness check doesn't over-invalidate on every `bg_texts` change
-    — cite D-SERVICE / O-wave WP-1 (truthful invalidation).
-24. `bg_cohort` — annotate the `depends_on: ["bg_ephemeris_engine"]` edge as "shared config helper,
-    not a data read" so a future DAG reader doesn't assume a table read — cite D-SALIENCE / DAG
-    hygiene.
-25. `bg_vastu_directions` — correct the registry `english_description`'s "~22 rows" to the actual
-    24-row remedials count — cite §B.8.
-26. `bg_kp_sublord_division` — correct the writer module's own docstring line ("depends_on: [] —
-    pure reference geometry, no upstream dependency") to acknowledge the real, optional,
-    fail-open cross-check read of `reference_nakshatra` — editorial-only, very low cost.
-27. `bg_parihara_rules` — add `integrity_check_sql` (the only asset in Batch E without one, unlike
-    its 5 siblings which all have byte-identity checks) — direct precedent to copy from, bounded
-    cost.
-28. `bg_gochara_citation_resolution` — once (or since — see D-VR-27) the analysis branch is
-    reconciled with `main`'s migration set, re-verify the full byte-identity hash in
-    `integrity_check_sql` live. **Status: substantially done** — the row-count *shape* was
-    independently re-verified live against production this session (D-VR-27); the exact byte
-    hash was not separately re-run and is a trivial follow-up, not a new investigation.
+23. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_remedies`: added a docstring disclosure that
+    `depends_on: ["bg_texts"]` is accurate but materially overstates live coupling — only step 2
+    (`corpus_sweep`, ~16% of rows) reads `classical_text_chunks` at build time; steps 1/3 (~84%)
+    are static literals/a curated fixture. Documentation-only; WP-1/WP-2's staleness/delta-skip
+    machinery (frozen O-wave code) is untouched.
+24. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_cohort`: annotated the `bg_ephemeris_engine` import
+    site with a disposition note — the edge is real (shared pinned-ephemeris-file config helper)
+    but narrower than "reads that asset's table output" (a service has no rows to read).
+    Documentation-only.
+25. **DONE (2026-09-04, L0-W3 Batch 2, migration 643).** `bg_vastu_directions` registry
+    `english_description` corrected "~22 rows" → "24 rows"; verified live (`bg_vastu_direction_
+    remedials` count = 24, exact match to the already-correct `integrity_check_sql`/`target_floor`).
+26. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_kp_sublord_division`: corrected the writer module's
+    misleading "depends_on: [] — pure reference geometry, no upstream dependency" line to state
+    the real registry edge (`depends_on: [bg_nakshatra]`, a hard build-order dependency enabling
+    the soft, fail-open star-lord cross-check) — editorial-only.
+27. **DONE (2026-09-04, L0-W3 Batch 3, migration 644).** `bg_parihara_rules` gained an
+    `integrity_check_sql` (previously null, the only Batch-E asset without one), covering all 3
+    tables the writer populates: per-table row-count pins (61 + 329 + 59 = 449) plus a
+    byte-identity SHA256 content hash per table, mirroring the established multi-table pattern.
+    Also corrected `target_floor` (447 stale → 449, matching live). Both changes verified live
+    against production Cloud SQL in a rolled-back transaction, INCLUDING actually executing the
+    new `integrity_check_sql` itself (not just installing it) and confirming it evaluates `TRUE`
+    against real data.
+28. **DONE — fully closed (2026-09-04, L0-W3 Batch 3).** `bg_gochara_citation_resolution`'s exact
+    byte-identity hash (not just the row-count shape D-VR-27 already checked) was executed live
+    against production and confirmed to evaluate `TRUE`. Fully verified now, both halves.
 29. `bg_text_index` — the 34% unclassified-chunk gap (3,641/10,651) is a real, disclosed limitation
     of the deterministic keyword classifier; extending the keyword/domain vocabulary is a bounded
     (Python dict additions) NOW candidate — cite D-GROUNDING (this is the substrate the L2
