@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-04T-l0-w2-decide-complete-l0-w3-next
+last_updated: 2026-09-04T-l0-w3-must-fixes-plus-w2-grounding-scope-correction
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -31,7 +31,7 @@ plan's "PHASE A (COMPLETE)".
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
 | P4 Rehearsals = **PHASE A** | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
 | **O-WAVE** — orchestrator truth core | ✅ CLOSED — exit rehearsal complete | WP-1 (PR #1697, `0212c095d`) · WP-3 (PR #1698, `cfa220b8c`) · WP-2 (PR #1699, `ef9ee729e`) — all 3 merged and deployed live (Cloud Run `amjis-web` + job `brahma-build-pipeline-job` both confirmed at commit `ef9ee729e749ada086c975aac501c78086f4f644`), exactly at the ≤3-PR target. All 4 exit-rehearsal criteria (plan §3.4) run and closed — see "O-WAVE EXIT REHEARSAL CLOSED" section below for the full account, including one real methodological finding (the campaign dispatcher's one-shot-per-asset guard makes literal same-mechanism re-dispatch of `bg_vedha_malefic_scale` permanently infeasible) worked around honestly via a documented, code-reusing direct-dispatch script, not a silent bypass. |
-| **L0 — Brahmagyan** (W1→W6) | 🟢 W1 + W2 COMPLETE (40/40 analyzed and routed) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json`. W2 output: `L0_W2_DECIDE_v1_0.md` — every asset routed (2 `verified_reuse`: `bg_texts`/`bg_text_index`; 2 `probe`; 3 `producer_covered`; 1 `static`; 1 `empty`: `bg_sarvatobhadra_grid`; 31 `rebuild_only` — matches plan §5's pre-scoped template exactly, no deviation needed), every W1 finding triaged (3 MUST — `bg_muhurta_lattice` partial-serving gap, `bg_vidhi_floors` DRAFT-status accuracy, `bg_class_priors` 3-way row-count disagreement; 26 NOW, mostly `grounding_tier` formalization candidates; 9 NEVER/LATER, correctly deferred to L2/L3 or genuine corpus-research scope), 3 named native decision points carried forward (`bg_prashna_rules` go-live, `bg_sarvatobhadra_grid` school ruling, `bg_vidhi_floors` status). `bg_vedha_malefic_scale` already `asset_frozen` from P4, exercised twice more this session in the O-wave exit rehearsal. Next: **L0-W3 IMPLEMENT** — batch the 3 MUST fixes + as many bounded-cost NOW items as fit one disjoint-write-set PR wave. |
+| **L0 — Brahmagyan** (W1→W6) | 🟢 W1+W2 COMPLETE; W3 in progress (3/3 MUST addressed, 18 NOW remain) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json`. W2 output: `L0_W2_DECIDE_v1_0.md` — every asset routed (2 `verified_reuse`: `bg_texts`/`bg_text_index`; 2 `probe`; 3 `producer_covered`; 1 `static`; 1 `empty`: `bg_sarvatobhadra_grid`; 31 `rebuild_only`, matches plan §5's template exactly), every W1 finding triaged (3 MUST; 18 NOW post-correction — see D-VR-30; 17 NEVER/LATER post-correction), 3 named native decision points carried forward. W3: PR #1705 addresses all 3 MUST findings (`bg_muhurta_lattice` allowlist widened 4→9 families, `bg_vidhi_floors` DRAFT-rationale made discoverable via migration 642, `bg_class_priors` count discrepancy confirmed already-resolved on main). A self-correction (D-VR-30) reclassified 8 mis-triaged NOW items (grounding_tier formalization on L0 tables — plan §5 scopes that vocabulary to L2, not L0) to NEVER/LATER before any were implemented. `bg_vedha_malefic_scale` already `asset_frozen` from P4, exercised twice more in the O-wave exit rehearsal. Next: land the remaining 18 NOW items in batched disjoint-write-set PRs, then L0-W4 EXECUTE. |
 | **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
 | **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
@@ -964,6 +964,26 @@ were deleted after use; `git status` confirms zero residue in any worktree.
   explicitly at L2 per plan §5) were triaged NOW, not MUST, since none represents a currently-false
   claim — they're additive labeling work, not correctness gaps. Basis: plan §4's own MUST/NOW
   definitions, applied literally rather than loosely.
+- `D-VR-30` (2026-09-04): Self-correction to `L0_W2_DECIDE_v1_0.md`, caught during L0-W3 scoping
+  immediately after PR #1705 (the 3 MUST fixes) opened, before any further W3 work was
+  implemented. D-VR-29's own text already said the `grounding_tier`-formalization items' "schema
+  landing point [is] explicitly at L2 per plan §5" — but then triaged 8 of them (`bg_vastu_
+  directions`, `bg_transit_rules`, `bg_medical_mappings`, `bg_formula_constants`, `bg_class_priors`,
+  `bg_parihara_rules`, `bg_prashna_rules`, `bg_ghatana`) as NOW (L0-actionable this wave) rather
+  than NEVER/LATER (out of L0 scope) — an internal inconsistency: "belongs at L2" and "actionable
+  at L0 now" cannot both be true. Root cause: the underlying W1 analysis was split across 5
+  independent batch agents; batches A/B (`bg_yogas`/`bg_doshas`/`bg_texts`) correctly applied
+  plan §5's L2-grounding-boundary scoping and routed NEVER/LATER; batches C/D/E did not apply the
+  same scoping consistently for their own classical-catalog assets, and this session's own W2
+  synthesis pass did not catch the inconsistency before publishing PR #1703. Corrected in place in
+  `L0_W2_DECIDE_v1_0.md` (struck-through original text preserved, not deleted; new NEVER/LATER
+  entries 30a-30h added with the corrected disposition and full reasoning) rather than quietly
+  editing the numbers — a reader of the historical version can still see what changed and why.
+  Caught before cost was sunk: none of the 8 reclassified items had been implemented as W3 code
+  yet (only the 3 MUST fixes, which are unaffected by this correction, had landed). Basis: the same
+  "verify, don't trust, including your own prior output" discipline as D-VR-14/24/27/28, applied
+  one level up — to this session's own W2 synthesis, not just to a single batch agent's findings
+  or to system state.
 
 ## Finding-fence backlog
 
