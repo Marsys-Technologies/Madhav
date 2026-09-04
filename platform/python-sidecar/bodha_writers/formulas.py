@@ -86,8 +86,23 @@ HOUSE_WEIGHT: dict[int, float] = {
     2: 1.00,   # other
 }
 
-# Ashtakavarga support multiplier (A10 §4 table)
-def _av_multiplier(bindus: int) -> float:
+# Ashtakavarga support multiplier (A10 §4 table).
+#
+# SCALE (NIRMANA L2-W3, D-SALIENCE): these thresholds are **bhinnashtakavarga** —
+# one graha's bindus in one house, range 0..8. They are NOT sarvashtakavarga (the
+# 7-graha sum, which runs ~20..40 per house and saturates this table at its top
+# bucket on every row). Callers MUST supply bhinna bindus; see
+# bo_laksana._build_av_lookup, which reads chart_facts.ashtakavarga_bindu_per_varga
+# keyed (graha, house) for exactly this reason.
+#
+# `None` means no bindu count could be resolved for this signal. That returns None,
+# not a bucket: an unknown AV support is not the same as an average one, and picking
+# a favourable-sounding default for it is the CLAUDE.md §N.7 item-6 defect. The
+# caller treats a None multiplier as neutral (x1.0) for arithmetic and records
+# inputs_complete=False, so the row says "not measured" rather than "measured 1.00".
+def _av_multiplier(bindus: int | None) -> float | None:
+    if bindus is None:
+        return None
     if bindus >= 7:
         return 1.15
     if bindus >= 5:
@@ -516,15 +531,24 @@ class SalienceInputsV2:
     Completeness is tracked via inputs_complete — FALSE when any field
     falls back to a silent default (trap #17).
     """
-    # Condition terms — carry over from v1
+    # Condition terms — carry over from v1.
+    #
+    # NIRMANA L2-W3 (D-SALIENCE): the four "static terms" below are Optional.
+    # None means NO DETECTOR RAN for this signal — distinct from a measured
+    # neutral value. Arithmetic treats None as the term's identity (so a missing
+    # term never moves the ranking), and the caller stores None rather than the
+    # identity, so a reader can tell "not measured" from "measured neutral".
+    # This is CLAUDE.md §N.8: a signal without a detector behind it is null,
+    # not green.
     orb_tightness: float = 1.0
     shadbala_norm: float = 1.0          # rupas, clamped to 2.0 max
     dignity_score: float = 0.50         # use DIGNITY_SCORE lookup or pass raw
     house_number: int = 2
-    ashtakavarga_bindus: int = 4
-    vargottama_amplification: float = 0.0
-    neechabhanga_modifier: float = 1.0
-    cancellation_modifier: float = 1.0
+    ashtakavarga_bindus: int | None = None   # BHINNA bindus 0..8; None = unresolved
+    vargottama_amplification: float | None = None   # 0 / 0.25; None = not measured
+    neechabhanga_modifier: float | None = None      # 1.0 normal / 1.3 redeemed
+    cancellation_modifier: float | None = None      # 1.0 normal / 0.1 cancelled yoga
+    argala_modifier: float | None = None            # 0..0.20 net argala support
 
     # V2 additions
     verification_pass_status: str = "documented_approximation"
@@ -560,15 +584,25 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
     house_wt = HOUSE_WEIGHT.get(s.house_number, 1.00)
     av_mult = _av_multiplier(s.ashtakavarga_bindus)
 
+    # Unmeasured terms contribute their identity, so a missing detector cannot
+    # move the ranking in either direction. What gets STORED is still None —
+    # see the return block below.
+    av_term = av_mult if av_mult is not None else 1.0
+    vargottama_term = 1 + (s.vargottama_amplification or 0.0)
+    argala_term = 1 + (s.argala_modifier or 0.0)
+    neechabhanga_term = s.neechabhanga_modifier if s.neechabhanga_modifier is not None else 1.0
+    cancellation_term = s.cancellation_modifier if s.cancellation_modifier is not None else 1.0
+
     condition_terms = (
         s.orb_tightness
         * min(s.shadbala_norm, 2.0)
         * s.dignity_score
         * house_wt
-        * av_mult
-        * (1 + s.vargottama_amplification)
-        * s.neechabhanga_modifier
-        * s.cancellation_modifier
+        * av_term
+        * vargottama_term
+        * argala_term
+        * neechabhanga_term
+        * cancellation_term
     )
 
     gate = s.bala_gate if s.bala_gate is not None else 1.0
@@ -596,9 +630,15 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
         "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_inputs_complete": s.inputs_complete,
         "present_but_enfeebled":    present_but_enfeebled,
-        # v1 compat keys — callers that stored these column names still work
+        # v1 compat keys — callers that stored these column names still work.
+        # Unmeasured terms are returned as None (not their identity) so the stored
+        # row distinguishes "no detector ran" from "detector ran and found neutral".
         "house_weight_multiplier":           round(house_wt, 6),
-        "ashtakavarga_support_multiplier":   round(av_mult, 6),
+        "ashtakavarga_support_multiplier":   None if av_mult is None else round(av_mult, 6),
+        "vargottama_amplification":          None if s.vargottama_amplification is None else round(s.vargottama_amplification, 6),
+        "neechabhanga_modifier":             None if s.neechabhanga_modifier is None else round(s.neechabhanga_modifier, 6),
+        "cancellation_modifier":             None if s.cancellation_modifier is None else round(s.cancellation_modifier, 6),
+        "argala_modifier":                   None if s.argala_modifier is None else round(s.argala_modifier, 6),
     }
 
 
