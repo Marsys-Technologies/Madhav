@@ -22,6 +22,15 @@ const SNAPSHOT_URL = '/api/admin/nirmana-elevation/snapshot'
 const DEFAULT_VISIBLE_POLL_MS = 15_000
 const DEFAULT_HIDDEN_POLL_MS = 60_000
 const MAX_BACKOFF_MS = 300_000
+const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const SSE_REFETCH_DEBOUNCE_MS = 2_000
+const RELEVANT_SSE_EVENT_TYPES = [
+  'run.state_change',
+  'asset.progress',
+  'asset.state_change',
+  'nirmana.asset_frozen',
+  'nirmana.definition_superseded',
+]
 
 type Props = {
   /** Test-only interval override. The production page uses the safe defaults. */
@@ -238,6 +247,35 @@ export function NirmanaElevationTracker({
     const timer = window.setInterval(() => void refresh(), delay)
     return () => window.clearInterval(timer)
   }, [failures, hiddenPollIntervalMs, pollIntervalMs, refresh, visible])
+
+  // Real-time nudge on top of the polling baseline above (Effect 2, unchanged
+  // as the freshness fallback). Subscribes to the existing chart-scoped
+  // cockpit SSE bus so an accepted capsule/supersession (see
+  // cockpit-events.ts's publishCockpitEvent) refreshes the snapshot within
+  // seconds instead of waiting for the next poll tick. Bursts of events are
+  // debounced into a single refetch; EventSource retries its own connection
+  // on error, so onerror is a deliberate no-op here.
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    const scheduleRefetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => { void refresh() }, SSE_REFETCH_DEBOUNCE_MS)
+    }
+
+    const source = new EventSource(`/api/cockpit/sse?chart_id=${CANONICAL_CHART_ID}`)
+    for (const type of RELEVANT_SSE_EVENT_TYPES) {
+      source.addEventListener(type, scheduleRefetch)
+    }
+    source.onerror = () => {
+      // EventSource retries on its own; no action needed beyond letting the
+      // existing poll (Effect 2, unchanged) remain the freshness fallback.
+    }
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      source.close()
+    }
+  }, [refresh])
 
   const stale = Boolean(failure)
     || snapshot?.data_quality.verdict !== 'reliable'

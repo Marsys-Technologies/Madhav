@@ -29,6 +29,7 @@ import {
   recordNirmanaElevationLabelCatalogue,
 } from '@/lib/nirmana-elevation/labels'
 import { checkRateLimit } from '@/lib/mcp/rate_limiter'
+import { publishCockpitEvent } from '@/lib/nirmana-elevation/cockpit-events'
 import { NIRMANA_STAGE_IDS } from '@/lib/nirmana-elevation/vocab'
 
 // This schema and dispatch function are shared verbatim between the
@@ -329,6 +330,9 @@ export async function handleNirmanaEvidenceCommand(
         new_definition_revision: parsedData.new_definition_revision,
         outcome,
       })
+      if (outcome === 'superseded') {
+        await publishCockpitEvent({ type: 'nirmana.definition_superseded', definition_revision: parsedData.new_definition_revision })
+      }
       return NextResponse.json({ outcome }, { status: outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
     }
 
@@ -388,6 +392,9 @@ export async function handleNirmanaEvidenceCommand(
       source_ref: parsedData.source_ref,
       outcome,
     })
+    if (outcome === 'created' && parsedData.event_type === 'asset_frozen') {
+      await publishCockpitEvent({ type: 'nirmana.asset_frozen', asset_id: parsedData.entity_id })
+    }
     return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     if (error instanceof NirmanaElevationDefinitionConflictError
