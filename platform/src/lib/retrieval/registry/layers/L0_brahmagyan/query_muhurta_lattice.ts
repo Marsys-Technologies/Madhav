@@ -8,8 +8,14 @@
  * NOTHING astrological of its own.
  *
  * WHAT IT SERVES: every lattice factor row whose [start_utc, end_utc) span
- * overlaps the requested interval, across four chart-independent factor families
- * (`agnivasa`, `combination_yoga`, `kalam`, `ghati_muhurta`).
+ * overlaps the requested interval, across all nine chart-independent factor
+ * families the substrate's CHECK constraint allows (`agnivasa`,
+ * `combination_yoga`, `kalam`, `ghati_muhurta` from migration 484, plus
+ * `hora`, `vara`, `nakshatra`, `tithi`, `lagna` from migration 530's
+ * pāñcāṅgika/lagna widening — L0-W2 MUST fix: this capability's allowlist
+ * previously covered only the first four, silently 400ing an explicit filter
+ * on any of the five newer families even though the writer produces them and
+ * the DB accepts them).
  *
  * DENSITY DISCIPLINE (CLAUDE.md §N.6 part 1 — never present catalog/convention
  * rows as confirmed findings): the substrate stamps every row with
@@ -36,8 +42,11 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
-/** The four factor families the substrate's CHECK constraint allows. */
-const FACTOR_FAMILIES = ['agnivasa', 'combination_yoga', 'kalam', 'ghati_muhurta'] as const
+/** The nine factor families the substrate's CHECK constraint allows (migrations 484 + 530). */
+const FACTOR_FAMILIES = [
+  'agnivasa', 'combination_yoga', 'kalam', 'ghati_muhurta',
+  'hora', 'vara', 'nakshatra', 'tithi', 'lagna',
+] as const
 
 const MAX_ROWS = 2000
 
@@ -53,15 +62,18 @@ export const queryMuhurtaLatticeCapability: CapabilityDescriptor = {
 
   description: [
     'Read the global muhūrta boundary/factor lattice (bg_muhurta_lattice) for a time interval.',
-    'Four chart-independent factor families: agnivasa (Agni\'s tithi-keyed elemental residence),',
+    'Nine chart-independent factor families: agnivasa (Agni\'s tithi-keyed elemental residence),',
     'combination_yoga (Sarvārtha-siddhi, Amṛta-siddhi, Ravi/Guru-Puṣya, Tripuṣkara/Dvipuṣkara,',
     'Siddha, Bhadra, Pañchaka spans), kalam (rāhu-kālam, yamagaṇḍa, gulika, durmuhūrta,',
-    'brāhma-muhūrta, abhijit, amṛta-kālam, varjyam and siblings) and ghati_muhurta (the 30-fold',
-    'named day+night muhūrtas). Every row carries its own source_citation and a corpus_status of',
-    'either computed_cited (a real inline classical citation exists for that table) or',
-    'computed_uncited_convention (a live deterministic convention with no per-row classical',
-    'citation in source — disclosed, not invented). The two are counted separately in the',
-    'response; do not read the raw row count as a count of cited classical factors.',
+    'brāhma-muhūrta, abhijit, amṛta-kālam, varjyam and siblings), ghati_muhurta (the 30-fold',
+    'named day+night muhūrtas), hora (the 24 planetary hours per sunrise-to-next-sunrise cycle),',
+    'vara (sunrise-to-sunrise weekday), nakshatra (sunrise nakṣatra), tithi (sunrise tithi), and',
+    'lagna (the 12 rising-sign spans per day at the reference location). Every row carries its',
+    'own source_citation and a corpus_status of either computed_cited (a real inline classical',
+    'citation exists for that table) or computed_uncited_convention (a live deterministic',
+    'convention with no per-row classical citation in source — disclosed, not invented). The two',
+    'are counted separately in the response; do not read the raw row count as a count of cited',
+    'classical factors.',
     'Sunrise-anchored families are computed at one fixed IST reference location returned as data',
     'on every row — these are NOT querent-local windows. Global reference: no chart_id needed.',
   ].join(' '),
@@ -69,7 +81,7 @@ export const queryMuhurtaLatticeCapability: CapabilityDescriptor = {
   input_schema: {
     start_utc: { type: 'string', description: 'Interval start, ISO-8601 UTC (e.g. 2026-08-05T00:00:00Z). Required.' },
     end_utc:   { type: 'string', description: 'Interval end, ISO-8601 UTC. Required. Rows overlapping [start_utc, end_utc) are returned.' },
-    factor_family: { type: 'string', description: `Optional filter: one of ${FACTOR_FAMILIES.join(', ')}. Omit for all four.` },
+    factor_family: { type: 'string', description: `Optional filter: one of ${FACTOR_FAMILIES.join(', ')}. Omit for all nine.` },
     factor_key: { type: 'string', description: 'Optional exact factor_key filter (e.g. rahu_kalam, abhijit, bhadra).' },
     limit: { type: 'number', description: `Max rows (default ${MAX_ROWS}, hard cap ${MAX_ROWS}). Narrow the interval rather than raising this.` },
   },
