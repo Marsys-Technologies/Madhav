@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-04T-unified-plan-v2-0-ratified-O-wave-opening
+last_updated: 2026-09-04T-owave-wp1-wp3-merged-wp2-open-l0-w1-complete
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -15,7 +15,7 @@ start/resume; trust it; continue from the recorded position. Once the P3 ops pla
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
 
-## Current phase: Unified Elevation Plan v2.0 RATIFIED; O-wave opening; L0-W1 analysis concurrent
+## Current phase: O-wave WP-1/WP-3 merged, WP-2 open (PR #1699); L0-W1 analysis COMPLETE (40/40)
 
 Phase tracking from here follows `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §1`'s programme map
 (PHASE A → O-WAVE → L0→L1→L2→L3→L4→L5, each W1-ANALYZE→W2-DECIDE→W3-IMPLEMENT→W4-EXECUTE→
@@ -30,8 +30,8 @@ plan's "PHASE A (COMPLETE)".
 | P2 Land governance | ✅ done | PR #1675 merged via queue (squash `5fc008d4c`), docs-only (4 files, no code/schema). Current `origin/main` tip. |
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
 | P4 Rehearsals = **PHASE A** | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
-| **O-WAVE** — orchestrator truth core | 🟢 opening now | WP-1 truthful invalidation · WP-2 delta-skip · WP-3 total plans, under the native-authorized §N.2 freeze exception scoped exactly to plan §3.5's register. Target ≤3 PRs, hard tripwire at 5. Exit rehearsal per plan §3.4 (a)-(d). See "Unified Plan v2.0 RATIFIED" section below for the freeze-exception grant record. |
-| **L0 — Brahmagyan** (W1→W6) | 🟡 W1 analysis running concurrently (read-only, per plan §1 bounded-pipelining default) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. `bg_vedha_malefic_scale` already `asset_frozen` from P4 — W1 analysis reuses that capsule per the W1 rubric's "reuse committed analysis bases" rule rather than re-analyzing. W4 EXECUTE waits for O-wave to close (plan §1: "N+1's W4 always waits for N's W6" — O-wave functions as the gating predecessor here). |
+| **O-WAVE** — orchestrator truth core | 🟡 2/3 PRs merged, 3rd open | WP-1 truthful invalidation (PR #1697, merged `0212c095d`) · WP-3 total plans (PR #1698, merged `cfa220b8c`) · WP-2 delta-skip (PR #1699, open, auto-merge armed, migration 641 verified live against Cloud SQL in a rolled-back transaction) — all under the native-authorized §N.2 freeze exception scoped exactly to plan §3.5's register. 3/3 PRs opened, at the ≤3 target (not the 5 tripwire). Exit rehearsal per plan §3.4 (a)-(d) runs once WP-2 merges. See "Unified Plan v2.0 RATIFIED" section below for the freeze-exception grant record. |
+| **L0 — Brahmagyan** (W1→W6) | 🟢 W1 analysis COMPLETE (40/40) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 ANALYZE ran concurrently with the O-wave (plan §1/§3's own authorization), 5 parallel read-only batches of 8 assets each, full rubric per asset. Output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + the `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json` ground-truth export, all in this directory. `bg_vedha_malefic_scale` already `asset_frozen` from P4 — W1 analysis reused that capsule per the rubric's "reuse committed analysis bases" rule. Cross-batch findings worth W2's attention: `bg_concordance` built-but-unplugged confirmed from two independent angles (stub MCP consumer + writer schema mismatch); `bg_rules`/`bg_remedies` declared-dependency-near-zero-yield findings; `bg_muhurta_lattice` partial-serving gap (4/9 factor families exposed); `bg_vidhi_floors` is the only non-CURRENT (DRAFT) L0 asset. One methodology finding: this session's `campaign/nirmana-autonomous` checkout was 165 commits behind `origin/main` during the analysis pass — one file-presence-based finding was a false alarm as a result (caught and corrected in place, see index doc) — recommend refreshing that branch before it's used as a work base again. W2 DECIDE and W4 EXECUTE both wait for the O-wave to close (plan §1: "N+1's W4 always waits for N's W6" — O-wave functions as the gating predecessor for W4 specifically; W2 itself is not blocked by the O-wave and can start once native/session capacity allows). |
 | **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
 | **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
@@ -792,6 +792,20 @@ re-running the rubric from scratch.
   explicitly re-stating that the writer-facing contract stays frozen and that any need beyond the
   register is a STOP-and-request-extension event, not a self-authorization. Basis: plan §9 +
   campaign hard floor (never weaken or silently widen an authorized exception).
+- `D-VR-27` (2026-09-04): Ran L0-W1 ANALYZE as 5 parallel read-only agents (8 assets each,
+  40/40 total) concurrently with the O-wave, per the plan's own explicit authorization (§3: "L0-W1
+  analysis may run concurrently — it is read-only and needs no orchestrator"). One batch (E)
+  surfaced an apparent MUST-level correctness defect (`bg_gochara_citation_resolution`'s integrity
+  check appearing unsatisfiable) that was independently re-verified live against production Cloud
+  SQL before being accepted into the record, and found to be a false alarm caused by the analysis
+  running from a stale local branch checkout (`campaign/nirmana-autonomous`, 165 commits behind
+  `origin/main`) rather than a real defect — corrected in place in the batch file with the
+  verification steps shown, not silently dropped. Recorded as a methodology finding (branch
+  staleness risk for any future file/migration-presence-based finding) in the new
+  `L0_W1_ANALYSIS_INDEX_v1_0.md`, distinct from the substantive per-asset findings. Basis: CLAUDE.md
+  §N.8 (a signal needs a real detector, not a proxy) and the standing "verify, don't trust" session
+  discipline (D-VR-14/D-VR-24 precedent) — applied here to the analysis agents' own output, not just
+  to reports about system state.
 
 ## Finding-fence backlog
 
