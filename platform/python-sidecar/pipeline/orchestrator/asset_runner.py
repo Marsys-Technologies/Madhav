@@ -841,6 +841,45 @@ def _mark_probe_green(
                 "from_state": "building", "to_state": "lit"})
 
 
+def _skip_no_delta(conn, cur, run_id: str, chart_id: str | None, asset_id: str) -> bool:
+    """O-wave WP-2 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.2, "delta-skip"):
+    the pre-execution gate found every input digest unchanged since the last
+    complete receipt. Record the skip WITHOUT invoking the writer.
+
+    asset_throughput returns to 'lit': run_asset's own unconditional
+    'building' flip (before any writer-selection logic runs) is the only
+    thing that moved it off 'lit' this run -- a receipt only exists after a
+    prior success, so 'lit' is the correct restored state, not a guess.
+    build_run_assets records disposition='skip_no_delta' (plan §3.2's own
+    acceptance wording) and output_changed=False, so staleness.py's
+    delta-directional propagation (O-wave WP-1) also reads "no delta" and
+    does not walk downstream for nothing.
+    """
+    cur.execute(
+        """UPDATE asset_throughput
+           SET state = 'lit', last_built_at = NOW(), last_error = NULL
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+        (chart_id, asset_id),
+    )
+    _guard_state_write(cur, run_id, chart_id, asset_id, 'lit')
+    cur.execute(
+        """UPDATE build_run_assets
+           SET state = 'complete', disposition = 'skip_no_delta',
+               output_changed = FALSE, ended_at = NOW()
+           WHERE run_id = %s AND asset_id = %s""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+    emit_event({
+        "type": "asset.skip_no_delta", "chart_id": chart_id, "asset_id": asset_id, "run_id": run_id,
+    }, cur=cur)
+    logger.info(
+        "[orchestrator] asset %s skip_no_delta (O-wave WP-2 delta-skip gate) — zero writer invocation",
+        asset_id,
+    )
+    return True
+
+
 def _run_data_writer(
     conn,
     cur,
@@ -850,11 +889,17 @@ def _run_data_writer(
     declared_deps: list[str] | None = None,
     natural_key_partition: str | None = None,
     has_cowriters: bool | None = None,
+    force: bool = False,
 ) -> bool:
     """
     Run a data asset's registered writer to completion (sub-step driven). Marks
     'lit' + downstream stale on success (returns True); marks 'error' and returns
     False on failure. Reused by both the normal data path and the regenerate path.
+
+    force=True (O-wave WP-2, plan §3.2) bypasses the pre-execution delta-skip
+    gate below unconditionally -- e.g. a campaign route that needs one
+    accepted execution regardless of whether inputs already match the last
+    complete receipt.
     """
     discover_all()
     writer_cls = get_writer(asset_id)
@@ -891,6 +936,32 @@ def _run_data_writer(
     except Exception as exc:
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
         return False
+
+    # O-wave WP-2 (plan §3.2, "delta-skip"): pre-execution gate. Only for the
+    # same real-data-writer path WP-1's receipt capture already covers
+    # (declared_deps is not None; has_cowriters is not None -- both always
+    # supplied by the sole production caller, _schedule_parallel -- legacy
+    # unit-fixture direct calls that omit either skip this exactly like they
+    # already skip receipt capture). Never gates a probe/service asset.
+    if declared_deps is not None and has_cowriters is not None and not force:
+        try:
+            from .provenance import previous_receipt_matches_inputs
+            if previous_receipt_matches_inputs(
+                cur, asset_id=asset_id, chart_id=chart_id, code_digest=writer_hash,
+                config=ctx.config, upstream_digest=upstream_hash,
+                partition_declaration=natural_key_partition, has_cowriters=has_cowriters,
+            ):
+                return _skip_no_delta(conn, cur, run_id, chart_id, asset_id)
+        except Exception as exc:
+            # A failed delta-skip DECISION must never become a failed BUILD.
+            # Fail open into the normal execute path -- a wasted execution is
+            # recoverable; skipping on an error we couldn't fully evaluate is
+            # not (plan §3.2 point 4).
+            logger.warning(
+                "[orchestrator] delta-skip gate check failed for %s (executing "
+                "normally): %s", asset_id, exc,
+            )
+
     cur.execute(
         "SELECT integrity_check_sql FROM asset_registry WHERE asset_id = %s",
         (asset_id,),
@@ -1065,7 +1136,8 @@ def _run_data_writer(
     )
     _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
     cur.execute(
-        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
+        """UPDATE build_run_assets
+           SET state = 'complete', disposition = 'build', ended_at = NOW()
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
@@ -1140,9 +1212,13 @@ def run_asset(
     declared_deps: list[str] | None = None,
     natural_key_partition: str | None = None,
     has_cowriters: bool | None = None,
+    force: bool = False,
 ) -> None:
     """
     Execute one asset writer inside a savepoint.
+
+    force=True (O-wave WP-2, plan §3.2) bypasses _run_data_writer's
+    pre-execution delta-skip gate unconditionally.
 
     Robustness properties:
     - Savepoint isolation: writer crash rolls back only its writes, not run state.
@@ -1316,6 +1392,11 @@ def run_asset(
         if not _run_data_writer(
             conn, cur, run_id, chart_id, asset_id, declared_deps,
             natural_key_partition, has_cowriters,
+            # The probe just failed -- independent evidence that regeneration
+            # is needed regardless of what the input digests say. Always
+            # bypass the delta-skip gate here; skipping now would silently
+            # re-accept the very state the probe just rejected.
+            force=True,
         ):
             return  # writer failed; already marked error
         ok2, msg2 = _probe_asset(conn, cur, asset_id, registry_row, is_service)
@@ -1336,7 +1417,7 @@ def run_asset(
         if get_writer(asset_id) is not None:
             _run_data_writer(
                 conn, cur, run_id, chart_id, asset_id, declared_deps,
-                natural_key_partition, has_cowriters,
+                natural_key_partition, has_cowriters, force,
             )
             return
         # Legacy health-probe path (bg_* assets with health_probe JSONB spec).
@@ -1350,5 +1431,5 @@ def run_asset(
     # Data asset: run its registered writer to completion (sub-step driven).
     _run_data_writer(
         conn, cur, run_id, chart_id, asset_id, declared_deps,
-        natural_key_partition, has_cowriters,
+        natural_key_partition, has_cowriters, force,
     )

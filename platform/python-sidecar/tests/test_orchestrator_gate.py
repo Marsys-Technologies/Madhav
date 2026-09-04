@@ -129,7 +129,7 @@ def _install(monkeypatch, state, fail_assets):
 
     def fake_run_asset(
         conn, cur, run_id, chart_id, asset_id, position, *,
-        declared_deps, natural_key_partition, has_cowriters,
+        declared_deps, natural_key_partition, has_cowriters, force=False,
     ):
         assert declared_deps == next(row["depends_on"] for row in REGISTRY if row["asset_id"] == asset_id)
         assert natural_key_partition is None

@@ -655,6 +655,7 @@ def _schedule_parallel(
     asset_deps: dict[str, list[str]],
     asset_partitions: dict[str, str | None],
     asset_has_cowriters: dict[str, bool],
+    force: bool = False,
 ) -> tuple[set[str], Optional[str]]:
     """
     Wave-parallel DAG executor. Replaces the serial plan walk while preserving the
@@ -754,6 +755,7 @@ def _schedule_parallel(
                 declared_deps=deps_of[asset_id],
                 natural_key_partition=asset_partitions[asset_id],
                 has_cowriters=asset_has_cowriters[asset_id],
+                force=force,
             )
             wcur.execute(
                 "SELECT state FROM build_run_assets WHERE run_id = %s AND asset_id = %s",
@@ -1002,6 +1004,15 @@ def execute_run(run_id: str) -> None:
     from .writers import discover_all    # D1: ensure all writer modules are imported
     discover_all()
 
+    # O-wave WP-2 (plan §3.2, "delta-skip"): NIRMANA_FORCE_EXECUTE bypasses the
+    # pre-execution delta-skip gate for every asset in THIS run. Read per-run
+    # (a Cloud Run Job invocation handles exactly one --run-id and exits), not
+    # cached at module import, so it stays testable and matches the plan's own
+    # "per dispatch" framing. The campaign dispatcher sets this env var on the
+    # job execution override when its route demands one accepted execution
+    # regardless of whether inputs already match the last complete receipt.
+    force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")
+
     # M-7: SIGTERM sets _shutdown flag for graceful drain instead of sys.exit(0).
     # Cloud Run gives 10 s after SIGTERM before SIGKILL; daemon workers finish
     # their current savepoint commit before the process exits.
@@ -1142,7 +1153,7 @@ def execute_run(run_id: str) -> None:
         # concurrently (width = ORCHESTRATOR_WORKER_LIMIT, default 4; 1 = serial).
         failed_assets, terminal = _schedule_parallel(
             conn, cur, run_id, chart_id, plan, action, _asset_scopes, _asset_deps,
-            frozen.asset_partitions, frozen.asset_has_cowriters,
+            frozen.asset_partitions, frozen.asset_has_cowriters, force=force,
         )
 
         if terminal == "stopped":

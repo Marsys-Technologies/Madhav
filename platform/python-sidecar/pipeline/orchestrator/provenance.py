@@ -304,3 +304,50 @@ def previous_output_digest(
     if not row:
         return None
     return row.get("output_digest") if isinstance(row, dict) else row[0]
+
+
+def previous_receipt_matches_inputs(
+    cur,
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    code_digest: str | None,
+    config: dict[str, Any],
+    upstream_digest: str | None,
+    partition_declaration: str | None,
+    has_cowriters: bool,
+) -> bool:
+    """Read-side lookup (O-wave WP-2, plan §3.2, "delta-skip"): True iff a
+    'proven' stored receipt exists for this exact key and its
+    code_digest/config_digest/upstream_digest/partition_digest/receipt_version
+    all match the given CURRENT inputs. output_digest is deliberately
+    excluded from the comparison -- it isn't known before the writer runs;
+    that is exactly why this is a PRE-execution gate, distinct from WP-1's
+    post-execution previous_output_digest comparison above.
+
+    Fail-open by construction: any missing/unknown input, or an 'unknown'
+    stored receipt, or no stored receipt at all, returns False -- the caller
+    then executes. A wasted execution is recoverable; a wrongly skipped one
+    is silent corruption (CLAUDE.md §N.8 / plan §3.2 point 4).
+    """
+    if code_digest is None or upstream_digest is None:
+        return False
+    current = build_receipt(
+        asset_id=asset_id, chart_id=chart_id, code_digest=code_digest, config=config,
+        upstream_digest=upstream_digest, upstream_receipts=[],
+        partition_declaration=partition_declaration, has_cowriters=has_cowriters,
+        output_digest=None, output_digest_spec_sha256=None,
+    )
+    if current.config_digest is None or current.partition_digest is None:
+        return False
+    stored = _stored_receipt(cur, current)
+    if stored is None or stored.receipt_state == "unknown":
+        return False
+    if stored.receipt_version != current.receipt_version:
+        return False
+    return (
+        stored.code_digest == current.code_digest
+        and stored.config_digest == current.config_digest
+        and stored.upstream_digest == current.upstream_digest
+        and stored.partition_digest == current.partition_digest
+    )
