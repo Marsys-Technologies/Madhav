@@ -67,6 +67,16 @@ source_acceptance`). This layer's freeze closes the build arc.
   `20323fae4`; charter read from the shared checkout (C1: sessions/ not yet on main);
   `NIRMANA_HOLD` absent (standing authorization); coordination issue = **#1713**; no open
   `nirmana-adjudication` issues at open. DB read path = read-only postgres MCP.
+- **D-L5-10** (2026-09-05) — **Second worktree `~/nirmana-s/l5-docs` for session-owned docs and
+  coordination.** Cause: I dispatched an implementation subagent that ran `git checkout -b` in
+  `~/nirmana-s/l5` — the *same* working tree I was using — so it silently switched my branch under
+  me and my next commit (the W6 close-report draft) landed on the subagent's feature branch.
+  Recovered without loss: preserved the commit on a temp ref, reset the subagent's branch to
+  `origin/main` while its tree was still clean, and cherry-picked the commit onto the docs branch.
+  **Operational rule going forward: an implementation subagent gets the layer worktree; I work from
+  `l5-docs`.** Recorded because this is a v2.1-shaped hazard — the charter isolates *sessions* by
+  worktree (C4) but says nothing about a session and its own subagents sharing one, and a subagent
+  mid-edit during that reset would have lost work.
 - **D-L5-09** (2026-09-05) — The L5 seal's own gates are **re-verified, not inherited**: G8 is a false
   PASS (`structural_no_calibration` exists in no code, only in four markdown files) and G11 has
   regressed (live `mi_seva.count_sql` contradicts the sealed null). A predecessor seal is evidence,
