@@ -109,7 +109,10 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 
 | item | blocked on | since | note |
 |---|---|---|---|
-| W4 for 15 of 23 assets | adjudication **#1721** (fingerprint ordering) | 2026-09-05 | none of the 15 is E-gate-open today, so the hold is free |
+| **W4 for ALL 23 assets** | **#1730** (dispatcher enforces strict layer sequencing) | 2026-09-05 | the hard blocker: no layer session can dispatch anything |
+| **The gate canary itself** | **#1734** (E-gate soundness / DAG truth) | 2026-09-05 | L3 has no honest canary until the DAG is reconciled and superseded |
+| W2 acceptance events (all 23) | **#1715** (evidence spine generalisation, RULED — L1 authors) | 2026-09-05 | W2 *decisions* are unaffected and proceed |
+| W4 for 15 of 23 assets | **PR #1728** (fingerprint ordering, RULED, auto-merge armed) | 2026-09-05 | resolves on merge; record the SORTED fingerprint |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | 2026-09-05 | poll `L2_STATE.md` §CAPABILITIES LANDED on `origin/main` |
 | 18 of 23 assets' W4 | L0/L1/L2 freezes (E-gate, C2) | 2026-09-05 | `ga_positions` is the single highest-leverage unlock (5 assets) |
 
@@ -162,11 +165,36 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
   parameterised and **0/0/0/0/0** contracts. Consequence for L3: **19 real integrity contracts must
   be authored in W3** (the 4 services take the health-probe path instead and are unaffected).
   Declined the tool-side shortcut — see D-L3-3.
-- **F-L3-3 (open, batch C owns the diagnosis)** — `ka_graha_sancara` carries
-  `service_health='unhealthy'` while being one of only two E-gate-open L3 assets and the intended
-  gate canary. Under C12 a service is "lit" only on a current GREEN probe, so an unhealthy probe
-  blocks it, `ka_muhurta_seva` behind it, and the whole artifact spine behind that. C12 also
-  directs checking provenance first: a check that has never been green is a proposal, not a gate.
+- **F-L3-3 (MUST — DIAGNOSED, batch C).** `ka_graha_sancara` is **genuinely broken**, not stale
+  state. Two independent real defects: (1) `services/ka_graha_sancara/engine.py::_read_from_bg_ephemeris()`
+  indexes rows positionally (`row[0]`…) while the orchestrator connection is `row_factory=dict_row`
+  (`pipeline/orchestrator/db.py:57`) → `KeyError: 0`, which is literally what `selftest_detail`
+  records (`"ephemeris computation failed: 0"` = `str(KeyError(0))`). Corroborated in-repo:
+  `brahmagyan/phala/muhurta.py`'s docstring says it deliberately opens a tuple-row connection
+  because that helper indexes positionally — a different author hit this and worked around it
+  instead of fixing it. (2) Surviving the first fix: self-test check 4 asserts natal Moon =
+  Aquarius, but PATH-A reads `ephemeris_daily`, computed at **12:00 UT**, which for a 10:43 birth
+  gives sidereal Moon 330.41° = **Pisces** against L1's 327.06° Aquarius — the 6.8-hour
+  birth-to-noon gap. **This check has never been green in the real path**; the 19/19 green tests
+  pass because they feed a tuple-returning mock. Textbook C12: a check that has never been green is
+  a proposal, not a gate. **Route `changed`, not `probe`. Not usable as the canary.**
+- **F-L3-10 (MUST, filed #1734) — the E-gate is only as sound as `depends_on`, and L3's DAG is
+  wrong in both directions.** I verified this from the writer SQL myself rather than inherit it.
+  `ka_gochara_resonance` declares `{bg_transit_rules}` and actually reads six tables
+  (`writer.py` lines 369/375/382/389/396/412): `brahma_event_ontology` (`bg_ghatana`, L0, frozen),
+  `bg_transit_rules` (declared), `chart_facts` ×2 (L1, **unfrozen**), `ga_yoga_firings` (`ga_yoga`,
+  L1, **unfrozen**), `chart_dashas` (`ga_dashas`, L1, **unfrozen**). **Five undeclared edges, four
+  into unfrozen L1.** The failure mode is silent: a rebuild ordered by this DAG can run the
+  resonance map before `ga_yoga`/`ga_dashas` and produce a thinner map with no error and no flag.
+  The mirror defect also exists — **fictional** edges holding true gates shut: `ka_muhurta_seva`
+  declares `{ka_graha_sancara}` while its own package docstring says *"Depends on: ka_graha_sancara
+  (planned)"* (read directly) and its real read is the panchāṅga engine (`bg_panchanga`, **frozen**);
+  `ka_gochara_v3_century_materialize` has 4 dead declared edges; `ka_tulana` all 3 unread;
+  `ka_yojaka`'s `bg_transit_rules` unread; and `ka_kshetra`'s stack contains an undeclared
+  **backward L3→L4 read** of `phala_rectification` (`uncertainty.py:191`) — a layer inversion.
+  **Consequence, stated plainly: L3 has ZERO genuinely E-gate-open assets today.** Both assets the
+  session prompt nominated as canaries are artefacts — one of a missing edge, one of a broken
+  service. I filed this rather than run a canary through a gate I had just proved measures nothing.
 - **F-L3-4 (NOW)** — All 23 L3 assets have `expected_volume_formula` NULL and
   `expected_volume_inputs` NULL; 0 have a non-zero `target_floor`. C12 names the NULL itself the
   defect. Volume expectations must be DERIVED or set as achieved-count floors (§N.4) in W3.
@@ -271,5 +299,6 @@ your layer close.
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
+- `2026-09-05T…Z — L3-W1 — batches A/B/C/D landed (E outstanding); verified the v1-corpus alert down to its real residuals; verified ka_gochara_resonance's 5 undeclared edges from writer SQL and filed #1734 — L3 has no honest canary, reported rather than manufactured.`
 - `2026-09-05T…Z — L3-W1 — rulings absorbed (#1721 GRANTED/PR #1728; D-CND-03 binding; #1715 Option A — no W2 acceptance until it deploys); #1724 withdrawn as duplicate with acceptance recorded; constraint reconnaissance done for the 19 owed contracts; per-loop gate poll scripted; #1730 remains the open W4 blocker.`
 - `2026-09-05T…Z — L3-W1 — bootstrap complete; DB read path live; C10 gate run (2 assets OPEN); 5 read-only W1 batch subagents dispatched (A gochara / B overlays / C services / D heavy+ssv / E artifact spine); 2 campaign-blocking findings filed as #1721 and #1724; deploy ancestry verified execution-safe.`
