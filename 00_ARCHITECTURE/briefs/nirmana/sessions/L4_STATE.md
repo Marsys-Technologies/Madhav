@@ -25,6 +25,12 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 680–689 (yours alone, collision-free by construction)
 - **Branch namespace:** `codex/nirmana-l4-*` · **PR title prefix:** `L4:`
 - **Worktree:** `~/nirmana-s/l4`
+- **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
+  permitted only as a conjunct of something that can fail on corruption it cannot see — a total
+  content fingerprint, or named invariants (contiguity, tiling, distinctness, cross-table
+  FULL-JOIN consistency, NULL/range guards). Alone it is forbidden (C12). `expected_volume_formula`
+  is REQUIRED when a count equality is the volume assertion; not required alongside a total-content
+  digest. Full reasoning + the L0 evidence: `CAMPAIGN_STATE.md` → CONDUCTOR standing audit A-01.
 - **Freeze predecessor:** L3 Kāla must be frozen before your W6 ceremony (C2; asset work is never held)
 
 ## Position

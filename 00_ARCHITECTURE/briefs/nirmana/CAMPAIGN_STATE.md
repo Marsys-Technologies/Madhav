@@ -86,6 +86,59 @@ v2.1 topology there is no single "current phase" for the campaign anyway — six
 once. **Position is authoritative from the events table, not from any prose heading**, here or in
 a layer state file; that is exactly why freeze acks are granted on SQL.
 
+### CONDUCTOR standing audit A-01 — L0's 29 frozen capsules vs. C12 (2026-09-05) — **CLEAN**
+
+Charter C12 forbids bare `count(*) = N` equality pins as volume assertions ("an equality wearing a
+floor's name", D-126/M0-T86). L0 froze 22 of its 29 assets against `integrity_check_sql` that
+*textually contains* `count(*) = N`, and 28 of 29 have `expected_volume_formula IS NULL` — which
+C12 calls "the defect" for a derived volume expectation. Read from the pattern alone that looks
+like a campaign-wide violation shipped 29 times.
+
+**It is not. Read live, every one of them is compliant.** The pattern match was a false positive of
+the search, and the distinction is the whole of C12:
+
+- **22 assets** pair the count with a **total content fingerprint** —
+  `count(*) = N AND encode(sha256(convert_to(string_agg(<all columns> ORDER BY <total order>))))
+  = '<hex>'` (e.g. `bg_class_lifetime_counts`, `bg_formula_constants`, `bg_kota_chakra_rings`).
+  A content digest over a totally-ordered projection of every column fails on any insert, delete,
+  or single-cell edit. It is **strictly stronger** than the floor C12 asks for, and it passes the
+  rewrite floor test decisively: it detects corruption a count could never see.
+- **4 assets** (`bg_dignity_reference`, `bg_ephemeris`, `bg_kp_sublord_division`, `bg_reference`)
+  carry no fingerprint but pair the count with **real invariants** of exactly the kind C12
+  enumerates — ordering contiguity (`row_number()` vs. `division_index`), tiling with no gaps or
+  overlaps (`abs(sum(end−start) − 360.0) < 1e-8`), distinctness, per-group cardinality, and
+  NULL/range guards. `bg_ephemeris` additionally has the **derived** volume populated:
+  `expected_volume_formula = 'GRAHAS * DATE_RANGE_DAYS'`, inputs `{GRAHAS: 9, DATE_RANGE_DAYS:
+  91676}` — and 9 × 91,676 = 825,084, exactly the pinned count. That is C12's derived branch,
+  fully discharged.
+- **3 assets** have no `integrity_check_sql` at all and are terminal by disposition, not by check:
+  `bg_panchanga` and `bg_ephemeris_engine` are `asset_kind='service'`, frozen via `probe_accepted`
+  (C12's service addendum — a current green probe is what "lit" means for a service);
+  `bg_sarvatobhadra_grid` is `empty_accepted`, and its detector verdict reads
+  `{kind: "empty_count", value: 0}` — it **measured** emptiness and reported emptiness.
+
+That last one is the §N.8 test applied and passed: the signal is computed by a detector that
+measures the specific claim it asserts. Across all 29, no unearned green was found — no verdict
+that could not have read false, no flag without a detector behind it.
+
+**One honest residual, not a defect, recorded so it is not rediscovered.** For the 22
+fingerprinted assets `expected_volume_formula` is NULL. C12's "NULL is the defect" clause is
+written for the case where the count *is* the volume assertion; where a total content digest
+already pins the exact expected content, the count conjunct is redundant rather than load-bearing,
+and a formula would restate what the digest already fixes. **Standing CONDUCTOR ruling
+(D-CND-01):** `expected_volume_formula` is required when a count equality is the volume
+assertion — i.e. checks in the 4-asset class above, and any Conform-stage check L1–L5 write. It is
+NOT required alongside a total-content fingerprint. No L0 backfill is ordered; nothing is
+weakened, because the digest is the stronger claim.
+
+**What L1–L5 must take from this, before writing a single Conform-stage check:** a `count(*) = N`
+is permitted only as a conjunct of something that can fail on corruption it cannot see — a content
+fingerprint, or named invariants (contiguity, tiling, distinctness, cross-table FULL-JOIN
+consistency, NULL/range guards). Alone, it is forbidden. And per C12's provenance rule, before
+treating any inherited `integrity_check_sql` failure as a data defect, check whether that check has
+*ever* been green — an R0-T01 Conform pilot authored before the build it now judges is a proposal,
+not a gate.
+
 ### CONDUCTOR log
 
 - `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
