@@ -139,8 +139,80 @@ treating any inherited `integrity_check_sql` failure as a data defect, check whe
 *ever* been green — an R0-T01 Conform pilot authored before the build it now judges is a proposal,
 not a gate.
 
+### CONDUCTOR rulings — night 1 (2026-09-05)
+
+Eleven adjudication issues filed by five sessions in the first ~90 minutes; **all ruled in
+writing with reasons, none left waiting.** Rulings bind under the charter's ADHIKĀRIN precedent.
+Every load-bearing claim was **re-verified live before ruling** — no session's report was accepted
+on narration alone, and one ruling corrects the Conductor's own work.
+
+**⚠️ For the native's morning read — four rulings that deserve a look even though none is reserved:**
+D-CND-03 (per_chart detector standard), the **two gate-value changes** in PR #1737, the
+**D-GROUNDING `sruti` reinterpretation** (#1726), and **D-CND-07** (the E-gate is necessary, not
+sufficient — the Conductor's own #1737 removed an accidental safety and this is what replaces it).
+
+| # | Session | Subject | Ruling | Status |
+|---|---|---|---|---|
+| 1721 | L3 | `depends_on` fingerprint deadlock, TS sorts / Python does not | GRANTED. Fix existed unmerged as `4381eb66b`; raised as **PR #1728** + added the missing mutation-proof test. Code is the deviation — **no layer normalises registry data** to route around it. | ruled, closed |
+| 1715 · 1719 · 1718 | L1 · L5 · L4 | evidence spine is structurally L0-only → 88 assets cannot satisfy C2.2 | Consolidated, **Option A**. L1 authors ONE PR, Conductor merges; #1718's C2.3 writer-digest fix **folded in** because it changes the acceptance payload and must precede L1's first acceptance. Fail-closed **per layer**; L0's constants byte-identical; generator script ships. | open (L1's PR) |
+| 1723 | L4 | no `per_chart` asset can produce `integrity_verified` — `count_sql` fallback executes `$1` unbound | Part B (placeholder guard) **to L4**, Conductor merges. Part A ruled to a **stronger standard than proposed** — see D-CND-03. | ruled, closed |
+| 1716 | L2 | shared evidence-submission helper | GRANTED. Built, verified live, **PR #1731** (`nrec`). | ruled, closed |
+| 1720 | L2 | `system_convergence_count` has no honest per-signal definition | **Option 1 conditionally**, Option 2 (honest NULL) pre-authorised as fallback if the dry-run degenerates. Threshold declared **before** measuring. | ruled, closed |
+| 1730 · 1725 | L3 · L4 | dispatcher enforces strict full-layer sequencing, not C2's frontier; and ≤1 run, not ≤3 | GRANTED both. Implemented as **PR #1737**. | ruled, closed |
+| 1729 | L1 | `VERIFICATION_RESCALE` prices `single` (0.60) and its declared alias `single_pass` (0.85) 42% apart | UPHELD. **L2 implements** (its package), L1 supplies weights. See D-CND-05. | open |
+| 1726 | L2 | D-GROUNDING's "`sruti` = verse refs" is not emittable — corpus is page/column | **Option 1**. Option 3 rejected on the record as a hard-floor violation. | ruled, closed |
+| 1732 | L5→L4 | a `ph_nimitta` rebuild destroys the L5 prediction-provenance chain | **Option A**, and `ph_nimitta` rebuilds **HELD campaign-wide**. See D-CND-04. | open (holds until L4's C6 announcement) |
+| 1734 | L3 | the E-gate is only as sound as `depends_on`, and L3's DAG is wrong in both directions | UPHELD in full. **L3 correctly has zero E-gate-open assets.** See D-CND-07. | open (tracks 5 audits) |
+| 1739 | L4 | `seed_native_phala_anchors` — live-routed write path inserting hand-authored predictions | **Option 1** (sever route, keep object). Option 3 rejected on the record; Option 2 deferred to Phase-Z debris. See D-CND-08. | ruled, closed |
+| 1738 | L5 | `WriterResult.notes` is write-only — 87 writers degrade into a void, builds go green | UPHELD campaign-wide. Fixed **at the writers, not the orchestrator** — no freeze exception needed. Conductor builds the CI detector. | open (5 audits + guard) |
+
+#### Standing rulings (bind every layer)
+
+- **D-CND-01** — `count(*) = N` only as a conjunct of something that can fail on corruption it
+  cannot see. `expected_volume_formula` REQUIRED when a count equality is the volume assertion;
+  not required alongside a total-content digest.
+- **D-CND-02** — a currency check that cannot fail on a changed writer is not a currency check.
+  C2.3 is enforced for every layer or not claimed at all.
+- **D-CND-03** — `per_chart` integrity checks prefer **chart-partitioned** invariants
+  (`NOT EXISTS (SELECT 1 … GROUP BY chart_id HAVING <violation>)`) over whole-table aggregates.
+  L4 offered to trade away per-chart attribution and label the trade honestly; the trade is
+  unnecessary — partitioning quantifies over every chart AND keeps attribution, and is strictly
+  stronger on C12's rewrite floor test.
+- **D-CND-04** — an identity downstream layers derive provenance from may not be a fresh random
+  value regenerated on rebuild. Deterministic from its source tuple, or the rebuild is held.
+- **D-CND-05** — where a vocabulary module declares aliases, every consumer resolves through it.
+  A weight/grade/label table may not restate a vocabulary's membership; CI must prove them equal.
+  A lookup table with a silent fallback is a decision disguised as a default.
+- **D-CND-06** — a data correction and the writer fix that stops re-fabrication ship **together**,
+  or neither ships. Nulling a fabricated column while the writer refills it next build is theatre.
+- **D-CND-07** — **a green E-gate is necessary, never sufficient.** Before dispatching, the owning
+  session must have established that the asset's declared `depends_on` matches what its writer
+  actually reads; where it does not, or has not been checked, the asset is HELD regardless of the
+  gate. No query over `depends_on` can detect that `depends_on` is wrong.
+- **D-CND-08** — a fabrication path disabled by accident is not disabled. Where only a schema
+  mismatch prevents hand-authored values entering a derived surface, the path is severed
+  deliberately; the next migration can undo an accident without anyone intending to.
+
+#### Honest corrections and revised expectations
+
+- **The Conductor's own PR #1737 removed an accidental safety.** Strict full-layer sequencing was
+  incidentally immune to under-declared `depends_on` — it demanded everything below anyway. The
+  asset-frontier gate is only as sound as the DAG, and L3 has proved the DAG wrong at L3. #1737 is
+  not reverted (without it no layer can dispatch at all), but the loss is real and **D-CND-07 is
+  what replaces it**. Recorded next to the change, not left to be discovered.
+- **The runbook's "6 canaries frozen or in W5 by morning" will not be met as written.** Two of the
+  six are L3's, and both readings were **artefacts of an incomplete DAG**, not facts —
+  `ka_gochara_resonance` declares one dependency and its writer reads six tables, four into
+  unfrozen L1. The correct response is to revise the expectation, not to run the canaries anyway.
+  The other four remain genuinely ancestor-clear.
+- **Two gate values changed in #1737**, flagged rather than buried: the prerequisite rule was
+  **re-aimed** (it still refuses `ph_nimitta` on 37 unfrozen ancestors — the evidence it still
+  bites), and the concurrency cap moved 1 → 3, the charter's own ratified number, with connection
+  headroom **measured** (`max_connections` 50, 9 in use) rather than assumed.
+
 ### CONDUCTOR log
 
+- `2026-09-04T23:18:17Z` — night-1 adjudication wave: 11 issues from 5 sessions ruled and logged above; PRs #1722 (egate.sql), #1728 (depends_on fingerprint), #1731 (nrec), #1733 (capsule_audit.sql), #1737 (asset-frontier gate) raised and queued. Standing audits A-01 (L0's 29 capsules vs C12) and A-02 (evidence chains + identity separation across all 174 events) both CLEAN.
 - `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
   (`20323fae4`); labels `nirmana-adjudication` + `nirmana-coordination` created; coordination
   issue #1713 opened; this governance PR raised (sessions dir, plan §1.1, this section, L1–L5
