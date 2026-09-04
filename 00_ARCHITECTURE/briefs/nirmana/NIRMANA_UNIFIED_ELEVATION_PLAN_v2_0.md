@@ -1,7 +1,7 @@
 ---
 artifact: NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md
 canonical_id: NIRMANA_UNIFIED_ELEVATION_PLAN
-version: "2.0"
+version: "2.1"
 status: NATIVE-RATIFIED — governing plan for the data-plane elevation programme
 campaign_id: nirmana-elevation
 chart_id: 482012f1-710e-4a25-994a-93821f5871aa
@@ -11,7 +11,17 @@ authorized_by: >
   prompt §2); depth-per-layer structure with sub-waves (2026-09-03); pillar rulings — P2 and P7
   PARKED, P3 flexibility clause, P4 enrich-not-confuse, P5 strong-plus-tail, P6 resolution
   mechanism, P8 strengthen (2026-09-03); orchestrator approach B APPROVED and §N.2 freeze
-  exception AUTHORIZED, scoped per §3.5 (2026-09-04).
+  exception AUTHORIZED, scoped per §3.5 (2026-09-04); v2.1 execution topology — Asset-Frontier
+  Pipelining as layer-clustered parallel sessions, the E-gate, Conductor surrogate adjudication
+  authority, and the ≤3-run DB cap — ratified 2026-09-05 and recorded in place as §1.1 (governing
+  text: sessions/SESSION_CHARTER_V21.md).
+changelog:
+  - "2.1 (2026-09-05, CONDUCTOR): §1.1 added — v2.1 execution-topology amendment (layer-clustered
+    parallel sessions, asset-level E-gate, Conductor surrogate authority, ≤3 concurrent build
+    runs). §1's bounded-pipelining clause marked SUPERSEDED in place. No other section changed;
+    the §0 hard floor, the five binding doctrines, and the per-layer plans are untouched and
+    still binding exactly as ratified."
+  - "2.0 (2026-09-04, native-ratified): unified programme plan as originally published."
 relationship: >
   Extends NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md: the prompt's §1-§4 and §6-§9 (mission,
   authority, hard floor, doctrine amendments, per-asset method, autonomy mechanics, state,
@@ -19,6 +29,7 @@ relationship: >
   onward and adds the O-wave. Grounded in the Data-Plane Discovery v2 (2026-09-04) and the
   Velocity Reset review lineage.
 companions:
+  - 00_ARCHITECTURE/briefs/nirmana/sessions/SESSION_CHARTER_V21.md (v2.1 parallel-session law — governs §1.1)
   - 00_ARCHITECTURE/briefs/nirmana/NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md (mechanics)
   - 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ELEVATION_PLAN_v6_1_AMENDMENT.md (doctrine)
   - 00_ARCHITECTURE/briefs/nirmana/CAMPAIGN_STATE.md (live position)
@@ -69,9 +80,63 @@ PHASE Z               campaign closure: audit · WP-5 tracker polish · debris
 **Sequencing rules.** Layers freeze strictly in order. Sub-waves proceed aspect-major within a
 layer; stragglers join the next batch rather than blocking a wave. **Bounded pipelining (standing
 default, native may veto at review):** when layer N enters W4, layer N+1's W1 (read-only
-analysis) may begin; N+1's W4 always waits for N's W6. Rebuild-avoidance economics: within-layer
+analysis) may begin; N+1's W4 always waits for N's W6. — *SUPERSEDED by §1.1 (v2.1, 2026-09-05):
+every layer's W1–W3 now runs from the start, and W4 is gated per ASSET by the E-gate rather than
+per LAYER by the predecessor's W6. Layers still FREEZE in order.* Rebuild-avoidance economics: within-layer
 improvements land BEFORE downstream layers execute (the invalidation-cascade rule) — this is why
 depth-per-layer is also the cheap order.
+
+### §1.1 — v2.1 AMENDMENT: execution topology and the E-gate (native-ratified 2026-09-05)
+
+Native-ratified 2026-09-05, recorded by the CONDUCTOR session. This amendment **replaces §1's
+execution topology only** — the programme map, the per-layer W1→W6 structure, the sequencing
+rule that layers FREEZE strictly in order, and everything in §0 and §2–§7 remain binding
+exactly as written. Governing text: `sessions/SESSION_CHARTER_V21.md` (this amendment is its
+summary in the plan; on any conflict the charter governs).
+
+**What changed, in one line:** the unit of gating moves from the LAYER to the ASSET. Layers still
+freeze in order; assets no longer wait for their layer's turn to start.
+
+**1. Layer-clustered parallel sessions.** The programme runs as **seven concurrent Claude Code
+sessions**, each in its own worktree with permissions bypassed: the pre-existing **L0** session
+(finishes L0, then ends), a **CONDUCTOR**, and **L1…L5** — one per layer, each owning all six
+waves W1–W6 for its layer. No session touches another's write-set. This supersedes v2.0 §1's
+"bounded pipelining" clause, which allowed only layer N+1's read-only W1 to overlap layer N's W4;
+under v2.1 every layer's W1–W3 runs from the start, and W4 is governed by the E-gate below rather
+than by the predecessor layer's W6.
+
+**2. The E-gate (asset-frontier execution).** An asset may enter **W4 EXECUTE** iff all three hold:
+
+  1. every DAG ancestor in its transitive `depends_on` closure (per the FROZEN definition) has an
+     `asset_frozen` event in `nirmana_evidence.nirmana_elevation_campaign_events` — established by
+     the gate SQL in charter §C10, **queried, never assumed**;
+  2. its own W2 route is recorded (`asset_analysis_accepted` + `optimization_verdict_accepted`);
+  3. its analysis generation-pins still match (writer digest + upstream generation) — on mismatch,
+     a delta re-review first, which is normally minutes rather than a redo.
+
+W1 and W2 are **never** gated. W3 is gated only by capability-deltas (charter C6) and write-set
+disjointness (C5). **W6 layer-freeze CEREMONIES remain strictly ordered L0→L1→L2→L3→L4→L5** — the
+Conductor grants each ordering ack — but asset-level work is never held for the ceremony.
+
+The rebuild-avoidance economics of §1 are preserved, not traded away: the E-gate's ancestor-frozen
+condition is precisely the invalidation-cascade rule enforced per asset instead of per layer, so
+within-layer improvements still land before anything downstream of them executes.
+
+**3. Conductor surrogate authority.** The CONDUCTOR session holds the native's adjudication
+authority for the duration of the campaign (charter C3/C7): it rules on `nirmana-adjudication`
+issues in writing with reasons, and its rulings bind under ADHIKĀRIN precedent. **Reserved to the
+native alone** — lifting the §0 hard floor, stopping the campaign, or scope beyond this ratified
+plan; the Conductor PARKs those in the issue with evidence and designs around them. The `§0` hard
+floor and the `NIRMANA_HOLD` kill switch are unchanged and override this amendment.
+
+**4. The ≤3-run DB cap.** Database connections (max 50) are the campaign's scarcest shared
+resource, so **at most three build runs may be in flight campaign-wide at any moment**, and a
+heavy/monster writer counts double and therefore runs solo. Slots are claimed and released by
+comment on the Conductor's coordination issue **before** dispatch and **after** completion; the
+Conductor audits occupancy every loop and arbitrates contention (a starving layer wins; ties break
+to L2 as the critical path). Per-layer migration ranges — L1 650–659 · L2 660–669 · L3 670–679 ·
+L4 680–689 · L5 690–699 · Conductor 645–649 — make migration numbering collision-free by
+construction rather than by coordination.
 
 ## §2 — The north star and the five binding doctrines
 
