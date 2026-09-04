@@ -144,6 +144,38 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 - **#1730 (mine) / #1725 (L4)** — dispatcher strict-layer sequencing vs C2's asset frontier:
   **still open. This is L3's remaining W4 blocker.**
 
+## STANDING CONSTRAINTS — read these before touching any registry row or dispatching anything
+
+1. **`depends_on` is IMMUTABLE for the rest of the campaign** (#1744, L1, verified live: the frozen
+   definition has 174 events / 11 build runs and `supersedeNirmanaElevationDefinition` refuses once
+   either is non-zero; `acceptNirmanaBaselineCandidate` closes the side door). **My M1 supersession
+   plan is withdrawn.** Everything else in the registry contract IS mutable —
+   `integrity_check_sql`, `count_sql`, `catalog_status`, `target_floor`,
+   `expected_volume_formula/_inputs` — so **D-CND-03 work is not blocked**; it must simply land
+   BEFORE that asset's W2 acceptance event, or the accepted analysis needs re-accepting (C2.3).
+2. **L3's self-imposed true gate.** For any asset whose real ancestor closure exceeds its declared
+   one, L3 waits for the REAL ancestors, not the declared ones. Binding case:
+   **`ka_gochara_resonance` is mechanically dispatchable after PR #1737 (1 declared ancestor, 0
+   unfrozen) and will NOT be dispatched** until `ga_sensitive_degree`, `ga_yoga`, `ga_dashas` (L1)
+   and `bo_arudha` (L2) are frozen. Building it early yields a silently thinner resonance map, and
+   it is the root of the whole gochara family. Strictly stricter than the tool's gate, so it needs
+   no permission. Cost: zero — nothing in L3's W3 depends on it.
+3. **`ka_kshetra` ↔ `mi_bhara` is a VERSION PIN, NEVER A DAG EDGE, in either direction** (#1743, L5,
+   acked by me). Adding the "obvious missing" edge breaks `assert_no_weights_cycle`
+   (`services/mi_bhara/weights.py:263`) and makes `topoSort` reject **every future plan containing
+   either asset** — not just this campaign's. My own mechanical reconciliation output listed
+   `mi_bhara` under `ka_kshetra`'s undeclared reads, so this trap already fired once in L3's tooling
+   and was caught only by the rule "never act on an automated dependency inference without reading
+   the writer". **Fenced files — I do not edit without L5's ack on #1743:**
+   `platform/migrations/491_kala_field_weights_seed.sql`,
+   `services/ka_kshetra/stage4_field.py` (the pin read at :1099),
+   `services/mi_bhara/weights.py`, `services/mi_bhara/db.py`.
+   **Ownership declared:** `kala_field_weight_versions` + `kala_field_weights` are **L3-owned,
+   L5-read-only** for this campaign.
+4. **SNAPSHOT RULE ABSOLUTE** — no dispatch that could write `kala_gochara_windows` without a fresh
+   verified snapshot; `ka_gochara_sweep` is never dispatched (its `@register` was removed at
+   retirement — the rows cannot be regenerated).
+
 ## Findings ledger (W1 — running; batch analyses fold in as they land)
 
 - **F-L3-1 (MUST, campaign-blocking, filed #1721)** — Registry-fingerprint ordering deadlock. The
