@@ -1,0 +1,247 @@
+---
+canonical_id: L0_W2_DECIDE
+version: 1.0
+status: CURRENT
+last_updated: 2026-09-04
+---
+
+# L0-W2 DECIDE
+
+Step "W2 DECIDE" (`NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md` §4) applied to all 40 L0 (Brahmagyan)
+assets, on the findings in `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md`. Per
+§4: one route per asset; every finding triaged `MUST` (correctness — gates the capsule) / `NOW`
+(in-layer improvement — admitted by clear value, bounded cost, or the last-cheap-chance cascade
+rule) / `NEVER/LATER` (logged with reason, closed); chapter/doctrine citation on every `NOW`;
+decisions as one-line ledger entries. This step does not implement anything (W3 IMPLEMENT does) —
+it rules on route + triage only.
+
+## §1 — Route assignment (40/40)
+
+Routes follow plan §5's own explicit L0 count exactly (2 `verified_reuse` · 2 `probe` ·
+3 `producer_covered` · 1 `static` · 1 `empty` · 31 `rebuild_only`) — W1 found no evidence any
+asset should deviate from that pre-scoped template.
+
+| asset_id | route | rationale |
+|---|---|---|
+| bg_sign_medical | `producer_covered` | rider on `bg_medical_mappings`' multi-`@register` writer |
+| bg_ephemeris | `rebuild_only` | — |
+| bg_reference | `rebuild_only` | — |
+| bg_texts | `verified_reuse` | plan §5 named; full lineage proof already in its `integrity_check_sql` (baseline table + content-hash) |
+| bg_ontology | `rebuild_only` | — |
+| bg_text_index | `verified_reuse` | plan §5 named; corpus + embeddings, non-deterministic external embedding call |
+| bg_rules | `rebuild_only` | — |
+| bg_remedies | `rebuild_only` | — |
+| bg_concordance | `rebuild_only` | — |
+| bg_yogas | `rebuild_only` | — |
+| bg_dasha_systems | `rebuild_only` | — |
+| bg_doshas | `rebuild_only` | — |
+| bg_compendium_index | `rebuild_only` | — |
+| bg_panchanga | `probe` | service, health-probe verified against FORENSIC anchors |
+| bg_ephemeris_engine | `probe` | service, file-hash-pinned health-probe |
+| bg_nakshatra | `rebuild_only` | — |
+| bg_ghatana | `rebuild_only` | — |
+| bg_cohort | `rebuild_only` | — |
+| bg_class_lifetime_counts | `rebuild_only` | — |
+| bg_prashna_rules | `rebuild_only` | data layer only — horary *facility* stays dormant, native call (§3 below) |
+| bg_vastu_directions | `rebuild_only` | — |
+| bg_transit_engine | `producer_covered` | sub-table of `bg_transit_rules`' writer (`has_writer=false` correctly modeled) |
+| bg_transit_rules | `rebuild_only` | — |
+| bg_medical_mappings | `rebuild_only` | — |
+| bg_nakshatra_medical | `producer_covered` | rider on `bg_medical_mappings`' multi-`@register` writer |
+| bg_dignity_reference | `rebuild_only` | clean pass, no remediation needed |
+| bg_class_priors | `rebuild_only` | route unaffected by the MUST finding below (data itself is sound; the finding is a doc/registry reconciliation) |
+| bg_vidhi_primitives | `rebuild_only` | — |
+| bg_formula_constants | `rebuild_only` | — |
+| bg_sky_calendar | `rebuild_only` | — |
+| bg_vidhi_floors | `rebuild_only` | route unaffected by the MUST status finding below |
+| bg_muhurta_lattice | `rebuild_only` | route unaffected by the MUST serving-gap finding below |
+| bg_parihara_rules | `rebuild_only` | — |
+| bg_kota_chakra_rings | `rebuild_only` | — |
+| bg_sarvatobhadra_grid | `empty` | ADJUDICATION-11, deliberately empty pending school ruling |
+| bg_vedha_malefic_scale | `rebuild_only` | already `asset_frozen` (P4); O-wave exit rehearsal exercised it twice more this session, both `skip_no_delta` |
+| bg_phaladeepika_latta | `rebuild_only` | — |
+| bg_kp_sublord_division | `rebuild_only` | — |
+| bg_gochara_arcs | `rebuild_only` | — |
+| bg_gochara_citation_resolution | `static` | migration-seeded, `data_disposition: RETAINED_AS_CAPITAL`, not a rebuildable writer output |
+
+## §2 — Finding triage ledger
+
+### MUST (gates the W5 capsule for the named asset — must resolve before that asset FREEZEs)
+
+1. **`bg_muhurta_lattice`** — `query_muhurta_lattice.ts`'s `FACTOR_FAMILIES` allowlist covers 4 of
+   the 9 factor families the writer produces and the DB constraint requires (migration 530 added
+   `hora`/`lagna`/`nakshatra`/`tithi`/`vara`, ~72,580 of ~165K rows, unreachable via explicit
+   filter); the capability's own description text is now factually wrong. Cite: D-SERVICE
+   (plan §2, "built-but-unplugged" defect class). **Action:** W3 extends the allowlist to all 9
+   families and corrects the description string — small, well-scoped TS change, no schema touch.
+2. **`bg_vidhi_floors`** — `catalog_status: DRAFT`, the only non-`CURRENT` asset among all 40,
+   while its dependency `bg_vidhi_primitives` is `CURRENT`. Cite: CLAUDE.md §B.8 (versioning
+   discipline — "registries must not disagree"). **Action:** native/W3 confirms whether this
+   reflects genuine content immaturity (in which case DRAFT is correct and this MUST closes as
+   "status accurate, no change") or a stale tag that should flip to CURRENT alongside its
+   dependency. Not resolved unilaterally here — see §3.
+3. **`bg_class_priors`** — three disagreeing row-count figures for the same asset: registry
+   `target_floor`/`english_description` say 171, the writer module's docstring says 165, the
+   writer's own itemized `run()` breakdown (17+12+6+30+99) sums to 164. Cite: CLAUDE.md §B.8.
+   **Action:** W3 reconciles against the live count and corrects whichever of the three is wrong
+   (registry floor, docstring, or itemization) — an honest "needs reconciliation," not a guess at
+   which number is right (§N.8).
+
+### NOW (in-layer improvement, admitted by value/bounded cost — cited per plan §4)
+
+D-GROUNDING (P3) — formalize `grounding_tier` where citation substrate already exists in-row:
+
+4. `bg_vastu_directions` (32 rows, mostly `sruti`/some `yukti`) — cite D-GROUNDING.
+5. `bg_transit_rules` (+ sibling `bg_transit_moorti`, 75+27 rows, `sruti`) — highest-leverage
+   grounding candidate in the batch (feeds live interpretive transit-quality judgments) — cite
+   D-GROUNDING.
+6. `bg_medical_mappings` (+ `bg_nakshatra_medical`/`bg_sign_medical`, 60 rows, `sruti`) — cite
+   D-GROUNDING + Ethical Framework disclosure-tier relevance (medical-adjacent content).
+7. `bg_formula_constants` (17 rows) — map the existing `class` column
+   (CLASSICAL/NATIVE_JUDGMENT/ENGINEERING) onto `grounding_tier` — cite D-GROUNDING; reuses
+   existing classification, no new derivation.
+8. `bg_class_priors` (separate from its MUST above) — schema already carries `citation`/
+   `prior_basis`; add `grounding_tier='yukti'` — cite D-GROUNDING.
+9. `bg_parihara_rules` — census table's `disposition` field (`computed`/`not_computed`/
+   `not_in_corpus`) already encodes what a `grounding_tier` needs; formalize the mapping — cite
+   D-GROUNDING.
+10. `bg_prashna_rules` — formalize `grounding_tier` on the citation catalog (data layer only,
+    separable from the dormant-facility native call in §3) — cite D-GROUNDING.
+11. `bg_ghatana` — lower priority: formalize `grounding_tier` on the `citations` JSONB field only
+    if/when L2+ signal classes start requiring it uniformly — cite D-GROUNDING; not urgent, the
+    plan explicitly scopes grounding to ~15-20 L2 interpretive signal classes, not L0 taxonomy rows.
+
+D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
+
+12. `bg_concordance` — WIRE `classical_attribution_lookup.ts` to live `classical_attributions`
+    (currently a hardcoded stub returning `[]`) — this is plan §5's own named work item
+    ("disposition here is WIRE, not retire"). Cite D-SERVICE. Bounded cost: repoint one TS query
+    function, no new schema.
+13. `bg_concordance` — verify live whether `bg_text_index`'s topic-tag coverage has progressed past
+    35% before treating the 721-row floor as current — cite D-SERVICE; cheap, verification-only.
+14. `bg_sky_calendar` — add a dedicated MCP/retrieval query capability (currently one narrow
+    internal Python consumer, no general-purpose surface, unlike sibling `bg_muhurta_lattice`) —
+    cite D-SERVICE; bounded cost, mirrors `query_muhurta_lattice.ts`'s existing pattern.
+15. `bg_reference` — re-verify at sub-table granularity whether `reference_houses` and
+    `reference_strength_systems` are genuinely INPUT-ONLY-by-design or orphaned — cite D-SERVICE.
+16. `bg_reference` — resolve the `reference_nakshatra` vs `reference_nakshatras` one-character
+    naming-collision hazard already flagged in `ZERO_CONSUMER_EVIDENCE_v1_0.md` — cite D-SERVICE.
+17. `bg_vidhi_primitives` / `bg_vidhi_floors` — verify the writer docstrings' "V-2 MCP-resource
+    face" claim is actually live/reachable (no resource registration found beyond the TS types
+    file in this read-only pass) — cite D-SERVICE ("every active asset has a consumer or a
+    recorded disposition").
+18. `bg_kota_chakra_rings` — confirm the `ka_kota_chakra` → `kala_kota_chakra` serving path reads
+    this L0 table's rows correctly end-to-end (lineage-proof exercise, cheap given the existing
+    byte-identity check) — cite D-SERVICE.
+19. `bg_muhurta_lattice` (separate from its MUST) — reconcile `target_floor` (91,477, stale) against
+    the writer's own binding v2-corpus minimum (164,575, post-migration-530) — cite CLAUDE.md §N.4
+    (floors are aspirational/achieved-count, never fabricated, and should track what the writer
+    itself now guarantees).
+20. `bg_sign_medical` — disclose the shared-writer (multi-`@register`) pattern in the W2 ledger
+    (this entry) so a future dependency change to `bg_medical_mappings` doesn't silently affect
+    `bg_sign_medical`/`bg_nakshatra_medical` — cite D-SERVICE hygiene. Considered closed by this
+    disclosure; no code change required.
+
+§N.8 (earned-signal) / B.8 (registry accuracy) — cheap, concrete, checkable:
+
+21. `bg_ephemeris` — distinguish "0 rows because pre-populated" from "0 rows because `pyswisseph`
+    unavailable" in `WriterResult.notes` — cite §N.8 (a signal needs a real detector, not an
+    inferred proxy); improves O-wave WP-1 receipt/staleness signal quality.
+22. `bg_rules` — investigate the zero-yield `bg_dasha_systems` linkage (0/3,002 rules carry a
+    `dasha_system_id` despite live FK validation against it; only one hardcoded
+    `"dasha_system_id": "vimshottari"` literal found in a quick grep, suggesting the
+    dasha-detection pattern in `l0_rules.py` may be incomplete) — cite D-GROUNDING + §N.8.
+23. `bg_remedies` — disclose that `depends_on: ["bg_texts"]` is accurate for only 16% of rows
+    (`corpus_sweep`, 54/341) — the other 84% are static Python literals; a one-line disposition
+    note so a future delta-skip/staleness check doesn't over-invalidate on every `bg_texts` change
+    — cite D-SERVICE / O-wave WP-1 (truthful invalidation).
+24. `bg_cohort` — annotate the `depends_on: ["bg_ephemeris_engine"]` edge as "shared config helper,
+    not a data read" so a future DAG reader doesn't assume a table read — cite D-SALIENCE / DAG
+    hygiene.
+25. `bg_vastu_directions` — correct the registry `english_description`'s "~22 rows" to the actual
+    24-row remedials count — cite §B.8.
+26. `bg_kp_sublord_division` — correct the writer module's own docstring line ("depends_on: [] —
+    pure reference geometry, no upstream dependency") to acknowledge the real, optional,
+    fail-open cross-check read of `reference_nakshatra` — editorial-only, very low cost.
+27. `bg_parihara_rules` — add `integrity_check_sql` (the only asset in Batch E without one, unlike
+    its 5 siblings which all have byte-identity checks) — direct precedent to copy from, bounded
+    cost.
+28. `bg_gochara_citation_resolution` — once (or since — see D-VR-27) the analysis branch is
+    reconciled with `main`'s migration set, re-verify the full byte-identity hash in
+    `integrity_check_sql` live. **Status: substantially done** — the row-count *shape* was
+    independently re-verified live against production this session (D-VR-27); the exact byte
+    hash was not separately re-run and is a trivial follow-up, not a new investigation.
+29. `bg_text_index` — the 34% unclassified-chunk gap (3,641/10,651) is a real, disclosed limitation
+    of the deterministic keyword classifier; extending the keyword/domain vocabulary is a bounded
+    (Python dict additions) NOW candidate — cite D-GROUNDING (this is the substrate the L2
+    grounding matcher will consume, plan §5).
+
+### NEVER/LATER (logged, closed, not reopened by this wave)
+
+30. `bg_yogas` — applying `grounding_tier` to catalog-*definition* rows (vs. interpretive firings)
+    — LATER. Reason: plan §2 D-GROUNDING is explicit that grounding applies to interpretive signal
+    classes, not uniformly to every catalog row; the catalog is the source, not the claim.
+31. `bg_dasha_systems` — a dasha-system arbitration/authority-profile surface — LATER. Reason:
+    explicitly scoped to L3-W1's Temporal Concordance Contract ("authority profiles generalized
+    from the two seed tables," plan §5), not an L0 concern.
+32. `bg_doshas` — populating `associated_remedies`/`source_chunk_ids` + `grounding_tier` — LATER.
+    Reason: L2 grounding-matcher territory (plan §5); the catalog is internally consistent with
+    what it honestly claims today (fields asserted empty, not silently populated).
+33. `bg_kota_chakra_rings` — primary-source ingestion (tier-(iii)→tier-(i) upgrade) — LATER. Reason:
+    a real, named, separately-tracked corpus-ingestion work item; the writer already files the gap
+    honestly rather than fabricating a citation.
+34. `bg_phaladeepika_latta` — Ketu's missing Lattā counting rule — LATER. Reason: genuine
+    corpus-research item (locating the missing passage), not an L0 writer defect; already an
+    honest, disclosed omission.
+35. `bg_parihara_rules` — named corpus gaps (mṛtyu-yoga, dagdha-yoga, Śiva-vāsa OCR-translation) —
+    LATER. Reason: requires OCR-translation work on `classical_text_chunks`, out of L0 writer
+    scope.
+36. `bg_gochara_citation_resolution` — the 10 (or more, post-correction) `unresolved` corpus gaps
+    — LATER. Reason: real corpus-ingestion work items, already disclosed as gaps, not fabricated.
+37. `bg_sky_calendar` / `bg_muhurta_lattice` — the `ka_kshetra` chart-contact join — LATER. Reason:
+    explicitly staged as W3 work per `ka_kshetra.py`'s own docstring; tracked there, not forgotten,
+    not re-opened here.
+38. `bg_nakshatra_medical` — a formal `grounding_tier` column on this specific sub-table — LATER.
+    Reason: defer to the L2 grounding-matcher work named in plan §5; L0's job is the citation
+    substrate (already present), not the tier label.
+
+## §3 — Named native decision points (not resolved by this session)
+
+Per plan §4/§5, these are product/adjudication calls presented with costs, not resolved
+unilaterally:
+
+- **`bg_prashna_rules` dormant-facility disposition.** Data layer complete, well-cited,
+  retrieval-reachable; the horary "ask" facility itself has no serving surface. Cost if opened:
+  LOW-to-MODERATE on data/compute (schema + `ga_prashna` computation logic already exist); the
+  real cost is serving/UX (a dedicated horary MCP tool) + product decisions about disclosure tier
+  for a live horary product (CLAUDE.md Ethical Framework — probabilistic/calibrated/consenting-
+  audience framing needs explicit horary-specific treatment). Recommendation if asked: keep
+  dormant with the go-live rehearsal plan named in plan §7.3, since nothing about L0 elevation
+  requires opening it now.
+- **`bg_sarvatobhadra_grid` school-selection ruling (ADJUDICATION-11).** Candidate source threads
+  on record: the `school_tag` column design (multi-school-capable schema), two unresolved corpus
+  citations in `bg_gochara_citation_resolution` (`Muhurta Chintamani`/`Jyotish Sara Sangraha`,
+  `Prasna Marga`), and the current disclosed `algorithmic_approximation` fallback
+  (`uncited_extension=true`). Consumer-side plumbing (`ka_vedha_gochara`) is already wired to
+  activate on population with zero code change, per W1 — this lowers the cost of a future
+  decision. Populate only on a ruling; not populated by this session.
+- **`bg_vidhi_floors` catalog_status (MUST §2 item 2, restated here as a decision, not just a
+  defect).** Native/W3 to confirm DRAFT is either accurate (genuine content immaturity, e.g. the
+  newer `spirituality_deepdive`/`education_deepdive`/`progeny_deepdive` floors carry
+  `[MANDATORY]`/`[CANDIDATE]` in-writer notes) or stale (should flip to CURRENT alongside its
+  now-CURRENT dependency `bg_vidhi_primitives`).
+
+## §4 — Summary
+
+40/40 assets routed. 3 MUST findings (all registry/serving-consistency, none a data-correctness
+defect in the underlying content). 26 NOW findings, mostly D-GROUNDING `grounding_tier` formalization
+candidates (schema-free, citation data already stored) plus a handful of D-SERVICE wiring/coverage
+gaps — none blocking, all bounded-cost. 9 NEVER/LATER items, all correctly scoped to L2/L3 work
+named elsewhere in the plan or to genuine out-of-scope corpus-research items, not reopened here.
+3 named native decision points carried forward, not resolved unilaterally. No asset needed a route
+change from plan §5's pre-scoped template — W1's findings confirmed the template rather than
+overturning it.
+
+**Next:** L0-W3 IMPLEMENT lands the MUST fixes + as many NOW items as fit one batched PR wave on
+disjoint write-sets (per plan §4, "batched PRs on disjoint write-sets; one deploy per layer as
+target"), then L0-W4 EXECUTE dispatches the remaining wave-0/1/2 build obligation.

@@ -4,7 +4,7 @@ canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
 status: LIVE
 campaign_id: nirmana-elevation
-last_updated: 2026-09-04T-owave-CLOSED-exit-rehearsal-complete-l0-w2-next
+last_updated: 2026-09-04T-l0-w2-decide-complete-l0-w3-next
 ---
 
 # Nirmāṇa Velocity-Reset — Campaign State
@@ -15,7 +15,7 @@ start/resume; trust it; continue from the recorded position. Once the P3 ops pla
 (`nirmana_ops`) exists, the DB is authoritative for asset/queue state and this file carries
 narrative + pointers only.
 
-## Current phase: O-WAVE CLOSED (exit rehearsal complete, all 4 criteria); L0-W1 COMPLETE; L0-W2 DECIDE next
+## Current phase: L0-W2 DECIDE COMPLETE (40/40 routed); L0-W3 IMPLEMENT next
 
 Phase tracking from here follows `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §1`'s programme map
 (PHASE A → O-WAVE → L0→L1→L2→L3→L4→L5, each W1-ANALYZE→W2-DECIDE→W3-IMPLEMENT→W4-EXECUTE→
@@ -31,7 +31,7 @@ plan's "PHASE A (COMPLETE)".
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
 | P4 Rehearsals = **PHASE A** | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
 | **O-WAVE** — orchestrator truth core | ✅ CLOSED — exit rehearsal complete | WP-1 (PR #1697, `0212c095d`) · WP-3 (PR #1698, `cfa220b8c`) · WP-2 (PR #1699, `ef9ee729e`) — all 3 merged and deployed live (Cloud Run `amjis-web` + job `brahma-build-pipeline-job` both confirmed at commit `ef9ee729e749ada086c975aac501c78086f4f644`), exactly at the ≤3-PR target. All 4 exit-rehearsal criteria (plan §3.4) run and closed — see "O-WAVE EXIT REHEARSAL CLOSED" section below for the full account, including one real methodological finding (the campaign dispatcher's one-shot-per-asset guard makes literal same-mechanism re-dispatch of `bg_vedha_malefic_scale` permanently infeasible) worked around honestly via a documented, code-reusing direct-dispatch script, not a silent bypass. |
-| **L0 — Brahmagyan** (W1→W6) | 🟢 W1 analysis COMPLETE (40/40) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 ANALYZE ran concurrently with the O-wave (plan §1/§3's own authorization), 5 parallel read-only batches of 8 assets each, full rubric per asset. Output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + the `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json` ground-truth export, all in this directory. `bg_vedha_malefic_scale` already `asset_frozen` from P4 — W1 analysis reused that capsule per the rubric's "reuse committed analysis bases" rule. Cross-batch findings worth W2's attention: `bg_concordance` built-but-unplugged confirmed from two independent angles (stub MCP consumer + writer schema mismatch); `bg_rules`/`bg_remedies` declared-dependency-near-zero-yield findings; `bg_muhurta_lattice` partial-serving gap (4/9 factor families exposed); `bg_vidhi_floors` is the only non-CURRENT (DRAFT) L0 asset. One methodology finding: this session's `campaign/nirmana-autonomous` checkout was 165 commits behind `origin/main` during the analysis pass — one file-presence-based finding was a false alarm as a result (caught and corrected in place, see index doc) — recommend refreshing that branch before it's used as a work base again. W2 DECIDE and W4 EXECUTE both wait for the O-wave to close (plan §1: "N+1's W4 always waits for N's W6" — O-wave functions as the gating predecessor for W4 specifically; W2 itself is not blocked by the O-wave and can start once native/session capacity allows). |
+| **L0 — Brahmagyan** (W1→W6) | 🟢 W1 + W2 COMPLETE (40/40 analyzed and routed) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json`. W2 output: `L0_W2_DECIDE_v1_0.md` — every asset routed (2 `verified_reuse`: `bg_texts`/`bg_text_index`; 2 `probe`; 3 `producer_covered`; 1 `static`; 1 `empty`: `bg_sarvatobhadra_grid`; 31 `rebuild_only` — matches plan §5's pre-scoped template exactly, no deviation needed), every W1 finding triaged (3 MUST — `bg_muhurta_lattice` partial-serving gap, `bg_vidhi_floors` DRAFT-status accuracy, `bg_class_priors` 3-way row-count disagreement; 26 NOW, mostly `grounding_tier` formalization candidates; 9 NEVER/LATER, correctly deferred to L2/L3 or genuine corpus-research scope), 3 named native decision points carried forward (`bg_prashna_rules` go-live, `bg_sarvatobhadra_grid` school ruling, `bg_vidhi_floors` status). `bg_vedha_malefic_scale` already `asset_frozen` from P4, exercised twice more this session in the O-wave exit rehearsal. Next: **L0-W3 IMPLEMENT** — batch the 3 MUST fixes + as many bounded-cost NOW items as fit one disjoint-write-set PR wave. |
 | **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
 | **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
@@ -699,18 +699,21 @@ were deleted after use; `git status` confirms zero residue in any worktree.
    merged and deployed; all 4 exit-rehearsal criteria run and satisfied.
 4. ~~L0-W1 analysis~~ — COMPLETE 2026-09-04 (40/40 assets), see the L0 row above and
    `L0_W1_ANALYSIS_INDEX_v1_0.md`.
-5. **L0-W2 DECIDE (next):** rule one route per asset (`changed | rebuild_only | verified_reuse |
-   probe | producer_covered | static | empty | retired`, plan §4) for all 40 L0 assets, triaging
-   every W1 finding `MUST`/`NOW`/`NEVER-LATER` with chapter/doctrine citation on every `NOW`. Feed
-   directly from `L0_W1_ANALYSIS_INDEX_v1_0.md`'s cross-batch findings list and the 5 batch files'
-   own per-asset findings. Named decision points already flagged for this step: the `bg_ephemeris`
-   (825,084-row)/`bg_texts` `verified_reuse`-vs-`rebuild_only` route call (from Rehearsal B); the
-   `bg_prashna_rules` dormant-facility disposition (native product call, costs only, per plan §5);
-   the `bg_sarvatobhadra_grid` SBC school-selection ruling (native call, sources documented in
-   Batch E); `bg_vidhi_floors`'s DRAFT-vs-CURRENT status. L0-W4 EXECUTE (dispatch the remaining
-   wave-0 build-obligation assets, excluding `bg_vedha_malefic_scale` which is already
-   `asset_frozen`) follows W2/W3, now unblocked on the O-wave (plan §1 bounded-pipelining rule —
-   the O-wave functioned as W4's gating predecessor and has now closed) but still gated on W2
+5. ~~L0-W2 DECIDE~~ — COMPLETE 2026-09-04 (40/40 routed, findings triaged), see the L0 row above and
+   `L0_W2_DECIDE_v1_0.md`. Resolves the `bg_ephemeris`/`bg_texts` route-pairing question this item
+   used to carry (from Rehearsal B, predating the ratified Unified Plan v2.0): the plan's own §5
+   route template explicitly names only `bg_texts`+`bg_text_index` as `verified_reuse` (the
+   external non-deterministic embedding call is the reason verified_reuse matters there);
+   `bg_ephemeris` is a deterministic `pyswisseph` computation with its own strong per-date
+   completeness integrity check and no W1 finding suggesting deviation, so it routes
+   `rebuild_only` per the template — not reopened, confirmed rather than overridden.
+5a. **L0-W3 IMPLEMENT (next):** land the 3 MUST fixes (`bg_muhurta_lattice` allowlist,
+   `bg_vidhi_floors` status reconciliation, `bg_class_priors` row-count reconciliation) plus as
+   many of the 26 bounded-cost NOW items as fit one disjoint-write-set PR wave, per plan §4
+   ("batched PRs on disjoint write-sets; one deploy per layer as target; migrations split from
+   writer changes"). Full findings ledger: `L0_W2_DECIDE_v1_0.md` §2. L0-W4 EXECUTE (dispatch the
+   remaining wave-0/1/2 build-obligation assets, excluding `bg_vedha_malefic_scale` which is
+   already `asset_frozen`) follows W3
    deciding routes and W3 landing any code the decisions require.
 6. Note for later hygiene (now PHASE Z scope per the ratified plan, still open): this repo
    currently has ~90 stale/prunable git worktrees under `/private/tmp/`, `~/.codex/worktrees/`,
@@ -942,6 +945,25 @@ were deleted after use; `git status` confirms zero residue in any worktree.
   resolutions. Basis: campaign hard floor (no fabricated measurements/verdicts; never weaken a
   required gate) + plan §3.4's own intent (exercise the O-wave's code, not re-litigate the
   P4-closed campaign-evidence product).
+- `D-VR-29` (2026-09-04): Ran L0-W2 DECIDE by applying plan §5's own pre-scoped L0 route template
+  (2 verified_reuse / 2 probe / 3 producer_covered / 1 static / 1 empty / 31 rebuild_only) rather
+  than re-deriving routes from first principles per asset, since the W1 pass found no evidence any
+  asset should deviate from it — confirmed the template against the actual per-asset findings
+  (dependency reality, leverage, service/integrity state) rather than assuming it correct without
+  checking. Closed the stale `bg_ephemeris`/`bg_texts` route-pairing open item (predating the
+  ratified Unified Plan v2.0) on the same basis: the plan's explicit template already answers it
+  (only `bg_texts`+`bg_text_index` are `verified_reuse`), and W1 found nothing about `bg_ephemeris`
+  warranting a deviation — this is a confirmation of an already-decided question, not a fresh
+  unilateral call on an open native decision point. Distinguished MUST from NOW using the plan's
+  own test ("MUST = correctness, gates the capsule" vs. "NOW = in-layer improvement, admitted by
+  clear value/bounded cost") rather than defaulting everything with a citation opportunity to MUST
+  — only registry/serving-consistency defects that would make a false claim if left unaddressed
+  (bg_muhurta_lattice's wrong capability description, bg_vidhi_floors' status ambiguity,
+  bg_class_priors' 3-way count disagreement) were triaged MUST; the much larger set of
+  `grounding_tier`-formalization opportunities (citation data already stored, schema landing point
+  explicitly at L2 per plan §5) were triaged NOW, not MUST, since none represents a currently-false
+  claim — they're additive labeling work, not correctness gaps. Basis: plan §4's own MUST/NOW
+  definitions, applied literally rather than loosely.
 
 ## Finding-fence backlog
 
