@@ -89,27 +89,45 @@ asset should deviate from that pre-scoped template.
 
 ### NOW (in-layer improvement, admitted by value/bounded cost — cited per plan §4)
 
-D-GROUNDING (P3) — formalize `grounding_tier` where citation substrate already exists in-row:
+~~D-GROUNDING (P3) — formalize `grounding_tier` where citation substrate already exists in-row:~~
 
-4. `bg_vastu_directions` (32 rows, mostly `sruti`/some `yukti`) — cite D-GROUNDING.
-5. `bg_transit_rules` (+ sibling `bg_transit_moorti`, 75+27 rows, `sruti`) — highest-leverage
+**CORRECTION (2026-09-04, caught during L0-W3 scoping, before any of items 4-11 were
+implemented):** items 4-10 below were mis-triaged NOW. Plan §5's own L2 section is explicit:
+"populates `classical_sources_array` + corroboration counts + `grounding_tier` **on the
+interpretive signal classes** (~15-20 classes, not 50,104 rows uniformly)" — `grounding_tier` is
+an L2-Bodha-boundary concept applied to interpretive signal classes, not an L0 catalog/reference-
+row property. Batches A and B of the underlying W1 analysis already applied this scoping
+correctly for `bg_yogas`/`bg_doshas`/`bg_texts` (see those batch files: "grounding is applied
+selectively... the catalog is the source, not the claim being graded" — routed NEVER/LATER for
+exactly this reason). Batches C/D/E did not apply the same scoping consistently for the assets
+below, and this ledger inherited that inconsistency uncorrected. Re-triaged NEVER/LATER, moved to
+§2's NEVER/LATER list at items 30a-30g below, same numbers preserved for traceability rather than
+renumbering the whole ledger. Basis: plan §5 (verbatim above) + CLAUDE.md B.1 (facts/interpretation
+separation — grounding_tier is an L2+ interpretive-layer concept, assigning it at L0 would blur
+that boundary) + the "verify, don't trust, including your own prior output" discipline this
+session's decision log already establishes (D-VR-14/24/27/28 precedent). 8 items reclassified
+(4-11), now §2 NEVER/LATER items 30a-30h.
+
+~~4. `bg_vastu_directions` (32 rows, mostly `sruti`/some `yukti`) — cite D-GROUNDING.~~
+~~5. `bg_transit_rules` (+ sibling `bg_transit_moorti`, 75+27 rows, `sruti`) — highest-leverage
    grounding candidate in the batch (feeds live interpretive transit-quality judgments) — cite
-   D-GROUNDING.
-6. `bg_medical_mappings` (+ `bg_nakshatra_medical`/`bg_sign_medical`, 60 rows, `sruti`) — cite
-   D-GROUNDING + Ethical Framework disclosure-tier relevance (medical-adjacent content).
-7. `bg_formula_constants` (17 rows) — map the existing `class` column
+   D-GROUNDING.~~
+~~6. `bg_medical_mappings` (+ `bg_nakshatra_medical`/`bg_sign_medical`, 60 rows, `sruti`) — cite
+   D-GROUNDING + Ethical Framework disclosure-tier relevance (medical-adjacent content).~~
+~~7. `bg_formula_constants` (17 rows) — map the existing `class` column
    (CLASSICAL/NATIVE_JUDGMENT/ENGINEERING) onto `grounding_tier` — cite D-GROUNDING; reuses
-   existing classification, no new derivation.
-8. `bg_class_priors` (separate from its MUST above) — schema already carries `citation`/
-   `prior_basis`; add `grounding_tier='yukti'` — cite D-GROUNDING.
-9. `bg_parihara_rules` — census table's `disposition` field (`computed`/`not_computed`/
+   existing classification, no new derivation.~~
+~~8. `bg_class_priors` (separate from its MUST above) — schema already carries `citation`/
+   `prior_basis`; add `grounding_tier='yukti'` — cite D-GROUNDING.~~
+~~9. `bg_parihara_rules` — census table's `disposition` field (`computed`/`not_computed`/
    `not_in_corpus`) already encodes what a `grounding_tier` needs; formalize the mapping — cite
-   D-GROUNDING.
-10. `bg_prashna_rules` — formalize `grounding_tier` on the citation catalog (data layer only,
-    separable from the dormant-facility native call in §3) — cite D-GROUNDING.
-11. `bg_ghatana` — lower priority: formalize `grounding_tier` on the `citations` JSONB field only
+   D-GROUNDING.~~
+~~10. `bg_prashna_rules` — formalize `grounding_tier` on the citation catalog (data layer only,
+    separable from the dormant-facility native call in §3) — cite D-GROUNDING.~~
+~~11. `bg_ghatana` — lower priority: formalize `grounding_tier` on the `citations` JSONB field only
     if/when L2+ signal classes start requiring it uniformly — cite D-GROUNDING; not urgent, the
-    plan explicitly scopes grounding to ~15-20 L2 interpretive signal classes, not L0 taxonomy rows.
+    plan explicitly scopes grounding to ~15-20 L2 interpretive signal classes, not L0 taxonomy rows.~~
+(All of 4-11: struck, moved to NEVER/LATER §2 items 30a-30h — see correction note above.)
 
 D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
 
@@ -204,6 +222,32 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
 38. `bg_nakshatra_medical` — a formal `grounding_tier` column on this specific sub-table — LATER.
     Reason: defer to the L2 grounding-matcher work named in plan §5; L0's job is the citation
     substrate (already present), not the tier label.
+30a. `bg_vastu_directions` — formalize `grounding_tier` (mostly `sruti`, some `yukti`) — LATER,
+    reclassified from NOW (correction above). Reason: same as items 30-38's `bg_yogas`/`bg_doshas`
+    pattern — plan §5 scopes `grounding_tier` to L2 interpretive signal classes, not L0 catalog
+    rows; the citation substrate (`classical_citation` per row) is already present and complete
+    for L2's grounding matcher to consume when it lands.
+30b. `bg_transit_rules` (+ sibling `bg_transit_moorti`) — formalize `grounding_tier` — LATER, same
+    reason as 30a. This remains the highest-leverage L2 grounding-matcher input in the batch
+    (feeds live interpretive transit-quality judgments) — worth flagging to L2-W1/W2 as a
+    priority candidate when that layer opens, not worth building at L0.
+30c. `bg_medical_mappings` (+ `bg_nakshatra_medical`/`bg_sign_medical`) — formalize
+    `grounding_tier` — LATER, same reason as 30a. The Ethical Framework disclosure-tier relevance
+    (medical-adjacent content) makes this a priority candidate for L2, not a reason to build it
+    early at L0 — the existing `not_diagnosis`/`jyotish_indication` discipline already carries the
+    disclosure obligation independent of a formal tier label.
+30d. `bg_formula_constants` — map the existing `class` column onto `grounding_tier` — LATER, same
+    reason as 30a; the `class` column (CLASSICAL/NATIVE_JUDGMENT/ENGINEERING) already does the
+    informal work this would formalize, and remains available for L2 to consume as-is.
+30e. `bg_class_priors` — add `grounding_tier='yukti'` per row — LATER, same reason as 30a; the
+    `citation`/`prior_basis` columns already carry what L2 needs.
+30f. `bg_parihara_rules` — formalize the census table's `disposition` field into a
+    `grounding_tier` mapping — LATER, same reason as 30a.
+30g. `bg_prashna_rules` — formalize `grounding_tier` on the citation catalog — LATER, same reason
+    as 30a; separable from and does not block the dormant-facility native call in §3 either way.
+30h. `bg_ghatana` — formalize `grounding_tier` on the `citations` JSONB field — LATER, same reason
+    as 30a (this one already carried the correct caveat in its original W1 finding; reclassified
+    here purely for ledger consistency with 30a-30g, not a new finding).
 
 ## §3 — Named native decision points (not resolved by this session)
 
@@ -233,15 +277,28 @@ unilaterally:
 
 ## §4 — Summary
 
-40/40 assets routed. 3 MUST findings (all registry/serving-consistency, none a data-correctness
-defect in the underlying content). 26 NOW findings, mostly D-GROUNDING `grounding_tier` formalization
-candidates (schema-free, citation data already stored) plus a handful of D-SERVICE wiring/coverage
-gaps — none blocking, all bounded-cost. 9 NEVER/LATER items, all correctly scoped to L2/L3 work
-named elsewhere in the plan or to genuine out-of-scope corpus-research items, not reopened here.
-3 named native decision points carried forward, not resolved unilaterally. No asset needed a route
-change from plan §5's pre-scoped template — W1's findings confirmed the template rather than
-overturning it.
+**Updated 2026-09-04, post-correction (see NOW section header note).** 40/40 assets routed. 3 MUST
+findings (all registry/serving-consistency, none a data-correctness defect in the underlying
+content) — **all 3 addressed in PR #1705** (L0-W3, first IMPLEMENT wave; open at the time of this
+correction, merge status tracked in CAMPAIGN_STATE.md). 18 NOW findings (originally
+26; 8 reclassified to NEVER/LATER on correction — see below), all D-SERVICE wiring/coverage gaps or
+§N.8/B.8 documentation-accuracy items, none touching `grounding_tier` (that vocabulary is L2-scoped
+per plan §5, not L0). 17 NEVER/LATER items (originally 9; +8 from the correction), all correctly
+scoped to L2/L3 work named elsewhere in the plan or to genuine out-of-scope corpus-research items,
+not reopened here. 3 named native decision points carried forward, not resolved unilaterally. No
+asset needed a route change from plan §5's pre-scoped template — W1's findings confirmed the
+template rather than overturning it.
 
-**Next:** L0-W3 IMPLEMENT lands the MUST fixes + as many NOW items as fit one batched PR wave on
-disjoint write-sets (per plan §4, "batched PRs on disjoint write-sets; one deploy per layer as
-target"), then L0-W4 EXECUTE dispatches the remaining wave-0/1/2 build obligation.
+**Self-correction recorded, not silently fixed:** the original NOW list (items 4-11) proposed
+formalizing `grounding_tier` directly on 8 L0 catalog/reference tables. Plan §5's own text places
+`grounding_tier` at L2 ("`grounding_tier` on the interpretive signal classes... not 50,104 rows
+uniformly"), and this session's own W1 batches A/B had already applied that scoping correctly for
+`bg_yogas`/`bg_doshas`/`bg_texts` — batches C/D/E did not apply it consistently, and this ledger
+inherited the inconsistency. Caught before any of the 8 items were implemented (during L0-W3
+scoping, immediately after PR #1705 landed the 3 MUST fixes), corrected in place with the
+reasoning preserved rather than silently deleted — struck-through original text stays visible, new
+NEVER/LATER entries 30a-30h carry the corrected disposition. See CAMPAIGN_STATE.md decision log for
+the full account.
+
+**Next:** L0-W3 IMPLEMENT continues with the remaining 18 NOW items, batched on disjoint write-sets
+per plan §4, then L0-W4 EXECUTE dispatches the remaining wave-0/1/2 build obligation.
