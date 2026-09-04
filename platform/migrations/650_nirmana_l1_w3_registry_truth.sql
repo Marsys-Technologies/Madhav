@@ -183,12 +183,22 @@ UPDATE asset_registry
 -- A formula that evaluates to a number matching neither the floor nor reality
 -- is worse than NULL -- it looks like a derivation while asserting nothing.
 -- Each is replaced with the derivation that actually reproduces the live count.
+--
+-- GRAMMAR CONSTRAINT (found the hard way; see L5's adjudication #1757):
+-- asset_registry_seed.ts EXECUTES this column. parseFormula/validateFormulas run
+-- BEFORE the seed touches the database and reject any uppercase identifier
+-- outside their 16-name ALLOWED_VARS or the declared coefficient set. A first
+-- draft of this migration used ROWS_PER_AYANAMSHA / DIRECTIONS / BHAVA_CUSPS and
+-- would have hard-failed runSeed. The formulas below are written as
+-- `<literal> * AYANAMSHAS` -- inside the grammar, and evaluating to the true
+-- live count. The named decomposition lives in expected_volume_inputs, which
+-- nothing executes.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- F-B3: 'ACTUAL(bg_reference) * AYANAMSHAS' -- bg_reference is live 1,242, so
 -- the formula yields 6,210, matching neither the floor (8,610) nor reality.
 UPDATE asset_registry
-   SET expected_volume_formula = 'ROWS_PER_AYANAMSHA * AYANAMSHAS',
+   SET expected_volume_formula = '1755 * AYANAMSHAS',
        expected_volume_inputs  = '{"ROWS_PER_AYANAMSHA": 1755, "AYANAMSHAS": 5}'::jsonb,
        volume_explanation =
          '1,755 sensitive-point rows per ayanamsha x 5 ayanamshas = 8,775, matching '
@@ -222,12 +232,34 @@ UPDATE asset_registry
 -- F-E13: 'GRAHAS * AYANAMSHAS' evaluates to 45; floor and reality are both 40.
 -- The adjacent volume_explanation already had it right (8 directions x 5).
 UPDATE asset_registry
-   SET expected_volume_formula = 'DIRECTIONS * AYANAMSHAS',
+   SET expected_volume_formula = '8 * AYANAMSHAS',
        expected_volume_inputs  = '{"DIRECTIONS": 8, "AYANAMSHAS": 5}'::jsonb
  WHERE asset_id = 'ga_vastu';
 
 -- F-B13: derived above; record the derivation as the formula.
 UPDATE asset_registry
-   SET expected_volume_formula = 'ROWS_PER_AYANAMSHA * AYANAMSHAS',
+   SET expected_volume_formula = '67 * AYANAMSHAS',
        expected_volume_inputs  = '{"ROWS_PER_AYANAMSHA": 67, "AYANAMSHAS": 5}'::jsonb
  WHERE asset_id = 'ga_sensitive_degree';
+
+-- F-A4 (companion to Part 1): ga_positions' formula 'GRAHAS * AYANAMSHAS *
+-- FACT_KEYS' evaluates to 45 against 1,205 actual. Measured per-ayanamsha live:
+-- 241 x 5 ayanamshas = 1,205, identical on all three built charts.
+UPDATE asset_registry
+   SET expected_volume_formula = '241 * AYANAMSHAS',
+       expected_volume_inputs  = '{"ROWS_PER_AYANAMSHA": 241, "AYANAMSHAS": 5}'::jsonb
+ WHERE asset_id = 'ga_positions';
+
+-- ga_vichara: a PRE-EXISTING seed-breaking formula, not one this campaign
+-- introduced. 'GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)' is
+-- rejected outright by validateFormulas -- 'x' is not an operator, DOMAINS is
+-- undeclared, and the parenthetical prose fails the character allow-list. Found
+-- by auditing every L1 formula against the grammar the seed actually executes.
+-- Cleared rather than repaired: measured 8,247 / 8,249 / 8,240 across the three
+-- built charts, so the count is chart-dependent and per C12 the volume
+-- assertion is the floor, not a derivation -- the same call made for
+-- ga_panchanga above.
+UPDATE asset_registry
+   SET expected_volume_formula = NULL,
+       expected_volume_inputs  = NULL
+ WHERE asset_id = 'ga_vichara';

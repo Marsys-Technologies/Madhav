@@ -1096,7 +1096,7 @@ export const ASSETS: AssetDef[] = [
     // L1-W3 (migration 650): 1,205 is now a MEASURED achieved count, identical on all
     // three built charts -- not the estimate the comment above rightly refused (§N.4).
     target_floor: 1205,
-    expected_volume_formula: 'BODIES * AYANAMSHAS * FACT_KEYS + BHAVA_CUSPS + HOUSE_CHALIT + SANDHI_FLAG',
+    expected_volume_formula: '241 * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '10 bodies × 5 ayanamshas × atomic fact keys per body (graha_position + graha_sign_attributes)',
     depends_on: [],
@@ -1232,7 +1232,10 @@ export const ASSETS: AssetDef[] = [
     // migration 307 taken under a count_sql that no longer exists. With bhava_arudha (210)
     // restored to the counted set, 8,775 matches asset_throughput.rows_written exactly.
     target_floor: 8775,
-    expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
+    // L1-W3 (migration 650, L1-W1 F-B3): was 'ACTUAL(bg_reference) * AYANAMSHAS' -- bg_reference
+    // is live 1,242, so it yielded 6,210, matching neither the floor nor reality. 1,755 per
+    // ayanamsha x 5 = 8,775 = asset_throughput.rows_written, identical on all three charts.
+    expected_volume_formula: '1755 * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',
     depends_on: ['ga_positions', 'bg_reference'],
@@ -1254,7 +1257,8 @@ export const ASSETS: AssetDef[] = [
     // L1-W3 (migration 650, L1-W1 F-B13): floor was 0 -- unfalsifiable. Derived
     // (5 facets x 9 grahas + neecha_bhanga x 7 + 3 chart-level + 12 yogi) x 5 = 335.
     target_floor: 335,
-    expected_volume_formula: null,
+    // L1-W3 (migration 650, L1-W1 F-B13): 67 per ayanamsha x 5 = 335, verified per-ayanamsha live.
+    expected_volume_formula: '67 * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Per-graha sensitive-degree check rows — count depends on classical rule applicability per chart.',
     depends_on: ['ga_positions'],
@@ -1423,7 +1427,14 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // L1-W3 (migration 650): floor re-set from the MEASURED minimum achieved count
     // across all three built charts, per §N.4. See L1_W2_DECIDE_v1_0.md §3.
     target_floor: 8240,
-    expected_volume_formula: 'GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)',
+    // L1-W3 (migration 650): was 'GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)',
+    // which validateFormulas REJECTS outright -- 'x' is not an operator, DOMAINS is undeclared,
+    // and the parenthetical prose fails the allow-list. That is a pre-existing hard failure of
+    // runSeed on main, not something this campaign introduced; found by auditing every L1 formula
+    // against the grammar the seed actually executes. Cleared rather than repaired: the count is
+    // chart-dependent (8,247 / 8,249 / 8,240 measured), so per C12 the volume assertion is the
+    // floor, not a derivation -- the same call made for ga_panchanga.
+    expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas.',
     depends_on: ['ga_structural', 'ga_strength', 'ga_dashas', 'ga_yoga'],
@@ -1518,7 +1529,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // Floor = 40 (confirmed prod count, migration 294 corrected from 45; Ketu skipped — no classical direction).
     target_floor: 40,
     // L1-W3 (migration 650, L1-W1 F-E13): 'GRAHAS * AYANAMSHAS' evaluated to 45; reality is 40.
-    expected_volume_formula: 'DIRECTIONS * AYANAMSHAS',
+    expected_volume_formula: '8 * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
     depends_on: ['ga_condition'],
@@ -3097,7 +3108,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
 
 // ── Coefficient definitions ───────────────────────────────────────────────────
 
-const COEFFICIENTS: CoefficientDef[] = [
+export const COEFFICIENTS: CoefficientDef[] = [
   {
     coefficient_name: 'SIGNAL_PER_RULE',
     description: 'Signals produced per classical rule per ayanamsha set (measured first build)',
@@ -3132,7 +3143,7 @@ const COEFFICIENTS: CoefficientDef[] = [
 
 // ── Formula validation ────────────────────────────────────────────────────────
 
-function validateFormulas(assets: AssetDef[], coefficients: CoefficientDef[]): void {
+export function validateFormulas(assets: AssetDef[], coefficients: CoefficientDef[]): void {
   const assetIds = new Set(assets.map(a => a.asset_id))
   const coeffNames = new Set(coefficients.map(c => c.coefficient_name))
 

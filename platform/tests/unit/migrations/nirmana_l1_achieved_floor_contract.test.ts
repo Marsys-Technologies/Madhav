@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
+import { ASSETS, COEFFICIENTS, validateFormulas } from '../../../scripts/seed/asset_registry_seed'
 
 /**
  * Nirmāṇa L1-W3 registry-truth contract (migration 650).
@@ -98,6 +98,64 @@ describe('migration 650 — Nirmāṇa L1 registry-truth contract', () => {
         migration,
         `${assetId} floor must not be set before its W4 build`,
       ).not.toMatch(new RegExp(`SET target_floor = \\d+\\s*WHERE asset_id = '${assetId}'`))
+    }
+  })
+
+  it('keeps every L1 formula inside the grammar the seed actually EXECUTES', () => {
+    // asset_registry_seed.ts does not merely store expected_volume_formula — it
+    // runs parseFormula/validateFormulas over it BEFORE touching the database,
+    // and rejects any uppercase identifier outside ALLOWED_VARS or the declared
+    // coefficients. A formula that reads fine can therefore hard-fail runSeed.
+    //
+    // This caught two real defects while migration 650 was being written: a
+    // first draft using ROWS_PER_AYANAMSHA / DIRECTIONS / BHAVA_CUSPS would have
+    // broken the seed, and ga_vichara's PRE-EXISTING formula on main
+    // ('GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)') already
+    // did — 'x' is not an operator and the parenthetical prose fails the
+    // character allow-list.
+    //
+    // Scoped to L1 deliberately: two assets in other layers
+    // (bg_kp_sublord_division, bo_pratijna) carry the same defect and are those
+    // sessions' to fix, reported on adjudication #1757. Asserting over all 128
+    // here would make this test fail on another layer's file.
+    const l1 = ASSETS.filter((asset) => asset.asset_id.startsWith('ga_'))
+    expect(l1.length).toBeGreaterThan(0)
+    expect(() => validateFormulas(l1, COEFFICIENTS)).not.toThrow()
+  })
+
+  it('evaluates each L1 formula to the count it claims', () => {
+    // A formula inside the grammar can still be wrong. These four were measured
+    // live across all three built charts; the arithmetic must reproduce them or
+    // the "derivation" is decoration (C12: derive, never pick).
+    const expected: ReadonlyArray<readonly [string, string, number]> = [
+      ['ga_positions', '241 * AYANAMSHAS', 1205],
+      ['ga_sensitive', '1755 * AYANAMSHAS', 8775],
+      ['ga_sensitive_degree', '67 * AYANAMSHAS', 335],
+      ['ga_vastu', '8 * AYANAMSHAS', 40],
+    ]
+    for (const [assetId, formula, value] of expected) {
+      const asset = ASSETS.find((candidate) => candidate.asset_id === assetId)
+      expect(asset?.expected_volume_formula, assetId).toBe(formula)
+      // AYANAMSHAS is 5 in the seed's own DEFAULTS.
+      expect(Number(formula.split('*')[0].trim()) * 5, assetId).toBe(value)
+      expect(asset?.target_floor, assetId).toBe(value)
+      // and the migration must carry the identical string, or a migrated DB and
+      // a freshly-seeded one disagree — the exact drift this file exists to catch.
+      expect(migration, `${assetId} formula missing from migration 650`)
+        .toContain(`expected_volume_formula = '${formula}'`)
+    }
+  })
+
+  it('clears rather than repairs a formula whose count is chart-dependent', () => {
+    // ga_panchanga (417/437/415) and ga_vichara (8,247/8,249/8,240) both vary by
+    // chart, so no fixed-input formula can be correct. Per C12 the volume
+    // assertion for a chart-varying count is the floor. NULL is the honest value.
+    for (const assetId of ['ga_panchanga', 'ga_vichara']) {
+      const asset = ASSETS.find((candidate) => candidate.asset_id === assetId)
+      expect(asset?.expected_volume_formula, assetId).toBeNull()
+      expect(migration, `${assetId} NULL formula missing from migration 650`).toMatch(
+        new RegExp(`expected_volume_formula = NULL[\\s\\S]{0,1500}?WHERE asset_id = '${assetId}'`),
+      )
     }
   })
 })
