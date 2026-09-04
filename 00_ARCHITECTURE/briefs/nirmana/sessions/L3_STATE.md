@@ -35,8 +35,31 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-`L3-W3` — W1 COMPLETE (23/23, `L3_W1_ANALYSIS_INDEX_v1_0.md` + 5 batch files) · W2 COMPLETE (23/23 routed, `L3_W2_DECIDE_v1_0.md`) · W3 OPEN.
+`L3-W3` — W1 COMPLETE (23/23) · W2 COMPLETE (23/23 routed) · **W3 IN FLIGHT**.
 
+### W3 progress
+
+**Landed on `codex/nirmana-l3-w3-serving-honesty` (PR #1751), each with mutation-proved tests:**
+
+| finding | what | verification |
+|---|---|---|
+| **M7** | the honest-empty that pagination was faking — currency filter pushed into SQL ahead of the row cap on all three horizon capabilities; explicit `truncated`; `now.ts` reports truncation as a distinct cause | 12 tests; reverting the filter + flag turns 2 red |
+| **M8** | the field that was never empty — a hardcoded "ka_kshetra has written no rows" over 31,350 live rows; corrected to the true blocker (**no registry capability exists over any `kala_field*` table at all**) | 3 tests; one pre-existing assertion that pinned the false claim retargeted, not weakened |
+| **M11** | `service_health` written and read by nothing; `ka_graha_sancara` computed a verdict into a variable and discarded it, so it was `state='lit'` while `unhealthy`. Three writers now raise | 7 tests incl. a shape guard; removing one raise turns its test red |
+| **M4** | `ka_avadhi`'s `lord_condition_fact_refs` `[]` on **100.00%** of rows — three independent L1 mismatches (Title-case vs `JUP`/`RAH_MEAN`, no `fact_category` pin, 5 of 7 `fact_key`s nonexistent). Fixed through the L0 SSoT `norm_graha`, not a local map | 12 tests; 8 refs per lord live, up from 0 |
+| **M9** | `conv_score or 0.5` — falsy-coalescing rewrote **793 computed zeros** into a favourable neutral; measured 0 NULLs, so the default only ever mangled real data | 3 tests; restoring `or 0.5` turns 2 red |
+
+Full `python-sidecar` suite after these: **6,135 passed, 0 failures.** `platform` + `platform-mcp`
+`tsc`: 0 errors. `L3_kala` 107 passed; `kala_views` + `kala_ritual_resonance` 214 passed.
+
+**In flight:** 19 D-CND-03 integrity contracts (14 authored + mutation-proved so far, by three
+subagents; 3 authored by me including the **v1-corpus guard**, which is now the only in-database
+detector of loss for that irreplaceable corpus since migration 588 removed its triggers) ·
+the full both-directions `depends_on` audit that D-CND-07 now requires.
+
+**Not started:** M5 (century `BIRTH_YEAR=1984`), M6 (`ka_gochara` count_sql), M12 (54 orphan
+`era_slice_key` rows), M3 (`ka_graha_sancara`'s two defects), M10, migration 670, N1 (the Temporal
+Concordance Contract), N2–N12.
 **Bootstrap facts established live (not assumed):**
 - Worktree `~/nirmana-s/l3` created from `origin/main` = `20323fae4`. Branch `codex/nirmana-l3-w1-analysis`.
 - `NIRMANA_HOLD` absent at the shared checkout root — standing authorization confirmed (C3).
