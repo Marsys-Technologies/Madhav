@@ -1052,6 +1052,34 @@ were deleted after use; `git status` confirms zero residue in any worktree.
   three were caught by attempting the actual implementation and checking live evidence before
   writing code, which is the only reason they were caught before landing.
 
+- `D-VR-32` (2026-09-04): CI caught a second, previously-undiscovered generated-artifact drift
+  gate distinct from the one Batch 2 already knew about. `platform/src/generated/
+  nirmana-writer-digests.json` (regenerated correctly after the Batch 2 writer edits, commit
+  `4f573a64b`) is consumed by a SEPARATE checked-in file, `nirmana-l0-analysis-receipts.ts`, which
+  pins its own aggregate SHA256 (`NIRMANA_L0_WRITER_INVENTORY_SHA256`) over the bg_*-filtered,
+  sorted subset of that same digest file — a receipt-availability gate for L0 evidence-chain
+  submission, enforced by `src/generated/__tests__/nirmana-l0-analysis-receipts.test.ts` in the
+  Unit Tests CI job, independent of the Governance Gates job's `provenance_inventory --check`.
+  Recomputed the aggregate hash directly (`node -e` reproducing the file's own
+  `assertNirmanaL0WriterInventoryMatchesConvergence` logic) and confirmed the result matched CI's
+  own reported "Received" value byte-for-byte:
+  `8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae`. Also independently verified,
+  against a live `node` count of the actual file, that this is NOT the 4-asset inventory
+  regression an auto-generated session memory note briefly suggested (36 vs. 40): the file's own
+  `assetIds` construction is `36 bg_*-prefixed writer-backed keys + 4 named non-writer assets
+  (bg_ephemeris_engine, bg_gochara_citation_resolution, bg_panchanga, bg_sarvatobhadra_grid) = 40`,
+  matching `NIRMANA_L0_ANALYSIS_RECEIPT_COUNT` exactly — no assets are missing. Fix verified
+  passing locally (3/3 tests green) before commit, by copying the corrected generated files into
+  a sibling worktree (batch1) that already had `platform/`'s `node_modules` installed, running
+  `npx vitest run src/generated/__tests__/nirmana-l0-analysis-receipts.test.ts` there, then
+  reverting that worktree's copy so no unrelated worktree carries an uncommitted change. Fix
+  landed as commit `1a5be8180` on `feat/nirmana-l0-w3-batch2-accuracy`, then propagated by a clean
+  `git rebase --onto` through batch3 (`85516a1a7`) and batch4 (`c104b07df`) with zero conflict
+  markers at each step, confirmed via `git diff origin/main` on each branch before force-pushing.
+  Not a doctrine change — same class of miss as the Governance Gates fix already logged for Batch
+  2 (forgetting to regenerate a derived-digest artifact after touching writer source files), just
+  a second, previously-unknown artifact in that same dependency chain.
+
 ## Finding-fence backlog
 
 (none currently open — the one prior entry, migration-directory "discrepancy", was a false alarm;
