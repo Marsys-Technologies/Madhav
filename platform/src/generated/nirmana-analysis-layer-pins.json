@@ -1,0 +1,56 @@
+{
+  "layers": {
+    "L0": {
+      "asset_prefix": "bg_",
+      "convergence_commit": "49bb5c98b864a2cb2fee037cdb7f14f6892a8263",
+      "non_writer_assets": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_panchanga",
+        "bg_sarvatobhadra_grid"
+      ],
+      "receipt_count": 40,
+      "writer_inventory_sha256": "8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae"
+    },
+    "L1": {
+      "asset_prefix": "ga_",
+      "convergence_commit": "20323fae4f72976deae9fe55b8e1ad17e85e4191",
+      "non_writer_assets": [],
+      "receipt_count": 19,
+      "writer_inventory_sha256": "c95fac5469026c4446609d330140b33e38f3a198db21795d21730f20386bbf6c"
+    },
+    "L2": {
+      "asset_prefix": "bo_",
+      "convergence_commit": "20323fae4f72976deae9fe55b8e1ad17e85e4191",
+      "non_writer_assets": [],
+      "receipt_count": 22,
+      "writer_inventory_sha256": "4f8f7ead3a041de3ef200724cf00c78425ec15858a35b64cf821c1b3707b4e05"
+    },
+    "L3": {
+      "asset_prefix": "ka_",
+      "convergence_commit": "20323fae4f72976deae9fe55b8e1ad17e85e4191",
+      "non_writer_assets": [
+        "ka_gochara_sweep"
+      ],
+      "receipt_count": 23,
+      "writer_inventory_sha256": "caec93c58a8a0ac54378d400077467c9c109222e1ce8bf765a38736cbbd97ad4"
+    },
+    "L4": {
+      "asset_prefix": "ph_",
+      "convergence_commit": "20323fae4f72976deae9fe55b8e1ad17e85e4191",
+      "non_writer_assets": [],
+      "receipt_count": 9,
+      "writer_inventory_sha256": "bc1fc8bbca9080e7a6e85a19e38a28a32b373e4614c6740ea6109473e3baebad"
+    },
+    "L5": {
+      "asset_prefix": "mi_",
+      "convergence_commit": "20323fae4f72976deae9fe55b8e1ad17e85e4191",
+      "non_writer_assets": [
+        "lel_events"
+      ],
+      "receipt_count": 15,
+      "writer_inventory_sha256": "27960047b8e976adf6bfd7ad32477947d677cce7bea415cca4c40e5f2af05f91"
+    }
+  },
+  "version": "nirmana-analysis-layer-pins/v1"
+}
