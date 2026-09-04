@@ -824,6 +824,28 @@ def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
     drik.set_ayanamsa_mode(mode)
     place = drik.Place("subject", lat, lon, tz)
 
+    # PyJHora uses TWO julian-day conventions and they are not interchangeable.
+    # From drik.sidereal_longitude's own docstring:
+    #
+    #     "The julian day number supplied to this function must be UTC
+    #      date/time. All other functions of this PyJHora library will require
+    #      JD and not JD_UTC.  JD_UTC = JD - Place.TimeZoneInFloatHours
+    #      For example for India JD_UTC = JD - 5.5"
+    #
+    # `jd_ut` here is built by utils.julian_day_number(dob, tob) from the LOCAL
+    # time of birth, so it is PyJHora's "JD" -- correct for drik.ascendant(jd,
+    # place), which applies the timezone itself, and WRONG for
+    # drik.sidereal_longitude, which does not.
+    #
+    # Passing the local JD to sidereal_longitude computed every graha for an
+    # instant tz hours after birth (5h30m for India). Because the Lagna call IS
+    # place-aware, the FORENSIC gate -- which checks Sun sign, Moon nakshatra
+    # and Lagna -- passed on the one body the defect cannot reach, while 21.9%
+    # of varga sign rows disagreed with ga_positions' own L1 longitudes,
+    # rising to 96% at D2700 as the divisor amplifies the error.
+    # (Nirmāṇa L1-W1 F-A1, cross-layer notice #1747.)
+    jd_utc = jd_ut - tz / 24.0
+
     # Get D1 (natal) positions for all bodies
     asc = drik.ascendant(jd_ut, place)
     asc_full_long = int(asc[0]) * 30.0 + float(asc[1])
@@ -841,9 +863,10 @@ def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
                       4: swe.JUPITER, 5: swe.VENUS, 6: swe.SATURN,
                       7: swe.MEAN_NODE, 8: swe.MEAN_NODE}
         try:
-            raw_lon = drik.sidereal_longitude(jd_ut, planet_map[pid])
+            # jd_utc, never jd_ut -- see the convention note above.
+            raw_lon = drik.sidereal_longitude(jd_utc, planet_map[pid])
             if pid == 8:  # Ketu = Rahu + 180
-                raw_lon = (drik.sidereal_longitude(jd_ut, swe.MEAN_NODE) + 180.0) % 360.0
+                raw_lon = (drik.sidereal_longitude(jd_utc, swe.MEAN_NODE) + 180.0) % 360.0
             d1_longitudes[pname] = float(raw_lon)
         except Exception as exc:
             logger.warning("[ga_vargas] Planet %s D1 longitude failed: %s", pname, exc)
