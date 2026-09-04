@@ -80,6 +80,7 @@ import {
   createNirmanaElevationDefinition,
   freezeNirmanaElevationDefinition,
   nirmanaReadOnlyDetectorSqlAcceptable,
+  nirmanaDetectorSqlHasBindPlaceholder,
   recordNirmanaElevationEvidence,
   registryContractFingerprintInput,
   supersedeNirmanaElevationDefinition,
@@ -419,6 +420,49 @@ describe('Nirmana elevation definition repository', () => {
     })
     it('rejects a statement separator hidden after a closed string literal', () => {
       expect(nirmanaReadOnlyDetectorSqlAcceptable("SELECT 'a''b'; DROP TABLE t")).toBe(false)
+    })
+  })
+
+  describe('bind-placeholder guard (#1723 Part B)', () => {
+    // The freeze-time detector runs with NO parameter array, so a parameterised query
+    // cannot be evaluated. Before this guard, every per_chart asset's count_sql fallback
+    // reached client.query() and Postgres raised `there is no parameter $1` from inside
+    // the call, naming nothing actionable -- for 81 of 128 assets.
+
+    it('is invisible to the read-only guard, which is why this one is needed', () => {
+      // The exact shape carried by every per_chart count_sql in the live registry.
+      const perChartCountSql = 'SELECT count(*) FROM phala_anchors WHERE chart_id = $1'
+      // Starts with SELECT, no separator, no DML -- the read-only guard passes it.
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(perChartCountSql)).toBe(true)
+      // ...and it is precisely the query that cannot be executed.
+      expect(nirmanaDetectorSqlHasBindPlaceholder(perChartCountSql)).toBe(true)
+    })
+
+    it('detects placeholders beyond $1 and in a CTE', () => {
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'WITH s AS (SELECT n FROM t WHERE chart_id = $2) SELECT n > 0 FROM s')).toBe(true)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT a = $1 AND b = $10 FROM t')).toBe(true)
+    })
+
+    it('does not fire on a chart-agnostic detector, including the partitioned form', () => {
+      expect(nirmanaDetectorSqlHasBindPlaceholder('SELECT count(*) = 0 FROM t')).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT NOT EXISTS (SELECT 1 FROM t GROUP BY chart_id HAVING count(*) <> 13)')).toBe(false)
+    })
+
+    it('does not fire on a $ that is not a placeholder', () => {
+      // A literal dollar sign followed by a non-digit, and a currency string.
+      expect(nirmanaDetectorSqlHasBindPlaceholder("SELECT price = 'US$ 5' FROM t")).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder('SELECT a FROM t -- costs $ per row\n')).toBe(false)
+    })
+
+    it('ignores a placeholder that appears only inside a string literal or a comment', () => {
+      // Not executable syntax -- rejecting these would be a false positive.
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        "SELECT note = 'bind $1 here' FROM t")).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT count(*) = 0 FROM t -- was: WHERE chart_id = $1\n')).toBe(false)
     })
   })
 

@@ -1584,6 +1584,28 @@ function nirmanaDetectorSqlCodeOnly(sql: string): string {
   return out
 }
 
+/**
+ * True when a detector query carries a bind placeholder (`$1`, `$2`, ...) outside string
+ * literals and comments.
+ *
+ * The freeze-time detector is executed with **no parameter array** (see
+ * `collectIntegrityObservation`), so a parameterised query cannot be evaluated at all. Every
+ * `per_chart` asset's `count_sql` is of the form `... WHERE chart_id = $1`, and when
+ * `integrity_check_sql` is NULL the detector falls back to exactly that — which meant, for 81
+ * of 128 assets, that `integrity_verified` failed with an opaque `there is no parameter $1`
+ * raised from deep inside a query call, naming nothing a caller could act on.
+ *
+ * This is a hardening, not a relaxation: it accepts nothing new. It converts a Postgres
+ * mystery into an error that names the artifact that is actually missing.
+ *
+ * Dollar-quoted bodies are not unwrapped, so a `$1` inside one is reported. That errs toward
+ * rejection, which is the same direction `nirmanaDetectorSqlCodeOnly` already documents for
+ * its own known limitation.
+ */
+export function nirmanaDetectorSqlHasBindPlaceholder(detectorSql: string): boolean {
+  return /\$\d+/.test(nirmanaDetectorSqlCodeOnly(detectorSql))
+}
+
 export function nirmanaReadOnlyDetectorSqlAcceptable(detectorSql: string): boolean {
   const code = nirmanaDetectorSqlCodeOnly(detectorSql).trim().replace(/;\s*$/, '')
   return /^\s*(select|with)\b/i.test(code)
@@ -1619,6 +1641,16 @@ async function collectIntegrityObservation(
   const detectorSql = registryContract.integrity_check_sql ?? registryContract.count_sql
   if (typeof detectorSql !== 'string' || !nirmanaReadOnlyDetectorSqlAcceptable(detectorSql)) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a read-only current registry integrity detector query.')
+  }
+  // The detector runs with no parameter array (see the client.query call below), so a query
+  // carrying a bind placeholder cannot be evaluated. Say so, naming the missing artifact,
+  // instead of letting Postgres raise `there is no parameter $1` from inside the call.
+  if (nirmanaDetectorSqlHasBindPlaceholder(detectorSql)) {
+    throw new NirmanaElevationEvidenceValidationError(
+      registryContract.integrity_check_sql === null
+        ? 'integrity_verified requires an explicit chart-agnostic integrity_check_sql; the count_sql fallback is parameterised and cannot be evaluated.'
+        : 'integrity_verified requires a chart-agnostic integrity_check_sql; the current one is parameterised and cannot be evaluated.',
+    )
   }
   const result = await client.query(detectorSql)
   const verdict = integrityDetectorVerdict(result.rows, registryContract.integrity_check_sql !== null, obligation)
