@@ -13,11 +13,16 @@ import {
   type NirmanaRegistryContractRow,
 } from './definitions'
 import { buildNirmanaBaselineCandidate } from './monitor'
+import { POST_L5_STAGE_IDS, PRE_L0_STAGE_IDS, PROGRAMME_O_WAVE_WPS } from './programme'
 import {
   canonicalizeCampaignStageTransitions,
   deriveEligibleNextAssetIds,
   projectAssetMilestones,
   projectCampaignStages,
+  projectLayerWaveProgress,
+  projectProgrammePosition,
+  summarizeStageGroupState,
+  type WaveProgressCount,
 } from './projection'
 import type { NirmanaReleaseStatus } from './release'
 import {
@@ -744,6 +749,52 @@ function projectAudit(
   return { receipts, raw_ledger_refs }
 }
 
+/**
+ * Derives the top-level v2 programme spine (O-wave + PHASE A/Z summaries + campaign
+ * position label) from the already-projected stages and layers. Shared by the primary
+ * projection and the source-unavailable fallback so both surfaces agree on how the
+ * programme model is assembled from the same evidence-derived/repo-declared inputs.
+ */
+function buildProgrammeSnapshot(
+  stages: NirmanaElevationSnapshotV2['stages'],
+  layers: Array<{ layer_id: NirmanaElevationSnapshotV2['layers'][number]['layer_id']; layer_name: string; wave_progress: WaveProgressCount[] }>,
+  currentStage: NirmanaStageId | null,
+): NirmanaElevationSnapshotV2['programme'] {
+  const phaseAState = summarizeStageGroupState(stages, PRE_L0_STAGE_IDS)
+  const phaseZState = summarizeStageGroupState(stages, POST_L5_STAGE_IDS)
+  const oWaveState: 'locked' | 'active' | 'completed' =
+    phaseAState !== 'completed' ? 'locked'
+      : PROGRAMME_O_WAVE_WPS.every((wp) => wp.status === 'merged') ? 'completed'
+        : 'active'
+  const openWp = oWaveState === 'active' ? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status !== 'merged') ?? null : null
+  const layerWaveProgress = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.wave_progress]))
+  const layerNames = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.layer_name]))
+  const position = projectProgrammePosition({
+    currentStage,
+    layerWaveProgress,
+    layerNames,
+    openWp: openWp ? { wp_id: openWp.wp_id } : null,
+  })
+
+  return {
+    position_label: position.label,
+    o_wave: {
+      provenance: 'repo_declared' as const,
+      state: oWaveState,
+      wps: PROGRAMME_O_WAVE_WPS.map((wp) => ({ wp_id: wp.wp_id, name: wp.name, status: wp.status, note: wp.note })),
+    },
+    phase_a: {
+      provenance: 'evidence_derived' as const,
+      state: phaseAState,
+      collapsed_stage_ids: [...PRE_L0_STAGE_IDS],
+    },
+    phase_z: {
+      provenance: 'evidence_derived' as const,
+      state: phaseZState,
+    },
+  }
+}
+
 export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources, { generatedAt = new Date().toISOString(), releaseStatus = null }: { generatedAt?: string; releaseStatus?: NirmanaReleaseStatus | null } = {}): NirmanaElevationSnapshotV2 {
   const generated_at = new Date(generatedAt).toISOString()
   const latestObservation = [...(raw.monitor_observations ?? [])].sort((left, right) => timestamp(right.observed_at) - timestamp(left.observed_at)
@@ -1191,6 +1242,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
       layer_name: NIRMANA_LAYER_NAMES[layer.layer_id],
       required_gate: layerStage.required_gate,
       eligible_next_asset_ids: isCurrent ? eligibleNextAssetIds : [],
+      wave_progress: projectLayerWaveProgress(assets, layer.layer_id),
     }
   })
   const active_runs = activeRuns.map((run) => {
@@ -1261,14 +1313,16 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     current_wave,
   }
   const data_quality = { verdict: contradictions.length || gaps.length ? 'degraded' as const : 'reliable' as const, gaps, contradictions }
+  const programme = buildProgrammeSnapshot(stages, layers, currentStage)
   const generation = digest({
     campaign, progress, stages, layers, assets, active_runs, program_sync: programProjection.programSync,
     audit: { accepted_label_catalogue_revision: labelSelection.acceptedCatalogueRevision, release, sources, data_quality, receipts: audit.receipts, raw_ledger_refs: audit.raw_ledger_refs },
+    programme,
   })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
     campaign, progress, stages, layers, assets, active_runs, release, sources,
-    program_sync: programProjection.programSync, data_quality, audit,
+    program_sync: programProjection.programSync, data_quality, audit, programme,
   })
 }
 
@@ -1290,6 +1344,7 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     required_gate: stages.find((stage) => stage.stage_id === layer.layer_id)?.required_gate
       ?? `${layer.layer_id} assets frozen`,
     eligible_next_asset_ids: [],
+    wave_progress: projectLayerWaveProgress([], layer.layer_id),
   }))
   const sources = sourceIds.map((source_id) => ({
     source_id,
@@ -1318,14 +1373,15 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     supersession_eligible: false,
     supersession_blockers: ['source_unavailable'],
   }
-  const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit })
+  const programme = buildProgrammeSnapshot(stages, layers, null)
+  const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit, programme })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,
     campaign: { campaign_id: 'nirmana-elevation', definition_revision: null, definition_status: 'reconciling', campaign_status: 'unknown', current_stage: null, current_layer: null, current_wave: null },
     progress: { denominator_status: 'reconciling', assets_total: null, assets_frozen: 0, layers_total: 6, layers_frozen: 0, buildable_assets_total: null, accepted_rebuilds: 0 },
     stages, layers, assets: [], active_runs: [],
     release: { main_sha: null, deployed_sha: null, deployed_revision: null, production_in_sync: null, observed_at: null },
-    sources, program_sync, data_quality, audit,
+    sources, program_sync, data_quality, audit, programme,
   })
 }
 

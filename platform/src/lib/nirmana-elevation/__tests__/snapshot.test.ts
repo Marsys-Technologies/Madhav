@@ -428,6 +428,42 @@ describe('projectNirmanaElevationSnapshot', () => {
     ]))
   })
 
+  it('projects the programme spine alongside per-layer wave progress', () => {
+    const manifest = defaultManifest()
+    const lifecycleEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 })
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [...foundationLaneEvents(), ...stageEventsThrough('L0'), ...lifecycleEvents],
+      build_runs: [{ id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: runOne, asset_id: 'bg_prashna_rules', position: 0, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+    }), { generatedAt: observedAt })
+
+    expect(typeof snapshot.programme.position_label).toBe('string')
+    expect(snapshot.programme.position_label.length).toBeGreaterThan(0)
+    expect(snapshot.programme.o_wave.wps).toHaveLength(3)
+    expect(snapshot.programme.phase_a.collapsed_stage_ids).toEqual([
+      'BOOTSTRAP', 'T0_CENSUS', 'PLAN_FROZEN', 'DENOMINATOR_FROZEN', 'F0_FOUNDATION',
+    ])
+
+    expect(snapshot.layers).toHaveLength(6)
+    for (const layer of snapshot.layers) {
+      expect(layer.wave_progress).toHaveLength(6)
+      for (const wave of layer.wave_progress) {
+        expect(wave.earned).toBeLessThanOrEqual(wave.required)
+      }
+    }
+
+    // bg_prashna_rules is the sole L0 asset and earns every milestone in this fixture,
+    // so every L0 wave should read 1/1 earned/required.
+    const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
+    expect(l0.wave_progress.map((wave) => wave.wave_id)).toEqual(['W1', 'W2', 'W3', 'W4', 'W5', 'W6'])
+    expect(l0.wave_progress.every((wave) => wave.earned === 1 && wave.required === 1)).toBe(true)
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
   it('starts in takeover/catalogue reconciliation and refuses denominator claims before a frozen definition', () => {
     const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
 
