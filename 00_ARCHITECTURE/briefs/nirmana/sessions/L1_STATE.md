@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — W1 COMPLETE (19/19); PR #1736 open (campaign critical path)
+last_updated: 2026-09-05 — W2 DECIDE complete; PR #1736 open (campaign critical path)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -35,7 +35,9 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-**L1-W1 ANALYZE — COMPLETE (19/19 assets).** W2 DECIDE in progress.
+**L1-W2 DECIDE — COMPLETE.** W1 complete (19/19). `L1_W2_DECIDE_v1_0.md` published:
+8 `changed` / 11 `rebuild_only` / 0 `verified_reuse`, all 139 findings triaged.
+W3 IMPLEMENT next; **no W2 acceptance event written** (held on #1736 per ruling).
 
 **Critical-path assignment in flight:** PR **#1736** — the evidence-spine generalisation, authored
 by L1 per the Conductor's ruling on #1715. It unblocks E-gate condition 2 for **88 assets across
@@ -127,18 +129,56 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   findings (F-A1…F-E28). Deliverables `L1_W1_ANALYSIS_BATCH_A…E.md`. Every below-floor asset got
   a derivation; every uncertainty is registered as uncertainty rather than resolved by guess.
 
+- **D-L1-11** — W2 routes assigned on one question: *does the rebuild need changed writer code?*
+  8 `changed`, 11 `rebuild_only`. **`verified_reuse` rejected for all 19** — it requires proven
+  integrity, and 0/19 carry `integrity_check_sql`, so claiming it would be an unearned signal (§N.8).
+  Five MUST findings are serving-side; their assets stay `rebuild_only` because routing them
+  `changed` would assert a writer change that does not exist.
+- **D-L1-12** — Independently re-verified F-A1 (`ga_vargas`) from production before broadcasting it,
+  rather than relaying a subagent claim into a cross-layer alarm. Lagna Δ **0.0000°**; Sun Δ 0.2324°
+  and Moon Δ 2.7169° — two bodies with 12× different daily motion, both off by the same **0.229 day
+  = 5h30m**. Filed as cross-layer notice **#1747** with a sequencing question for L2–L5.
+- **D-L1-13** — Found the frozen definition can never be superseded again (174 events / 11 runs block
+  it; no side door). Consequence: **`depends_on` is immutable campaign-wide**, so all 11 L1 DAG
+  corrections are NEVER-LATER-documented. Filed **#1744** — including the correction that my first
+  read ("any registry change bricks the asset") was **wrong**: only `layer` and `depends_on` are
+  pinned against the manifest, so D-CND-03's integrity-contract work is unaffected. Mitigating the
+  one DAG defect with live consequences (`ga_dashas`/`ga_vargas` MVCC race) by **sequential
+  single-asset dispatch** at W4 rather than by pretending the graph is accurate.
+- **D-L1-14** — #1729 ruled: L2 implements, L1 supplies weights. Delivered a 13-member proposal, and
+  argued the table's **shape** is wrong as well as its numbers — 5 statuses describe the *absence* of
+  a value (`floored`, `not_defined_for_nodes`, `scope_cap_sentinel`, `skipped_malformed_source`,
+  `external_computation_required`) and should be EXCLUDED from salience rather than weighted;
+  scoring an N/A at 0.60 is a category error, not caution (§N.7 item 6).
+- **D-L1-15** — **Dropped** the mandate's status-vocabulary normalization from W3 scope entirely
+  (superseding the D-L1-9 hold). Once #1729 makes aliases resolve through `verification_vocab`,
+  which spelling a writer emits stops mattering, so the cleanup has no purpose. Recorded as
+  cosmetic-backlog, not as blocked work — the Conductor was explicit that L1 should hold nothing
+  for it.
+
 ## Held items
 
 - **All W2 acceptance events** — held on PR #1736 merging + deploying (ruling on #1715, explicit).
   Route *decisions* are not held and are proceeding.
 - **All W5 `integrity_verified`** — held on L4's #1723 Part B (detector placeholder guard) landing.
-- **Status-vocabulary normalization** — held on #1729 per D-L1-9.
+- ~~Status-vocabulary normalization~~ — **no longer held; dropped from scope** per D-L1-15.
 - No upstream C6 capability holds: L0 declared none.
 
 ## CAPABILITIES LANDED
 
-*(none yet — PR #1736 will announce the layer-generic receipt spine here once merged, since L2–L5
-all consume it.)*
+Charter C6 — announced here on `main`; consumers poll this section. **Nothing below is LANDED yet**;
+each line names the PR it lands with, so a downstream session can tell "announced" from "available".
+
+| capability | consumers | lands with | status |
+|---|---|---|---|
+| Layer-generic analysis-receipt spine (unblocks C2 cond 2 for all of L1–L5) | L2 L3 L4 L5 | PR **#1736** | IN REVIEW |
+| `chart_divisionals` longitude correction — **~22% of varga sign assignments change on rebuild** | L2 L3 L4 | `ga_vargas` W3 | ANNOUNCED (#1747) |
+| D-SALIENCE source-fact contract — exact `fact_category` names, live counts, and the vargottama multiplier-vs-increment units trap; plus the finding that **cancellation modifiers have no L1 source at all** | L2 (salience completion) | published now | **AVAILABLE** — `L1_W1_ANALYSIS_BATCH_C.md` |
+| `ga_condition.varga_dignity_composite` populated (NULL on 100% today) | L2 | `ga_condition` W3 | ANNOUNCED |
+| 19 L1 `integrity_check_sql` contracts (D-CND-03) | campaign verification | W3 | ANNOUNCED |
+
+**L1 consumes no new upstream capability** — L0 declared none, and #1723's detector guard is a gate
+L1 must satisfy rather than a feature it consumes.
 
 ## Cost ledger
 
@@ -150,6 +190,7 @@ all consume it.)*
 
 ## Heartbeat
 
-- 2026-09-05 — W1 COMPLETE 19/19. PR #1736 open, CI running. #1715 (mine, ruled, authoring),
-  #1729 (mine, open), #1727 (mine, closed as dup of #1723). W2 in progress. No slot claimed —
-  nothing is dispatchable while cond 2 is shut, and I will not hold a slot idle (C5).
+- 2026-09-05 — **W1 + W2 COMPLETE.** PR #1736 (critical path, in review) + #1740 (W1 docs) open.
+  Issues: #1715 ruled→authoring, #1729 ruled→weights delivered, #1744 + #1747 filed, #1727 closed as
+  dup of #1723. W3 IMPLEMENT next. **No slot claimed** — nothing is dispatchable while C2 cond 2 is
+  shut, and holding a slot idle is forbidden (C5).
