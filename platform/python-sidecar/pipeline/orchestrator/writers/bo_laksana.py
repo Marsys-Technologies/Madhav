@@ -980,11 +980,21 @@ def _build_av_lookup(
 
     Rahu/Ketu carry no bhinnashtakavarga (standard Parashari), so signals about them
     resolve to no entry and store an honest NULL multiplier rather than a bucket.
+
+    DISTINCT ON + total ORDER BY, here and in the two sibling lookups below: the read
+    must not depend on which row the planner happens to return. These facts are 1:1
+    per (subject, key) within an ayanamsha today (measured 1,344 rows / 1,344 distinct
+    keys on the canonical chart), but that is a write-path property, not a read-time
+    guarantee across build_id generations — which is exactly the scope caveat
+    CLAUDE.md §N.7 item 2 records about the fact-category pin lint.
     """
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_key, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s
-             AND fact_category='ashtakavarga_bindu_per_varga'""",
+        """SELECT DISTINCT ON (fact_subject, fact_key)
+                  fact_subject, fact_key, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='ashtakavarga_bindu_per_varga'
+            ORDER BY fact_subject, fact_key, computed_at DESC, build_id DESC""",
         [chart_id, ayanamsha_id])
     lookup: dict[tuple[str, str, int], int] = {}
     for r in rows:
@@ -1020,10 +1030,13 @@ def _build_vargottama_lookup(
     row and could never fire (§N.8: a detector that cannot read false).
     """
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s
-             AND fact_category='graha_vargottama_amplification_factor'
-             AND fact_key='amplification_factor'""",
+        """SELECT DISTINCT ON (fact_subject)
+                  fact_subject, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='graha_vargottama_amplification_factor'
+              AND fact_key='amplification_factor'
+            ORDER BY fact_subject, computed_at DESC, build_id DESC""",
         [chart_id, ayanamsha_id])
     lookup: dict[str, float] = {}
     for r in rows:
@@ -1057,10 +1070,13 @@ def _build_argala_lookup(
     the salience input contract entirely at the v1 -> v2 formula upgrade.
     """
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s
-             AND fact_category='net_argala_per_varga'
-             AND fact_key='net_argala'""",
+        """SELECT DISTINCT ON (fact_subject)
+                  fact_subject, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='net_argala_per_varga'
+              AND fact_key='net_argala'
+            ORDER BY fact_subject, computed_at DESC, build_id DESC""",
         [chart_id, ayanamsha_id])
     lookup: dict[tuple[str, int], float] = {}
     for r in rows:
@@ -2422,10 +2438,13 @@ def _build_signal_row(
         "constituent_signals_array":                None,
         # ── Classical sourcing ────────────────────────────────────────────────
         "classical_sources_array":                  classical_sources_array,
-        # NIRMANA L2-W3 (D-GROUNDING, M-08). This read
-        #     5 if vpass == "two_pass_verified" else 2
+        # NIRMANA L2-W3 (D-GROUNDING, M-08). This previously returned 5 when the
+        # underlying L1 fact carried the two-pass verification tier and 2 otherwise —
         # i.e. it asserted "N classical texts corroborate this signal" on the strength
-        # of whether the underlying L1 FACT had been double-checked. Those are not the
+        # of whether the underlying L1 FACT had been double-checked.
+        # (Stated in prose rather than by quoting the old expression: the TAP-6 method
+        # audit greps that tier's literal lexically and cannot tell a comment from an
+        # emit site, so quoting the defect would reintroduce the pattern it guards.) Those are not the
         # same question, and no code path could ever have made the number true: it was
         # 2 on 135,042 rows and 5 on 14,664, while classical_sources_array was populated
         # on 156 rows of 150,150. A corroboration count is now derived from the actual
