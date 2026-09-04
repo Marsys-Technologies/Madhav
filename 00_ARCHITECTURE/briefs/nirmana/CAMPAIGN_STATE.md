@@ -210,6 +210,62 @@ sufficient — the Conductor's own #1737 removed an accidental safety and this i
   bites), and the concurrency cap moved 1 → 3, the charter's own ratified number, with connection
   headroom **measured** (`max_connections` 50, 9 in use) rather than assumed.
 
+### CONDUCTOR rulings — night 1, wave 2 (2026-09-05)
+
+Eight further adjudications, filed after the first wave was ruled. Same standard: every
+load-bearing claim re-verified live before ruling, and **two of these rulings correct the
+Conductor's own work.**
+
+| # | Session | Subject | Ruling | Status |
+|---|---|---|---|---|
+| 1732 | L5→L4 | a `ph_nimitta` rebuild destroys the L5 prediction-provenance chain | Option A; **`ph_nimitta` / `phala_anchors` rebuilds HELD campaign-wide.** Blast radius measured **larger** than filed: **6,606 rows across 9 tables**, seven of them L4's own. D-CND-04. | open (holds until L4's C6 announcement) |
+| 1734 | L3 | the E-gate is only as sound as `depends_on`, and L3's DAG is wrong in both directions | UPHELD in full. **L3 correctly has ZERO E-gate-open assets.** D-CND-07. | open (tracks 5 audits) |
+| 1739 | L4 | `seed_native_phala_anchors` — live-routed hand-authored-prediction write path | Option 1 (sever route, keep object). Option 3 rejected on the record; Option 2 deferred to Phase-Z debris. D-CND-08. | ruled, closed |
+| 1738 | L5 | `WriterResult.notes` is write-only — 87 writers degrade into a void | UPHELD campaign-wide. Fixed **at the writers, not the orchestrator** — no freeze exception needed. Orchestrator-side `degraded` flag PARKED to the deferred register. | open (5 audits + CI guard) |
+| 1744 | L1 | the frozen definition can no longer be superseded | CONFIRMED (174 events against it). **`depends_on` + `layer` immutable; everything else mutable-before-acceptance.** D-CND-09. Settles #1734's deferred remedy. | ruled, closed |
+| 1743 | L5→L3 | `kala_field_weight_versions` write-set arbitration | L3-owned, L5 read-only, both fenced. The feared `depends_on` edit is **already blocked by D-CND-09** for this campaign — but not the next, so it becomes the register's first **deliberate non-edge**. D-CND-10. | ruled, closed |
+| 1747 | L1 | **`ga_vargas` computes graha longitudes 5h30m late** | UPHELD — MUST-fix. Independently confirmed: Lagna Δ **exactly 0** (place-aware control), Sun and Moon both **0.229 d** despite 12× motion difference. **The FORENSIC 7/7 gate cannot expose it** — both the right and wrong Moon values fall inside Purva Bhadrapada. | open |
+| 1748 | L4→L2 | `bodha_msr_signals.signal_id` is `uuid4()` per build — 1,013,127 referencing rows | Colliding pairs → Option 1, with Option 3 **pre-authorised as interim** so L4 is never blocked. Retention deferred to Phase Z. D-CND-11. | open (L2 + L5 answers) |
+| 1750 | L1→L2 | three verified serving-side defects in L2's write-set | Routed to L2 as MUST. **F-C14 accepted as Conductor-owned and fixed** (PR #1759). D-CND-12. | open |
+| 1753 | L2 | 46 assets are `catalog_status='DRAFT'`; L3/L4/L5 entirely | Routed per layer as W3 registry work, **before** W2 acceptance. Mechanism guard is the Conductor's. D-CND-13. | ruled, closed |
+| 1757 | L5 | every `expected_volume_formula` is seed-reverted, and the seed's grammar rejects the fix | **Neither option offered** — the seed's own `depends_on` precedent, four lines below the defect, is simpler and costs no grammar change (PR #1762). D-CND-14. | open |
+
+#### Standing rulings added in this wave
+
+- **D-CND-11** — a stable identity key excludes every graded, calibrated or recomputed
+  quantity. A prediction must keep its identity across a recalibration, or an outcome can never
+  be compared to it. (L4's, produced while implementing D-CND-04.)
+- **D-CND-12** — a chart-dependent selector defect cannot be closed by a single-chart
+  verification. The ṣaḍbala selector survived a fix *and* a re-verification because both ran
+  against the one chart where it cannot manifest.
+- **D-CND-13** — a column whose DEFAULT is the wrong answer for the common case is a defect in
+  the schema, not in the callers that forget it. Where a sweep has already run once and the
+  condition returned, the sweep is not the fix.
+- **D-CND-14** — a seed that upserts a column a migration is expected to correct will revert
+  that correction, silently and later. Any column authored under doctrine is
+  migration-governed. A loaded gun is still a gun.
+
+#### Two corrections to the Conductor's own work
+
+1. **PR #1737 removed an accidental safety** (already recorded in wave 1, restated here because
+   D-CND-07 is its replacement): strict full-layer sequencing was incidentally immune to
+   under-declared `depends_on`. Not reverted — without it no layer can dispatch — but the loss
+   is real.
+2. **The `bg_vidhi_floors` commitment was withdrawn before acting on it.** The #1753 ruling said
+   the Conductor would take L0's single DRAFT asset itself. On checking, `bg_vidhi_floors`
+   already carries both W2 acceptance events (19:10:17Z), and `catalog_status` is inside
+   `REGISTRY_CONTRACT_FIELDS` — so the fix would have invalidated an accepted analysis under
+   C2.3 and forced a re-acceptance only L0's lane can redo honestly. **HELD and handed to L0,
+   four minutes after writing D-CND-09, which is the rule it would have broken.** Recorded as
+   evidence that constraint is easy to miss even while holding it in mind.
+
+#### Conductor tooling landed or in flight this wave
+
+`egate.sql` (#1722, merged) · depends_on fingerprint fix + its missing regression test (#1728,
+merged) · `nrec` identity-refusing evidence helper (#1731) · `capsule_audit.sql` (#1733) ·
+asset-frontier E-gate (#1737) · **fact-category-pin guard, three holes** (#1759) · seed volume
+governance (#1762).
+
 ### CONDUCTOR log
 
 - `2026-09-04T23:18:17Z` — night-1 adjudication wave: 11 issues from 5 sessions ruled and logged above; PRs #1722 (egate.sql), #1728 (depends_on fingerprint), #1731 (nrec), #1733 (capsule_audit.sql), #1737 (asset-frontier gate) raised and queued. Standing audits A-01 (L0's 29 capsules vs C12) and A-02 (evidence chains + identity separation across all 174 events) both CLEAN.
