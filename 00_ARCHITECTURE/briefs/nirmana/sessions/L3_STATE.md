@@ -230,8 +230,14 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 - **F-L3-4 (NOW)** — All 23 L3 assets have `expected_volume_formula` NULL and
   `expected_volume_inputs` NULL; 0 have a non-zero `target_floor`. C12 names the NULL itself the
   defect. Volume expectations must be DERIVED or set as achieved-count floors (§N.4) in W3.
-- **F-L3-5 (observation, feeds W2)** — All 6 artifact-kind assets are `catalog_status='DRAFT'`.
-  Batch E is establishing whether DRAFT is honest or stale.
+- **F-L3-5 (NOW)** — **11 L3 assets are `catalog_status='DRAFT'`: 7 artifact + 4 service** (measured
+  2026-09-05; corrects an earlier note here that said "6 artifact-kind", which was Batch E's subset
+  mistaken for the layer's total). Matches L2's independent campaign-wide count on **#1753**, which
+  finds L3, L4 and L5 DRAFT in their entirety while `CLAUDE.md` §E records all three as
+  CLOSED/SEALED, and traces the mechanism to `asset_registry.catalog_status DEFAULT 'DRAFT'` plus
+  24 migrations that omit the column. The cockpit filters on it (migration 294's own root-cause
+  note). **L3's decision: flip 10, hold `ka_graha_sancara` at DRAFT until M3 lands** — promoting a
+  service that is genuinely broken would be precisely the unearned signal §N.8 forbids.
 - **F-L3-6 (MUST, filed #1730, OPEN)** — The shared dispatcher enforces pre-v2.1 strict layer/wave
   sequencing (`campaign_prerequisite_asset_ids`, hard `raise` at line 770), not C2's asset frontier.
   An L3 wave-0 dispatch demands **all 81 L0+L1+L2 assets frozen (52 unfrozen)**, while
