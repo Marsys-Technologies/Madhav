@@ -1537,9 +1537,29 @@ async function runAuthoritativeHealthProbe(assetId: string, healthProbe: Record<
 
 async function collectIntegrityObservation(
   client: PoolClient,
+  assetId: string,
   registryContract: z.infer<typeof RegistryContractSchema>,
   obligation: z.infer<typeof ManifestAssetSchema>['execution_obligation'],
 ): Promise<{ observation: unknown; observed_at: string }> {
+  // Probe-obligation assets are services with no table and therefore no SQL
+  // detector by contract (integrity_check_sql and count_sql are both null).
+  // Their integrity detector is the same authenticated deployed typed
+  // health-probe runner that probe_accepted uses, re-run here at freeze time.
+  // This is an independent re-verification, not a relaxation: the runner
+  // executes real server-side, collectProbeObservation requires a GREEN
+  // verdict with every check passing, and this path throws otherwise -- an
+  // asset whose live service is degraded or down cannot pass its freeze-time
+  // integrity check. It never invents a detector for an asset that should
+  // have had a SQL one: it fires only for the frozen `probe` obligation and
+  // only when both SQL detectors are genuinely null.
+  if (obligation === 'probe' && registryContract.integrity_check_sql === null
+    && registryContract.count_sql === null) {
+    if (registryContract.health_probe === null) {
+      throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a current registry health probe for a probe-obligation service asset.')
+    }
+    const probe = await collectProbeObservation(assetId, registryContract.health_probe)
+    return { observation: probe.observation, observed_at: probe.observed_at }
+  }
   const detectorSql = registryContract.integrity_check_sql ?? registryContract.count_sql
   if (typeof detectorSql !== 'string' || !/^\s*select\b/i.test(detectorSql) || detectorSql.includes(';')) {
     throw new NirmanaElevationEvidenceValidationError('integrity_verified requires a read-only current registry integrity detector query.')
@@ -1625,7 +1645,7 @@ async function normalizeDetectorEvidence(
     }
   }
   const payload = NirmanaIntegrityEvidenceSchema.parse(input.evidence_payload)
-  const observation = await collectIntegrityObservation(client, current.registryContract, current.manifestAsset.execution_obligation)
+  const observation = await collectIntegrityObservation(client, input.entity_id, current.registryContract, current.manifestAsset.execution_obligation)
   return {
     ...input,
     observed_at: observation.observed_at,
