@@ -1016,6 +1016,36 @@ jobs:
         # baseline-style auto-accept for future violations.
         run: python platform/scripts/governance/check_fact_category_pinning.py
 
+      # ── NIRMĀṆA L2-W3 (L2_W2_DECIDE_v1_0.md N-20) ─────────────────────────
+      # A migration that registers an asset must name catalog_status. The column
+      # DEFAULTs to 'DRAFT' and the Nirmāṇa cockpit filters on it, so an INSERT
+      # that omits it registers a fully-built asset as invisible — with nothing
+      # failing anywhere.
+      #
+      # This guard exists because the defect has been introduced, diagnosed,
+      # swept, and re-introduced. migrations/294_catalog_status_current.sql
+      # diagnosed it in its own header and swept the assets that existed then;
+      # eight later registry migrations omitted it again, leaving nine L2 Bodha
+      # assets DRAFT until 660 swept them a second time. A sweep corrects the rows
+      # that exist on the day it runs; only a gate stops the next migration.
+      #
+      # Deliberately STATIC: the DB-assertion form ("no asset with a writer and
+      # rows may be DRAFT") needs a live database and only fires after the bad
+      # migration is written, reviewed, merged and applied. This fires in the PR
+      # that introduces it and names the cause rather than the consequence.
+      #
+      # Runs in this job rather than as a new required check so it gates without
+      # a branch-protection change.
+      - name: Registry-INSERT catalog_status guard — self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_registry_insert_catalog_status.py --self-test
+
+      - name: Registry-INSERT catalog_status guard — migration scan (allowlist-aware)
+        # Applied migrations are immutable (CLAUDE.md §N.4), so pre-existing
+        # offenders are quarantined by filename with a written reason. Several of
+        # those reasons record that the DATA is still uncorrected and belongs to
+        # another layer's session — those entries are open findings, not closures.
+        run: python platform/scripts/governance/check_registry_insert_catalog_status.py
+
   earned-signal-lint:
     # SAMĀPTI v2.0 §7.5, lane B-N8-LINT — the standing CLAUDE.md §N.8
     # Earned-Signal guard, and a deliberate sibling to fact-category-pin-lint
