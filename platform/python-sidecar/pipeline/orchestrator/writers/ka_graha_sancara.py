@@ -79,9 +79,22 @@ class KaGrahaSancaraWriter(WriterBase):
         # Write service_health to asset_registry (orchestrator commits)
         self._write_health(ctx, health, detail)
 
-        status = "success" if health == "healthy" else "error"
         notes = f"self-test: {health}; checks={len(detail.get('checks', []))}"
         logger.info("[ka_graha_sancara] %s", notes)
+
+        if health != "healthy":
+            # NIRMĀṆA L3-W3 M11 (§N.8). This block replaces a computed-then-discarded
+            # `status = "success" if health == "healthy" else "error"` — the variable was
+            # assigned and never read, so an unhealthy self-test still returned a normal
+            # WriterResult and the orchestrator promoted the asset to 'lit'. Measured before the
+            # fix: asset_registry showed ka_graha_sancara state='lit' WHILE service_health was
+            # 'unhealthy'. Raising is the only path that reaches mark_asset_error; ka_muhurta_seva
+            # already did this correctly and documents why.
+            errors = detail.get("errors", [])
+            raise RuntimeError(
+                f"ka_graha_sancara self-test: health={health}; "
+                f"{len(errors)} error(s): {'; '.join(str(e) for e in errors)[:400]}"
+            )
 
         return WriterResult(
             asset_id=self.asset_id,

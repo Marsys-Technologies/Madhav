@@ -245,56 +245,25 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
   conflicts in the same neighbourhood: a campaign-wide **single**-active-run lock (line 797) against
   C5's ≤3, and a one-shot-per-wave guard (line 806) upstream of C8's `force=true`. L4 filed the same
   finding independently as #1725.
-- **F-L3-7 (NOW, raw material gathered)** — Constraint reconnaissance for the 19 D-CND-03 contracts.
-  **8 L3 target tables already carry a DB-enforced natural-key UNIQUE** (`gochara_resonance_map`
-  chart+event_class+target_type+target_ref · `kala_avadhi` chart+system+level+period_start ·
-  `kala_field` chart+event_class+segment_index · `kala_kota_chakra` and `kala_moorti_nirnaya`
-  chart+ayanamsha+graha+window_start · `kala_sudarshana_varsha` chart+ayanamsha+varsha_year ·
-  `kala_taranga` chart+month+scope_kind+scope_id · `kala_tithi_pravesha` chart+ayanamsha+
-  pravesha_year · `kala_vedha_gochara` chart+ayanamsha+vedha_kind+graha+window_start). For those a
-  distinctness invariant is **redundant with the constraint** and would fail C12's rewrite-floor
-  test — their contracts must assert something the constraint cannot (contiguity, tiling,
-  cross-table consistency, range/NULL guards).
-  **9 tables have only a surrogate `id` PK and no natural key**: `kala_activation`,
-  `kala_activation_predicates`, `kala_bhavishya`, `kala_convergence`, `kala_darshana`,
-  `kala_gochara_windows`, `kala_gochara_windows_v2`, `kala_jivana_parva`, `kala_obstruction`. For
-  those a natural-key distinctness invariant **is** load-bearing: it is the only thing that would
-  detect cross-build accretion, which §N.3 (per-chart delete-then-insert) forbids but nothing
-  currently checks. `kala_activation` is the one to watch — 671K rows, no natural key.
-- **F-L3-9 (SAFETY — investigated, alert DOWNGRADED on evidence; standing caution stands).**
-  Batch A raised a hard-floor alert: the protection triggers on `kala_gochara_windows` are gone, so
-  a generation-blind DELETE could destroy the irreplaceable v1 gochara corpus. **I verified every
-  factual claim and they are all true — but the conclusion is not.** The triggers were removed
-  **deliberately, by native instruction (2026-08-23), in `platform/migrations/588_remove_asset_build_protection.sql`**,
-  because the guard was keyed on `asset_id='ka_gochara'` while the writer that actually produces
-  gen-3.0 rows is `ka_gochara_v3_century_materialize` — it could not distinguish a legitimate write
-  from a destructive one and left that writer permanently BUILD-PROTECTED (its Defect D-02). The
-  migration replaced the guard with a full logical snapshot, and **that snapshot is real**:
-  `00_ARCHITECTURE/control/snapshots/20260823_pre_protection_removal/gochara_corpus_and_protection.dump`,
-  **16,214,137 bytes — byte-for-byte the size the migration records** — and `pg_restore -l` reads a
-  valid TOC containing `TABLE DATA public.kala_gochara_windows`, `build_protected_assets`, and the
-  id sequence. So the hard floor's condition (no destructive op on irreplaceable data *without a
-  fresh verified snapshot*) is **satisfied, not violated**. Recorded as a downgrade rather than
-  silently dropped, because a session that re-reads Batch A alone would re-raise it.
-  **Three genuine residuals do stand, and they are mine to carry into W2:**
-  1. Live v1 corpus measured at **38,287 rows across 3 charts** — native `482012f1` 16,297 ·
-     Abhinandan `1c826d5a` 19,323 · **`cb73cd3d` 2,667**. The in-database table snapshot
-     `kala_gochara_windows_archive_20260805` covers only the first two (35,620 rows), verified
-     **id-set-md5-identical per chart** to live. The third chart's 2,667 rows are in the .dump but
-     **not** in the fast in-database recovery path. (Correction to Batch A: `cb73cd3d` is **not** a
-     deleted chart — it is still present in `charts`, measured.)
-  2. The .dump is **git-ignored and untracked** (`git check-ignore` matched) — the sole recovery
-     path for an unregenerable corpus exists only on this machine's disk. Pre-existing and
-     native-accepted; naming it, not fixing it unilaterally.
-  3. Migration 588's own closing line is a ready-made W3 design: *"If protection is ever reinstated,
-     key it on (table, generation) rather than asset_id, so it cannot again block the writer it is
-     meant to protect."* A correctly-keyed guard does not have the property the native objected to.
-     **But reinstating anything the native removed by instruction is not a call I make** — W2 will
-     carry it as an adjudication, not as an L3 decision.
-  **Binding on my own W4 (session prompt, SNAPSHOT RULE ABSOLUTE):** take and verify a fresh
-  snapshot before any dispatch that could write to `kala_gochara_windows`, and never dispatch
-  `ka_gochara_sweep` — its `@register` was removed at retirement, so the build system cannot
-  regenerate those rows at all; the sweep would be a ~30h per-chart re-run if the dump were lost.
+- **F-L3-7 (NOW, raw material gathered — CORRECTED 2026-09-05)** — Constraint reconnaissance for
+  the 19 D-CND-03 contracts. **My first pass was wrong and I am recording the correction rather
+  than quietly restating it:** I queried `pg_constraint` only, which misses natural keys
+  implemented as UNIQUE **indexes**. A W3 contract-authoring subagent caught it. Re-measured
+  against `pg_index`, the genuinely keyless L3 tables are only **four**, not nine:
+  `kala_convergence` (`ka_sangam`), `kala_obstruction` (`ka_vighnakara`), `kala_bhavishya`
+  (`ka_bhavishya_lekha`), and — effectively — `kala_darshana` (`ka_kala_darshana`), which carries
+  only a **partial** unique index (`WHERE convergence_id IS NOT NULL`), so every NULL-`convergence_id`
+  row is unconstrained and accretion can hide there specifically.
+  Five assets I had briefed as keyless in fact have real natural keys and were re-briefed mid-flight:
+  `kala_activation` (chart, signal, ayanamsha, source_citation) · `kala_activation_predicates`
+  (chart, signal, ayanamsha) · `kala_gochara_windows` and `kala_gochara_windows_v2` (chart,
+  event_class, window_start, peak_date, milestone, resolution, **generation**) · `kala_jivana_parva`
+  (chart, parva_index).
+  **The doctrine consequence is unchanged and is why the correction mattered:** where the DB already
+  enforces the key, a distinctness conjunct **cannot fail** and so fails C12's rewrite-floor test —
+  such contracts must assert what the index cannot (tiling/contiguity, cross-table agreement with
+  the upstream L0/L1 fact, per-group cardinality, range/NULL guards). Where it does not, distinctness
+  is the only detector of the cross-build accretion §N.3 forbids.
 - **F-L3-8 (NOW)** — `natural_key_partition` is NULL on all 23 L3 assets. Not L3-specific (L1 0/19,
   L2 0/22, L4 0/9, L5 0/15 — only L0 populates it, 21/40), so this is a campaign-wide pattern rather
   than an L3 omission; recorded here so W2 rules on it deliberately rather than by silence.
