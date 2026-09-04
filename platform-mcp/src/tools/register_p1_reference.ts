@@ -487,9 +487,15 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ nakshatra, lord, keyword, limit, offset }) => {
       try {
-        // F04: reference_nakshatra is the populated, canonical bg_nakshatra grain (28 rows,
-        // including Abhijit), not the deprecated plural reference_nakshatras table. Serve it
-        // directly when a structured facet is asked for, or when this is a plain catalog browse.
+        // F04: reference_nakshatra (singular, bg_nakshatra's table) is the populated, canonical
+        // grain for THIS serving surface (28 rows, including Abhijit) -- serve it directly when a
+        // structured facet is asked for, or when this is a plain catalog browse. NOT the same
+        // table as reference_nakshatras (plural, bg_reference's table) -- L0-W3 correction,
+        // 2026-09-04: that table is NOT deprecated (this comment previously called it that); it
+        // remains a real, live dependency of several L1 writers (ga_sensitive_writer.py,
+        // ga_sensitive_degree_writer.py, ga_dashas_writer.py, _vimshottari_independent_verifier.py)
+        // -- it is simply the wrong table for THIS TS serving capability, a naming-collision risk
+        // (one character apart) rather than a dead one.
         // Keep keyword-only requests on the existing classical-text path: keyword is explicitly
         // free-text intent, not a lossy pseudo-WHERE filter over a static catalog.
         const pageLimit = limit ?? 30
