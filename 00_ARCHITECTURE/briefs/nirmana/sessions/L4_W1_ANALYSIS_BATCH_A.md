@@ -328,10 +328,20 @@ outcome→anchor join is 2 hops via `phala_pramana` — reachable, but not obvio
    It is therefore currently broken-by-schema, but reachable at
    `POST /api/compute/phala/seed_anchors` (`brahmagyan/phala/anchors.py:588-597`, router mounted
    `main.py:52`) and from `seedNativeAnchors()` in `platform-mcp/src/tools/phala_event_anchors.ts:221-225`.
-   `anchors.py:511-517`'s acceptance gate asserts *"seed_native_anchors is idempotent (2nd call
-   inserts 0 rows)"* — a PASS claim over a function that cannot succeed. **This is the seam's worst
-   condition: hand-written predictions with fabricated confidence, presented as built output, have a
-   live named endpoint, held back only by a schema mismatch.**
+   `anchors.py:511-517`'s acceptance gate exercises it. **This is the seam's worst condition:
+   hand-written predictions with fabricated confidence, presented as built output, have a live named
+   endpoint, held back only by a schema mismatch.**
+
+   > **CORRECTION (2026-09-05, W3).** This finding originally also claimed the AC5 acceptance gate
+   > *"asserts idempotency PASS over a function that cannot succeed"* — and that claim was carried
+   > into adjudication #1739 and repeated in the Conductor's ruling. **It is wrong.** The call
+   > raises, `except Exception` catches it, and the check appends `"passed": False` with the error
+   > text: AC5 reported FAILED, correctly and loudly, every time it ran. Verified by executing the
+   > function against production in a rolled-back transaction (`ERROR: column "theme" of relation
+   > "phala_anchors" does not exist`). The finding's substance — a live fabrication path held back
+   > only by a schema mismatch — stands and was ruled on; the false-PASS characterisation does not.
+   > Corrected in PR #1771 and on #1739. A third call site the ruling did not name
+   > (`brahma_pipeline._l4_phala`) was also found and severed there.
 
 ---
 
