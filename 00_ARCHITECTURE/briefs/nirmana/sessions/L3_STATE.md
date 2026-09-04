@@ -35,7 +35,7 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-`L3-W1` — IN PROGRESS (opened 2026-09-05, this session).
+`L3-W3` — W1 COMPLETE (23/23, `L3_W1_ANALYSIS_INDEX_v1_0.md` + 5 batch files) · W2 COMPLETE (23/23 routed, `L3_W2_DECIDE_v1_0.md`) · W3 OPEN.
 
 **Bootstrap facts established live (not assumed):**
 - Worktree `~/nirmana-s/l3` created from `origin/main` = `20323fae4`. Branch `codex/nirmana-l3-w1-analysis`.
@@ -55,29 +55,29 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 
 | asset_id | kind | obl. | wave | route | status | E-gate | capsule | notes |
 |---|---|---|---|---|---|---|---|---|
-| ka_gochara_resonance | data | build | 0 | _W2_ | W1 | **0 — OPEN** | — | **canary candidate**; fingerprint clean |
-| ka_graha_sancara | service | probe | 0 | _W2_ | W1 | **0 — OPEN** | — | **canary candidate**; but `service_health='unhealthy'` — see F-L3-3 |
-| ka_kota_chakra | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
-| ka_moorti_nirnaya | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
-| ka_sudarshana_varsha | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay |
-| ka_tithi_pravesha | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
-| ka_vedha_gochara | data | build | 0 | _W2_ | W1 | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
-| ka_muhurta_seva | service | probe | 1 | _W2_ | W1 | 1 (ka_graha_sancara) | — | opens the moment the canary freezes |
-| ka_gochara_sweep | data | retired_with_disposition | 1 | _W2_ | W1 | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
-| ka_dasha_kala | service | probe | 0 | _W2_ | W1 | 2 | — | |
-| ka_gochara | data | build | 1 | _W2_ | W1 | 2 | — | v2/v3 authority question |
-| ka_gochara_v3_century_materialize | data | build | 1 | _W2_ | W1 | 6 | — | **MONSTER — solo slot** |
-| ka_avadhi | data | build | 0 | _W2_ | W1 | 20 | — | |
-| ka_yojaka | data | build | 0 | _W2_ | W1 | 20 | — | |
-| ka_kshetra | data | build | 1 | _W2_ | W1 | 25 | — | **MONSTER — solo slot**; 11.0M rows / 5.0 GB |
-| ka_sangam | artifact | build | 2 | _W2_ | W1 | 28 | — | arbiter's likely home |
-| ka_kalasutra | artifact | build | 3 | _W2_ | W1 | 29 | — | 671K rows vs 33s estimate — check |
-| ka_vighnakara | artifact | build | 3 | _W2_ | W1 | 29 | — | |
-| ka_taranga | data | build | 3 | _W2_ | W1 | 30 | — | **derived-view vs witness decision owed** |
-| ka_kala_darshana | artifact | build | 4 | _W2_ | W1 | 31 | — | |
-| ka_bhavishya_lekha | artifact | build | 5 | _W2_ | W1 | 32 | — | |
-| ka_jivana_parva | artifact | build | 5 | _W2_ | W1 | 32 | — | |
-| ka_tulana | service | probe | 5 | _W2_ | W1 | 32 | — | |
+| ka_gochara_resonance | data | build | 0 | **rebuild_only** | W2-done | **0 — OPEN** | — | **canary candidate**; fingerprint clean |
+| ka_graha_sancara | service | probe | 0 | **probe** | W2-done | **0 — OPEN** | — | **canary candidate**; but `service_health='unhealthy'` — see F-L3-3 |
+| ka_kota_chakra | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
+| ka_moorti_nirnaya | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
+| ka_sudarshana_varsha | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
+| ka_tithi_pravesha | data | build | 0 | **verified_reuse** | W2-done | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
+| ka_vedha_gochara | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
+| ka_muhurta_seva | service | probe | 1 | **probe** | W2-done | 1 (ka_graha_sancara) | — | opens the moment the canary freezes |
+| ka_gochara_sweep | data | retired_with_disposition | 1 | **retired** | W2-done | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
+| ka_dasha_kala | service | probe | 0 | **probe** | W2-done | 2 | — | |
+| ka_gochara | data | build | 1 | **changed** | W2-done | 2 | — | v2/v3 authority question |
+| ka_gochara_v3_century_materialize | data | build | 1 | **changed** | W2-done | 6 | — | **MONSTER — solo slot** |
+| ka_avadhi | data | build | 0 | **changed** | W2-done | 20 | — | |
+| ka_yojaka | data | build | 0 | **changed** | W2-done | 20 | — | |
+| ka_kshetra | data | build | 1 | **changed** | W2-done | 25 | — | **MONSTER — solo slot**; 11.0M rows / 5.0 GB |
+| ka_sangam | artifact | build | 2 | **changed** | W2-done | 28 | — | arbiter's likely home |
+| ka_kalasutra | artifact | build | 3 | **rebuild_only** | W2-done | 29 | — | 671K rows vs 33s estimate — check |
+| ka_vighnakara | artifact | build | 3 | **changed** | W2-done | 29 | — | |
+| ka_taranga | data | build | 3 | **changed** | W2-done | 30 | — | **derived-view vs witness decision owed** |
+| ka_kala_darshana | artifact | build | 4 | **changed** | W2-done | 31 | — | |
+| ka_bhavishya_lekha | artifact | build | 5 | **changed** | W2-done | 32 | — | |
+| ka_jivana_parva | artifact | build | 5 | **changed** | W2-done | 32 | — | |
+| ka_tulana | service | probe | 5 | **probe** | W2-done | 32 | — | |
 
 E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every loop (C8.6) —
 `ga_positions` alone unblocks 5 assets, and `ka_gochara_resonance` freezing unblocks 2 more.
@@ -299,6 +299,7 @@ your layer close.
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
+- `2026-09-05T…Z — L3-W2/W3 — W1 closed 23/23 (index published); W2 closed 23/23 routed + 12 MUST / 12 NOW / 8 NEVER triaged; ka_taranga SPLIT decided with falsifiers; first two D-CND-03 contracts authored AND mutation-proved live (ka_kota_chakra 4/4 conjuncts fail on injected corruption). W3 open.`
 - `2026-09-05T…Z — L3-W1 — batches A/B/C/D landed (E outstanding); verified the v1-corpus alert down to its real residuals; verified ka_gochara_resonance's 5 undeclared edges from writer SQL and filed #1734 — L3 has no honest canary, reported rather than manufactured.`
 - `2026-09-05T…Z — L3-W1 — rulings absorbed (#1721 GRANTED/PR #1728; D-CND-03 binding; #1715 Option A — no W2 acceptance until it deploys); #1724 withdrawn as duplicate with acceptance recorded; constraint reconnaissance done for the 19 owed contracts; per-loop gate poll scripted; #1730 remains the open W4 blocker.`
 - `2026-09-05T…Z — L3-W1 — bootstrap complete; DB read path live; C10 gate run (2 assets OPEN); 5 read-only W1 batch subagents dispatched (A gochara / B overlays / C services / D heavy+ssv / E artifact spine); 2 campaign-blocking findings filed as #1721 and #1724; deploy ancestry verified execution-safe.`
