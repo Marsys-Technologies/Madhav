@@ -35,6 +35,55 @@ plan's "PHASE A (COMPLETE)".
 | **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
 | **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
+## Tracker v2 alignment — pulled forward from WP-5, native-authorized (2026-09-04)
+
+Per `NIRMANA_TRACKER_V2_ALIGNMENT_PROMPT_v1_0.md` (native-authorized 2026-09-04): a scope-capped
+pull-forward of WP-5's ALIGNMENT slice only (cosmetic Phase-Z tracker polish stays deferred).
+`/admin/nirmana-elevation` now renders the v2.0 programme spine (PHASE A → O-WAVE → L0..L5 with
+W1–W6 milestone bars → PHASE Z) instead of the old flat 13-stage list, and refreshes near-real-time
+via an SSE subscription to the cockpit event bus plus a best-effort Pub/Sub publish on accepted
+capsule/supersession evidence. Written plan:
+`NIRMANA_TRACKER_V2_ALIGNMENT_PLAN_v1_0.md` (same directory), executed via subagent-driven-
+development — 5 tasks, each with a fresh implementer + fresh task-scoped reviewer, an independent
+whole-branch review, and one consolidated fix wave (see the plan's own SDD ledger,
+`platform/.superpowers/sdd/NIRMANA_TRACKER_V2_ALIGNMENT_PLAN_v1_0/progress.md`, for the full
+per-task record — not copied here).
+
+**PR #1701** — merged via the queue 2026-09-04T01:32:19Z, merge commit `c24ad9987c`. 8 commits
+(1 plan doc + 7 implementation, incl. 2 Task-1 fix rounds + 1 final-review fix wave). Full repo
+suite at merge time: 976 test files / 10,603 tests passed, 629 skipped, 0 failures; `tsc --noEmit`
+and eslint both clean (1 pre-existing unrelated warning).
+
+**One real Critical bug found and fixed pre-merge** by the whole-branch review (not by any per-task
+review, which each only saw its own diff): `wave_progress` was aggregating W1–W6 counts over the
+live asset registry instead of the frozen manifest cohort, silently converting an authoritative
+`milestones_required: null` (a registry asset not yet in the manifest, or one with
+`execution_obligation: 'unresolved'`) into a fabricated `required: 6, earned: 0` — exactly the
+kind of manufactured-evidence defect §N.8 exists to catch. Fixed by filtering to
+`milestones_required !== null` before aggregation, with regression + integration tests proving no
+fabrication. Also fixed pre-merge: the O-wave position-chip's WP-selection heuristic assumed
+monotonic WP progress and picked the wrong (non-monotonic) work package; `o_wave.state`'s
+provenance was blended with real stage evidence, contradicting the plan's own Ruling R2 (now
+purely WP-status-derived, per the ruling's literal text).
+
+**Live verification (2026-09-04, this session):**
+- Cloud Run `amjis-web` latest ready revision `amjis-web-01836-mhq` at 100% traffic,
+  `commit-sha` label = `c24ad9987cb38270d6d53f7c08a502bc0a2d0f87` — matches the merge commit
+  exactly. Deploy workflow run concluded `success`.
+- `GET /admin/nirmana-elevation` → `307` (redirect to auth, as expected — not publicly served).
+  `GET /api/admin/nirmana-elevation/snapshot` → `401` (auth enforced, not broken open). Confirms
+  the deploy is live and the auth boundary is intact.
+- **Honest gap, not silently skipped:** this session had no interactive browser session under the
+  native's own Google identity, so the full spec §7 acceptance checklist — visually confirming the
+  programme spine renders correctly, hand-running a SQL aggregation to cross-check the W1–W6 bar
+  numbers, and observing a real campaign event appear on the tracker within ≤10s — could **not**
+  be completed autonomously in this session. What was verified (deploy identity match, route
+  liveness, auth intact, and the full test suite including the fix-wave's regression/integration
+  tests proving the fabrication bug is actually fixed) is real evidence, but it is not a substitute
+  for the native's own live look at the rendered page. **Next session or the native: open
+  `/admin/nirmana-elevation` logged in and walk spec §7's checklist** — this is the one item this
+  alignment work leaves genuinely open, named here rather than silently claimed done.
+
 ## Grounding facts re-verified live (2026-09-01, this session)
 
 - `origin/main` = `1ba236dec7a7ba5b28106abab6554099ed989e50` — confirmed via `git ls-remote`.
