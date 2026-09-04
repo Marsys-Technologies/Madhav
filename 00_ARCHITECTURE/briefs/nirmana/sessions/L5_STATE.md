@@ -11,7 +11,7 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W2` COMPLETE — W1 ANALYZE done (15/15), W2 DECIDE published. **W3 next**; W4 fully blocked on #1719.
+**Position:** `L5-W3` IN FLIGHT — W1 (15/15) and W2 (15/15 routed) COMPLETE. W3 batch 1 (registry accuracy, migration 690) authored and under review; batch 2 (integrity contracts) and batch 3 (writer `notes` audit) in flight. **W4 blocked on #1715/PR #1736** (receipt spine) **and #1723** (per-chart detector).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -181,6 +181,22 @@ correctly but never read back into L5. 4 insight-embedding path — **NOTED in f
 ✓, serve path ✓ and honest, producer MISSING, MCP reachability MISSING. 5 no invented calibration
 values — **HELD ABSOLUTE**; every evidence-absent case recommends an honest NULL or a rename.
 
+## Rulings received (2026-09-05) — and what each changed for L5
+
+| issue | ruling | effect on L5 |
+|---|---|---|
+| **#1719 → #1715** | Consolidated; **Option A GRANTED**. L1 built it: **PR #1736**, per-layer pins in a generated `nirmana-analysis-layer-pins.json`, generator + CI `--check`, L0 byte-identical (121 tests unchanged). | **Unblocks all 15 L5 assets at W4** on merge+deploy. I reviewed the PR: no blocking findings. Verified L5's own edge case — `lel_events` is correctly in `non_writer_assets` with `receipt_count: 15`, so my canary is not silently dropped by the `mi_` prefix filter. |
+| **#1744** (L1-filed) | The frozen definition **can no longer be superseded** (174 events against it; the lock is one-way). **`depends_on` and `layer` are IMMUTABLE**; every other registry-contract field is **mutable before acceptance**. `target_floor` / `expected_volume_formula` / `expected_volume_inputs` are outside the fingerprint entirely. | **Reshaped my whole W3.** All 32 DAG corrections dropped from W3 and posted to the #1734 register instead. Everything else proceeds. My acceptance window is clean (zero L5 acceptance events), so registry work races nothing. |
+| **#1723 / #1727** | **D-CND-03**: per-chart integrity contracts must be chart-partitioned invariants — `SELECT NOT EXISTS (… GROUP BY chart_id HAVING …)` — with **bind placeholders rejected outright**. Each layer authors its own. | Gives W3 batch 2 an exact standard; 15 contracts being authored and **verified live** before shipping (C12: an unrun check is a proposal). |
+| **#1738** (mine) | **UPHELD campaign-wide.** `notes` is documentation, never a signal; a writer that cannot do its job must **raise**. Each layer audits its own writers as W3. Conductor is building a CI detector. The orchestrator-side `degraded` flag is **PARKED** to the native (frozen writer contract). | W3 batch 3: audit all 14 L5 writers, convert disguised failures to raises, **report counts** back to #1738. In flight. |
+| **#1732** (mine) | **L4 ACK, in flight**, with a material refinement: keying on the existing natural key would NOT be deterministic (it contains two `bigserial`s), so L4 is keying on upstream **content** digests instead — verified unique across all 35,365 `kala_convergence` rows. | `mi_bhavisya` / `mi_pramana` stay HELD, but L4 can lift it without needing anything from me. |
+| **#1743** (mine) | **L3 ACK, all three points granted.** `kala_field_weight_versions` + `kala_field_weights` declared L3-owned/L5-read-only; four files fenced; my `mi_bhara.target_table` correction acked. L3 added a measured figure: `ka_kshetra` builds in **22,685 s (6 h 18 m, 308 substeps)**, so the resolve-once rule protects a six-hour straddle window. | `mi_bhara` registry correction proceeds (migration 690). |
+
+**L3's ack contained the sharpest corroboration of the hazard:** its own mechanical `depends_on`
+reconciliation had listed `mi_bhara` under `ka_kshetra`'s undeclared reads — i.e. it would have
+proposed adding exactly the edge the acyclicity guard exists to refuse, and it would have looked
+like exemplary dependency hygiene. Only a decision not to act on automated inference stopped it.
+
 ## Adjudication issues filed (4)
 
 | # | subject | blocks |
@@ -192,6 +208,25 @@ values — **HELD ABSOLUTE**; every evidence-absent case recommends an honest NU
 
 Each was **independently re-verified by this session** before filing — not escalated on a subagent's
 word. #1719 and #1732 both proved larger than first stated after that re-verification.
+
+## W3 plan (replanned under #1744 / D-CND-09)
+
+| batch | content | status |
+|---|---|---|
+| **W3-1** registry accuracy | migration **690** — `mi_sankalpa`/`mi_bhara` `target_floor` NULL→0 (ends a perpetual `dormant` re-queue); `mi_bhara.target_table` → `kala_field_skill`; `mi_jivanaghatana` volume formula **corrected** (was wrong on three counts); 4 more volume formulas derived; 5 `estimated_seconds` re-measured | authored, under independent review |
+| **W3-2** integrity contracts | 15 chart-partitioned invariants per D-CND-03, each **verified live** before shipping | in flight |
+| **W3-3** writer `notes` audit | per #1738 ruling — classify every `notes=` site A/B/C, convert disguised failures to raises, report counts | in flight |
+| **W3-4** serving-plane honesty | `empty_reason` + `density_contract` sweep (**0 of 16** L5 capabilities declare one); `qa_fail_count` prefix fix; `compute_spine_bundle` always-NULL filter; `buildEfficacyReport` nulls | queued |
+| **W3-5** narration/label + idempotency | label corrections that move no number; the `neg_control` DELETE that also wipes `tail_only` | queued |
+| **DROPPED** | all 32 `depends_on` corrections — **immutable per D-CND-09**, recorded in the #1734 register instead | posted |
+
+**Measured-cost correction, self-caught:** one W1 batch claimed `build_run_assets.started_at` is
+NULL for every L5 row. **That was false** — it is populated on 38–45 rows per asset. I re-measured
+directly rather than write a registry number on a subagent's word, and corrected the claim in
+`L5_W1_ANALYSIS_BATCH_C.md` note 7. The batch's *warning* was right and understated: `mi_adhilepa`
+measures avg 31.2 s / **max 843 s** against a registry estimate of 11 (77× on the tail), and
+`mi_bhara` avg 17.3 s / **max 597 s** against 2 (298×). Those two would break any W4 slot plan built
+on the registry's numbers.
 
 ## Held items
 

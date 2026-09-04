@@ -491,12 +491,27 @@ the prior-only branch.
    `|active non-control families|` per chart (9, confirmed 9×2=18) and `mi_kula` = `|families| +
    |controls|` (15, matching `rows_written`).
 
-7. **Cost data is unavailable across the board and this will bite W4.**
-   `asset_throughput.measurement_count = 0` and `rows_per_second IS NULL` for all four;
-   `build_run_assets.started_at` is NULL for every L5 row sampled. The only real cost signal is
-   `rows_written`, and it flatly contradicts `estimated_seconds` for `mi_adhilepa` (112,270 rows / 11s
-   estimate). **W4 scheduling for L5 must not consume `estimated_seconds` as if measured** — and the
-   O-wave's universal receipt capture is the mechanism that would fix this campaign-wide.
+7. **Cost data and W4 scheduling.** *(Note 7 as originally written claimed
+   `build_run_assets.started_at` is NULL for every L5 row. **That claim is FALSE and is corrected
+   here by the L5 session**, which re-measured directly: `started_at` is populated on 38–45 rows per
+   L5 asset, and batches B and D were right to quote measured means from it. The batch generalised
+   from a bad sample. The original note's practical warning, however, was correct — and understated.)*
+
+   `asset_throughput.measurement_count = 0` and `rows_per_second IS NULL` for all four assets, so
+   that surface carries nothing. But `build_run_assets` does, and the measured picture is worse than
+   this batch guessed:
+
+   | asset | registry `estimated_seconds` | measured avg | measured max | tail error |
+   |---|---|---|---|---|
+   | `mi_adhilepa` | 11 | **31.2 s** | **843.1 s** | **77×** |
+   | `mi_bhara` | 2 | **17.3 s** | **596.5 s** | **298×** |
+   | `mi_pariksha` | 2 | 4.2 s | 32.9 s | 16× |
+   | `mi_bhavisya` | 2 | 2.7 s | 15.6 s | 8× |
+
+   **W4 scheduling for L5 must not consume `estimated_seconds` as if measured** — that conclusion
+   stands, and `mi_adhilepa` and `mi_bhara` are the two assets that would break a slot plan built on
+   the registry's numbers. The O-wave's universal receipt capture is the campaign-wide fix; the
+   per-asset correction lands in L5-W3.
 
 8. **Three charts exist in the build state, not two.** `cb73cd3d-9eba-4220-9902-0de91566e980` appears
    in `asset_throughput` (`mi_adhilepa`, `state='error'`, BLOCKED on `ph_nimitta`, 2026-08-07) and
