@@ -230,10 +230,26 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
     correct signal, not an ambiguous one. Git blame points to PR #1559 ("converge L0 wave zero
     writers") as the likely source of this hardening. Same branch-staleness artifact class as
     D-VR-27/D-VR-30 — the W1 finding was accurate against an older code state, not the current one.
-22. `bg_rules` — investigate the zero-yield `bg_dasha_systems` linkage (0/3,002 rules carry a
-    `dasha_system_id` despite live FK validation against it; only one hardcoded
-    `"dasha_system_id": "vimshottari"` literal found in a quick grep, suggesting the
-    dasha-detection pattern in `l0_rules.py` may be incomplete) — cite D-GROUNDING + §N.8.
+22. **RESCOPED to NEVER/LATER (2026-09-04, L0-W3 Batch 4) — investigated live, corpus-limited not
+    detector-limited.** Live query: `SELECT count(*) FROM classical_text_chunks WHERE content_en
+    ILIKE '%dasha%'` → **10 chunks out of 10,651** (0.09%) even contain the word "dasha" anywhere.
+    Sampled all 6 hits with the word: most are incidental mentions ("Dasa period years", "Solar
+    Dasha (period)... auspicious period for his parents", "Mars Dasha would commence affecting his
+    fortunes") in narrative nadi-astrology prose, not the "during/in/at the commencement of
+    [planet]'s (maha)dasha ... [result]" predictive-rule structure Pattern 7 (`_P7`/`_p7_extract`)
+    is built to extract. The zero-yield is overwhelmingly a **corpus-coverage** fact (this L0 text
+    corpus — BPHS, Saravali, KP Reader, Tajaka, Phaladeepika — is rule/classification-focused, not
+    a dasha-timing predictive corpus), not primarily a detector defect as the original W1 framing
+    suggested ("the dasha-detection pattern... may be incomplete"). A regex widening to also catch
+    the 1-2 differently-phrased hits found in the `bhrigu_nandi_nadi` samples ("[Planet] Dasha
+    would commence...") is technically possible but would move the yield from 0 to perhaps 2-3 out
+    of 3,002 — a marginal change to a frozen-adjacent extraction pipeline, not proportionate to
+    attempt without a proper corpus-sampling pass first. Reason for LATER, not NOW: the ceiling is
+    corpus-bounded and small; a real fix requires deliberate corpus-sampling work (reading the 10
+    hits in full, deciding whether any represent a genuinely missed extractable rule), not a quick
+    pattern edit — out of L0-W3's bounded-cost scope. Cite CLAUDE.md §N.8 (the honest finding here
+    is "the corpus barely discusses dasha timing", not "the detector is broken" — asserting the
+    latter without checking would itself have been the kind of unverified claim §N.8 warns against).
 23. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_remedies`: added a docstring disclosure that
     `depends_on: ["bg_texts"]` is accurate but materially overstates live coupling — only step 2
     (`corpus_sweep`, ~16% of rows) reads `classical_text_chunks` at build time; steps 1/3 (~84%)
@@ -261,10 +277,24 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
 28. **DONE — fully closed (2026-09-04, L0-W3 Batch 3).** `bg_gochara_citation_resolution`'s exact
     byte-identity hash (not just the row-count shape D-VR-27 already checked) was executed live
     against production and confirmed to evaluate `TRUE`. Fully verified now, both halves.
-29. `bg_text_index` — the 34% unclassified-chunk gap (3,641/10,651) is a real, disclosed limitation
-    of the deterministic keyword classifier; extending the keyword/domain vocabulary is a bounded
-    (Python dict additions) NOW candidate — cite D-GROUNDING (this is the substrate the L2
-    grounding matcher will consume, plan §5).
+29. **RESCOPED, narrowed (2026-09-04, L0-W3 Batch 4) — investigated live, found the gap is
+    substantially larger-than-vocabulary in nature.** Sampled the 3,641 unclassified chunks
+    directly (not just the aggregate count): a real, material share are OCR-corrupted or
+    non-English text unusable by ANY keyword classifier — e.g. `bphs_pg0249_c02`: `"${t*qt ...
+    qqTsrrer} E?uri a fqi ra: t ... cnirri gfq* urd {targ il{qler: ueRtl"`; `bphs_pg0290_c02`:
+    similar garbled Devanagari-transliteration noise. A rough live heuristic (chunks containing at
+    least 4 consecutive readable English words) found **1,569 of the 3,641** (43%) look
+    plausibly classifiable; the other **2,072 (57%)** are likely OCR noise or non-English content
+    no vocabulary extension can fix. The original NOW framing ("extending the keyword/domain
+    vocabulary is a bounded Python-dict-addition fix for the 34% gap") overstated the achievable
+    ceiling by more than half. **Narrowed, not dropped:** vocabulary extension remains a genuine
+    NOW candidate, but scoped to the readable-but-unmatched subset (~1,569 chunks, not 3,641) and
+    requiring real curation work (sampling that subset, picking domain-relevant keywords actually
+    present in it) rather than a blind dict addition — moved from "bounded, land this wave" to "a
+    properly-scoped follow-up with its own sampling pass," since attempting it without that
+    sampling risks either continued under-coverage or, worse, over-fitting keywords to a handful
+    of samples. Cite D-GROUNDING (still the correct doctrine — this is L2's grounding-matcher
+    substrate) + §N.8 (the honest ceiling is ~43% of the gap, not 100% of it).
 
 ### NEVER/LATER (logged, closed, not reopened by this wave)
 
@@ -349,28 +379,43 @@ unilaterally:
 
 ## §4 — Summary
 
-**Updated 2026-09-04, post-correction (see NOW section header note).** 40/40 assets routed. 3 MUST
-findings (all registry/serving-consistency, none a data-correctness defect in the underlying
-content) — **all 3 addressed in PR #1705** (L0-W3, first IMPLEMENT wave; open at the time of this
-correction, merge status tracked in CAMPAIGN_STATE.md). 18 NOW findings (originally
-26; 8 reclassified to NEVER/LATER on correction — see below), all D-SERVICE wiring/coverage gaps or
-§N.8/B.8 documentation-accuracy items, none touching `grounding_tier` (that vocabulary is L2-scoped
-per plan §5, not L0). 17 NEVER/LATER items (originally 9; +8 from the correction), all correctly
-scoped to L2/L3 work named elsewhere in the plan or to genuine out-of-scope corpus-research items,
-not reopened here. 3 named native decision points carried forward, not resolved unilaterally. No
-asset needed a route change from plan §5's pre-scoped template — W1's findings confirmed the
-template rather than overturning it.
+**Updated 2026-09-04, after L0-W3 Batches 1-4 (final).** 40/40 assets routed, no route changes
+from plan §5's template. 3 MUST findings — **all 3 landed, PR #1705**. Of the original 18 NOW
+findings (post grounding-scope correction): **13 DONE** (12 landed as code/registry/doc changes
+across PRs #1707-#1709 + migration 643/644; 3 more — items 13, 18, 21 — resolved via live
+verification with no code change needed, either already-correct on `main` or confirmed working
+end-to-end), **2 further RESCOPED to NEVER/LATER on evidence** (items 12, 22 — investigated before
+implementing and found the real fix requires L2-Bodha design work or is corpus-coverage-bounded,
+not a bounded L0 fix), and **3 remain genuinely open**: item 13a (new, small — a 1-row
+`bg_concordance` floor/count discrepancy surfaced by item 13's own verification), item 15 (a
+finding recorded for native disposition — `reference_houses`/`reference_strength_systems` show
+zero consumers anywhere, a real question but not this session's to unilaterally retire), and item
+29 (narrowed from "34% gap, bounded fix" to "~1,569-chunk readable subset, needs a real curation
+pass" — investigated and found the original NOW framing overstated the achievable ceiling by more
+than half). **19 NEVER/LATER items total** (9 original + 8 from the grounding-scope correction +
+2 more from Batch 4's investigation — items 12, 22). 3 named native decision points carried
+forward, not resolved unilaterally.
 
-**Self-correction recorded, not silently fixed:** the original NOW list (items 4-11) proposed
-formalizing `grounding_tier` directly on 8 L0 catalog/reference tables. Plan §5's own text places
-`grounding_tier` at L2 ("`grounding_tier` on the interpretive signal classes... not 50,104 rows
-uniformly"), and this session's own W1 batches A/B had already applied that scoping correctly for
-`bg_yogas`/`bg_doshas`/`bg_texts` — batches C/D/E did not apply it consistently, and this ledger
-inherited the inconsistency. Caught before any of the 8 items were implemented (during L0-W3
-scoping, immediately after PR #1705 landed the 3 MUST fixes), corrected in place with the
-reasoning preserved rather than silently deleted — struck-through original text stays visible, new
-NEVER/LATER entries 30a-30h carry the corrected disposition. See CAMPAIGN_STATE.md decision log for
-the full account.
+**Two self-corrections recorded, not silently fixed**, both caught by investigating before
+implementing rather than trusting the original W1/W2 framing:
+1. Items 4-11 (8 items): proposed formalizing `grounding_tier` directly on L0 catalog tables.
+   Plan §5's own text places `grounding_tier` at L2; this session's own W1 batches A/B had already
+   scoped that correctly for `bg_yogas`/`bg_doshas`/`bg_texts`, batches C/D/E had not. Corrected
+   before any of the 8 were implemented — see the NOW section's correction note above and
+   CAMPAIGN_STATE.md D-VR-30.
+2. Item 12 (`bg_concordance` wiring): the proposed fix (repoint `classical_attribution_lookup.ts`
+   to `bg_concordance`'s own table) turned out to be a schema mismatch (MSR-signal-keyed interface
+   vs. topic-keyed table, no join path) — the real target is almost certainly an L2-Bodha table
+   (`bodha_msr_signals.classical_sources_jsonb`), genuine L2 design work. Caught during Batch 1,
+   before implementation, and handed to L2-W3 with the investigation's findings attached.
 
-**Next:** L0-W3 IMPLEMENT continues with the remaining 18 NOW items, batched on disjoint write-sets
-per plan §4, then L0-W4 EXECUTE dispatches the remaining wave-0/1/2 build obligation.
+Also two items (22, 29) where live corpus sampling revealed the original NOW framing significantly
+overstated what a bounded L0-W3 fix could achieve (`bg_rules`' dasha-linkage zero-yield is
+corpus-coverage-limited, not detector-limited — only 10/10,651 chunks even mention "dasha";
+`bg_text_index`'s 34% unclassified-chunk gap is substantially OCR-noise/non-English content, not a
+pure vocabulary gap — a live heuristic found only ~43% of the gap looks plausibly classifiable at
+all). Neither was implemented on the original, now-known-to-be-overstated framing.
+
+**Next:** L0-W4 EXECUTE dispatches the remaining wave-0/1/2 build obligation (item 13a, 15, and 29
+carried forward as named backlog, not blockers — none is a MUST and none gates any asset's route
+or build).

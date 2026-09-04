@@ -31,7 +31,7 @@ plan's "PHASE A (COMPLETE)".
 | P3 Minimal substrate | ✅ done, live, independently verified | Terraform applied by the native; both SAs + exact intended IAM policy independently re-verified live by this session (not just trusted). See "P3 credential ACTIVATED" below for the `--include-email` finding. |
 | P4 Rehearsals = **PHASE A** | ✅ CLOSED — first accepted capsule | Per D-VR-WAVE0-SCOPE: scoped the dispatcher to an explicit asset subset (PR #1692) instead of dispatching full wave 0, then ran `bg_vedha_malefic_scale` through the complete accepted chain — `asset_analysis_accepted` → `optimization_verdict_accepted` → `build_run_authorized` → scoped campaign-triggered dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`. All 6 events independently verified live in `nirmana_evidence.nirmana_elevation_campaign_events`. 2 more real production bugs found+fixed on this path (PRs #1693, #1694; 9 total across P4). See "P4 CLOSED" section below for the full account. |
 | **O-WAVE** — orchestrator truth core | ✅ CLOSED — exit rehearsal complete | WP-1 (PR #1697, `0212c095d`) · WP-3 (PR #1698, `cfa220b8c`) · WP-2 (PR #1699, `ef9ee729e`) — all 3 merged and deployed live (Cloud Run `amjis-web` + job `brahma-build-pipeline-job` both confirmed at commit `ef9ee729e749ada086c975aac501c78086f4f644`), exactly at the ≤3-PR target. All 4 exit-rehearsal criteria (plan §3.4) run and closed — see "O-WAVE EXIT REHEARSAL CLOSED" section below for the full account, including one real methodological finding (the campaign dispatcher's one-shot-per-asset guard makes literal same-mechanism re-dispatch of `bg_vedha_malefic_scale` permanently infeasible) worked around honestly via a documented, code-reusing direct-dispatch script, not a silent bypass. |
-| **L0 — Brahmagyan** (W1→W6) | 🟢 W1+W2 COMPLETE; W3 in progress (3/3 MUST addressed, 18 NOW remain) | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + `L0_W1_ANALYSIS_BATCH_{A-E}.md` + `L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json`. W2 output: `L0_W2_DECIDE_v1_0.md` — every asset routed (2 `verified_reuse`: `bg_texts`/`bg_text_index`; 2 `probe`; 3 `producer_covered`; 1 `static`; 1 `empty`: `bg_sarvatobhadra_grid`; 31 `rebuild_only`, matches plan §5's template exactly), every W1 finding triaged (3 MUST; 18 NOW post-correction — see D-VR-30; 17 NEVER/LATER post-correction), 3 named native decision points carried forward. W3: PR #1705 addresses all 3 MUST findings (`bg_muhurta_lattice` allowlist widened 4→9 families, `bg_vidhi_floors` DRAFT-rationale made discoverable via migration 642, `bg_class_priors` count discrepancy confirmed already-resolved on main). A self-correction (D-VR-30) reclassified 8 mis-triaged NOW items (grounding_tier formalization on L0 tables — plan §5 scopes that vocabulary to L2, not L0) to NEVER/LATER before any were implemented. `bg_vedha_malefic_scale` already `asset_frozen` from P4, exercised twice more in the O-wave exit rehearsal. Next: land the remaining 18 NOW items in batched disjoint-write-set PRs, then L0-W4 EXECUTE. |
+| **L0 — Brahmagyan** (W1→W6) | 🟢 W1+W2+W3 COMPLETE | 40 assets, waves 25/12/3, frozen definition `t0-2026-09-01-0e5b06fb`. W1 output: `L0_W1_ANALYSIS_INDEX_v1_0.md` + batch files. W2 output: `L0_W2_DECIDE_v1_0.md` — every asset routed (matches plan §5's template exactly), every finding triaged. W3 (4 PRs: #1705-#1709 series): all 3 MUST fixes landed; of 18 NOW items post grounding-scope-correction, 13 DONE (code/registry/doc changes or live-verified-no-change-needed), 2 more rescoped to NEVER/LATER on evidence (item 12 `bg_concordance` wiring → real L2-Bodha work, handed to L2-W3; item 22 `bg_rules` dasha-linkage → corpus-coverage-limited, only 10/10,651 chunks mention "dasha"), 3 remain open as small named backlog (13a, 15, 29 — none a MUST, none blocking). Item 29 (`bg_text_index` vocabulary) also narrowed: live sampling found ~57% of the "unclassified" gap is OCR noise/non-English, not a vocabulary miss. See D-VR-30/D-VR-31. `bg_vedha_malefic_scale` already `asset_frozen` from P4. Next: L0-W4 EXECUTE. |
 | **L1 — Gaṇita** through **L5 — Mīmāṃsā** | ⬜ not started | 19 / 22 / 23 / 9 / 15 assets respectively. Strict layer order; each opens only when the prior layer freezes (W6). Per-layer plans: `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`. |
 | **PHASE Z** — campaign closure | ⬜ not started | 128/128 capsule audit, WP-5 tracker polish, debris (subsumes the old P5 Hygiene backlog: ~90 stale/prunable git worktrees, `__ssv_*` sweep, monitor disposition), close report, native acceptance. |
 
@@ -1033,6 +1033,24 @@ were deleted after use; `git status` confirms zero residue in any worktree.
   "verify, don't trust, including your own prior output" discipline as D-VR-14/24/27/28, applied
   one level up — to this session's own W2 synthesis, not just to a single batch agent's findings
   or to system state.
+- `D-VR-31` (2026-09-04): Investigated items 12, 22, 29 (L0-W3 Batches 1 and 4) before
+  implementing them, per the native closeout prompt's own explicit authorization ("a NOW may
+  become NEVER/LATER on evidence — log it, don't silently drop"). All three original W1/W2
+  framings turned out to overstate what a bounded L0 fix could achieve: item 12's proposed
+  repoint target (`bg_concordance`'s own table) has no join path from the actual caller's
+  MSR-signal-keyed interface (schema mismatch, not a valid fix — real target is an L2-Bodha table);
+  item 22's "detector may be incomplete" framing was contradicted by a live query showing only
+  10/10,651 corpus chunks even contain the word "dasha" (corpus-coverage-limited, not
+  detector-limited); item 29's "34% vocabulary gap, bounded fix" was contradicted by live sampling
+  showing a majority of the unclassified chunks are OCR-corrupted/non-English text no vocabulary
+  extension can fix (~43% of the gap looks plausibly classifiable, not ~100%). None of the three
+  was implemented on its original, now-corrected framing; each was either rescoped to NEVER/LATER
+  (12, 22) or narrowed to a smaller, honestly-scoped remainder (29). This is the same investigate-
+  before-implement discipline as D-VR-30, applied to individual findings rather than a systemic
+  ledger-wide pattern — the common thread across all of this session's self-corrections (D-VR-27,
+  D-VR-30, D-VR-31) is that none of them were caught by re-reading the plan more carefully; all
+  three were caught by attempting the actual implementation and checking live evidence before
+  writing code, which is the only reason they were caught before landing.
 
 ## Finding-fence backlog
 
