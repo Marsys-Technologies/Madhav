@@ -495,6 +495,14 @@ class BgCohortWriter(WriterBase):
                 duration_seconds=round(time.time() - t0, 2),
             )
 
+        # Registry depends_on: [bg_ephemeris_engine] disposition note (L0-W3,
+        # 2026-09-04): this import reads only bg_ephemeris_engine's SHARED
+        # ephemeris-path config helper (_resolve_ephe_path), not that asset's
+        # own table output -- bg_ephemeris_engine is a service, not a data
+        # writer, and has no rows to read. The DAG edge is real (both writers
+        # share the same pinned-file config) but narrower than "reads this
+        # asset's output" implies; a reader of the DAG should not assume a
+        # table dependency here.
         from brahmagyan.l0_ephemeris import _resolve_ephe_path
 
         try:

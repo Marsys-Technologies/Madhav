@@ -192,14 +192,11 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
 18. `bg_kota_chakra_rings` — confirm the `ka_kota_chakra` → `kala_kota_chakra` serving path reads
     this L0 table's rows correctly end-to-end (lineage-proof exercise, cheap given the existing
     byte-identity check) — cite D-SERVICE.
-19. `bg_muhurta_lattice` (separate from its MUST) — reconcile `target_floor` (91,477, stale) against
-    the writer's own binding v2-corpus minimum (164,575, post-migration-530) — cite CLAUDE.md §N.4
-    (floors are aspirational/achieved-count, never fabricated, and should track what the writer
-    itself now guarantees).
-20. `bg_sign_medical` — disclose the shared-writer (multi-`@register`) pattern in the W2 ledger
-    (this entry) so a future dependency change to `bg_medical_mappings` doesn't silently affect
-    `bg_sign_medical`/`bg_nakshatra_medical` — cite D-SERVICE hygiene. Considered closed by this
-    disclosure; no code change required.
+19. **DONE (2026-09-04, L0-W3 Batch 2, migration 643).** `bg_muhurta_lattice` `target_floor`
+    corrected 91,477 → 164,575 (the writer's own binding v2-corpus minimum, post-migration-530/
+    628). Verified live: production row count is 164,886, comfortably above the corrected floor.
+20. `bg_sign_medical` — disclosed via this ledger entry (unchanged from original W2). No code
+    change required; considered closed.
 
 §N.8 (earned-signal) / B.8 (registry accuracy) — cheap, concrete, checkable:
 
@@ -210,18 +207,22 @@ D-SERVICE (plan §2) — wiring/coverage gaps, none rising to MUST:
     `dasha_system_id` despite live FK validation against it; only one hardcoded
     `"dasha_system_id": "vimshottari"` literal found in a quick grep, suggesting the
     dasha-detection pattern in `l0_rules.py` may be incomplete) — cite D-GROUNDING + §N.8.
-23. `bg_remedies` — disclose that `depends_on: ["bg_texts"]` is accurate for only 16% of rows
-    (`corpus_sweep`, 54/341) — the other 84% are static Python literals; a one-line disposition
-    note so a future delta-skip/staleness check doesn't over-invalidate on every `bg_texts` change
-    — cite D-SERVICE / O-wave WP-1 (truthful invalidation).
-24. `bg_cohort` — annotate the `depends_on: ["bg_ephemeris_engine"]` edge as "shared config helper,
-    not a data read" so a future DAG reader doesn't assume a table read — cite D-SALIENCE / DAG
-    hygiene.
-25. `bg_vastu_directions` — correct the registry `english_description`'s "~22 rows" to the actual
-    24-row remedials count — cite §B.8.
-26. `bg_kp_sublord_division` — correct the writer module's own docstring line ("depends_on: [] —
-    pure reference geometry, no upstream dependency") to acknowledge the real, optional,
-    fail-open cross-check read of `reference_nakshatra` — editorial-only, very low cost.
+23. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_remedies`: added a docstring disclosure that
+    `depends_on: ["bg_texts"]` is accurate but materially overstates live coupling — only step 2
+    (`corpus_sweep`, ~16% of rows) reads `classical_text_chunks` at build time; steps 1/3 (~84%)
+    are static literals/a curated fixture. Documentation-only; WP-1/WP-2's staleness/delta-skip
+    machinery (frozen O-wave code) is untouched.
+24. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_cohort`: annotated the `bg_ephemeris_engine` import
+    site with a disposition note — the edge is real (shared pinned-ephemeris-file config helper)
+    but narrower than "reads that asset's table output" (a service has no rows to read).
+    Documentation-only.
+25. **DONE (2026-09-04, L0-W3 Batch 2, migration 643).** `bg_vastu_directions` registry
+    `english_description` corrected "~22 rows" → "24 rows"; verified live (`bg_vastu_direction_
+    remedials` count = 24, exact match to the already-correct `integrity_check_sql`/`target_floor`).
+26. **DONE (2026-09-04, L0-W3 Batch 2).** `bg_kp_sublord_division`: corrected the writer module's
+    misleading "depends_on: [] — pure reference geometry, no upstream dependency" line to state
+    the real registry edge (`depends_on: [bg_nakshatra]`, a hard build-order dependency enabling
+    the soft, fail-open star-lord cross-check) — editorial-only.
 27. `bg_parihara_rules` — add `integrity_check_sql` (the only asset in Batch E without one, unlike
     its 5 siblings which all have byte-identity checks) — direct precedent to copy from, bounded
     cost.
