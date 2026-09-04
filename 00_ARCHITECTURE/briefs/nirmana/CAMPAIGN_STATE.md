@@ -1080,6 +1080,72 @@ were deleted after use; `git status` confirms zero residue in any worktree.
   2 (forgetting to regenerate a derived-digest artifact after touching writer source files), just
   a second, previously-unknown artifact in that same dependency chain.
 
+- `D-VR-33` (2026-09-04): L0-W3 IMPLEMENT closed via a real production surprise, not a clean
+  three-PR merge. PR #1709 (Batch 3) squash-merged with PR #1708 (Batch 2) still open underneath
+  it -- because #1709's branch was built on top of #1708's and GitHub's squash merge folds the
+  whole ancestor chain into one commit, PR #1708 became fully redundant (`git diff origin/main
+  85516a1a7` -- #1708's tip merged into #1709's branch -- came back empty, proving byte-identical
+  content already landed) and was closed without merging, with the reasoning posted as a PR
+  comment before closing. PR #1710 (Batch 4) then showed `mergeable: CONFLICTING` for the same
+  root cause; rebuilt clean via `git rebase --onto origin/main <old-batch3-tip> <batch4-branch>`
+  (a pure incremental diff, since `git diff origin/main <old-batch3-tip>` was independently
+  confirmed empty first), re-armed auto-merge (force-pushing had silently cleared it), and it
+  merged clean. Net: 3 PRs opened, 2 merged, 1 closed as redundant, zero content lost -- verified
+  by re-reading `nirmana-l0-analysis-receipts.ts`'s live value and the D-VR-32 note straight off
+  `origin/main` after the dust settled.
+
+## L0-W4 EXECUTE -- first assets frozen (2026-09-04)
+
+Proof-of-mechanism executed for real, against production, before scaling to the remaining 38 L0
+assets: the two lowest-risk W2-routed dispositions (`bg_sarvatobhadra_grid` = empty_acceptance,
+`bg_gochara_citation_resolution` = static_acceptance) were carried through the full W4+W5 evidence
+chain (`asset_analysis_accepted` -> `optimization_verdict_accepted[non_build_disposition]` ->
+`empty_accepted`/`static_accepted` -> `integrity_verified` -> `asset_frozen`) via the OIDC
+non-browser executor route (`/api/admin/internal/nirmana-elevation-executor`), against the frozen
+campaign definition `t0-2026-09-01-0e5b06fb`, deployed commit `7f6ab3add8b2612b0a59f38b6a999d4fba4830d6`.
+Both assets are now terminal (5/5 events each, `outcome: created`, verified live in
+`nirmana_evidence.nirmana_elevation_campaign_events`). Implementer/verifier identity separation is
+real, not simulated: `git_commit`-sourced events (analysis, verdict, disposition) recorded under
+`amjis-nirmana-executor@...`; `server_reconstructed` events (`integrity_verified`, `asset_frozen`)
+recorded under `amjis-nirmana-verifier@...` -- distinct GCP service accounts, both impersonated
+from the native's own already-provisioned `serviceAccountTokenCreator` grant, matching
+`requiredPrincipalFor`'s routing exactly.
+
+Every claimed digest was either independently recomputed from a faithful, hand-verified
+reimplementation of the exact server-side pure functions (`stableJson` + the schema field shapes
+read directly from `definitions.ts`), or cross-checked against a value the server itself had
+already computed and frozen into the manifest (`registry_fingerprint_sha256` matched the frozen
+manifest's own stored value byte-for-byte for both assets before any submission was attempted --
+the strongest available proof the digest logic was reproduced correctly). Every disposition claim
+was grounded in a live query run moments before submission, not trusted from the manifest label
+alone: `bg_sarvatobhadra_grid`'s table was confirmed empty (`COUNT(*) = 0`) and
+`bg_gochara_citation_resolution`'s full content-hash integrity_check_sql was independently
+re-evaluated and confirmed TRUE against live data. The server's own `integrity_verified` handler
+re-ran both detector queries itself (`server_reconstructed`, not client-supplied), so both
+detector results are the server's live re-derivation, not a claim taken on faith.
+
+One real bug found and worked around, not a defect in the evidence-chain code: the first
+`integrity_verified` submission for `bg_sarvatobhadra_grid` was rejected (`409`, "requires exactly
+one prior current typed execution or disposition receipt") because an earlier disposition event's
+hand-typed `observed_at` (`09:00:00Z`) had been set slightly ahead of real wall-clock time at
+submission moment, and the server's `occursAfter` check requires the *new* event's real
+server-clock `observed_at` to be strictly after the *prior* event's claimed `observed_at`. Waiting
+~45 real seconds and resubmitting the identical, idempotency-keyed request succeeded once real
+time caught up. Lesson carried into the second asset's submissions and into every future one:
+always stamp `observed_at` from a fresh `date -u` call made at actual submission time, never a
+hand-typed sequence of plausible-looking increasing timestamps -- a future-dated claim can
+transiently outrun the real clock and self-block a later step in the same chain.
+
+Current tally, independently re-verified live against `nirmana_evidence.nirmana_elevation_campaign_events`
+(not assumed from the closeout prompt's text): 3/40 L0 assets terminal --
+`bg_sarvatobhadra_grid` and `bg_gochara_citation_resolution` frozen this session, plus
+`bg_vedha_malefic_scale` (one of the 31 rebuild_only assets, frozen 2026-09-03 via an earlier
+build-run rehearsal predating this W4 wave -- confirmed still 5/5 terminal, not re-executed).
+Remaining L0-W4 scope: 37 assets -- 30 rebuild_only needing `force=true` real builds (31 minus
+the 1 already frozen), 2 verified_reuse via lineage proof, 2 probe completions, 3
+producer_covered inheritance. Continuing per `NIRMANA_L0_CLOSEOUT_PROMPT_v1_0.md` W4 dispatch
+rules.
+
 ## Finding-fence backlog
 
 (none currently open — the one prior entry, migration-directory "discrepancy", was a false alarm;
