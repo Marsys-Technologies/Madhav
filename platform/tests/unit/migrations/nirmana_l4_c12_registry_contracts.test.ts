@@ -83,9 +83,49 @@ describe('migration 681 — the withheld invariants are named, not silently abse
     expect(migration).toContain(marker)
   })
 
-  it('states that the detectors are chart-agnostic rather than letting them read as scoped', () => {
-    const occurrences = migration.match(/chart-agnostic/g) ?? []
+  it('states the partitioning rather than letting the detectors read as chart-scoped', () => {
+    const occurrences = migration.match(/chart-PARTITIONED/g) ?? []
     expect(occurrences.length).toBeGreaterThanOrEqual(8)
+  })
+})
+
+describe('migration 681 — D-CND-03: detectors partition on chart, they do not aggregate', () => {
+  const checks = migration.match(/\$check\$[\s\S]*?\$check\$/g) ?? []
+
+  it('installs a detector for each of the eight assets it owns', () => {
+    expect(checks.length).toBe(8)
+  })
+
+  it('expresses every clause as NOT EXISTS rather than a bare count comparison', () => {
+    // A whole-table aggregate can be dominated by another chart's rows and miss a
+    // single-chart corruption. Demonstrated live: deleting one domain row for one chart
+    // makes the partitioned form read false while `count(*) >= 13` still reads true.
+    for (const check of checks) {
+      expect(check).toContain('NOT EXISTS')
+    }
+  })
+
+  it('partitions on chart_id in every top-level clause but the one documented exception', () => {
+    // Count TOP-LEVEL clauses only (line-anchored). A correlated NOT EXISTS nested inside a
+    // partitioned clause is part of that clause's predicate, not a clause of its own.
+    let topLevel = 0
+    let partitioned = 0
+    let schemaExceptions = 0
+    for (const check of checks) {
+      for (const line of check.split('\n')) {
+        if (/^\s{2}(AND\s+)?NOT EXISTS/.test(line)) topLevel += 1
+      }
+      partitioned += (check.match(/GROUP BY[^\n]*chart_id/gi) ?? []).length
+      schemaExceptions += (check.match(/FROM information_schema\.columns/g) ?? []).length
+    }
+    expect(topLevel).toBeGreaterThanOrEqual(18)
+    expect(schemaExceptions).toBe(1)          // exactly one documented exception, layer-wide
+    expect(partitioned).toBe(topLevel - schemaExceptions)
+  })
+
+  it('documents the one non-partitionable clause instead of defaulting to it', () => {
+    expect(migration).toContain('NOT CHART-PARTITIONABLE')
+    expect(migration).toContain('information_schema has no chart_id to partition on')
   })
 })
 

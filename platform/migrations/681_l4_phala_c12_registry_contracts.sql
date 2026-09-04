@@ -16,14 +16,24 @@
 -- count (§N.4). The two derived equalities that DO appear (ph_suddha_sodhana,
 -- ph_pramana) compare against a live `count(phala_anchors)`, not a literal.
 --
--- CHART-AGNOSTIC BY NECESSITY, AND LABELLED AS SUCH
--- -------------------------------------------------
--- The freeze-time integrity detector executes with no bind parameters (issue #1723),
--- so a per_chart asset's check must quantify over ALL charts. That is a weaker
--- ATTRIBUTION than a chart-scoped check -- it says "some chart is affected", not
--- "the one just built" -- and each volume_explanation says so rather than letting the
--- check read as chart-scoped. If #1723 is ruled differently, these are re-scoped, not
--- rewritten.
+-- CHART-PARTITIONED, PER D-CND-03
+-- ------------------------------
+-- The freeze-time integrity detector executes with no bind parameters (issue #1723), so a
+-- per_chart asset's check cannot be scoped with `WHERE chart_id = $1`. The CONDUCTOR's
+-- D-CND-03 ruling on #1723 requires the stronger answer rather than the honest-caveat one I
+-- first proposed: quantify over every chart AND keep per-chart attribution, by PARTITIONING
+-- instead of aggregating --
+--
+--     SELECT NOT EXISTS (SELECT 1 FROM <t> GROUP BY chart_id HAVING <violation>)
+--
+-- This is strictly stronger on C12's rewrite floor test: a corruption confined to one chart
+-- makes exactly that chart's group violate, where a whole-table aggregate can be dominated by
+-- the other charts' rows and miss it entirely. Every clause below takes this form.
+--
+-- ONE clause cannot: ph_pramana's re-assertion of the D5 NO-SCORING gate reads
+-- information_schema, which has no chart_id to partition on. It is a SCHEMA invariant, not a
+-- data one, and the claim is chart-independent by nature. Per D-CND-03 clause 2 it carries a
+-- SQL comment naming why.
 --
 -- EVERY DETECTOR WAS RUN LIVE BEFORE THIS MIGRATION WAS WRITTEN
 -- ------------------------------------------------------------
@@ -77,8 +87,8 @@ UPDATE asset_registry SET
     'dedup -- roughly 460 candidates derive and 139 survive on the canonical chart, an ~70% '
     'rejection rate that is currently logged to stdout only. anchor_id is deterministic from '
     'the anchor''s grade-free event tuple (migration 680, D-CND-04 / issue #1732). Detector is '
-    'chart-agnostic because the freeze-time detector runs with no bind parameters (issue '
-    '#1723) -- a failure means SOME chart is affected, not necessarily the one just built.'
+    'chart-PARTITIONED per D-CND-03 (GROUP BY chart_id HAVING ...), so a violation names the '
+    'chart it belongs to rather than reporting that some chart is affected.'
  WHERE asset_id = 'ph_nimitta';
 
 -- ── ph_muhurta ──────────────────────────────────────────────────────────────
@@ -98,14 +108,25 @@ UPDATE asset_registry SET
     'anchor -- the natural key collapses anchors that map to the same pair, so the count is '
     'BELOW the anchor count by exactly the collision count (139 anchors -> 134 rows on the '
     'canonical chart). target_floor is set from count_sql, never from rows_written, which '
-    'over-reports by the collision count. Detector is chart-agnostic (issue #1723): a failure '
-    'means SOME chart is affected, not necessarily the one just built.',
+    'over-reports by the collision count. Detector is chart-PARTITIONED per D-CND-03, so a '
+    'violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-PARTITIONED, so a violation names the chart it belongs to. A whole-table
+-- aggregate could be dominated by another chart's rows and miss a single-chart corruption.
 SELECT
-  (SELECT count(*) FROM phala_muhurta m LEFT JOIN phala_anchors a ON a.anchor_id = m.linked_anchor_id
-    WHERE m.linked_anchor_id IS NOT NULL AND (a.anchor_id IS NULL OR a.chart_id <> m.chart_id)) = 0
-  AND (SELECT count(*) FROM phala_muhurta WHERE window_end IS NOT NULL AND window_start > window_end) = 0
-  AND (SELECT count(*) = count(DISTINCT (chart_id, source_citation)) FROM phala_muhurta)
+  -- Every linked anchor resolves, and to an anchor of the SAME chart.
+  NOT EXISTS (SELECT 1 FROM phala_muhurta m
+      LEFT JOIN phala_anchors a ON a.anchor_id = m.linked_anchor_id
+     WHERE m.linked_anchor_id IS NOT NULL AND (a.anchor_id IS NULL OR a.chart_id <> m.chart_id)
+     GROUP BY m.chart_id HAVING count(*) > 0)
+  -- Windows are ordered.
+  AND NOT EXISTS (SELECT 1 FROM phala_muhurta
+     WHERE window_end IS NOT NULL AND window_start > window_end
+     GROUP BY chart_id HAVING count(*) > 0)
+  -- Fingerprint distinctness, per chart: source_citation carries no chart component, so it
+  -- collides legitimately BETWEEN charts and is only meaningful WITHIN one.
+  AND NOT EXISTS (SELECT 1 FROM phala_muhurta
+     GROUP BY chart_id HAVING count(*) <> count(DISTINCT source_citation))
 $check$
  WHERE asset_id = 'ph_muhurta';
 
@@ -126,17 +147,23 @@ UPDATE asset_registry SET
     'the anchor->CDLM domain map sends ''transition'' to ''general'', a domain CDLM does not '
     'have, destroying 250 rows (10%) that a correct map would produce; the full no-gap tiling '
     'invariant is therefore withheld until that fix lands in W3-3 rather than installed red. '
-    'Detector is chart-agnostic (issue #1723).',
+    'Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned.
 SELECT
   -- §N.5: L4 must not have drifted from the L2 value it copied.
-  (SELECT count(*) FROM phala_sankrama s
-     JOIN bodha_cdlm_cells c ON c.cell_id = s.cdlm_cell_id AND c.chart_id = s.chart_id
-    WHERE s.linkage_strength IS DISTINCT FROM c.net_linkage_strength
-       OR s.target_domain IS DISTINCT FROM c.domain_col) = 0
-  AND (SELECT count(*) FROM phala_sankrama
-        WHERE projected_window_end IS NOT NULL AND projected_window_start > projected_window_end) = 0
-  AND (SELECT count(*) = count(DISTINCT (chart_id, source_anchor_id, cdlm_cell_id)) FROM phala_sankrama)
+  NOT EXISTS (SELECT 1 FROM phala_sankrama s
+      JOIN bodha_cdlm_cells c ON c.cell_id = s.cdlm_cell_id AND c.chart_id = s.chart_id
+     WHERE s.linkage_strength IS DISTINCT FROM c.net_linkage_strength
+        OR s.target_domain IS DISTINCT FROM c.domain_col
+     GROUP BY s.chart_id HAVING count(*) > 0)
+  -- Projected windows are ordered.
+  AND NOT EXISTS (SELECT 1 FROM phala_sankrama
+     WHERE projected_window_end IS NOT NULL AND projected_window_start > projected_window_end
+     GROUP BY chart_id HAVING count(*) > 0)
+  -- The natural key is distinct within each chart.
+  AND NOT EXISTS (SELECT 1 FROM phala_sankrama
+     GROUP BY chart_id HAVING count(*) <> count(DISTINCT (source_anchor_id, cdlm_cell_id)))
 $check$
  WHERE asset_id = 'ph_sankrama';
 
@@ -156,14 +183,18 @@ UPDATE asset_registry SET
     'An anomaly registry, not a product: FEWER rows is better, so this asset has a CEILING '
     'and deliberately NO target_floor -- a floor would reward fabricating findings (§N.4). '
     'Five per-anchor detectors plus one chart-wide detector bound it. Detector is '
-    'chart-agnostic (issue #1723).',
+    'chart-PARTITIONED per D-CND-03.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned.
 SELECT
   -- Earned signal: an l5_calibration_attempted row can only exist if the build-halt failed.
-  (SELECT count(*) FROM phala_sodhana WHERE leakage_class = 'l5_calibration_attempted') = 0
+  NOT EXISTS (SELECT 1 FROM phala_sodhana WHERE leakage_class = 'l5_calibration_attempted'
+     GROUP BY chart_id HAVING count(*) > 0)
   -- The anchor_id FK omits chart_id, so a row could legally cite another chart's anchor.
-  AND (SELECT count(*) FROM phala_sodhana s LEFT JOIN phala_anchors a ON a.anchor_id = s.anchor_id
-        WHERE a.anchor_id IS NULL OR a.chart_id <> s.chart_id) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_sodhana s
+      LEFT JOIN phala_anchors a ON a.anchor_id = s.anchor_id
+     WHERE a.anchor_id IS NULL OR a.chart_id <> s.chart_id
+     GROUP BY s.chart_id HAVING count(*) > 0)
 $check$
  WHERE asset_id = 'ph_sodhana';
 
@@ -177,20 +208,24 @@ UPDATE asset_registry SET
   volume_explanation =
     'Exactly one disposition row per anchor -- a DERIVED equality against a live upstream '
     'count, not a literal pin. This asset labels and never drops: verified 1:1 with zero '
-    'orphans in both directions on both built charts. Detector is chart-agnostic (issue #1723).',
+    'orphans in both directions on both built charts. Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned.
 SELECT
-  -- No-gap tiling, both directions.
-  (SELECT count(*) FROM phala_anchors a
-     FULL OUTER JOIN phala_suddha_sodhana s ON s.anchor_id = a.anchor_id AND s.chart_id = a.chart_id
-    WHERE a.anchor_id IS NULL OR s.anchor_id IS NULL) = 0
+  -- No-gap tiling of phala_anchors, both directions, within each chart.
+  NOT EXISTS (SELECT 1 FROM phala_anchors a
+      FULL OUTER JOIN phala_suddha_sodhana s ON s.anchor_id = a.anchor_id AND s.chart_id = a.chart_id
+     WHERE a.anchor_id IS NULL OR s.anchor_id IS NULL
+     GROUP BY coalesce(a.chart_id, s.chart_id) HAVING count(*) > 0)
   -- The stored status must equal its own classifier (§N.5: re-derivation, not restatement).
-  AND (SELECT count(*) FROM phala_suddha_sodhana WHERE cleanliness_status <> CASE
+  AND NOT EXISTS (SELECT 1 FROM phala_suddha_sodhana WHERE cleanliness_status <> CASE
         WHEN critical_flag_count > 0 OR major_flag_count > 0 THEN 'staged_revision'
-        WHEN minor_flag_count > 0 THEN 'flagged' ELSE 'clean' END) = 0
+        WHEN minor_flag_count > 0 THEN 'flagged' ELSE 'clean' END
+     GROUP BY chart_id HAVING count(*) > 0)
   -- The D43 rail: no correction is ever auto-applied.
-  AND (SELECT count(*) FROM phala_suddha_sodhana
-        WHERE revision_approved_by IS NOT NULL OR revision_applied_at IS NOT NULL) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_suddha_sodhana
+     WHERE revision_approved_by IS NOT NULL OR revision_applied_at IS NOT NULL
+     GROUP BY chart_id HAVING count(*) > 0)
 $check$
  WHERE asset_id = 'ph_suddha_sodhana';
 
@@ -211,19 +246,24 @@ UPDATE asset_registry SET
     'recommendation") described a per-remedy grain this table does not have. Tiling is scoped '
     'to charts that HAVE mitigation rows: chart cb73cd3d has 6 obstructions and none, because '
     'its ph_nimitta build errored and ph_pratikara never ran -- an unbuilt chart is not '
-    'corruption. Detector is chart-agnostic otherwise (issue #1723). KNOWN OPEN DEFECTS held '
+    'corruption. Detector is chart-PARTITIONED per D-CND-03. KNOWN OPEN DEFECTS held '
     'to W3-3: empty programmes, an invented citation, and a degenerate linked_anchor_id.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned. The tiling is additionally restricted to charts that HAVE
+-- mitigation rows: chart cb73cd3d has 6 obstructions and none, because its ph_nimitta build
+-- errored and ph_pratikara never ran. An unbuilt chart is not corruption -- and the scoped
+-- form still goes red on a genuine partial build (verified by probe).
 SELECT
-  -- 1:1 tiling over kala_obstruction, for charts this asset has actually built.
-  (SELECT count(*) FROM kala_obstruction o
-     FULL OUTER JOIN phala_mitigation m ON m.obstruction_id = o.id AND m.chart_id = o.chart_id
-    WHERE (o.id IS NULL OR m.mitigation_id IS NULL)
-      AND coalesce(o.chart_id, m.chart_id) IN (SELECT DISTINCT chart_id FROM phala_mitigation)) = 0
+  NOT EXISTS (SELECT 1 FROM kala_obstruction o
+      FULL OUTER JOIN phala_mitigation m ON m.obstruction_id = o.id AND m.chart_id = o.chart_id
+     WHERE (o.id IS NULL OR m.mitigation_id IS NULL)
+       AND coalesce(o.chart_id, m.chart_id) IN (SELECT DISTINCT chart_id FROM phala_mitigation)
+     GROUP BY coalesce(o.chart_id, m.chart_id) HAVING count(*) > 0)
   -- §N.5: the stored severity must be the declared mapping of the upstream it restates.
-  AND (SELECT count(*) FROM phala_mitigation m JOIN kala_obstruction o ON o.id = m.obstruction_id
-        WHERE m.obstruction_severity IS DISTINCT FROM CASE o.severity
-          WHEN 'mild' THEN 'low' WHEN 'moderate' THEN 'medium' WHEN 'severe' THEN 'high' END) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_mitigation m JOIN kala_obstruction o ON o.id = m.obstruction_id
+     WHERE m.obstruction_severity IS DISTINCT FROM CASE o.severity
+       WHEN 'mild' THEN 'low' WHEN 'moderate' THEN 'medium' WHEN 'severe' THEN 'high' END
+     GROUP BY m.chart_id HAVING count(*) > 0)
 $check$
  WHERE asset_id = 'ph_pratikara';
 
@@ -245,21 +285,27 @@ UPDATE asset_registry SET
     'life_event_miss -- a refutation asserted on no evidence. A floor now would enshrine a '
     'count a dead detector produced. The invariant that DETECTS this (a miss must cite a '
     'resolvable LEL comparison) fails 12/12 today and lands with its fix in W3-3 rather than '
-    'installed red. Detector is chart-agnostic (issue #1723).',
+    'installed red. Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned, except the final clause -- see its comment.
 SELECT
-  -- FULL-JOIN: exactly one pramana row per anchor, no orphan in either direction.
-  (SELECT count(*) FROM phala_anchors a
-     FULL OUTER JOIN phala_pramana p ON p.anchor_id = a.anchor_id AND p.chart_id = a.chart_id
-    WHERE a.anchor_id IS NULL OR p.anchor_id IS NULL) = 0
-  -- Grain assertion: one row per anchor.
-  AND (SELECT count(*) FROM (SELECT anchor_id FROM phala_pramana GROUP BY anchor_id HAVING count(*) > 1) d) = 0
-  -- The D5 NO-SCORING gate, re-asserted structurally in SQL: this table must carry no
-  -- numeric column at all. Calibration belongs to L5 and is filled in from real outcome
-  -- data, not invented here (§N.8).
-  AND (SELECT count(*) FROM information_schema.columns
-        WHERE table_name = 'phala_pramana'
-          AND data_type IN ('numeric','double precision','real')) = 0
+  -- Exactly one pramana row per anchor, no orphan in either direction, within each chart.
+  NOT EXISTS (SELECT 1 FROM phala_anchors a
+      FULL OUTER JOIN phala_pramana p ON p.anchor_id = a.anchor_id AND p.chart_id = a.chart_id
+     WHERE a.anchor_id IS NULL OR p.anchor_id IS NULL
+     GROUP BY coalesce(a.chart_id, p.chart_id) HAVING count(*) > 0)
+  -- Grain assertion: one row per anchor, per chart.
+  AND NOT EXISTS (SELECT 1 FROM phala_pramana
+     GROUP BY chart_id HAVING count(*) <> count(DISTINCT anchor_id))
+  -- NOT CHART-PARTITIONABLE, and this is the D-CND-03 clause-2 exception with its reason:
+  -- this is a SCHEMA invariant, not a data one. It re-asserts the D5 NO-SCORING gate
+  -- structurally -- phala_pramana must carry no numeric column at all, because calibration
+  -- belongs to L5 and is filled in from real outcome data, never invented here (§N.8).
+  -- information_schema has no chart_id to partition on, and the claim is chart-independent
+  -- by nature: a numeric column exists for every chart or for none.
+  AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'phala_pramana'
+       AND data_type IN ('numeric','double precision','real'))
 $check$
  WHERE asset_id = 'ph_pramana';
 
@@ -277,22 +323,26 @@ UPDATE asset_registry SET
     'has any anchor in that domain -- so 13 rows on EVERY chart is a genuine derived '
     'structural constant, not chart-independence: the per-domain payload differs completely '
     'between charts (7 populated / 6 empty on the canonical chart vs a different split '
-    'elsewhere). Detector is chart-agnostic (issue #1723).',
+    'elsewhere). Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: chart-partitioned throughout.
 SELECT
   -- Complete, non-duplicated tiling of the canonical vocabulary, per chart.
-  (SELECT count(*) FROM (SELECT chart_id FROM phala_phaladesa
-     GROUP BY chart_id HAVING count(DISTINCT domain) <> 13) x) = 0
+  NOT EXISTS (SELECT 1 FROM phala_phaladesa
+     GROUP BY chart_id HAVING count(DISTINCT domain) <> 13 OR count(*) <> 13)
   -- anchor_count must equal the true anchor population for that domain (no drift).
-  AND (SELECT count(*) FROM phala_phaladesa pd WHERE pd.anchor_count <>
-        (SELECT count(*) FROM phala_anchors a WHERE a.chart_id = pd.chart_id AND lower(a.domain) = pd.domain)) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_phaladesa pd WHERE pd.anchor_count <>
+        (SELECT count(*) FROM phala_anchors a WHERE a.chart_id = pd.chart_id AND lower(a.domain) = pd.domain)
+     GROUP BY pd.chart_id HAVING count(*) > 0)
   -- Counts are coherent, and a verdict has a top anchor exactly when it has anchors.
-  AND (SELECT count(*) FROM phala_phaladesa
-        WHERE clean_anchor_count + staged_revision_count > anchor_count
-           OR (anchor_count > 0) <> (top_anchor_id IS NOT NULL)) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_phaladesa
+     WHERE clean_anchor_count + staged_revision_count > anchor_count
+        OR (anchor_count > 0) <> (top_anchor_id IS NOT NULL)
+     GROUP BY chart_id HAVING count(*) > 0)
   -- No dangling verdict anchor.
-  AND (SELECT count(*) FROM phala_phaladesa pd WHERE pd.top_anchor_id IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM phala_anchors a WHERE a.anchor_id = pd.top_anchor_id)) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_phaladesa pd WHERE pd.top_anchor_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM phala_anchors a WHERE a.anchor_id = pd.top_anchor_id)
+     GROUP BY pd.chart_id HAVING count(*) > 0)
 $check$
  WHERE asset_id = 'ph_phaladesa';
 
@@ -316,28 +366,34 @@ UPDATE asset_registry SET
     'held to W3-3: the LEL fit is identically 0.0000 on all 95 scored candidates while '
     'load_bearing reads true, and confidence_low = -0.2000 is persisted -- the two invariants '
     'that detect these fail today and land with their fixes rather than installed red. '
-    'Detector is chart-agnostic (issue #1723).',
+    'Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.',
   integrity_check_sql = $check$
+-- D-CND-03: every clause partitions on chart_id already -- the scan lattice is a per-chart
+-- structure, so a defect in one chart's lattice cannot be masked by another's.
 SELECT
   -- Contiguous, gap-free offset lattice at the declared step.
-  (SELECT count(*) FROM (
+  NOT EXISTS (SELECT 1 FROM (
      SELECT chart_id, offset_minutes,
             lead(offset_minutes) OVER (PARTITION BY chart_id ORDER BY offset_minutes) nx
      FROM (SELECT DISTINCT chart_id, offset_minutes FROM phala_rectification) o) g
-    WHERE nx IS NOT NULL AND nx - offset_minutes <> 5) = 0
+    WHERE nx IS NOT NULL AND nx - offset_minutes <> 5
+    GROUP BY chart_id HAVING count(*) > 0)
   -- Symmetric and centred on the recorded birth time.
-  AND (SELECT count(*) FROM (SELECT chart_id FROM phala_rectification GROUP BY chart_id
-        HAVING min(offset_minutes) <> -max(offset_minutes) OR NOT bool_or(offset_minutes = 0)) x) = 0
+  AND NOT EXISTS (SELECT 1 FROM phala_rectification
+     GROUP BY chart_id HAVING min(offset_minutes) <> -max(offset_minutes) OR NOT bool_or(offset_minutes = 0))
   -- Complete cross-product: every offset scored under every ayanamsha.
-  AND (SELECT count(*) FROM (SELECT chart_id, offset_minutes FROM phala_rectification
-        GROUP BY 1,2 HAVING count(DISTINCT ayanamsha_id) <> 5) x) = 0
+  AND NOT EXISTS (SELECT 1 FROM (SELECT chart_id, offset_minutes FROM phala_rectification
+        GROUP BY 1,2 HAVING count(DISTINCT ayanamsha_id) <> 5) x
+     GROUP BY chart_id HAVING count(*) > 0)
   -- lagna_stable is an all-or-nothing property of an offset across ayanamshas.
-  AND (SELECT count(*) FROM (SELECT chart_id, offset_minutes FROM phala_rectification
-        GROUP BY 1,2 HAVING count(DISTINCT lagna_stable) > 1) x) = 0
-  -- The best row must resolve to a real candidate of its own chart.
-  AND (SELECT count(*) FROM phala_rectification_best b WHERE b.best_candidate_id IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM phala_rectification c
-              WHERE c.id = b.best_candidate_id AND c.chart_id = b.chart_id)) = 0
+  AND NOT EXISTS (SELECT 1 FROM (SELECT chart_id, offset_minutes FROM phala_rectification
+        GROUP BY 1,2 HAVING count(DISTINCT lagna_stable) > 1) x
+     GROUP BY chart_id HAVING count(*) > 0)
+  -- The best row must resolve to a real candidate of its OWN chart.
+  AND NOT EXISTS (SELECT 1 FROM phala_rectification_best b WHERE b.best_candidate_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM phala_rectification c
+             WHERE c.id = b.best_candidate_id AND c.chart_id = b.chart_id)
+     GROUP BY b.chart_id HAVING count(*) > 0)
 $check$
  WHERE asset_id = 'ph_rectification';
 
