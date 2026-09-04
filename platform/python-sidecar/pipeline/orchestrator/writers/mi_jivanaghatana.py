@@ -124,29 +124,50 @@ def _parse_date(raw: str | None) -> Any:
 
 
 def _lookup_event_class(conn, category: str, subcategory: str | None) -> str | None:
-    """SAVEPOINT-guarded lookup of event_class_id from brahma_event_ontology."""
-    sp = "sp_evt_class"
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute(f"SAVEPOINT {sp}")
-            cur.execute(
-                "SELECT event_class_id FROM brahma_event_ontology "
-                "WHERE category = %s "
-                "  AND (subcategory = %s OR subcategory IS NULL) "
-                "ORDER BY (subcategory IS NOT NULL) DESC "
-                "LIMIT 1",
-                (category, subcategory),
-            )
-            row = cur.fetchone()
-            cur.execute(f"RELEASE SAVEPOINT {sp}")
-            return row[0] if row else None
-    except Exception:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
-        except Exception:
-            pass
-        return None
+    """Resolve event_class_id from brahma_event_ontology -- or honestly return None.
+
+    HISTORY (L5-W1 finding A-F-08, adjudication #1738).  This function used to
+    query `brahma_event_ontology.category` and `.subcategory`.  NEITHER COLUMN
+    EXISTS -- the real columns are `lel_category` and `domain`.  Every call
+    raised UndefinedColumn, a bare `except` swallowed it inside a SAVEPOINT, and
+    None was returned.  Live proof at the time of this fix:
+    mimamsa_event_provenance held 64 rows with 0 non-null event_class_id -- a
+    100% failure rate, permanently, invisible to the build.  The SAVEPOINT made
+    it worse rather than safer: it guaranteed the failure was survivable and
+    therefore silent.
+
+    WHY THIS IS NOT SIMPLY A COLUMN RENAME.  `life_events.category` (passed here
+    as `category`) is exactly the ontology's `lel_category` vocabulary -- that
+    much is established from live data, not assumed.  But `lel_category` does
+    NOT determine a unique event class: `career` maps to 5 classes
+    (business_launch, career_advancement, career_change, career_entry,
+    career_setback), and health / loss / relationship map to 3 each.  Selecting
+    one of them by any available ordering would be picking, not deriving --
+    CLAUDE.md §N.7 item 2's category-only-selection defect exactly, and the very
+    thing the fact-category-pin-lint guard exists to forbid.  The ontology's own
+    `matching_rules` jsonb column is the intended resolution mechanism and no
+    writer consumes it yet.
+
+    WHAT THIS FUNCTION NOW DOES.  Nothing, and it says so.  event_class_id is a
+    DECLARED null: unresolvable today for a stated reason, rather than null
+    because an exception was swallowed.  That is §N.7 item 6 -- an honest null
+    beats an invented judgment -- and it is a real change even though the stored
+    value is unchanged, because the reason is now inspectable.
+
+    WHY THIS DOES NOT RAISE, given adjudication #1738.  Per that ruling a writer
+    that cannot do its job must raise.  This writer CAN do its job: its output is
+    the provenance partition, and event_class_id is one nullable enrichment
+    column.  A missing enrichment is a state, not an inability -- the B side of
+    the audit's own line.  Raising here would make mi_jivanaghatana permanently
+    unbuildable over an enrichment that has never once been populated.
+
+    DEFERRED, with its evidence: resolving event_class_id properly (via
+    `matching_rules`, or via the 5 lel_category values that ARE unambiguous --
+    creative, other, psychological, residential, spiritual) is real derivation
+    work on a parked-P7 surface.  Routed to the deferred register, plan §7.3.
+    """
+    del conn, category, subcategory  # intentionally unused; see docstring
+    return None
 
 
 @register("mi_jivanaghatana")
@@ -211,15 +232,25 @@ class MiJivanaghatanaWriter(WriterBase):
             # correctly stays silent for a genuinely empty chart (e.g. Abhinandan).
             expected_rows = count_chart_lel_events(conn, chart_id)
             if expected_rows > 0:
-                logger.warning(
-                    "[mi_jivanaghatana] chart_id=%s has %d life_events rows but "
-                    "built ZERO provenance events — the configured source (%s) was "
-                    "unreachable/empty. This is NOT a healthy empty build; verify "
-                    "the life_events rows are present and readable for this chart.",
-                    chart_id, expected_rows, lel_source,
+                # A8 (L5-W3, adjudication #1738).  The detector below already
+                # existed and was already correct -- it says, in its own words,
+                # "This is NOT a healthy empty build" -- and then fell through to
+                # the SAME return as the healthy case.  The finding went into a
+                # log line and a `notes` string, neither of which the build
+                # system reads, and target_floor = 0 promoted the asset to 'lit'.
+                # A wrongly-empty provenance table then silently zeroes the whole
+                # downstream calibration loop (mi_pramana, mi_bhavisya,
+                # mi_darshana all declare this asset a dependency).
+                raise RuntimeError(
+                    f"mi_jivanaghatana: chart_id={chart_id} has {expected_rows} "
+                    f"life_events rows but built ZERO provenance events — the "
+                    f"configured source ({lel_source}) was unreachable or returned "
+                    f"nothing. This is NOT a healthy empty build."
                 )
             # Graceful empty (FIX 1(b)): zero per-chart life events is the
             # normal, valid build for most (non-native) clients — never raise.
+            # This path is UNCHANGED and remains correct: expected_rows == 0 is a
+            # measured zero (category B in the #1738 audit).
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
@@ -327,6 +358,18 @@ class MiJivanaghatanaWriter(WriterBase):
             )
 
         if not rows:
+            # A9 (L5-W3, adjudication #1738).  Reaching here with raw_events
+            # non-empty means every event was discarded by the `if not event_id:
+            # continue` guard above -- and the note text below was then
+            # FACTUALLY FALSE: events WERE found in the source, and every one of
+            # them was dropped.  life_events carries both `event_id` and `id`, so
+            # this state requires a source schema defect, not an empty chart.
+            if raw_events:
+                raise RuntimeError(
+                    f"mi_jivanaghatana: {len(raw_events)} life_events rows were "
+                    f"read but none yielded an event_id — every row was dropped. "
+                    f"This is a source schema defect, not an empty chart."
+                )
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,

@@ -102,14 +102,18 @@ class MiSankalpaWriter(WriterBase):
         notes: list[str] = []
 
         if not db.table_exists(conn, "mimamsa_intervention_ledger"):
-            return WriterResult(
-                asset_id=ASSET_ID,
-                rows_inserted=0,
-                duration_seconds=time.time() - started,
-                notes=(
-                    f"{NOTE_LEDGER_TABLE_ABSENT}: mimamsa_intervention_ledger not found — "
-                    "ensure migration 532 has been applied."
-                ),
+            # A2 (L5-W3, adjudication #1738).  Was a WriterResult with the
+            # reason in `notes`, which nothing reads.  Falsifier resolution, arm
+            # reclassification and arm-4 origination all silently did not
+            # happen, and zero rows read as "this native has filed no
+            # interventions" -- a completely different claim from "the ledger
+            # table does not exist".
+            raise RuntimeError(
+                f"{NOTE_LEDGER_TABLE_ABSENT}: mimamsa_intervention_ledger not "
+                "found — ensure migration 532 has been applied. mi_sankalpa "
+                "cannot resolve falsifiers or reclassify study arms without it; "
+                "zero rows here would read as 'no interventions filed', which is "
+                "a different claim."
             )
 
         birth_date = _birth_date(ctx)

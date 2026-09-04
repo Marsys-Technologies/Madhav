@@ -117,17 +117,20 @@ class MiBharaWriter(WriterBase):
         pin = resolve_weights_version(conn, chart_id)
 
         if not db.table_exists(conn, "kala_field"):
-            # Lane C's stage-4 table is not deployed yet. Honest, named, non-fatal: the
-            # calibration plane has nothing to calibrate, which is a state, not a failure.
-            notes.append(NOTE_FIELD_ABSENT)
-            return WriterResult(
-                asset_id=ASSET_ID,
-                rows_inserted=0,
-                duration_seconds=time.time() - started,
-                notes=(
-                    f"{NOTE_FIELD_ABSENT}: kala_field is not deployed, so there is no hazard "
-                    f"field to fit. weights_version={pin.version_id} (unchanged)."
-                ),
+            # A4 (L5-W3, adjudication #1738).  The original comment here read
+            # "Honest, named, non-fatal: … a state, not a failure."  THAT
+            # JUSTIFICATION HAS EXPIRED.  ka_kshetra is now a DECLARED dependency
+            # of mi_bhara (asset_registry.depends_on) enforced by DEP-ASSERT in
+            # default `enforce` mode.  If ka_kshetra is lit and kala_field is
+            # absent, the declared dependency lied -- that is a deployment
+            # defect, not a chart state, and it must not be reported into a
+            # `notes` string the build system cannot read.
+            raise RuntimeError(
+                f"{NOTE_FIELD_ABSENT}: kala_field is not deployed, so there is no "
+                f"hazard field to fit. ka_kshetra is a DECLARED dependency of "
+                f"mi_bhara; if it is lit and this table is absent, that is a "
+                f"deployment defect, not a chart state. "
+                f"weights_version={pin.version_id} (unchanged)."
             )
 
         birth_iso = _birth_iso(ctx)
@@ -190,12 +193,17 @@ class MiBharaWriter(WriterBase):
             db.table_exists(conn, "kala_field_skill")
             and db.table_exists(conn, "kala_field_gof")
         ):
-            notes.append(NOTE_SKILL_TABLES_ABSENT)
-            return WriterResult(
-                asset_id=ASSET_ID,
-                rows_inserted=0,
-                duration_seconds=time.time() - started,
-                notes=f"{NOTE_SKILL_TABLES_ABSENT}: migration 497 has not been applied.",
+            # A3 (L5-W3, adjudication #1738).  Phases 2-5 (fit, skill, GOF,
+            # biographical join, maturity) are this writer's whole output.
+            # Skipping them silently left the chart serving whatever weights
+            # version was already pinned, with nothing recording that no fit
+            # occurred -- and with target_floor NULL the asset then sat in
+            # perpetual `dormant` because count_sql errors on the absent table.
+            raise RuntimeError(
+                f"{NOTE_SKILL_TABLES_ABSENT}: kala_field_skill / kala_field_gof "
+                "not found — migration 497 has not been applied. Phases 2-5 "
+                "(fit, skill, GOF, maturity) cannot run; a zero-row result would "
+                "misreport 'fitted, nothing to publish'."
             )
 
         rows_written = self._fit_and_publish(

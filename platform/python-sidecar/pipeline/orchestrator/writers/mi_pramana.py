@@ -3,13 +3,17 @@ mi_pramana v2 — Prediction-Event Matcher + Adjudication Engine (L5 Mīmāṃs�
 =============================================================================
 BA-P6: G-LADDER stub falsifier DELETED; real StructuredFalsifier evaluation.
 New adjudication verdicts: CONFIRMED / PARTIAL / REFUTED / EXPIRED / UNRESOLVED / FALSE_ALARM.
-Brier score vs climatology null (base_rate from brahma_event_ontology).
+Brier score vs climatology null -- base_rate is currently NULL on every row and
+brier_vs_null with it: brahma_event_ontology has no scalar base_rate column, only
+age-banded base_rate_by_age jsonb, and resolving that is deferred work. An honest
+null, not the fabricated 0.10 this writer used to emit (finding A-F-24, #1738).
 Scoring weights read from brahma_formula_constants (C6 weight unification).
 
 HEAVY writer: three substeps per chart:
   1. "match"       — temporal + domain match predictions → clean events
   2. "score"       — adjudication + multi-dim scoring vs climatology null
-  3. "reliability" — calibration curve (ECE, Brier, hit rate by tier)
+  3. "reliability" — calibration curve (Brier, hit rate by tier; ECE is written
+                     NULL unconditionally and is not computed -- finding A-F-30)
 
 Tables written: mimamsa_calibration, mimamsa_reliability
 PER-CHART scope.
@@ -75,25 +79,34 @@ def _load_scoring_weights(conn) -> dict[str, float]:
 
 
 def _load_base_rates(conn) -> dict[str, float]:
-    """Load per-event-class base rates from brahma_event_ontology; return {} if table absent."""
-    sp = "sp_base_rates"
-    try:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(f"SAVEPOINT {sp}")
-            cur.execute(
-                "SELECT event_class_id, base_rate FROM brahma_event_ontology "
-                "WHERE base_rate IS NOT NULL"
-            )
-            rows = cur.fetchall()
-            cur.execute(f"RELEASE SAVEPOINT {sp}")
-            return {r["event_class_id"]: float(r["base_rate"]) for r in rows}
-    except Exception:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
-        except Exception:
-            pass
-        return {}
+    """Per-event-class climatology base rates -- currently UNAVAILABLE, honestly.
+
+    HISTORY (L5-W1 finding A-F-24, adjudication #1738).  This function used to
+    query `brahma_event_ontology.base_rate`.  THAT COLUMN DOES NOT EXIST.  Every
+    call raised UndefinedColumn, a bare `except` swallowed it inside a SAVEPOINT,
+    and `{}` was returned -- so `base_rates.get(...)` at the call site always
+    missed and every calibration row received the hardcoded literal 0.10 as its
+    "measured climatology base rate", with brier_vs_null computed from it.
+
+    Live proof at the time of this fix: mimamsa_calibration held 57 rows, ALL 57
+    with base_rate = 0.10 (1 distinct value) and all 57 with a non-null
+    brier_vs_null derived from it -- across 46 distinct brier values, which is
+    precisely what made it invisible: the varying half was real and only the
+    baseline was invented.  CLAUDE.md §N.7 item 6 and §B.10.
+
+    WHY THIS IS NOT A COLUMN RENAME.  The real column is `base_rate_by_age`, and
+    it is jsonb keyed by age band ({band_0_12, band_13_25, band_26_40,
+    band_41_60, band_60_plus}) -- NOT a scalar.  Resolving it requires the
+    native's age at the event, which is a real derivation with its own
+    correctness question.  Substituting any single band, or averaging them,
+    would repeat the original defect with a nicer-looking number.
+
+    So this returns {} for a STATED reason, and the caller now writes NULL rather
+    than 0.10.  An honest null beats an invented judgment.  Deriving the
+    age-banded rate is routed to the deferred register (plan §7.3, P7 loop).
+    """
+    del conn  # intentionally unused; see docstring
+    return {}
 
 
 def _score_timing(window_str: str, event_date: date) -> float:
@@ -283,9 +296,18 @@ class MiPramanaWriter(WriterBase):
 
     def _substep_match(self, conn, chart_id: str, t0: float) -> WriterResult:
         if not _table_exists(conn, "mimamsa_predictions"):
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                duration_seconds=time.time() - t0,
-                                notes="mimamsa_predictions missing — skip match")
+            # A7 (L5-W3, adjudication #1738).  Skipping the match substep
+            # silently cascaded: `score` then found no matches and `reliability`
+            # found no calibration rows, so THREE substeps each reported an
+            # honest-looking zero when the truth was "the input table does not
+            # exist".  mimamsa_predictions is from this writer's own layer's
+            # migration set.
+            raise RuntimeError(
+                "mi_pramana: mimamsa_predictions table not found — L5 migrations "
+                "not applied. Skipping the match substep silently produces 0 "
+                "calibration and 0 reliability rows, which reads as 'measured, "
+                "nothing calibratable'."
+            )
 
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
@@ -384,12 +406,25 @@ class MiPramanaWriter(WriterBase):
             leakage = "clean" if ev.get("admissible_clean") and not ev.get("held_out") else "held_out"
 
             # Brier vs climatology null
+            # A-F-24: base_rate is NULL when no real climatology prior is
+            # available -- never a fabricated default.  `base_rates` is {} until
+            # the age-banded derivation exists (see _load_base_rates), and
+            # event_class_id is a declared null (see mi_jivanaghatana), so today
+            # this resolves to None on every row.  It is written that way
+            # deliberately: brier_vs_null is skill VERSUS a climatology null, and
+            # a skill metric measured against an invented null is an invented
+            # calibration value (§N.8, absolute for this layer).
             event_class_id = ev.get("event_class_id")
-            base_rate = float(base_rates.get(event_class_id, 0.10)) if event_class_id else 0.10
+            base_rate = base_rates.get(event_class_id) if event_class_id else None
+            base_rate = float(base_rate) if base_rate is not None else None
             pred_prob = pred.get("posterior") or pred.get("confidence_high") or composite
-            null_brier = base_rate * (1 - base_rate)
+            null_brier = base_rate * (1 - base_rate) if base_rate is not None else None
             model_brier = (float(pred_prob) - 1.0) ** 2 if verdict == "CONFIRMED" else float(pred_prob) ** 2
-            brier_vs_null = 1.0 - (model_brier / null_brier) if null_brier > 0 else None
+            brier_vs_null = (
+                1.0 - (model_brier / null_brier)
+                if null_brier is not None and null_brier > 0
+                else None
+            )
 
             rows.append((
                 chart_id,
@@ -409,7 +444,7 @@ class MiPramanaWriter(WriterBase):
                 1,
                 leakage,
                 SCORING_FORMULA_VERSION,
-                round(base_rate, 4),
+                round(base_rate, 4) if base_rate is not None else None,
                 round(brier_vs_null, 4) if brier_vs_null is not None else None,
             ))
 

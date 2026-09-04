@@ -756,6 +756,27 @@ class MiDarshanaWriter(WriterBase):
             except Exception as exc:
                 counts[view] = f"ERROR: {exc}"
 
+        # A10 (L5-W3, adjudication #1738).  This substep is NAMED views_verify
+        # and its only job is to verify.  It caught a broken view, embedded the
+        # error text in a `notes` string nothing reads, and returned success --
+        # CLAUDE.md §N.8 verbatim: what code path would have to run, and fail,
+        # for this signal to correctly read false?  None existed.  And because
+        # _substep_insight_units produces rows, rows_written > 0 promoted the
+        # asset to 'lit' regardless of what this substep found.
+        failed = {
+            view: count
+            for view, count in counts.items()
+            if isinstance(count, str) and count.startswith("ERROR:")
+        }
+        if failed:
+            raise RuntimeError(
+                f"mi_darshana:views_verify — {len(failed)} of {len(counts)} "
+                f"serving views failed to query: {failed}. This substep's entire "
+                f"job is to verify the views; reporting the error in a note and "
+                f"returning success is a verified claim with no verification "
+                f"behind it (§N.8)."
+            )
+
         logger.info("[mi_darshana:views_verify] chart %s view counts: %s", chart_id, counts)
         return WriterResult(
             asset_id=self.asset_id,
