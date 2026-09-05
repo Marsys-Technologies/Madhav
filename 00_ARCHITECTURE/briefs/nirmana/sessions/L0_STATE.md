@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK cycle: all 10 remaining assets checked, every one genuinely blocked (3 on merging/deploying check-correction migrations 700/701/702; 4 on the two open structural findings D-L0-FF/D-L0-II; 3 on ancestor E-gating, own W2 re-verified fresh). Merge queue confirmed healthy-but-deep (position 36, ~3.8h ETA), not stuck. No new work this cycle; 30/40 frozen still holds from D-L0-NN.
+last_updated: 2026-09-06 — Queue-health follow-up: confirmed position-1 (#1867) was a long real scheduling delay (~3.3h before its merge-group checks even started), not a zero-check-runs jam — waited it out, confirmed it merged (main now at 54a4a695a). None of my own PRs merged yet (still deep in a 72-entry queue). Still IDLE-OK on new L0 work; 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1541,4 +1541,19 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   Checked merge-queue health rather than assume stuck: `gh api graphql`'s `mergeQueueEntry` on the
   oldest queued PR (#1828) shows `position: 36, estimatedTimeToMerge: ~3.8h` — deep but healthy.
   Posted status to #1713. No code/migration/evidence work this cycle — genuinely nothing eligible.
+
+- 2026-09-06 — **Queue-health investigation (no new L0 work, but resolved an ambiguity).**
+  `estimatedTimeToMerge` read identically (36 / ~3.8h) across two consecutive checks — worth
+  verifying rather than trusting a possibly-stale estimate. Applied L4's `gh-readonly-queue/main/
+  pr-<N>-<sha>` branch technique (posted to #1713 earlier this session) to read position-1 (#1867)'s
+  REAL merge-group check-runs directly: 26 checks, all either already `success` or (2 remaining)
+  `in_progress`, with `started_at` timestamps showing the CI run had only just kicked off — after
+  sitting `AWAITING_CHECKS` since `15:35:39Z`, ~3.3 real hours earlier. Not the same defect class
+  as #1838's zero-check-runs-forever jam (peer L4's earlier finding, still open) — this was a long
+  scheduling delay (plausibly GitHub Actions runner contention across 6 concurrent layer sessions'
+  worth of PR checks), not a broken trigger. Waited it out with bounded polling loops (not a
+  cross-cycle sleep): all 26 checks passed, #1867 merged, `main` advanced to `54a4a695a`. None of
+  my own PRs merged this cycle (still deep in the 72-entry queue) — genuinely nothing new for L0's
+  own asset work. Posted the confirming finding to #1713 so other layers don't have to re-diagnose
+  the same ambiguity.
 
