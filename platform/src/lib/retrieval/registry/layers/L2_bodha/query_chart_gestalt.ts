@@ -11,6 +11,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
 
@@ -50,6 +51,18 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 90, always_include: false },
   },
+  // NIRMĀṆA L2-W3 (N-17, §N.6). Hand-authored, because the DERIVED contract is not
+  // trustworthy here: descriptor_defaults.deriveDensityContract() auto-stamps
+  // `empty_reason: true` from the capability's archetype alone, so every capability
+  // "has" one at runtime whether or not its handler ever sets `content.empty_reason`.
+  // That is an unbacked claim at estate scale — §N.8's "a flag needs a real detector
+  // or it is null", applied to a contract instead of a column. These values state what
+  // this handler actually does.
+  density_contract: {
+    paginated: false, // `limit` is a cap, not pagination — there is no offset and no cursor
+    facets: ['ayanamsha_id'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -82,6 +95,10 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_chart_gestalt WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
+      // tail_watch section". Best-effort — buildTailWatch returns an explained empty
+      // rather than throwing, so the tail can never fail the read the caller asked for.
+      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
       return {
         content: {
           chart_id,
@@ -89,6 +106,14 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          tail_watch: tail.tail_watch,
+          tail_watch_empty_reason: tail.tail_watch_empty_reason,
+          tail_watch_components: tail.tail_watch_components,
+          empty_reason: rowsRes.rows.length > 0 ? null
+            : `no bodha_chart_gestalt row for chart ${chart_id}` +
+              (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+              '. The gestalt is written once per (chart, ayanamsha) by bo_chart_gestalt; ' +
+              'an absent row means that writer has not run for this chart, not that the chart has no gestalt.',
           filters: { ayanamsha_id, limit },
           provenance: { tables: ['bodha_chart_gestalt'], source: 'L2 Bodha whole-chart gestalt; served chart-scoped.' },
         },
