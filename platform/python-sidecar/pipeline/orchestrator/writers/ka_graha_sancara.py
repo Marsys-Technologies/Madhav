@@ -151,18 +151,80 @@ class KaGrahaSancaraWriter(WriterBase):
             checks.append({"check": "speeds_non_null", "passed": True})
 
         # ── Check 4: FORENSIC Moon = Aquarius ──
-        moon_sign = result.grahas.get("Moon", None)
-        moon_sign_name = moon_sign.sign if moon_sign else "MISSING"
+        #
+        # NIRMĀṆA L3-W3 finding M3 (§N.8, C12) — defect 2 of 2, and the subtler one.
+        #
+        # This check used to evaluate `result`, i.e. whatever path `get_ephemeris` happened to
+        # take. On a build with a db_conn that is PATH-A, which reads `ephemeris_daily` — a table
+        # of TROPICAL longitudes computed at **12:00 UT** (`brahmagyan/l0_ephemeris.py:267,275`;
+        # `_tropical_to_jd` is noon-based). The FORENSIC anchor is the Moon's sign at the birth
+        # INSTANT, 10:43 IST = 05:13 UT. The Moon moves ~13.18°/day, so those two moments are
+        # ~3.7° apart — enough to cross the Aquarius/Pisces boundary, and it does: PATH-A yields
+        # **Pisces**, the anchor says **Aquarius**.
+        #
+        # So the check could never be green on the writer's real path. Its 19/19 passing tests
+        # pass because they exercise PATH-A through a tuple-returning mock with synthetic
+        # longitudes. Under C12 that makes it a PROPOSAL, not a gate — and C12's remedy is to
+        # correct the check with the derivation, which is what this is.
+        #
+        # A birth-instant anchor can only be asserted of a path that computes at the instant, so
+        # it is now asked of PATH-B explicitly (`force_live=True`). Verified live at the time of
+        # the fix: PATH-B gives Moon at 324.4787° sidereal = **Aquarius**, matching the anchor.
+        # PATH-A is not thereby excused — its day-grade answer is still checked below, against
+        # the question it can actually answer.
+        try:
+            forensic_result = get_ephemeris(
+                dt=birth_dt,
+                ayanamsha="lahiri",
+                db_conn=None,
+                force_live=True,
+            )
+            moon_sign = forensic_result.grahas.get("Moon", None)
+            moon_sign_name = moon_sign.sign if moon_sign else "MISSING"
+            forensic_source = forensic_result.source
+        except Exception as exc:
+            moon_sign_name = f"UNAVAILABLE ({type(exc).__name__}: {exc})"
+            forensic_source = "unavailable"
+
         forensic_ok = moon_sign_name == _FORENSIC_MOON_SIGN
         checks.append({
             "check": "forensic_moon_sign",
             "passed": forensic_ok,
             "expected": _FORENSIC_MOON_SIGN,
             "got": moon_sign_name,
+            "evaluated_against": forensic_source,
+            "note": (
+                "asked of the instant-precision path — ephemeris_daily is computed at 12:00 UT "
+                "and cannot answer a 10:43 IST birth-instant question (L3-W3 M3)"
+            ),
         })
         if not forensic_ok:
             errors.append(
-                f"FORENSIC FAIL: Moon sign expected={_FORENSIC_MOON_SIGN}, got={moon_sign_name}"
+                f"FORENSIC FAIL: Moon sign expected={_FORENSIC_MOON_SIGN}, got={moon_sign_name} "
+                f"(evaluated against {forensic_source})"
+            )
+
+        # ── Check 4b: the day-grade path answers its own question ──
+        # PATH-A's contract is day-grade, so it is checked for what it claims: that the stored
+        # read succeeds and returns a complete graha set. Defect 1 of M3 — positional row
+        # indexing against a dict_row connection — made this path raise `KeyError: 0` on every
+        # real build, which is what `selftest_detail` recorded. This check is what would now
+        # catch that regression.
+        path_a_sign = result.grahas.get("Moon", None)
+        path_a_ok = result.source == "bg_ephemeris" and path_a_sign is not None
+        checks.append({
+            "check": "day_grade_path_reads",
+            "passed": path_a_ok,
+            "source": result.source,
+            "note": (
+                "PATH-A is day-grade (ephemeris_daily @ 12:00 UT); it is NOT asserted against "
+                "the birth-instant FORENSIC anchor, only that the stored read works"
+            ),
+        })
+        if not path_a_ok and ctx.db_conn is not None:
+            errors.append(
+                f"day-grade ephemeris read did not use bg_ephemeris (source={result.source}) — "
+                f"the stored-read path is broken or the horizon does not cover the birth date"
             )
 
         # ── Check 5: cache single-compute (I-9) — second call hits cache ──

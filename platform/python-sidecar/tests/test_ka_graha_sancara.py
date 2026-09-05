@@ -130,8 +130,22 @@ def _make_mock_db_with_rows(d: date):
         "Rahu": 60.0,
         "Ketu": 240.0,
     }
+    # NIRMĀṆA L3-W3 finding M3 — MOCK FIDELITY, and the reason the bug shipped green.
+    #
+    # These rows used to be TUPLES. The orchestrator's real connection is created with
+    # `row_factory=dict_row` (`pipeline/orchestrator/db.py:57`), so in production every row is a
+    # MAPPING — and the reader indexed positionally, raising `KeyError: 0` on every real build
+    # while this suite stayed 19/19 green against tuples. A mock that does not behave like the
+    # connection under test is not a weaker test; it is a test of something else.
+    #
+    # Rows are now dicts keyed by the selected column names, matching what `dict_row` produces.
     rows = [
-        (body, TROPICAL_LONS[body], 1.0 if body != "Saturn" else -0.1, False)
+        {
+            "body": body,
+            "tropical_longitude": TROPICAL_LONS[body],
+            "speed_dps": 1.0 if body != "Saturn" else -0.1,
+            "is_retrograde": False,
+        }
         for body in BODIES
     ]
     cur = MagicMock()
@@ -437,15 +451,26 @@ def test_writer_self_test_writes_service_health():
         dry_run=False,
     )
     writer = KaGrahaSancaraWriter()
-    result = writer.run(ctx)
+
+    # NIRMĀṆA L3-W3 finding M11 (§N.8). This bare MagicMock cursor cannot satisfy the self-test,
+    # so the run is genuinely UNHEALTHY — and an unhealthy self-test now RAISES rather than
+    # returning a normal WriterResult. Previously it returned one, and the orchestrator, which
+    # treats any returned result as success regardless of notes, promoted the asset to 'lit'
+    # while asset_registry.service_health said 'unhealthy'.
+    #
+    # The test's original intent — "the writer writes service_health" — is preserved and
+    # STRENGTHENED: the health write must still happen, and it must happen BEFORE the raise, or a
+    # failing service would leave no record of why.
+    with pytest.raises(RuntimeError, match="ka_graha_sancara self-test"):
+        writer.run(ctx)
 
     # Must NOT commit
     conn.commit.assert_not_called()
     conn.rollback.assert_not_called()
 
-    # Must have called UPDATE asset_registry SET service_health
+    # Must have called UPDATE asset_registry SET service_health — even on the failing path.
     all_sql = " ".join(str(c) for c in cur.execute.call_args_list)
     assert "service_health" in all_sql, (
-        "Writer must UPDATE asset_registry SET service_health; "
+        "Writer must UPDATE asset_registry SET service_health before raising; "
         f"SQL calls: {cur.execute.call_args_list}"
     )
