@@ -1,5 +1,7 @@
 -- NIRMĀṆA campaign — pre-dispatch CASCADE closure check (charter D-CND-15)
--- Conductor-owned shared campaign tooling (charter C5). Read-only: SELECT only.
+-- Conductor-owned shared campaign tooling (charter C5). Read-only against every real
+-- campaign table -- the no-FK scan below uses a session-local TEMP TABLE (DROPPED ON
+-- COMMIT) as scratch space for a server-side loop; that writes nothing durable.
 --
 --   psql "$DATABASE_URL" -v table=bodha_msr_signals -f platform/scripts/nirmana/cascade_check.sql
 --
@@ -35,10 +37,24 @@
 -- an adjudication issue naming the owning layers, and get an ordering ruling. The
 -- owning layer must confirm its data is regenerable BEFORE the snapshot is spent.
 --
--- Honest limit: this finds tables reachable by declared FOREIGN KEY with CASCADE. It
--- does NOT find referencing tables that carry NO foreign key -- those ORPHAN rather
--- than cascade, which is the harder failure to detect (they still resolve, so nothing
--- reads false). Cross-check with the second query below, and see #1748.
+-- Honest limit: this first query finds tables reachable by declared FOREIGN KEY with
+-- CASCADE. It does NOT find referencing tables that carry NO foreign key -- those
+-- ORPHAN rather than cascade, which is the harder failure to detect (they still
+-- resolve, so nothing reads false; see #1748) -- or tables reachable by ON DELETE SET
+-- NULL, a MUTATION surface rather than a destruction one. The second query below
+-- covers no-FK orphans; the third covers SET NULL. See #1748 and D-CND-18.
+--
+-- D-CND-18 (2026-09-05, #1805): the second query below used to match candidate
+-- referrers by NAME EQUALITY to the parent's PK column, and excluded a whole TABLE
+-- (not just the matching column) the instant it had any FK to the parent. Both
+-- under-reported: this campaign's common naming is `top_anchor_id`/`source_pramana_id`,
+-- not the parent's own column name, and a table can carry one FK column and one
+-- genuinely-orphan column at the same time. Fixed to a type-and-shape candidate scan
+-- (any uuid/text/varchar column, per-COLUMN FK exclusion) plus a LIVE sampled
+-- resolution check -- type/name matching alone is not sufficient in either direction:
+-- `phala_muhurta.fructification_anchor` is a text column that looks like a candidate
+-- and holds the literal label 'tara+candra-bala', not an id, so a candidate is only
+-- reported once a live sample of its values actually resolves into the parent's PK.
 
 \if :{?table} \else \echo 'ERROR: pass -v table=<your table>' \quit \endif
 
@@ -93,22 +109,126 @@ ORDER BY (layer = own_layer), depth, live_rows DESC;
 
 \echo ''
 \echo '════ Referencing tables with NO foreign key — these ORPHAN, they do not cascade ════'
-\echo 'Not found by the query above. A stale pointer that still RESOLVES is harder to'
-\echo 'detect than an orphan: nothing reads false. Each needs a disposition (#1748).'
+\echo 'Type-and-shape candidate scan + LIVE resolution check (D-CND-18, #1805). A column'
+\echo 'is reported here only if it (a) is an id-shaped type (uuid/text/varchar -- this'
+\echo 'campaign stores the same logical id as either uuid or text depending on the'
+\echo 'table, so matching the parent PK''s exact type would itself under-report), (b)'
+\echo 'carries no FK on THAT column to this table (per-column exclusion, not per-table),'
+\echo 'and (c) a live sample of its non-null values actually resolves (cast to text) into'
+\echo 'this table''s PK. Reported row counts are exact full counts of resolving rows, not'
+\echo 'scaled from the sample -- ONLY the accept/reject decision is probabilistic (sampled'
+\echo 'up to 500 values per candidate, so a same-shaped column on a very large table'
+\echo 'cannot resolve-check its full contents at prohibitive cost). A rejected candidate'
+\echo 'is not reported and is not re-verified beyond the sample: this finds a real orphan'
+\echo 'surface with high confidence, it does not prove the absence of one on a column'
+\echo 'whose non-null values happen to fall entirely outside the sampled 500.'
+\echo ''
+\echo 'Implementation note: the schema-wide candidate scan is ~2,500+ id-shaped columns'
+\echo '(this campaign has many tables). Probing each from the psql client as a separate'
+\echo 'round trip was measured over 120s and abandoned -- this runs the whole scan as one'
+\echo 'server-side PL/pgSQL loop instead (a session-local TEMP TABLE holds results, DROPPED'
+\echo 'ON COMMIT), which is still read-only against every real campaign table -- it writes'
+\echo 'nothing but its own throwaway scratch space. The final SELECT is a plain read.'
+\echo ''
+\echo 'Known-truth regression case (D-CND-18, live-verified 2026-09-05): against'
+\echo 'phala_anchors this must return exactly 2 rows -- mimamsa_predictions.source_pramana_id'
+\echo '(195 rows, crosses into L5) and phala_phaladesa.top_anchor_id (13 rows). If either is'
+\echo 'missing or a count differs, this query has regressed. Do NOT "simplify" the'
+\echo 'resolution check back to a name-or-type-only heuristic:'
+\echo 'phala_muhurta.fructification_anchor is the same shape as an anchor id and holds the'
+\echo 'literal label ''tara+candra-bala'', not ids -- a name/type-only match reports it as a'
+\echo 'false positive; only the live resolution check tells the two apart.'
 
-SELECT c.table_name, c.column_name, c.data_type
-FROM information_schema.columns c
-WHERE c.table_schema = 'public'
-  AND c.table_name !~ '__ssv_'
-  AND c.table_name <> :'table'
-  AND c.column_name IN (
-    SELECT a.attname FROM pg_index i
-    JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-    WHERE i.indrelid = :'table'::regclass AND i.indisprimary
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM pg_constraint k
-    WHERE k.contype = 'f' AND k.confrelid = :'table'::regclass
-      AND k.conrelid = (quote_ident(c.table_name))::regclass
-  )
-ORDER BY 1;
+-- psql variable interpolation (`:'table'`) does not reach inside a dollar-quoted DO
+-- body reliably across psql versions, and PL/pgSQL's own `:=` assignment syntax makes
+-- relying on it there doubly fragile. Pass the target table in through a TEMP TABLE
+-- instead of interpolating it into the block.
+CREATE TEMP TABLE IF NOT EXISTS _cascade_check_target (t text) ON COMMIT DROP;
+DELETE FROM _cascade_check_target;
+INSERT INTO _cascade_check_target VALUES (:'table');
+
+DO $cascade_check_orphan_scan$
+DECLARE
+  target_table text;
+  pk_col       text;
+  cand         RECORD;
+  n_sample     bigint;
+  n_resolved   bigint;
+  n_full       bigint;
+BEGIN
+  SELECT t INTO target_table FROM _cascade_check_target LIMIT 1;
+
+  CREATE TEMP TABLE IF NOT EXISTS _cascade_check_orphans (
+    table_name text, column_name text, resolving_rows bigint, sample_note text
+  ) ON COMMIT DROP;
+  DELETE FROM _cascade_check_orphans;
+
+  EXECUTE format(
+    'SELECT a.attname FROM pg_index i
+       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+      WHERE i.indrelid = %L::regclass AND i.indisprimary LIMIT 1', target_table)
+    INTO pk_col;
+
+  FOR cand IN
+    EXECUTE format(
+      'SELECT c.table_name, c.column_name
+         FROM information_schema.columns c
+        WHERE c.table_schema = %L
+          AND c.table_name !~ %L
+          AND c.table_name <> %L
+          AND c.data_type IN (%L, %L, %L)
+          AND NOT EXISTS (
+            SELECT 1 FROM pg_constraint k
+            JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY(k.conkey)
+            WHERE k.contype = %L AND k.confrelid = %L::regclass
+              AND k.conrelid = c.table_name::regclass
+              AND a.attname = c.column_name
+          )',
+      'public', '__ssv_', target_table, 'uuid', 'text', 'character varying', 'f', target_table)
+  LOOP
+    EXECUTE format(
+      'SELECT count(*), count(*) FILTER (WHERE v::text IN (SELECT %I::text FROM %I))
+         FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL LIMIT 500) s',
+      pk_col, target_table, cand.column_name, cand.table_name, cand.column_name)
+      INTO n_sample, n_resolved;
+
+    CONTINUE WHEN n_sample = 0 OR n_resolved::numeric / n_sample < 0.95;
+
+    EXECUTE format(
+      'SELECT count(*) FROM %I WHERE %I::text IN (SELECT %I::text FROM %I)',
+      cand.table_name, cand.column_name, pk_col, target_table)
+      INTO n_full;
+
+    INSERT INTO _cascade_check_orphans
+      VALUES (cand.table_name, cand.column_name, n_full,
+              format('%s/%s sampled values resolve', n_resolved, n_sample));
+  END LOOP;
+END;
+$cascade_check_orphan_scan$;
+
+SELECT table_name, column_name, resolving_rows, sample_note
+FROM _cascade_check_orphans
+ORDER BY 1, 2;
+
+\echo ''
+\echo '════ Referencing tables with ON DELETE SET NULL — a MUTATION surface, not destruction ════'
+\echo 'Third bug found verifying #1805 (D-CND-18): the CASCADE query above filters'
+\echo 'confdeltype=''c'' and cannot see ON DELETE SET NULL children. SET NULL does not'
+\echo 'destroy rows -- they survive, so C13''s destroys_rows test stays false and WP-6'
+\echo 'does not stop a dispatch -- but the FK column is silently nulled, and with it the'
+\echo 'record of what those rows were derived from. A stale CASCADE-orphaned pointer at'
+\echo 'least still says "derived from a replaced generation"; a SET-NULLed one says'
+\echo 'nothing at all. Treat a non-zero count here as a real provenance cost, reported'
+\echo 'separately from CASCADE destruction because conflating the two would misreport in'
+\echo 'the other direction (§N.8).'
+
+SELECT k.conrelid::regclass::text AS table_name, a.attname AS column_name,
+  (xpath('/row/n/text()', query_to_xml(format(
+     'SELECT count(*) AS n FROM %I WHERE %I IS NOT NULL',
+     k.conrelid::regclass::text, a.attname), false, true, '')))[1]::text::bigint AS rows_will_be_nulled
+FROM pg_constraint k
+JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY(k.conkey)
+WHERE k.contype = 'f' AND k.confdeltype = 'n'
+  AND k.confrelid = :'table'::regclass
+  AND k.conrelid::regclass::text !~ '__ssv_'
+ORDER BY 1, 2;
