@@ -1191,3 +1191,5 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   Nothing to fix, nothing new.
 - 2026-09-05 — **Cycle 46: IDLE-OK.** Queue shrinking (49→45), still moving, but `#1851` itself
   still not merged. `#1828` clean, pin unchanged. Nothing to fix, nothing new.
+- 2026-09-05 — **Cycle 47: IDLE-OK.** `#1851` still unmerged/cleanly queued (46-deep), `#1828`
+  clean, no new coordination activity since 16:37:40Z. Nothing to fix, nothing new.
