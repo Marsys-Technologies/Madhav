@@ -1288,3 +1288,38 @@ and sharpened F1's scope (anchors are NOT under-consumed; only `ph_phaladesa`'s 
 are) → next: watch `L2_STATE.md`'s `## CAPABILITIES LANDED` section each cycle; F1 remains the
 layer's one deferred code item.
 
+`2026-09-06T~03:35Z` — L4 — **CYCLE 5 (v2.3) — investigated why 4 of my own PRs sat at the
+identical `mergeQueueEntry` id across a whole cycle with zero net `main` movement; found and
+reported a real but non-blocking finding rather than either ignoring the stall or misdiagnosing
+it as mine to fix.**
+
+**Checked `main`'s own commit status** (a base-branch red required check can stall an entire
+queue) and found 3 back-to-back failures on `Live authenticated turn — behaviour assertions`
+(a `workflow_run`-triggered post-deploy smoke test, not a PR-time gate): a real authenticated
+turn against the synthetic chart returns `facts_consumed.length=0` and `citation.define
+count=0` (9/11 assertions otherwise pass). **Verified via the rulesets API before treating this
+as the stall's cause** — confirmed it is NOT in `main`'s five actual `required_status_checks`
+(`TypeScript (src only)`, `Unit Tests`, `Secret Scan`, `Governance Gates`, `TAP-6`), so it is a
+real, currently-red, non-blocking signal, not the reason my PRs aren't advancing. Correctly
+declined to chase this further: it is not an L4 asset, has no phala_* connection, and is out of
+scope for me to diagnose or fix — reported it to the coordination issue (#1713) as an FYI for
+whoever owns Paripraśna/serving-layer smoke coverage, explicitly framed as non-blocking so it
+doesn't read as a false alarm.
+
+**The actual (already-known) cause**: all 4 stuck PRs show the D-CND-18 pattern (stale
+`writer_inventory_sha256` pin from before their branch point) — already correctly ruled on in
+#1825, not a new blocker, and not something re-fixing my own already-rebased PRs would help
+(the queue itself, not my branches, is what's slow/deep — 30 PRs fleet-wide reportedly queued
+per the coordination thread). Did not file a duplicate adjudication for either finding; logged
+both as one comment since #1825 already owns the real root cause.
+
+E-gate re-verified unchanged (`ph_nimitta` 37/46).
+
+CYCLE 5 L4: PR hygiene — investigated 4 PRs stuck at an unchanged `mergeQueueEntry` for a full
+cycle, ruled out a `main`-branch-check stall (verified via rulesets API, not assumed), found and
+reported one real non-blocking regression (`facts_consumed`/`citation_markers` both empty on
+main's live-turn smoke) to #1713 as FYI, correctly declined to chase it further (not L4's asset,
+not the actual queue-depth cause) → E-gate unchanged → no new priority-1/2/3 unit this cycle
+beyond the diagnostic report itself → next: watch whether the 4 stuck PRs' `mergeQueueEntry`
+finally advances; watch `L2_STATE.md` capability landings; F1 remains deferred.
+
