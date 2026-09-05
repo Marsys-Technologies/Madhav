@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-P CLOSED: full submission-payload toolkit built + cross-validated against the frozen manifest's own fingerprint; just waiting on the merge queue now
+last_updated: 2026-09-05 — D-L0-Q: E-gate re-run corrects stale wave-2/3 framing (only bg_rules/bg_concordance genuinely ancestor-blocked); migration range corrected to 700-709 per conductor-2b
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -18,9 +18,13 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 **Read order on ANY start:** `SESSION_CHARTER_V21.md` → `resume/RESUME_L0.md` → this file →
 `git fetch origin main` → `gh issue view 1713` + your `nirmana-adjudication` issues → continue.
 
-- **Coordination issue:** #1713 · **Migration range:** 645–649 is Conductor; **L0 uses the existing
-  6xx L0 numbers already applied** (640–644) — new L0 registry corrections take the next free number,
-  confirmed against `platform/migrations/` before writing.
+- **Coordination issue:** #1713 · **Migration range:** L0's own 640–644 already applied. Per-layer
+  table (charter C5): Conductor 645–649, L1 650–659, L2 660–669, L3 670–679, L4 680–689,
+  **L5 690–699 (conductor-2b flagged 2026-09-05: my 692/693/694 — picked as "next free number" —
+  actually collided with L5's range; no functional break since `migrate.ts` sorts by full filename,
+  not cross-layer numeric uniqueness, but it broke the range convention). L0's own continuation
+  range is now 700–709** (assigned by conductor-2b this same message) — use that for any future L0
+  migration; do NOT renumber 692/693/694 (real rework, zero benefit per conductor-2b).
 - **Branch namespace:** `feat/nirmana-l0-*` / `fix/nirmana-*` · **PR prefix:** `L0:` (older ones used no prefix)
 - **Worktree:** main checkout `/Users/Dev/Vibe-Coding/Apps/Madhav` + scratch `/private/tmp/madhav-nirmana-l0-w4`
 - **Evidence tooling (scratch, Conductor-audited):** `/private/tmp/.../scratchpad/nirmana_batch_runner.py`
@@ -42,11 +46,11 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
 | bg_vidhi_floors | rebuild_only | **Both open questions diagnosed, fully verified read-only.** Tiling false-positive FIXED (D-L0-M, PR #1832). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source is internally sound (14/409, 0 dangling FKs) — pending job-image redeploy + dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) |
-| bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
-| bg_compendium_index | rebuild_only | wave 2; depends_on normalized; needs wave-1 frozen (E-gate) + own integrity check |
-| bg_rules | rebuild_only | wave 2; depends_on normalized |
-| bg_text_index | rebuild_only | wave 2; depends_on normalized |
-| bg_concordance | rebuild_only | wave 3; depends_on normalized; deepest DAG node |
+| bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
+| bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
+| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
+| bg_text_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — same as bg_compendium_index |
+| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
 
 ## Decisions log
 
@@ -315,6 +319,23 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   the schema already traced (D-L0-P), dry-run via `l0_submit_evidence.sh`, then submit for real.
   Nothing structurally unknown remains between here and an actual accept.
 
+- **D-L0-Q — corrected a stale "wave-2/3 needs wave-1 frozen" framing; ran the real E-gate batch
+  query for the first time this resumption.** `scripts/nirmana/egate.sql -v layer=L0` (never run
+  before this cycle — everything up to now was diagnosed asset-by-asset) shows **8 of 11 remaining
+  assets are `OPEN-PENDING-PIN` with 0 unfrozen ancestors**: `bg_cohort`, `bg_compendium_index`,
+  `bg_dasha_systems`, `bg_doshas`, `bg_gochara_arcs`, `bg_text_index`, `bg_vidhi_floors`,
+  `bg_yogas`. Checked `depends_on` directly: `bg_compendium_index`/`bg_text_index` depend only on
+  already-frozen `bg_reference`/`bg_texts` — **they were never wave-gated**, contra the state
+  file's prior note; they're blocked on exactly the same thing as everything else (job-image
+  deploy), not a separate wave-1 dependency. Only 3 are genuinely `BLOCKED-ANCESTORS`:
+  `bg_parihara_rules` (→ `bg_doshas` only, `bg_texts` has since frozen — corrected a stale
+  "bg_doshas, bg_texts" note too), `bg_rules` (→ `bg_dasha_systems`, `bg_yogas`), `bg_concordance`
+  (→ `bg_dasha_systems`, `bg_rules`, `bg_text_index`, `bg_yogas` — deepest node, clears last). Since
+  `bg_dasha_systems`/`bg_yogas` are both already fully diagnosed (D-L0-K/D-L0-J, writer-correct,
+  no fix needed), **the entire remaining backlog clears in ordinary dependency waves once dispatch
+  resumes** — no separate "wave-2/3" governance gate exists beyond normal DAG order. Confidence:
+  HIGH (ran the canonical query, not a re-derivation).
+
 ## Held items
 
 - **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
@@ -570,3 +591,21 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `compute_registry_fingerprint.py`, `compute_analysis_digest.py`, `l0_submit_evidence.sh`. NEXT:
   once any of #1829/#1832/#1836 actually merges (still just queue position, not stuck), re-run the
   scripts against fresh post-merge live data and do the first real submission attempt.
+- 2026-09-05 — **Cycle 11.** PR hygiene: all 3 migration PRs re-confirmed genuinely `is:queued`
+  (queue now 18 deep — #1841 new, nothing ejected); `#1828` clean, pending checks. Nothing to fix,
+  none merged yet. Since the submission toolkit is built but has nothing to submit against yet, ran
+  the actual E-gate batch query for the first time this resumption (**D-L0-Q**) instead of
+  continuing to diagnose asset-by-asset — found and corrected a stale "wave-2/3 needs wave-1
+  frozen" framing: `bg_compendium_index`/`bg_text_index` are `OPEN-PENDING-PIN` with 0 unfrozen
+  ancestors (never actually wave-gated), and only `bg_rules`/`bg_concordance` are genuinely
+  `BLOCKED-ANCESTORS` — both on already-diagnosed assets (`bg_dasha_systems`/`bg_yogas`), so the
+  whole backlog clears in ordinary DAG waves once dispatch resumes. Also corrected
+  `bg_parihara_rules`'s stale row (was "UNROUTED", already routed+E-gated since D-L0-H).
+  **Mid-cycle: conductor-2b flagged a migration-numbering collision** — my 692/693/694 (picked as
+  "next free number" per this file's own now-corrected instruction) actually landed inside L5's
+  assigned 690–699 range; no functional break (`migrate.ts` doesn't require cross-layer numeric
+  uniqueness) but broke the per-layer convention. Not asked to renumber (real rework, zero
+  benefit); **L0's continuation range is now 700–709** — updated the migration-range note at the
+  top of this file with the full per-layer table so this doesn't recur. NEXT: same as last cycle —
+  waiting on the queue; nothing new to diagnose read-only on the 11-asset backlog now that the
+  E-gate picture is fully accurate.
