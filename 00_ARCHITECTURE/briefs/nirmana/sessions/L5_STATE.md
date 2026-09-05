@@ -63,12 +63,19 @@ fresh-context verifier subagent is dispatched for `lel_events` only, briefed tho
 (implementer≠certifier, verifier SA only, independently re-run the real integrity check itself,
 STOP rather than fabricate if anything fails). **Verifier reported back: it did exactly what it
 was asked, and STOPPED correctly on a real infra gap — `nirmana_evidence_ingress_writer` (the
-verifier-side DB role) has no `SELECT` on `life_events`/`charts`, so the server's own
+verifier-side DB role) had no `SELECT` on `life_events`/`charts`, so the server's own
 re-verification of `integrity_verified` 500'd even though the check itself passed and the
 digests routed correctly.** Filed as **#1869** (fourth structural finding this session, alongside
-#1840/#1848/#1856) — a production GRANT is Conductor/security territory, not mine to make.
-Digests preserved for instant resubmission once granted. W4 gated only on holds for two OTHER
-assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
+#1840/#1848/#1856) — a production GRANT is Conductor/security territory, not mine to make. L2
+independently corroborated and widened the finding: the role's ENTIRE grant list is L0-only,
+blocking `integrity_verified` for essentially every L1-L5 asset. `life_events`/`charts` were
+then granted (outside a migration file, presumably applied directly) — **resubmission still 500s**,
+now on `chart_grants` (an RLS dependency of `charts`, not named in the check's own SQL text at
+all) — reported back on #1869, **not chasing this table-by-table further**; waiting for the
+comprehensive audit-and-grant L2 already recommended. Digests preserved (byte-identical across
+two independent computations) for instant resubmission once the grant is actually complete. W4
+gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4
+anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -444,6 +451,33 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~23:45Z (C8 v2.3 cycle 16) — **#1869 got a real partial fix, resubmission attempt
+  peeled back one more layer (RLS dependency), reported and stopped rather than chase further.**
+  PR hygiene first: #1844 confirmed queued; #1826 checks-pending only. Checked #1869 for
+  movement — L2 had independently corroborated and dramatically widened the finding (the
+  `nirmana_evidence_ingress_writer` role's entire grant list is L0-only, ~78 tables, zero L1-L5
+  tables at all, confirmed via a direct `information_schema.role_table_grants` audit on their own
+  target tables). Then found `life_events`/`charts` had actually been granted since the verifier's
+  attempt (confirmed via `role_table_grants`, not just `has_table_privilege` which can be
+  misleading via inheritance — checked the stricter one deliberately). Re-verified everything
+  fresh before resubmitting rather than trusting stale values: re-ran the real integrity check
+  live (`true`), re-confirmed the registry contract unchanged, and recomputed all four digests via
+  the real server functions independently a second time — matched the verifier subagent's values
+  byte-for-byte, a clean cross-check. Resubmitted `integrity_verified` directly (not via a new
+  subagent — no new judgment was being exercised, just relaying an already-independently-verified
+  payload through a now-partially-fixed channel; still used `nrec --as verifier`, the correct
+  identity). **Still HTTP 500** — new root cause via `gcloud logging read`: `permission denied for
+  table chart_grants`, a table not named anywhere in `lel_events`'s own check SQL — almost
+  certainly Row-Level Security on `charts` requiring `chart_grants` to evaluate its policy on ANY
+  touch of `charts`, confirmed also ungranted. Reported this precisely on #1869 rather than keep
+  retrying table-by-table, and explicitly deferred to L2's already-recommended comprehensive
+  audit-and-grant pass (which should include RLS-dependency tables, not just directly-named ones).
+  Confirmed via direct DB read that no partial/incorrect row was ever written (still 0
+  `integrity_verified` events for `lel_events`).
+  **Next cycle: check #1851/#1861/#1869 again** — if the comprehensive grant pass lands, resubmit
+  the SAME preserved digests immediately (no new computation needed). If nothing has moved and no
+  new E-gate opens exist, another honest IDLE-OK is correct — this is not a cycle to force new
+  table-hunting; that's exactly the "chase one table at a time" pattern just explicitly declined.
 - 2026-09-05T~23:30Z (C8 v2.3 cycle 15) — **IDLE-OK, verified.** PR hygiene: #1844 confirmed
   queued; #1826 checks-pending only, nothing broken. Checked all four fronts before concluding
   idle: (1) `#1851`/`#1861` (Conductor fixes for #1848/#1856) — both still OPEN, not merged; (2)
