@@ -1173,3 +1173,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 42: IDLE-OK.** `main` tip unchanged since last cycle (`4d2a3ef05`) — no
   new merges at all this cycle. `#1828` clean, `#1851` still cleanly queued (47-deep, no
   failures). Nothing to fix, nothing new.
+- 2026-09-05 — **Cycle 43: IDLE-OK.** `main` tip still `4d2a3ef05` (3rd cycle unchanged), `#1851`
+  still queued/unmerged, `#1828` clean, no new coordination activity since 16:17:30Z. Nothing to
+  fix, nothing new.
