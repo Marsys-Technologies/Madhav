@@ -31,8 +31,8 @@ Coverage
   test_bahya_ring_adverse_class
       bahya ring (outermost) with Mars → modifier==1.04.
 
-  test_madhya_ring_adverse_class
-      madhya ring with Saturn → modifier==1.15.
+  test_durgantara_ring_adverse_class
+      durgantara ring with Saturn → modifier==1.15.
 """
 from __future__ import annotations
 
@@ -110,14 +110,14 @@ class TestNonSiegeClass:
 
     def test_marriage_class_returns_unit(self):
         """Marriage is not a siege class — unit modifier expected."""
-        ctx = _ctx("marriage", kota_chakra_data={"Mars": "madhya"})
+        ctx = _ctx("marriage", kota_chakra_data={"Mars": "durgantara"})
         result = compute(ctx, t_jd=2461042.0, enabled=True)
         assert result.modifier == 1.0
         assert result.enabled is False
 
     def test_wealth_gain_returns_unit(self):
         """wealth_gain is not in SIEGE_CLASSES — unit modifier."""
-        ctx = _ctx("wealth_gain", kota_chakra_data={"Saturn": "pragara"})
+        ctx = _ctx("wealth_gain", kota_chakra_data={"Saturn": "prakara"})
         result = compute(ctx, t_jd=2461042.0, enabled=True)
         assert result.modifier == 1.0
         assert result.enabled is False
@@ -184,8 +184,8 @@ class TestAllRingModifiers:
         """Each ring name produces the documented modifier for an adverse class."""
         expected = {
             "stambha": 1.30,
-            "madhya": 1.15,
-            "pragara": 1.08,
+            "durgantara": 1.15,
+            "prakara": 1.08,
             "bahya": 1.04,
         }
         for ring, expected_mod in expected.items():
@@ -218,15 +218,15 @@ class TestBahyaRing:
 
 
 class TestMadhyaRing:
-    def test_madhya_ring_adverse_class(self):
-        """madhya + Saturn + loss → modifier==1.15."""
+    def test_durgantara_ring_adverse_class(self):
+        """durgantara + Saturn + loss → modifier==1.15."""
         assert "loss" in SIEGE_CLASSES
-        ctx = _ctx("loss", kota_chakra_data={"Saturn": "madhya"})
+        ctx = _ctx("loss", kota_chakra_data={"Saturn": "durgantara"})
         result = compute(ctx, t_jd=2461042.0, enabled=True)
 
         assert result.enabled is True
         assert result.modifier == pytest.approx(1.15)
-        assert "madhya" in result.detail
+        assert "durgantara" in result.detail
 
 
 class TestNonMaleficInRing:
@@ -238,8 +238,8 @@ class TestNonMaleficInRing:
         assert result.modifier == 1.0
 
     def test_venus_in_ring_returns_unit_modifier(self):
-        """Venus in madhya — not a KOTA_MALEFIC — no siege amplification."""
-        ctx = _ctx("chronic_onset", kota_chakra_data={"Venus": "madhya"})
+        """Venus in durgantara — not a KOTA_MALEFIC — no siege amplification."""
+        ctx = _ctx("chronic_onset", kota_chakra_data={"Venus": "durgantara"})
         result = compute(ctx, t_jd=2461042.0, enabled=True)
         assert result.modifier == 1.0
 
@@ -257,15 +257,15 @@ class TestInnermostRingPriority:
         assert result.modifier == pytest.approx(1.30)
         assert "stambha" in result.detail
 
-    def test_innermost_ring_wins_madhya_over_pragara(self):
-        """madhya (Saturn) vs pragara (Mars) → madhya wins."""
+    def test_innermost_ring_wins_durgantara_over_prakara(self):
+        """durgantara (Saturn) vs prakara (Mars) → durgantara wins."""
         ctx = _ctx("accident", kota_chakra_data={
-            "Saturn": "madhya",
-            "Mars": "pragara",
+            "Saturn": "durgantara",
+            "Mars": "prakara",
         })
         result = compute(ctx, t_jd=2461042.0, enabled=True)
         assert result.modifier == pytest.approx(1.15)
-        assert "madhya" in result.detail
+        assert "durgantara" in result.detail
 
 
 class TestMechanismResultContract:
@@ -287,7 +287,7 @@ class TestMechanismResultContract:
 
     def test_modifier_is_always_non_negative(self):
         """modifier must always be >= 0 (MechanismResult contract)."""
-        for ring in ("stambha", "madhya", "pragara", "bahya", "none"):
+        for ring in ("stambha", "durgantara", "prakara", "bahya", "none"):
             ctx = _ctx("illness_acute", kota_chakra_data={"Saturn": ring})
             result = compute(ctx, t_jd=2461042.0, enabled=True)
             assert result.modifier >= 0.0

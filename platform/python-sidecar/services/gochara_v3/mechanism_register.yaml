@@ -145,7 +145,7 @@ mechanisms:
     admission_state: admitted
     description: >-
       Kota Chakra ring modifier — malefic siege intensity for adverse event classes.
-      Concentric ring multipliers: stambha(1.30), madhya(1.15), pragara(1.08), bahya(1.04).
+      Concentric ring multipliers: stambha(1.30), durgantara(1.15), prakara(1.08), bahya(1.04).
       Only fires for adverse event classes; neutral/gain classes get modifier=1.0.
     classical_citation: >-
       Kota Chakra tradition (Fort Diagram); bg_kota_chakra_rings reference table
@@ -238,7 +238,7 @@ mechanisms:
     description: >-
       Sudarsana cakra house placement modifier — transit body house position in the
       Sudarsana composite chart applies house-specific multipliers (0.75-1.30).
-      Sub-mechanism of w27_annual_stack; reads kala_sudarshana via ClassContext.
+      Sub-mechanism of w27_annual_stack; reads kala_sudarshana_varsha via ClassContext.
     classical_citation: >-
       Sudarsana Cakra Paddhati — house placement of transit body as seen from
       Sun-ascendant composite modifies classical effectiveness; BPHS Sudarsana Cakra chapter.
