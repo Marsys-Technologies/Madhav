@@ -140,7 +140,7 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 | asset_id | kind | obl. | wave | route | status | E-gate | capsule | notes |
 |---|---|---|---|---|---|---|---|---|
 | ka_gochara_resonance | data | build | 0 | **rebuild_only** | W2-done | **0 — OPEN** | — | **canary candidate**; fingerprint clean |
-| ka_graha_sancara | service | probe | 0 | **probe** | W2-done | **0 — OPEN** | — | **canary candidate**; but `service_health='unhealthy'` — see F-L3-3 |
+| ka_graha_sancara | service | probe | 0 | **probe** | W2-accepted | **OPEN-PENDING-PIN (real)** | — | M3 fixed+deployed (#1751); `asset_analysis_accepted`+`optimization_verdict_accepted` recorded live 2026-09-05T14:00Z; ready for W4 slot claim + probe dispatch |
 | ka_kota_chakra | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_moorti_nirnaya | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_sudarshana_varsha | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
@@ -199,6 +199,17 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 | W4 for 15 of 23 assets | **PR #1728** (fingerprint ordering, RULED, auto-merge armed) | 2026-09-05 | resolves on merge; record the SORTED fingerprint |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | 2026-09-05 | poll `L2_STATE.md` §CAPABILITIES LANDED on `origin/main` |
 | 18 of 23 assets' W4 | L0/L1/L2 freezes (E-gate, C2) | 2026-09-05 | `ga_positions` is the single highest-leverage unlock (5 assets) |
+
+- **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
+  Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
+  other 14 (not-held-by-a-hidden-edge) assets' true vs. declared closure. Already answered by my
+  own `L3_DEPENDS_ON_AUDIT_v1_0.md` §6.3: of those 14, only `ka_graha_sancara` stands on wholly
+  frozen ground (`bg_ephemeris` only, and only L0 is frozen campaign-wide today) — the other 13
+  all carry a DECLARED (not hidden) edge into an unfrozen L1 asset (chiefly `ga_positions`),
+  which the mechanical E-gate already correctly reports as `BLOCKED-ANCESTORS` — confirmed live
+  against this cycle's `egate.sql` run above. **No additional asset unblocks from this ruling** —
+  it converges with, rather than adds to, what I already acted on this cycle (`ka_graha_sancara`).
+  No new W2/W4 action taken; recorded for the permanent decision trail only.
 
 ## Rulings received (binding — Conductor, ADHIKĀRIN precedent)
 
@@ -440,6 +451,121 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~14:1xZ — L3-W4 — first real dispatch attempt, two real blockers found and
+  handled (one filed, one diagnosed for next cycle). PR hygiene: #1801 CLEAN + genuinely
+  `is:queued` again this cycle, nothing actionable. Claimed a run slot on #1713 for
+  `ka_graha_sancara`'s probe, then tried `dispatch_nirmana_campaign_wave.py` (dry run, no
+  `--commit`) as the mechanical next step. Hit a real, verified, **campaign-critical** shared-tooling
+  defect: `_load_definition`/`_load_prior_run_receipts` (≥4 query sites) reference
+  `nirmana_elevation_campaign_definitions`/`nirmana_elevation_campaign_events` **unqualified**,
+  but both tables live in the `nirmana_evidence` schema (migrations 632/633, a manual direct-owner
+  handoff — no tracked migration does the actual `SET SCHEMA`) and **neither writer role's
+  search_path includes it** (`SHOW search_path` → `"$user", public`; confirmed via
+  `pg_roles.rolconfig` and `pg_db_role_setting`, no override anywhere). **No layer session can
+  dispatch anything through this script today** — not L3-specific. Root cause almost certainly:
+  the schema move happened *after* CAMPAIGN_STATE.md's recorded P4 rehearsal success
+  (2026-09-03), and the script was never re-verified against it (textbook C12/§N.8: a script's
+  only proof of working is now stale). **Filed #1833** (adjudication, my recommendation: schema-
+  qualify the ≥4 sites, mirroring the TS side's already-correct pattern) rather than patch
+  Conductor-owned shared tooling myself. Worked around it session-locally (zero code change,
+  standard libpq behavior) by appending `?options=-c%20search_path%3Dnirmana_evidence,public` to
+  my own `DATABASE_URL` — got past the relation error, then hit `DEFAULT_DEFINITION_REVISION =
+  "t0-2026-08-25-4a78a5c4"` being stale (live frozen revision is `t0-2026-09-01-0e5b06fb`) — a
+  second, milder staleness bug in the same file, worked around via the existing
+  `--definition-revision` flag (added as a note on #1833 rather than a second issue, same file/
+  same root cause class).
+  **F-L3-15 (MUST, real blocker for W4, diagnosed — no adjudication needed, it's mine to fix in
+  W3).** Past both tooling bugs, the dispatcher correctly refused: `"L3 wave 0 has no build
+  obligation for: ka_graha_sancara"` — because `dispatch_nirmana_campaign_wave.py` is a
+  **build-only** path (`execution_obligation == 'build'`, line 451); probe-obligation assets are
+  never dispatched through it. Traced the real probe path instead
+  (`requireProbeProvenance`/`NirmanaProbeEvidenceSchema`, `definitions.ts:1827`): a `probe_accepted`
+  event requires `current.registryContract.health_probe` to be **non-null**, matched against a
+  registry-bound `probe_contract_sha256` and a submitted `detector_observation` whose
+  `response_digest` the server independently recomputes and checks (it does NOT itself call the
+  live service — the submitter is expected to have actually run the probe against
+  `amjis-sidecar-probe-...` and be submitting a faithful observation, using the VERIFIER identity
+  since `source_kind='server_reconstructed'`). **Checked live: all four L3 service assets
+  (`ka_graha_sancara`, `ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana`) have `health_probe = NULL`
+  in the live registry — none can pass `probe_accepted` today, regardless of E-gate status.**
+  L0's `bg_ephemeris_engine` has a real, working `health_probe` JSON (`{ayanamsha, node_mode,
+  probe_type, forensic_jd, expected_sun_sign, ephemeris_file_sha256, allowed_ephemeris_backends,
+  expected_mean_node_rahu_sign}`) usable as a design template. **This is L3's own W3 gap** (not
+  previously in the findings ledger — none of my 19 D-CND-03 contracts or DRAFT/CURRENT sweeps
+  touched `health_probe`), not a shared-tooling defect, so no adjudication filed for it — it's a
+  migration I need to author (design each service's probe contract shape against its own
+  self-test/selftest_detail interface, e.g. `ka_graha_sancara`'s FORENSIC-anchor + dict_row checks
+  from F-L3-3/M3).
+  **Released the run slot** on #1713 (no build actually executed — nothing to release from a
+  compute perspective, but recording the claim's end per C5 etiquette).
+  **Next action:** author the `health_probe` contract for `ka_graha_sancara` (and, while in the
+  area, the other 3 L3 services) as a normal W3 migration in the 670-679 range, THEN retry the
+  probe path — build-dispatch (`ka_gochara_resonance` eventually) stays blocked on #1833 regardless
+  of this.
+- `2026-09-05T~14:00Z — L3-W3/W4 — first REAL E-gate-open asset in the layer.
+  PR hygiene first (C8 Step 1): only L3 PR open is #1801 (mine), CI re-running post-fix
+  (not DIRTY/RED/unqueued-CLEAN — genuinely pending, nothing actionable). Verified live
+  (not assumed) that #1736 (the analysis-receipt spine, #1715's Option A) is BOTH merged
+  AND deployed: `amjis-web`'s serving revision carries `commit-sha=75ac19c661c9...` which
+  has 6b6c72f13 (the #1736 merge) as a git ancestor; `amjis-sidecar` serves
+  `...-6b6c72f13aa8-...` at 100% traffic directly. This lifts the "all W2 acceptance events
+  held on #1715" block recorded here and on L1_STATE.md. Re-ran `scripts/nirmana/egate.sql`
+  (the real tool, not the stale W1 snapshot table below) for L3: only `ka_graha_sancara` and
+  `ka_gochara_resonance` are `BLOCKED-NO-ROUTE` (0 unfrozen ancestors, no W2 acceptance yet)
+  — everything else is genuinely `BLOCKED-ANCESTORS` (L0/L1/L2 freeze progress has not moved
+  since W1; confirmed, not assumed).
+  **Recorded `asset_analysis_accepted` + `optimization_verdict_accepted` for `ka_graha_sancara`
+  — for real, in production.** Computed `registry_fingerprint_sha256` + `analysis_digest`
+  with a from-scratch Python reimplementation of the server's `stableJson`+SHA-256
+  canonicalization (same method CAMPAIGN_STATE.md records for `bg_vedha_malefic_scale`'s P4
+  rehearsal), cross-checked against the frozen manifest's own stored fingerprint —
+  **matched byte-for-byte** for `ka_graha_sancara` (its registry contract is unchanged since
+  freeze), confirming the reimplementation before trusting it. (`ka_gochara_resonance`'s did
+  NOT match the frozen value — expected and correct: I added its D-CND-03
+  `integrity_check_sql` after the freeze in migration 670, so its LIVE fingerprint has
+  legitimately moved; used the fresh live value, not the stale frozen one, matching what the
+  server itself recomputes.) Minted an executor-SA OIDC token (`gcloud auth
+  print-identity-token --impersonate-service-account=amjis-nirmana-executor@...
+  --audiences=https://amjis-web-938361928218.asia-south1.run.app --include-email` — the
+  `--include-email` flag is load-bearing per CAMPAIGN_STATE.md's own documented trap) and
+  POSTed both events to `/api/admin/internal/nirmana-elevation-executor`. Verdict submitted:
+  `examined_and_already_efficient` (proposal.action=no_change, output_contract=digest_identical),
+  citing PR #1751/M3 — ka_graha_sancara's two real defects (positional `row[0]` vs `dict_row`;
+  FORENSIC anchor read from a 12:00-UT daily table) are already fixed, merged, and deployed;
+  nothing further to correct. Both HTTP 201 `created`. **Independently re-verified via direct
+  DB query** (not trusted from the HTTP response alone) — both rows present,
+  `recorded_by=nirmana-executor:amjis-nirmana-executor@...`, exact `source_ref` match.
+  Re-ran `egate.sql`: **`ka_graha_sancara` now reads `OPEN-PENDING-PIN`** — C2.1 (ancestors
+  frozen) and C2.2 (route recorded) both genuinely true; C2.3 (pins match) independently
+  confirmed via `provenance_inventory --check` + `nirmana_analysis_layer_pins.py --check`,
+  both exit 0 on this branch. **This is the layer's first real, non-artefactual E-gate-open
+  asset** — the two W1-nominated canaries were both artefacts (F-L3-10); this one is genuine.
+  Scoped to ONE asset this cycle (bounded-unit discipline) — `ka_gochara_resonance`'s digests
+  are computed and saved (`/tmp/receipt_ka_gochara_resonance.json` in this worktree's scratch,
+  not committed) but its acceptance events were NOT submitted: it is lower-urgency since
+  STANDING CONSTRAINT #2 self-gates its actual dispatch behind `ga_sensitive`/`ga_yoga`/
+  `ga_dashas`/`bo_arudha` regardless of E-gate mechanics, so recording its route now buys
+  less than `ka_graha_sancara`'s genuine today-dispatchability did.
+  **Cross-session note (conductor-2b, unactioned this cycle — next W3 priority):** L4
+  confirmed on #1770 that all five cascade-exposed L4 tables regenerate cleanly after an L3
+  `kala_convergence` rebuild (D-CND-04 deterministic `anchor_id` re-attaches `phala_anchors`
+  exactly; the other four have no FKs into them campaign-wide). **My `kala_convergence`
+  write-hold is LIFTED per that ruling.** Sequencing note from L4: `ph_nimitta` should rerun
+  before the other four L4 writers when the cascade fires. This unblocks the MSR re-run plan's
+  `ka_sangam` spine (item 3 in that table) — next W3-priority item, not actioned this cycle to
+  keep this unit bounded.
+  **Backlog (not this cycle):** `ka_graha_sancara.catalog_status` is still live `DRAFT` — F-L3-5
+  deliberately held it there "until M3 lands"; M3 landed (#1751, confirmed deployed). Flipping
+  DRAFT→CURRENT doesn't gate anything checked above (confirmed:
+  `nirmanaExecutionContractForRegistryRow` only branches on `RETIRED`, not DRAFT/CURRENT), so
+  deferred to a future cycle rather than expanding this one.
+  **Next action:** claim a run slot on coordination issue #1713, then W4-dispatch
+  `ka_graha_sancara`'s health probe — the real gate canary, finally.
+  **Note on this very commit:** PR #1801 entered the merge queue (CLEAN, `is:queued`
+  confirmed) between my last push and this state-file commit, so `git push` was rejected
+  (protected-branch: queued branches cannot be updated) — expected GitHub behaviour, not an
+  error. This commit sits local-only for now; push it once the queue drains (merge or
+  dequeue) rather than force anything.
 - `2026-09-05T~13:4xZ — L3-W3 — PR hygiene (C8 Step 1): PR #1801 (my own branch,
   codex/nirmana-l3-w4-resume) was RED on "Governance Gates (drift/schema/edge/
   native-literal/py-sidecar)" — heartbeat had wrongly implied it was queued/armed
