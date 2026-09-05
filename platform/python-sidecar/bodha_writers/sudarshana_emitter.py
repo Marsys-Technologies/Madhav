@@ -33,6 +33,7 @@ import uuid
 from typing import Any
 
 from bodha_writers.formulas import (
+    VERSION_SALIENCE_FORMULA_V2,
     salience_formula_v2,
     SalienceInputsV2,
 )
@@ -342,7 +343,12 @@ def build_signal_row(
         "cancellation_modifier": inputs.cancellation_modifier,
         "computed_salience": computed_salience,
         "salience_pctl_in_class": None,  # assigned by the writer's percentile pass
-        "salience_formula_version": "v2",
+        # NIRMĀṆA L2-W3 (L1 handoff #1750 item 3). This was the bare literal "v2",
+        # which had drifted from formulas.VERSION_SALIENCE_FORMULA_V2 = "v2.0" — the
+        # constant for the very formula these rows are computed by. Same formula, two
+        # spellings, 444 rows carrying the odd one. A version label read as provenance
+        # must come from the version constant, not from a string re-typed beside it.
+        "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_confidence_interval_jsonb": None,
         "domains_affected_array": ["character", "career"],
         "domain_salience_jsonb": json.dumps({"character": computed_salience, "career": computed_salience}),
