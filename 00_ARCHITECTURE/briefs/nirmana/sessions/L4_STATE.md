@@ -1062,3 +1062,50 @@ clean, the first L4 asset to reach zero open findings → next: F1 remains the l
 deferred code item (documented reason, see close-report scaffold); otherwise watching for
 E-gate / L2 capability landings.
 
+`2026-09-06T~01:35Z` — L4 — **cycle: PR hygiene clean (all eleven own PRs healthy — nine
+`UNKNOWN`/queued-normal, #1864 confirmed queued via `is:queued` despite an `UNSTABLE` label,
+#1870 legitimately pending CI at low age with no failing checks) → E-gate re-checked,
+`ph_nimitta` still 37/46 unfrozen ancestors, unchanged → priorities 1-4 exhausted again (no
+E-gate asset, no completed run awaiting W5, no unheld W3 item left real+safe, W1/W2 long done)
+→ did the one permitted priority-5 prep item: drafted `L4_W5_VERIFICATION_v1_0.md`.**
+
+Before writing, looked for Conductor-owned shared W5/verification tooling to avoid duplicating
+it, per the founding prompt's explicit instruction. Found `platform/scripts/nirmana/` (in this
+repo, not just other worktrees) holds `egate.sql` (E-gate batch eligibility, C2/C10) and
+`cascade_check.sql`, plus `dispatch_nirmana_campaign_wave.py`/`dispatch_nirmana_f0_canary.py`
+in `platform/scripts/` — all W1-W4-phase tooling (dispatch + eligibility), confirmed via
+`--help` and the directory's own README. **No W5 post-build verification harness exists yet
+anywhere in the shared tooling** — so this prep item is net-new, not a duplicate.
+
+Rather than write a fresh verification script (which would mean re-deriving detector logic
+that already exists and is already live-corruption-tested), the runbook **references migration
+681's 9 already-shipped `integrity_check_sql` entries directly** — one per `ph_*` asset,
+chart-PARTITIONED per D-CND-03, each proven to flip false on injected corruption before
+installation (C12's rewrite-floor test, an earned signal per §N.8). The runbook is: the same
+batch-execute pattern migration 681's own post-condition DO block already uses, reused for
+post-build re-verification instead of pre-install refusal — plus a target_floor table (noting
+which floors are deliberately NULL and why: `ph_sodhana` because a floor would reward
+fabricated findings, `ph_pramana` because its detector is currently dead code) and an explicit
+list of the 4 invariants W1 derived as real but withheld from 681 because they were red on
+current data at the time.
+
+**Caught a live discrepancy while writing that list**, rather than copying it forward unverified
+(D-CND-16): item 2 on that withheld list — "`ph_rectification` `load_bearing` may not be true on
+a non-discriminating fit" — was actually fixed this session (`_apply_discrimination_gate()`,
+PR #1834, commit `c3ac8aadc`), but I have not verified whether the corresponding invariant was
+ever added to `asset_registry.integrity_check_sql` for `ph_rectification`. Did not assert
+either way; flagged it explicitly in the doc as an open verify-before-trusting item, since a
+fixed-but-undetected defect is itself a C12/§N.8 gap if left silent past freeze. Wrote this
+as a note for whichever cycle actually runs W5 to check first, not as a claim.
+
+This is a solo, non-shared deliverable (not written into the Conductor-owned
+`platform/scripts/nirmana/` dir) so it lives in my own sessions folder, same as the W6
+close-report scaffold.
+
+CYCLE L4: PR hygiene clean → E-gate unchanged (`ph_nimitta` 37/46) → drafted
+`L4_W5_VERIFICATION_v1_0.md` (priority-5 prep item; confirmed no shared W5 tooling exists to
+reuse; flagged one live discrepancy — `ph_rectification`'s discrimination-gate fix may lack its
+detector — for the next session that touches it to verify) → next: watch E-gate / L2
+capability landings; F1 remains the layer's one deferred code item; if this repeats next
+cycle, take up the ph_rectification detector-gap flagged above as the next real, bounded unit.
+
