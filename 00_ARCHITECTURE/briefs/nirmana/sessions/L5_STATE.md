@@ -451,6 +451,21 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~00:15Z (C8 v2.3 cycle 18) — **IDLE-OK, verified (second consecutive idle cycle —
+  genuinely nothing new, not fatigue).** PR hygiene: #1844 confirmed queued via GraphQL; #1826
+  checks-pending only. Re-checked all three blocking PRs (#1851, #1861, #1873) — all still
+  `OPEN`/unmerged, unchanged from last cycle. #1869 still at 3 comments — no response to the
+  `chart_grants` finding. Re-ran the `mi_kula` ancestor-closure query — still exactly 3 unfrozen.
+  Considered whether a legitimate prep task exists (C8 item 5) before concluding idle: the
+  obvious candidate — pre-computing `mi_vistara`'s/`mi_jivanaghatana`'s next evidence
+  submissions — isn't actually doable yet, since both depend on a `run_id` that doesn't exist
+  until their respective blocking fixes (#1851, #1861) land and a fresh dispatch actually
+  happens; there's nothing to pre-compute against. No other unblocked prep surfaced. Genuinely
+  idle, not manufactured.
+  **Next cycle: same three checks.** If this extends further, worth considering whether a
+  longer natural pause between checks is honest (per C8's own "waiting states are QUIET" framing)
+  rather than re-verifying identical unchanged state every single cycle — but that's a scheduling
+  question for the supervisor, not something to solve by inventing work here.
 - 2026-09-06T~00:00Z (C8 v2.3 cycle 17) — **IDLE-OK, verified.** PR hygiene: #1844 confirmed
   queued via GraphQL; #1826 checks-pending only, nothing broken. Read #1869 fully (all 3
   comments): Conductor confirmed my `life_events`/`charts` diagnosis exactly, shipped the fix as
