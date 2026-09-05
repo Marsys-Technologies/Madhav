@@ -2312,3 +2312,30 @@ re-splice, pushed without needing a dequeue) → `#1808` self-resolved into the 
 its fresh CI resolves; watch queue positions continue advancing; retry E-gate/dispatch dry-run
 once DB access returns; F1 remains deferred.
 
+`2026-09-05T~20:35Z` — L4 — **CYCLE 73 (v2.3) — PR hygiene resolved a false alarm (`#1808`
+briefly read `mergeQueueEntry: null` on a race, was genuinely queued at position 83 all
+along); `#1834` legitimately mid-CI on its fresh push from last cycle.**
+
+**PR hygiene:** GraphQL sweep showed `#1808` as `CLEAN`, `autoMergeRequest: false`,
+`mergeQueueEntry: null` — the CLEAN-but-unqueued shape. Ran `gh pr merge 1808 --auto`, which
+replied `"already queued to merge"`; a follow-up GraphQL query confirmed `mergeQueueEntry`
+position 83 — the PR was queued the whole time, the first read simply raced the API's own
+consistency window (the same read-lag class flagged in cycle 3, now observed from the opposite
+direction: a false negative rather than a false miss). No actual defect, no action needed
+beyond the confirming re-check. `#1834` (rebased+re-pinned last cycle) is legitimately still
+running its fresh CI, all visible checks passing or pending, none failed. All other 9 own PRs
+unchanged/queued at their prior positions (no net `main` movement this cycle).
+
+**Priorities 1-4 re-checked, no change since cycle 71's exhaustive pass:** `main`'s HEAD is
+unchanged (`962188fad`) since the last check, so nothing new landed to re-derive from. E-gate
+still uncheckable — `ToolSearch` for `mcp__postgres__query` still empty, no `DATABASE_URL`;
+63rd consecutive cycle DB access has been down. L2's `## CAPABILITIES LANDED` unchanged (still
+only `bo_laksana`'s writer correction, no consensus/grounding/tail_watch data live). No new
+`nirmana-adjudication` issues name L4.
+
+CYCLE 73 L4: PR hygiene — resolved a false CLEAN-but-unqueued alarm on `#1808` (was already
+genuinely queued at position 83, confirmed rather than assumed) → `#1834` legitimately mid-CI →
+E-gate uncheckable, DB access down 63 cycles, no change since cycle 71's exhaustive
+re-verification → next: watch `#1834` enter the queue; retry E-gate/dispatch dry-run once DB
+access returns; F1 remains deferred.
+
