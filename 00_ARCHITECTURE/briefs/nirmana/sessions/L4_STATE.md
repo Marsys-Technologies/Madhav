@@ -1417,3 +1417,36 @@ client-side scan rewritten as a server-side loop) → honestly flagged the one t
 verify (DO block end-to-end) rather than claim it → next: watch #1885 for Conductor's merge +
 DO-block confirmation; E-gate / L2 capability landings; F1 remains deferred.
 
+`2026-09-06T~04:55Z` — L4 — **CYCLE 8 (v2.3) — `#1841` merged, queue keeps flowing. PR hygiene
+found and fixed one real DIRTY PR (`#1842`, `ph_pramana`) via the now-standard rebase + GraphQL
+dequeue-check sequence; everything else confirmed genuinely healthy via `mergeQueueEntry`
+cross-check, positions advancing (`#1845` now at position 4, near the front).**
+
+**`#1842`**: `mergeStateStatus: DIRTY`, `mergeQueueEntry: null` — this time GitHub's own field
+agreed with reality on the first check, no ambiguity. Rebased onto `origin/main`, `--skip`ped the
+stale pin-splice commit (writer-digest regenerated clean, no diff — only the pin needed
+re-deriving), ran `test_ph_wave6.py` (32/32 green), pushed clean (wasn't still queued underneath
+this time), re-armed. No Conductor response yet on `#1885` (posted last cycle) — checked, not
+assumed.
+
+**Lost DB access mid-cycle**: the `postgres` MCP tool disconnected partway through (used it once
+successfully for the E-gate check, then it dropped). Tried a `--dry-run` dispatch test against
+`ph_nimitta` as a candidate priority-5 prep item (verify the now-fixed `dispatch_nirmana_
+campaign_wave.py` — merged as `#1838` — actually works for an L4 asset before the E-gate opens,
+since L0/L1 have started real dispatches per the coordination issue) — correctly abandoned it
+the moment the script reported `DATABASE_URL is required`, rather than fabricate a verification I
+couldn't perform. No shell-level `DATABASE_URL` exists in this environment either (confirmed
+repeatedly all session). This is a real capability gap, not a decision to defer casually: noting
+it here so a future cycle with DB access back can do this dry-run check before the real E-gate
+opening, catching any L4-specific dispatch issue ahead of time rather than at the actual moment
+it matters.
+
+E-gate (captured before the tool dropped): unchanged (`ph_nimitta` 37/46).
+
+CYCLE 8 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1842`, clean rebase, re-armed) →
+E-gate unchanged → lost DB access mid-cycle (postgres MCP tool disconnected); correctly
+abandoned a dispatch dry-run prep attempt rather than proceed without real verification → next:
+watch `#1885` for Conductor's merge/DO-block confirmation; once DB access returns, run the
+`ph_nimitta` dispatch dry-run as prep ahead of the real E-gate opening; watch E-gate / L2
+capability landings; F1 remains deferred.
+
