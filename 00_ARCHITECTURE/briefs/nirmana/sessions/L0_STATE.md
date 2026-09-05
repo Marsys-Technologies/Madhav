@@ -1929,3 +1929,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   theory: #1907 (previous queue head) dropped out of the merge queue back to `CLEAN`/`OPEN` (not L0's
   — an L2 integrity-check PR), not a merge — explains the position drop without a main-HEAD change.
   New head #1908, ~3min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 4/10/18/67, queue head
+  still #1908, ~5.4min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
