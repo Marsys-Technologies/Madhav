@@ -31,6 +31,7 @@ from services.ph_sodhana.engine import (
     detect_falsifier_absent,
     detect_ledger_gap,
     detect_layer_leakage,
+    detect_ceiling_inputs_degenerate,
     derive_sodhana_flags,
 )
 from services.ph_suddha_sodhana.engine import (
@@ -195,6 +196,65 @@ class TestDetectLayerLeakage:
             a = _clean_anchor(confidence_basis=bad_basis)
             rec = detect_layer_leakage(a)
             assert rec is not None, f"basis={bad_basis!r} must be flagged"
+
+
+class TestDetectCeilingInputsDegenerate:
+    """F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b)): the G-LADDER ceiling's own two
+    inputs (dasha_consensus_count, ayanamsha_robustness) can be chart-wide
+    constants while confidence_high varies -- detect_confidence_degenerate
+    cannot see that, since it only watches confidence_high."""
+
+    def _anchors(self, n_pairs: list[tuple[int, int]]) -> list:
+        return [
+            _clean_anchor(anchor_id=f'a{i}', dasha_consensus_count=n, ayanamsha_robustness=rob)
+            for i, (n, rob) in enumerate(n_pairs)
+        ]
+
+    def test_below_min_anchors_no_flag(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors([(0, 3)] * 4))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_constant_pair_across_min_anchors_flagged(self):
+        # The measured live shape: (0, 3) constant across every anchor.
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors([(0, 3)] * 6))
+        rec = detect_ceiling_inputs_degenerate(ctx)
+        assert rec is not None
+        assert rec.anomaly_type == 'ceiling_inputs_degenerate'
+        assert rec.anomaly_severity == 'major'
+        assert rec.derivation_ledger_jsonb['constant_dasha_consensus_count'] == 0
+        assert rec.derivation_ledger_jsonb['constant_ayanamsha_robustness'] == 3
+
+    def test_varying_dasha_consensus_count_not_flagged(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 3), (1, 3), (2, 3), (3, 3), (0, 3), (1, 3)]
+        ))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_varying_ayanamsha_robustness_not_flagged(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 3)]
+        ))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_genuine_zero_dasha_consensus_count_still_participates(self):
+        # A real 0 must not be silently dropped from the distinctness check the
+        # way `int(n or 1)` would drop it in the ceiling formula itself.
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 3), (0, 3), (0, 3), (1, 3), (0, 3), (0, 3)]
+        ))
+        rec = detect_ceiling_inputs_degenerate(ctx)
+        assert rec is None, "one anchor with n=1 among five n=0 anchors is real variance, not degeneracy"
+
+    def test_does_not_interfere_with_confidence_degenerate(self):
+        # Both chart-wide detectors can fire independently in derive_sodhana_flags.
+        anchors = self._anchors([(0, 3)] * 6)
+        for a in anchors:
+            a.confidence_high = 0.55  # also degenerate on this axis
+        ctx = SodhanaContext(chart_id='cid', anchors=anchors)
+        flags = derive_sodhana_flags(ctx)
+        types = {f.anomaly_type for f in flags}
+        assert 'ceiling_inputs_degenerate' in types
+        assert 'confidence_degenerate' in types
 
 
 class TestDerivesodhanaFlags:
