@@ -100,7 +100,10 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     'Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings.',
     'Each row: yoga_canonical_id, fired (bool), strength + strength_label,',
     'partial_formation_pct + is_partial, bhanga_active + bhanga_rule_fired (cancellation),',
-    'constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation.',
+    'constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation,',
+    'catalog_classical_citations (the classical textual grounding from brahma_yoga_catalog —',
+    'citation_ref/citation_human describe the strength-derivation formula instead, not the',
+    'classical source; both are served, never conflated).',
     'MC-016: constituent_planets is a flat, role-blind union — DEPRECATED for role-sensitive',
     'reads (constituent_planets_deprecated_note explains why). When grounds_jsonb is present,',
     'each row also carries labeled role-split fields derived server-side: for',
@@ -112,7 +115,8 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     'yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column,',
     'not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when',
     'present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding',
-    'unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows with a disclosed total.',
+    'unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows per page with a',
+    'disclosed total and more_available; pass offset to page past the first 50 (F-D2).',
   ].join(' '),
 
   input_schema: {
@@ -124,6 +128,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     is_partial:        { type: 'boolean', description: 'Filter to partially-formed yogas.' },
     yoga_canonical_id: { type: 'string',  description: 'Filter to a specific yoga by canonical id.' },
     limit:             { type: 'number',  description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
+    offset:            { type: 'number',  description: 'Row offset for paging past the first page (default 0). F-D2: without this, rows beyond the limit were permanently unreachable.' },
   },
 
   required_inputs: ['chart_id'],
@@ -159,36 +164,43 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     const is_partial        = typeof args['is_partial'] === 'boolean' ? (args['is_partial'] as boolean) : null
     const yoga_canonical_id = args['yoga_canonical_id'] ? String(args['yoga_canonical_id']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+    const offset = Math.max(Number(args['offset'] ?? 0), 0)
 
-    const filters: string[] = ['chart_id = $1']
+    const filters: string[] = ['f.chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
-    if (!all)                       { filters.push(`fired = $${p++}`);             params.push(fired) }
-    if (ayanamsha_id)               { filters.push(`ayanamsha_id = $${p++}`);      params.push(ayanamsha_id) }
-    if (bhanga_active !== null)     { filters.push(`bhanga_active = $${p++}`);     params.push(bhanga_active) }
-    if (is_partial !== null)        { filters.push(`is_partial = $${p++}`);        params.push(is_partial) }
-    if (yoga_canonical_id)          { filters.push(`yoga_canonical_id = $${p++}`); params.push(yoga_canonical_id) }
+    if (!all)                       { filters.push(`f.fired = $${p++}`);             params.push(fired) }
+    if (ayanamsha_id)               { filters.push(`f.ayanamsha_id = $${p++}`);      params.push(ayanamsha_id) }
+    if (bhanga_active !== null)     { filters.push(`f.bhanga_active = $${p++}`);     params.push(bhanga_active) }
+    if (is_partial !== null)        { filters.push(`f.is_partial = $${p++}`);        params.push(is_partial) }
+    if (yoga_canonical_id)          { filters.push(`f.yoga_canonical_id = $${p++}`); params.push(yoga_canonical_id) }
     const where = filters.join(' AND ')
 
     // Lane 5 (§N.6): grounds_jsonb (Lane 3's CR-59 grounds-checked-per-verdict ledger —
     // fired-and-not-fired reasoning) is included whenever present. Selected defensively:
     // if the column hasn't been migrated in yet in a given environment, fall back to the
     // pre-Lane-3 column set rather than hard-failing the whole tool.
-    const baseCols = `id, yoga_canonical_id, ayanamsha_id, fired, strength, strength_label,
-             partial_formation_pct, is_partial, bhanga_active, bhanga_rule_fired, bhanga_na_reason,
-             constituent_planets, constituent_houses, constituent_fact_ids, family_ids,
-             activation_dasha_periods, derivation, citation_ref, citation_human`
+    // F-D1: LEFT JOIN brahma_yoga_catalog for the real classical citation. citation_ref/
+    // citation_human on ga_yoga_firings are DELIBERATELY the strength-derivation citation
+    // (ga_yoga_writer.py:1210-1213: "the formation citation is authoritative on the catalog
+    // row itself") — not a writer defect, just never previously projected onto this surface.
+    const baseCols = `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
+             f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
+             f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
+             f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
+             c.classical_citations AS catalog_classical_citations`
 
     async function runQueries(cols: string) {
       const sql = `
         SELECT ${cols}
-        FROM ga_yoga_firings
+        FROM ga_yoga_firings f
+        LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
         WHERE ${where}
-        ORDER BY strength DESC NULLS LAST, yoga_canonical_id
-        LIMIT $${p}`
+        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id
+        LIMIT $${p} OFFSET $${p + 1}`
       return Promise.all([
-        query(sql, [...params, limit]),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ga_yoga_firings WHERE ${where}`, params),
+        query(sql, [...params, limit, offset]),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ga_yoga_firings f WHERE ${where}`, params),
       ])
     }
 
@@ -197,7 +209,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       let rowsRes: Awaited<ReturnType<typeof query>>
       let countRes: Awaited<ReturnType<typeof query<{ total: string }>>>
       try {
-        [rowsRes, countRes] = await runQueries(`${baseCols}, grounds_jsonb`)
+        [rowsRes, countRes] = await runQueries(`${baseCols}, f.grounds_jsonb`)
       } catch (e) {
         // grounds_jsonb not migrated yet in this environment — fall back, never hard-fail
         // the whole tool over one additive column (Lane 3's migration may be unmerged here).
@@ -222,15 +234,17 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
           rows,
           count: rowsRes.rows.length,
           total_matching,
-          more_available: total_matching > rowsRes.rows.length,
-          filters: { fired: all ? null : fired, all, ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id, limit },
+          more_available: total_matching > offset + rowsRes.rows.length,
+          filters: { fired: all ? null : fired, all, ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id, limit, offset },
           ...(total_matching === 0
             ? { empty_reason: `No ga_yoga_firings rows for chart ${chart_id} matching fired=${all ? 'any' : fired}${yoga_canonical_id ? ` yoga_canonical_id='${yoga_canonical_id}'` : ''}. Pass all=true to see catalog rows that have not fired.` }
             : {}),
           provenance: {
-            tables: ['ga_yoga_firings'],
+            tables: ['ga_yoga_firings', 'brahma_yoga_catalog'],
             note: 'constituent_fact_ids resolve back to chart_facts.fact_id (§N.5). Default fired=true — ' +
-              'a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43).',
+              'a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). ' +
+              'catalog_classical_citations (F-D1) is the classical grounding from brahma_yoga_catalog — distinct from ' +
+              'citation_ref/citation_human, which describe the strength-derivation formula, not the classical source.',
             source: 'L1 Gaṇita yoga-firing detail; served chart-scoped.',
             grounds_jsonb_available: groundsIncluded,
           },
