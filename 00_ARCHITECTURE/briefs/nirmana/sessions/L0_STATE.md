@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_gochara_arcs D-CND-01 rewrite landed (D-L0-O, PR #1836); 3 assets now W4-acceptable with zero dispatch once PRs merge
+last_updated: 2026-09-05 — evidence-submission mechanism reconstructed (D-L0-P); token minting verified for both SAs; still need definitions table + payload JSON before actual submission
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -220,6 +220,27 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   writer code fix; the "fix the writer, MUST" calls in D-L0-F were, on full read-only investigation,
   uniformly wrong.
 
+- **D-L0-P** — **Reconstructed the evidence-submission mechanism (`nrec` is gone from main, #1731
+  superseded) — prep, not committed to the shared repo.** Read the actual live path end to end:
+  `platform/src/app/api/admin/internal/nirmana-elevation-executor/route.ts` (OIDC-authenticated,
+  audience `https://amjis-web-938361928218.asia-south1.run.app`, two SAs —
+  `amjis-nirmana-executor@…`/`amjis-nirmana-verifier@…` — required identity derived from the
+  submitted `source_kind`, exactly mirroring the DB trigger split) + `evidence-command.ts` +
+  `definitions.ts` for the exact `asset_analysis_accepted`/`optimization_verdict_accepted` payload
+  schemas (`registry_fingerprint_sha256` + `analysis_digest` SHA-256 fields; `source_kind=git_commit`
+  + `git:<40-hex>` source_ref; both map to the **executor** identity, not verifier — these are
+  analysis reports, not certifications). **Verified I can mint identity tokens for BOTH service
+  accounts** (`gcloud auth print-identity-token --impersonate-service-account=... --include-email`
+  succeeded for both). Wrote + smoke-tested a session-local equivalent script
+  (`.../scratchpad/l0_submit_evidence.sh`, mirrors `nrec`'s exact identity-mismatch-refusal logic)
+  — **not** re-added to `platform/scripts/nirmana/` since that's Conductor-owned shared tooling
+  (charter C5) whose PR was deliberately closed as superseded; not my call to re-introduce it.
+  **Still open before actual submission**: find the current frozen `definition_revision` (table name
+  guessed wrong on the first try; `nirmana_elevation_definitions` doesn't exist) and construct the
+  exact JSON bodies for bg_doshas/bg_gochara_arcs. NEXT: once #1829/#1836 (and #1832's other half)
+  merge AND deploy, resume here — find the definitions table, build the two command JSONs per
+  asset, dry-run then actually submit via the reconstructed script.
+
 ## Held items
 
 - **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
@@ -414,3 +435,16 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   identity-split call the old `nirmana_batch_runner.py` used, or re-author a minimal local
   equivalent) — this is now the highest-value next unit, since it doesn't wait on the job-image at
   all.
+- 2026-09-05 — **Cycle 7.** PR hygiene: #1832 now shows `CLEAN` (via `is:queued`, already queued
+  alongside #1829 — no action, that's the desired state); #1836 `BLOCKED`/`MERGEABLE`, checks
+  pending, 0 failures; #1829's `UNKNOWN` (after main advanced) checked and still genuinely queued,
+  same false-alarm pattern as last cycle. Nothing to fix. Job-image still stale. **Prep work
+  (D-L0-P): reconstructed the evidence-submission mechanism** end to end by reading the actual
+  route + schema code, and **verified live that I can mint identity tokens for both the executor
+  and verifier service accounts**. Built + smoke-tested a session-local equivalent of the retired
+  `nrec` helper (correctly refuses an identity/source_kind mismatch, same as the original).
+  Deliberately did NOT commit it to the shared repo — that tooling is Conductor-owned (charter C5)
+  and its PR was closed as superseded, not my decision to revive. Ran out of cycle budget before
+  finding the `definition_revision` table (first guess was wrong) needed to build the actual
+  submission JSON. NEXT: once the 3 pending PRs merge+deploy, resume at "find the definitions
+  table" → build the two command bodies (bg_doshas, bg_gochara_arcs) → dry-run → submit for real.
