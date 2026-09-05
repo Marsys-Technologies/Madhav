@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 35; ga_yoga F-A14 landed, F-A16 discovered (#1965)
+last_updated: 2026-09-06 — C8 v2.3 cycle 36; ga_vichara F-A14 landed (#1967)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -25,8 +25,8 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
   (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
   cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32), 744
-  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34), 746 (`ga_yoga`, cycle 35)
-  used. 747–749 remain free.
+  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34), 746 (`ga_yoga`, cycle 35),
+  747 (`ga_vichara`, cycle 36) used. 748–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1436,6 +1436,50 @@ F-A16 — next: continue F-A14 for the remaining 5 assets (ga_vichara, ga_sade_s
 ga_transit_anchors, ga_ayurdaya, ga_prashna), consider a future pass fixing F-A15/F-A16 in their
 respective writers, or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 36 (C8 v2.3) — ga_vichara's F-A14 contract (migration 747), clean this time — no new finding
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/#1963/
+#1964 confirmed genuinely `is:queued`. #1827/#1965 still legitimately CI-pending from last cycle's
+fresh pushes, auto-merge armed, not DIRTY/RED. Nothing to fix.
+
+**Unit of work: F-A14 for `ga_vichara`** (migration 747, eighth used in the new 740-749 range).
+Target table `chart_vichara` carries NO natural-key UNIQUE (only a surrogate PK on `id`) and
+legitimate row multiplicity exists per (actor, target) pair across varga — did not invent a
+distinctness conjunct where no natural key is well-defined, rather than force one.
+
+Four conjuncts, all measured live and mutation-proved: (a)/(b) `constituent_fact_ids` and
+`constituent_facts_array` (the writer's own module docstring documents BOTH columns exist per
+migration 435's schema-note reconciliation — the union of two already-merged consumers' column
+vocabularies) must each resolve with zero orphans against `chart_facts.fact_id` (§N.5) —
+24,736/24,736 rows clean on both; (c) the `varga`/`varga_id` dual-column duplication is
+consistent — 0/24,736 mismatches, including NULL-NULL pairs; (d) within the `valence_pass` family
+specifically, `actor` must equal `subject` (the same dual-column duplication pattern, but for
+`actor`/`subject` rather than `varga`/`varga_id`).
+
+Before shipping (d), checked whether the same actor==subject invariant holds ACROSS ALL FIVE
+`vichara_family` values, not just `valence_pass` — it does not: the other four families
+(`varga_ratification`, `varga_ratification_divergence`, `varga_consistency`, `leverage_index`)
+show 100% `actor<>subject` on every single row (811/811 rows across those four families), because
+they legitimately leave `actor` blank and populate `subject`/`domain` instead (confirmed by reading
+sample rows directly, not inferred). Scoping the conjunct to `valence_pass` only avoided shipping
+a check that would have read false on 811 correctly-built rows — the same discipline as D-L1-53
+(read the writer's actual per-family behavior before asserting a universal invariant).
+
+Unlike the previous three cycles (F-A15 in `ga_structural`, F-A16 in `ga_yoga`), this pass did NOT
+surface a new genuine defect — all four conjuncts read clean on live production with no known-red
+finding to document.
+
+No Python writer touched; `provenance_inventory --check` clean. 6 new textual-contract tests
+(caught and fixed a copy-paste bug in my own test file: a "no dedup conjunct" check regexing for
+`/DISTINCT/i` false-failed on the legitimate `IS DISTINCT FROM` comparison operator used in
+conjuncts (c)/(d) — narrowed to the actual `SELECT DISTINCT` dedup keyword). Full
+`tests/unit/migrations/` suite: 39 files, 186 passed / 91 skipped, no regressions.
+
+CYCLE 36 L1: landed `ga_vichara`'s F-A14 contract (PR #1967, migration 747) — next: continue F-A14
+for the remaining 4 assets (ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), consider a
+future pass fixing F-A15/F-A16 in their respective writers, or `ga_positions` re-dispatch once
+#1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1454,7 +1498,7 @@ none accepted yet (blocked on #1736).
 | ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); **NEW: F-A15 — graha_vargottama_amplification_factor re-derives D9 vargottama instead of citing ga_vargas' authority, 4/105 rows disagree (§N.5)** |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); **NEW: F-A16 — strength_formula_version invents an unrelated label when the real derivation returns nothing, 4/212 rows (jaimini_karakamsha_rahu)** |
-| ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D) |
+| ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
@@ -1463,11 +1507,11 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **14/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-35: ga_dashas,
+Cross-cutting: **15/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-36: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
 ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
-other 56 remain a future pass], ga_yoga); `expected_volume_formula` NULL on 6; `ga_vichara` is
-`catalog_status=DRAFT` with 8,249 live rows.
+other 56 remain a future pass], ga_yoga, ga_vichara); `expected_volume_formula` NULL on 6;
+`ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -1906,6 +1950,15 @@ other 56 remain a future pass], ga_yoga); `expected_volume_formula` NULL on 6; `
   falsy-`or`-fallback idiom is the mechanism, generalizable to watch for elsewhere in this
   codebase. Followed the F-C8/F-A15 precedent (D-L1-48, D-L1-56) a third time: shipped the
   conjunct RED, verified via a synthetic post-fix overlay, did not touch the writer this cycle.
+- **D-L1-58** — C8 v2.3 cycle 36: before shipping `ga_vichara`'s actor==subject conjunct, checked
+  whether it held across all 5 `vichara_family` values (not just `valence_pass`, the family it was
+  designed for) — it does not: the other four families legitimately leave `actor` blank
+  (811/811 rows disagree by design, confirmed by reading sample rows). Scoped the conjunct to
+  `valence_pass` only rather than ship a check that would read false on 811 correctly-built rows.
+  Same discipline as D-L1-53 (`ga_nakshatra`'s two-detector allowlist): read the writer's actual
+  per-family/per-category behavior before asserting a universal invariant a superficially-similar
+  column-naming pattern might suggest. This asset's whole F-A14 pass shipped clean — no new
+  finding, unlike the three prior cycles (F-A15, F-A16).
 
 ## Held items
 
@@ -2401,3 +2454,21 @@ L1 must satisfy rather than a feature it consumes.
   landed ga_yoga's F-A14 contract (PR #1965, migration 746), discovered and documented F-A16 --
   next: continue F-A14 for the remaining 5 assets, consider fixing F-A15/F-A16 in a future pass,
   or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T03:0xZ -- CYCLE 36 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963/#1964 confirmed genuinely is:queued; #1827/#1965 still legitimately
+  CI-pending, auto-merge armed, not DIRTY/RED. Unit of work: ga_vichara's F-A14 integrity_check_sql
+  (PR #1967, migration 747 -- eighth used in the new range). Target table chart_vichara has no
+  natural-key UNIQUE (only a surrogate PK), legitimate row multiplicity per (actor,target) pair --
+  no distinctness conjunct invented. Four conjuncts: constituent_fact_ids and
+  constituent_facts_array each zero-orphan against chart_facts.fact_id (sec.N.5, migration 435's
+  documented dual-consumer schema), varga/varga_id dual-column consistency, and (scoped correctly
+  to valence_pass only) actor==subject. Before shipping the last conjunct, checked whether it held
+  across all 5 vichara_family values -- it does not, the other four families legitimately leave
+  actor blank (811/811 rows), so scoped it to valence_pass rather than ship a false positive --
+  same discipline as D-L1-53. Unlike the past three cycles, this pass shipped clean with no new
+  finding. Caught and fixed a copy-paste bug in my OWN test file: a "no dedup conjunct" check
+  regexing /DISTINCT/i false-failed on the legitimate "IS DISTINCT FROM" comparison operator used
+  in conjuncts (c)/(d) -- narrowed to the actual SELECT DISTINCT dedup keyword. No writer touched.
+  CYCLE 36 L1: landed ga_vichara's F-A14 contract (PR #1967, migration 747) -- next: continue
+  F-A14 for the remaining 4 assets, consider fixing F-A15/F-A16 in a future pass, or ga_positions
+  re-dispatch once #1892 lands.
