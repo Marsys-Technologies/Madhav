@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 44; ga_sade_sati F-A14 widened to 10/15 (#1990)
+last_updated: 2026-09-06 — C8 v2.3 cycle 45; ga_sade_sati F-A14 COMPLETE 15/15 (#1994)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -25,7 +25,8 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
   #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
   cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43), 753 (`ga_sade_sati` Phase widening,
-  cycle 44) used. 754–759 remain free.
+  cycle 44), 754 (`ga_sade_sati` FINAL widening — 15/15 complete, cycle 45) used. 755–759 remain
+  free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1864,6 +1865,60 @@ follow-up L2 re-pin), continue widening `ga_sade_sati` (5 categories remain:
 `sade_sati_concurrent_dasha_overlay`, `sade_sati_downstream_cross_reference`) or `ga_structural`
 (56 categories remain), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 45 (C8 v2.3) — ga_sade_sati's F-A14 contract COMPLETE, 15/15 categories (PR #1994, migration 754)
+
+**PR hygiene:** `#1827`/`#1898`/`#1990` all showed CLEAN-but-unqueued (checks green, no
+DIRTY/RED) — re-armed `gh pr merge --auto` on each. `#1853` was the one genuine action item:
+confirmed genuinely DIRTY (26 commits behind `main`, per `l2-3f`'s cycle-44 heads-up). Rebased
+cleanly (no conflicts this time, unlike `#1898`'s cycle-44 rebase) — both `provenance_inventory
+--check` and the full `nirmana_analysis_layer_pins.py --check` passed clean immediately after,
+including L2's own slice, with **no pin regeneration needed at all**: `l2-3f`'s prior partial fix
+(pinned against an in-history commit) turned out to already be valid against the rebased tree.
+Pushed, re-armed, confirmed clean with `l2-3f`. #1928/#1892 unchanged.
+
+**Unit of work: completed `ga_sade_sati`'s F-A14 integrity contract — the final 5 categories,
+15/15** (PR **#1994**, migration 754 — third used in the 752-759 range). Migrations 752/753
+(cycles 43-44) covered 10/15; this closes out `sade_sati_modifier_overlay`,
+`sade_sati_saturn_retrograde_subset`, `sade_sati_cancellation_check`,
+`sade_sati_concurrent_dasha_overlay`, `sade_sati_downstream_cross_reference` — **every one of
+`ga_sade_sati`'s own declared fact_categories now carries a real conjunct.**
+
+Five distinct check shapes for the seven new conjuncts, each grounded in a different piece of the
+writer's own logic (not a repeat of the same temporal-ordering template every time):
+- **(k)** `sade_sati_modifier_overlay`'s 5 flags are an EXPLICIT writer-acknowledged restatement
+  of `sade_sati_phase`'s own same-named keys (the writer's own comment says so) — cross-category
+  value equality, 0/900 violations.
+- **(l)/(m)** `sade_sati_saturn_retrograde_subset` temporal ordering + `duration_days`
+  re-derivation — the familiar template, applied to the one remaining `_period`-shaped category.
+- **(n)** `sade_sati_cancellation_check`: read `evaluate_cancellation_rules`'s own return
+  statement (`"cancellation_active": len(rules_fired) > 0`) and re-derived it directly from
+  whether the stored `cancellation_rules_invoked_jsonb` is NULL — a genuine formula re-derivation,
+  not a template reuse.
+- **(o)** `sade_sati_concurrent_dasha_overlay`: `_verif_for_text` is a CONSTANT function (always
+  returns `UNVERIFIED_DEFAULT`/`'single'`, since a single upstream GA7 lookup is one pass never
+  two, regardless of whether the value resolved or fell back to `PENDING_GA7_LOOKUP`) — checked
+  that every row's `verification_pass_status` reads that constant, a real detector for an unearned
+  `two_pass_verified` claim (§N.7 item 4/§N.8), the first purely-vocabulary conjunct in this
+  contract series.
+- **(p)/(q)** `sade_sati_downstream_cross_reference`'s `d10_karya_bhava_activation_flag`/
+  `argala_during_period_jsonb` read the SAME natal_facts keys `sade_sati_phase`'s per-phase loop
+  reads (not phase-scoped, so identical across VISHAKHA/JANMA/ANUMUKHA) — cross-checked against
+  the VISHAKHA phase specifically (the canonical first-phase representative) rather than an
+  arbitrary phase name.
+
+All seven verified live clean (0 violations across every check), then individually
+mutation-tested via the transactional `UPDATE`+`ROLLBACK` pattern (D-L1-66/D-L1-68) — including
+one flag-flip mutation for the boolean-domain checks (k)/(n)/(p) rather than always corrupting a
+timestamp/number. `integrity_check_sql` carried forward all ten prior conjuncts (a)-(j) verbatim
+inside the new full-replacement value. No writer touched. Full
+`platform/tests/unit/migrations/` suite: 188 passed / 91 skipped (39 files).
+
+CYCLE 45 L1: **closed the F-A14 campaign's `ga_sade_sati` widening arc entirely** — PR #1994
+(migration 754) brings it from 2/15 (migration 748, cycle 37) to 15/15 across four migrations and
+three cycles (752/753/754, cycles 43-45). Next: pick the next F-A14 widening target
+(`ga_structural`, 56/57 categories remain — by far the largest remaining gap in the campaign) or
+`ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1883,7 +1938,7 @@ none accepted yet (blocked on #1736).
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
-| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968, widened #1987 cycle 43, widened again #1990 cycle 44 — 10/15 categories: sade_sati_cycle, sade_sati_phase_quarter, dhaiya_period, kantaka_shani_period, ashtama_shani_period, ardha_ashtama_shani_period, sade_sati_phase, janma_shani_period, vishakha_shani_period, anumukha_shani_period) |
+| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
@@ -1894,10 +1949,12 @@ none accepted yet (blocked on #1736).
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
 21-40)**: ga_dashas, ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka,
 ga_medical, ga_vastu, ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial,
-1/57 categories — the other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial,
-2/15 categories], ga_transit_anchors, ga_ayurdaya, ga_prashna [scoped to ga_prashna_lagna only —
-ga_prashna_judgment is genuinely empty on every built chart]. `expected_volume_formula`
-NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
+1/57 categories — the other 56 remain a future pass], ga_yoga, ga_vichara, **ga_sade_sati
+[COMPLETE, 15/15 categories as of cycle 45]**, ga_transit_anchors, ga_ayurdaya, ga_prashna
+[scoped to ga_prashna_lagna only — ga_prashna_judgment is genuinely empty on every built chart].
+`expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
+`ga_structural`'s 56/57 remaining categories are now the single largest F-A14 coverage gap in the
+whole campaign.
 
 ## Decisions log
 
@@ -2468,6 +2525,21 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   L2 pin directly (confirmed clean afterward) and partially fixed `#1853`'s (pinned against an
   in-history commit since that branch isn't rebased yet — will go stale again once it is);
   deferred the `#1853` rebase to a future cycle rather than fold it into this cycle's bounded unit.
+
+- **D-L1-69** — C8 v2.3 cycle 45: completed `ga_sade_sati`'s F-A14 contract to 15/15 categories
+  (migration 754, PR #1994) — the final 5 categories, closing an arc that began at 2/15
+  (migration 748, cycle 37) and widened through 6/15 (D-L1-66) → 10/15 (D-L1-68) → 15/15 across
+  four migrations and three cycles. Deliberately varied the check shape per category rather than
+  reusing the same temporal-ordering template seven more times: a formula re-derivation from a
+  JSONB's presence (`cancellation_active_flag`), a constant-honest-tier vocabulary check
+  (`_verif_for_text` always returns `'single'` — the first purely-vocabulary conjunct in this
+  contract series), and a cross-check pinned to a specific named phase (VISHAKHA) rather than an
+  arbitrary one, alongside the established temporal-ordering/duration-re-derivation/cross-category
+  templates. Also fixed the genuine DIRTY `#1853` this cycle (deferred from D-L1-68): rebased
+  cleanly (unlike `#1898`'s cycle-44 rebase, no conflicts this time), and both digest/pin `--check`
+  gates passed immediately with zero regeneration needed — `l2-3f`'s prior partial fix on that
+  branch turned out to already be valid against the rebased tree, no further action required from
+  either session.
 
 ## Held items
 
@@ -3139,3 +3211,24 @@ L1 must satisfy rather than a feature it consumes.
   10/15 categories (PR #1990, migration 753) -- next: rebase #1853 (deferred from this cycle, then
   ping l2-3f for the follow-up re-pin), continue widening ga_sade_sati (5 categories remain) or
   ga_structural (56 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T05:0xZ -- CYCLE 45 (C8 v2.3). PR hygiene: #1827/#1898/#1990 all CLEAN-but-unqueued
+  (checks green, re-armed auto-merge). #1853 fixed: genuinely DIRTY (26 commits behind main, per
+  l2-3f's heads-up), rebased cleanly this time (no conflicts, unlike #1898's cycle-44 rebase) --
+  both digest/pin --check gates passed immediately with zero regen needed, l2-3f's prior partial
+  fix already valid against the rebased tree. #1928/#1892 unchanged. Unit of work: completed
+  ga_sade_sati's F-A14 contract to 15/15 categories (PR #1994, migration 754) -- the final 5
+  (sade_sati_modifier_overlay, sade_sati_saturn_retrograde_subset, sade_sati_cancellation_check,
+  sade_sati_concurrent_dasha_overlay, sade_sati_downstream_cross_reference). Deliberately varied
+  check shape across the 7 new conjuncts rather than reusing the same template: a formula
+  re-derivation from a JSONB's presence (cancellation_active_flag <-> rules jsonb non-null,
+  matching evaluate_cancellation_rules' own `len(rules_fired) > 0` return statement), a
+  constant-honest-tier vocabulary check (_verif_for_text always returns 'single' -- first purely-
+  vocabulary conjunct in this series), and a cross-check pinned to the VISHAKHA phase specifically
+  rather than an arbitrary one. All 7 verified live clean then individually mutation-tested via
+  the transactional UPDATE+ROLLBACK pattern, including flag-flip mutations for the boolean-domain
+  checks. integrity_check_sql carried forward all 10 prior conjuncts verbatim. No writer touched.
+  Full platform/tests/unit/migrations/ suite: 188 passed / 91 skipped (39 files). CYCLE 45 L1:
+  CLOSED ga_sade_sati's entire F-A14 widening arc (2/15 at migration 748 cycle 37 -> 15/15 at
+  migration 754 cycle 45, across 4 migrations/3 cycles) -- next: pick up ga_structural's F-A14
+  widening (56/57 categories remain, now the single largest coverage gap in the campaign), or
+  ga_positions re-dispatch once #1892 lands.
