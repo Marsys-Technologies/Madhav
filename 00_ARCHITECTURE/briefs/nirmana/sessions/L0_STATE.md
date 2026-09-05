@@ -1920,3 +1920,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 5/11/19/68). New queue
   head #1907, ~4.5min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 1 (4/10/18/67) though main HEAD unchanged (still
+  `8d35be284`) — likely a queue reordering/removal ahead of mine, not a merge I need to track by
+  SHA. No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen holds.
