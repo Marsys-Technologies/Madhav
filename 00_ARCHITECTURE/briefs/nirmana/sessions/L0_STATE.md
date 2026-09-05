@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-V: flagged #1856 (orchestrator UUID-serialization crash) as an unruled-out risk for a real dispatch of either target asset; queue stalled again at 25-deep
+last_updated: 2026-09-05 — cost ledger refreshed to cover D-L0-J..V; queue confirmed stalled (main frozen 2 cycles) but already sharper-diagnosed by L4 (D-CND-18/#1825), not re-flagging
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -492,6 +492,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | P0 integrity-detector fixes + #1772 tooling | ~1.5 hr | 2 PRs, tests, digest regen |
 | depends_on normalization + dispatcher fix (#1728) | ~40 min | fingerprint-neutral data + code |
 | C12 wave-1 defect investigation (6 assets) | ~50 min | detector-first, per-asset attribution |
+| C8 v2.3 supervised-cycle resumption (D-L0-J through D-L0-V, cycles 1-18) | ~3 hrs across 18 bounded cycles | Read-only-verified all 5 originally-failing C12 checks (0 needed a writer fix — all either stale-build-vs-current-writer or a check bug); landed 3 check-correction migrations (692/693/694, PRs #1829/#1832/#1836, all still merge-queue-pending); reconstructed the retired `nrec` evidence-submission mechanism + built and triple-cross-validated a registry-fingerprint/analysis-digest replica toolkit; found + confirmed 2 real infra state changes (job-image redeploy clears bg_cohort; dispatch-script schema bug #1833/#1838 still gates real dispatch); ran a full non-destructive dry-run dispatch rehearsal for both migration-fixed assets (D-L0-U); flagged one campaign-wide risk (#1856) against L0's own assets. Net: **zero code/writer changes needed** on the original 5-asset C12 backlog — every fix was either "correct the check" or "wait for infra," a materially different outcome than D-L0-F's initial "4 of 5 need a writer fix, MUST" call |
 
 ## Heartbeat
 
@@ -828,3 +829,16 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   path, so they don't rule this out. Flagged it, didn't chase L5's Python (not L0's fix to make).
   NEXT: same as before — poll the queue; additionally, **check #1856's resolution status before
   ever attempting a real (non-dry-run) dispatch**, not just before the migrations merge.
+- 2026-09-05 — **Cycle 18.** PR hygiene: unchanged, all 3 migration PRs still `is:queued` (25-deep,
+  composition churning but `main` tip frozen at `bd398f065` for 2 full cycles now — confirmed
+  stalled, not just slow); `#1828` clean. Nothing to fix; **not** re-flagging the stall — checked
+  #1713 first and **L4 independently ran a sharper diagnostic** (`gh run list --event merge_group`:
+  merge-group CI green every ~12-13 min, yet zero commits land — the block is outside the three
+  tracked CI workflows), already tracked as D-CND-18/#1825. Piling on the same observation with
+  weaker evidence would be noise. With nothing new to diagnose and no fresh merge to act on, used
+  this cycle for genuine prep (C8 priority-5 item): **the Cost ledger was stale since resumption**
+  (last entry predated this whole 17-cycle run) — added a summary row covering D-L0-J through D-L0-V
+  and its headline result: **zero writer/code changes were needed anywhere in the original 5-asset
+  C12 backlog** — every one of D-L0-F's "fix the writer, MUST" calls turned out, on full
+  investigation, to be either a stale-build-vs-current-writer story or a bug in the check itself.
+  NEXT: keep polling; genuinely nothing else to do until a merge lands or #1856 resolves.
