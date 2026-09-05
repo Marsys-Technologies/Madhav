@@ -225,6 +225,17 @@ class TestDetectLayerLeakage:
             rec = detect_layer_leakage(a)
             assert rec is not None, f"basis={bad_basis!r} must be flagged"
 
+    def test_null_or_empty_basis_flagged(self):
+        # F-14: a writer that omits confidence_basis entirely (NULL) or writes an
+        # empty string is the exact failure mode this firewall exists to catch --
+        # the prior `if basis and ...` short-circuited before the inequality ran,
+        # so this case tripped nothing.
+        for bad_basis in (None, '', '   '):
+            a = _clean_anchor(confidence_basis=bad_basis)
+            rec = detect_layer_leakage(a)
+            assert rec is not None, f"basis={bad_basis!r} must be flagged, not silently pass"
+            assert rec.leakage_class == 'l5_calibration_attempted'
+
 
 class TestDetectCeilingInputsDegenerate:
     """F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b)): the G-LADDER ceiling's own two
