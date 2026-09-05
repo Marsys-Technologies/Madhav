@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:42Z (C8 v2.3 cycle 45) — **PR hygiene: rebased onto main's 47-commit advance**
+  (new tip `80a9cd71e`, #1777 merged). Force-pushed; #1826's checks reset fresh (none red).
+  #1844 stayed queued throughout, now at 42 (was 44). #1901 still stuck on the same 2 checks
+  (Governance Gates, Build Check) — ~8 min in, within normal range, not stuck. #1861→9,
+  #1873→22. #1856 still OPEN. No eligible dispatch.
 - 2026-09-06T~05:37Z (C8 v2.3 cycle 44) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1901 progressing — down to 2 pending
   checks (Governance Gates, Build Check) from 3 last cycle, no red, not yet queued. Queue
