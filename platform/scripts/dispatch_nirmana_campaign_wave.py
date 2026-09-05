@@ -866,7 +866,7 @@ def _load_definition(cur, definition_revision: str) -> dict[str, Any]:
     cur.execute(
         """
         SELECT definition_revision, definition_status, manifest, manifest_sha256
-          FROM nirmana_elevation_campaign_definitions
+          FROM nirmana_evidence.nirmana_elevation_campaign_definitions
          WHERE campaign_id=%s AND definition_revision=%s
            AND superseded_at IS NULL
         """,
@@ -1000,7 +1000,7 @@ def create_campaign_run(
             """
             SELECT event_id, entity_id, event_type, evidence_payload,
                    source_kind, source_ref
-              FROM nirmana_elevation_campaign_events
+              FROM nirmana_evidence.nirmana_elevation_campaign_events
              WHERE campaign_id=%s AND definition_revision=%s
                AND entity_type='asset' AND layer=%s
                AND entity_id = ANY(%s) AND event_type = ANY(%s)
@@ -1032,7 +1032,7 @@ def create_campaign_run(
             cur.execute(
                 """
                 SELECT DISTINCT entity_id
-                  FROM nirmana_elevation_campaign_events
+                  FROM nirmana_evidence.nirmana_elevation_campaign_events
                  WHERE campaign_id=%s AND definition_revision=%s
                    AND event_type='asset_frozen' AND entity_id = ANY(%s)
                 """,
@@ -1111,7 +1111,7 @@ def create_campaign_run(
         cur.execute(
             """
             SELECT entity_id
-              FROM nirmana_elevation_campaign_events
+              FROM nirmana_evidence.nirmana_elevation_campaign_events
              WHERE campaign_id=%s AND definition_revision=%s
                AND event_type='accepted_rebuild_observed'
                AND entity_id = ANY(%s)
