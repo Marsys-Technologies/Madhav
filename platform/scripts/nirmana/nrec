@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# nrec — NIRMĀṆA campaign evidence-submission helper.
+#
+# Conductor-owned shared campaign tooling (charter C5; ruling on issue #1716).
+# Submits one evidence/definition command to the campaign executor route with the
+# CORRECT service-account identity, and REFUSES to send it with the wrong one.
+#
+#   nrec --as executor --file cmd.json
+#   nrec --as verifier --file cmd.json
+#   cat cmd.json | nrec --as verifier
+#   nrec --as verifier --file cmd.json --dry-run     # show the decision, mint nothing, send nothing
+#
+# ---------------------------------------------------------------------------
+# WHY THIS EXISTS
+#
+# The campaign enforces implementer != certifier at two layers: the HTTP route
+# (requiredPrincipalFor, nirmana-elevation-executor/route.ts) and the DB trigger
+# (nirmana_elevation_guard_server_reconstructed_insert). Both make the SAME split:
+#
+#   source_kind == 'server_reconstructed'  ->  VERIFIER identity
+#   anything else                          ->  EXECUTOR identity
+#
+# Five layer sessions are about to need this mechanism ~110 more times. Each
+# inlining its own gcloud+curl is five chances to blur that split -- which is
+# hard-floor territory, not a style question. This helper makes the rule
+# mechanically unbreakable instead of conventionally observed.
+#
+# TWO DESIGN DECISIONS WORTH KNOWING BEFORE YOU EDIT THIS FILE:
+#
+# 1. The required identity is DERIVED FROM THE SUBMITTED source_kind, never from
+#    a hardcoded event_type list. That is exactly how route.ts does it, and its
+#    comment says why: checking the actual source_kind "keeps this in sync with
+#    that schema by construction". A list here would be a fourth copy of the
+#    split, free to drift from the other three. Do not introduce one.
+#
+# 2. --as is REQUIRED and is checked, not inferred. The helper could silently
+#    pick the right identity from the body -- and that is precisely what it must
+#    not do. The caller declares which hat it is wearing; the helper refuses a
+#    mismatch. A helper that quietly corrects you teaches nothing and would let a
+#    session mint a verifier capsule for work it just implemented without ever
+#    noticing it had crossed the line.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+AUDIENCE='https://amjis-web-938361928218.asia-south1.run.app'
+ROUTE="${AUDIENCE}/api/admin/internal/nirmana-elevation-executor"
+EXECUTOR_SA='amjis-nirmana-executor@madhav-astrology.iam.gserviceaccount.com'
+VERIFIER_SA='amjis-nirmana-verifier@madhav-astrology.iam.gserviceaccount.com'
+
+die() { printf 'nrec: %s\n' "$*" >&2; exit 1; }
+
+AS=''; FILE=''; DRY_RUN=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --as)      AS="${2:-}"; shift 2 ;;
+    --file|-f) FILE="${2:-}"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+    *) die "unknown argument '$1' (see --help)" ;;
+  esac
+done
+
+[ -n "$AS" ] || die "--as executor|verifier is required. It is not optional and it is not inferred:
+      you declare which identity this submission is made under, and nrec refuses a
+      mismatch against the body's source_kind. See the header of this script."
+[ "$AS" = executor ] || [ "$AS" = verifier ] || die "--as must be 'executor' or 'verifier', got '$AS'"
+
+if [ -n "$FILE" ]; then
+  [ -r "$FILE" ] || die "cannot read command file: $FILE"
+  BODY="$(cat -- "$FILE")"
+else
+  [ ! -t 0 ] || die "no command body: pass --file <path> or pipe JSON on stdin"
+  BODY="$(cat)"
+fi
+
+command -v jq >/dev/null 2>&1 || die "jq is required (it parses the command body to derive the identity)"
+printf '%s' "$BODY" | jq empty 2>/dev/null || die "command body is not valid JSON"
+
+COMMAND="$(printf '%s' "$BODY" | jq -r '.command // empty')"
+SOURCE_KIND="$(printf '%s' "$BODY" | jq -r '.source_kind // empty')"
+EVENT_TYPE="$(printf '%s' "$BODY" | jq -r '.event_type // empty')"
+[ -n "$COMMAND" ] || die "command body has no .command field"
+
+# Mirror requiredPrincipalFor() exactly. Derived from source_kind, never a list.
+if [ "$COMMAND" = 'record_evidence' ] && [ "$SOURCE_KIND" = 'server_reconstructed' ]; then
+  REQUIRED='verifier'
+else
+  REQUIRED='executor'
+fi
+
+if [ "$AS" != "$REQUIRED" ]; then
+  printf 'nrec: REFUSED — identity mismatch.\n\n' >&2
+  printf '  you asked to submit as : %s\n' "$AS" >&2
+  printf '  this command requires  : %s\n' "$REQUIRED" >&2
+  printf '  command                : %s\n' "$COMMAND" >&2
+  printf '  source_kind            : %s\n' "${SOURCE_KIND:-(none)}" >&2
+  printf '  event_type             : %s\n\n' "${EVENT_TYPE:-(none)}" >&2
+  if [ "$REQUIRED" = 'verifier' ]; then
+    printf '  A server_reconstructed event is a CERTIFICATION. Under charter C8.2 it is\n' >&2
+    printf '  minted by the verifier identity after independent, fresh-context\n' >&2
+    printf '  reconstruction -- never by the session that did the implementation.\n' >&2
+    printf '  If you implemented this asset, this event is not yours to submit.\n' >&2
+  else
+    printf '  This is an executor command (a report of what happened), not a\n' >&2
+    printf '  certification. Submitting it under the verifier identity would spend\n' >&2
+    printf '  verifier standing on a non-verification and the route would 403 anyway.\n' >&2
+  fi
+  exit 2
+fi
+
+if [ "$AS" = 'verifier' ]; then SA="$VERIFIER_SA"; else SA="$EXECUTOR_SA"; fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  printf 'nrec: DRY RUN — nothing minted, nothing sent.\n'
+  printf '  command      : %s\n  source_kind  : %s\n  event_type   : %s\n' \
+    "$COMMAND" "${SOURCE_KIND:-(none)}" "${EVENT_TYPE:-(none)}"
+  printf '  identity     : %s (%s)\n  route        : %s\n' "$AS" "$SA" "$ROUTE"
+  exit 0
+fi
+
+# --include-email is NOT optional. Without it the minted JWT carries no `email`
+# claim at all, verifyOidcToken() returns null on `if (!payload?.email)`, and the
+# route answers 403 -- indistinguishable from a wrong or expired token unless you
+# already know to look. Recorded the hard way in CAMPAIGN_STATE.md (2026-09-01).
+mint_token() {
+  gcloud auth print-identity-token \
+    --impersonate-service-account="$SA" \
+    --audiences="$AUDIENCE" \
+    --include-email 2>/dev/null
+}
+
+TOKEN="$(mint_token || true)"
+if [ -z "$TOKEN" ]; then
+  # Token-creator grants take a short time to propagate; one retry, per the
+  # PERMISSION_DENIED note in CAMPAIGN_STATE.md. Two failures is a real problem.
+  sleep 5
+  TOKEN="$(mint_token || true)"
+  [ -n "$TOKEN" ] || die "could not mint an identity token for $SA.
+      Check: gcloud auth list (are you the native's own identity?), and that
+      serviceAccountTokenCreator on that SA has propagated."
+fi
+
+RESPONSE_FILE="$(mktemp)"
+trap 'rm -f "$RESPONSE_FILE"' EXIT
+STATUS="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
+  -X POST "$ROUTE" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H 'Content-Type: application/json' \
+  --data-binary "$BODY")"
+
+printf 'nrec: HTTP %s  [%s as %s]\n' "$STATUS" "$COMMAND" "$AS" >&2
+cat "$RESPONSE_FILE"; printf '\n'
+
+case "$STATUS" in
+  2*) exit 0 ;;
+  403) printf '\nnrec: 403 — the route rejected this identity. If the body is right, the\n      most common cause is a token minted without --include-email; nrec always\n      passes it, so suspect SA impersonation rights or an expired session.\n' >&2; exit 1 ;;
+  409) printf '\nnrec: 409 — idempotency conflict. This event already exists. That is usually\n      correct behaviour, not an error: check the ledger before re-submitting.\n' >&2; exit 1 ;;
+  *)  exit 1 ;;
+esac
