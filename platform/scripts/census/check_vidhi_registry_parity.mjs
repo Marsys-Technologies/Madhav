@@ -42,6 +42,18 @@ const CAP_MAP = join(REPO, '00_ARCHITECTURE/llm_consumption_audit/capability_map
 const PY = process.env.PYTHON_BIN || 'python3'
 const EXEC_OPTS = { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
 
+// Explicit, reviewed exceptions: a canonical TS primitive with no Python DB-seed
+// row yet, tracked as a DOCUMENTED gap rather than a silent drift. bg_vidhi_primitives.py
+// mirrors into vidhi_primitives (migration 440), whose live count/content-hash is pinned
+// by an already-applied migration (628) via L0's frozen writer_inventory_sha256
+// (nirmana_analysis_layer_pins.py's L0_FROZEN_PINS) -- adjudication #1715 requirement 3
+// reserves ANY change to that pin for its own explicit process, not an ordinary PR. Adding
+// vastu_read (F-E10) to bg_vidhi_primitives.py was ruled D-CND-30, then REVERSED on finding
+// #1715's reservation (NIRMANA issue #1909). Until a future, separately-authorized L0
+// re-pin event mints the actual DB row, this gate treats vastu_read as a KNOWN, named
+// exception rather than failing the whole gate on undocumented drift.
+const KNOWN_TS_ONLY_PRIMITIVES = new Set(['vastu_read'])
+
 /** Recursive object-key sort → a stable byte form for deep comparison independent of key order. */
 function canon(v) {
   if (Array.isArray(v)) return v.map(canon)
@@ -75,10 +87,20 @@ const pyFloors = readOrShell('VIDHI_PY_FLOORS_FILE', () =>
 
 // ── ASSERTION 1: TS ↔ Python deep equality ─────────────────────────────────
 {
-  const tsP = tsDump.primitives ?? []
+  const tsPAll = tsDump.primitives ?? []
+  const tsP = tsPAll.filter((t) => !KNOWN_TS_ONLY_PRIMITIVES.has(t.primitive_id))
   const pyP = pyPrims.primitives ?? []
   if (tsP.length !== pyP.length) {
-    failures.push(`[1] primitive COUNT differs: TS=${tsP.length} Python=${pyP.length}`)
+    failures.push(`[1] primitive COUNT differs: TS=${tsP.length} Python=${pyP.length} (excluding ${KNOWN_TS_ONLY_PRIMITIVES.size} documented TS-only exception(s): ${[...KNOWN_TS_ONLY_PRIMITIVES].join(', ')})`)
+  }
+  // Every entry in the allowlist must actually exist in TS and actually be absent from
+  // Python -- an allowlist that no longer names a real gap is stale, not documentation.
+  for (const primitiveId of KNOWN_TS_ONLY_PRIMITIVES) {
+    if (!tsPAll.find((t) => t.primitive_id === primitiveId)) {
+      failures.push(`[1] KNOWN_TS_ONLY_PRIMITIVES names "${primitiveId}", which no longer exists in TS — remove it from the allowlist`)
+    } else if (pyP.find((p) => p.primitive_id === primitiveId)) {
+      failures.push(`[1] KNOWN_TS_ONLY_PRIMITIVES names "${primitiveId}", but Python now HAS it too — remove it from the allowlist, the gap is closed`)
+    }
   }
   const pyById = new Map(pyP.map((p) => [p.primitive_id, p]))
   for (const t of tsP) {
