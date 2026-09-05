@@ -3245,7 +3245,16 @@ export const ASSET_REGISTRY_UPSERT_SQL = `INSERT INTO asset_registry (
   english_description = EXCLUDED.english_description,
   storage_type = EXCLUDED.storage_type,
   target_table = EXCLUDED.target_table,
-  count_sql = EXCLUDED.count_sql,
+  -- count_sql is migration-governed once a row exists, same rule and same
+  -- reasoning as expected_volume_formula/expected_volume_inputs below (NIRMANA
+  -- #1757, L5's own finding): it is the measured choice that feeds the volume
+  -- fields (e.g. a multi-table writer's true row count is a derived sum a
+  -- layer computed against production, not something the seed's single literal
+  -- can express), so a routine re-seed must not revert it any more than it may
+  -- revert the formula it validates against. target_table is left seed-owned
+  -- deliberately -- it is a structural declaration, not a measured quantity,
+  -- and stays EXCLUDED.target_table above.
+  count_sql = asset_registry.count_sql,
   size_sql = EXCLUDED.size_sql,
   -- Volume expectation is migration-governed once a row exists (C12 /
   -- D-CND-01; NIRMANA issue #1757). The seed supplies these for NEW rows, but a
