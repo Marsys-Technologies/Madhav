@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — PR #1832 (bg_vidhi_floors tiling fix) MERGED — 2 of 3 migration PRs now landed; not yet applied to live DB. bg_doshas real W2 accepted last cycle; next is verifier-side integrity_verified+asset_frozen schema investigation.
+last_updated: 2026-09-05 — D-L0-Z: corrected an over-optimistic "no dispatch needed" claim — freeze requires a real accepted_rebuild_observed receipt for every build-obligation asset; #1838 gates everyone, no exceptions
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,10 +41,10 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | **no dispatch needed** | **Drafted rewrite LANDED (migration 694, PR #1836)**: stale bare-count + hardcoded per-body VALUES table replaced with gapless-tiling + achieved floor (33,933). Verified TRUE against live data as-is — can go straight to W4 accept on LIVE fingerprint, same as bg_doshas |
+| bg_gochara_arcs | rebuild_only (D-L0-Z corrected) | **Drafted rewrite LANDED (migration 694, PR #1836)**, not yet merged (queued). Data already correct — a dispatch would idempotently rewrite the same rows — but freeze still requires an actual `accepted_rebuild_observed` receipt (D-L0-Z), so dispatch via #1838 is still required |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
-| bg_doshas | **no dispatch needed** | **Check is LIVE + evaluates TRUE (D-L0-Y). Fresh W2 REAL-SUBMITTED (both 201).** Next: verifier-side `integrity_verified`+`asset_frozen` (needs its own schema investigation first, per D-L0-Y) |
+| bg_doshas | rebuild_only (D-L0-Z corrected) | **Check LIVE + TRUE (D-L0-Y); fresh W2 real-submitted (both 201).** Freeze still requires dispatch via #1838 first — the writer will idempotently rewrite the same 79/79/79 rows and produce the `accepted_rebuild_observed` receipt `integrity_verified`/`asset_frozen` require (D-L0-Z) |
 | bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
@@ -527,6 +527,26 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `requireFreezeProvenance` in `definitions.ts` for their exact evidence-payload contract before
   attempting either, same discipline as was applied to the W2 schema before this submission.
 
+- **D-L0-Z — CORRECTION to D-L0-L/D-L0-O/last cycle's plan: dispatch is NOT skippable for
+  bg_doshas/bg_gochara_arcs after all, even though their DATA never needs to change.** Read
+  `requireIntegrityProvenance`/`requireFreezeProvenance` (`definitions.ts:2092-2178`) before
+  attempting either event, per last cycle's own plan — and found the real gate: for any
+  `execution_obligation='build'` asset (both of these are), `integrity_verified` must bind to, and
+  `asset_frozen` must occur strictly after, a **current `accepted_rebuild_observed` receipt** — i.e.
+  a genuine build-run execution record. There is no "skip execution, data already matches" path in
+  the lifecycle model; `accepted_rebuild_observed` can only be produced by an actual dispatch
+  (idempotent rewrite of the same 79/79/79 rows, in bg_doshas' case, but still a real run through
+  `dispatch_nirmana_campaign_wave.py` → the pipeline job). **Re-read D-L0-H's own precedent
+  correctly this time**: `bg_parihara_rules` reached "ROUTED" (W1/W2 done), never "FROZEN" — I had
+  misremembered that as a skip-dispatch freeze precedent when it was actually the SAME W2-only
+  stopping point I reached for `bg_doshas` last cycle, not further. **Net effect on the plan**: last
+  cycle's real W2 submission for `bg_doshas` was still correct and necessary (freeze needs *fresh*
+  W2 bound to the corrected fingerprint regardless), but it is not sufficient by itself — **every
+  asset, without exception, is gated on #1838 for the actual freeze**, simplifying the picture
+  rather than complicating it (no more "some assets skip dispatch" special-casing to track).
+  Corrected the assets-table framing accordingly. This is exactly the kind of claim §N.8 (Earned-
+  Signal Principle) exists to catch: verify before asserting a shortcut exists, not after.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -992,3 +1012,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   11/14-intent completeness gap (D-L0-N) still needs #1838 + dispatch, so `bg_vidhi_floors` won't be
   freezable purely from this migration the way `bg_doshas` was. Also watch #1836 (bg_gochara_arcs)
   for its own merge.
+- 2026-09-05 — **Cycle 30 — important self-correction (D-L0-Z).** PR hygiene: `#1836`/`#1838`
+  still cleanly queued (38-deep), `#1828` clean, nothing to fix; no new merges. Deploy advanced
+  (`3bfeaf284`, now includes #1829) but confirmed NOT yet including #1832 (`git merge-base
+  --is-ancestor` check) — `bg_vidhi_floors` still shows the old `hi<>n` clause. **Did the planned
+  next step (read `requireIntegrityProvenance`/`requireFreezeProvenance`) before attempting either
+  event, and it changed the plan**: freeze requires a genuine `accepted_rebuild_observed` receipt
+  for any `execution_obligation='build'` asset — no "data already matches, skip execution" path
+  exists in the lifecycle model. Re-read D-L0-H's own bg_parihara_rules precedent correctly this
+  time: it reached "ROUTED" (W2 only), never "FROZEN" — the same stopping point as `bg_doshas` now,
+  not further. **Corrected D-L0-L/D-L0-O/last cycle's over-optimistic "no dispatch needed" framing**
+  in the assets table and decisions log — every remaining asset, without exception, needs #1838 to
+  actually freeze. This simplifies rather than complicates the picture (one blocker for everyone),
+  and is exactly the kind of claim to verify before asserting per §N.8. NEXT: still #1838; once it
+  merges+deploys, dispatch (even a no-op-content rebuild) is required for every asset before any
+  `integrity_verified`/`asset_frozen` submission — plan accordingly, don't try to skip it again.
