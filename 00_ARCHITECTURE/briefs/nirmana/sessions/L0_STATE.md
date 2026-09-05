@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_vidhi_floors tiling check bug found+fixed (D-L0-M); PR #1832 open; 3 open PRs (#1828/#1829/#1832) all auto-merge armed, none queued yet
+last_updated: 2026-09-05 — bg_vidhi_floors intent/item gap diagnosed (D-L0-N); all 5 original integrity failures now fully verdicted; #1829 confirmed genuinely queued
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,7 +41,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
-| bg_vidhi_floors | rebuild_only | **Tiling false-positive FIXED (D-L0-M, PR #1832)**: the 7 `_deepdive` gaps are the documented Ω8-band design (order 40+), not a defect — check corrected. **Still genuinely incomplete live** (11/14 intents, 286/409 items) + `catalog_status=DRAFT` (bundle DRAFT→CURRENT re-acceptance, D-CND-09) — this part is real, needs dispatch |
+| bg_vidhi_floors | rebuild_only | **Both open questions diagnosed, fully verified read-only.** Tiling false-positive FIXED (D-L0-M, PR #1832). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source is internally sound (14/409, 0 dangling FKs) — pending job-image redeploy + dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) |
 | bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
 | bg_compendium_index | rebuild_only | wave 2; depends_on normalized; needs wave-1 frozen (E-gate) + own integrity check |
 | bg_rules | rebuild_only | wave 2; depends_on normalized |
@@ -179,6 +179,30 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   question across all 5 originally-failing integrity checks — needs its own investigation (why are
   3 intents missing live when the writer's source has all 14?) once time allows; otherwise continue
   polling job-image deploy + #1828/#1829/#1832 queue status each cycle.
+
+- **D-L0-N** — **bg_vidhi_floors 11/14-intent, 286/409-item gap: diagnosed, same stale-build family
+  as D-L0-J/K (with one honest caveat).** Live has 11 intents; today's writer source (`FLOORS`
+  list) has 14 — the 3 missing (`undertaking_election`, `biography_narrative`, `ritual_yajna`) are
+  all tagged "ṢAḌ-DARŚANA W5" in their `notes` field, a later wave's addition. Of the 11 present
+  intents, live is short by exactly 24 items total vs. today's source — traced to the item level
+  (diffed live `wealth_deepdive` row-by-row against source): live has orders 1-35 then jumps to
+  40-44, **missing orders 36-38** (`now_read`, `ahead_read`, `priority_read`) — a later addition to
+  the machine_band tail, present identically (same -3 pattern) across all 8 affected intents.
+  Verified today's FULL source is internally sound: **14 intents / 409 items exactly matches
+  target**, all 55 distinct `primitive_id`s referenced exist in `vidhi_primitives` (0 dangling FKs),
+  no duplicate `(intent, item_order)` pairs. **This is the same story as bg_yogas/bg_dasha_systems**:
+  live predates later additions to the writer's own source, not a writer defect — a correct dispatch
+  of today's code should produce exactly 14/409 with 0 tiling violations (post migration 693) and 0
+  FK violations. **Honest caveat (unlike D-L0-J/K, cannot be fully closed read-only):** this
+  conclusion assumes the *deployed pipeline job image* actually contains today's git HEAD of
+  `bg_vidhi_floors.py` — I can only verify the git checkout, not what's baked into the currently-
+  deployed (stale, pre-#1772) container. If the deployed image's writer predates the `now_read`/
+  `ahead_read`/`priority_read` addition or the 3 ṢAḌ-DARŚANA intents too, a dispatch today would
+  reproduce the current 11/286 state, not 14/409 — this is the same underlying job-image-deploy
+  blocker already tracked, just now understood to possibly gate bg_vidhi_floors' data-completeness
+  too, not only bg_cohort's dependency-satisfaction. **No further writer/migration work identified
+  for bg_vidhi_floors** — remaining path is: migration 693 merges → job-image redeploys with current
+  HEAD → dispatch → verify actual yield matches 14/409 → DRAFT→CURRENT re-acceptance (D-CND-09).
 
 ## Held items
 
@@ -336,3 +360,25 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   remain stuck, investigate bg_vidhi_floors' live 11/14-intent gap (why does live lack 3 whole
   intents the writer's source defines?) as the next substantive unit, or bg_cohort once job-image
   moves.
+- 2026-09-05 — **Cycle 5.** PR hygiene: #1829 showed `mergeStateStatus=UNSTABLE` and
+  `autoMergeRequest=false` — investigated before anything else per contract. **Not a fault**: `gh pr
+  merge --auto` replied "already queued to merge", and `is:queued` confirmed #1829 genuinely in the
+  merge queue (`autoMergeRequest` flips false once the queue owns the merge, exactly the "doesn't
+  reflect queue state" caveat C8 warns about — re-armed defensively anyway, no-op since already
+  queued). #1828/#1832 unchanged: BLOCKED, checks pending, not DIRTY/RED, auto-merge armed, nothing
+  to fix. Job-image still stale. **bg_vidhi_floors — closed the last open question (D-L0-N),
+  read-only.** Diagnosed the 11/14-intent, 286/409-item live gap down to the exact item level: the
+  3 missing intents are all tagged "ṢAḌ-DARŚANA W5" in the writer source (a later wave's addition);
+  the 24-item shortfall among the 11 present intents traces to 3 specific newer items
+  (`now_read`/`ahead_read`/`priority_read` at orders 36-38) added identically across 8 intents.
+  Verified today's FULL writer source is internally sound — 14/409 exactly matches target, all 55
+  referenced `primitive_id`s exist in `vidhi_primitives`, no duplicate order values. Same
+  stale-build family as D-L0-J/K, **with one honest caveat this time**: closing it fully requires
+  confirming the *deployed* job image (not just the git checkout) already carries these newer
+  additions — can't verify that read-only, so it stays tied to the existing job-image-deploy
+  blocker rather than a second independently-resolved item. **Every one of the 5 originally-failing
+  L0 integrity checks now has a complete, evidenced verdict** — none require a writer code fix;
+  3 need only a check correction (2 landed, bg_gochara_arcs' drafted-but-unlanded), 2 need only a
+  fresh dispatch once the job-image moves. NEXT: nothing further to diagnose read-only on the
+  original 5 — keep polling PR queue status + job-image deploy each cycle; if job-image moves,
+  bg_cohort/bg_yogas/bg_dasha_systems/bg_vidhi_floors all become dispatch-eligible in one sweep.
