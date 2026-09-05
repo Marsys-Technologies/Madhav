@@ -1098,9 +1098,20 @@ def create_campaign_run(
                 )
             )
 
+        # Only a genuinely in-flight run blocks a fresh dispatch of the same
+        # (definition_revision, layer, wave, asset_ids) tuple -- the same "active"
+        # state set the existing build_runs_one_active_per_chart_idx partial index
+        # already uses elsewhere in this table. A run that reached a terminal state
+        # (completed/stopped/failed) without ever submitting accepted_rebuild_observed
+        # must not permanently consume its triggered_by key: since there is exactly
+        # one frozen definition_revision for the whole campaign, that key can never
+        # recur differently, so an unqualified block here would refuse re-authorization
+        # forever. An asset that DID already reach accepted_rebuild_observed is refused
+        # by the separate, independent check immediately below regardless of this one.
         cur.execute(
-            "SELECT id, state FROM build_runs WHERE triggered_by=%s ORDER BY created_at",
-            (triggered_by,),
+            "SELECT id, state FROM build_runs WHERE triggered_by=%s"
+            " AND state = ANY(%s) ORDER BY created_at",
+            (triggered_by, ["planned", "running", "paused"]),
         )
         prior_runs = cur.fetchall()
         if prior_runs:
