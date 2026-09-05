@@ -451,6 +451,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:22Z (C8 v2.3 cycle 38) — **Lesson learned: re-arming a `CLEAN-but-unqueued`
+  PR via `gh pr merge --auto` re-enters it at the BACK of the queue, not its old position.**
+  #1844 (re-queued last cycle) is confirmed `is:queued: true` but now at position 46 (was ~2
+  before ejection) — a top-40 GraphQL scan missed it entirely at first; had to page to
+  `first: 100` to find it. Not a defect, just the real cost of an ejection — noting it so a
+  future cycle doesn't waste time hunting for a "missing" PR that's simply queued deep. #1851
+  now at position 1 `AWAITING_CHECKS` (my other tracked blocker for #1848). #1861→13, #1873→26.
+  #1826 unchanged, no red. #1848/#1856/#1869 all still OPEN, #1869 unchanged at 3 comments.
 - 2026-09-06T~04:17Z (C8 v2.3 cycle 37) — **PR hygiene fix: #1844 ejected from queue, re-armed.**
   It had been mid-merge-group-check last cycle; this cycle it was fully gone from the top-10
   queue entries (not merged — `mergedAt: null`, no failing check anywhere in `gh pr checks`,
