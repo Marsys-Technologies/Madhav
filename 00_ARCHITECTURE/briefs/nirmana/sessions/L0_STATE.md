@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-Q: E-gate re-run corrects stale wave-2/3 framing (only bg_rules/bg_concordance genuinely ancestor-blocked); migration range corrected to 700-709 per conductor-2b
+last_updated: 2026-09-05 — D-L0-R: job image redeployed + confirmed carries #1772 (bg_cohort blocker cleared); dispatch still gated on #1838 (dispatch-script fix, unmerged); merge queue observed stalled, flagged to #1713
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -336,11 +336,33 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   resumes** — no separate "wave-2/3" governance gate exists beyond normal DAG order. Confidence:
   HIGH (ran the canonical query, not a re-derivation).
 
+- **D-L0-R — the pipeline job-image blocker is CLEARED; a second blocker (shared dispatch script)
+  is now the gate instead.** `brahma-build-pipeline-job`'s deployed image advanced from the
+  long-stale `d93d9d0a…` to `589284957…` — verified `git merge-base --is-ancestor ee8cf7d09
+  589284957…` is TRUE, so **#1772 is in the deployed image; `bg_cohort`'s DEP-ASSERT blocker is
+  cleared.** But dispatch isn't actually unblocked yet: the shared
+  `platform/scripts/dispatch_nirmana_campaign_wave.py` still carries the unqualified-schema bug
+  (Conductor's #1833/#1838 finding — every dispatch through it fails with `relation ... does not
+  exist` since migrations 632/633 moved the definitions/events tables into `nirmana_evidence`)
+  — checked the live file on `origin/main`: **#1838's fix is not merged yet**, so the script would
+  still fail today. Also observed and posted to #1713: **no merge to `main` since 13:54:58Z** despite
+  a 22-deep queue with PRs (e.g. #1791, #1801) showing 0 pending checks / 0 failures — looks like a
+  genuine campaign-wide merge-queue stall, not just normal latency; flagged as an observation (not
+  an adjudication — nothing for Conductor to *rule* on, just a fleet-health data point that may have
+  cleared its last sweep window). NEXT: once #1838 merges, **all 8 `OPEN-PENDING-PIN` L0 assets
+  become genuinely dispatch-ready in one sweep** — need to work out the actual dispatch invocation
+  (`dispatch_nirmana_campaign_wave.py`'s CLI, not yet read this cycle) as the next real unit of
+  work, separate from (and now higher-priority than) the evidence-submission toolkit built over the
+  last several cycles.
+
 ## Held items
 
-- **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
-  image `d93d9d0a` predates it. Poll deploy each loop.
-- **Wave-2/3 dispatch** (compendium_index, rules, text_index, concordance) — E-gate needs wave-1 frozen.
+- **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
+  confirmed ancestor of deployed `589284957…`). Superseded by the shared dispatch-script hold below.
+- **All L0 dispatch** — held on `dispatch_nirmana_campaign_wave.py`'s own schema-qualification bug
+  (#1833, fix in #1838, not yet merged) — the tool itself fails today regardless of job-image state.
+- **Wave-2/3 framing retired (D-L0-Q)**: `bg_compendium_index`/`bg_text_index` were never actually
+  wave-gated; only `bg_rules`/`bg_concordance` are genuinely ancestor-blocked (see assets table).
 - **Destructive rebuilds** (bg_yogas CASCADE parent, any asset with populated descendants) — per C13/WP-6:
   cascade_check + fresh verified snapshot + `--acknowledge-destroys`. Not a blanket hold post-#1781.
 
@@ -609,3 +631,17 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   top of this file with the full per-layer table so this doesn't recur. NEXT: same as last cycle —
   waiting on the queue; nothing new to diagnose read-only on the 11-asset backlog now that the
   E-gate picture is fully accurate.
+- 2026-09-05 — **Cycle 12.** PR hygiene: all 3 migration PRs still genuinely `is:queued` (queue now
+  22 deep, growing); `#1828` clean, pending checks. Nothing to fix on my own PRs. **Noticed the
+  queue growth without any merges landing and checked further: confirmed a real stall** — no merge
+  to `main` since 13:54:58Z, and other lanes' queued PRs (#1791, #1801) show 0 pending checks / 0
+  failures yet remain unmerged. Posted a factual observation to #1713 (not an adjudication — nothing
+  for Conductor to rule on). **Bigger finding this cycle (D-L0-R): the pipeline job image has been
+  redeployed** (`d93d9d0a…`→`589284957…`, verified `#1772` is now an ancestor) — `bg_cohort`'s
+  long-tracked blocker is cleared. But actual dispatch is still gated on a SECOND blocker:
+  `dispatch_nirmana_campaign_wave.py` (the shared dispatch script) still has the unqualified-schema
+  bug on `origin/main` (#1833, fix in #1838, not yet merged — checked the live file directly).
+  Updated Held Items to reflect both changes. NEXT: once #1838 merges, all 8 `OPEN-PENDING-PIN`
+  assets become genuinely dispatchable — read `dispatch_nirmana_campaign_wave.py`'s actual CLI/
+  invocation contract as the next unit, since this is now higher-priority than the (already-built)
+  evidence-submission toolkit.
