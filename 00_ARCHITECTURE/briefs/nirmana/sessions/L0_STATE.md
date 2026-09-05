@@ -183,3 +183,10 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `sessions/drafts/bg_gochara_arcs_integrity_rewrite.sql`. Bare `count(*)=34553` → strengthened
   gapless-contiguous per-body tiling + §N.4 floor; rewrite-floor-test satisfied (catches a gap the old
   count pin passes). Held from migration until #1816 rules + bundled with re-acceptance (D-CND-09).
+- 2026-09-05 — **bg_parihara_rules ROUTED (D-L0-H closed).** Accepted with LIVE fingerprint
+  `6b13b8a1…` (≠ frozen `527a9ec9…`), both events 201. Confirms #1816 ruling empirically: server
+  binds to LIVE, no gate change. My last unrouted asset is now routed → 10/10 remaining routed.
+  Adjudication **#1816 RESOLVED** (my misdiagnosis; the frozen-comparison pre-check in
+  `nirmana_batch_runner.py` was the client-side defect — TO REMOVE so gochara/vidhi re-acceptances
+  take the same live path). parihara freeze still needs ancestors (bg_doshas, bg_texts) frozen +
+  job-image deploy. Heartbeat.
