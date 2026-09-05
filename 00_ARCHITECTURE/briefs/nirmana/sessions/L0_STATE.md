@@ -74,6 +74,26 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   the check). The other 4 (`bg_dasha_systems`, `bg_doshas`, `bg_vidhi_floors`, `bg_yogas`) are **real
   data defects** the invariants correctly caught → fix the writer (MUST) or adjudication with derivation.
   Do NOT weaken any check to pass.
+- **D-L0-G** — `bg_yogas` source_chunks-85 pin provenance (C12 "check the pin's git history first"):
+  the pin lives in **migration 630** (`630_nirmana_l0_wave1_correctness_contract.sql`, 2026-08-26,
+  #1571) — a *real* content contract (233×3 projections + FULL-JOIN + content fingerprints + `= 85`
+  source-chunk links), NOT a bare R0-T01 equality. The test's own explanation derives it: 233 yogas =
+  144 core + 4 detector + **85 corpus-extracted**, each corpus-extracted yoga contributing one
+  `brahma_yoga_source_chunks` link. **But live = 0** (and my failed rebuilds rolled back, so 0 is the
+  *original* state — the check was never green on real data), and **4 yogas** (`dhana_yoga_house_lords`,
+  `raja_yoga_kendra_trikona`, `sarasvati_yoga`, `vipareeta_raja_yoga`) are in `brahma_yoga_catalog`
+  (233) but absent from `brahma_ontology`/`reference_yogas` (229). Root cause is in `l0_yogas.py`:
+  `_validated_source_chunk_ids(y)` returns `[]` whenever a yoga has no `_chunk_id_str`, and
+  `extract_yogas_from_corpus` currently yields 0 with chunk-ids → 0 links; and the 4 catalog-only
+  yogas drop out of the ontology/reference loop. **Verdict: writer/seed under-production (fix the
+  writer, MUST) — not a stale pin to delete.** The 85 has a documented derivation, so the honest
+  moves are (a) restore the corpus extraction so it produces the 85 links, or (b) if the corpus
+  genuinely no longer carries them, correct the check to the *derived* achievable count with the
+  derivation in the PR (C12) — decided after reading `extract_yogas_from_corpus` fully. NEXT ACTION
+  when resumed: read `l0_yogas.py:1963 extract_yogas_from_corpus` + the 4-missing-yogas projection
+  path; then author the bundled D-CND-09 migration (yoga writer fix or derived-check correction +
+  `bg_gochara_arcs` tiling+floor + `bg_vidhi_floors` DRAFT→CURRENT + `expected_volume_formula`) BEFORE
+  re-acceptance; `bg_parihara_rules` W1/W2 in parallel (never gated).
 
 ## Held items
 
@@ -106,3 +126,8 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   still predates #1772 (bg_cohort dispatch held on deploy). Next: bg_parihara_rules W1/W2, bg_yogas
   writer fix + source-chunks pin provenance, bg_gochara_arcs pin→tiling correction, D-CND-09 bundled
   registry migration. Blocked on: pipeline job-image deploy of #1772.
+- 2026-09-05 — **bg_yogas provenance DONE (D-L0-G).** 85-pin is a real derived contract (migration
+  630), live=0 = never-green-on-real-data, root cause in `l0_yogas.py` corpus extraction + 4-yoga
+  projection drop → verdict writer under-production (fix writer, MUST). State file (PR #1800) updated
+  + pushed. NEXT: read `extract_yogas_from_corpus`, then bundled D-CND-09 migration; bg_parihara_rules
+  W1/W2. Blocked on: nothing for the writer-read/analysis work; job-image deploy only for dispatch.
