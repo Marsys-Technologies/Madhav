@@ -1063,3 +1063,9 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 35: IDLE-OK.** `#1828` re-triggered its own checks again (main advanced),
   still not queued yet — confirmed genuinely in-progress, not stuck. `#1838` still cleanly queued
   (45-deep). `bg_gochara_arcs` still not deployed. Nothing to fix, nothing new.
+- 2026-09-05 — **Cycle 36: IDLE-OK.** Same pattern: `#1828` re-triggered yet again (~2 min into a
+  fresh run each cycle, not stuck — main just keeps moving faster than a heartbeat-only PR's checks
+  complete), `#1838` still cleanly queued (45-deep), `bg_gochara_arcs` still not deployed. #1713:
+  L4 found a real but explicitly non-blocking side-issue (a post-deploy behaviour-smoke failure on
+  `main`, confirmed NOT a required check, NOT the merge-queue stall's cause) — FYI-only, no action
+  needed from L0. Nothing to fix, nothing new to act on.
