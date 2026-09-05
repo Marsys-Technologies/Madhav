@@ -1726,3 +1726,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   beyond my own D-L0-PP report.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 17, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 17; verified queue head (#1884) healthy (25/26
+  checks passed, one still running normally, started 21:19:37Z -- not another hang). No merges of
+  mine yet.
