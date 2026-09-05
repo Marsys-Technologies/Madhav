@@ -56,7 +56,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_pratikara` | **changed** | W2 done → **W3-3j** | wave 1 · 40/49 unfrozen | — | 7 MUST findings, but F-7/F-8 were duplicates of F-3.4 (resolved by #1831) — real count was 5 unique; **now 3/5 shipped** (F-3.4 #1831, F-3/F-4/F-5 hard-floor citation #1854); F-2 (rerun, blocked on E-gate) + F-6 (grounding_tier/classical_sources_array columns, deferred) remain |
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
-| `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h** | wave 1 · 38/47 unfrozen | — | F-10 severity sort **shipped** (#1783, MERGED, earlier this session); F-14 leakage blind spot **shipped** (#1845); F-12/F-13 (NOW-tier, not MUST) remain |
+| `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h/W3-3k** | wave 1 · 38/47 unfrozen | — | F-10 sort **shipped** (#1783, MERGED); F-14 leakage blind spot **shipped** (#1845); F-13 ceiling-inputs detector **shipped** (#1857); only F-12 (narration/falsy-zero, NOW-tier) remains |
 | `ph_suddha_sodhana` | **changed** | W2 done → **W3-3i** | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; F-16 silent classify-clean **shipped** (#1849); `changed` remains for C12 registry NULLs |
 | `ph_pramana` | **changed** | W2 done → **W3-3g** | wave 3 · 45/54 unfrozen | — | 1/1 MUST **shipped** (F2 domain normalisation + `detector_unavailable`, #1842, incl. migration 684); needs a rerun once E-gate opens |
 | `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
@@ -855,4 +855,52 @@ CYCLE L4: PR hygiene clean → shipped #1854 (`ph_pratikara` F-3/F-4/F-5, hard-f
 fabrication closed — F-4 needed zero code once F-3's root cause was fixed) → corrected a
 double-counted finding (F-7/F-8 were F-3.4 under another name) → next: `ph_pratikara`'s F-6
 (grounding_tier columns + bo_upaya propagation) or F1's multi-registry MCP-wiring fix.
+
+`2026-09-05T~23:45Z` — L4 — **cycle: PR hygiene + a diagnostic to the fleet → W3-3k shipped
+(`ph_sodhana` F-13) → confirmed mid-cycle that the merge queue is moving again (#1791 merged).**
+
+**PR hygiene:** #1808 had dropped out of the queue again with no error (`mergeStateStatus:
+CLEAN`, absent from `is:queued`) — re-armed, confirmed back in. All other own PRs healthy
+(queued or legitimately pending). Queue depth was 21-22 with **zero merges across five
+consecutive cycles campaign-wide** (not just L4) — checked whether this was worth surfacing
+rather than silently absorbing: `gh run list --event merge_group` showed merge-group CI
+completing successfully every ~12-13 minutes while nothing actually landed on `main`, a
+combination worth a second data point on top of Conductor's own #1825 root-cause tracking.
+Posted the finding to the coordination issue (#1713) — not blocking, not duplicating
+Conductor's ownership of the fix, just adding what I could observe from outside admin access
+(no branch-protection read permission to go further myself).
+
+**Mid-fix, confirmed the queue is genuinely moving**: regenerating this cycle's pin showed the
+*previously*-committed hash had already changed from what I expected — `git log origin/main`
+confirmed **#1791 (my very first PR of this session, `ph_muhurta`) had merged**. First
+throughput in five cycles. Recorded as a fact, not declared "fixed" — one merge is not proof
+the backlog is clearing, but it's the first real signal since the stall began.
+
+**The unit: F-13** — `detect_confidence_degenerate` (ph_sodhana) only watches
+`confidence_high`'s chart-wide variance; the G-LADDER ceiling it exists to protect is computed
+from two OTHER inputs (`dasha_consensus_count`, `ayanamsha_robustness`), which are
+simultaneously a chart-wide constant `(0, 3)` on all 139 anchors while `confidence_high` itself
+genuinely varies (10 distinct values) — the exact §N.8 shape: a detector watching a proxy of
+the claim, not the claim. Added `detect_ceiling_inputs_degenerate()` as a genuine addition
+(C12 rewrite-floor: fires on a corruption class the sibling detector cannot see, doesn't touch
+its behaviour) + migration 686 widening the `anomaly_type` CHECK, self-tested for both
+directions (accepts the new value, still rejects garbage).
+
+Deliberately reused the sibling's `_DEGENERATE_MIN_ANCHORS` threshold rather than inventing a
+new one, and wrote a test specifically proving a genuine `n=0` among mostly-`n=0` peers is
+real variance (not degeneracy) — checking my OWN new detector doesn't reintroduce the exact
+falsy-zero collapse pattern (`int(n or 1)`) that F-12 (left open, NOW-tier, narration-only)
+still has in the ceiling formula itself. 6 new tests; 51/51 wave5 + sodhana_engine tests pass.
+Governance gates handled proactively (eight-for-eight, base freshly re-verified against the
+just-merged #1791). **Shipped PR #1857**, auto-merge armed.
+
+`ph_sodhana` now has only F-12 (narration/falsy-zero, explicitly graded NOW not MUST, "the
+registry is honest — these mis-measure, they do not fabricate") remaining of its whole finding
+set.
+
+CYCLE L4: PR hygiene (re-armed dropped #1808) + posted a merge-queue diagnostic to #1713 →
+confirmed the queue moved for the first time in 5 cycles (#1791 merged) → shipped #1857
+(`ph_sodhana` F-13, ceiling-inputs degeneracy detector) → next: `ph_pratikara`'s F-6 or F1's
+multi-registry MCP-wiring fix — both still open, `ph_sodhana`'s remaining F-12 is now the
+smallest item in the whole layer.
 
