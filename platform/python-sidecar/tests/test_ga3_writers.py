@@ -204,21 +204,47 @@ class TestForensicGate:
 class TestFactIdAndCitations:
     def test_fact_id_deterministic(self):
         from ga_writers.ga_positions_writer import _fact_id
-        a = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri", "bid")
-        b = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri", "bid")
+        a = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri")
+        b = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri")
         assert a == b
 
     def test_fact_id_16_hex_chars(self):
         from ga_writers.ga_positions_writer import _fact_id
-        fid = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri", "bid")
+        fid = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri")
         assert len(fid) == 16
         assert all(c in "0123456789abcdef" for c in fid)
 
     def test_fact_id_differs_for_different_inputs(self):
         from ga_writers.ga_positions_writer import _fact_id
-        a = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri", "bid1")
-        b = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri", "bid2")
+        a = _fact_id("cat", "SUN", "sign", CANONICAL_CHART_ID, "lahiri")
+        b = _fact_id("cat", "MOON", "sign", CANONICAL_CHART_ID, "lahiri")
         assert a != b
+
+    def test_fact_id_stable_across_builds(self, native_chart):
+        # NIRMANA #1747 (D-CND-29-class): a fact's identity is what it is
+        # ABOUT, not which build observed it. build_id used to be baked into
+        # this hash, so the SAME (category, subject, key, chart_id,
+        # ayanamsha_id) produced a DIFFERENT fact_id on every rebuild --
+        # dangling every downstream constituent_facts_array-style reference
+        # (e.g. L2's constituent_facts_array). Build the same rows twice
+        # under two different build_ids and assert every (subject, key)
+        # resolves to the identical fact_id.
+        from ga_writers.ga_positions_writer import _build_position_rows
+        rows_a = _build_position_rows(
+            native_chart, CANONICAL_CHART_ID, "build-id-one",
+            "lahiri_chitrapaksha", "lahiri", "2026-06-10T00:00:00+00:00",
+        )
+        rows_b = _build_position_rows(
+            native_chart, CANONICAL_CHART_ID, "build-id-two",
+            "lahiri_chitrapaksha", "lahiri", "2026-06-10T00:00:00+00:00",
+        )
+        by_key_a = {(r["fact_subject"], r["fact_key"]): r["fact_id"] for r in rows_a}
+        by_key_b = {(r["fact_subject"], r["fact_key"]): r["fact_id"] for r in rows_b}
+        assert by_key_a.keys() == by_key_b.keys()
+        assert by_key_a == by_key_b
+        # And the build_id field itself still varies -- only fact_id is stable.
+        assert {r["build_id"] for r in rows_a} == {"build-id-one"}
+        assert {r["build_id"] for r in rows_b} == {"build-id-two"}
 
     def test_citation_ref_format(self):
         from ga_writers.ga_positions_writer import _citation_ref

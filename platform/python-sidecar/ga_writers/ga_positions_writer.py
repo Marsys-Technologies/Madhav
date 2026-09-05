@@ -90,8 +90,13 @@ def _conn():
 # ── fact_id derivation (A3 §2) ───────────────────────────────────────────────
 
 def _fact_id(category: str, subject: str, key: str, chart_id: str,
-              ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+              ayanamsha_id: str) -> str:
+    # D-CND-29-class fix (issue #1747): a fact's identity is what it is ABOUT
+    # (category/subject/key/chart_id/ayanamsha_id), not which build observed
+    # it. build_id was previously baked into this hash, making fact_id no
+    # more stable than uuid4() across a rebuild -- every dependent's
+    # constituent_facts_array-style reference dangled the moment L1 rebuilt.
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -306,7 +311,7 @@ def _build_position_rows(
 
         for cat, key, vnum, vtxt, unit in fact_atoms:
             _check_narration(vtxt, f"{subject}.{key}")
-            fid = _fact_id(cat, subject, key, chart_id, ayanamsha_id_canonical, build_id)
+            fid = _fact_id(cat, subject, key, chart_id, ayanamsha_id_canonical)
             cref = _citation_ref(cat, subject, key, chart_id, ayanamsha_id_canonical, eng_ver)
             chum = _citation_human_position(
                 g["name"], key, vtxt, vnum, ayanamsha_id_canonical
@@ -365,7 +370,7 @@ def _build_position_rows(
 
         for cat, key, vnum, vtxt, unit in fact_atoms_asc:
             _check_narration(vtxt, f"{subject}.{key}")
-            fid = _fact_id(cat, subject, key, chart_id, ayanamsha_id_canonical, build_id)
+            fid = _fact_id(cat, subject, key, chart_id, ayanamsha_id_canonical)
             cref = _citation_ref(cat, subject, key, chart_id, ayanamsha_id_canonical, eng_ver)
             chum = _citation_human_position(
                 "Lagna", key, vtxt, vnum, ayanamsha_id_canonical
@@ -404,7 +409,7 @@ def _chalit_row(
     eng_ver = ENGINE_VERSION
     _check_narration(value_text, f"{subject}.{key}")
     return {
-        "fact_id": _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id),
+        "fact_id": _fact_id(category, subject, key, chart_id, ayanamsha_id),
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,
