@@ -451,6 +451,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:05Z (C8 v2.3 cycle 35) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 still pending-checks-only (new run, no red). Front-of-queue #1843
+  (position 1, L2) has all 3 top-level merge-group workflows now `completed success` — should
+  clear imminently; watch next cycle for the resulting position shift on #1844/#1851/#1861/
+  #1873. #1848/#1856/#1869 all still OPEN, #1869 unchanged at 3 comments. No eligible dispatch,
+  no unheld W3 item, no completed run awaiting W5.
 - 2026-09-06T~04:00Z (C8 v2.3 cycle 34) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 re-ran checks after the last rebase, ~2 min into a fresh run, all
   `pending`/none red — not stuck, nothing to fix. Queue positions unchanged for a 3rd
