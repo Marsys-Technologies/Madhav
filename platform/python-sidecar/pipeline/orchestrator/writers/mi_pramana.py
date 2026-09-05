@@ -96,10 +96,19 @@ def _load_base_rates(conn) -> dict[str, float]:
 
     WHY THIS IS NOT A COLUMN RENAME.  The real column is `base_rate_by_age`, and
     it is jsonb keyed by age band ({band_0_12, band_13_25, band_26_40,
-    band_41_60, band_60_plus}) -- NOT a scalar.  Resolving it requires the
-    native's age at the event, which is a real derivation with its own
-    correctness question.  Substituting any single band, or averaging them,
-    would repeat the original defect with a nicer-looking number.
+    band_41_60, band_60_plus}) -- NOT a scalar.  Substituting any single band,
+    or averaging them, would repeat the original defect with a nicer-looking
+    number.
+
+    A CORRECTION TO THIS RATIONALE, from independent verification of this very
+    fix: the age-banded lookup is NOT unbuilt.  `services/ph_nimitta/base_rate.py
+    ::base_rate_for_age` already implements it, and `ph_nimitta.py:426` already
+    reads `base_rate_by_age` from this table correctly.  So the blocker is not
+    "the derivation does not exist" -- it is that there is NO EVENT CLASS TO LOOK
+    A RATE UP FOR: `event_class_id` is NULL on 64/64 provenance rows because of
+    the sibling defect in mi_jivanaghatana._lookup_event_class.  The deferral
+    still stands, but for that reason.  Recording the correction rather than
+    leaving a rationale that overstates the work remaining.
 
     So this returns {} for a STATED reason, and the caller now writes NULL rather
     than 0.10.  An honest null beats an invented judgment.  Deriving the
