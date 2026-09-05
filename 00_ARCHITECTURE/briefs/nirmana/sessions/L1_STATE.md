@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 20; ga_dashas F-A12 dignity vocabulary fix (#1926)
+last_updated: 2026-09-06 — C8 v2.3 cycle 21; ga_dashas F-A14 integrity_check_sql landed (#1930)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -792,6 +792,55 @@ correctly rejected reading `chart_facts` directly once the DAG check showed it w
 read pre-existent-empty data — next: F-A14 (`ga_dashas`/`ga_vargas`/`ga_strength`
 `integrity_check_sql`), or re-dispatch `ga_positions` once #1892 lands.
 
+## CYCLE 21 (C8 v2.3) — ga_dashas's F-A14 integrity_check_sql (PR #1930), scoped to one asset
+
+**PR hygiene:** #1926 clean/pending. #1853's red re-confirmed as the same already-tracked run
+(`33982947292`, L2's #1852 pattern) — not re-diagnosed from scratch, just re-verified it hadn't
+changed. Everything else queued.
+
+**Unit of work: F-A14 for `ga_dashas` only** (deliberately NOT `ga_vargas`/`ga_strength` in the
+same cycle — each contract this deep needs its own bounded unit; D-CND-03's own L3 precedent
+migration averaged 5-9 conjuncts per asset with individual live mutation-proofs, not something to
+batch three-wide). `integrity_check_sql` was NULL; the freeze-time detector fell back to
+`count(*) > 0` (D-L1-6, §N.8 — unearned).
+
+Four conjuncts, each measured live and mutation-proved via a CTE-injected corruption before
+shipping:
+1. Accretion on the true natural key. `chart_dashas` has NO natural-key UNIQUE at all — the PK
+   is a random `dasha_row_id` (`uuid.uuid4()`, confirmed by reading the writer). Discovered
+   `parent_row_id` is REQUIRED in the key by testing without it first: mudda's level_n=4 rows
+   legitimately repeat `(lord, start_date)` under different parent MDs (its own "hybrid storage"
+   test already documents this), so the naive key would have false-positived on mudda's correct
+   behavior.
+2. **Caught and fixed a bug in my own first draft via mutation testing.** The upstream-authority
+   conjunct (`lord_natal_house_d1`/`sign`/`nakshatra` must match `chart_facts.graha_position`)
+   was first written as one `EXISTS` with all three fields OR'd together — mutating `house_d1`
+   alone to a wrong value still passed, because the SAME row's correct `sign` satisfied the OR.
+   Rewrote as three fully independent conjuncts; re-mutation-tested each field alone, all three
+   now correctly flip false. Exactly the §N.8 principle in the raw: a conjunct that cannot fail
+   on the specific corruption it names is not a detector, no matter how it reads.
+3. MD-level tiling, scoped to exclude `mudda`. Traced WHY before scoping around it rather than
+   assuming: mudda's period boundaries are real ephemeris solar-return instants
+   (`_mudda_solar_return_jd`, bisection-converged to ~1 minute against the Sun's actual sidereal
+   longitude — a genuine physics computation, not classical fixed arithmetic), so two
+   independently-converged real instants ~365.25 days apart floored to calendar dates are not
+   guaranteed to tile. Measured live: exactly one 1-day non-tile exists campaign-wide (chart
+   `1c826d5a`, the 1996 leap-year boundary, all five ayanamshas) — a real, small, physically-
+   explained artifact, not a mystery left unexplained. The other six systems' classical fixed-
+   arithmetic periods tile perfectly (measured, zero violations) and the conjunct applies to them.
+4. Range guard — no CHECK constraint on `chart_dashas` covers dates/lord/system at all.
+
+Passes clean (`integrity_passed = true`) on live production. No Python writer touched;
+`provenance_inventory --check` confirmed no digest/pin regen needed. 7 new textual-contract
+tests validate against the REAL `nirmanaReadOnlyDetectorSqlAcceptable`/
+`nirmanaDetectorSqlHasBindPlaceholder` functions (not a reimplementation), including a
+regression guard specifically for the OR-vs-independent bug the mutation test caught.
+
+CYCLE 21 L1: landed `ga_dashas`'s F-A14 integrity contract (PR #1930) — mutation testing caught
+and fixed a real bug in my own first-draft conjunct before it shipped — next: `ga_vargas` or
+`ga_strength`'s own `integrity_check_sql` (same F-A14 finding, separate assets, separate units),
+or re-dispatch `ga_positions` once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1100,6 +1149,15 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   `ga_dashas` — that fix would have silently read a table not yet populated in the current build,
   the same defect class as F-A13 but guaranteed rather than occasional. Chose the fix that uses
   data legitimately available at `ga_dashas`'s actual point in the (immutable) DAG instead.
+- **D-L1-43** — C8 v2.3 cycle 21: authored `ga_dashas`'s F-A14 `integrity_check_sql` scoped to
+  ONE asset rather than batching all three (`ga_dashas`/`ga_vargas`/`ga_strength`) into one
+  cycle — each contract needs its own live measurement + per-conjunct mutation proof, and D-CND-03's
+  own L3 precedent (migration 670) treated each of 19 assets as its own unit. Mutation testing
+  caught a real bug in my own first-draft conjunct (an OR-combined EXISTS across three fields let
+  a correct field mask a corrupted one) before it shipped — fixed by splitting into three
+  independent conjuncts, re-verified. Scoped the MD-tiling conjunct to exclude `mudda` only after
+  tracing WHY its periods don't calendar-tile (real ephemeris solar-return instants, not
+  classical fixed arithmetic) rather than just observing the anomaly and excluding it blind.
 
 ## Held items
 
@@ -1355,3 +1413,17 @@ L1 must satisfy rather than a feature it consumes.
   ga_dashas's F-A12 dignity-vocabulary fix (PR #1926), rejected a plausible-looking alternative
   fix after verifying it would break on DAG order -- next: F-A14 (integrity_check_sql for
   ga_dashas/ga_vargas/ga_strength), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T00:2xZ -- CYCLE 21 (C8 v2.3). PR hygiene clean, #1853's red re-confirmed same run
+  as before (L2's #1852, not new). Unit of work: ga_dashas's F-A14 integrity_check_sql (PR #1930)
+  -- scoped to ga_dashas alone, not batched with ga_vargas/ga_strength (each contract needs its
+  own live measurement + mutation proof). Four conjuncts: accretion on the true natural key
+  (chart_dashas has no natural-key UNIQUE at all, PK is a random uuid4; parent_row_id required
+  after testing showed mudda's hybrid-storage level 4 legitimately repeats without it), upstream
+  authority (house_d1/sign/nakshatra vs chart_facts), MD-tiling (scoped to exclude mudda after
+  tracing its real-ephemeris-solar-return boundary computation), range guard. Mutation testing
+  caught a real bug in my own first draft -- an OR-combined EXISTS across three fields let a
+  correct field mask a corrupted one -- fixed before shipping by splitting into three independent
+  conjuncts. Passes clean on production; no writer touched, no digest/pin regen needed. CYCLE 21
+  L1: landed ga_dashas's F-A14 integrity contract (PR #1930), self-caught and fixed a real
+  conjunct bug via mutation testing before it shipped -- next: ga_vargas or ga_strength's own
+  integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
