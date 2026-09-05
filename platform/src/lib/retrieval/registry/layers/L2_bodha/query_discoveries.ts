@@ -87,6 +87,14 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
   },
+  // NIRMĀṆA L2-W3 (N-17, §N.6). Hand-authored: deriveDensityContract() auto-stamps
+  // `empty_reason: true` from the archetype alone, whether or not the handler sets it.
+  // These values state what this handler actually does.
+  density_contract: {
+    paginated: true, // limit + offset + total_matching + more_available, on both rows and families
+    facets: ['ayanamsha_id', 'discovery_class', 'domain'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -229,6 +237,16 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
           discovery_family_count: discovery_families.length,
           total_family_count,
           more_families_available: offset + discovery_families.length < total_family_count,
+          empty_reason: rowsRes.rows.length > 0 ? null
+            : total_matching > 0
+              ? `offset ${offset} is past the end of ${total_matching} matching discoveries`
+              : `no discoveries for chart ${chart_id}` +
+                (discovery_class ? ` of class ${discovery_class}` : '') +
+                (domain ? ` in domain ${domain}` : '') +
+                (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+                '. bo_anveshana writes this ledger; an absent set means the writer has not run ' +
+                'for this chart, not that the chart yielded nothing non-obvious. Note the tail_watch ' +
+                'section is computed independently and may be populated even when this set is empty.',
           ayanamsha_universe_count,
           filters: { ayanamsha_id, discovery_class, domain, limit, offset },
           provenance: {

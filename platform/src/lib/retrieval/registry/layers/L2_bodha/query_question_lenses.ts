@@ -13,6 +13,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
 
@@ -49,6 +50,18 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 55, always_include: false },
+  },
+  // NIRMĀṆA L2-W3 (N-17, §N.6). Hand-authored, because the DERIVED contract is not
+  // trustworthy here: descriptor_defaults.deriveDensityContract() auto-stamps
+  // `empty_reason: true` from the capability's archetype alone, so every capability
+  // "has" one at runtime whether or not its handler ever sets `content.empty_reason`.
+  // That is an unbacked claim at estate scale — §N.8's "a flag needs a real detector
+  // or it is null", applied to a contract instead of a column. These values state what
+  // this handler actually does.
+  density_contract: {
+    paginated: true, // limit + offset + total_matching + more_available
+    facets: ['ayanamsha_id', 'question_type'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -95,6 +108,10 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_question_lenses WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
+      // tail_watch section". Best-effort — buildTailWatch returns an explained empty
+      // rather than throwing, so the tail can never fail the read the caller asked for.
+      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
       return {
         content: {
           chart_id,
@@ -102,6 +119,17 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
+          tail_watch: tail.tail_watch,
+          tail_watch_empty_reason: tail.tail_watch_empty_reason,
+          tail_watch_components: tail.tail_watch_components,
+          empty_reason: rowsRes.rows.length > 0 ? null
+            : total_matching > 0
+              ? `offset ${offset} is past the end of ${total_matching} matching lenses`
+              : `no question lenses for chart ${chart_id}` +
+                (question_type ? ` and question_type ${question_type}` : '') +
+                (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+                '. bo_drishti writes one lens per (question_type, ayanamsha); an absent row ' +
+                'means the writer has not run, not that the question has no lens.',
           filters: { ayanamsha_id, question_type, limit, offset },
           token_safety_note: 'ranked_signal_count is disclosed; the raw ranked-signal array is intentionally not inlined. Drill via query_domain_reading.',
           provenance: { tables: ['bodha_question_lenses'], source: 'L2 Bodha question-lens catalog; served chart-scoped, budgeted.' },

@@ -26,6 +26,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
 
@@ -132,6 +133,18 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 70, always_include: false },
   },
+  // NIRMĀṆA L2-W3 (N-17, §N.6). Hand-authored, because the DERIVED contract is not
+  // trustworthy here: descriptor_defaults.deriveDensityContract() auto-stamps
+  // `empty_reason: true` from the capability's archetype alone, so every capability
+  // "has" one at runtime whether or not its handler ever sets `content.empty_reason`.
+  // That is an unbacked claim at estate scale — §N.8's "a flag needs a real detector
+  // or it is null", applied to a contract instead of a column. These values state what
+  // this handler actually does.
+  density_contract: {
+    paginated: false, // `limit` is a cap; no offset, no cursor
+    facets: ['tier', 'ayanamsha_id', 'domain'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -175,6 +188,10 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ${table} WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
+      // tail_watch section". Best-effort — buildTailWatch returns an explained empty
+      // rather than throwing, so the tail can never fail the read the caller asked for.
+      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
       return {
         content: {
           chart_id,
@@ -183,6 +200,15 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          tail_watch: tail.tail_watch,
+          tail_watch_empty_reason: tail.tail_watch_empty_reason,
+          tail_watch_components: tail.tail_watch_components,
+          empty_reason: rowsRes.rows.length > 0 ? null
+            : `no ${tier} rows for chart ${chart_id}` +
+              (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+              (tier === 'domain_rollups' && domain ? ` and domain ${domain}` : '') +
+              `. Served from ${table}; an absent row means the CDLM tier has not been built ` +
+              'for this chart, not that the tier is inapplicable.',
           filters: { ayanamsha_id, domain: tier === 'domain_rollups' ? domain : undefined, limit },
           provenance: { tables: [table], source: `L2 Bodha CDLM ${tier} tier; served chart-scoped.` },
         },
