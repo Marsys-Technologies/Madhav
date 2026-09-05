@@ -235,11 +235,16 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     expect(c.uncovered_live_tools).toEqual(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE)
   })
 
-  it('covered_live_tools count matches the baseline-implied count (21 of 40)', () => {
+  it('covered_live_tools count matches the baseline-implied count (22 of 41)', () => {
     const c = getPlanBridgeCoverage()
     expect(c.total_distinct_live_tools - KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length).toBe(c.covered_live_tools)
-    expect(c.covered_live_tools).toBe(21)
-    expect(c.total_distinct_live_tools).toBe(40)
+    // NIRMANA L1 W3 F-E10 (2026-09-05): the registry legitimately grew a new distinct
+    // live_tool (ganita_vastu_get, via the new vastu_read primitive) and it is
+    // immediately covered, not uncovered — the pinned 19-name uncovered baseline above
+    // is unchanged. 21->22 covered, 40->41 total, per the header comment's own
+    // "registry legitimately grew" update path.
+    expect(c.covered_live_tools).toBe(22)
+    expect(c.total_distinct_live_tools).toBe(41)
   })
 })
 
