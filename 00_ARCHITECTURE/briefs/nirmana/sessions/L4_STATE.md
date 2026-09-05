@@ -2764,3 +2764,20 @@ mid-CI at normal durations via `gh run view`, not stuck; E-gate uncheckable, DB 
 cycles; one new adjudication checked, not L4-relevant) → next: watch `#1885`/`#1842` merge;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~22:35Z` — L4 — **CYCLE 100 (v2.3) — `#1885` MERGED (the `cascade_check.sql`
+no-FK-scan fix, closing #1805). `#1842` confirmed still genuinely mid-CI at ~12 min, the
+normal upper end (matches `#1834`'s own 11m53s completion earlier this session).**
+
+**PR hygiene:** `#1885` verified `state: MERGED` on `main` (`0e7b477ff`). `#1842`'s
+`Governance Gates` job checked via `gh run view` — top-level status still genuinely
+`in_progress`, all other 15 jobs green, nothing stale. Other 9 own PRs unchanged/queued. No
+DIRTY, no RED.
+
+**Priorities 1-4:** `main`'s last commits checked, none else L4-relevant. E-gate still
+uncheckable, 90th consecutive cycle DB access down. No new adjudications name L4.
+
+CYCLE 100 L4: PR hygiene confirmed `#1885` MERGED (`cascade_check.sql` fix, closes #1805) →
+`#1842` confirmed genuinely mid-CI at the normal upper end, not stuck → E-gate uncheckable, DB
+access down 90 cycles → next: watch `#1842` merge; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
