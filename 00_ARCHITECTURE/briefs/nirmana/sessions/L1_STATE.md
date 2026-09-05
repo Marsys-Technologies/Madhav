@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 6; ga_condition F-C8 fix (#1853), cross-layer digest coupling filed (#1852)
+last_updated: 2026-09-05 — C8 v2.3 cycle 7; #1853 parked pending L2 (#1852 ruled), ga_tajaka F-E16 fix (#1859)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -259,6 +259,32 @@ import can respect. Filed #1852 with the finding, options (recommended: L2 re-de
 `bo_pratijna` acceptance once this merges), and did NOT touch L2's own pin slice -- only
 regenerated `--layer L1`.
 
+## CYCLE 7 (C8 v2.3) — #1853 blocked (CI confirms #1852 live); ga_tajaka F-E16 fix instead
+
+**PR hygiene found a real RED, not a false alarm:** `is:queued` showed #1841 queued (good) but
+**#1853 (ga_condition) was RED** on Governance Gates + TS Unit Tests. Investigated rather than
+assuming staleness: `nirmana_analysis_layer_pins.py --check` failed on **L2**, not L1 --
+`bo_pratijna`'s hash (which my own honest digest regen correctly updated, per #1852) no longer
+matches what L2's *pin* asserts as reviewed. Confirmed rebasing would NOT fix it (origin/main's L2
+pin is unchanged; my branch's own digest change is the actual cause). Posted the concrete CI
+evidence on **#1852** and to the Conductor directly (cross-session message) rather than
+regenerating L2's pin myself (would falsely assert L2's review) or weakening the gate. **Ruling
+(Conductor, then corrected by L2 directly)**: L2 pulls/rebases/force-pushes `#1853`'s branch
+itself and pushes its own `--layer L2` regen on top, landing as one atomic unit. Confirmed I will
+not touch that branch until L2 signals done — **#1853 stays parked, untouched, this cycle and
+until further notice.**
+
+**Unit of work: `ga_tajaka`'s F-E16 fix** (PR **#1859**) -- `DEFAULT_REFERENCE_YEAR = 2026` was a
+frozen wall-clock literal anchoring the hybrid-storage window; the orchestrator never passes
+`reference_year` explicitly, so production always took the literal, correct only by coincidence.
+Extracted `_effective_reference_year` (explicit value wins; default is the real build clock, not
+a literal nobody will remember to edit in 2032). Left `FORENSIC_VARSHA_YEAR` untouched --
+deliberately a golden-value historical anchor, not a sliding window, conflating the two would have
+been the wrong fix. Checked for cross-layer import risk BEFORE regenerating digests (learned from
+#1852): `ga_tajaka_writer.py` has exactly one importer (`build_runner.py`, legacy CLI, in-layer) --
+clean, no coupling. 3 new tests, mutation-proven (deleted the helper: import error). Broader
+`tajaka` suite 7/7; orchestrator conformance suite 34/34.
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -467,6 +493,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   Verified deterministic before filing (reverted/reapplied twice, same result each time). Did not
   touch L2's own pin slice; only regenerated my own `--layer L1`. Not yet ruled.
 
+- **D-L1-28** — C8 v2.3 cycle 7: #1852's cross-layer coupling confirmed as an IMMEDIATE CI block
+  on #1853 (Governance Gates + TS Unit Tests both RED on L2's stale pin), not just a future
+  concern. Posted concrete evidence on #1852 and pinged the Conductor directly. **Ruled**: L2
+  pulls/rebases/force-pushes #1853's branch and pushes its own `--layer L2` regen on top — one
+  atomic landing. I do not touch that branch until L2 signals done (confirmed via cross-session
+  message both directions). #1853 is PARKED, not abandoned.
+- **D-L1-29** — Picked up `ga_tajaka`'s F-E16 fix (PR #1859, full account in CYCLE 7 above) while
+  #1853 waits on L2. Checked for cross-layer import risk *before* touching anything this time
+  (lesson from #1852): `ga_tajaka_writer.py` has exactly one importer, in-layer — clean.
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
@@ -475,6 +511,9 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   `source_ref` must equal the deployed commit).
 - **All W5 `integrity_verified`** — held on L4's #1723 Part B (detector placeholder guard) landing.
 - ~~Status-vocabulary normalization~~ — **no longer held; dropped from scope** per D-L1-15.
+- **PR #1853 (`ga_condition` F-C8)** — held on L2 pushing its own `--layer L2` pin regen onto that
+  branch (#1852, D-L1-28). Do not rebase/force-push `codex/nirmana-l1-w3-condition-fc8-composite`
+  until L2 confirms done.
 - No upstream C6 capability holds: L0 declared none.
 
 ## CAPABILITIES LANDED
@@ -566,3 +605,12 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 6 L1: landed ga_condition F-C8 fix (PR #1853) + filed cross-layer digest-coupling
   adjudication (#1852) -- next: pick up ga_tajaka F-E16/17 or re-check #1838/dispatcher for
   ga_positions dispatch viability.
+- 2026-09-05T15:07Z -- CYCLE 7 (C8 v2.3). PR hygiene found a REAL red: #1853 failing on L2's pin
+  staleness, confirmed as #1852's consequence landing immediately (not a future concern).
+  Escalated with concrete CI evidence (issue comment + cross-session message); ruling reached
+  (L2 pushes its own regen onto #1853's branch); #1853 parked untouched pending that. Unit of
+  work: ga_tajaka's F-E16 fix (PR #1859) -- reference_year now derives from the build clock
+  instead of a frozen 2026 literal; checked for cross-layer import risk before touching anything
+  this time. CYCLE 7 L1: #1853 parked pending L2's pin push (ruled) -- landed ga_tajaka F-E16 fix
+  instead (PR #1859) -- next: pick up ga_yoga F-D1/D2 or ga_medical F-E5, or check #1853/#1838
+  status once notified.
