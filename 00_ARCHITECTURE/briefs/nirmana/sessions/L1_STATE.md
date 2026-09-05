@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 8; get_yoga_firings F-D1/F-D2 serving fix (#1865)
+last_updated: 2026-09-05 — C8 v2.3 cycle 9; #1852/#1853 closed, ga_medical F-E5 fix (#1871)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -310,6 +310,26 @@ serving-side per `L1_W2_DECIDE_v1_0.md` §2 row 15.
 4. 10 new tests (no test file existed for this tool before), mutation-proven (5/6 fail against
    the revert). `tsc`/`eslint` clean. Broader L1_ganita retrieval suite: 92/92.
 
+## CYCLE 9 (C8 v2.3) — #1852/#1853 fully closed; ga_medical F-E5 fix
+
+**PR hygiene:** all queued/fine. **#1853 confirmed resolved**: L2 pushed its own `--layer L2`
+re-pin commit onto the branch exactly per the ruling, and `is:queued` now shows #1853 queued.
+Confirmed with Conductor and closed the loop. #1841/#1859/#1865 all queued too. #1827 pending
+checks, nothing to fix. `#1838` (dispatcher fix) still open — `ga_positions` dispatch remains
+blocked on it, not by me.
+
+**Unit of work: `ga_medical`'s F-E5 fix** (PR **#1871**) -- the FORENSIC guard halted the whole
+build if Sun's indication_strength wasn't `'strong'`, on the stated ground "Sun debilitated in
+Capricorn" — Sun's actual debilitation sign is Libra; Capricorn (Saturn's sign) is merely Sun's
+enemy_sign. The IDENTICAL error was already found and removed from `ga_vastu_writer.py` — this
+was the second occurrence of the exact same classical mistake in this layer. It passed today only
+by coincidence (enemy_sign's score 0.26 also falls under the 0.4 threshold a genuinely debilitated
+Sun would produce — §N.8). Extracted `sun_forensic_guard_warning`, downgraded the raise to a
+non-fatal warning (§N.4 S7 precedent), corrected the classical claim everywhere it appeared
+(docstring ×2, code comment, warning text). Left Saturn's assertion untouched — its claim
+("exalted in Libra") is correct. 4 new tests, mutation-proven. Checked cross-layer import risk
+first (one importer, the orchestrator adapter — clean).
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -534,6 +554,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   misplaced classical one; added the classical citation as a NEW field via JOIN instead of
   changing existing behavior. Checked both live callers for backward compatibility before
   shipping.
+- **D-L1-31** — C8 v2.3 cycle 9: **#1852 fully closed.** L2 pushed its own `--layer L2` re-pin
+  commit onto #1853's branch exactly per the ruling; confirmed `is:queued` shows #1853 queued;
+  closed the loop with Conductor via cross-session message. `ga_medical`'s F-E5 fix (PR #1871,
+  full account in CYCLE 9 above) — the SECOND occurrence of the identical "Sun debilitated in
+  Capricorn" classical error found this campaign (first was `ga_vastu_writer.py`, already fixed
+  by a prior session). Same fix pattern: downgrade to warning + correct the claim, not remove
+  the check.
 
 ## Held items
 
@@ -543,9 +570,9 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   `source_ref` must equal the deployed commit).
 - **All W5 `integrity_verified`** — held on L4's #1723 Part B (detector placeholder guard) landing.
 - ~~Status-vocabulary normalization~~ — **no longer held; dropped from scope** per D-L1-15.
-- **PR #1853 (`ga_condition` F-C8)** — held on L2 pushing its own `--layer L2` pin regen onto that
-  branch (#1852, D-L1-28). Do not rebase/force-push `codex/nirmana-l1-w3-condition-fc8-composite`
-  until L2 confirms done.
+- ~~PR #1853 (`ga_condition` F-C8)~~ — **hold CLEARED** (D-L1-31): L2 pushed its own `--layer L2`
+  re-pin onto the branch; #1853 is queued. `codex/nirmana-l1-w3-condition-fc8-composite` is safe
+  to touch again if ever needed, but nothing further is expected from L1 on it.
 - No upstream C6 capability holds: L0 declared none.
 
 ## CAPABILITIES LANDED
@@ -654,3 +681,11 @@ L1 must satisfy rather than a feature it consumes.
   10 new tests, mutation-proven, backward-compat checked against both live callers. CYCLE 8 L1:
   landed get_yoga_firings F-D1/F-D2 serving fix (PR #1865) -- next: ga_medical F-E5 or ga_vastu
   F-E10/E11, or check #1838/#1853 status once notified.
+- 2026-09-05T15:27Z -- CYCLE 9 (C8 v2.3). PR hygiene: all queued/fine. #1852/#1853 CLOSED -- L2
+  pushed its own re-pin, confirmed with Conductor. Unit of work: ga_medical's F-E5 fix (PR #1871)
+  -- the second occurrence this campaign of the identical "Sun debilitated in Capricorn"
+  classical error (first was ga_vastu, already fixed by a prior session). Downgraded the
+  build-fatal Sun gate to a warning, corrected the claim everywhere. 4 new tests, mutation-proven.
+  CYCLE 9 L1: #1852/#1853 closed -- landed ga_medical F-E5 fix (PR #1871) -- next: ga_vastu
+  F-E10/E11, or ga_prashna's R-1 registry disposition if still open, or check #1838 for
+  ga_positions dispatch viability.
