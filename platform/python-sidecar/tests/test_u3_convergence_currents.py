@@ -301,6 +301,72 @@ class TestVedhaVeto:
         assert f == pytest.approx(1.0)
 
 
+# ── C6 cross_dasha_agreement ─────────────────────────────────────────────────
+
+class TestCrossDashaAgreement:
+    """
+    L3-W3 (§N.8). _c_cross_dasha_agreement scored 0.0 on 95.7% of post-birth
+    Mode A rows — NOT a code bug like F-SANGAM-3/4/6/7 (KaDashaKalaService
+    itself returns real, non-degenerate agreement data when queried directly:
+    verified live, 20/20 sampled predicates over the correct full-lifetime
+    horizon return real windows with cross_dasha_agreement.count=1). The root
+    cause is distributional: eligible windows are genuinely narrow and sparse
+    (as few as 61 short windows across a century for one real lord set), so
+    most independently-found transit-aspect peak_dates don't happen to fall
+    inside one. That was previously indistinguishable from "a window covers
+    this date and 0 systems agree" (a real disagreement answer) — this fix
+    separates the two via honest Optional[float].
+    """
+
+    @staticmethod
+    def _window(start_date, end_date, count=None):
+        from types import SimpleNamespace
+        agreement = SimpleNamespace(count=count, systems_agreeing=[]) if count is not None else None
+        return SimpleNamespace(start_date=start_date, end_date=end_date, cross_dasha_agreement=agreement)
+
+    def test_empty_eligible_windows_returns_none(self):
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), [])
+        assert score is None
+
+    def test_no_window_covers_peak_date_returns_none(self):
+        """The exact real-world case this fix targets: eligible windows exist
+        elsewhere in the horizon, but none covers THIS peak_date."""
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        windows = [self._window(date(2020, 1, 1), date(2020, 1, 10), count=3)]
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), windows)
+        assert score is None
+
+    def test_covering_window_with_agreement_scores_real_value(self):
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        windows = [self._window(date(2026, 3, 1), date(2026, 5, 1), count=3)]
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), windows)
+        assert score == pytest.approx(3.0 / 7.0)
+
+    def test_covering_window_with_zero_agreement_is_a_real_zero_not_none(self):
+        """A window that DOES cover peak_date but whose own count is 0 is a
+        genuine, meaningful disagreement answer — must stay 0.0, not None."""
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        windows = [self._window(date(2026, 3, 1), date(2026, 5, 1), count=0)]
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), windows)
+        assert score == pytest.approx(0.0)
+
+    def test_max_across_multiple_overlapping_windows(self):
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        windows = [
+            self._window(date(2026, 3, 1), date(2026, 5, 1), count=1),
+            self._window(date(2026, 3, 15), date(2026, 4, 15), count=4),
+        ]
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), windows)
+        assert score == pytest.approx(4.0 / 7.0)
+
+    def test_count_capped_at_one(self):
+        from services.ka_sangam.engine import _c_cross_dasha_agreement
+        windows = [self._window(date(2026, 3, 1), date(2026, 5, 1), count=9)]
+        score = _c_cross_dasha_agreement(date(2026, 4, 1), windows)
+        assert score == pytest.approx(1.0)
+
+
 # ── C7 ashtakavarga_transit_potency ─────────────────────────────────────────
 
 class TestAshtakavarga:
