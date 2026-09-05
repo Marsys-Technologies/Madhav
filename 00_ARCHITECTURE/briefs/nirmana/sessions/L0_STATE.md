@@ -1871,3 +1871,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   real check-runs is `completed` (23 success, 3 skipped-by-design) — main just hasn't absorbed the
   merge yet, plain GitHub processing lag, not a stuck CI job. Expect main to advance and my
   positions to drop next cycle. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1906 merged (`812731a22`), all 4 core positions
+  dropped by exactly 1 (9/15/23/72). Queue draining normally, just slowly (~1 merge per 30-45min
+  cycle). No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen holds.
