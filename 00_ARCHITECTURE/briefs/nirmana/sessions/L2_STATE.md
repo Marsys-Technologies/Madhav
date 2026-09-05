@@ -59,6 +59,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 5 | 2026-09-05T01:15Z | L2-W3 | #1770 RULED: upheld, blast radius re-measured at **864,733 rows / 12 tables / 3 layers** (the `kala_convergence -> phala_anchors -> phala_*` leg I missed), **campaign-wide HOLD** issued, **D-CND-15** recorded. Shipped the owed docstring fix (#1777). Three more W3 PRs: #1776 tail population, #1779 umbrella density. **#1741 MERGED** -- first L2 batch on main. Corroborated L5's seed-revert finding (#1757) |
 | 6 | 2026-09-05T05:05Z | L2-W3 | **RESUMED after ~4h50m dead.** Stock-take posted on #1713. Read D-NATIVE-05 (#1770) + charter C13 in full. **PR hygiene was the damage**: 6 open, 5 DIRTY, 1 armed — #1777 (the `NO ACTION`→`CASCADE` correction that is now D-CND-16's own evidence) sat unlanded 5h. Rebased + re-armed #1777, #1755, #1760; #1775 superseded by #1780, both replaced by this branch. Next: deterministic `signal_id` (D-NATIVE-05 action 8, coordinating with L5), `bodha_triangulation.signal_ids[]` disposition, C13 blast-radius on all 22 routes |
 | 7 | 2026-09-05T05:55Z | L2-W3 | All 6 PRs rebased/armed or closed (#1775, #1780 superseded by #1798). **Assignment 2 measured and filed as #1804**: strict D-CND-11 would collapse 48 groups of distinct signals; `fact_id` embeds `build_id` so `constituent_facts_array` is build-varying. **Assignment 3 shown to be the SAME defect** — triangulation orphans are caused by non-deterministic `signal_id`; detector deliberately NOT shipped yet (would be red on both healthy charts today — C12). Found `bodha_triangulation` counted by no asset's count_sql |
+| 8 | 2026-09-05T06:40Z | L2-W3 | **#1804 RULED — D-CND-11 amended, my tuple granted.** Shipped migration 660 (deterministic `signal_id`, `bodha_n5_lineage_report()`, `bo_sangati` count_sql) in **PR #1818**, armed. Verified live: 150,150 rows / 150,150 distinct identities across all three charts. Deliberately did NOT set `bo_laksana.integrity_check_sql` — both candidates red today, C12. **Hit a shared-`git stash` collision across worktrees** — recovered, foreign content preserved, hazard filed on #1713 |
 
 ## ASSET TABLE (22)
 
@@ -261,6 +262,31 @@ NULL-not-`'{}'` convention exists to prevent.
   writes it (`bo_sangati.py:122,448`) but its `count_sql` counts only `bodha_cdlm_cells`, so 405
   rows and 276,086 references are invisible to the cockpit (§N.4). Unblocked by the identity ruling
   and lands in migration 660.
+
+- **D-L2-019** (2026-09-05T06:30Z) — **#1804 ruled: my tuple granted and D-CND-11 AMENDED.** The
+  Conductor reproduced the decisive measurement more strongly than I did — 2,559 colliding groups
+  campaign-wide, 2,559 differing only by fact value, **zero** true duplicates — and withdrew the
+  word "recomputed" from D-CND-11, which was what made the strict reading wrong. Recorded as
+  **D-CND-20**: a doctrine never tested against real data is a proposal. Migration 660 shipped in
+  PR #1818; identity verified unique across all three charts (150,150/150,150), plus determinism,
+  jsonb key-order invariance, and NULL-vs-empty-varga distinctness.
+- **D-L2-020** (2026-09-05T06:35Z) — **Deliberately shipped NO `integrity_check_sql` for
+  `bo_laksana`.** Both candidates are red today and neither because of bad data: §N.5 zero-dangling
+  (55 refs across the two HEALTHY charts) and identity-conformance (all 150,150 rows still carry
+  random ids). Conformance is the strong check and L2 will adopt it, but only after the rebuild
+  D-NATIVE-05 holds. **L2 cannot have a green `integrity_check_sql` on `bo_laksana` until that hold
+  lifts**, and a weaker check chosen because it passes today asserts nothing (C12).
+- **D-L2-021** (2026-09-05T06:40Z) — **`git stash` is repo-global and shared across all seven
+  worktrees; it collided.** A `stash -u`/`pop` to test against a clean tree pulled in another lane's
+  entry, left me on the wrong branch, and produced conflicts in L0 files I have never touched. The
+  stash list contained a prior session's message recording the *same* accident. My work survived;
+  foreign content preserved to scratch before touching anything; four files restored to
+  `origin/main` (three of them after I briefly deleted them). Filed on #1713 with the recommendation
+  never to use `git stash` in a campaign worktree. **Own-care note:** the collision also landed my
+  migration-660 work inside a commit whose message described only the D-SYNTHESIS rollups. I caught
+  it, verified `bo_laksana.py` genuinely carries both concerns (6 rollup + 5 identity additions),
+  and kept them together with an honest message rather than attempt hunk surgery on a HELD monster
+  writer — but I nearly shipped a commit that misdescribed its own contents.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
