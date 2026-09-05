@@ -411,22 +411,41 @@ class TestC13SchoolConsensus:
         score = _c13_school_consensus_score('HEALTH_RISK', ctx)
         assert score == pytest.approx(1.0)
 
-    def test_unknown_signature_class_returns_zero(self):
+    def test_unknown_signature_class_returns_none(self):
         from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
         ctx = EnrichmentContext(school_consensus_by_domain={'CAREER': 5})
         score = _c13_school_consensus_score('COSMIC_UNKNOWN', ctx)
-        assert score == pytest.approx(0.0), "Unmappable signature class → 0.0"
+        assert score is None, "Unmappable signature class → honest None, not a fabricated 0.0"
 
-    def test_empty_context_returns_zero(self):
+    def test_empty_context_returns_none(self):
         from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
         score = _c13_school_consensus_score('CAREER_PEAK', EnrichmentContext.empty())
-        assert score == pytest.approx(0.0)
+        assert score is None
 
-    def test_none_school_consensus_by_domain_returns_zero(self):
+    def test_none_school_consensus_by_domain_returns_none(self):
         from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
         ctx = EnrichmentContext(school_consensus_by_domain=None)
         score = _c13_school_consensus_score('SPIRITUAL_PEAK', ctx)
-        assert score == pytest.approx(0.0)
+        assert score is None
+
+    def test_real_signature_class_vocabulary_never_matches_a_domain(self):
+        """NIRMĀṆA L3-W3 F-SANGAM-6, defect 2. The five hardcoded prefixes
+        (CAREER/HEALTH/RELATIONSHIP/SPIRITUAL/PSYCHOLOGICAL) never match the
+        REAL kala_activation_predicates_signature_class_check vocabulary
+        (measured live) — so even with school_consensus_by_domain populated,
+        every genuine signature_class value returns None, never a score."""
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain={
+            'CAREER': 4, 'HEALTH': 5, 'RELATIONSHIP': 3, 'SPIRITUAL': 6, 'PSYCHOLOGICAL': 7,
+        })
+        real_signature_classes = (
+            'YOGA', 'DOSHA', 'DIGNITY', 'DISPOSITOR_RELATIONAL',
+            'SENSITIVE_POINT', 'CONJUNCTION_ASPECT', 'SUBSYSTEM', 'CLASSIFY_RESIDUAL',
+        )
+        for sig_class in real_signature_classes:
+            assert _c13_school_consensus_score(sig_class, ctx) is None, (
+                f"{sig_class} is a real signature_class value and must not silently score"
+            )
 
     def test_domain_prefix_mapping_all_five(self):
         from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
@@ -444,6 +463,26 @@ class TestC13SchoolConsensus:
             got = _c13_school_consensus_score(sig_prefix, ctx)
             assert got == pytest.approx(expected, rel=0.01), \
                 f"{sig_prefix} → expected {expected:.4f}, got {got:.4f}"
+
+    def test_dropped_term_matches_omitted_key(self, dignity, orb_s, base_supporting):
+        """A None c13 must be DROPPED from the saturating product (§N.7 item 6),
+        identical to omitting the key entirely — never coalesced to a real 0.0."""
+        from services.ka_sangam.engine import (
+            convergence_score, _c13_school_consensus_score, EnrichmentContext,
+        )
+        nec = [dignity, orb_s, 1.0]
+        c13 = _c13_school_consensus_score('YOGA', EnrichmentContext.empty())
+        assert c13 is None
+        rest = {k: v for k, v in base_supporting.items() if k != 'school_consensus'}
+        supporting_with_key_dropped = dict(rest)
+        assert 'school_consensus' not in supporting_with_key_dropped
+        supporting_as_writer_would_build_it = {
+            **rest,
+            **({'school_consensus': c13} if c13 is not None else {}),
+        }
+        assert convergence_score(nec, supporting_as_writer_would_build_it) == pytest.approx(
+            convergence_score(nec, supporting_with_key_dropped)
+        )
 
     def test_c13_raises_convergence_score(self, dignity, orb_s, base_supporting):
         from services.ka_sangam.engine import (
