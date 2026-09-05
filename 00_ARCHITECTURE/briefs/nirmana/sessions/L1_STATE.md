@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 36; ga_vichara F-A14 landed (#1967)
+last_updated: 2026-09-06 — C8 v2.3 cycle 37; ga_sade_sati F-A14 landed (#1968)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -26,7 +26,9 @@ your `nirmana-adjudication` issues → continue.
   (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
   cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32), 744
   (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34), 746 (`ga_yoga`, cycle 35),
-  747 (`ga_vichara`, cycle 36) used. 748–749 remain free.
+  747 (`ga_vichara`, cycle 36), 748 (`ga_sade_sati`, cycle 37) used. **749 is the LAST free number
+  in this range** — the next migration will exhaust it; file adjudication immediately per the
+  #1947 precedent rather than guess a further range.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1480,6 +1482,40 @@ for the remaining 4 assets (ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_pr
 future pass fixing F-A15/F-A16 in their respective writers, or `ga_positions` re-dispatch once
 #1892 lands.
 
+## CYCLE 37 (C8 v2.3) — ga_sade_sati's F-A14 contract (migration 748); 749 is now the LAST free number in the 740-749 range
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/
+#1963/#1964/#1965 confirmed genuinely `is:queued`. #1827/#1967 still legitimately CI-pending from
+last cycle's fresh pushes, auto-merge armed, not DIRTY/RED. Rebased the state branch onto a
+newly-advanced `origin/main` this cycle (`f1235c9aa..c17c9b826`) — clean, no conflicts.
+
+**Unit of work: F-A14 for `ga_sade_sati`** (migration 748, ninth used in the new 740-749 range —
+**749 is now the LAST free number left**). Shared table (`chart_facts`, scoped to the same 15
+fact_categories this asset's own `count_sql` declares). `ga_sade_sati_writer.py` is ~2,150 lines;
+scoped this bounded first pass to `sade_sati_cycle` + `sade_sati_phase_quarter`, not all 15.
+
+Three conjuncts, all measured live and mutation-proved: (a) each phase-quarter's
+`quarter_intensity_rationale_jsonb` first element must cite the correct BPHS Ch.71 base intensity
+for its (phase, quarter) pair encoded in `fact_subject` (`CYCLE_N.PHASE.QN`) — re-derived from a
+lookup matching the writer's own `PHASE_QUARTER_INTENSITY` table exactly (720/720 rows clean); (b)
+`cycle_start_iso` must precede `cycle_end_iso` (temporal ordering, 0/60 violations); (c)
+`duration_days` must equal the actual day-span between them (0/60 violations). Did not attempt to
+re-derive the FULL final `intensity_level` (base + up to 4 sequential modifier bumps — Mars/
+Jupiter aspect, cancellation, Pisces-pada) since that would require replicating an order-dependent
+bump sequence in SQL; scoped the conjunct to the base-citation grounding only, which is itself a
+genuine, independently-checkable claim.
+
+No Python writer touched; `provenance_inventory --check` clean. 5 new textual-contract tests; full
+`tests/unit/migrations/` suite: 39 files, 185 passed / 91 skipped, no regressions.
+
+CYCLE 37 L1: landed `ga_sade_sati`'s F-A14 contract (PR #1968, migration 748) — **next cycle's
+first action, before any F-A14 work: migration 749 is the last number in the granted range; if it
+gets used, immediately file a new `nirmana-adjudication` issue following the #1947/#1942 precedent
+exactly (check the full campaign migration-allocation table, do not guess a next range) rather than
+wait for a future cycle to hit the block mid-write.** After that: continue F-A14 for the remaining
+3 assets (ga_transit_anchors, ga_ayurdaya, ga_prashna), consider a future pass fixing F-A15/F-A16,
+or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1499,7 +1535,7 @@ none accepted yet (blocked on #1736).
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); **NEW: F-A16 — strength_formula_version invents an unrelated label when the real derivation returns nothing, 4/212 rows (jaimini_karakamsha_rahu)** |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
-| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D) |
+| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
@@ -1507,11 +1543,11 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **15/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-36: ga_dashas,
+Cross-cutting: **16/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-37: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
 ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
-other 56 remain a future pass], ga_yoga, ga_vichara); `expected_volume_formula` NULL on 6;
-`ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
+other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15 categories]);
+`expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -1959,6 +1995,17 @@ other 56 remain a future pass], ga_yoga, ga_vichara); `expected_volume_formula` 
   per-family/per-category behavior before asserting a universal invariant a superficially-similar
   column-naming pattern might suggest. This asset's whole F-A14 pass shipped clean — no new
   finding, unlike the three prior cycles (F-A15, F-A16).
+- **D-L1-59** — C8 v2.3 cycle 37: migration 748 (`ga_sade_sati`) leaves only **749 free** in L1's
+  740-749 continuation range. Recorded this explicitly in the state header NOW (not deferred to
+  the cycle that actually exhausts it) so the next cycle's very first action — before any F-A14
+  work — is checking whether 749 got used and, if so, filing the adjudication immediately per the
+  #1947/#1942 precedent, rather than repeating cycle 27's pattern of discovering exhaustion
+  mid-write. Also: scoped `ga_sade_sati`'s F-A14 conjunct to the base-intensity CITATION only
+  (matching the writer's own `PHASE_QUARTER_INTENSITY` lookup), not the full final
+  `intensity_level` after up to 4 sequential order-dependent modifier bumps (Mars/Jupiter aspect,
+  cancellation, Pisces-pada) — replicating that bump sequence in SQL was judged out of scope for
+  one bounded conjunct; the base-citation grounding is itself a genuine, independently-checkable
+  claim, not a placeholder.
 
 ## Held items
 
@@ -2471,4 +2518,22 @@ L1 must satisfy rather than a feature it consumes.
   in conjuncts (c)/(d) -- narrowed to the actual SELECT DISTINCT dedup keyword. No writer touched.
   CYCLE 36 L1: landed ga_vichara's F-A14 contract (PR #1967, migration 747) -- next: continue
   F-A14 for the remaining 4 assets, consider fixing F-A15/F-A16 in a future pass, or ga_positions
+  re-dispatch once #1892 lands.
+- 2026-09-06T03:1xZ -- CYCLE 37 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963/#1964/#1965 confirmed genuinely is:queued; #1827/#1967 still
+  legitimately CI-pending, auto-merge armed, not DIRTY/RED. Rebased state branch onto a
+  newly-advanced origin/main this cycle, clean. Unit of work: ga_sade_sati's F-A14
+  integrity_check_sql (PR #1968, migration 748 -- ninth used in the new range, leaving 749 as the
+  LAST free number). Shared table (chart_facts, 15 categories), scoped this bounded pass to
+  sade_sati_cycle + sade_sati_phase_quarter. Three conjuncts: quarter_intensity_rationale_jsonb's
+  base citation matches the writer's own PHASE_QUARTER_INTENSITY table (720/720 clean),
+  cycle_start_iso precedes cycle_end_iso (0/60 violations), duration_days matches the actual
+  day-span (0/60 violations). Did not attempt the full final intensity_level re-derivation (up to
+  4 sequential order-dependent modifier bumps) -- out of scope for one bounded conjunct; the
+  base-citation grounding is itself a genuine, checkable claim. Explicitly flagged in the state
+  header that 749 is now the last free migration number, so next cycle checks for exhaustion
+  FIRST rather than discovering it mid-write (D-L1-59). No writer touched. CYCLE 37 L1: landed
+  ga_sade_sati's F-A14 contract (PR #1968, migration 748) -- next: FIRST check whether 749 got
+  used and file adjudication if so, then continue F-A14 for the remaining 3 assets
+  (ga_transit_anchors, ga_ayurdaya, ga_prashna), consider fixing F-A15/F-A16, or ga_positions
   re-dispatch once #1892 lands.
