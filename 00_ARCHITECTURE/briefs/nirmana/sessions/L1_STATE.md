@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 38; ga_transit_anchors F-A14 landed, range exhausted, #1972 filed
+last_updated: 2026-09-06 — C8 v2.3 cycle 39; ga_ayurdaya F-A14 landed (#1975), 750-759 range in use
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -22,12 +22,9 @@ your `nirmana-adjudication` issues → continue.
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
-- **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → 740–749 (adjudication #1947), **NOW
-  FULLY CONSUMED (cycle 38)** — 740 (`ga_medical`), 741 (`ga_vastu`), 742 (`ga_nakshatra`), 743
-  (`ga_sensitive`), 744 (`ga_sensitive_degree`), 745 (`ga_structural`), 746 (`ga_yoga`), 747
-  (`ga_vichara`), 748 (`ga_sade_sati`), 749 (`ga_transit_anchors`) all used. **Continuation
-  adjudication #1972 filed (cycle 38) — awaiting Conductor ruling for the next range.** Do NOT
-  author a new migration file until #1972 rules; other bounded work continues in the meantime.
+- **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
+  #1947) → **750–759 granted** (adjudication #1972, Conductor ruling, cycle 38 same-session —
+  ruled same day as filed). 750 (`ga_ayurdaya`, cycle 39) used. 751–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1560,6 +1557,38 @@ assets) plus follow-up passes on `ga_structural`/`ga_sade_sati` (partial coverag
 F-A15/F-A16 in their writers, or `ga_positions` re-dispatch once #1892 lands — any of which is
 non-migration-touching work and doesn't need #1972 to resolve first.
 
+## CYCLE 39 (C8 v2.3) — #1972 ruled same-day (750-759 granted); ga_ayurdaya's F-A14 contract, first in the new range
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/
+#1963/#1964/#1965/#1967/#1968 confirmed genuinely `is:queued`. #1827/#1971 still legitimately
+CI-pending from last cycle's fresh pushes, auto-merge armed, not DIRTY/RED. Checked #1972's status
+before anything else per this cycle's own instruction ordering (issue exists → check first) —
+already CLOSED, ruled by the Conductor the same day it was filed: **L1 (continuation 2): 750-759**,
+same full-allocation-table discipline as every prior ruling (650-659+740-749 both exhausted,
+660-669+710-729 L2, 670-679+730-739 L3, 680-689 L4 unexhausted, 690-699 L5, 700-709 L0
+continuation).
+
+**Unit of work: F-A14 for `ga_ayurdaya`** (migration 750, first used in the new 750-759 range).
+Shared table (`chart_facts`, scoped to `fact_category='ayurdaya'`), small dedicated writer (313
+lines, fully read) — no distinctness conjunct (chart_facts' own partial UNIQUE already exact).
+
+Three conjuncts, all measured live and mutation-proved: (a) each method's stored classification
+(`alpayu`/`madhyayu`/`purnayu`) must match the writer's own `classify_ayus()` thresholds applied
+to that same row's numeric total; (b) the `applicable_method` row's embedded JSONB summary of all
+three methods' totals must agree with the three separately-stored PINDAYU/NISARGAYU/AMSAYU rows
+(a genuine cross-row consistency check, not a restated literal); (c) each method's total must
+equal the sum of its own embedded per-graha contributions plus the Lagna contribution — an
+internal arithmetic-consistency check on the writer's own JSONB payload, verified via
+`jsonb_each_text` rather than assuming the stored total is correct.
+
+No Python writer touched; `provenance_inventory --check` clean. 6 new textual-contract tests; full
+`tests/unit/migrations/` suite: 39 files, 186 passed / 91 skipped, no regressions.
+
+CYCLE 39 L1: landed `ga_ayurdaya`'s F-A14 contract (PR #1975, migration 750, first in 750-759) —
+next: continue F-A14 for the remaining 1 untouched asset (`ga_prashna`), consider follow-up passes
+on `ga_structural`/`ga_sade_sati` (partial coverage) or fixing F-A15/F-A16 in their writers, or
+`ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1581,17 +1610,17 @@ none accepted yet (blocked on #1736).
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
-| ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
+| ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **17/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-38: ga_dashas,
+Cross-cutting: **18/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-39: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
 ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
 other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15 categories],
-ga_transit_anchors; only ga_ayurdaya + ga_prashna remain fully untouched); `expected_volume_formula`
+ga_transit_anchors, ga_ayurdaya; only `ga_prashna` remains fully untouched); `expected_volume_formula`
 NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
@@ -2062,6 +2091,14 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   by design). Re-asserting a fixed sign value would have been the EXACT F-D22 landmine already
   fixed two cycles into this campaign — caught by thinking it through before shipping, not by a
   mutation-test failure after the fact, unlike most of this campaign's other near-misses.
+- **D-L1-61** — C8 v2.3 cycle 39: #1972 was ruled by the Conductor the SAME DAY it was filed
+  (750-759 granted) — the fastest range-adjudication turnaround this campaign, confirming the
+  D-L1-59/D-L1-60 flag-ahead-then-file-immediately drill works end-to-end without idling a cycle
+  waiting. `ga_ayurdaya`'s F-A14 pass shipped clean with no new finding (unlike F-A15/F-A16) —
+  read the whole 313-line writer (small enough for a full read rather than a targeted grep) and
+  found three genuinely strong internal-consistency conjuncts (classification-threshold
+  re-derivation, cross-row totals-JSONB agreement, per-graha-sum arithmetic) without needing a
+  cross-asset authority check this time.
 
 ## Held items
 
@@ -2614,4 +2651,18 @@ L1 must satisfy rather than a feature it consumes.
   await #1972's ruling before authoring any new migration; F-A14 remains open for
   ga_ayurdaya/ga_prashna (untouched) and follow-up passes on ga_structural/ga_sade_sati (partial),
   none of which need #1972 resolved first; also consider fixing F-A15/F-A16, or ga_positions
+  re-dispatch once #1892 lands.
+- 2026-09-06T03:3xZ -- CYCLE 39 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963/#1964/#1965/#1967/#1968 confirmed genuinely is:queued; #1827/#1971
+  still legitimately CI-pending, auto-merge armed, not DIRTY/RED. Checked #1972 first: ruled
+  SAME DAY it was filed -- 750-759 granted, same full-allocation-table discipline as every prior
+  ruling. Unit of work: ga_ayurdaya's F-A14 integrity_check_sql (PR #1975, migration 750 -- first
+  used in the new range). Shared table (chart_facts, fact_category='ayurdaya'), 313-line writer
+  fully read. Three conjuncts: classification-threshold re-derivation (alpayu/madhyayu/purnayu
+  vs the writer's classify_ayus()), applicable_method's embedded totals JSONB agrees with the
+  three separate PINDAYU/NISARGAYU/AMSAYU total_years rows, each total equals its own
+  per-graha-sum + lagna_years (jsonb_each_text re-derivation). All three clean live, no new
+  finding. No writer touched. CYCLE 39 L1: landed ga_ayurdaya's F-A14 contract (PR #1975,
+  migration 750) -- next: continue F-A14 for the last untouched asset (ga_prashna), consider
+  follow-up passes on ga_structural/ga_sade_sati (partial) or fixing F-A15/F-A16, or ga_positions
   re-dispatch once #1892 lands.
