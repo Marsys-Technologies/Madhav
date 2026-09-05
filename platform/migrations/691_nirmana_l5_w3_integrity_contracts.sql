@@ -1433,3 +1433,206 @@ $check$
 -- Forward reversal (safe at any time -- these are additive value corrections on
 -- a metadata column, not schema changes): re-run with integrity_check_sql reset
 -- to NULL for the 15 asset_ids above.
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- PART 2 — THE FREE REGISTRY WINDOW (D-CND-09)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- D-CND-09: `depends_on` and `layer` are immutable within a frozen campaign;
+-- every OTHER registry-contract field is mutable ONLY UNTIL that asset's W2
+-- acceptance event. L5 has recorded ZERO acceptance events, so all 15 assets
+-- are still mutable -- and that window closes on the first one. Doing
+-- catalog_status + integrity_check_sql + expected_volume_formula in ONE
+-- migration is therefore not tidiness, it is the last cheap moment.
+--
+-- (`depends_on` is deliberately untouched here. L5's W1 found 32 DAG
+-- corrections -- 19 undeclared-but-read, 13 declared-but-unread -- and NONE is
+-- applied; they are recorded in the Phase-Z corrections register, issue #1734.)
+
+
+-- ── 2a. catalog_status: the DRAFT sweep, 13 of 15 ──────────────────────────
+--
+-- L5 is the ONLY layer still entirely DRAFT: bodha 22/22 CURRENT, ganita 19/19,
+-- brahmagyan 39/40, kala 21/23, phala 8/9 -- mimamsa 0/15. And this is not
+-- cosmetic: the Nirmāṇa cockpit FILTERS on catalog_status, so every L5 asset is
+-- currently invisible to the operator.
+--
+-- Root cause is mechanical, not a judgement: `asset_registry.catalog_status`
+-- has DEFAULT 'DRAFT', and registry migrations that omit the column inherit it.
+-- Migration 294_catalog_status_current.sql diagnosed and swept exactly this
+-- once already; the L5 registration migrations (353-355, 364, 497, 532) landed
+-- after that sweep and reintroduced it. L2's migration 660 §N-20 swept the same
+-- defect for nine Bodha assets.
+--
+-- Promotion test, applied per asset from L5-W1 evidence (a real @register
+-- writer OR a live source path; live rows OR a designed-empty state with a
+-- recorded disposition; and at least one real consumer):
+
+UPDATE asset_registry SET catalog_status = 'CURRENT'
+ WHERE asset_id IN (
+   'lel_events',          -- 64 live rows; served by lel_query; no writer BY DESIGN (source asset)
+   'mi_jivanaghatana',    -- 64 rows; consumed by mi_pramana's match substep
+   'mi_bhavisya',         -- 195 rows; served by query_predictions
+   'mi_pramana',          -- 57 + 6 rows; served by query_calibration / mimamsa_calibration_get
+   'mi_gunanaka',         -- 18 + 5 rows; read by query_calibration, compute_spine_bundle, mi_adhilepa
+   'mi_pariksha',         -- 174 + 1,425 + 71 rows; served by query_attribution, query_mimamsa_discoveries
+   'mi_adhilepa',         -- 224,751 rows; served by query_load_bearing
+   'mi_sambandha',        -- 47 rows; served by query_manifestation_grammar
+   'mi_darshana',         -- 150 rows; served by mimamsa_insight_get
+   'mi_kula',             -- 11 + 4 rows; served by query_signal_families; global
+   'mi_bhara',            -- 7 + 6 rows; real writer, real output
+   'mi_vistara',          -- 0 rows, but DESIGNED empty: append-only export ledger whose
+                          --   trigger has never fired. Writer is complete and already
+                          --   terminates honestly ('lit' at 0 rows, earned on both limbs of
+                          --   zero_rows_is_complete). Disposition recorded twice (registry
+                          --   scope exception + assetClearSpec). Not immature.
+   'mi_sankalpa'          -- 0 rows, but DESIGNED empty: a LIVE, tested, guarded serve-time
+                          --   write path exists (kala_upaya_get -> intervention_ledger_record).
+                          --   Awaiting a native adoption, not an implementation. Not immature.
+ )
+   AND catalog_status IS DISTINCT FROM 'CURRENT';
+
+
+-- ── 2b. The two that STAY DRAFT, with the reason made discoverable ─────────
+--
+-- Following migration 642's precedent exactly: where DRAFT is ACCURATE rather
+-- than stale, do NOT flip it -- that would fabricate a settledness the asset
+-- does not have -- and instead record WHY in english_description, so a future
+-- reader does not have to re-derive it from writer source the way L5-W1 did.
+-- The column comment added by 642 asks for precisely this.
+--
+-- These two are not "empty tables". They are surfaces whose PRODUCER does not
+-- exist in any language anywhere in the repository -- which is a different and
+-- more honest claim than mi_vistara's or mi_sankalpa's designed emptiness above.
+
+UPDATE asset_registry
+   SET english_description =
+     'Serve-time contribution-control gateway for L5 (effective-value resolution under a '
+     || 'learning_influence toggle, lel_citation gate, contribution_state metadata). '
+     || 'catalog_status=DRAFT is INTENTIONAL, not stale: the service does not exist. '
+     || 'platform/python-sidecar/services/mi_seva/ is absent; the registered writer only '
+     || 'loops information_schema.tables; and grep for learning_influence / lel_citation / '
+     || 'saved_state / contribution_state across platform/src + platform-mcp/src returns zero '
+     || 'non-generated hits, while the overlay this gateway is designed to GOVERN is already '
+     || 'read directly by compute_spine_bundle and query_calibration. mimamsa_preferences '
+     || 'being empty is correct; the gateway being absent is the immaturity. Re-verify the '
+     || 'resolver exists before flipping to CURRENT. (L5-W1 batch D; deferred register, plan §7.3.)'
+ WHERE asset_id = 'mi_seva';
+
+UPDATE asset_registry
+   SET english_description =
+     'L5 journal re-sync: drains answered native journal entries into '
+     || 'mimamsa_predictions.lifecycle_status. catalog_status=DRAFT is INTENTIONAL, not stale: '
+     || 'the journal APPEND PATH does not exist. A repository-wide search for '
+     || '"INSERT INTO mimamsa_journal" returns nothing, and mi_seva.py:29 points at '
+     || 'services/mi_seva/handler.py, a file that does not exist. Schema, indices, the '
+     || 'read/serve path (query_journal) and the build-time drain are all INTACT -- the table '
+     || 'is empty because nothing can write it, not because a live producer is idle. That is '
+     || 'the honest distinction the L5 seal did not draw. Re-verify a producer exists before '
+     || 'flipping to CURRENT. (L5-W1 batch B, finding B-F-01; deferred register, plan §7.3.)'
+ WHERE asset_id = 'mi_abhilekha';
+
+
+-- ── 2c. expected_volume_formula for the 10 assets migration 690 did not cover ──
+--
+-- Migration 690 derived five (mi_jivanaghatana, mi_gunanaka, mi_adhilepa,
+-- mi_vistara, mi_sankalpa). These are the remaining ten. Every figure below was
+-- verified live before being written; C12 forbids a bare count equality as a
+-- volume assertion, so where volume is genuinely exogenous the formula SAYS SO
+-- rather than pinning a number that would be false tomorrow.
+--
+-- Per D-CND-17, chart cb73cd3d is DAMAGED and is NOT a measurement baseline;
+-- every observed figure below comes from 482012f1 / 1c826d5a only.
+
+-- Exactly derivable (verified live, this session):
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'COUNT(phala_anchors WHERE chart_id = $chart)',
+       expected_volume_inputs = jsonb_build_object(
+         'source_table','phala_anchors','partition','chart_id','chart_scoped',true,
+         'derivation','one frozen prediction per L4 anchor for the chart',
+         'observed_2026_09_05', jsonb_build_object('predictions',195,'anchors',195,'ratio','1:1'))
+ WHERE asset_id = 'mi_bhavisya';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'COUNT(mimamsa_signal_families) + COUNT(mimamsa_negative_controls)',
+       expected_volume_inputs = jsonb_build_object(
+         'scope','global','chart_scoped',false,
+         'derivation','the hand-authored family catalogue plus its negative-control battery',
+         'observed_2026_09_05', jsonb_build_object('families',11,'controls',4,'total',15))
+ WHERE asset_id = 'mi_kula';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'COUNT(DISTINCT event_class scored for the chart) + 1',
+       expected_volume_inputs = jsonb_build_object(
+         'partition','chart_id','chart_scoped',true,
+         'derivation','one kala_field_skill row per scored event class, plus one chart-level aggregate row',
+         'observed_2026_09_05', jsonb_build_object('classes',6,'aggregate',1,'total',7),
+         'note','a chart with no Life Event Log correctly yields the structural-prior state (skill_state=underpowered), an honest zero')
+ WHERE asset_id = 'mi_bhara';
+
+UPDATE asset_registry
+   SET expected_volume_formula = '5 * COUNT(DISTINCT (match_id, signal_id)) for mimamsa_attribution; mimamsa_qa_eval is check-driven, not volume-derived',
+       expected_volume_inputs = jsonb_build_object(
+         'partition','chart_id','chart_scoped',true,
+         'derivation','attribution tiles every (match, signal) pair across exactly the five calibration score dimensions',
+         'dimensions', jsonb_build_array('timing','magnitude','domain','falsifier','manifestation'),
+         'observed_2026_09_05', jsonb_build_object('attribution_rows',1425,'derived',1425,'qa_eval',174,'discoveries',71))
+ WHERE asset_id = 'mi_pariksha';
+
+-- Genuinely exogenous -- the honest fill is a formula that says so (C12 names a
+-- NULL here as the defect; it does not require an invented number):
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(native-authored source corpus, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'kind','user_authored_source','partition','chart_id','chart_scoped',true,'floor',0,
+         'intake','the LEL save API -- NOT a build writer',
+         'note','the native authors these events; volume is a fact about a life, not about a computation. A chart with no Life Event Log correctly holds zero.',
+         'observed_2026_09_05', jsonb_build_object('482012f1',64,'1c826d5a',0))
+ WHERE asset_id = 'lel_events';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(prediction-event match count, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'partition','chart_id','chart_scoped',true,'floor',0,
+         'derivation','one calibration row per (prediction, admissible non-held-out event) temporal match -- not a deterministic target',
+         'note','zero is the CORRECT result for a chart with no Life Event Log; 1c826d5a holds zero legitimately',
+         'observed_2026_09_05', jsonb_build_object('482012f1',57,'1c826d5a',0))
+ WHERE asset_id = 'mi_pramana';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(sum of five per-type upstream coverage identities, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'partition','chart_id','chart_scoped',true,'floor',0,
+         'derivation','calibrated_outlook = |mimamsa_reliability|; emergent_law and retrodiction = |mimamsa_discoveries| by class; load_bearing = |mimamsa_load_bearing|; manifestation_grammar = LEAST(20, qualifying grammar rows); verdict_object <= 40 (bo_pratijna LIMIT)',
+         'note','these five identities are asserted exactly by this asset''s integrity_check_sql above -- the formula and the check derive from the same source',
+         'observed_2026_09_05', jsonb_build_object('total',150))
+ WHERE asset_id = 'mi_darshana';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(channels observed in manifestation_sets + seeded priors, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'partition','chart_id','chart_scoped',true,'floor',0,
+         'derivation','one row per (origin_kind, origin_ref, channel_id) with real opportunities, plus prior-only seed rows',
+         'known_defect','17 of the seeded rows per chart carry channel_ids mi_bhavisya can never emit (finding B-F-13); the count is therefore NOT yet a clean derivation and this formula describes the current writer, not the intended one',
+         'observed_2026_09_05', jsonb_build_object('total',47))
+ WHERE asset_id = 'mi_sambandha';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(append-only journal, serve-time populated, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'kind','append_only_journal','partition','chart_id','chart_scoped',true,'floor',0,
+         'trigger','a native answering a surfaced prediction prompt',
+         'note','zero today because NO APPEND PATH EXISTS in the repository (finding B-F-01) -- not because the trigger has not fired. See this asset''s english_description.')
+ WHERE asset_id = 'mi_abhilekha';
+
+UPDATE asset_registry
+   SET expected_volume_formula = 'EXOGENOUS(per-user serve-time preference rows, floor 0)',
+       expected_volume_inputs = jsonb_build_object(
+         'kind','per_user_ui_state','floor',0,
+         'chart_scoped',false,
+         'registry_scope_mismatch','registered per_chart, but mimamsa_preferences has NO chart_id column (user_id, channel_id, saved_state, updated_at) -- recorded rather than worked around; this is why the asset''s integrity check is whole-table shaped',
+         'note','zero today because the serve-time resolver does not exist. See this asset''s english_description.')
+ WHERE asset_id = 'mi_seva';
