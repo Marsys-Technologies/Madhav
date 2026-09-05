@@ -1563,7 +1563,13 @@ def _build_arudha_special_lagna_nodes_and_edges(
             "present_in_traditions_array": _traditions,
             "graph_compute_library": GRAPH_LIB,
             "graph_compute_library_version": GRAPH_LIB_VER,
-            "is_cross_subsystem": False,
+            # N.7: is_cross_subsystem must match the module's own contract
+            # ("True when from/to nodes span different traditions"). An arudha_house
+            # edge's endpoints ARE jaimini->parashari (genuinely cross-tradition);
+            # a special_lagna_house edge's are parashari->parashari (same). The
+            # flag used to be hardcoded False for both, contradicting the
+            # subsystem_from/subsystem_to values set right beside it.
+            "is_cross_subsystem": node_type == "arudha",
             "subsystem_from": "jaimini" if node_type == "arudha" else "parashari",
             "subsystem_to": "parashari",
             **_typed_edge_fields(edge_type, relationship_class=edge_type),
