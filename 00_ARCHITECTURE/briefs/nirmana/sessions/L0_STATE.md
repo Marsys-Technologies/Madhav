@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-R: job image redeployed + confirmed carries #1772 (bg_cohort blocker cleared); dispatch still gated on #1838 (dispatch-script fix, unmerged); merge queue observed stalled, flagged to #1713
+last_updated: 2026-09-05 — D-L0-P triple-confirmed via the Conductor's own dispatch-script functions + existing W2 event fingerprints; queue moving slowly (22→19), #1838 at position 7
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -355,6 +355,25 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   work, separate from (and now higher-priority than) the evidence-submission toolkit built over the
   last several cycles.
 
+- **D-L0-P triple-confirmed + clarified what "OPEN-PENDING-PIN" actually means for bg_doshas/
+  bg_gochara_arcs.** Reading `platform/scripts/dispatch_nirmana_campaign_wave.py` (prep for the
+  dispatch path) turned up its own `_live_registry_fingerprint`/`_canonical_analysis_digest`
+  functions — **the Conductor's own canonical Python implementation of the exact two functions this
+  session hand-replicated over the last several cycles**, field-for-field identical
+  (`REGISTRY_CONTRACT_FIELDS` tuple matches mine exactly, same `sorted(depends_on)`, same literal
+  strings). Then checked the ALREADY-EXISTING W2 events for both assets directly: their recorded
+  `registry_fingerprint_sha256` (`073def4a…` bg_doshas, `93fa16df…` bg_gochara_arcs) **matches this
+  session's from-scratch computation exactly** — a third independent confirmation, after the frozen
+  manifest's own embedded value. **This also resolves a real question**: E-gate's
+  `w2_analysis=t/w2_verdict=t` for these two isn't stale data or luck — it means W2 was ALREADY
+  accepted (presumably by a prior L0 session), against the CURRENT (pre-migration) live fingerprint,
+  which is exactly why the gate reads `OPEN-PENDING-PIN` not `OPEN`: egate.sql's own README already
+  explained this (C2.3 pin-freshness isn't DB-checkable). **The moment migrations 692/694 merge and
+  `integrity_check_sql` changes, these two W2 acceptances go stale** (their fingerprint no longer
+  matches live) — the toolkit built over D-L0-P is for exactly this "delta re-review" resubmission,
+  not a from-nothing W2 acceptance. Confidence in the whole toolkit is now very high (3-way
+  cross-validated, not just inspection).
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -645,3 +664,17 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   assets become genuinely dispatchable — read `dispatch_nirmana_campaign_wave.py`'s actual CLI/
   invocation contract as the next unit, since this is now higher-priority than the (already-built)
   evidence-submission toolkit.
+- 2026-09-05 — **Cycle 13.** PR hygiene: all 4 confirmed still OPEN/unmerged, `is:queued` holds for
+  all 3 migration PRs (queue shrank 22→19 — moving, just slowly; one merge landed since last cycle,
+  #1818). Nothing to fix. `main` advanced once more since last check. Started reading
+  `dispatch_nirmana_campaign_wave.py`'s CLI (`--layer/--wave/--definition-revision/--commit/
+  --confirm`, rollback-only by default) as planned, and got a big bonus: its
+  `_live_registry_fingerprint`/`_canonical_analysis_digest` helpers are **field-for-field identical**
+  to this session's own hand-replicated Python from D-L0-P — same `REGISTRY_CONTRACT_FIELDS` tuple,
+  same sorted `depends_on`, same literal strings. Cross-checked the ALREADY-EXISTING W2 acceptance
+  events for bg_doshas/bg_gochara_arcs directly: their recorded `registry_fingerprint_sha256`
+  matches this session's computation exactly (third independent confirmation). Clarified *why*
+  E-gate reads `OPEN-PENDING-PIN` for these two rather than `OPEN`: W2 was already accepted by a
+  prior session against the current (pre-migration) fingerprint; the moment 692/694 merge, those
+  acceptances go stale and need exactly the delta-resubmission the toolkit was built for. NEXT:
+  #1838 (7th in a 19-deep queue) is the next thing to watch; once it merges, dispatch is fully live.
