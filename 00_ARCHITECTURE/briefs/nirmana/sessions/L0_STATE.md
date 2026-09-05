@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — cost ledger refreshed to cover D-L0-J..V; queue confirmed stalled (main frozen 2 cycles) but already sharper-diagnosed by L4 (D-CND-18/#1825), not re-flagging
+last_updated: 2026-09-05 — #1856 fixed (PR #1861), D-L0-V risk resolving; merge queue frozen 3 consecutive cycles at 29-deep, not re-flagging (L4's D-CND-18/#1825 already tracks it)
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -449,8 +449,13 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   real (this session used a local patch only), and (3) fresh W2 resubmission under the new fingerprint
   (per D-L0-P/D-L0-T) before a real commit-dispatch.
 
-- **D-L0-V — new risk flagged, not yet confirmed to affect L0: #1856 orchestrator crash may hit a
-  REAL (non-dry-run) dispatch of bg_doshas/bg_gochara_arcs.** L5 found (URGENT, #1856) that
+- **D-L0-V — RESOLVING: #1856 fixed in PR #1861 (auto-merge armed), still waiting on the same stuck
+  queue to actually land.** Conductor confirmed (#1713, 15:09:30Z) a two-line fix, verified
+  byte-identical hash for str-vs-UUID input on the already-working case — zero regression, zero
+  interface change. Their framing also now reads "for ANY per-chart asset with declared deps"
+  (narrower than my own hedge last cycle that it might not be per-chart-specific) — since both
+  target assets are `scope=global`, this suggests the risk may not have applied to them at all, but
+  moot either way once #1861 lands. Original flag, for the record: L5 found (URGENT, #1856) that
   `asset_runner.py`'s provenance capture (`compute_upstream_hash`/`canonical_upstream_hash`) crashes
   with `"Object of type UUID is not JSON serializable"` when `chart_id` arrives as a raw
   `uuid.UUID` at the JSON-encoding boundary — confirmed live against production, crashes the asset
@@ -854,3 +859,13 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `main` tip unchanged since last cycle — zero merges this time); `#1828` clean, pending checks;
   none DIRTY. Coordination issue #1713 has no new comment since last check; #1856 still `OPEN`.
   Nothing to fix, nothing new to diagnose, no fresh merge to act on.
+- 2026-09-05 — **Cycle 21.** PR hygiene: all 3 migration PRs still `is:queued` (29-deep now, `main`
+  tip frozen at `3b208dbfa` for a 3rd consecutive cycle — a real, worsening stall, not just slow);
+  `#1828` clean, pending checks; none DIRTY. Not posting a third coordination note — no new
+  diagnostic value to add beyond L4's existing D-CND-18/#1825 tracking, and Conductor is clearly
+  still active (just fixed #1856). **Genuine content this cycle: #1856 is fixed** (Conductor,
+  #1713 15:09:30Z) — PR #1861, two-line fix, auto-merge armed, verified byte-identical hash for
+  str-vs-UUID on the working case. Updated D-L0-V: the risk is resolving (moot once #1861 lands),
+  and Conductor's own framing now reads "per-chart... with declared deps" specifically, which — since
+  both target assets are `scope=global` — suggests it may never have applied to L0 at all. NEXT:
+  keep polling; still nothing actionable until a merge lands.
