@@ -2749,3 +2749,18 @@ resolving; E-gate uncheckable, DB access down 88 cycles; one new adjudication ch
 L4-relevant) → next: watch `#1885`/`#1842` merge; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-05T~22:30Z` — L4 — **CYCLE 99 (v2.3) — third flat cycle; verified both `#1885`
+(merge-group) and `#1842` (PR-level) via `gh run view` directly rather than trust the static
+position display — both genuinely mid-CI at normal durations (~9-11 min, only `Governance
+Gates` outstanding on each).**
+
+**PR hygiene:** all 11 own PRs unchanged. No DIRTY, no RED.
+
+**Priorities 1-4:** one new adjudication (`#1973`, shared DB-test-harness race, not
+L4-specific) checked. E-gate still uncheckable, 89th consecutive cycle DB access down.
+
+CYCLE 99 L4: IDLE-OK (verified: PR hygiene clean, `#1885`/`#1842` both confirmed genuinely
+mid-CI at normal durations via `gh run view`, not stuck; E-gate uncheckable, DB access down 89
+cycles; one new adjudication checked, not L4-relevant) → next: watch `#1885`/`#1842` merge;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
