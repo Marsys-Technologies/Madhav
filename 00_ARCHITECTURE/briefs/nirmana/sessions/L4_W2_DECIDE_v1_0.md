@@ -163,13 +163,48 @@ would enshrine a fabricated number. This is the achieved-count discipline read s
 | **M-29** | All 9 assets: `catalog_status = 'DRAFT'` while every one has real build history on two charts and live consumers. | B.8 |
 | **M-30** | Declared DAG edges that are fiction: `ph_pramana` 5 of 6 unread · `ph_muhurta` 4 of 8 unread · `ph_rectification` 1 of 1 unread with 4 real reads undeclared · `bo_laksana` declared-unread by two assets · `bodha_pratijna` + `kala_activation_predicates` read-undeclared while supplying the two largest posterior multipliers. | §N.8 applied to the DAG — **a declared edge is a claim** |
 
-**Decision D-L4-08 on M-30:** dependency corrections are **additive-then-subtractive and split across
-two batches.** Adding a genuinely-read edge (`bodha_pratijna`, `kala_activation_predicates`,
-`chart_facts`) is safe. *Removing* a declared edge changes the registry contract fingerprint and
-therefore invalidates my own W2 analysis evidence under the dispatcher's binding check
-(`registry_fingerprint_sha256`) — so every removal lands in the **same** migration as the C12 registry
-delta, before any W4 dispatch, never after. Getting this ordering wrong would force a full W2
-re-acceptance for all nine.
+**Decision D-L4-08 (SUPERSEDED by D-L4-14 below — kept visible rather than deleted):** dependency
+corrections were to be additive-then-subtractive within the C12 migration, on the reasoning that a
+registry contract change invalidates accepted analysis evidence.
+
+**Decision D-L4-14 (replaces D-L4-08) — `depends_on` cannot be corrected at all this campaign, so
+M-30 becomes documentation-only.** L1's #1744 establishes, with verification I re-checked against the
+same code, that the frozen definition `t0-2026-09-01-0e5b06fb` can no longer be superseded (174 events
+/ 11 build runs; `definitions.ts:894-901` is one-way) and that the dispatcher's frozen-manifest check
+compares exactly two fields — `layer` and `depends_on` (`dispatch_nirmana_campaign_wave.py:505-520`).
+Everything else in the registry contract is mutable. So `integrity_check_sql`, `target_floor`,
+`expected_volume_*`, `volume_explanation` and `catalog_status` — the whole C12 delta — are **safe**;
+`depends_on` is the single blocked field. M-30's corrections are recorded here and handed to Phase Z,
+with the inaccuracy written down rather than left to look intentional.
+
+**L4 does NOT inherit L1's ordering hazard, and I verified that rather than assuming it.** L1's
+F-A13 is a real concurrency race (`ga_dashas` reads `ga_vargas` without declaring the edge, so the
+orchestrator schedules them concurrently and it reads the previous build under MVCC). Every one of
+L4's undeclared reads is **already a transitive ancestor by another path**, so the E-gate requires it
+frozen regardless:
+
+| undeclared read | owning asset | transitive ancestor of `ph_nimitta`? |
+|---|---|---|
+| `bodha_pratijna` | `bo_pratijna` | **yes** |
+| `kala_activation_predicates` | `ka_yojaka` | **yes** |
+| `brahma_event_ontology` | L0 reference | yes (all of L0 precedes L4) |
+
+So L4 needs no sequential single-asset dispatch workaround, and no run-slot cost.
+
+**Three corrections to W1's own dependency findings, from verifying the table→asset mapping instead
+of inferring it by convention** (W1 batch A flagged these as inferred-not-verified, correctly):
+
+- **`bo_samskara` IS read.** Its `target_table` is `bodha_signal_embeddings`, which `ph_nimitta.py:576`
+  reads. W1 listed it as declared-but-unused. **Withdrawn.**
+- **`bo_laksana` IS read by `ph_phaladesa`.** Its `target_table` is `bodha_msr_signals`, which
+  `ph_phaladesa.py:297,308` reads. W1 batch D reasoned that was "`bo_bimba`/MSR territory, not
+  `bo_laksana`". **Withdrawn.** (`bo_laksana` remains genuinely declared-but-unread by `ph_sodhana`,
+  which reads only `phala_anchors` — that finding stands.)
+- **The actual declared-but-unread set for `ph_nimitta` is 3, not 2:** `bo_bimba`
+  (`bodha_cgm_nodes`), `bo_karanajala` (`bodha_cgm_edges`), and `bo_sangati` (`bodha_cdlm_cells`).
+- **New:** `bodha_contradictions`, read at `ph_nimitta.py:545`, has **no owning asset anywhere in the
+  registry** — zero assets name it as `target_table`, in `clear_tables`, or in `count_sql`. It is an
+  unowned table feeding the layer root. Handed to L2.
 
 ### §3.7 — Deterministic anchor identity (Conductor ruling on #1732, binding)
 
@@ -342,16 +377,15 @@ Four batches. Batches 1–3 are unheld and proceed now; batch 4 is held per §7.
 | batch | write-set | contents | held? |
 |---|---|---|---|
 | **W3-0 — deterministic anchor identity** | `platform/migrations/680_*.sql`, `writers/ph_nimitta.py`, `services/ph_nimitta/engine.py` | M-31: the one-time remap of the existing 195 cascaded across all nine referencing tables in one transaction; the content-derived `anchor_id`; the D-CND-03 partitioned referential-integrity detector; the C6 announcement that lifts the hold. **Lands first.** | no |
-| **W3-1 — registry + migration** | `platform/migrations/680*.sql` – `689*.sql` (my range, collision-free by construction) | The complete §9 registry delta for all nine: `integrity_check_sql`, `expected_volume_formula`, `expected_volume_inputs`, `volume_explanation`, `target_floor`, `catalog_status`, **and every `depends_on` correction in the same migration** per D-L4-08. Plus the `grounding_tier` column and dropping `classical_citation NOT NULL` (M-4), the duplicate-index drop, and the `confidence_low` range CHECK (D/F11). | no |
+| **W3-1 — registry + migration** | `platform/migrations/681*.sql` – `689*.sql` (680 is spent on W3-0) | The complete §9 registry delta for all nine: `integrity_check_sql`, `expected_volume_formula`, `expected_volume_inputs`, `volume_explanation`, `target_floor`, `catalog_status`. **No `depends_on` changes** — immutable per D-L4-14. Plus the `grounding_tier` column and dropping `classical_citation NOT NULL` (M-4), the duplicate-index drop, and the `confidence_low` range CHECK (D/F11). | no |
 | **W3-2 — serving plane (TS)** | `platform/src/lib/retrieval/registry/layers/L4_phala/*`, `platform-mcp/src/tools/phala_*.ts` | M-18 (MCP bridging), M-19/M-20 (the three inverted sorts), M-21 (posterior policy), M-23 (`grounds_to`), N-1 (unserved honesty columns), N-2 (density contracts + `hardFloor`), N-3 (pagination honesty), N-7 (description truth), M-25's descriptor correction. | no |
 | **W3-3 — writers (Python)** | `platform/python-sidecar/pipeline/orchestrator/writers/ph_*`, `platform/python-sidecar/services/ph_*` | M-1..M-2 (citation propagation + tier), M-5..M-12 (honest nulls + reasons), M-13 (the domain map), M-14 (`rows_inserted`), M-15 (anchor linkage), M-22 (headline selection consults the purification verdict), N-4, N-5, N-6, N-8, N-10. | no |
 | **W3-4 — doctrine consumption** | writers + serving, narrow | agreement line, strongest śruti quote, `tail_watch`, varshaphala/tithi-praveśa consumption. | **YES — §7** |
 
 **Sequencing constraints, stated because getting them wrong is expensive:**
 
-1. **W3-1 lands before any W4 dispatch, and `depends_on` removals land inside it** — a registry
-   contract change invalidates my own accepted analysis evidence under the dispatcher's
-   `registry_fingerprint_sha256` binding, forcing a full W2 re-acceptance for all nine (D-L4-08).
+1. **W3-1 lands before each asset's W2 acceptance event**, so the accepted analysis binds to the
+   final registry contract (C2 condition 3). `depends_on` is not touched at all (D-L4-14).
 2. **`ph_pratikara`'s rerun (M-17) lands AFTER W3-3, never before.** Rerunning today would replace
    1,277 obviously-empty rows with 1,277 rows carrying *real* remedy content still linked to one wrong
    anchor and still stamped with a fabricated citation — **a worse state than an obviously-empty

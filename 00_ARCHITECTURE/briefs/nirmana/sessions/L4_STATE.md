@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L4
 layer: L4 — Phala
 owner: the L4 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — L4-W2 complete; W3-0 next
+last_updated: 2026-09-05 — W3-0/W3-1 shipped + 2 ruled lanes delivered
 ---
 
 # L4 — Phala — SESSION STATE
@@ -25,10 +25,23 @@ your `nirmana-adjudication` issues → continue.
 ## Position
 
 `L4-W2` — **DECIDE COMPLETE (9/9 routed; 85 findings triaged, plus M-31 from ruling #1732).**
-Next: **W3-0**, the deterministic anchor identity — the layer's highest-priority unheld item, and the
-one that lifts the campaign-wide hold on `phala_anchors`.
+**Four PRs in flight.** Next: **W3-2** (serving plane) and **W3-3** (writers) — both unheld.
+
+| lane | PR | what |
+|---|---|---|
+| W1 + W2 | **#1735 MERGED** | 9/9 analysed, 9/9 routed, 86 findings triaged |
+| W3-0 | **#1754** | deterministic `phala_anchors.anchor_id` (D-CND-04 / #1732) — lifts the campaign-wide rebuild hold once deployed |
+| W3-1 | **#1761** | C12 registry contracts for all nine, in D-CND-03's partitioned form |
+| #1723 Part B | **#1763** | the bind-placeholder guard, granted to L4 to implement; unblocks 81 assets' freeze path across five layers |
+| #1739 | **#1771** | the hand-authored-anchor seed path severed (D-CND-08) |
 
 - **W1 ANALYZE** ✅ COMPLETE 9/9 — `L4_W1_ANALYSIS_{INDEX,BATCH_A..D}.md`, PR **#1735** (docs-only, auto-merge armed).
+- **W3-0** ✅ SHIPPED — PR **#1754**: deterministic `phala_anchors.anchor_id` (D-CND-04, ruling #1732).
+  Migration 680 + the `ph_nimitta` writer + 36 contract tests. **Verified live, not asserted** — run
+  end-to-end against production inside a rolled-back transaction: 191 anchors remapped, 4,980 child
+  references across 8 columns, all 6 FKs re-validated inside the migration, 0 dangling. The writer's
+  collision path exercised separately (same discipline). `tsc` 0, `eslint` 0, 36+26 TS tests, 138
+  python tests. **The hold lifts only after I verify the deploy**, not on merge (C4 execution-safe rule).
 - **W2 DECIDE** ✅ COMPLETE — `L4_W2_DECIDE_v1_0.md`. **All nine route `changed`**: no `rebuild_only`,
   no `verified_reuse`, no services. Every asset carries at least one MUST correctness finding, so a
   rebuild of current code would faithfully reproduce the defect. Said plainly rather than routing the
@@ -158,12 +171,55 @@ Charter C6 — each NEW capability downstream layers may consume, one line, with
 
 _(none yet — L5 Mīmāṃsā is my only downstream consumer)_
 
+## Rulings I acted on this session
+
+- **#1723 Part B — granted to L4 to implement** → **PR #1763**. The freeze-time detector runs with no
+  parameter array, so every per_chart `count_sql` fallback raised an opaque `there is no parameter
+  $1` for 81 of 128 assets. Now names the missing artifact. **Mutation-proven** as the ruling
+  required: disabling the guard fails 2 tests.
+- **#1723 Part A — D-CND-03, a STRICTER standard than I proposed.** I asked to confirm the
+  "quantified over all charts, honestly labelled" reading; the Conductor rejected the trade as
+  unnecessary and required chart-PARTITIONED invariants instead. **It corrected work I had already
+  shipped** — PR #1761 used whole-table aggregates — so I rewrote all nine before it merged.
+  Demonstrated live why the ruling is right: deleting one domain row for one chart makes the
+  partitioned form read RED while `count(*) >= 13` stays GREEN, masked by the other chart's rows.
+- **#1739 — Option 1 granted** → **PR #1771**. Severed **three** call sites, not the two the ruling
+  named; the third (`brahma_pipeline._l4_phala`) was inside a build path wrapped in
+  `except Exception → non-fatal`, so a fabricated write would have read as a skipped step.
+  **Corrected the ruling and my own W1 on the record:** both called AC5 a false PASS; it was not —
+  it reported FAILED correctly every time, verified live. Removed anyway, for the honest reason.
+- **#1725 — Option 1 granted on both contradictions**, implemented by the Conductor as PR #1737. The
+  E-gate now uses C2's ancestor closure and the slot cap is 3. `ph_nimitta` still reads 37 unfrozen,
+  matching my own count — the evidence the gate still bites.
+- **#1718 — Option 2 granted**, authored by L1. I owe that PR a review against my five cited line
+  numbers, specifically that `canonical_analysis_digests is None` stops being a *supported* mode.
+
+- **#1732 / D-CND-04** → W3-0 shipped. **I corrected the ruling's own blast-radius table**: two of its
+  nine entries (`mimamsa_attribution.match_id` 0/1,425 and `mimamsa_manifestation_sets.prediction_id`
+  0/195) do **not** hold anchor ids, and one that does (`mimamsa_predictions.source_pramana_id`,
+  195/195) was absent. Corrected: 8 columns / 5,181 rows. Trusting the summary would have corrupted
+  1,620 L5 rows.
+- **#1744 (L1)** — `depends_on` and `layer` are immutable for the rest of the campaign; every other
+  registry field is mutable. **D-L4-08 superseded by D-L4-14**: L4's dependency corrections (M-30)
+  become documentation-only, handed to Phase Z. Verified that **L4 does not inherit L1's concurrency
+  hazard** — every undeclared L4 read is already a transitive ancestor by another path, so no
+  sequential-dispatch workaround and no run-slot cost. Also corrected three of W1's own dependency
+  findings by checking the table→asset mapping instead of inferring it (see W2 §3.6).
+
 ## Handed across to other sessions (W2 §8)
 
 - **L5** — `mi_bhavisya.py:178` writes an **anchor_id into `source_pramana_id`** (195/195 resolve as
   `phala_anchors.anchor_id`, **0/195** as `phala_pramana.pramana_id`, both written in the same build
   8 s apart — never staleness), while five generated projections advertise the ph_pramana link. Also
   `mimamsa_anchor_adjustment.multiplier = 0.95` on all 195 rows with `evidence_n = 0`.
+- **L2** — `bodha_msr_signals.signal_id` is `str(uuid.uuid4())` per build (`bo_laksana.py:1233,2230,2687`),
+  and **1,013,127 rows across 11 tables** reference it. Filed as **#1748**. Graded honestly: the table
+  *accretes* (9 build_ids live), so there are **0 dangling references today** — the cost is that the
+  same logical signal has no stable identity across builds, references go stale rather than breaking,
+  and the table grows without a retention rule. It is why `signal_id` could not serve as W3-0's
+  tie-breaker.
+- **L2** — `bodha_contradictions` (read by `ph_nimitta.py:545`) has **no owning asset in the registry** —
+  no `target_table`, no `clear_tables`, no `count_sql` reference across all 128 assets.
 - **L2** — is `bodha_discoveries.discovery_id` stable across a `bo_anveshana` rebuild? It has no column
   default, so a writer assigns it; if it is fresh-per-build, D-CND-04 applies to `bo_anveshana` and my
   discovery-sourced anchors inherit the problem. Also: `bodha_cdlm_cells.cell_evolution_gradient_score`
@@ -188,6 +244,10 @@ _(none yet — L5 Mīmāṃsā is my only downstream consumer)_
 | _(layer-wide)_ W1 fan-out | ~11 min wall | ~702k subagent | 4 concurrent read-only subagents, 232 tool uses |
 | _(layer-wide)_ W1 deliverables + PR #1735 | ~25 min | — | 5 documents, ~2,400 lines |
 | _(layer-wide)_ W2 DECIDE + #1739 + the #1732 design | ~40 min | — | 9 routes, 85 findings triaged, 13 decisions |
+| `ph_nimitta` W3-0 (identity + remap + detector + tests) | ~55 min | — | 2 live rolled-back production runs; PR #1754 |
+| W3-1 C12 contracts, all nine (+ D-CND-03 rewrite) | ~50 min | — | every detector verified green live AND red on injected corruption; PR #1761 |
+| #1723 Part B bind-placeholder guard | ~20 min | — | mutation-proven; PR #1763 |
+| #1739 seed-path severance | ~30 min | — | 3 call sites; mutation-proven guard; PR #1771 |
 
 ## Slot claims (C5)
 
@@ -206,3 +266,13 @@ _(none — no L4 asset is E-gate-open; `ph_nimitta` has 37/46 ancestors unfrozen
   accepted, and answered with a **verified** design refinement — the obvious deterministic key would
   not in fact have been deterministic, because it embeds two `bigserial`s. W3-0 next. No slot claimed
   (nothing dispatchable; `ph_nimitta` is additionally held by #1732 until I lift it).
+- `2026-09-05T~07:10Z` — L4-W3-0 — **shipped PR #1754**. Design refinement verified before building:
+  the obvious deterministic key embeds two `bigserial`s and would have silently re-broken the chain on
+  L3's next rebuild. Found and filed **#1748** (`bo_laksana` uuid4 `signal_id`, 1,013,127 referencing
+  rows) while settling the tie-breaker. Corrected the #1732 blast-radius table before remapping.
+  Read #1744 and superseded my own D-L4-08. No slot claimed.
+- `2026-09-05T~07:55Z` — L4-W3 — four rulings read and acted on. Shipped #1763 (#1723 Part B, inside
+  the hour as offered) and #1771 (#1739). Rewrote #1761's nine detectors to D-CND-03's partitioned
+  form after the ruling corrected my proposal, and proved the correction with a live probe. Filed
+  two corrections against my own earlier work (W1's AC5 false-PASS claim; W1's dependency
+  attributions). No slot claimed — nothing dispatchable.
