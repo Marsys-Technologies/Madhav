@@ -1650,3 +1650,13 @@ diagnostic — genuinely progressing, not stalled; E-gate uncheckable, DB access
 new capability landings or adjudications) → next: retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~06:40Z` — L4 — **CYCLE 17 (v2.3) — `#1850` merged (queue healthy, confirms last
+cycle's read). Steady-state IDLE, 7th consecutive cycle: DB access still down, all 8 checked own
+PRs genuinely queued and advancing (+1 position each on the one merge), `#1885` still queued,
+not yet merged. No new capability landings or adjudications.**
+
+CYCLE 17 L4: IDLE-OK (verified: PR hygiene clean, all checked PRs genuinely queued and advancing;
+E-gate uncheckable, DB access down 7 cycles; no new capability landings or adjudications) →
+next: retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
+deferred.
+
