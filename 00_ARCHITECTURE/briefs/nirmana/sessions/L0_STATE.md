@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — D-L0-MM: bg_compendium_index writer fully correct (9571/7969/1602 exact); both content-hash pins stale. Migration 702 authored + verified. Real time hasn't yet caught up for the bg_vidhi_floors integrity_verified retry (D-L0-LL) — will retry next cycle. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-KK (PR #1923), D-L0-LL (PR #1925) all still open/awaiting merge.
+last_updated: 2026-09-06 — D-L0-NN: MILESTONE — bg_vidhi_floors FROZEN, the first genuine freeze of this campaign resumption. 30/40 frozen, 10 remaining. Full chain traced live: W2→dispatch→authorize→accepted_rebuild_observed→integrity_verified→asset_frozen. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-KK (PR #1923), D-L0-MM (PR #1925, includes 702) all still open/awaiting merge.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,10 +33,13 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 29 frozen. **29/40
-frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remaining**, all diagnosed.
+**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 30 frozen. **30/40
+frozen** (verifier-signed 5-event chains, implementer≠verifier). **10 remaining**, all diagnosed.
+`bg_vidhi_floors` FROZEN this cycle (D-L0-NN) — first genuine freeze of this campaign resumption,
+full chain traced end-to-end: fresh W2 → dispatch → authorize → accepted_rebuild_observed →
+integrity_verified → asset_frozen, all via the scratchpad tooling built this session.
 
-## The 11 unfrozen assets
+## The 10 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
@@ -45,7 +48,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_yogas | rebuild_only | **D-L0-J refined by D-L0-KK: real dispatch (run `f89f70fa-...`) failed integrity_check_sql, but writer is fully correct.** Genuine `seed_yogas()` replay produces exactly 233/233/233/85 with all three content-hash pins matching byte-for-byte — the ONLY failing subclause is the same FULL-JOIN scope leak as bg_doshas/692 and bg_dasha_systems/700 (`entity_class='yoga'` in the ON clause, 508 non-yoga `brahma_ontology` rows leak in). Migration 701 authored + verified live (TRUE on genuine replay, FALSE on stale live data). No writer change; awaiting PR merge + deploy, then re-dispatch. CASCADE parent → snapshot+`--acknowledge-destroys` (already done this cycle) |
 | bg_dasha_systems | rebuild_only | **D-L0-K refined by D-L0-GG: writer still correct; the CHECK had two bugs.** Real genuine dispatch (run `ce86f4cf`, not skip_no_delta) failed `integrity_check_sql`. Root-caused live: (1) same FULL-JOIN scope bug as bg_doshas/692 — `ontology.entity_class='dasha_system'` in the ON clause instead of a pre-filtered subquery, so all non-dasha_system `brahma_ontology` rows leaked in; (2) migration 621's `catalog_hash` pin itself was wrong at authoring time (writer content unchanged since 5f47906bc; genuine hash is `8e35495f...`, pin says `30742da6...`). Fix migration 700 authored + verified live (rolled-back tx): guard matches 621's exact pin, corrected check evaluates **TRUE** against a genuine fresh writer run and **FALSE** (fail-closed, as expected) against current stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
-| bg_vidhi_floors | rebuild_only | **MILESTONE (D-L0-LL): first `accepted_rebuild_observed` of this campaign resumption.** Fresh W2 submitted (post-693 registry contract), dispatched (run `1d24dbed-...`), genuine build (14/409, matching pin exactly), authorized in-window, `accepted_rebuild_observed` accepted. `integrity_verified` submission blocked only by a self-inflicted bug (hand-typed future `observed_at` instead of real `date -u`) — real clock needs to catch up to `18:52:00Z`; retry same payload (`integrity_contract_sha256=6fc6f187...`) next cycle once it has. Still needs `catalog_status` DRAFT→CURRENT (D-CND-09) after integrity_verified + asset_frozen land |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **D-L0-JJ refined by D-L0-MM: writer fully correct; both content-hash pins were stale.** Replayed `_build_desired_rows()` directly (no full `ContextSpec` needed — pure function of `classical_text_chunks`/`reference_topic_tags`): produces exactly 9571/7969/1602 matching migration 623's structural pin precisely. Both content hashes (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer file being unchanged since — corpus content evidently evolved since 623 was authored. Migration 702 authored + verified live (rolled-back tx): TRUE on genuine replay, FALSE on stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
@@ -284,6 +286,33 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (rolled-back tx) — applies cleanly against the 623 pin, evaluates TRUE against a genuine writer
   replay, FALSE (fail-closed) against current stale live data. No writer change. 6th instance this
   session of the established C12 "correct the check" pattern.
+
+- **D-L0-NN — MILESTONE: `bg_vidhi_floors` FROZEN, the first genuine freeze of this campaign
+  resumption (30/40, 10 remaining).** Continuing directly from D-L0-LL's `accepted_rebuild_observed`
+  success: waited (bounded, single-call `until` loop, not a cross-cycle sleep) for real clock time
+  to pass the fabricated `18:52:00Z` `observed_at` baked into the already-recorded
+  `accepted_rebuild_observed` event, then retried the previously-computed `integrity_verified`
+  payload unchanged — accepted immediately (HTTP 201). Server-side `normalizeDetectorEvidence`
+  independently re-ran `bg_vidhi_floors`' `integrity_check_sql` live and recorded a genuine
+  `detector_observation`/`result_digest` (verdict `true`) — confirms this is a REAL independent
+  verification, not a rubber stamp. For `asset_frozen`: computed `lifecycle_digest` by fetching
+  ALL historical lifecycle events for the asset (not just the "current" ones — 6 rows total,
+  including the two now-superseded 2026-09-04 W2 events) and replicating the exact
+  `{event_type, evidence_payload, source_kind, source_ref}` sort-then-stableJson-then-sha256
+  scheme from `definitions.ts:2196-2203` in Python. First submission attempt failed
+  ("requires exactly one current validated integrity receipt") — root-caused to the SAME class of
+  bug as D-L0-LL: hand-typed `observed_at: "18:52:20Z"` again, this time landing 2 seconds *before*
+  `integrity_verified`'s real server-assigned `observed_at` (`18:52:22.39`). Confirmed via
+  `normalizeDetectorEvidence`'s exact scope (`definitions.ts:1725`: only `probe_accepted` and
+  `integrity_verified` get their `observed_at` server-overwritten) that `asset_frozen`'s
+  client-submitted `observed_at` is NOT overwritten and must itself be genuinely later — fixed by
+  shelling out to real `date -u` and resubmitting; accepted immediately. Verified via `egate.sql
+  -v layer=L0`: `bg_vidhi_floors` no longer appears in the unfrozen-asset list. Posted to #1713.
+  Confirms the full evidence-chain toolkit built this session (dispatch, authorize, all W2/W4/W5
+  submission scripts) works genuinely end-to-end for a real asset when nothing structural (D-L0-FF,
+  D-L0-II) interferes — the remaining 10 unfrozen assets are ALL either awaiting a merged
+  check-correction migration's deploy (bg_yogas/701, bg_dasha_systems/700, bg_compendium_index/702)
+  or blocked on the two open structural findings.
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
