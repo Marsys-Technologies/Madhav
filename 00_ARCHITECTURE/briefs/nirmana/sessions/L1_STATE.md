@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 26; ga_condition F-A14 landed, F-C8 confirmed still live (#1941)
+last_updated: 2026-09-06 — C8 v2.3 cycle 27; ga_tajaka F-A14 landed, migration range exhausted, #1947 filed (#1946)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -22,7 +22,9 @@ your `nirmana-adjudication` issues → continue.
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
-- **Migration range:** 650–659 (yours alone, collision-free by construction)
+- **Migration range:** 650–659 (yours alone, collision-free by construction) — **FULLY CONSUMED
+  as of migration 659 (cycle 27)**. Adjudication #1947 filed requesting the next range; check its
+  ruling before authoring any new migration file.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1048,6 +1050,45 @@ risk (graha_yuddha co-occurrence) by reading the code's own cited ruling before 
 anything — next: the remaining 13 assets' `integrity_check_sql`, or `ga_positions` re-dispatch
 once #1892 lands.
 
+## CYCLE 27 (C8 v2.3) — ga_tajaka's F-A14 contract exhausts L1's migration range; #1852 got a real fix upstream (still pending merge); adjudication #1947 filed
+
+**PR hygiene:** clean sweep. **New development on #1852/#1853**: the native posted a real
+resolution comment on #1852 — severed `bo_pratijna_v4_engine.py`'s import of
+`compute_tatkalika_relation`/`compute_panchadha_maitri` from `ga_condition_writer.py` (now local
+literal copies, same treatment `_NAISARGIKA` already gets), verified empirically that
+`bo_pratijna`'s digest no longer moves on a throwaway `ga_condition_writer.py` edit. Shipped as
+PR **#1928** (queued, all green). Once #1928 merges, #1853 should no longer need to re-derive
+L2's pin for this pair — but #1928 hasn't merged yet, so #1853 stays exactly where it was this
+cycle; nothing new to do until #1928 actually lands.
+
+**Unit of work: F-A14 for `ga_tajaka`** (`l1_tajik_varsha_year_lords`, a dedicated table). Its
+UNIQUE constraint includes `build_id` — confirmed via `replace_prior_tajik_varsha`'s own
+docstring, which explicitly warns a rebuild would accrete without the delete-regardless-of-
+build_id discipline it implements. This makes conjunct (a) (accretion on chart+ayanamsha+varsha_
+year, WITHOUT build_id) genuinely non-redundant with the table's own UNIQUE — the first time this
+campaign a table's own constraint was confirmed to be too PERMISSIVE for its natural key rather
+than exactly matching it (every prior dedicated-table contract found the UNIQUE already covered
+the real key). Three more conjuncts: window validity (~365.25-day real solar-return spans),
+year_lord vocabulary (the seven classical grahas only — read the writer's own candidate-scoring
+logic before asserting Rahu/Ketu exclusion, not assumed from observed values), year_lord_method
+(the writer's one hardcoded literal).
+
+**Migration 659 was the last free number in L1's assigned 650-659 range.** Filed adjudication
+**#1947** before it could block a future cycle mid-write, following #1942's exact precedent (L3
+hit the identical situation two cycles ago; the Conductor's ruling there checked the FULL
+campaign allocation table before assigning 730-739, rather than trusting L3's own guess). Did not
+guess a number myself for the same reason — deferred to the Conductor's full-table visibility.
+
+No Python writer touched; `provenance_inventory --check` confirmed no digest/pin regen needed. 7
+new textual-contract tests.
+
+CYCLE 27 L1: landed `ga_tajaka`'s F-A14 contract (PR #1946, exhausting 650-659) + filed
+adjudication #1947 for the next migration range, following L3's #1942 precedent exactly + noted
+#1852's real upstream fix (PR #1928, not yet merged) rather than re-diagnosing #1853 from
+scratch — next: wait on #1947's ruling before any further migration-touching F-A14 work; in the
+meantime, non-migration L1 work (a serving-layer or writer-only fix) is the highest-priority
+eligible unit, or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1414,6 +1455,18 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   `graha_yuddha_with`/`graha_yuddha_result`, and found it cites a ratified native ruling (JL-027)
   that deliberately floors the result to `None` — dropped the conjunct rather than ship a false
   finding contradicting an already-decided question.
+- **D-L1-49** — C8 v2.3 cycle 27: filed adjudication #1947 the moment migration 659 exhausted
+  L1's 650-659 range, rather than wait for a future cycle to hit the block mid-write. Followed
+  #1942's precedent exactly (L3's identical situation two cycles ago) — did not guess a next
+  range myself (L3's own guess would have collided with L4's unexhausted range; the Conductor's
+  ruling needed the full campaign allocation table, which I don't have local visibility into).
+  Separately: `ga_tajaka`'s accretion conjunct is the FIRST time this campaign a dedicated
+  table's own UNIQUE constraint was found too PERMISSIVE for the real natural key (it includes
+  `build_id`, confirmed via the idempotency helper's own docstring) rather than exactly matching
+  it — every prior dedicated-table contract (ga_condition, and implicitly ga_dashas/ga_vargas
+  before their shared-table nature was confirmed) found the existing UNIQUE already sufficient.
+  Worth remembering: "check whether the UNIQUE constraint's key exactly matches the natural key,
+  not just whether one exists" is now a confirmed-necessary step, not a hypothetical one.
 
 ## Held items
 
@@ -1761,3 +1814,19 @@ L1 must satisfy rather than a feature it consumes.
   memory), shipped the correct formula verified both directions, caught a false-finding risk by
   reading the code's own cited ruling first -- next: the remaining 13 assets' integrity_check_sql,
   or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T01:3xZ -- CYCLE 27 (C8 v2.3). PR hygiene clean. Noted real progress on #1852: the
+  native severed bo_pratijna's import of compute_tatkalika_relation/compute_panchadha_maitri
+  from ga_condition_writer.py (PR #1928, queued, all green) -- once it merges, #1853 should stop
+  re-deriving L2's pin for this pair, but #1928 hasn't merged yet so #1853 is unchanged this
+  cycle. Unit of work: ga_tajaka's F-A14 integrity_check_sql (PR #1946, migration 659 -- the LAST
+  free number in L1's 650-659 range). Four conjuncts: accretion on chart+ayanamsha+varsha_year
+  WITHOUT build_id (the table's own UNIQUE includes build_id and is confirmed too permissive --
+  the first time this campaign a dedicated table's constraint didn't already match its real
+  natural key), window validity, year_lord vocabulary (seven classical grahas, read from the
+  writer's own candidate logic), year_lord_method literal. Filed adjudication #1947 for L1's next
+  migration range immediately, following #1942's exact precedent (L3 hit the identical situation
+  two cycles ago) rather than guessing a number myself. No writer touched, no digest/pin regen
+  needed. CYCLE 27 L1: landed ga_tajaka's F-A14 contract (PR #1946, exhausting 650-659) + filed
+  #1947 for the next range + tracked #1852's real (not-yet-merged) upstream fix -- next: wait on
+  #1947's ruling before more migration-touching work; meanwhile a non-migration L1 fix, or
+  ga_positions re-dispatch once #1892 lands.
