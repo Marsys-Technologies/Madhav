@@ -183,6 +183,18 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). paginated: a clamped `top_k` LIMIT
+  // with a measured `total_matching` + `more_available` (added this pass — the surface
+  // previously reported only `total_returned`, from which a caller could not tell a
+  // complete result from a truncated one). `empty_reason: true` is earned by the honest
+  // empty the handler emits below, which also distinguishes "no insight units at all for
+  // this chart" from "filters excluded every row" — §N.6 item 3.
+  density_contract: {
+    paginated: true,
+    facets: ['insight_type', 'domain', 'min_rank', 'include_negative_knowledge'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id    = String(args.chart_id)
     const insight_type = args.insight_type ? String(args.insight_type) : null
@@ -200,6 +212,8 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     if (min_rank > 0)  { filters.push(`rank_consequence >= $${p++}`); params.push(min_rank) }
     if (!include_neg)  { filters.push(`is_negative_knowledge = false`) }
 
+    const where = filters.join(' AND ')
+    const countParams = [...params]
     params.push(top_k)
 
     const sql = `
@@ -209,10 +223,17 @@ export const queryInsightsCapability: CapabilityDescriptor = {
              last_calibrated_at, provenance_chain, is_negative_knowledge,
              surface_formula_version, updated_at
       FROM mimamsa_insight_units
-      WHERE ${filters.join(' AND ')}
+      WHERE ${where}
       ORDER BY rank_consequence DESC NULLS LAST
       LIMIT $${p}
     `
+
+    // Family size BEFORE the LIMIT, same filters as the page — so `more_available` is
+    // measured rather than inferred from whether the page happened to fill (§N.6 item 4).
+    const countSql = `SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE ${where}`
+    // Total insight rows for this chart with NO filters — lets an empty result say whether
+    // the chart has no insights at all, or the filters excluded them.
+    const chartTotalSql = `SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1`
 
     // Calibration summary
     const calSql = `
@@ -228,10 +249,14 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     `
 
     try {
-      const [insightResult, calResult] = await Promise.all([
+      const [insightResult, calResult, countResult, chartTotalResult] = await Promise.all([
         query(sql, params),
         query(calSql, [chart_id]),
+        query<{ total: string }>(countSql, countParams),
+        query<{ total: string }>(chartTotalSql, [chart_id]),
       ])
+      const total_matching   = Number(countResult.rows[0]?.total ?? 0)
+      const chart_total_rows = Number(chartTotalResult.rows[0]?.total ?? 0)
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>
 
@@ -257,6 +282,24 @@ export const queryInsightsCapability: CapabilityDescriptor = {
           evidence_grade_legend,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
+          total_matching,
+          more_available:      total_matching > insightResult.rows.length,
+          ...(insightResult.rows.length === 0
+            ? {
+                empty_reason:
+                  `No insight units matched for chart ${chart_id} ` +
+                  `(insight_type=${insight_type ?? 'any'}, domain=${domain ?? 'any'}, ` +
+                  `min_rank=${min_rank}, include_negative_knowledge=${include_neg}). ` +
+                  (chart_total_rows === 0
+                    ? 'mimamsa_insight_units holds NO rows for this chart at all — the L5 ' +
+                      'mi_darshana asset has not produced insights for it yet.'
+                    : `The chart has ${chart_total_rows} insight unit(s); these filters excluded all of them.`),
+              }
+            : {}),
+          provenance: {
+            tables: ['mimamsa_insight_units', 'mimamsa_calibration'],
+            source: 'L5 Mīmāṃsā insight surface (mi_darshana); served chart-scoped.',
+          },
         },
         is_error: false,
       }

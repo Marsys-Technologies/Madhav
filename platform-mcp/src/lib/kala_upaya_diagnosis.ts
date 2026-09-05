@@ -1041,11 +1041,22 @@ export function buildEligibilityPointer(failingLink: FailingLink | null): Eligib
 export interface EfficacyReport {
   state: 'computed' | 'honest_empty'
   reason: string | null
-  n_elected_and_acted: number
-  n_acted_without_election: number
-  n_elected_not_acted: number
-  n_outcome_linked: number
-  n_resolved_prospective_hits: number
+  /**
+   * NIRMĀṆA L5 W3-3 (§N.8 Earned-Signal Principle / §N.7 item 6 — an honest null beats an
+   * invented judgment). These five counts are `number | null`, and are `null` — NOT `0` —
+   * in the `honest_empty` state. `0` is a MEASUREMENT: it asserts "a detector counted the
+   * interventions and found none". No such detector exists at this build tier (there is no
+   * read path to `mimamsa_intervention_ledger`), so `0` was a value nothing computed, and it
+   * would keep reading `0` after the first real intervention is filed — indistinguishable
+   * from a true zero at exactly the moment the distinction starts to matter. `null` says
+   * what is actually true: not measured. This removes a number; it adds none.
+   * When Lane S's read path lands and `state` becomes `'computed'`, these carry real counts.
+   */
+  n_elected_and_acted: number | null
+  n_acted_without_election: number | null
+  n_elected_not_acted: number | null
+  n_outcome_linked: number | null
+  n_resolved_prospective_hits: number | null
 }
 
 /**
@@ -1064,12 +1075,14 @@ export function buildEfficacyReport(): EfficacyReport {
       'No resolved intervention outcomes recorded yet — mimamsa_intervention_ledger (mi_sankalpa, ' +
       'Lane S item 42) has no MCP-exposed read path at this build tier. A percentage or confidence ' +
       'number here before real calibration data exists would be a LAW ZERO violation ' +
-      '(KALA_SUPREME_ELEVATION_v1_0.md §13); counts are honestly reported as zero, never a rate.',
-    n_elected_and_acted: 0,
-    n_acted_without_election: 0,
-    n_elected_not_acted: 0,
-    n_outcome_linked: 0,
-    n_resolved_prospective_hits: 0,
+      '(KALA_SUPREME_ELEVATION_v1_0.md §13); the counts are reported as null (NOT measured), ' +
+      'never as zero — a zero would be a measurement claim no detector behind this function ' +
+      'could ever have made (CLAUDE.md §N.8).',
+    n_elected_and_acted: null,
+    n_acted_without_election: null,
+    n_elected_not_acted: null,
+    n_outcome_linked: null,
+    n_resolved_prospective_hits: null,
   }
 }
 

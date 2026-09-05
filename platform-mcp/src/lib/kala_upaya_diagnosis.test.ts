@@ -563,12 +563,18 @@ describe('buildEligibilityPointer', () => {
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
 describe('buildEfficacyReport', () => {
-  it('is always honest_empty with all-zero counts and a LAW ZERO reason (no ledger read path yet)', () => {
+  // NIRMĀṆA L5 W3-3 (§N.8): the counts are null (NOT measured), never 0. A 0 asserts a
+  // detector counted and found none; no detector exists at this build tier, and a 0 would
+  // keep reading 0 after the first real intervention is filed.
+  it('is always honest_empty with NULL (unmeasured) counts and a LAW ZERO reason (no ledger read path yet)', () => {
     const report = buildEfficacyReport()
     expect(report.state).toBe('honest_empty')
     expect(report.reason).toMatch(/LAW ZERO/)
-    expect(report.n_elected_and_acted).toBe(0)
-    expect(report.n_outcome_linked).toBe(0)
+    expect(report.n_elected_and_acted).toBeNull()
+    expect(report.n_acted_without_election).toBeNull()
+    expect(report.n_elected_not_acted).toBeNull()
+    expect(report.n_outcome_linked).toBeNull()
+    expect(report.n_resolved_prospective_hits).toBeNull()
   })
 })
 

@@ -265,11 +265,12 @@ describe('buildKalaUpayaResult — honest degradation (no live platform reachabl
     }
   })
 
-  it('efficacy_report is honest_empty with zero counts (no ledger read path yet — LAW ZERO)', async () => {
+  // NIRMĀṆA L5 W3-3 (§N.8): counts are null (unmeasured), not 0 — see buildEfficacyReport.
+  it('efficacy_report is honest_empty with NULL (unmeasured) counts (no ledger read path yet — LAW ZERO)', async () => {
     const result = await buildKalaUpayaResult({ chart_id: CHART_ID, domain: 'career' }, PRINCIPAL)
     const response = result as KalaUpayaResponse
     expect(response.efficacy_report.state).toBe('honest_empty')
-    expect(response.efficacy_report.n_outcome_linked).toBe(0)
+    expect(response.efficacy_report.n_outcome_linked).toBeNull()
   })
 
   it('eligibility_pointer names kala_elect_get and the for_intervention contract, computes no window', async () => {

@@ -41,7 +41,15 @@ async function run(rows: Array<Record<string, unknown>>) {
 }
 
 describe('query_insights — F-143 discovery evidence tiers', () => {
-  beforeEach(() => queryMock.mockReset())
+  // NIRMĀṆA L5 W3-3: query_insights now also issues two COUNT(*) reads (the filtered
+  // `total_matching` behind `more_available`, and the unfiltered chart total behind the
+  // honest `empty_reason`). The per-test mockResolvedValueOnce queue still supplies the
+  // insight page + calibration summary IN ORDER; this default catches the two counts once
+  // that queue drains, so these tests stay about suppression and not about call plumbing.
+  beforeEach(() => {
+    queryMock.mockReset()
+    queryMock.mockResolvedValue({ rows: [{ total: '1' }] })
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it("'assignment_only' fails closed: numerics suppressed, tier still served verbatim", async () => {

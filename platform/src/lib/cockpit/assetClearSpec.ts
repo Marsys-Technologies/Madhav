@@ -215,7 +215,9 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // chart-state index, intaken via the LEL save API — NOT regenerable by any build.
   // Its count_sql is 'SELECT count(*) FROM life_events WHERE chart_id = $1', which
   // deriveDeleteSqlFromCountSql() WOULD transform into a per-chart DELETE — wiping
-  // the 57 native events (and, via a companion op, event_chart_state_index) on any
+  // EVERY one of the native's logged events (an append-as-logged corpus whose size is a
+  // live quantity, not a fixed 57 — NIRMĀṆA L5 W3-3, §N.7 item 3) and, via a companion
+  // op, event_chart_state_index, on any
   // clear/rebuild. That is exactly the JL-010 / JL-020 IRREPLACEABLE-loss failure
   // mode. null disables the auto-derived destructive DELETE entirely: a per-chart
   // clear/rebuild leaves every life_events + event_chart_state_index row intact.

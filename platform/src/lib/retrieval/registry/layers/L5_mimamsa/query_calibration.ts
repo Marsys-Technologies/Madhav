@@ -12,6 +12,40 @@
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 
+/**
+ * NIRMĀṆA L5 W3-3 — `mimamsa_qa_eval.status` is NOT a two-value {pass|FAIL} enum.
+ * ==============================================================================
+ * `qa_fail_count` was computed as `status === 'FAIL'` (exact equality). The writer
+ * (`mi_pariksha.py`) emits SIX distinct status literals, only ONE of which is the bare
+ * string `'FAIL'`:
+ *
+ *   control_baseline     (mi_pariksha.py:335, control_window substep — the PASS-side value)
+ *   FAIL_event_too_close (mi_pariksha.py:335, control_window substep — a genuine failure)
+ *   structural_proxy     (mi_pariksha.py:421 / :818 — placeholder, deliberately not 'pass')
+ *   not_implemented      (mi_pariksha.py:607 — no harness exists; deliberately not 'pass')
+ *   pass                 (mi_pariksha.py:417 / :593 / :623 / :816)
+ *   FAIL                 (mi_pariksha.py:623, degenerate_distribution substep only)
+ *
+ * Live production (verified 2026-09-05, canonical chart 482012f1): 92 control_baseline,
+ * 61 FAIL_event_too_close, 10 structural_proxy, 4 not_implemented, 1 pass — and ZERO rows
+ * whose status is exactly `'FAIL'`. So the reported `fail_count` was 0 while 61
+ * FAIL-prefixed rows sat in the `qa_results` array the same response returned.
+ *
+ * The match is widened to a case-insensitive `FAIL` PREFIX — and the widening is
+ * DISCLOSED rather than silent (§N.6 item 4: density signaling is data, not narration).
+ * The response now carries the rule that was applied, the exact statuses it matched, and
+ * the full measured status histogram, so a caller can re-derive the count itself and can
+ * see the non-binary tiers (`structural_proxy`, `not_implemented`) that are neither a
+ * pass nor a failure — §N.8: never let a status surface imply a detector that did not run.
+ */
+const QA_FAIL_STATUS_PREFIX = 'FAIL'
+
+/** True iff a `mimamsa_qa_eval.status` denotes a failure under the disclosed prefix rule. */
+export function isQaFailStatus(status: unknown): boolean {
+  return typeof status === 'string' &&
+    status.trim().toUpperCase().startsWith(QA_FAIL_STATUS_PREFIX)
+}
+
 export const queryCalibrationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_calibration',
   type:  'tool',
@@ -69,6 +103,17 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
     bulk_context: {
       pre_fetch_priority: 3,
     },
+  },
+
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). Not paginated: this is a
+  // whole-scorecard surface — four bounded chart-scoped sections, none row-windowed —
+  // so declaring `paginated: true` would claim machinery the handler does not have.
+  // `empty_reason: true` is earned by the per-section `empty_reason` the handler emits
+  // below, which NAMES the empty sections rather than returning a hollow envelope.
+  density_contract: {
+    paginated: false,
+    facets: ['domain', 'include_held_out', 'promoted_only'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -151,8 +196,17 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
         query(qaSql,           [chart_id]),
       ])
 
-      const qa_fail_count = (qaResult.rows as Array<{ status: string }>)
-        .filter(r => r.status === 'FAIL').length
+      // Measured status histogram FIRST; the fail count is then derived from it, so the
+      // number and the vocabulary it was derived from can never disagree.
+      const qaRows = qaResult.rows as Array<{ status: string | null }>
+      const qa_status_counts: Record<string, number> = {}
+      for (const r of qaRows) {
+        const key = r.status == null ? '(null)' : String(r.status)
+        qa_status_counts[key] = (qa_status_counts[key] ?? 0) + 1
+      }
+      const qa_fail_statuses = Object.keys(qa_status_counts).filter(isQaFailStatus).sort()
+      const qa_fail_count = qa_fail_statuses
+        .reduce((sum, key) => sum + qa_status_counts[key], 0)
 
       // Machine-readable narrowing signal (§N.6 item 4 — density signaling is data, not
       // narration). A caller must be able to tell "0 matches in this domain" apart from
@@ -172,6 +226,17 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
       const multipliers_with_domain = (multResult.rows as Array<{ domain: string | null }>)
         .filter(r => r.domain != null).length
 
+      // §N.6 item 3: an honest empty is REPORTED, never silently substituted with a
+      // populated-looking envelope. This surface has four independent sections, so the
+      // reason NAMES the ones that came back empty instead of firing only when all of
+      // them did.
+      const emptySections = [
+        verdictResult.rows.length === 0 ? 'verdict_distribution' : null,
+        relResult.rows.length    === 0 ? 'reliability_curve'    : null,
+        multResult.rows.length   === 0 ? 'multipliers'          : null,
+        qaRows.length            === 0 ? 'qa_results'           : null,
+      ].filter((x): x is string => x !== null)
+
       return {
         content: {
           chart_id,
@@ -180,7 +245,29 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
           reliability_curve:    relResult.rows,
           multipliers:          multResult.rows,
           qa_results:           qaResult.rows,
-          qa_summary:           { total: qaResult.rows.length, fail_count: qa_fail_count },
+          qa_summary: {
+            total:      qaRows.length,
+            fail_count: qa_fail_count,
+            // The rule + its inputs, so the count is re-derivable by the caller and the
+            // widening is visible rather than assumed.
+            fail_match_rule:
+              `status matched case-insensitively on the prefix '${QA_FAIL_STATUS_PREFIX}' ` +
+              `(mimamsa_qa_eval.status is a multi-valued vocabulary, not a pass/FAIL boolean).`,
+            fail_statuses:  qa_fail_statuses,
+            status_counts:  qa_status_counts,
+            // Neither a pass nor a failure — a check that did not run. Surfaced so a
+            // caller cannot read "0 failures" as "everything was checked" (§N.8).
+            unrun_check_statuses: ['not_implemented', 'structural_proxy']
+              .filter(k => qa_status_counts[k] !== undefined),
+          },
+          ...(emptySections.length > 0
+            ? {
+                empty_reason:
+                  `No rows for chart ${chart_id} in section(s): ${emptySections.join(', ')}` +
+                  (domain ? ` (domain filter '${domain}' applies to verdict_distribution only)` : '') +
+                  `. Reported rather than substituted — the remaining sections are served as measured.`,
+              }
+            : {}),
           filters: {
             include_heldout,
             promoted_only,
@@ -191,6 +278,11 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
               : [],
             multipliers_total:       multResult.rows.length,
             multipliers_with_domain,
+          },
+          provenance: {
+            tables: ['mimamsa_calibration', 'mimamsa_predictions', 'mimamsa_reliability',
+                     'mimamsa_multipliers', 'mimamsa_qa_eval'],
+            source: 'L5 Mīmāṃsā calibration scorecard (mi_pramana / mi_pariksha); served chart-scoped.',
           },
         },
         is_error: false,
