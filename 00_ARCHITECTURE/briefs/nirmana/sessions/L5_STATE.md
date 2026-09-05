@@ -451,6 +451,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:27Z (C8 v2.3 cycle 39) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true (position 46, unchanged); #1826 pending-checks-only, no red. #1851 still at
+  position 1, `AWAITING_CHECKS`, now ~8 min into its check — within the normal 15-18 min
+  window, not stuck. Positions unchanged for #1861 (13) and #1873 (26). #1848/#1856/#1869 all
+  still OPEN, #1869 unchanged at 3 comments. No eligible dispatch, no unheld W3 item.
 - 2026-09-06T~04:22Z (C8 v2.3 cycle 38) — **Lesson learned: re-arming a `CLEAN-but-unqueued`
   PR via `gh pr merge --auto` re-enters it at the BACK of the queue, not its old position.**
   #1844 (re-queued last cycle) is confirmed `is:queued: true` but now at position 46 (was ~2
