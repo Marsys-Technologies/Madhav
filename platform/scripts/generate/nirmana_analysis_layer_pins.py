@@ -203,6 +203,16 @@ def main() -> int:
         "--convergence-commit",
         help="reviewed commit to pin for layers other than L0 (required to regenerate)",
     )
+    parser.add_argument(
+        "--layer",
+        help=(
+            "regenerate ONLY this layer's record (e.g. L3), preserving every other "
+            "layer's committed pin verbatim. Use this when your own writers changed: "
+            "the whole-file regeneration restates every non-L0 layer's "
+            "convergence_commit, which is a false claim about other sessions' review "
+            "state. See NIRMANA issue #1814."
+        ),
+    )
     parser.add_argument("--output", type=Path, default=PINS_PATH)
     args = parser.parse_args()
 
@@ -235,6 +245,51 @@ def main() -> int:
     pins = build_pins(
         writer_digests, load_frozen_manifest_assets(), args.convergence_commit
     )
+
+    if args.layer:
+        # Per-layer regeneration (NIRMANA issue #1814, Conductor ruling option A).
+        #
+        # Whole-file regeneration rewrites every non-L0 layer's convergence_commit
+        # from the single --convergence-commit argument. For a layer that did not
+        # change, that restates "the reviewed commit whose writer inventory this
+        # pins" as a value nobody reviewed it at -- a false claim about four other
+        # sessions' review state, and the D-CND-16 defect committed by a tool
+        # rather than by a comment. It also makes two lanes re-pinning in parallel
+        # fight over one file.
+        #
+        # So: splice in ONLY the named layer's freshly-derived record and carry
+        # every other layer's committed record through byte-for-byte.
+        if not args.output.is_file():
+            print(f"ERROR: --layer needs an existing {args.output}", file=sys.stderr)
+            return 1
+        committed = json.loads(args.output.read_text(encoding="utf-8"))
+        if args.layer not in committed.get("layers", {}):
+            print(
+                f"ERROR: unknown layer {args.layer!r}; "
+                f"known: {sorted(committed.get('layers', {}))}",
+                file=sys.stderr,
+            )
+            return 1
+        if args.layer == "L0":
+            # L0's three pins are frozen against 29 accepted capsules. Re-deriving
+            # them would invalidate every one of them, and no L0 writer change is
+            # in scope for this campaign.
+            print(
+                "ERROR: refusing to re-pin L0 -- its pins are frozen against "
+                "accepted capsules (#1715 requirement 3).",
+                file=sys.stderr,
+            )
+            return 1
+        fresh = pins["layers"][args.layer]
+        before = committed["layers"][args.layer]
+        committed["layers"][args.layer] = fresh
+        args.output.write_text(render(committed), encoding="utf-8")
+        moved = [k for k in fresh if before.get(k) != fresh.get(k)]
+        print(f"Wrote {args.output} -- {args.layer} only.")
+        print(f"  fields changed: {', '.join(moved) if moved else '(none)'}")
+        print(f"  layers untouched: {', '.join(k for k in committed['layers'] if k != args.layer)}")
+        return 0
+
     args.output.write_text(render(pins), encoding="utf-8")
     print(f"Wrote {args.output}")
     return 0
