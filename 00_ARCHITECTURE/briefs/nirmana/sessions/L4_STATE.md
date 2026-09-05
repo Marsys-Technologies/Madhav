@@ -1450,3 +1450,35 @@ watch `#1885` for Conductor's merge/DO-block confirmation; once DB access return
 `ph_nimitta` dispatch dry-run as prep ahead of the real E-gate opening; watch E-gate / L2
 capability landings; F1 remains deferred.
 
+`2026-09-06T~05:05Z` — L4 — **out-of-band: conductor-2b reviewed and ran #1885's DO block live
+(the one thing I flagged I couldn't verify read-only) — found one real bug in exactly that part,
+fixed it directly on my branch, re-verified end-to-end.**
+
+**The bug**: both `TEMP TABLE`s (`_cascade_check_target`, `_cascade_check_orphans`) used `ON
+COMMIT DROP`, which drops them before the next statement can see them under psql's default
+autocommit (each statement is its own implicit transaction, so the table is gone before the
+`DO` block or the final `SELECT` that reads it even runs). I could not have caught this
+read-only — it's a transaction-boundary interaction, not a data-correctness question the
+underlying SELECT fragments could expose. Fixed (commit `2b984ab6e`, pushed directly to
+`codex/nirmana-l4-cascade-check-fix`) — exact known-truth numbers reproduce.
+
+**Verified rather than trusted**: `#1805` is CLOSED; `#1885` itself is still OPEN, `mergeStateStatus:
+BLOCKED`, auto-merge re-armed (`enabledAt` 16:29:15Z), not yet in the merge queue — i.e. genuinely
+pending its own checks, not merged yet despite the issue closure. Recording the accurate state,
+not the more convenient "it's done" reading.
+
+**Lesson for future work on shared psql-scripted tooling**: a session-local scratch table meant
+to survive across statements within one `psql -f` invocation needs `ON COMMIT DROP` only if the
+whole script genuinely runs inside one transaction (autocommit off, or wrapped in an explicit
+`BEGIN`/`COMMIT`) — under plain autocommit (the default, and what this file's own usage line
+assumes: `psql "$DATABASE_URL" -v table=... -f cascade_check.sql`), each top-level statement
+commits immediately, so `ON COMMIT DROP` drops it before the next statement runs. This session
+missed it because verification here could only run single SELECT statements through a read-only
+MCP tool, never a real multi-statement psql session — a gap in this environment's verification
+reach, not a gap in the discipline of checking. No corrective action needed from me; recorded so
+a future L4 cycle authoring another psql script with cross-statement scratch state does not
+repeat it.
+
+Replied briefly to conductor-2b acknowledging the fix and thanking them for running the one
+check I flagged I couldn't. No further action needed on my end this turn.
+
