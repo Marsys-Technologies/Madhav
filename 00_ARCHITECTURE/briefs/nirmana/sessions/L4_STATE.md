@@ -1178,3 +1178,35 @@ actually entered the merge queue; once `ph_nimitta`'s E-gate opens and a rebuild
 load-bearing invariant to `asset_registry` for `ph_rectification` (verified-safe-to-install
 precondition now documented here).
 
+`2026-09-06T~02:35Z` — L4 — **CYCLE 2 (v2.3) — PR hygiene clean (all three re-armed PRs from
+cycle 1 are legitimately still pending their own required checks — `Build Check`/`Governance
+Gates` `IN_PROGRESS`, not RED/DIRTY, `is:queued` will pick them up once those finish; not
+polled further per contract) → E-gate re-verified unchanged (`ph_nimitta` 37/46) → priorities
+1-4 checked in order, F1 remains correctly deferred (no new fact this cycle to reverse a
+3-cycle-deep, well-reasoned decision) → did find and fix a real priority-3-adjacent item: my
+own `L4_W6_CLOSE_REPORT_v1_0.md` scaffold had gone stale.**
+
+**The catch:** re-reading the close-report scaffold's findings ledger before reaching for
+another prep item (rather than assuming last session's scaffold still matches reality — D-CND-16
+discipline applied to my *own* prior output, not just upstream findings docs), found it still
+listed `ph_sodhana` F-12 under "NEVER/LATER... left open as the smallest item in the layer" —
+**stale as of PR #1870**, which shipped F-12 as a real MUST-tier fix two cycles ago (`_g_ladder_
+ceiling`'s asymmetric clamp-floor defect, not the numerically-inert tweak the original NOW-tier
+grading assumed before I actually re-derived the arithmetic). A close-report scaffold that
+misreports its own layer's finding status is exactly the drift these scaffolds exist to catch
+before a real W6 submission repeats it — fixing it now, mid-campaign, is cheaper than fixing it
+at freeze time.
+
+**Fixed:** moved F-12/#1870 into §1's per-asset table (now reads "none — first L4 asset to reach
+zero open findings") and §2's MUST-shipped table (with the asymmetric-clamp explanation), and
+replaced the stale NEVER/LATER entry with an explicit correction note naming what was wrong and
+why, rather than silently editing history. Solo deliverable (not Conductor-owned, no PR needed)
+— committed directly on the heartbeat branch with this state update.
+
+CYCLE 2 L4: PR hygiene clean (cycle-1's 3 rebased PRs legitimately still pending checks, not
+re-touched) → E-gate unchanged (`ph_nimitta` 37/46) → F1 correctly re-confirmed deferred (no new
+fact) → caught and fixed a real staleness defect in my own `L4_W6_CLOSE_REPORT_v1_0.md` (F-12
+mis-recorded as open when #1870 shipped it two cycles ago) → next: verify cycle-1's 3 PRs
+actually reached `is:queued`; watch E-gate / L2 capability landings; F1 remains the layer's one
+deferred code item.
+

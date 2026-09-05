@@ -34,7 +34,7 @@ asset `rebuild_only` to look cheaper was explicitly declined.
 | `ph_pratikara` | changed | F-3.4 (degenerate anchor), F-3/F-4/F-5 (hard-floor citation fabrication), F-6-partial (`source_id`) — 4 of 5 real MUSTs | F-2 (rerun after fix; blocked on E-gate, not a code item) |
 | `ph_rectification` | changed | F3 (`load_bearing` on a non-discriminating fit) — 1 of 1 MUST | none (traced to root: current scoring method structurally cannot discriminate; K-6/later scope for the ranking method itself) |
 | `ph_sankrama` | changed | both MUSTs (stale domain map destroying 250 rows; fabricated `trajectory`) — shipped earlier this session, #1788 | none |
-| `ph_sodhana` | changed | F-10 (severity-inverting sort, #1783), F-14 (LEAKAGE-FIREWALL blind spot), F-13 (ceiling-inputs degeneracy detector) | F-12 (NOW-tier narration/falsy-zero — explicitly graded non-MUST: "mis-measure, not fabricate") |
+| `ph_sodhana` | changed | F-10 (severity-inverting sort, #1783), F-14 (LEAKAGE-FIREWALL blind spot), F-13 (ceiling-inputs degeneracy detector), F-12 (`ayanamsha_robustness` falsy-zero coercion, #1870) | none — first L4 asset to reach zero open findings |
 | `ph_suddha_sodhana` | changed | F-16 (silent classify-clean on read failure) | C12 registry-contract NULLs (closed via #1761, all nine assets) |
 | `ph_pramana` | changed | F2 (domain vocabulary mismatch; `detector_unavailable` disposition added, migration 684) | none |
 | `ph_phaladesa` | changed | F-4.2 (headline anchor ignoring purification verdict) | **F1 (zero MCP consumers) — deferred, see §5** |
@@ -57,6 +57,7 @@ asset `rebuild_only` to look cheaper was explicitly declined.
 | #1845 | `ph_sodhana` | F-14: LEAKAGE-FIREWALL NULL/empty blind spot | verified live-safe (100% of anchors already canonical) before shipping |
 | #1849 | `ph_suddha_sodhana` | F-16: silent classify-clean on read failure | matched the `ph_pratikara` "bug pattern" fix (F-173) already in the codebase |
 | #1854 | `ph_pratikara` | F-3/F-4/F-5: hard-floor citation fabrication | 100% of 1,277 rows were serving an invented citation; F-4 self-corrected once F-3 landed |
+| #1870 | `ph_sodhana` | F-12: `ayanamsha_robustness=0` silently coerced to default 3 | asymmetric fix — `n_independent`'s clamp floor (1) already absorbed its zero case; robustness's floor (0) did not, so real zero-robustness measurements were masked |
 
 **NOW (in-layer improvement, admitted by clear value):**
 
@@ -67,11 +68,17 @@ asset `rebuild_only` to look cheaper was explicitly declined.
 
 **NEVER/LATER (logged, closed):**
 
-- `ph_sodhana` F-12 — G-LADDER ceiling narration + `int(n or 1)` falsy-zero: graded NOW-not-MUST
-  by the layer's own W2 DECIDE ("the registry is honest — these mis-measure, they do not
-  fabricate"); left open as the smallest item in the layer.
 - `ph_pratikara` F-2 — the empty-programme rerun: code already fixed upstream (`5f097e738`);
   blocked purely on E-gate/dispatch, not a code item.
+
+**Correction (this cycle, D-CND-16):** an earlier draft of this scaffold listed `ph_sodhana`
+F-12 here as "left open as the smallest item in the layer" — stale as of PR #1870, which shipped
+it two cycles ago. `_g_ladder_ceiling`'s `ayanamsha_robustness` clamp floor is 0 (not 1, like
+`n_independent`'s), so `0 or 3` was silently substituting a more lenient default for a genuine
+zero-robustness measurement — a real correctness fix, not the numerically-inert cosmetic tweak
+the original NOW-tier grading assumed. Moved to the MUST-shipped table above (§1, §2); this
+scaffold's own staleness is exactly the kind of drift these close-report updates exist to catch
+before an actual W6 submission repeats it.
 
 **Deferred, not started — the layer's one remaining genuine code item:**
 
