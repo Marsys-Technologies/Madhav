@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Queue-health follow-up: confirmed position-1 (#1867) was a long real scheduling delay (~3.3h before its merge-group checks even started), not a zero-check-runs jam — waited it out, confirmed it merged (main now at 54a4a695a). None of my own PRs merged yet (still deep in a 72-entry queue). Still IDLE-OK on new L0 work; 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — Checked D-CND-09 (bg_vidhi_floors catalog_status DRAFT→CURRENT) now that it's frozen: writer source still tags education_deepdive/progeny_deepdive [CANDIDATE], so DRAFT remains correct — a positive "not yet," nothing actioned. Queue still deep (position 35), my own PRs unmerged. IDLE-OK on new L0 asset work; 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -313,6 +313,17 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   D-L0-II) interferes — the remaining 10 unfrozen assets are ALL either awaiting a merged
   check-correction migration's deploy (bg_yogas/701, bg_dasha_systems/700, bg_compendium_index/702)
   or blocked on the two open structural findings.
+
+  **D-CND-09 follow-up, checked and correctly NOT actioned:** now that `bg_vidhi_floors` is safely
+  frozen (freezing is a historical attestation, not a live invariant — a later registry change
+  can't retroactively invalidate it), re-checked whether its `catalog_status` DRAFT→CURRENT flip
+  is now safe. Read the writer source (`writers/bg_vidhi_floors.py:514-516`) directly: both
+  `education_deepdive` and `progeny_deepdive` are STILL tagged `[CANDIDATE]` (unchanged) —
+  `spirituality_deepdive` and the other 11 are `[MANDATORY]`. Per the registry row's own documented
+  policy ("re-verify against the writer source before flipping to CURRENT"), the precondition for
+  CURRENT (all intents ratified) is genuinely NOT met — `catalog_status=DRAFT` remains correct, not
+  stale. This is a positive, evidence-based "not yet," not a deferred/unclear item — nothing to act
+  on until those two intents are ratified (native/campaign decision, not an L0 writer task).
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
