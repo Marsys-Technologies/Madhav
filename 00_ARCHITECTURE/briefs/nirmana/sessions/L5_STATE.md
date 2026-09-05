@@ -53,8 +53,15 @@ independently re-verified live: `asset_analysis_accepted`, `optimization_verdict
 (verdict `non_build_disposition`), `source_accepted` (`disposition_digest` derived, not
 arbitrary). `capsule_audit.sql`'s own completeness view confirms `w2_analysis=t, w2_verdict=t,
 terminal_acceptance=t` — only `integrity_verified` (verifier-only, W5) stands between here and
-`asset_frozen`. W5 mechanical checks/capsule
-remain fresh-context-verifier-only regardless. W4 gated only on holds for two OTHER assets: #1732 for
+`asset_frozen`. **CORRECTION to last cycle's summary**: `mi_vistara` is **NOT** also
+W5-ready — traced `requireIntegrityProvenance` (`definitions.ts:2092-2146`) and found
+`integrity_verified` requires a valid PRIOR "operation event" matched to the asset's
+`execution_obligation` (`source_accepted` for `lel_events`'s obligation; `accepted_rebuild_observed`
+for `mi_vistara`'s `build` obligation) — and `mi_vistara` has no `accepted_rebuild_observed`
+(that's exactly what #1848 blocks). Only `lel_events` is genuinely W5-ready right now. A
+fresh-context verifier subagent is dispatched for `lel_events` only, briefed thoroughly
+(implementer≠certifier, verifier SA only, independently re-run the real integrity check itself,
+STOP rather than fabricate if anything fails). W4 gated only on holds for two OTHER assets: #1732 for
 `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
@@ -431,6 +438,26 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~22:50Z (C8 v2.3 cycle 13) — **Dispatched a fresh-context verifier subagent for
+  `lel_events`'s W5 (integrity_verified → asset_frozen) — first real implementer≠certifier
+  handoff this session.** PR hygiene first: #1844 confirmed queued; #1826 still checks-pending
+  only, nothing broken (fleet CI congestion, not a real failure). Before dispatching, traced
+  `requireIntegrityProvenance` (`definitions.ts:2092-2146`) to plan the verifier's exact steps —
+  and **caught a real error in my own last-cycle summary**: I'd claimed `mi_vistara` was ALSO
+  W5-ready alongside `lel_events`. It is not — `integrity_verified` requires a prior "operation
+  event" matched to the asset's obligation (`accepted_rebuild_observed` for `mi_vistara`'s
+  `build` obligation), which `mi_vistara` doesn't have and can't get until #1848's fix (#1851)
+  merges and a fresh dispatch succeeds. Corrected the state file rather than let a fresh verifier
+  waste effort on an asset that would predictably fail its own precondition check. Dispatched a
+  general-purpose subagent (not a fork — genuine fresh context is the point) with a thorough,
+  self-contained brief: use the VERIFIER GCP identity only (`nrec --as verifier`), independently
+  re-run `lel_events`'s real `integrity_check_sql` itself rather than trust my prior claim,
+  compute the required digests via the app's own real functions (never hand-reimplemented, same
+  discipline as every digest computation this session), and explicitly instructed to STOP and
+  report honestly rather than fabricate anything if the check or any step fails. Task running in
+  background; result arrives as a notification.
+  **Next cycle: read the verifier's report** and record the outcome (capsule minted, or a real
+  finding that needs its own handling) — do not assume success before the notification lands.
 - 2026-09-05T~22:35Z (C8 v2.3 cycle 12) — **`lel_events` (canary 2) fully terminal-acceptance
   complete — the campaign's first-ever `source_accepted` event.** PR hygiene first: #1844
   CLEAN-but-unqueued, re-armed, confirmed `isInMergeQueue: true` via GraphQL (not just the CLI's
