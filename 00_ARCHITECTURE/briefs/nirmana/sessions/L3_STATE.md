@@ -378,6 +378,25 @@ discover it. Nothing here is consumable until it appears under **LANDED** with a
 |---|---|---|
 | **L2** | populated consensus / salience columns | the temporal-confidence multiplier wiring only. Everything else in the L3 mandate is upstream-independent — confirmed against the mandate item by item, not assumed. |
 
+## Red contracts — HELD, not failed (assignment 4, D-CND-17)
+
+Migration 670 shipped **19 integrity contracts, 5 of them red.** They stay red. *Scoping a detector
+to the charts that pass is the definition of weakening it* — that line is now campaign precedent,
+and I am not going to be the one to break it on my own assets.
+
+| asset | why red | status |
+|---|---|---|
+| `ka_avadhi` | `lord_condition_fact_refs` empty on 100% of rows (writer fixed in #1751 M4 — red until a rebuild lands) + 3,087 unresolvable pratijna ids on `cb73cd3d` | **HELD from `integrity_verified`** |
+| `ka_yojaka` | 49,730 stale signal refs — **already orphaned**, on `cb73cd3d`; 27,681 undatable predicates with no reason | **HELD** |
+| `ka_kalasutra` | 56 windows citing an L1 period that no longer contains them; 49,730 predicates with zero activations, from the cascade that gutted `cb73cd3d` | **HELD** |
+| `ka_gochara_v3_century_materialize` | 5 red conjuncts incl. pre-birth windows (writer fixed in #1751 M5 — red until a rebuild lands) | **HELD** |
+| `ka_bhavishya_lekha` | degeneracy detector: all 100 projections share one `peak_date`, proven two-valued against the second chart | **HELD** |
+
+**Four of the five localise to `cb73cd3d`, now formally DAMAGED (D-CND-17).** Under that ruling a
+detector going red on that chart is *working*, and those assets are held from `integrity_verified`
+rather than counted as failures. Two of the five (`ka_avadhi`, `ka_gochara_v3_century_materialize`)
+have their writers already fixed and merged, so they go green on a rebuild, not on a code change.
+
 ## MSR re-run plan (assignment 2 — sequenced after `bo_laksana` freezes)
 
 **Every row of all six MSR-linked L3 tables carries a `signal_id` — 100%, measured.** So this is a
