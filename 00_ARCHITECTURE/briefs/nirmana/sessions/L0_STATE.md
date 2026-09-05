@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — found a 3rd deployment gate (amjis-web NIRMANA_DEPLOYED_SHA, currently 611d66e38); frozen definition_revision found; still need the two canonical-digest functions to compute submission payload
+last_updated: 2026-09-05 — registry_fingerprint_sha256 replica built + validated on both target assets (D-L0-P); analysis_digest function still to be located; 3 PRs queued (long queue), 1 pending checks
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -270,6 +270,27 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   as D-L0-J's `extract_yogas_from_corpus` call) — still need to locate where those two functions
   are defined (not found this cycle) and their exact input contract.
 
+- **D-L0-P continued 2** — **Replicated `canonicalRegistryContractDigest` in Python; runnable now,
+  correctly produces a well-formed digest for both target assets.** Read
+  `registryContractFingerprintInput`/`canonicalRegistryContractDigest`/`stableJson`
+  (`definitions.ts:28-162`): `stableJson` is a plain recursively-key-sorted compact JSON
+  serialization — exactly what Python's `json.dumps(obj, sort_keys=True, separators=(',',':'),
+  ensure_ascii=False)` already does, so no TS runtime needed. Wrote
+  `.../scratchpad/compute_registry_fingerprint.py` (maps `asset_registry.layer` word→code via the
+  same `brahmagyan→L0` table, sorts `depends_on`, builds the exact `registry_contract` field set)
+  and ran it against live rows for both **bg_doshas** (`073def4a…`) and **bg_gochara_arcs**
+  (`93fa16df…`) — both produce a well-formed 64-hex digest. **Honest residual**: these are the
+  PRE-migration values (integrity_check_sql hasn't changed yet) and, more importantly, **I could
+  not cross-verify the replica against an actual TS execution** (importing `definitions.ts` directly
+  via `tsx` risked triggering its transitive DB-pool-creation imports without matching env setup —
+  judged not worth the risk for this cycle; the algorithm itself is simple enough that hand-replication
+  confidence is high, but this is inspection-based, not execution-verified). Still need
+  `canonicalNirmanaAssetAnalysisDigestForRegistryRow` (a second, more involved function — not yet
+  read this cycle) before the full submission payload can be built. NEXT: read that function; if
+  time allows, reconsider a safer tsx-import path (e.g. mock/stub the DB-pool imports) to
+  cross-verify the fingerprint replica before ever submitting for real — a wrong digest here isn't
+  destructive (submission would just 403), but worth checking before spending a submission attempt.
+
 ## Held items
 
 - **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
@@ -493,3 +514,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `NIRMANA_DEPLOYED_SHA` advance), locate `canonicalRegistryContractDigest`/
   `canonicalNirmanaAssetAnalysisDigestForRegistryRow`'s definitions and replicate them in a small
   script to compute the real submission values, then dry-run and submit for real.
+- 2026-09-05 — **Cycle 9.** PR hygiene: all 4 confirmed clean (`#1829`/`#1832`/`#1836` all now
+  genuinely `is:queued` — `#1836` newly entered the queue this cycle; `#1828` `MERGEABLE`, checks
+  pending, 0 failures anywhere). Nothing to fix; none merged yet (queue is long — ~11 PRs ahead).
+  Noted `amjis-web`'s `NIRMANA_DEPLOYED_SHA` already advanced once this session (`611d66e38`→
+  `eb35945bc`, tracking `origin/main`'s tip) — confirms it redeploys on its own cadence, so once my
+  migrations merge a further advance should follow without needing to trigger anything myself.
+  Job-image still stale. **Continued D-L0-P**: found and read `canonicalRegistryContractDigest` +
+  its helpers (`definitions.ts:28-162`) — a simple recursively-key-sorted compact JSON hash, exactly
+  matching Python's `json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False)`. Wrote +
+  ran a Python replica against live data for both target assets — both produce well-formed 64-hex
+  digests. Flagged the honest residual: this is inspection-based replication, not
+  execution-cross-verified against the real TS (decided against risking a `tsx` import of
+  `definitions.ts`'s DB-pool-creating transitive imports this cycle). NEXT: read the second,
+  more involved function (`canonicalNirmanaAssetAnalysisDigestForRegistryRow`) — still not located
+  this cycle — then the submission payload is fully computable; keep polling the long PR queue.
