@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 10; get_vastu_directions F-E11 remedy-join fix (#1874)
+last_updated: 2026-09-05 — C8 v2.3 cycle 11; ga_prashna_judgment orphan disposition, migration 651 (#1879)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -356,6 +356,31 @@ directions (`ga_vastu_planet_direction_map`) and the 24-row classical per-direct
 `vastu_read` vidhi primitive, or record an explicit no-consumer disposition), not a code fix.
 Left for a future cycle; distinct in kind from F-E11's join fix.
 
+## CYCLE 11 (C8 v2.3) — ga_prashna_judgment orphan disposition, migration 651
+
+**PR hygiene:** all clean/queued or pending-green (#1841/#1859/#1865/#1871 queued or green;
+#1874/#1853/#1827 pending checks, nothing RED). `#1838` still open — `ga_positions` dispatch
+remains blocked on it.
+
+**Unit of work: F-E21/F-E22's orphan disposition** (PR **#1879**, migration **651** — my first
+migration this campaign since 650). Verified R-1's registry disposition (migration 650) was
+already done; found the SEPARATE, still-open action item from `L1_W2_DECIDE_v1_0.md` §4:
+"re-ground or remove the 5 orphaned rows." Confirmed live: 5 `ga_prashna_judgment` rows (one
+manual prashna cast, 2026-06-18, 5 ayanamsha variants) cite a `chart_id` with no row in `charts`,
+live or historical — genuinely unregroundable, predates and is unrelated to R-1 dormancy.
+
+Per C13, chose the OTHER disposition than `phala_anchors.signal_id`'s precedent (migration 683,
+documented orphan-tolerance): a real FK (`ON DELETE CASCADE`), since — unlike a generation
+pointer that legitimately survives its own rebuild — a prashna judgment with no backing chart has
+no valid lifecycle at all. Migration: delete the 5 named rows (exact-chart-id + exact-count
+guards), assert zero other orphans remain, then add the FK. **Dry-run verified against
+production inside `BEGIN`/`ROLLBACK`**; both guards independently mutation-tested (injected an
+unrelated orphan; simulated a row-count drift) — each correctly halted before any write, production
+untouched throughout. 6 new TS contract tests, one mutation-verified.
+
+**Left open** (separate, non-DB, per §4): "disambiguate the tool naming" —
+`prashna_ask`/`prashna_status` name collision with the pariprashna NL pipeline.
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -593,6 +618,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   than assuming and adding defensive `LOWER()` normalization that wasn't needed. Left F-E10
   (zero routed consumers, a W2 route/registry decision) explicitly open — different in kind from
   F-E11's join fix, not a code change.
+- **D-L1-33** — C8 v2.3 cycle 11: `ga_prashna_judgment`'s F-E21/F-E22 orphan disposition
+  (migration 651, PR #1879, full account in CYCLE 11 above) — my first migration since 650.
+  Chose the real-FK disposition (not orphan-tolerance) per C13, distinguishing this case from
+  `phala_anchors.signal_id`'s precedent (migration 683) on the merits: a generation pointer has a
+  legitimate reason to survive its own rebuild; a prashna judgment with no backing chart does not.
+  Dry-ran the migration against production inside BEGIN/ROLLBACK and mutation-tested both safety
+  guards before shipping — matches the discipline D-L1-16 set for migration 650.
 
 ## Held items
 
@@ -730,3 +762,10 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 10 L1: landed get_vastu_directions F-E11 remedy-join fix (PR #1874) -- next: F-E10's
   route decision, ga_prashna's R-1 disposition if still open, or check #1838 for ga_positions
   dispatch viability.
+- 2026-09-05T15:48Z -- CYCLE 11 (C8 v2.3). PR hygiene clean. Unit of work: ga_prashna_judgment's
+  F-E21/F-E22 orphan disposition (migration 651, PR #1879) -- 5 rows citing a nonexistent
+  chart_id, real FK added (ON DELETE CASCADE) per C13, distinguished from phala_anchors'
+  orphan-tolerance precedent on the merits. Dry-run + both-guard mutation testing done against
+  production before shipping. CYCLE 11 L1: landed ga_prashna_judgment orphan disposition
+  (PR #1879, migration 651) -- next: F-E10's route decision (vastu zero-consumers), the
+  prashna tool-naming disambiguation, or check #1838 for ga_positions dispatch viability.
