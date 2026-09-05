@@ -1660,3 +1660,5 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   genuinely healthy (not stuck): queue-head has moved on to #1877 (was #1875), 25/26 real checks
   already passing. Position likely steady because new PRs keep entering near my slot at a similar
   rate to entries ahead clearing. No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 25, still none of my 5 PRs merged.
