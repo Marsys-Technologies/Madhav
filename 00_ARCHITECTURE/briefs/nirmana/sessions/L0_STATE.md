@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — evidence-submission mechanism reconstructed (D-L0-P); token minting verified for both SAs; still need definitions table + payload JSON before actual submission
+last_updated: 2026-09-05 — found a 3rd deployment gate (amjis-web NIRMANA_DEPLOYED_SHA, currently 611d66e38); frozen definition_revision found; still need the two canonical-digest functions to compute submission payload
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -240,6 +240,35 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   exact JSON bodies for bg_doshas/bg_gochara_arcs. NEXT: once #1829/#1836 (and #1832's other half)
   merge AND deploy, resume here — find the definitions table, build the two command JSONs per
   asset, dry-run then actually submit via the reconstructed script.
+- **D-L0-P continued** — **Found the definitions table + a THIRD deployment gate; the picture is
+  now complete enough to build the real payload next cycle.** Frozen `definition_revision` =
+  `t0-2026-09-01-0e5b06fb` (`nirmana_evidence.nirmana_elevation_campaign_definitions`, only
+  `frozen`-status row). Read `recordNirmanaElevationEvidence` fully: **there is a third deployment
+  surface beyond the pipeline job image and this git checkout** — `assertNirmanaGitCommitMatchesDeployment`
+  requires `source_ref` to equal `git:${NIRMANA_DEPLOYED_SHA}`, an env var on the **`amjis-web` Cloud
+  Run *service*** (distinct from the `brahma-build-pipeline-job` *job* image already tracked).
+  Checked it live: currently `611d66e381c68235db0ca3b9f1f2a01552fea930` — one commit behind current
+  `origin/main` tip, and does **not** yet include any of #1829/#1832/#1836. Submission must cite
+  whatever SHA is deployed *at submission time*, not necessarily the exact migration commit — the
+  claim is "analysis was done against a live registry fingerprint, as of this deployed snapshot",
+  not "this exact file is in that snapshot" — so once amjis-web's next deploy picks up any of my
+  merged migrations, `NIRMANA_DEPLOYED_SHA` will advance and become citable. Also traced
+  `registry_fingerprint_sha256`/`analysis_digest` to their exact server-side computation
+  (`canonicalRegistryContractDigest`/`canonicalNirmanaAssetAnalysisDigestForRegistryRow` in
+  `definitions.ts`, fed by `frozen_manifest_asset` + live `asset_registry` row + a generated
+  per-asset `writer_digest_sha256`/`convergence_commit` receipt base in
+  `src/generated/nirmana-analysis-receipts.ts` / `nirmana-writer-digests.json`) — confirmed **both
+  bg_doshas and bg_gochara_arcs already have a receipt base** (present in the writer-digest JSON,
+  so the "reconstructable deployed analysis receipt" gate won't block them). **Correction, caught
+  before committing**: I first drafted this entry claiming a failed submission's error message
+  would reveal the expected digest — re-checked the actual throw strings
+  (`requireAcceptedAssetAnalysisProvenance`) and they do NOT leak the expected value ("...does not
+  match the current live contract" / "...does not match the canonical deployed analysis receipt" —
+  no value in either). That shortcut doesn't exist. NEXT: once merged+deployed, the real path is to
+  replicate `canonicalRegistryContractDigest`/`canonicalNirmanaAssetAnalysisDigestForRegistryRow`
+  in a small Node/TS script fed by live DB data (same read-only-invoke-the-real-function technique
+  as D-L0-J's `extract_yogas_from_corpus` call) — still need to locate where those two functions
+  are defined (not found this cycle) and their exact input contract.
 
 ## Held items
 
@@ -448,3 +477,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   finding the `definition_revision` table (first guess was wrong) needed to build the actual
   submission JSON. NEXT: once the 3 pending PRs merge+deploy, resume at "find the definitions
   table" → build the two command bodies (bg_doshas, bg_gochara_arcs) → dry-run → submit for real.
+- 2026-09-05 — **Cycle 8.** PR hygiene: all 4 PRs re-checked, all clean (2 genuinely queued
+  #1829/#1832 via `is:queued`, 2 pending pre-queue checks #1828/#1836, 0 failures anywhere);
+  nothing to fix. Job-image still stale. **Continued D-L0-P**: found the frozen
+  `definition_revision` (`t0-2026-09-01-0e5b06fb`) and, more importantly, **a third deployment gate
+  I hadn't accounted for** — evidence submission requires `source_ref` to match
+  `NIRMANA_DEPLOYED_SHA` on the **`amjis-web` Cloud Run *service*** (currently
+  `611d66e38…`, distinct from the already-tracked `brahma-build-pipeline-job` *job* image). Traced
+  the exact server-side computation of `registry_fingerprint_sha256`/`analysis_digest` and confirmed
+  bg_doshas/bg_gochara_arcs already have the generated receipt base they need (no separate
+  prerequisite work required there). Caught and corrected my own draft mid-cycle before committing:
+  an initial claim that a failed submission's error message would reveal the expected digest was
+  wrong on re-check (the throw strings don't leak values) — recorded the correction in place rather
+  than leaving a bad breadcrumb. NEXT: once PRs merge and `amjis-web` redeploys (watch
+  `NIRMANA_DEPLOYED_SHA` advance), locate `canonicalRegistryContractDigest`/
+  `canonicalNirmanaAssetAnalysisDigestForRegistryRow`'s definitions and replicate them in a small
+  script to compute the real submission values, then dry-run and submit for real.
