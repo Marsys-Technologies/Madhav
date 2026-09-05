@@ -2439,3 +2439,25 @@ actively processing, not stalled; E-gate uncheckable, DB access down 68 cycles; 
 next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-05T~20:50Z` — L4 — **CYCLE 79 (v2.3) — PR hygiene found and fixed a real DIRTY PR
+(`#1839`); `main` genuinely advanced (other 9 own PRs' positions moved up ~2 each).**
+
+**PR hygiene:** GraphQL sweep showed `#1839` (`ph_phaladesa` top-anchor) as `CONFLICTING`/`DIRTY`
+— unambiguous. Fixed via the standard sequence: `git rebase origin/main` on
+`codex/nirmana-l4-w3-3f-phaladesa-top-anchor` — clean except the final pin-splice commit,
+`--skip`ped it. Regenerated the writer-digest inventory: **no diff**. Re-spliced the L4 pin
+fresh (`writer_inventory_sha256` → `6d789ba65a…`, `convergence_commit` → the rebased HEAD
+`e453e8d93…`), verified `--check` PASS, diff exactly the two L4 fields. Ran
+`test_ph_wave7.py`: 38/38 pass. Pushed `--force-with-lease` clean (no dequeue needed — branch
+was never itself enqueued while I worked on it). Re-armed auto-merge; swept the other 10 own
+PRs afterward, none cascaded into DIRTY.
+
+**This cycle's unit was the DIRTY fix itself.** Priorities 1-4 otherwise unchanged: E-gate
+still uncheckable, 69th consecutive cycle DB access down.
+
+CYCLE 79 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1839`, clean rebase + fresh pin
+re-splice, pushed without needing a dequeue) → other 10 own PRs confirmed healthy, `main`
+genuinely advancing → E-gate uncheckable, DB access down 69 cycles → next: watch `#1839`
+re-enter the queue once its fresh CI resolves; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
