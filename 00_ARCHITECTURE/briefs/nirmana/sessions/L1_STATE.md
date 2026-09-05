@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 37; ga_sade_sati F-A14 landed (#1968)
+last_updated: 2026-09-06 — C8 v2.3 cycle 38; ga_transit_anchors F-A14 landed, range exhausted, #1972 filed
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -22,13 +22,12 @@ your `nirmana-adjudication` issues → continue.
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
-- **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
-  (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
-  cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32), 744
-  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34), 746 (`ga_yoga`, cycle 35),
-  747 (`ga_vichara`, cycle 36), 748 (`ga_sade_sati`, cycle 37) used. **749 is the LAST free number
-  in this range** — the next migration will exhaust it; file adjudication immediately per the
-  #1947 precedent rather than guess a further range.
+- **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → 740–749 (adjudication #1947), **NOW
+  FULLY CONSUMED (cycle 38)** — 740 (`ga_medical`), 741 (`ga_vastu`), 742 (`ga_nakshatra`), 743
+  (`ga_sensitive`), 744 (`ga_sensitive_degree`), 745 (`ga_structural`), 746 (`ga_yoga`), 747
+  (`ga_vichara`), 748 (`ga_sade_sati`), 749 (`ga_transit_anchors`) all used. **Continuation
+  adjudication #1972 filed (cycle 38) — awaiting Conductor ruling for the next range.** Do NOT
+  author a new migration file until #1972 rules; other bounded work continues in the meantime.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1516,6 +1515,51 @@ wait for a future cycle to hit the block mid-write.** After that: continue F-A14
 3 assets (ga_transit_anchors, ga_ayurdaya, ga_prashna), consider a future pass fixing F-A15/F-A16,
 or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 38 (C8 v2.3) — ga_transit_anchors's F-A14 contract (migration 749, the LAST in the range); filed #1972 immediately per D-L1-59's own instruction
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/
+#1963/#1964/#1965/#1967 confirmed genuinely `is:queued`. #1827/#1968 still legitimately CI-pending
+from last cycle's fresh pushes, auto-merge armed, not DIRTY/RED. Nothing to fix. Re-checked
+migration 749's free status against every open PR's branch (not just my own) plus main immediately
+before authoring, per standing discipline — still free.
+
+**Unit of work: F-A14 for `ga_transit_anchors`** (migration 749, tenth and LAST used in the
+740-749 range). Dedicated table, existing UNIQUE `(chart_id, ayanamsha_id, graha)` already exactly
+matching the natural key — no distinctness conjunct.
+
+Deliberately did NOT re-encode a FORENSIC gate here: the writer's own build-time gate (fixed under
+F-D22 two cycles into this campaign, cycle 28) asserts Moon's NAKSHATRA, but this table stores
+only `natal_sign` — correctly ayanamsha-DEPENDENT and legitimately varying (e.g. Pisces under
+`surya_siddhanta_classical` vs Aquarius elsewhere). Asserting a single fixed expected sign here
+would be re-introducing the EXACT F-D22 landmine already fixed — checked this deliberately before
+writing any conjunct, not discovered after shipping one.
+
+Two conjuncts, both measured live and mutation-proved: (a) `natal_degree_absolute` must equal the
+same (chart, ayanamsha, graha)'s own `graha_position.longitude_sidereal` fact in `chart_facts`
+(§N.5); (b) `natal_house_from_moon` must equal the writer's own `_house_from_moon` formula applied
+to the Moon row for the same (chart, ayanamsha). Conjunct (a)'s first join attempt matched only
+105/135 rows — a Rahu/Ketu `fact_subject`-mapping typo (`'rahu_mean'`/`'ketu_mean'` instead of the
+graha column's actual `'rahu'`/`'ketu'` values) silently dropped 30 rows from the join rather than
+producing a wrong comparison, which would have shipped as a false "0 violations" on a narrower
+scope than intended. Caught by checking the join's row count against the category's known total
+(135) rather than trusting a clean read at face value — the same discipline as D-L1-47/D-L1-49:
+verify the check actually covers what it claims to cover, not just that it currently reads clean.
+
+**Migration range exhausted.** Filed **#1972** immediately (this cycle, same session) following
+the #1947 template exactly — table of all ten used numbers + their PRs, requesting the Conductor's
+next range per the full campaign allocation ledger. Continuing other bounded work in the meantime
+per the issue's own closing note, exactly as #1947 modeled.
+
+No Python writer touched; `provenance_inventory --check` clean. 6 new textual-contract tests; full
+`tests/unit/migrations/` suite: 39 files, 186 passed / 91 skipped, no regressions.
+
+CYCLE 38 L1: landed `ga_transit_anchors`'s F-A14 contract (PR #1971, migration 749, LAST in the
+740-749 range), filed #1972 for the next range — next: await #1972's ruling before authoring any
+new migration; in the meantime, F-A14 remains open for `ga_ayurdaya`/`ga_prashna` (2 untouched
+assets) plus follow-up passes on `ga_structural`/`ga_sade_sati` (partial coverage), consider fixing
+F-A15/F-A16 in their writers, or `ga_positions` re-dispatch once #1892 lands — any of which is
+non-migration-touching work and doesn't need #1972 to resolve first.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1536,18 +1580,19 @@ none accepted yet (blocked on #1736).
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); **NEW: F-A16 — strength_formula_version invents an unrelated label when the real derivation returns nothing, 4/212 rows (jaimini_karakamsha_rahu)** |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968) |
-| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
+| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **16/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-37: ga_dashas,
+Cross-cutting: **17/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-38: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
 ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
-other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15 categories]);
-`expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
+other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15 categories],
+ga_transit_anchors; only ga_ayurdaya + ga_prashna remain fully untouched); `expected_volume_formula`
+NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -2006,6 +2051,17 @@ other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15
   cancellation, Pisces-pada) — replicating that bump sequence in SQL was judged out of scope for
   one bounded conjunct; the base-citation grounding is itself a genuine, independently-checkable
   claim, not a placeholder.
+- **D-L1-60** — C8 v2.3 cycle 38: migration 749 (`ga_transit_anchors`) exhausted the 740-749
+  range exactly as D-L1-59 flagged it would; filed **#1972** the same cycle, following #1947's
+  exact template (per-migration table + PR links, same closing note that other bounded work
+  continues meanwhile) — the second time this campaign the range-exhaustion drill has run
+  cleanly end-to-end (flag-ahead in the cycle before, file-immediately in the cycle that hits it).
+  Also: deliberately checked BEFORE writing any conjunct whether a FORENSIC gate belonged in this
+  contract, and concluded it did not — the writer's own gate asserts Moon's nakshatra, not stored
+  in this table, and the table's own `natal_sign` column is correctly ayanamsha-dependent (varies
+  by design). Re-asserting a fixed sign value would have been the EXACT F-D22 landmine already
+  fixed two cycles into this campaign — caught by thinking it through before shipping, not by a
+  mutation-test failure after the fact, unlike most of this campaign's other near-misses.
 
 ## Held items
 
@@ -2536,4 +2592,26 @@ L1 must satisfy rather than a feature it consumes.
   ga_sade_sati's F-A14 contract (PR #1968, migration 748) -- next: FIRST check whether 749 got
   used and file adjudication if so, then continue F-A14 for the remaining 3 assets
   (ga_transit_anchors, ga_ayurdaya, ga_prashna), consider fixing F-A15/F-A16, or ga_positions
+  re-dispatch once #1892 lands.
+- 2026-09-06T03:2xZ -- CYCLE 38 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963/#1964/#1965/#1967 confirmed genuinely is:queued; #1827/#1968 still
+  legitimately CI-pending, auto-merge armed, not DIRTY/RED. Re-confirmed 749 still free across
+  every open PR branch plus main before using it. Unit of work: ga_transit_anchors's F-A14
+  integrity_check_sql (PR #1971, migration 749 -- tenth and LAST used in the 740-749 range).
+  Dedicated table, existing UNIQUE already exact, no distinctness conjunct. Deliberately did NOT
+  re-encode a FORENSIC gate: the writer's own build-time gate asserts Moon's nakshatra (not stored
+  in this table), and natal_sign is correctly ayanamsha-dependent -- re-asserting a fixed sign
+  would be exactly the F-D22 landmine already fixed cycle 28; caught this by thinking it through
+  BEFORE writing a conjunct, not via a mutation-test failure after the fact. Two conjuncts:
+  natal_degree_absolute re-derived from graha_position.longitude_sidereal (sec.N.5),
+  natal_house_from_moon re-derived from the writer's own _house_from_moon formula against the
+  Moon row. Conjunct (a)'s first join only matched 105/135 rows due to a Rahu/Ketu
+  fact_subject-mapping typo silently dropping 30 rows -- caught by checking the join's row count
+  against the category total rather than trusting a clean read at face value. Migration range now
+  EXHAUSTED: filed #1972 immediately this same cycle, following #1947's exact template (full
+  per-migration table + PR links). No writer touched. CYCLE 38 L1: landed ga_transit_anchors's
+  F-A14 contract (PR #1971, migration 749, LAST in range), filed #1972 for the next range -- next:
+  await #1972's ruling before authoring any new migration; F-A14 remains open for
+  ga_ayurdaya/ga_prashna (untouched) and follow-up passes on ga_structural/ga_sade_sati (partial),
+  none of which need #1972 resolved first; also consider fixing F-A15/F-A16, or ga_positions
   re-dispatch once #1892 lands.
