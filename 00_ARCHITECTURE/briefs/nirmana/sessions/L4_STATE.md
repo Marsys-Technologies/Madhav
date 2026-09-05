@@ -1930,3 +1930,17 @@ unchanged at position 2; E-gate uncheckable, DB access down 32 cycles; no new ca
 landings or adjudications) → next: watch `#1864`'s merge; retry E-gate/dispatch dry-run once DB
 access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~11:00Z` — L4 — **CYCLE 43 (v2.3) — `#1865` merged (confirmed via the `gh
+api commits/.../check-runs` 422 on the now-cleaned-up queue branch — a new, incidental confirmation
+signal: a 404/422 on a `gh-readonly-queue/...` ref means the entry already resolved). PR hygiene
+found and fixed one real DIRTY PR this cycle: `#1864` got ejected right as it neared the front,
+confirmed unambiguous (`mergeStateStatus: DIRTY`), rebased onto fresh `origin/main`, governance
+regenerated (digest unchanged, only pin re-derived), 62/62 `test_ph_wave4.py` green, pushed
+clean, re-armed.** All other own PRs confirmed genuinely queued and advancing. DB access still
+down (33rd consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 43 L4: PR hygiene — `#1865` merged, found and fixed 1 real DIRTY PR (`#1864`), rebased,
+regenerated, tested, re-armed → E-gate uncheckable, DB access down 33 cycles; no new capability
+landings or adjudications → next: watch `#1864`'s re-queue; retry E-gate/dispatch dry-run once
+DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
