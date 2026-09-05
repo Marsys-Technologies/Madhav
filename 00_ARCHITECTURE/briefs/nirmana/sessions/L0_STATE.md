@@ -1054,3 +1054,9 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   gap resolved via dispatch), so a fresh W2 now would just go stale again once that dispatch
   happens — better to refresh W2 once, after the data catches up too. `bg_gochara_arcs` migration
   (694) still not deployed. NEXT: keep polling #1838 and the bg_gochara_arcs deploy.
+- 2026-09-05 — **Cycle 34: IDLE-OK.** PR hygiene: `#1828` still pending own checks (not yet
+  queued), `#1838` confirmed genuinely queued (44-deep queue); nothing to fix. `bg_gochara_arcs`
+  still not deployed. #1713: L5 posted a self-correction using the actual GraphQL `mergeQueue`
+  API (more precise than PR-level fields) confirming the queue is genuinely serial, ~10-13 min per
+  merge-group CI run, not broken — matches this lane's own observed cadence exactly. Nothing new
+  to act on.
