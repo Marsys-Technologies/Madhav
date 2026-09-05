@@ -43,7 +43,7 @@ the invariant sketches in `L2_W2_DECIDE_v1_0.md` were written to satisfy it.
 
 ## POSITION
 
-`L2-W3 in flight` (was: `L2-W2 complete -> L2-W3 open`) (opened 2026-09-04T22:30Z). 22 assets, none terminal.
+`L2-W3 in flight` — **lane died 00:14Z, resumed 05:05Z after ~4h50m down.** 22 assets, none terminal.
 W1 deliverable `L2_W1_ANALYSIS_v1_0.md`; W2 ruling `L2_W2_DECIDE_v1_0.md` (22 routes, 14 MUST,
 25 NOW, 8 LATER). W4 gated on L1 freezes — `bo_sudarshana` is the frontier at 1 unfrozen
 ancestor (`ga_positions`) and is the designated canary.
@@ -57,6 +57,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 3 | 2026-09-05T00:10Z | L2-W3 | five W3 PRs open (#1741 salience truth, #1752 registry accuracy + CI guard, #1755 tail-lane percentile, #1760 tail_watch trim-proofing, #1767 L1-handoff fixes); rulings received on all three of my adjudications; cross-layer DRAFT finding filed (#1753) |
 | 4 | 2026-09-05T00:45Z | L2-W3 | **W4 HELD** -- verified L4's #1748 and found its grading wrong in the dangerous direction: a `bo_laksana` rebuild CASCADE-deletes 710,899 L3 rows. Filed #1770 TIME-CRITICAL. Replied to #1748 and #1750 |
 | 5 | 2026-09-05T01:15Z | L2-W3 | #1770 RULED: upheld, blast radius re-measured at **864,733 rows / 12 tables / 3 layers** (the `kala_convergence -> phala_anchors -> phala_*` leg I missed), **campaign-wide HOLD** issued, **D-CND-15** recorded. Shipped the owed docstring fix (#1777). Three more W3 PRs: #1776 tail population, #1779 umbrella density. **#1741 MERGED** -- first L2 batch on main. Corroborated L5's seed-revert finding (#1757) |
+| 6 | 2026-09-05T05:05Z | L2-W3 | **RESUMED after ~4h50m dead.** Stock-take posted on #1713. Read D-NATIVE-05 (#1770) + charter C13 in full. **PR hygiene was the damage**: 6 open, 5 DIRTY, 1 armed — #1777 (the `NO ACTION`→`CASCADE` correction that is now D-CND-16's own evidence) sat unlanded 5h. Rebased + re-armed #1777, #1755, #1760; #1775 superseded by #1780, both replaced by this branch. Next: deterministic `signal_id` (D-NATIVE-05 action 8, coordinating with L5), `bodha_triangulation.signal_ids[]` disposition, C13 blast-radius on all 22 routes |
 
 ## ASSET TABLE (22)
 
@@ -201,6 +202,35 @@ one, and reported that as a negative result I searched for rather than an absenc
 real information about the signal) · **131 get `NULL`** (no resolvable constituent facts --
 nothing checked, nothing claimed). Collapsing the last two would repeat the defect the standing
 NULL-not-`'{}'` convention exists to prevent.
+
+- **D-L2-011** (2026-09-05T05:05Z) — **The lane's own death was the largest self-inflicted cost, and
+  the mechanism was PR hygiene, not analysis.** On resume: 6 open PRs, **5 DIRTY, only 1 armed**.
+  #1777 — the `_idempotency.py` `NO ACTION` → `CASCADE` correction, which D-CND-16 was *derived
+  from* and which the native called the campaign's best process result — had been sitting
+  unmergeable for five hours. Auto-merge does not survive a rebase, and nothing re-armed it.
+  Recording this as a decision rather than a note because the corrective is procedural and binding
+  on me: **re-arm on every push, and audit `mergeStateStatus` before starting any new work.**
+- **D-L2-012** (2026-09-05T05:20Z) — **Resolved the #1755 rebase toward `main`, not toward my own
+  branch, and checked before assuming.** Two of three commits dropped as already-upstream; the
+  surviving `bo_laksana.py` conflict was my older code against `main`'s newer copy of the *same*
+  code plus the `DISTINCT ON` + total `ORDER BY` fact-pinning fix. Verified `main` was strictly
+  better on both hunks before taking it — including the second, where `main` describes the old
+  `two_pass_verified` expression **in prose rather than quoting it**, because the TAP-6 method audit
+  greps that literal lexically and cannot distinguish a comment from an emit site. My branch quoted
+  it; landing that would have reintroduced the pattern the guard exists to catch.
+- **D-L2-013** (2026-09-05T05:25Z) — **#1775 closed as superseded, not merged.** #1780 contained
+  every one of its commits plus one; both then conflicted against a `main` that had already absorbed
+  their early history. Rebuilt as a single cherry-pick onto current `main` (this branch) after
+  confirming the three lines `main` loses are each replaced by a richer successor — checked rather
+  than assumed, since a state file is the session's memory and a silent truncation of it is exactly
+  what makes a resumed lane unsafe.
+- **D-L2-014** (2026-09-05T05:30Z) — **Not treating my own reading of "WP-6 is live" as a release of
+  a native-issued hold.** WP-6 merged (`72bb87821`) and a later deploy (`4db91b4dc`) succeeded, so
+  the hold's stated condition appears met. But "live for the web service" and "live for the
+  dispatcher's pre-flight check" are different questions, and D-NATIVE-05's hold is the native's,
+  not mine to lift on inference. Flagged on #1713 and **proceeding as though the hold stands**,
+  working every non-dispatch item. If it is in fact live, `bo_laksana` still needs the §4 snapshot
+  mandate, L3's re-runnability confirmation on #1770, and a `weight: monster` solo slot.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
