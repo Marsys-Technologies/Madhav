@@ -2110,3 +2110,14 @@ front; E-gate uncheckable, DB access down 49 cycles; no new capability landings 
 adjudications) → next: watch `#1870`/`#1831`; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~13:50Z` — L4 — **CYCLE 60 (v2.3) — `#1872` merged. `#1870`'s checks completed and
+it entered the queue clean — confirms last cycle's read.** `#1831` still at position 4. PR
+hygiene clean, all 10 checked own PRs genuinely queued and advancing. DB access still down
+(50th consecutive cycle — half a hundred cycles now), no new capability landings or
+adjudications.
+
+CYCLE 60 L4: IDLE-OK (verified: PR hygiene clean, `#1870` queued clean, `#1831` unchanged near
+the front; E-gate uncheckable, DB access down 50 cycles; no new capability landings or
+adjudications) → next: watch `#1831`'s merge; retry E-gate/dispatch dry-run once DB access
+returns; watch `#1885`'s merge; F1 remains deferred.
+
