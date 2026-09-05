@@ -99,6 +99,50 @@ shape, low risk of payload error), then the 8 `changed` assets (need `verdict: c
 finding), then `ga_prashna` last (still `rebuild_only`/`examined_and_already_efficient` — the R-1
 dormancy is a registry `data_disposition` field, not a different verdict category).
 
+## CYCLE 3 (C8 v2.3) — remaining 10 `rebuild_only` W2 acceptance events LIVE
+
+**PR hygiene:** `is:queued` shows #1766 now genuinely queued (good — Conductor or the queue
+itself must have picked it up after checks finished green). #1827 (state PR) still `UNKNOWN`/
+checks running, all green so far, nothing RED/DIRTY. Nothing to fix.
+
+**The unit of work: batched the remaining 10 `rebuild_only` L1 assets' W2 acceptance events** —
+`ga_nakshatra`, `ga_sensitive`, `ga_sensitive_degree`, `ga_strength`, `ga_structural`, `ga_yoga`,
+`ga_vichara`, `ga_sade_sati`, `ga_ayurdaya`, `ga_prashna`. Same mechanism the canary proved:
+
+1. Reused the throwaway `tsx` digest script (definitions.ts unchanged between the deployed sha
+   and current `origin/main` — re-checked before reuse) to compute `registry_fingerprint_sha256`
+   + `analysis_digest` for all 10 in one DB round trip; deleted the script immediately after.
+2. Built all 20 request bodies via a Python generator script (not hand-typed, not templated
+   through nested shell quoting) with each asset's own `evidence_refs` (correct W1 batch letter:
+   B for nakshatra/sensitive/sensitive_degree, C for strength/structural, D for
+   yoga/vichara/sade_sati, E for ayurdaya/prashna) and its own one-line summary drawn from
+   `L1_W2_DECIDE_v1_0.md` §2's actual per-asset rationale — never a copy-paste of the canary's.
+   **Read the generated JSON bodies before sending anything real**, specifically because the
+   evidence route's `ON CONFLICT (campaign_id, definition_revision, idempotency_key) DO NOTHING`
+   means a wrong payload submitted under a given idempotency_key would silently freeze that
+   mistake in place — a later correct resubmission under the same key would no-op, not overwrite.
+3. Same verdict shape as the canary for all 10: `examined_and_already_efficient` /
+   `no_change` / `digest_identical` — every one of these 10 is `rebuild_only` (writer
+   unchanged), including `ga_prashna` (R-1 dormancy is a registry `data_disposition` field, not a
+   different verdict category — confirmed unchanged from the plan).
+4. All 20 POSTs (10 assets × 2 events) returned **HTTP 201 created**. Zero failures, zero retries.
+5. Re-ran the E-gate batch query: **all 11 `rebuild_only` L1 assets** (canary + these 10) now read
+   `w2_analysis=t w2_verdict=t`. `ga_positions` stays `OPEN-PENDING-PIN` (T0, no unfrozen
+   ancestors); the other 10 read `BLOCKED-ANCESTORS` as expected (condition 2 clear, condition 1
+   still waiting on `ga_positions` itself to freeze — that is the DAG working as designed, not a
+   defect).
+
+**Remaining W2 acceptance-event work: the 8 `changed` assets** (`ga_vargas`, `ga_dashas`,
+`ga_panchanga`, `ga_condition`, `ga_tajaka`, `ga_transit_anchors`, `ga_medical`, `ga_vastu`) —
+deliberately held for their own cycle rather than folded in here (D-L1-23): their verdict is
+`correct` or `optimize_and_correct` with `output_contract: correctness_change`, a materially
+different and higher-stakes claim than `examined_and_already_efficient`, and each needs its own
+MUST-finding-specific summary, not a templated one. `ga_vargas` additionally has an OPEN PR
+(#1766, its writer fix) that must be MERGED+DEPLOYED first — submitting `changed` acceptance
+evidence against a not-yet-deployed writer fix would bind the analysis to a `source_ref` commit
+that isn't actually running in production yet, which `assertNirmanaGitCommitMatchesDeployment`
+would reject anyway (source_ref must equal `NIRMANA_DEPLOYED_SHA`).
+
 ## E-gate (C2/C10) — measured live 2026-09-05
 
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
@@ -107,13 +151,17 @@ All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`
 | tier | assets | unfrozen ancestors |
 |---|---|---|
 | T0 | `ga_positions` | **0 — conditions 1+2 OPEN; gate=OPEN-PENDING-PIN (cond 3: verify pins, claim slot, dispatch)** |
-| T1 | `ga_ayurdaya` `ga_dashas` `ga_nakshatra` `ga_panchanga` `ga_prashna` `ga_sensitive` `ga_sensitive_degree` `ga_transit_anchors` `ga_vargas` | 1 |
-| T2 | `ga_strength` | 2 |
+| T1 | `ga_ayurdaya`✅ `ga_dashas` `ga_nakshatra`✅ `ga_panchanga` `ga_prashna`✅ `ga_sensitive`✅ `ga_sensitive_degree`✅ `ga_transit_anchors` `ga_vargas` | 1 |
+| T2 | `ga_strength`✅ | 2 |
 | T3 | `ga_condition` `ga_tajaka` | 3 |
 | T4 | `ga_medical` `ga_vastu` | 4 |
-| T5 | `ga_structural` | 7 |
-| T6 | `ga_sade_sati` `ga_yoga` | 8 |
-| T7 | `ga_vichara` | 9 |
+| T5 | `ga_structural`✅ | 7 |
+| T6 | `ga_sade_sati`✅ `ga_yoga`✅ | 8 |
+| T7 | `ga_vichara`✅ | 9 |
+
+✅ = condition 2 (`w2_analysis`+`w2_verdict`) now clear as of cycle 3; still `BLOCKED-ANCESTORS`
+on condition 1 (waiting on `ga_positions` to freeze, per the DAG). Unmarked = the 8 `changed`
+assets, condition 2 still open (their own cycle, per D-L1-23).
 
 Canary `ga_positions`: **cond 1 ✅ · cond 2 ❌ (#1715 → PR #1736) · cond 3 ✅.**
 Manifest waves: W0=1, W1=9, W2=3, W3=3, W4=2, W5=1.
@@ -266,10 +314,21 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   (imported, not reimplemented) to guarantee byte-for-byte agreement with the server's own
   independent recomputation.
 
+- **D-L1-23** — C8 v2.3 cycle 3: batched the remaining 10 `rebuild_only` L1 assets' W2 acceptance
+  events (full account in the CYCLE 3 section above). All 20 POSTs HTTP 201, zero retries.
+  Deliberately held the 8 `changed` assets out of this batch — their verdict category
+  (`correct`/`optimize_and_correct`, `output_contract: correctness_change`) and per-asset MUST
+  summaries are a materially different, higher-stakes claim than the templated
+  `examined_and_already_efficient` shape, and `ga_vargas` specifically cannot be submitted at all
+  until #1766 merges and deploys (`assertNirmanaGitCommitMatchesDeployment` requires `source_ref`
+  to equal the currently-deployed commit).
+
 ## Held items
 
-- ~~All W2 acceptance events~~ — **hold CLEARED** (#1736/#1740/#1756 all merged). Mechanism proven
-  live on the canary `ga_positions` (D-L1-22); remaining 18 assets are unheld work for next cycle.
+- ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
+  submitted and confirmed live (D-L1-22, D-L1-23). Remaining 8 (`changed` assets) are unheld work
+  for a future cycle, gated in practice by `ga_vargas` needing #1766 merged+deployed first (its
+  `source_ref` must equal the deployed commit).
 - **All W5 `integrity_verified`** — held on L4's #1723 Part B (detector placeholder guard) landing.
 - ~~Status-vocabulary normalization~~ — **no longer held; dropped from scope** per D-L1-15.
 - No upstream C6 capability holds: L0 declared none.
@@ -325,3 +384,13 @@ L1 must satisfy rather than a feature it consumes.
   `CYCLE 2 L1: proved W2 acceptance-event mechanism on canary ga_positions (both events HTTP 201,
   E-gate cond 2 now open) → next: batch remaining 18 assets' W2 acceptance events, then claim a run
   slot and dispatch ga_positions W4`.
+- 2026-09-05T14:00Z — **CYCLE 3 (C8 v2.3).** PR hygiene: `is:queued` shows #1766 now genuinely
+  queued (checks finished green); #1827 still checks-running, all green, nothing RED/DIRTY.
+  Unit of work: batched the remaining 10 `rebuild_only` L1 assets' W2 acceptance events (20 POSTs,
+  all HTTP 201). E-gate now reads condition-2-clear for 11/19 L1 assets (`ga_positions` + all 10
+  `rebuild_only`); the 8 `changed` assets are the only ones left needing acceptance events, held
+  for their own cycle per D-L1-23 (higher-stakes verdict category; `ga_vargas` blocked on #1766
+  deploying first). No new adjudication issue needed. `CYCLE 3 L1: batched 10 rebuild_only assets'
+  W2 acceptance events (20/20 HTTP 201, E-gate cond 2 now clear for 11/19 L1 assets) → next: claim
+  a run slot and dispatch ga_positions through W4 (the only asset with BOTH E-gate conditions open
+  right now), or wait on #1766 merge to unlock the 8 changed assets' acceptance events`.
