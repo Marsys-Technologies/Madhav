@@ -926,6 +926,36 @@ describe('projectAssetFrontier', () => {
     })
     expect(frontier.L0).toEqual(['alpha', 'zeta'])
   })
+
+  it('excludes an asset with a dangling depends_on reference (id not in manifestAssets) instead of crashing', () => {
+    const manifestAssets = [manifestAsset('orphan', 'L0', ['ghost'])]
+    expect(() => projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['orphan']),
+    })).not.toThrow()
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['orphan']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('orphan')
+  })
+
+  it('excludes a self-referential depends_on asset instead of looping forever', () => {
+    const manifestAssets = [manifestAsset('loop', 'L0', ['loop'])]
+    expect(() => projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['loop']),
+    })).not.toThrow()
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['loop']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('loop')
+  })
 })
 
 describe('deriveLayerActivityState', () => {
@@ -954,6 +984,16 @@ describe('projectProgrammePositionV21', () => {
       assetsTotal: 128,
     })
     expect(position).toBe('34% · 29/128 frozen')
+  })
+
+  it('renders an honest unknown marker, not a fabricated 0, when assetsTotal is null but percent is not', () => {
+    const position = projectProgrammePositionV21({
+      overall: { earned: 100, required: 294, percent: 34 },
+      frozenTotal: 29,
+      assetsTotal: null,
+    })
+    expect(position).not.toContain('/0 frozen')
+    expect(position).toBe('34% · 29/— frozen')
   })
 
   it('reports execution not yet evidenced when percent is null', () => {

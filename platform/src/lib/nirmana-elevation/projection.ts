@@ -846,5 +846,5 @@ export function projectProgrammePositionV21(args: {
   assetsTotal: number | null
 }): string {
   if (args.overall.percent === null) return 'Execution not yet evidenced'
-  return `${args.overall.percent}% · ${args.frozenTotal}/${args.assetsTotal ?? 0} frozen`
+  return `${args.overall.percent}% · ${args.frozenTotal}/${args.assetsTotal ?? '—'} frozen`
 }
