@@ -68,10 +68,11 @@ BIRTH_YEAR = 1984
 BIRTH_MONTH = 2
 BIRTH_DAY = 5
 
-# Hybrid-storage window (A7 Q4): past + current + next 5 years. A 2026 build →
-# current varsha = 2026 - 1984 + 1 = 43, so the materialised window is varsha
-# 1..48. Parameterised via `reference_year` (default 2026) for reproducibility.
-DEFAULT_REFERENCE_YEAR = 2026
+# Hybrid-storage window (A7 Q4): past + current + next 5 years. A build in
+# year Y → current varsha = Y - 1984 + 1, so a 2026 build materialises varsha
+# 1..48. `reference_year` defaults to the real build clock (F-E16: a frozen
+# literal here silently degraded the window's coverage every year nobody
+# edited it); pass it explicitly only to reproduce a specific past build.
 
 SIGNS: list[str] = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -699,11 +700,23 @@ def compute_varsha(chart_id: str,
 
 # ── Build (precompute window) ─────────────────────────────────────────────────
 
+def _effective_reference_year(reference_year: int | None) -> int:
+    """Resolve the hybrid-window reference year (F-E16).
+
+    The orchestrator never passes `reference_year`, so production always
+    took whatever literal sat in this file as a default -- correct only by
+    coincidence, and silently wrong every year nobody edited it (§N.8: no
+    code path could ever make it read false). An explicit value always wins,
+    for tests and backfills that must reproduce a specific past build.
+    """
+    return reference_year if reference_year is not None else datetime.now(timezone.utc).year
+
+
 def build_ga_tajaka(chart_id: str,
                     build_id: str | None = None,
                     *, conn: Any = None,
                     birth_params: dict[str, Any] | None = None,
-                    reference_year: int = DEFAULT_REFERENCE_YEAR,
+                    reference_year: int | None = None,
                     min_varsha: int = 1,
                     max_varsha: int | None = None,
                     ayanamshas: list[str] | None = None) -> dict[str, Any]:
@@ -717,16 +730,23 @@ def build_ga_tajaka(chart_id: str,
       is the sole build-state writer). The caller's SAVEPOINT owns atomicity.
     - conn None (legacy CLI path via build_runner): opens its own connection,
       commits, closes, and writes asset_throughput via _telemetry.
+
+    `reference_year` (F-E16): the orchestrator never passes this, so
+    production always took the frozen `DEFAULT_REFERENCE_YEAR` literal --
+    a window that silently degrades every year nobody edits it. Default is
+    now the real build clock; pass an explicit year only to reproduce a
+    specific past build (tests, backfills).
     """
     from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
+    effective_reference_year = _effective_reference_year(reference_year)
     # Every chart (native included) must have real birth_params from public.charts.
     # resolve_birth_params raises for any chart with falsy params.
     bp = resolve_birth_params(chart_id, birth_params)
     birth_year = int(str(bp["datetime_iso"])[:4])
-    current_varsha = reference_year - birth_year + 1
+    current_varsha = effective_reference_year - birth_year + 1
     if max_varsha is None:
         max_varsha = current_varsha + 5
     aya_ids = ayanamshas or list(CANONICAL_AYANAMSHAS.keys())
@@ -803,7 +823,7 @@ def build_ga_tajaka(chart_id: str,
         "chart_id": chart_id,
         "build_id": build_id,
         "window": {"min_varsha": min_varsha, "max_varsha": max_varsha,
-                   "reference_year": reference_year,
+                   "reference_year": effective_reference_year,
                    "calendar_span": [birth_year + min_varsha - 1,
                                      birth_year + max_varsha - 1]},
         "ayanamshas": list(aya_ids),
@@ -828,7 +848,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ga_tajaka Vārṣaphal writer")
     parser.add_argument("--chart_id", default=CANONICAL_CHART_ID)
     parser.add_argument("--build_id", default=None)
-    parser.add_argument("--reference_year", type=int, default=DEFAULT_REFERENCE_YEAR)
+    parser.add_argument("--reference_year", type=int, default=None)
     parser.add_argument("--min_varsha", type=int, default=1)
     parser.add_argument("--max_varsha", type=int, default=None)
     parser.add_argument("--json", dest="output_json", action="store_true")
