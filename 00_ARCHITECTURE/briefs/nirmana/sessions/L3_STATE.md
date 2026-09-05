@@ -451,6 +451,46 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~14:4xZ — L3-W4 — F-L3-15 closed: ka_graha_sancara.health_probe authored and
+  PR'd. PR hygiene: #1801 still genuinely `is:queued`, nothing actionable (also picked up 5
+  more campaign PRs queuing around it — unrelated lanes). This unit's own branch: switched to a
+  FRESH branch off `origin/main` (`codex/nirmana-l3-w4-graha-sancara-probe`) rather than piling
+  onto the already-queued `codex/nirmana-l3-w4-resume` — stashed the WIP with a labeled
+  `git stash push -u -m`, verified the stash SHA before applying/dropping it (never bare
+  stash/pop, per session discipline), applied cleanly on the new branch.
+  Designed a NEW, INDEPENDENT probe type `graha_sancara_forensic` (implementer != certifier,
+  matching bg_panchanga/bg_ephemeris_engine's existing pattern — NOT a reuse of
+  `pipeline/orchestrator/writers/ka_graha_sancara.py`'s own self-test): checks the FORENSIC
+  Moon=Aquarius anchor via `get_ephemeris(force_live=True, db_conn=None)` — confirmed by reading
+  `get_ephemeris`'s own branching that `force_live` skips PATH-A unconditionally, so this probe
+  is genuinely DB-free (matches the "in-process Python library, no network endpoint" class the
+  other two L3 probes belong to). Implementation: `_probe_graha_sancara` in
+  `service_probes.py`; allowlist entry in `routers/nirmana_probe.py`; added to the frozen
+  release-smoke gate (`nirmana_probe_contracts.json` + `nirmana_probe_release_smoke.py`) so a
+  candidate revision is verified against it pre-traffic, same as the other two — an easy thing
+  to have silently skipped since that script's asset loop is a hardcoded tuple, not generic over
+  the JSON's keys. Migration 671 populates `asset_registry.health_probe`; verified live
+  (dry-run + `ROLLBACK`) against production, twice (once before the branch switch, once after,
+  same result). Contract digest (`2e710859...`) cross-verified against a REAL `node -e`
+  execution of `definitions.ts`'s own `stableJson` algorithm (not a Python reimplementation
+  guess this time — `node` was actually available) — matched my Python computation exactly on
+  the first try. Mutation-proved the `force_live=True` call argument specifically (asserting
+  the RESULT's `source` field is unfalsifiable here since `db_conn=None` already forces PATH-B
+  regardless of `force_live` — caught my own first draft of this test making a false claim,
+  fixed it to assert the actual call kwargs via a monkeypatched spy instead, then verified BOTH
+  directions: flipping `force_live` to `False` turns the corrected test red, flipping it back
+  turns it green). Along the way, editing `service_probes.py` invalidated the checked-in
+  `nirmana-writer-digests.json` — but only its separate `probe_digest` field (confirmed via
+  diff: the per-asset `writers` map, which is what `ka_graha_sancara`'s already-recorded W2
+  acceptance events are bound to via `analysis_digest`, did NOT change) — regenerated and
+  re-verified `provenance_inventory --check` + `nirmana_analysis_layer_pins.py --check` both
+  clean. Full local suite (6382 passed / 0 failed) + targeted probe test files (66/67, one
+  pre-existing local-env-only `asyncpg` import gap unrelated to this diff) both green.
+  **PR #1846 opened, auto-merge armed.**
+  **Next action:** once #1846 merges + deploys, verify deploy ancestry (C4), claim a run slot,
+  and actually dispatch `ka_graha_sancara`'s `probe_accepted` for real — the genuine gate canary,
+  four real blockers deep now (build-dispatch schema bug #1833, stale default revision, wrong
+  dispatch tool for probes, missing health_probe) and (I believe) finally clear.
 - `2026-09-05T~14:1xZ — L3-W4 — first real dispatch attempt, two real blockers found and
   handled (one filed, one diagnosed for next cycle). PR hygiene: #1801 CLEAN + genuinely
   `is:queued` again this cycle, nothing actionable. Claimed a run slot on #1713 for
