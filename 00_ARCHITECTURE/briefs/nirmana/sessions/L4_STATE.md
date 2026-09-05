@@ -3097,3 +3097,15 @@ clean, all 10 own PRs genuinely queued and advancing; E-gate uncheckable, DB acc
 cycles; nothing new) → next: watch queue positions continue advancing; retry E-gate/dispatch
 dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~00:30Z` — L4 — **CYCLE 123 (v2.3) — genuinely IDLE; no change from cycle 122.**
+
+**PR hygiene:** all 10 own PRs unchanged/genuinely queued, no net `main` movement. No
+DIRTY/RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 113th consecutive cycle DB access down.
+
+CYCLE 123 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queued; E-gate
+uncheckable, DB access down 113 cycles; nothing new) → next: watch queue positions resume
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
