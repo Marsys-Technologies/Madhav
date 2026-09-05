@@ -1815,3 +1815,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 78, no merges, no new activity.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 78, no merges, no new activity.
+
+- 2026-09-06 — **My own PR #1828 is now at queue position 1!** 25/26 checks passed, one still
+  running normally. Should merge soon. Position for #1925 still 78 (separate PR, further back).
