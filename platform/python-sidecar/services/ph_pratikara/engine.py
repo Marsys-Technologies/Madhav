@@ -195,7 +195,7 @@ class MitigationRecord:
     window_end:                 Optional[date]
     re_evaluation_date:         date
     outcome_hook_jsonb:         dict
-    classical_citation:         str
+    classical_citation:         Optional[str]
     cross_tradition_corroboration: int
     derivation_ledger_jsonb:    dict
     source_citation:            str
@@ -251,10 +251,19 @@ def derive_mitigation_record(ctx: MitigationContext) -> MitigationRecord:
         'total_scheduled': len(scheduled_ids),
     }
 
-    # classical citation: pick from first prescription or generic
+    # F-3 (L4_W1_ANALYSIS_BATCH_C.md §3.5): hard-floor violation. classical_citation was
+    # NOT NULL with no honest null available, so this fell back to an INVENTED generic
+    # citation whenever no prescription carried a real one -- measured live, 100% of
+    # 1,277 rows on the fabricated string. classical_citation is now nullable
+    # (migration 685): an honest None when nothing prescribed a real classical source,
+    # never a plausible-sounding stand-in. The serving layer already keys efficacy_tier
+    # off `citation !== null` (kala_upaya_diagnosis.ts's assignEfficacyTier) and
+    # phala_mitigation_map's all_cited off classical_citation alone (F-5, fixed
+    # alongside this) -- both were only ever wrong because this value was never
+    # genuinely null before.
     citation = next(
         (p.classical_citation for p in prescriptions if p.classical_citation),
-        'Brihat Parashara Hora Shastra — Upaya chapter'
+        None,
     )
 
     derivation = {

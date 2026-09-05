@@ -193,7 +193,7 @@ export async function handleMitigationMap(
 
   // Real phala_mitigation rows cite via `classical_citation` (NOT the fictional
   // source_citation the old shim assumed). Report citation coverage honestly.
-  const uncited = rawRemedies.filter((m) => !m['classical_citation'] && !m['source_citation'])
+  const uncited = filterUncited(rawRemedies)
   if (uncited.length > 0) {
     console.warn(`[PH-4-2] mitigation_map: ${uncited.length}/${rawRemedies.length} rows lack a classical_citation.`)
   }
@@ -223,6 +223,23 @@ export async function handleMitigationMap(
       provenance_envelope: provenanceEnvelope,
     },
   }
+}
+
+/**
+ * F-5 (L4_W1_ANALYSIS_BATCH_C.md §3.5, §N.8): `all_cited` computes over
+ * `!classical_citation && !source_citation` -- but `source_citation` is an
+ * internal, always-populated provenance string (`ph_pratikara/<id>/<tier>`),
+ * NEVER the classical grounding this field's own contract claims (see the
+ * comment directly above this function's call site, which already says so).
+ * Since `source_citation` can never be falsy, the AND can never be true, so
+ * `uncited` was structurally always `[]` regardless of `classical_citation`'s
+ * honesty -- a claimed "Grounding contract" enforced by nothing. Fixed to key
+ * on `classical_citation` alone, the only field this claim is actually about.
+ * Extracted as a pure function so the fix is unit-testable without mocking
+ * `callPlatformPrimitive`.
+ */
+export function filterUncited(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.filter((m) => !m['classical_citation'])
 }
 
 /**

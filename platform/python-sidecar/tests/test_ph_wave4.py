@@ -326,6 +326,54 @@ class TestDeriveMitigationRecord:
         for pid in scheduled:
             assert isinstance(pid, str)
 
+    def test_real_citation_passed_through(self, prescriptions):
+        from services.ph_pratikara.engine import MitigationContext, derive_mitigation_record
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=prescriptions,
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.classical_citation == 'BPHS Upaya ch. 85'
+
+    def test_no_prescriptions_yields_honest_none_not_a_fabricated_citation(self):
+        # F-3 (L4_W1_ANALYSIS_BATCH_C.md §3.5): the empty-programme case (no
+        # prescriptions matched) used to fall back to an invented generic BPHS
+        # citation. Measured live: 100% of 1,277 rows on that fabricated string.
+        # Must now be an honest None -- classical_citation is nullable
+        # (migration 685) specifically so this case never needs to invent one.
+        from services.ph_pratikara.engine import MitigationContext, derive_mitigation_record
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=[],
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.classical_citation is None
+
+    def test_prescriptions_present_but_none_carry_a_citation_yields_none(self):
+        # A non-empty prescriptions list where every entry's classical_citation is
+        # blank must ALSO yield an honest None -- not just the empty-list case.
+        from services.ph_pratikara.engine import (
+            MitigationContext, RemedyPrescription, derive_mitigation_record,
+        )
+        blank = RemedyPrescription(
+            prescription_id='P9', tradition='vedic', remedy_category='mantra',
+            classical_strength_rating=0.5, resonance_match_score=0.5, feasibility_score=0.5,
+            estimated_cost_inr_range={}, requires_acharya_review=False,
+            prerequisite_ids=[], incompatible_ids=[], classical_citation='',
+        )
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=[blank],
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.classical_citation is None
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PH_SANKRAMA
