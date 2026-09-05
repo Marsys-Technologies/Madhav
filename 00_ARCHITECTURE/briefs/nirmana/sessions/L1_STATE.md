@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 31; ga_nakshatra F-A14 landed (#1959)
+last_updated: 2026-09-06 — C8 v2.3 cycle 32; ga_sensitive F-A14 landed (#1962)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -24,7 +24,8 @@ your `nirmana-adjudication` issues → continue.
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
   (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
-  cycle 30), 742 (`ga_nakshatra`, cycle 31) used. 743–749 remain free.
+  cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32) used. 744–749 remain
+  free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1248,6 +1249,52 @@ F-A14 for the remaining 9 assets (ga_sensitive, ga_sensitive_degree, ga_structur
 ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions`
 re-dispatch once #1892 lands.
 
+## CYCLE 32 (C8 v2.3) — ga_sensitive's F-A14 contract (migration 743), a bounded first pass on a ~3,200-line 30-category writer
+
+**PR hygiene:** clean sweep. Two DIRTY PRs turned up in a raw `--author @me` sweep (#1180
+`fix/bg-sky-calendar-rename`, #446 `docs/ba-p3-fixes-rerun-report`) — confirmed via branch name
+and title that NEITHER is on a `codex/nirmana-l1-*` branch nor carries the `L1:` title prefix, so
+neither is mine; left untouched (shared bot identity across all 7 layer sessions, `--author @me`
+is not itself a layer filter). `#1928` still unmerged (`#1853` unchanged). `#1892` still open.
+#1955/#1827 (mid-CI last cycle) both confirmed genuinely `is:queued` this cycle. #1959
+(`ga_nakshatra`) was mid-CI (2 checks pending, auto-merge armed, not DIRTY/RED) — left to
+self-queue.
+
+**Unit of work: F-A14 for `ga_sensitive`** (migration 743, fourth used in the new 740-749 range).
+Shared table (`chart_facts`), scoped to the SAME 18-category-family scope this asset's own
+`count_sql` already declares (17 explicit categories + `esoteric_point_%`/`tajik_%` LIKE families
++ `bhava_arudha`) — no distinctness conjunct.
+
+This is GA5's ~30-category sensitive-points writer (`ga_sensitive_writer.py`, ~3,200 lines:
+upagraha, saham, karaka chara, arudha pada, midpoints, Lal Kitab/Nadi/Tajik/KP families,
+bhava_arudha). Given the size, scoped this F-A14 pass to three solid, mutation-tested conjuncts
+rather than attempt exhaustive per-category coverage in one cycle: (a) verification_pass_status
+vocabulary — the writer's own docstring claims "zero single, zero divergent_flagged"; confirmed
+live that exactly `two_pass_verified` (26,250) / `floored` (75, from absent-prerequisite rows)
+appear in scope, nothing else; (b) `special_lagna.sign_lord` re-derived from the L0
+`reference_signs` authority (§N.5) rather than restated — 105/105 rows matched live; (c)
+`bhava_arudha`'s classical Parashari 2-exception rule (BPHS ch.32 v.2-3, cited in the writer's own
+`_build_bhava_arudha_rows`): an arudha can never land in its own origin house or the 7th-from-origin
+— 0/210 violations live.
+
+Two mutation-test near-misses caught before shipping: (1) conjunct (a)'s first mutation attempt
+targeted a nonexistent `fact_subject='Gulika'` under `upagraha_position` (Gulika is actually filed
+under `sensitive_point_gulika_mandi`, a different category) — the mutation silently landed on zero
+rows, producing a false-clean read; checked the real live subject vocabulary (`DHUMA`,
+`INDRACHAPA`, `KALA`, `PARIVESHA`, `UPAKETU`, `VYATIPATA`) and re-targeted correctly. (2) Before
+trusting conjunct (b)'s mutation (BHAVA_LAGNA sign_lord → 'Mars'), confirmed the real pre-mutation
+value was Jupiter (sign=Pisces), ruling out a same-value no-op — the same D-L1-52 discipline
+applied proactively this time rather than caught after a false-clean read.
+
+No Python writer touched; `provenance_inventory --check` clean. 7 new textual-contract tests; full
+`tests/unit/migrations/` suite: 39 files, 187 passed / 91 skipped, no regressions (baseline grew by
+one file this cycle — `ga_prashna_orphan_disposition`, PR #1879, merged to main since last check).
+
+CYCLE 32 L1: landed `ga_sensitive`'s F-A14 contract (PR #1962, migration 743) — next: continue
+F-A14 for the remaining 8 assets (ga_sensitive_degree, ga_structural, ga_yoga, ga_vichara,
+ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions` re-dispatch once
+#1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1260,7 +1307,7 @@ none accepted yet (blocked on #1736).
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A) |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | `ganita_nakshatra_get` does not serve it (F-B18); F-A14 integrity_check_sql (#1959) |
 | ga_panchanga | 437 / 221 | **changed** | **MUST: `*_arambha_iso` stores the anga END (F-B24)** |
-| ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B) |
+| ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
 | ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C) |
@@ -1275,10 +1322,10 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **10/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-31: ga_dashas,
+Cross-cutting: **11/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-32: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
-ga_nakshatra); `expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with
-8,249 live rows.
+ga_nakshatra, ga_sensitive); `expected_volume_formula` NULL on 6; `ga_vichara` is
+`catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -1668,6 +1715,19 @@ ga_nakshatra); `expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_sta
   the correct four (fact_category, fact_key) pairs instead of shipping the narrower, wrong check —
   same discipline as D-L1-48 (`ga_condition`'s graha_yuddha docstring) and D-L1-52: read the
   writer's own documented exception before asserting an absence.
+- **D-L1-54** — C8 v2.3 cycle 32: two raw `--author @me` DIRTY hits (#1180, #446) confirmed NOT
+  mine via branch name (`fix/bg-sky-calendar-rename`, `docs/ba-p3-fixes-rerun-report` — neither
+  `codex/nirmana-l1-*`) and title (neither carries the `L1:` prefix) — the shared bot identity
+  across all 7 layer sessions means a bare author filter is not itself a layer filter; left
+  untouched. Also: scoped `ga_sensitive`'s F-A14 contract to 3 conjuncts on a ~3,200-line
+  30-category writer rather than attempt exhaustive coverage in one cycle (matches the ga_strength/
+  ga_condition precedent of a bounded first pass, not every asset needing every category solved at
+  once). Two mutation-test near-misses caught before shipping: a corruption targeted at a
+  nonexistent `fact_subject` (assumed 'Gulika' lived under `upagraha_position`; it's actually filed
+  under `sensitive_point_gulika_mandi`) that silently landed on zero rows, and a proactive
+  pre-mutation value check (confirmed BHAVA_LAGNA's real sign_lord was Jupiter, not already Mars)
+  before trusting a mutation result — applying D-L1-52's lesson prospectively rather than only
+  reactively.
 
 ## Held items
 
@@ -2094,3 +2154,19 @@ L1 must satisfy rather than a feature it consumes.
   four pairs instead. No writer touched. CYCLE 31 L1: landed ga_nakshatra's F-A14 contract (PR
   #1959, migration 742) -- next: continue F-A14 for the remaining 9 assets, or ga_positions
   re-dispatch once #1892 lands.
+- 2026-09-06T02:2xZ -- CYCLE 32 (C8 v2.3). PR hygiene: two DIRTY hits from a raw --author @me
+  sweep (#1180, #446) confirmed NOT mine (wrong branch namespace, no L1: title prefix) -- shared
+  bot identity across all 7 sessions, left untouched. All genuine L1 PRs is:queued or mid-CI with
+  armed auto-merge (#1959 two checks pending). #1928/#1853 unchanged, #1892 still open. Unit of
+  work: ga_sensitive's F-A14 integrity_check_sql (PR #1962, migration 743 -- fourth used in the
+  new range), a bounded first pass on a ~3,200-line 30-category writer. Three conjuncts:
+  verification_pass_status vocabulary (two_pass_verified/floored only, matching the writer's own
+  "zero single, zero divergent_flagged" docstring claim), special_lagna.sign_lord re-derived from
+  L0 reference_signs (§N.5), bhava_arudha's classical Parashari 2-exception rule (arudha never
+  lands on its own origin house or the 7th-from-origin). Two mutation-test near-misses caught:
+  a corruption targeted a nonexistent fact_subject (assumed Gulika lived under upagraha_position;
+  it's actually sensitive_point_gulika_mandi) that silently landed on zero rows, and a proactive
+  pre-mutation value check ruled out a same-value no-op before trusting the second mutation's
+  result. No writer touched. CYCLE 32 L1: landed ga_sensitive's F-A14 contract (PR #1962,
+  migration 743) -- next: continue F-A14 for the remaining 8 assets, or ga_positions re-dispatch
+  once #1892 lands.
