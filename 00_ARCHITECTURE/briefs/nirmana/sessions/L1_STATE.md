@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 5; dispatcher blocked (#1833), ga_panchanga F-B24 fix (#1841)
+last_updated: 2026-09-05 — C8 v2.3 cycle 6; ga_condition F-C8 fix (#1853), cross-layer digest coupling filed (#1852)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -234,6 +234,31 @@ anga's end.
    writer_inventory_sha256 exactly the same way. Rebased onto origin/main first to pick up
    #1766's own already-merged pin advance, so both fixes' digest changes are reflected together.
 
+## CYCLE 6 (C8 v2.3) — ga_condition F-C8 fix; discovered a cross-layer digest coupling (#1852)
+
+**PR hygiene:** #1841 (panchanga) and #1827 (state) both green/pending, nothing to fix. #1838
+(CONDUCTOR's dispatcher fix for #1833) is queued -- once it lands, ga_positions dispatch becomes
+viable again.
+
+**Unit of work: `ga_condition`'s F-C8 fix** (PR **#1853**) -- `varga_dignity_composite` NULL on
+135/135 rows because `_load_varga_dignity_spread` reads Title-Case bare dignity labels
+("Enemy") that `DIGNITY_SCORES` (keyed lowercase + `_sign` suffix) can't match. **Caught and
+corrected my own first draft mid-cycle**: initially added a new translation dict, then noticed
+`ga_dashas_writer.py:53` already imports `_DIVISIONAL_DIGNITY_NORMALIZE` from this exact file for
+this exact purpose -- deleted my duplicate and reused the existing map instead (D-L1-26).
+
+**Discovered and filed a real cross-layer defect (#1852), not self-inflicted:** regenerating the
+writer-digest inventory for this fix moved `ga_dashas` AND `bo_pratijna` (an **L2** asset) --
+neither of which I touched. Root-caused (not assumed): `bo_pratijna_v4_engine.py:69` imports
+directly from `ga_condition_writer.py` too. Verified deterministic/reproducible (reverted my edit,
+regenerated on pure `origin/main`: zero diff; reapplied: same two entries move every time) --
+this is `get_writer_source_hash`'s import-walk working as designed for `ga_dashas` (an L1 asset
+correctly depending on the file), but it silently defeats the per-layer pin isolation for
+`bo_pratijna` since the flat `nirmana-writer-digests.json` has no layer boundary a cross-layer
+import can respect. Filed #1852 with the finding, options (recommended: L2 re-derives its
+`bo_pratijna` acceptance once this merges), and did NOT touch L2's own pin slice -- only
+regenerated `--layer L1`.
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -431,6 +456,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   code fixes. Learned from cycle 1's friction and proactively regenerated the writer-digest
   inventory + L1 pin slice before pushing, rather than waiting to be queue-ejected.
 
+- **D-L1-26** — C8 v2.3 cycle 6: `ga_condition`'s F-C8 fix (PR #1853, full account in CYCLE 6
+  above). Self-corrected mid-cycle: first draft added a new label-normalization dict; found
+  `_DIVISIONAL_DIGNITY_NORMALIZE` already existed in the same file for the same purpose (and is
+  already imported by `ga_dashas_writer.py`) and reused it instead of shipping a duplicate.
+- **D-L1-27** — Discovered and filed **#1852**: a cross-layer Python import
+  (`bo_pratijna_v4_engine.py` imports from `ga_condition_writer.py`) means an L1 writer fix
+  transitively changes an L2 asset's (`bo_pratijna`) provenance digest and therefore invalidates
+  L2's pin — the flat shared `nirmana-writer-digests.json` has no layer boundary to stop it.
+  Verified deterministic before filing (reverted/reapplied twice, same result each time). Did not
+  touch L2's own pin slice; only regenerated my own `--layer L1`. Not yet ruled.
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
@@ -521,3 +557,12 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 5 L1: dispatcher blocked campaign-wide (#1833, corroborated) -- did ga_panchanga F-B24
   writer fix instead (PR #1841, pin pre-regenerated) -- next: pick up the next changed-asset fix
   (ga_condition F-C8 or ga_tajaka F-E16/17) or re-check #1833's ruling / dispatcher availability.
+- 2026-09-05T14:50Z -- CYCLE 6 (C8 v2.3). PR hygiene: #1841/#1827 both green/pending, #1838
+  (dispatcher fix) queued. Unit of work: ga_condition's F-C8 fix (PR #1853) -- varga_dignity_composite
+  NULL on 135/135 rows from a Title-Case-vs-snake_case dignity-label mismatch; self-corrected
+  mid-cycle to reuse an existing normalization map instead of duplicating one. Discovered and
+  filed a real cross-layer digest-coupling defect (#1852): this fix's writer-digest regen also
+  moves bo_pratijna (L2), verified deterministic before filing, did not touch L2's own pin.
+  CYCLE 6 L1: landed ga_condition F-C8 fix (PR #1853) + filed cross-layer digest-coupling
+  adjudication (#1852) -- next: pick up ga_tajaka F-E16/17 or re-check #1838/dispatcher for
+  ga_positions dispatch viability.
