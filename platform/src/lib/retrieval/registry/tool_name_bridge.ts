@@ -88,7 +88,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_varshaphala: 'marsys://tool/L1/get_tajik',
   divisional_query: 'marsys://tool/L1/get_divisionals',
   // WP-1.3(d) / F-L10-021: lel_query serves the user-authored Life Event Log
-  // (life_events table, 57 rows for the native), NOT the Bodha MSR signals surface.
+  // (the chart-scoped life_events table), NOT the Bodha MSR signals surface. (Row count
+  // deliberately not pinned here — it is a live, growing quantity; NIRMĀṆA L5 W3-3.)
   // The old mapping pointed at L2/query_signals whose lel_enabled filter selects
   // lel_origin=true signals — of which there are ZERO — so lel_query returned nothing.
   lel_query: 'marsys://tool/L5/lel_query',

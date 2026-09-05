@@ -222,6 +222,17 @@ export const lelIntakeChecklistCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // NOT paginated: the checklist is the whole brahma_event_ontology taxonomy grouped by
+  // domain (a bounded catalog, no row window), and validate mode returns exactly one
+  // result per supplied draft entry. Declaring paginated:true would claim machinery this
+  // handler does not have. empty_reason is earned by the checklist-mode empty below.
+  density_contract: {
+    paginated: false,
+    facets: ['mode', 'domain'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -320,6 +331,18 @@ export const lelIntakeChecklistCapability: CapabilityDescriptor = {
           domains: domainEntries,
           domain_count: domainEntries.length,
           total_event_classes: domainEntries.reduce((s, d) => s + d.event_class_count, 0),
+          // §N.6 item 3: an honest empty is reported, and names WHICH cause — an
+          // unrecognised domain filter vs. an ontology with no rows at all. Never a
+          // populated-looking envelope wrapping domains: [].
+          ...(domainEntries.length === 0
+            ? {
+                empty_reason: domainFilter
+                  ? `No brahma_event_ontology domain matches '${domainFilter}'. ` +
+                    `Known domains: ${[...new Set(ontologyRows.map(r => r.domain))].sort().join(', ') || '(none — the ontology table is empty)'}.`
+                  : 'brahma_event_ontology returned no rows at all — the L0 event taxonomy is ' +
+                    'unpopulated in this environment, so no checklist can be built.',
+              }
+            : {}),
           filters: { domain: domainFilter },
           intake_instructions: [
             'For each domain below, walk the event_classes list and note which ones this chart has a',

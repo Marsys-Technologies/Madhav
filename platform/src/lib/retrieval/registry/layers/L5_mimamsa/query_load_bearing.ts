@@ -54,6 +54,15 @@ export const queryLoadBearingCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // Bounded LIMIT over a clamped `limit` with a disclosed total_matching + more_available;
+  // the handler already emits a parameterised empty_reason naming every applied filter.
+  density_contract: {
+    paginated: true,
+    facets: ['conclusion_id', 'role'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''

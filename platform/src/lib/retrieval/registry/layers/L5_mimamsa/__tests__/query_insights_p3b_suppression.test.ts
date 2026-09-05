@@ -18,7 +18,15 @@ function row(overrides: Record<string, unknown>) {
 }
 
 describe('query_insights — P3-b tier-suppression (F-69)', () => {
-  beforeEach(() => queryMock.mockReset())
+  // NIRMĀṆA L5 W3-3: query_insights now also issues two COUNT(*) reads (the filtered
+  // `total_matching` behind `more_available`, and the unfiltered chart total behind the
+  // honest `empty_reason`). The per-test mockResolvedValueOnce queue still supplies the
+  // insight page + calibration summary IN ORDER; this default catches the two counts once
+  // that queue drains, so these tests stay about suppression and not about call plumbing.
+  beforeEach(() => {
+    queryMock.mockReset()
+    queryMock.mockResolvedValue({ rows: [{ total: '1' }] })
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it('evidence_grade=structural → rank_consequence/confidence_band/provenance_chain.grade suppressed, tag + other provenance_chain keys preserved', async () => {

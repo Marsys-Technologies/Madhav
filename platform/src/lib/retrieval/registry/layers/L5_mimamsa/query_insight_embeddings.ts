@@ -97,6 +97,15 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // mode=nearest is a clamped top_k neighbour window; both modes already emit a real,
+  // per-mode empty_reason (missing embedding row vs. no neighbours for the seed).
+  density_contract: {
+    paginated: true,
+    facets: ['mode', 'insight_id', 'seed_insight_id'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''

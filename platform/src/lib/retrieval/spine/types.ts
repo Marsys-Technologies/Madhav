@@ -18,8 +18,19 @@ export interface SpineCalibration {
   verdict_distribution: Array<Record<string, unknown>>
   /** mimamsa_reliability rows (chart-level). */
   reliability: Array<Record<string, unknown>>
-  /** mimamsa_multipliers rows filtered to this bundle's domain. */
+  /**
+   * mimamsa_multipliers rows in scope for this bundle's domain: rows whose `domain`
+   * matches, PLUS rows whose `domain` is NULL (global scope — they apply to every
+   * domain). Same reading of the NULL as query_calibration.ts's deliberate
+   * no-filter stance; see compute_spine_bundle.ts for the full note.
+   */
   multipliers: Array<Record<string, unknown>>
+  /** Total mimamsa_multipliers rows for this chart, BEFORE domain scoping (measured). */
+  multipliers_total: number
+  /** How many of those rows carry a non-NULL `domain` label (measured coverage). */
+  multipliers_with_domain: number
+  /** Honest reason `multipliers` is empty; null when it is populated (§N.6 item 3). */
+  multipliers_empty_reason: string | null
   qa_fail_count: number
 }
 
