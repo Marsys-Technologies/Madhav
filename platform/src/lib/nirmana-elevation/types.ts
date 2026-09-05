@@ -1,11 +1,22 @@
 import { z } from 'zod'
 import { NirmanaLegacyAliasSchema } from './label-contract'
-import { PROGRAMME_WAVE_IDS } from './programme'
+import { PROGRAMME_ARC_PHASE_IDS, PROGRAMME_WAVE_IDS } from './programme'
 import { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
 export { NIRMANA_LAYER_NAMES, NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
 
 const nullableIso = z.string().datetime().nullable()
+
+/** Shared asset-milestone completion aggregate — mirrors `projection.ts`'s `CompletionCount`. */
+const CompletionSchema = z.object({
+  earned: z.number().int().nonnegative(),
+  required: z.number().int().nonnegative(),
+  percent: z.number().int().min(0).max(100).nullable(),
+}).superRefine((completion, context) => {
+  if (completion.earned > completion.required) {
+    context.addIssue({ code: 'custom', path: ['earned'], message: 'Earned cannot exceed required.' })
+  }
+})
 
 /** Version 1 remains the on-wire contract emitted by the existing projection. */
 export const NirmanaElevationSnapshotV1Schema = z.object({
@@ -193,6 +204,9 @@ const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.exte
   eligible_next_asset_ids: z.array(z.string()),
   waves: z.array(V2WaveSchema),
   wave_progress: z.array(WaveProgressSchema).length(6),
+  completion: CompletionSchema,
+  frontier_ready: z.array(z.string()),
+  last_evidence_at: nullableIso,
 }).superRefine((layer, context) => {
   if (layer.layer_name !== NIRMANA_LAYER_NAMES[layer.layer_id]) {
     context.addIssue({ code: 'custom', path: ['layer_name'], message: `${layer.layer_id} must use its governed layer name.` })
@@ -333,20 +347,43 @@ const ProgramSyncSchema = z.object({
 })
 
 const ProgrammeOWaveWpSchema = z.object({
-  wp_id: z.enum(['WP-1', 'WP-2', 'WP-3']),
+  wp_id: z.enum(['WP-1', 'WP-2', 'WP-3', 'WP-6']),
   name: z.string(),
   status: z.enum(['not_started', 'in_progress', 'merged']),
+  // C-2: `merged_pr` is added to the schema (not left implicit) because a plain z.object
+  // silently STRIPS unknown keys — omitting this field would make Task 1's PR provenance
+  // vanish between snapshot assembly and the UI with no error (the §N.8 silent-drop class).
+  merged_pr: z.object({
+    number: z.number().int().positive(),
+    merged_at: z.string().datetime(),
+  }).optional(),
   note: z.string(),
 })
 
 const ProgrammeOperationalStateSchema = z.enum(['completed', 'active', 'locked', 'blocked', 'paused', 'unknown'])
 
+const ArcPhaseSchema = z.object({
+  phase_id: z.enum(PROGRAMME_ARC_PHASE_IDS),
+  state: z.enum(['completed', 'in_progress', 'active', 'pending', 'unknown']),
+  provenance: z.enum(['repo_declared', 'evidence_derived']),
+  note: z.string(),
+})
+
 const ProgrammeSnapshotSchema = z.object({
   position_label: z.string(),
+  overall: CompletionSchema,
+  arc: z.array(ArcPhaseSchema).length(4),
+  conform_drift: z.object({
+    status_echo: z.string(),
+    affected: z.number().int().nonnegative(),
+    with_accepted_receipts: z.number().int().nonnegative(),
+    without_accepted_receipts: z.number().int().nonnegative(),
+  }).nullable(),
   o_wave: z.object({
     provenance: z.literal('repo_declared'),
     state: ProgrammeOperationalStateSchema,
     wps: z.array(ProgrammeOWaveWpSchema).length(3),
+    addenda: z.array(ProgrammeOWaveWpSchema),
   }),
   phase_a: z.object({
     provenance: z.literal('evidence_derived'),

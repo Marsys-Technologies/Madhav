@@ -462,7 +462,113 @@ describe('projectNirmanaElevationSnapshot', () => {
     const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
     expect(l0.wave_progress.map((wave) => wave.wave_id)).toEqual(['W1', 'W2', 'W3', 'W4', 'W5', 'W6'])
     expect(l0.wave_progress.every((wave) => wave.earned === 1 && wave.required === 1)).toBe(true)
+
+    // bg_prashna_rules earns all 6 milestones and is the only wavable asset in the whole
+    // manifest, so `programme.overall` (built via Task 2's `projectCompletion`, never a
+    // second hand-rolled summation loop) must equal that asset's own hand-computed sum.
+    expect(snapshot.programme.overall).toEqual({ earned: 6, required: 6, percent: 100 })
+    expect(l0.completion).toEqual({ earned: 6, required: 6, percent: 100 })
+    // Frozen already — it is no longer awaiting decision/frontier eligibility.
+    expect(l0.frontier_ready).toEqual([])
+    expect(l0.last_evidence_at).not.toBeNull()
+    expect(snapshot.programme.arc).toHaveLength(4)
+    expect(snapshot.programme.arc.map((phase) => phase.phase_id)).toEqual(['PHASE_A', 'O_WAVE', 'LAYERS', 'PHASE_Z'])
     expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('C-2: merged_pr on both the O-wave WPs and the post-wave addendum survives a full snapshot schema parse round-trip, not merely a manifest-constant check', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+    // Round-trip through JSON (as the wire actually carries it) and re-parse with the same
+    // schema the API route uses — proving `merged_pr` is declared on the schema (C-2) and is
+    // not silently stripped by zod's default unknown-key behavior.
+    const reparsed = NirmanaElevationSnapshotV2Schema.parse(JSON.parse(JSON.stringify(snapshot)))
+    expect(reparsed.programme.o_wave.wps.find((wp) => wp.wp_id === 'WP-1')?.merged_pr)
+      .toEqual({ number: 1697, merged_at: '2026-09-03T23:18:59Z' })
+    expect(reparsed.programme.o_wave.wps.find((wp) => wp.wp_id === 'WP-2')?.merged_pr)
+      .toEqual({ number: 1699, merged_at: '2026-09-04T00:21:53Z' })
+    expect(reparsed.programme.o_wave.wps.find((wp) => wp.wp_id === 'WP-3')?.merged_pr)
+      .toEqual({ number: 1698, merged_at: '2026-09-03T23:55:49Z' })
+    expect(reparsed.programme.o_wave.addenda.find((wp) => wp.wp_id === 'WP-6')?.merged_pr)
+      .toEqual({ number: 1781, merged_at: '2026-09-05T04:57:25Z' })
+  })
+
+  it('per-layer completion, frontier_ready, and conform_drift are wired from data already in memory (frontier honors a cross-layer frozen ancestor; conform_drift partitions by receipt existence)', () => {
+    const registry = [
+      registryAsset({ asset_id: 'bg_prashna_rules', layer: 'brahmagyan', sort_order: 0 }),
+      registryAsset({
+        asset_id: 'bo_isolated', layer: 'bodha', sort_order: 1,
+        target_table: 'bo_isolated', count_sql: 'SELECT count(*) FROM bo_isolated',
+      }),
+      registryAsset({
+        asset_id: 'ka_smriti', layer: 'kala', sort_order: 2, depends_on: ['bg_prashna_rules'],
+        asset_kind: 'service', asset_type: 'service', target_table: 'ka_smriti',
+        count_sql: 'SELECT count(*) FROM ka_smriti', health_probe: { endpoint: '/health/ka-smriti' },
+      }),
+    ]
+    const manifest = manifestFor(registry, [
+      { asset_id: 'bg_prashna_rules', layer: 'L0', execution_obligation: 'build' },
+      { asset_id: 'bo_isolated', layer: 'L2', execution_obligation: 'build' },
+      { asset_id: 'ka_smriti', layer: 'L3', execution_obligation: 'probe' },
+    ])
+    // bg_prashna_rules: full lifecycle through frozen (an accepted receipt exists).
+    const bgEvents = assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 })
+    // ka_smriti: analysed + decided only — "decided" (has an optimization_verdict_accepted
+    // receipt) but deliberately not frozen, so it is frontier eligibility material.
+    const kaSmritiEvents = assetMilestoneEvents('ka_smriti', 'L3', runTwo, { registryFingerprint: manifest.assets[2].registry_fingerprint_sha256 }).slice(0, 2)
+    // bo_isolated: zero campaign events at all — the "layer with zero events" case.
+
+    const snapshot = projectNirmanaElevationSnapshot(sources({
+      asset_registry: registry,
+      asset_throughput: [{ asset_id: 'bg_prashna_rules', chart_id: canonicalChartId, state: 'lit', last_built_at: observedAt }],
+      campaign_definitions: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen',
+        manifest, manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+      }],
+      campaign_events: [...foundationLaneEvents(), ...stageEventsThrough('L0'), ...bgEvents, ...kaSmritiEvents],
+      build_runs: [{ id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null, created_at: observedAt, started_at: observedAt }],
+      build_run_assets: [{ run_id: runOne, asset_id: 'bg_prashna_rules', position: 0, state: 'complete', started_at: observedAt, ended_at: observedAt, error: null }],
+      // 2 affected, 1 with an accepted receipt (bg_prashna_rules) and 1 without (bo_isolated) —
+      // the exact fixture shape the plan's own TDD checklist names.
+      monitor_observations: [monitorObservation({
+        status: 'evidence_refresh_required',
+        affected_asset_ids: ['bg_prashna_rules', 'bo_isolated'],
+      })],
+    }), { generatedAt: observedAt })
+
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'bg_prashna_rules')?.lifecycle_state).toBe('frozen')
+    expect(snapshot.assets.find((asset) => asset.asset_id === 'ka_smriti')?.lifecycle_state).not.toBe('frozen')
+
+    // Frontier: bg_prashna_rules is frozen, so it is no longer eligibility material — L0's
+    // frontier is empty. ka_smriti (L3) is decided, not frozen, and its ONLY ancestor is the
+    // frozen L0 asset — a cross-layer ancestor relationship (charter C10) — so it IS eligible.
+    const l0 = snapshot.layers.find((layer) => layer.layer_id === 'L0')!
+    const l3 = snapshot.layers.find((layer) => layer.layer_id === 'L3')!
+    expect(l0.frontier_ready).toEqual([])
+    expect(l3.frontier_ready).toEqual(['ka_smriti'])
+
+    // bo_isolated has zero campaign events: not earned, not frozen, no ancestors to block it,
+    // but it is never "decided" either, so it is honestly absent from any frontier — and its
+    // layer's completion is a real (non-null) 0%, not a fabricated null.
+    const l2 = snapshot.layers.find((layer) => layer.layer_id === 'L2')!
+    expect(l2.frontier_ready).toEqual([])
+    expect(l2.completion).toEqual({ earned: 0, required: 6, percent: 0 })
+    expect(l2.last_evidence_at).toBeNull()
+
+    // conform_drift: partitions the observation's own affected_asset_ids by accepted-receipt
+    // existence in the current definition cohort — receipt existence only, never a claim the
+    // specific contract edit was sanctioned.
+    expect(snapshot.programme.conform_drift).toEqual({
+      status_echo: 'evidence_refresh_required',
+      affected: 2,
+      with_accepted_receipts: 1,
+      without_accepted_receipts: 1,
+    })
+    expect(NirmanaElevationSnapshotV2Schema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('conform_drift is null when no monitor observation exists at all', () => {
+    const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+    expect(snapshot.programme.conform_drift).toBeNull()
   })
 
   // NOTE on the three tests below: `assertManifestMatchesRegistryIdentity` (invoked by
@@ -550,25 +656,33 @@ describe('projectNirmanaElevationSnapshot', () => {
     }
   })
 
-  it('selects the in-progress WP over a not-started one for the position chip, given the real non-monotonic PROGRAMME_O_WAVE_WPS', () => {
-    // Pin against the real manifest values (not a hand-built fixture): WP-1 merged,
-    // WP-2 not_started (no PR), WP-3 in_progress (open PR) — non-monotonic. "First
-    // non-merged" would incorrectly select WP-2; the fix prefers in_progress.
+  it('pins PROGRAMME_O_WAVE_WPS as fully merged stable history (Ruling R3) and the position chip reads the v2.1 asset-elevation projection, never a stale open-WP reference', () => {
+    // Reality changed since this pin was first written: all three O-wave WPs merged
+    // (verified via `gh pr view` by exact PR number, plan Ruling R3) — the O-wave race that
+    // made the original snapshot go stale within 24 hours is over, and this is now stable,
+    // closed history. The position chip no longer references an "open WP" at all; it is the
+    // v2.1 asset-elevation projection (`projectProgrammePositionV21`), so it must never
+    // mention any WP id even though the manifest still carries all three as history.
     expect(PROGRAMME_O_WAVE_WPS.map((wp) => [wp.wp_id, wp.status])).toEqual([
-      ['WP-1', 'merged'], ['WP-2', 'not_started'], ['WP-3', 'in_progress'],
+      ['WP-1', 'merged'], ['WP-2', 'merged'], ['WP-3', 'merged'],
     ])
     const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
-    expect(snapshot.programme.position_label).toContain('WP-3')
+    expect(snapshot.programme.position_label).not.toContain('WP-1')
     expect(snapshot.programme.position_label).not.toContain('WP-2')
+    expect(snapshot.programme.position_label).not.toContain('WP-3')
+    // `sources()` carries no frozen manifest, so overall.percent is null (R1's fabrication-fix
+    // filter excludes every asset) — the honest v2.1 label for "no denominator yet."
+    expect(snapshot.programme.position_label).toBe('Execution not yet evidenced')
   })
 
   it('derives o_wave.state purely from PROGRAMME_O_WAVE_WPS, independent of phase_a.state (Ruling R2)', () => {
     const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
     // No frozen definition exists in this fixture, so phase_a.state is real evidence of
-    // "not completed" — o_wave.state must still read 'active' (WPs open, none merged is
-    // false since WP-1 is merged but not all are) regardless of phase_a's own state.
+    // "not completed" — o_wave.state is read purely off PROGRAMME_O_WAVE_WPS (now all three
+    // merged, Ruling R3) and must therefore read 'completed' regardless of phase_a's own
+    // state — it never gates or is gated by Phase A stage evidence.
     expect(snapshot.programme.phase_a.state).not.toBe('completed')
-    expect(snapshot.programme.o_wave.state).toBe('active')
+    expect(snapshot.programme.o_wave.state).toBe('completed')
     expect(snapshot.programme.o_wave.state).not.toBe('locked')
   })
 
