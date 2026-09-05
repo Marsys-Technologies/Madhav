@@ -160,3 +160,22 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (dispatch), which is gated on the #1772 job-image deploy — so the bg_yogas *verdict* (fix extraction
   vs correct the derived count) is HELD on being able to run it. Moving to unblocked work
   (`bg_gochara_arcs` tiling+floor rewrite — verdict already complete) rather than idle.
+- 2026-09-05 — **D-L0-I: C13 blast-radius for ALL 11 remaining routes (catalogue-verified, D-CND-16).**
+  Ran the FK cascade closure over every owned target table. **No L0 rebuild crosses a layer boundary**
+  (contrast the L2→L3 cascade that motivated C13). CASCADE parents (destructive rebuild → fresh
+  snapshot + WP-6 `--acknowledge-destroys`, hard floor): `bg_yogas` (`brahma_yoga_catalog` →
+  `reference_yogas`, `brahma_yoga_source_chunks`), `bg_dasha_systems` (→ `reference_dasha_systems`),
+  `bg_doshas` (→ `reference_doshas`), `bg_vidhi_floors` (`vidhi_intent_floors` → `vidhi_floor_items`).
+  In every case the CASCADE children are the asset's OWN owned-tables which the writer explicitly
+  DELETEs+repopulates in the same transaction → intended, no orphans, self-consistent. LEAF (0 FK
+  referrers, self-contained; snapshot still prudent): `bg_gochara_arcs`, `bg_cohort`,
+  `bg_compendium_index`, `bg_concordance`, `bg_rules`, `bg_text_index`. **Honest residual:** catalogue
+  covers DB-level FK referrers; serving-side *logical* (no-FK) referrers not exhaustively swept — none
+  expected for these global reference tables, flagged for the per-asset W5 check. No cross-layer
+  adjudication needed for L0 (C13 boundary clause not triggered).
+- 2026-09-05 — **HEARTBEAT / loop status.** C13 statements complete (D-L0-I). Forward freeze work is
+  gated on: #1772 **job-image deploy** (to run writers — `bg_cohort` + all rebuilds), adjudication
+  **#1816** (bind analyses despite legitimate integrity_check_sql drift — blocks re-acceptance of
+  gochara/vidhi/parihara), and the merge queue (state PR #1817). Not idle — remaining unblocked
+  deepening: bg_dasha_systems(`kp`)/bg_doshas(658-gap) verdicts, draft bg_gochara_arcs tiling rewrite,
+  pre-write W5 scripts. NIRMANA_HOLD absent.
