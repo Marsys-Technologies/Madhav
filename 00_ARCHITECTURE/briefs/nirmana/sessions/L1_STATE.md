@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 23; ga_strength F-A14 landed + stale route corrected (#1935)
+last_updated: 2026-09-06 — C8 v2.3 cycle 24; ga_positions F-A14 integrity_check_sql landed (#1937)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -923,6 +923,46 @@ asset-table route label discovered while verifying F-A14 wasn't entangled with a
 MUST finding — next: the remaining 16 assets' `integrity_check_sql` (F-A14 continues
 campaign-wide, one or a few per cycle), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 24 (C8 v2.3) — ga_positions's F-A14 integrity_check_sql (PR #1937), the DAG root
+
+**PR hygiene:** #1871 confirmed CLEAN-but-unqueued (the exact `autoMergeRequest`-lies trap the
+contract names) — re-armed, confirmed "already queued to merge" moments later despite
+`autoMergeRequest.enabledAt` reading stale. #1935/#1827 pending-green, #1853 re-confirmed the
+same tracked run/issue.
+
+**Unit of work: F-A14 for `ga_positions`**, the layer's DAG root — zero declared dependencies,
+reads nothing from the DB (D-L1-3), so every conjunct is necessarily a self-consistency check
+(it can inherit no one else's error). Scope: the two fact_categories this writer actually owns
+(`graha_position`, `graha_sign_attributes` — named in its own module docstring).
+
+Four conjuncts, each measured live and mutation-proved:
+1. Cross-category sign consistency between `graha_position.sign` and
+   `graha_sign_attributes.sign_num`. **Caught my own fencepost bug before shipping**: assumed
+   `sign_num` was 0-indexed and wrote `array[sign_num + 1]`; this silently matched nothing across
+   all 150 rows (an array out-of-bounds access in Postgres returns NULL, not an error, so the
+   comparison against NULL was neither true nor false — the WHERE clause simply never matched,
+   giving a false "0 violations" reading). Debugged by inspecting one real pair directly
+   (LAGNA=1, JUP=9) rather than trusting the aggregate zero, found `sign_num` is 1-indexed, fixed
+   to `array[sign_num]`.
+2. `longitude_sidereal = (sign_num-1)*30 + degree_in_sign` round-trip — same 1-indexed correction
+   applied consistently once the first bug was caught.
+3. FORENSIC gate re-asserted at the data layer, scoped to the canonical chart only (native-
+   specific facts, never a chart-agnostic claim) — this asset's own headline promise
+   ("FORENSIC gate MUST pass before any INSERT") had never been re-checked against what actually
+   landed in the table afterward.
+4. Range guard — pada 1-4, house_d1 1-12; `chart_facts` has no CHECK on `fact_value_num` at all.
+
+No distinctness conjunct — `chart_facts`' existing partial UNIQUE indexes already match this
+writer's own `ON CONFLICT` target exactly (D-CND-03 rule 4). Passes clean on live production. No
+Python writer touched; `provenance_inventory --check` confirmed no digest/pin regen needed. 6 new
+textual-contract tests, including one that specifically pins the array indexing to guard against
+the exact fencepost mistake reappearing.
+
+CYCLE 24 L1: fixed #1871's CLEAN-but-unqueued trap + landed `ga_positions`'s F-A14 integrity
+contract (PR #1937, the DAG root) — self-caught a fencepost indexing bug via direct inspection
+rather than trusting an aggregate zero-violations reading — next: the remaining 15 assets'
+`integrity_check_sql`, or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1258,6 +1298,15 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   a redundant fix. General lesson: this state file is written by me every cycle and can itself go
   stale exactly like any other artifact — verify against the authoritative decision record before
   trusting a summary table, including one I maintain myself.
+- **D-L1-46** — C8 v2.3 cycle 24: `ga_positions`' F-A14 sign/sign_num conjunct first assumed
+  `sign_num` was 0-indexed (`array[sign_num+1]`) and reported "0 violations" across all 150
+  rows — a false clean reading caused by Postgres returning NULL, not an error, on an
+  out-of-bounds array access, so the WHERE clause's comparison against NULL never matched
+  either way. Did not trust the aggregate zero; inspected one real (sign, sign_num) pair
+  directly (LAGNA=1, JUP=9), found the true 1-indexed convention, and fixed the join before it
+  shipped. Same discipline as D-L1-44 (ga_vargas: don't trust a suspiciously-clean scope without
+  checking why), applied to a different failure mode — a query that can silently match nothing
+  at all rather than one that was simply too narrow.
 
 ## Held items
 
@@ -1557,3 +1606,18 @@ L1 must satisfy rather than a feature it consumes.
   #1871 DIRTY (lesson correctly applied) + landed ga_strength's F-A14 contract (PR #1935) +
   corrected a stale asset-table route label found while verifying no entanglement -- next: the
   remaining 16 assets' integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T01:0xZ -- CYCLE 24 (C8 v2.3). PR hygiene: #1871 was CLEAN-but-unqueued (the exact
+  autoMergeRequest-lies trap), re-armed and confirmed "already queued to merge" moments later.
+  Unit of work: ga_positions's F-A14 integrity_check_sql (PR #1937) -- the DAG root, zero
+  dependencies, reads nothing from the DB, so every conjunct is a pure self-consistency check.
+  Scope: graha_position + graha_sign_attributes (the two fact_categories this writer owns).
+  Four conjuncts: cross-category sign consistency, longitude round-trip, FORENSIC gate
+  re-asserted at the data layer (scoped to the canonical chart only), range guard. Caught my own
+  fencepost bug before shipping: assumed sign_num was 0-indexed, wrote array[sign_num+1], got a
+  false "0 violations" reading (Postgres returns NULL on out-of-bounds array access, so the
+  comparison never matched either way) across all 150 rows -- didn't trust the suspicious zero,
+  inspected one real pair directly, found sign_num is 1-indexed, fixed before shipping. No writer
+  touched, no digest/pin regen needed. CYCLE 24 L1: fixed #1871's CLEAN-but-unqueued trap +
+  landed ga_positions's F-A14 contract (PR #1937), self-caught a fencepost bug via direct
+  inspection rather than trusting an aggregate zero -- next: the remaining 15 assets'
+  integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
