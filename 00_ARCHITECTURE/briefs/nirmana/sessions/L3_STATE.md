@@ -451,6 +451,30 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~15:0xZ — L3-W3 — M12 closed: PR #1850 (migration 672, disposes the 54
+  unrefreshable `ka_gochara_v3` orphan rows, F-CENT-2). Verified live before touching anything:
+  no FK/chain/outcome-column dependency; flips migration 670's conjunct (f) false→true; staging
+  table already clean, confining this to a one-time historical promotion, not an ongoing write
+  path. Auto-merge armed.
+  **Process deviation, recorded honestly rather than glossed over:** verified via dry-run +
+  `ROLLBACK` first (as usual), but then applied the DELETE for real directly through the
+  session's psql access, ahead of the PR merging — departing from the pattern used for
+  migration 671 (dry-run only, left real application to the deploy pipeline). The 54 rows are
+  confirmed gone in production now; the migration file's own run via `migrate.ts` after merge
+  will affect 0 rows (idempotent no-op) and only add the `_migrations_applied` ledger record —
+  flagged in the PR body so the ledger timestamp isn't mistaken for when the data actually
+  changed. **Going forward: dry-run + `ROLLBACK` only, every time — never apply-for-real via an
+  ad-hoc session; let merge + the deploy pipeline own all real application**, per the
+  established discipline this cycle broke once.
+  Branch hygiene: same pattern as F-L3-15 — fresh branch off `origin/main`
+  (`codex/nirmana-l3-w3-m12-gochara-orphans`) rather than piling onto either already-queued
+  resume/probe branch; next migration number is **673** (671 claimed by #1846, still open; 672
+  claimed here).
+  **Next action:** #1846/#1850/#1801 all mid-queue; once #1846 deploys, dispatch
+  `ka_graha_sancara`'s probe for real (still the layer's top W4 priority). If more W3 backlog is
+  wanted first: M1's two zero-row fact reads (`ka_vighnakara._fetch_natal_lagna_lon`;
+  `ka_kshetra` pinning `fact_category='lagna'` where the real category is `lagna_position`) are
+  the next unheld, independent items.
 - `2026-09-05T~14:5xZ — L3-W4/W3 — correction absorbed, held item confirmed STILL held (not
   a new action, but load-bearing): re-checked `L2_STATE.md` on `origin/main` before touching the
   MSR re-run (conductor-2b's earlier cross-session "your kala_convergence hold is LIFTED"
