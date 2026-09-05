@@ -179,3 +179,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   gochara/vidhi/parihara), and the merge queue (state PR #1817). Not idle — remaining unblocked
   deepening: bg_dasha_systems(`kp`)/bg_doshas(658-gap) verdicts, draft bg_gochara_arcs tiling rewrite,
   pre-write W5 scripts. NIRMANA_HOLD absent.
+- 2026-09-05 — **Drafted bg_gochara_arcs integrity rewrite** (D-CND-01 exemplar):
+  `sessions/drafts/bg_gochara_arcs_integrity_rewrite.sql`. Bare `count(*)=34553` → strengthened
+  gapless-contiguous per-body tiling + §N.4 floor; rewrite-floor-test satisfied (catches a gap the old
+  count pin passes). Held from migration until #1816 rules + bundled with re-acceptance (D-CND-09).
