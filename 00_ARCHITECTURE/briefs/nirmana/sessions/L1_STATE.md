@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 9; #1852/#1853 closed, ga_medical F-E5 fix (#1871)
+last_updated: 2026-09-05 — C8 v2.3 cycle 10; get_vastu_directions F-E11 remedy-join fix (#1874)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -330,6 +330,32 @@ non-fatal warning (§N.4 S7 precedent), corrected the classical claim everywhere
 ("exalted in Libra") is correct. 4 new tests, mutation-proven. Checked cross-layer import risk
 first (one importer, the orchestrator adapter — clean).
 
+## CYCLE 10 (C8 v2.3) — get_vastu_directions F-E11 remedy join (highest-leverage item)
+
+**PR hygiene:** all clean/queued or pending-green (#1841/#1859/#1865 queued; #1853/#1871/#1827
+pending checks, nothing RED). `#1838` (dispatcher fix) still open — `ga_positions` dispatch
+remains blocked on it, not by me.
+
+**Unit of work: `get_vastu_directions`'s F-E11 fix** (PR **#1874**) — `L1_W1_ANALYSIS_BATCH_E.md`
+names this the **highest-leverage item in the batch**: the per-chart weakened/strengthened
+directions (`ga_vastu_planet_direction_map`) and the 24-row classical per-direction remedies
+(`bg_vastu_direction_remedials`, L0) were never joined — the instrument held both halves of
+"your East is afflicted, here is the classical remedy" with no surface putting them together.
+
+1. Confirmed direction-value casing matches exactly between the two tables (8 Title-Case
+   directions, no `LOWER()` normalization needed) before writing the JOIN.
+2. Added a `LEFT JOIN LATERAL` aggregating each row's own direction's remedies (3/direction:
+   color/symbol/material or space) into a new `direction_remedies` array field via `jsonb_agg`,
+   coalesced to `[]` (never `NULL`) when no catalog remedy exists.
+3. Confirmed no other TS module calls this capability's `.handler()` directly — purely
+   additive, zero behavior change for any consumer.
+4. 5 new tests (no test file existed for this tool before), mutation-proven (4/5 fail against
+   the revert). `tsc`/`eslint` clean.
+
+**F-E10 (same asset, still open)**: "zero routed consumers" — a W2 route decision (add a
+`vastu_read` vidhi primitive, or record an explicit no-consumer disposition), not a code fix.
+Left for a future cycle; distinct in kind from F-E11's join fix.
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -561,6 +587,12 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   Capricorn" classical error found this campaign (first was `ga_vastu_writer.py`, already fixed
   by a prior session). Same fix pattern: downgrade to warning + correct the claim, not remove
   the check.
+- **D-L1-32** — C8 v2.3 cycle 10: `get_vastu_directions`'s F-E11 fix (PR #1874, full account in
+  CYCLE 10 above) — the highest-leverage item in the whole W1 batch E analysis. Verified
+  direction-value casing matched exactly across the two tables before writing the JOIN, rather
+  than assuming and adding defensive `LOWER()` normalization that wasn't needed. Left F-E10
+  (zero routed consumers, a W2 route/registry decision) explicitly open — different in kind from
+  F-E11's join fix, not a code change.
 
 ## Held items
 
@@ -689,3 +721,12 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 9 L1: #1852/#1853 closed -- landed ga_medical F-E5 fix (PR #1871) -- next: ga_vastu
   F-E10/E11, or ga_prashna's R-1 registry disposition if still open, or check #1838 for
   ga_positions dispatch viability.
+- 2026-09-05T15:35Z -- CYCLE 10 (C8 v2.3). PR hygiene clean (all queued or pending-green,
+  nothing RED). Unit of work: get_vastu_directions's F-E11 fix (PR #1874) -- the
+  highest-leverage item in the whole W1 batch E analysis. Joined bg_vastu_direction_remedials
+  (L0) onto ga_vastu_planet_direction_map (L1) via LEFT JOIN LATERAL + jsonb_agg; verified
+  direction-casing match first rather than assuming. 5 new tests, mutation-proven. F-E10 (zero
+  routed consumers) left explicitly open -- a route/registry decision, not a code fix.
+  CYCLE 10 L1: landed get_vastu_directions F-E11 remedy-join fix (PR #1874) -- next: F-E10's
+  route decision, ga_prashna's R-1 disposition if still open, or check #1838 for ga_positions
+  dispatch viability.
