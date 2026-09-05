@@ -1880,3 +1880,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   still `812731a22`). New queue head #1904 (L2 `bo_cdlm_summary` integrity check) is only ~4.5min
   into `in_progress` checks (Governance Gates, Unit Tests) — not a hang, just mid-CI. No DIRTY, no
   RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read in a row (positions still 9/15/23/72, main HEAD still
+  `812731a22`, queue head still #1904). Governance Gates check now ~7min in_progress — still well
+  under the D-L0-PP hang threshold (30+min), just routine CI duration. No DIRTY, no RED, no new
+  eligible work. 30/40 frozen holds.
