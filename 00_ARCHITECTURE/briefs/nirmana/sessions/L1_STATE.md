@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 28; F-D22 closed, build-fatal landmine found and fixed (#1950)
+last_updated: 2026-09-06 — C8 v2.3 cycle 29; #1947 ruled (740-749 granted), ga_medical F-A14 landed (#1953)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -22,9 +22,9 @@ your `nirmana-adjudication` issues → continue.
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
-- **Migration range:** 650–659 (yours alone, collision-free by construction) — **FULLY CONSUMED
-  as of migration 659 (cycle 27)**. Adjudication #1947 filed requesting the next range; check its
-  ruling before authoring any new migration file.
+- **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
+  (adjudication #1947, Conductor ruling, cycle 29). Migration 740 is the first used in the new
+  range (`ga_medical` F-A14). 741–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1129,6 +1129,40 @@ ayanamsha that would trigger it, fixed without needing a new migration (correctl
 lands; remaining non-migration W1/W2 findings not yet investigated should be checked before
 assuming F-A14 is the only work left.
 
+## CYCLE 29 (C8 v2.3) — #1947 ruled (740-749 granted); ga_medical's F-A14 contract, the first in the new range
+
+**PR hygiene:** clean sweep. `#1928` still hasn't merged (`#1853` unchanged, same tracked run).
+`#1947` **CLOSED** — the Conductor ruled L1's continuation range is **740–749**, following the
+same full-allocation-table discipline as #1942 (L3): 650-659 (L1, exhausted), 660-669+710-729
+(L2), 670-679+730-739 (L3, just granted), 680-689 (L4, unexhausted), 690-699 (L5), 700-709 (L0
+continuation) — next free block 740-749. Updated the header's own migration-range line to point
+at the new range rather than leave the "FULLY CONSUMED, filed #1947" note stale now that it's
+resolved.
+
+**Unit of work: F-A14 for `ga_medical`** (migration 740, the first used in the new range).
+Dedicated table, existing UNIQUE already matching the natural key exactly — no distinctness
+conjunct needed (unlike `ga_tajaka`'s cycle-27 finding).
+
+Four conjuncts, each measured live and mutation-proved: (a) `indication_tier`/`not_diagnosis`
+NON-NEGOTIABLE disclosure invariants, asserted unconditionally — this asset's own writer marks
+them exactly that in its own docstring, and they encode the project's §A Ethical Framework
+("not a fortune-telling product") at the data layer for this specific domain; (b)
+`indication_strength` re-derived from the writer's own threshold formula applied to
+`ga_condition_composite.condition_score` for the same (chart, ayanamsha, graha) — a genuine
+cross-table consistency check, verified to require the cross-table match to exist at all, not
+just agree when present; (c) FORENSIC gate re-asserted at the data layer for the writer's own
+build-time check (Sun→'strong', Saturn→'mild' on `lahiri_chitrapaksha`) — the same classical
+claim F-E5 (cycle 9) corrected, now also checked against what actually landed in the table.
+
+No Python writer touched; `provenance_inventory --check` confirmed no digest/pin regen needed. 6
+new textual-contract tests.
+
+CYCLE 29 L1: landed `ga_medical`'s F-A14 contract (PR #1953, first in the new 740-749 range) —
+#1947 ruled while this cycle was in flight, updated the state header to match — next: continue
+F-A14 for the remaining 11 assets (ga_nakshatra, ga_sensitive, ga_sensitive_degree,
+ga_structural, ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_vastu,
+ga_prashna), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1518,6 +1552,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   real chart rebuild would very plausibly have hit this. Fixed by asserting the true
   ayanamsha-invariant FORENSIC anchor (nakshatra) instead of a proxy (sign) that varies for a
   correct reason.
+- **D-L1-51** — C8 v2.3 cycle 29: #1947 ruled while this cycle was already in flight (740-749
+  granted). Updated the state file's own migration-range header line immediately rather than
+  leave the stale "FULLY CONSUMED, #1947 filed" note standing once the blocker actually cleared —
+  the same discipline as D-L1-45's stale-asset-table correction, applied to this file's own
+  frontmatter-adjacent header rather than the asset table. `ga_medical`'s F-A14 contract is the
+  first migration authored in the new range (740), confirming the ruling resolved cleanly with
+  no further action needed beyond using the granted numbers.
 
 ## Held items
 
@@ -1897,3 +1938,18 @@ L1 must satisfy rather than a feature it consumes.
   standing ga_positions re-dispatch plan, fixed without needing #1947's ruling -- next: wait on
   #1947, or check for other non-migration W1/W2 findings not yet investigated, or ga_positions
   re-dispatch once #1892 lands.
+- 2026-09-06T01:4xZ -- CYCLE 29 (C8 v2.3). PR hygiene clean, #1928 still unmerged (#1853
+  unchanged). #1947 RULED while checking hygiene: L1's continuation migration range is 740-749
+  (Conductor checked the full campaign allocation table, same discipline as #1942/L3). Updated
+  the state header immediately to point at the new range. Unit of work: ga_medical's F-A14
+  integrity_check_sql (PR #1953, migration 740 -- first used in the new range). Dedicated table,
+  existing UNIQUE already exact, no distinctness conjunct needed. Four conjuncts:
+  indication_tier/not_diagnosis NON-NEGOTIABLE disclosure invariants (the writer's own docstring
+  marks them exactly that -- encodes §A Ethical Framework at the data layer), indication_strength
+  re-derived from the writer's threshold formula against ga_condition_composite.condition_score
+  for the same graha (a real cross-table check, verified to require the match exist at all),
+  FORENSIC gate re-asserted (Sun->strong, Saturn->mild on lahiri_chitrapaksha, the same claim
+  F-E5 corrected in cycle 9). No writer touched, no digest/pin regen needed. CYCLE 29 L1: landed
+  ga_medical's F-A14 contract (PR #1953) as the first migration in the newly-granted 740-749
+  range -- next: continue F-A14 for the remaining 11 assets, or ga_positions re-dispatch once
+  #1892 lands.
