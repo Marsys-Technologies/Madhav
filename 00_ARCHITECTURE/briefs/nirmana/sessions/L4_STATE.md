@@ -2610,3 +2610,20 @@ uncheckable, DB access down 79 cycles, no new adjudications name L4 → next: wa
 clear and queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-05T~21:45Z` — L4 — **CYCLE 90 (v2.3) — `#1825` (queue head, Conductor's) confirmed
+still normally mid-CI (~10 min, only `Governance Gates` outstanding, matching the gate's
+established 9-12 min range); no net `main` movement for a third cycle but not a jam.**
+
+**PR hygiene:** all 11 own PRs unchanged/genuinely queued. Checked `#1825`'s actual
+`merge_group` run directly (`gh run view`) rather than re-treat last cycle's staleness flag as
+unresolved: 14 of 16 jobs green, only `Governance Gates` still running at the normal duration.
+No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 80th consecutive cycle DB access down.
+
+CYCLE 90 L4: IDLE-OK (verified: PR hygiene clean, `#1825` genuinely mid-CI at a normal duration,
+not stuck; E-gate uncheckable, DB access down 80 cycles; nothing new) → next: watch `#1825`
+clear and queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
