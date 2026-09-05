@@ -62,6 +62,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 8 | 2026-09-05T06:40Z | L2-W3 | **#1804 RULED — D-CND-11 amended, my tuple granted.** Shipped migration 660 (deterministic `signal_id`, `bodha_n5_lineage_report()`, `bo_sangati` count_sql) in **PR #1818**, armed. Verified live: 150,150 rows / 150,150 distinct identities across all three charts. Deliberately did NOT set `bo_laksana.integrity_check_sql` — both candidates red today, C12. **Hit a shared-`git stash` collision across worktrees** — recovered, foreign content preserved, hazard filed on #1713 |
 | 9 | 2026-09-05T07:20Z | L2-W3 | **C8 v2.3 cycle contract now in force — fresh-process bounded cycles.** Step 1 PR hygiene on all open L2 PRs: **#1777, #1767** were CLEAN but un-queued → queued, verified via `is:queued`. **#1820** was DIRTY (stale base) → rebuilt clean onto current `origin/main`, re-queued. **#1818** was BLOCKED/RED: found and fixed a real migration-number collision (660 claimed twice — my `l2_bodha_signal_identity` vs. the already-merged `nirmana_l2_registry_accuracy`), renumbered to 661, then re-pinned L2's `nirmana-analysis-layer-pins.json` slice (writer content in `bo_laksana.py` had moved the hash) — receipt_count/non_writer_assets confirmed unchanged via direct read query against the frozen manifest, `writer_inventory_sha256` re-derived locally with the generator's own algorithm (DB unreachable from this shell for the full regenerate path). Verified: migration guard PASS, provenance-inventory PASS, full Governance Gates pytest suite 6384 passed / 0 failed, tsc clean, `--check` PASS. Pushed, re-armed. **Found and acted on #1819** (TWO L2 SESSIONS ruling, D-CND-24/25): acknowledged as the RESUMED L2 identity (this state file's lineage), confirmed no dispatch occurred, confirmed #1755 already CLOSED (not by me, not mine to touch) |
 | 10 | 2026-09-05T14:05Z | L2-W3/W4 | **#1770 GO ruling read** — Conductor cleared `bo_laksana` dispatch (L3+L4 both confirmed their cascade-exposed tables regenerable). PR hygiene: all four L2 PRs healthy (#1818 now IN QUEUE, checks green; #1820/#1777/#1767 queued). **Attempted the E-gate dispatch (priority 1) and correctly declined it**: ran `cascade_check.sql` against `bodha_msr_signals` per the ruling's own instruction — cascade numbers re-confirm 864,733/12/3 exactly, and the no-FK orphan query (flagged as under-reporting, #1805) surfaced **two previously-unrecorded exposed tables** (`mimamsa_attribution` 1,425 rows, `mimamsa_load_bearing` 9 rows) alongside the known `kala_activation_predicates` (150,150) and `phala_anchors.signal_id` (188). Checked `main`'s `bo_laksana.py:1346` directly: **still `uuid.uuid4()`** — #1818's deterministic-id fix has not merged yet. Dispatching now would orphan all four tables, the exact defect #1818 exists to prevent. **Did not dispatch.** Flagged on #1770 (D-L2-024). Next cycle: re-run this exact check once #1818 is confirmed merged, then dispatch if clean |
+| 11 | 2026-09-05T14:20Z | L2-W3 | PR hygiene: **#1820 had MERGED** (its content is now on `main`) — rebased the heartbeat branch, but the same branch name post-merge needed a fresh PR (**#1835**, queued) since GitHub doesn't reopen a merged PR on new pushes. **#1818 still not merged** (mid-queue), so `bo_laksana` dispatch stays declined this cycle too — checked again before doing anything else, not assumed from last cycle's finding. Priority-3 unheld W3 item, disjoint from the held `bo_laksana` write-set: **M-06/S7** (`bodha_cgm_edges.cross_system_consensus_count` hardcoded `1` at all 8 `bo_karanajala.py` sites) — wired to `len(present_in_traditions_array)` at every site via a shared local var per call site, added a 4-test regression file, regenerated the writer digest, re-pinned L2's analysis-layer slice **in its own commit** referencing the actual code commit's SHA (caught and corrected a first attempt that mis-stated the pin as already-current when it wasn't — did not let the wrong claim ship). Full Governance Gates suite 6380/0 failed, tsc clean. Shipped as **PR #1837**, queued. Used `git stash apply <sha>` + targeted `drop` (never bare stash/pop) to move WIP across the branch switch, per the shared-stash hazard from loop 8 |
 
 ## ASSET TABLE (22)
 
@@ -138,6 +139,8 @@ Routes assigned in W2. `--` = not yet ruled.
 | #1755 | **tail-lane percentile** -- one shared `salience_rank` module; the five satellite writers now set `salience_pctl_in_class`, so the six rarest classes stop shipping NULL on the column the tail predicate ranks on | N-16 |
 | #1760 | **`tail_watch` trim-proofing** -- hardFloor section declared once in both budget entry points + `IMMUNE_HONESTY_FIELDS` membership; both are needed and they guard different paths | N-14 |
 | #1767 | **L1 handoff (#1750)** -- shadbala selector pinned to `fact_key='rupa'`; `salience_formula_version` literals unified to the constant | (L1 handoff) |
+| #1818 | **deterministic `signal_id` + three D-SYNTHESIS rollups** -- migration 661, `bodha_n5_lineage_report()`, `bo_sangati` count_sql; ruled on #1804/D-CND-20. Not yet merged (queue) | (#1804) |
+| #1837 | **`bodha_cgm_edges.cross_system_consensus_count`** wired to `len(present_in_traditions_array)` at all 8 sites, replacing an independent literal `1` | M-06 (S7, §N.8) |
 
 ## CORRECTIONS TO MY OWN W1 FINDINGS
 
@@ -330,6 +333,19 @@ NULL-not-`'{}'` convention exists to prevent.
   Sole-dispatch authority (#1819/D-CND-24) makes this my call to make and my responsibility to get
   right — a GO ruling authorizes dispatch when its own stated conditions hold; it does not waive
   the dispatcher's own verification obligation for conditions the ruling never examined.
+- **D-L2-025** (2026-09-05T14:25Z) — **A merged-branch-reuse trap, and my own near-miss on it.**
+  Pushing new commits to `codex/nirmana-l2-heartbeat` after its PR (#1820) had already merged did
+  NOT reopen #1820 or auto-create a tracking PR — the commits just sat on the branch, unqueued and
+  invisible to `is:queued`, until I opened a fresh PR (#1835) for them. Generalizable: after any
+  own-PR shows `state: MERGED`, re-pushing to the same branch name needs a **new** `gh pr create`,
+  not a re-queue of the old number — check `state`, not just `mergeStateStatus`, before assuming a
+  push landed somewhere. Separately, on **#1837** (the `cross_system_consensus_count` fix): my first
+  amend-in-place attempt committed a message claiming `nirmana-analysis-layer-pins.json` "does not
+  need re-pinning... confirmed before committing" — that claim was **false**, caught by re-running
+  `--check` immediately after, before pushing. Corrected by splitting into two honest commits (code+
+  digest, then pin referencing the code commit's real SHA) rather than patching the false claim in
+  place — the same discipline D-L2-021 named after the git-stash incident: verify a commit message's
+  claims against the actual state before it ships, not after.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
