@@ -458,6 +458,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~15:5xZ — L3-W3 — N6 closed: PR #1860 dispositions all 8 Kāla `__ssv_*` rollback
+  shadow tables per the full W1 evidence (`L3_W1_ANALYSIS_BATCH_D.md`) — 7 dropped (723.4 MiB
+  reclaimed: `kala_activation`/`taranga`/`convergence`/`obstruction`/`darshana`/`jivana_parva`/
+  `bhavishya` `__ssv_20260728b`), 1 retained (`kala_gochara_windows__ssv_20260728c` — real repo
+  reader + ADJUDICATION-6 precedent). Verified live before writing: row counts unchanged since
+  the audit, zero FK/view dependents on any of the 8, all idx_scan NULL (dead CTAS heaps),
+  repo-wide grep confirms no other reference. Explicitly NOT the hard-floor-protected v1 gochara
+  corpus (`kala_gochara_windows_archive_20260805` — different table, different naming pattern,
+  untouched). Dry-run + `ROLLBACK` only, per the corrected discipline — did not apply ahead of
+  merge.
+  PR hygiene this cycle: all four prior PRs (#1858/#1850/#1846/#1801) still cleanly
+  queued/pending, nothing to fix.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real — still the layer's top W4 priority, ahead of any more N-series backlog.
 - `2026-09-05T~15:4xZ — L3-W3 — N9 fully complete: PR #1858 flips `ka_graha_sancara`'s last
   DRAFT catalog_status to CURRENT, now that M3 (PR #1751) is confirmed deployed (git-ancestor
   check against both serving revisions, same method as the last two cycles). Verify-before-redo
