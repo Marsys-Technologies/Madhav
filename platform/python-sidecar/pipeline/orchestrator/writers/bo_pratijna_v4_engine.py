@@ -29,12 +29,19 @@ description — never silently baked in.
 ── Reused, not reinvented ───────────────────────────────────────────────────
 The naisargika friend/enemy table, the tatkalika (temporal) relation rule,
 and the panchadha-maitri (5-fold compound) matrix are NOT re-derived here —
-they are the same functions already live in `ga_writers/ga_condition_writer.
-py` (`compute_tatkalika_relation`, `compute_panchadha_maitri`), imported
-directly, plus a literal copy of that module's `_NAISARGIKA` dict (a nested
-function-local constant, not itself importable — copied with a drift-guard
-test the same way `chart_reader_v4.py` copies `SIGN_LORD` from
-`probe_p2_tracer.py`).
+all three are literal copies of the same logic already live in
+`ga_writers/ga_condition_writer.py` (`_NAISARGIKA`, `compute_tatkalika_
+relation`, `compute_panchadha_maitri`), kept honest with drift-guard tests
+the same way `chart_reader_v4.py` copies `SIGN_LORD` from `probe_p2_
+tracer.py`. `compute_tatkalika_relation`/`compute_panchadha_maitri` were a
+live cross-layer `import` here through NIRMĀṆA L2-W3, not a copy — severed
+2026-09-05 after that coupling forced an L1-owned edit to `ga_condition_
+writer.py` to re-derive an L2 writer-inventory pin for the third time
+(conductor-2b flagged the count; the native had left "sever or keep
+absorbing it" as L2's call). Two tiny, pure, classical-rule functions (a
+1-line offset arithmetic and a 6-entry lookup matrix) are the entire cost
+of owning a local copy instead of an import, against a real, recurring,
+cross-session CI cost from keeping it — not a marginal call.
 
 ── The one documented honest gap: the yoga-presence slot (§2.5) ───────────
 `RUNG_P3_HAND_WORKED_v1_0.md` §1.3/§5 found, by hand, that NONE of the nine
@@ -66,10 +73,6 @@ from typing import Any
 from brahmagyan.chart_reader_v4 import ChartReaderError, ChartReaderV4, SIGN_LORD
 from brahmagyan.dignity_oracle import classify_dignity as _oracle_classify_dignity
 from brahmagyan.aspects import NODAL_GRAHAS, get_graha_aspects
-from ga_writers.ga_condition_writer import (
-    compute_panchadha_maitri,
-    compute_tatkalika_relation,
-)
 
 from .bo_pratijna_karyatva import KaryatvaMap, KARYATVA_REGISTRY, get_karyatva
 
@@ -141,6 +144,41 @@ NAISARGIKA: dict[str, dict[str, str]] = {
                 "Sun": "neutral", "Moon": "neutral", "Mercury": "neutral",
                 "Jupiter": "neutral", "Rahu": "enemy"},
 }
+
+# Literal copy of ga_condition_writer.py's compute_tatkalika_relation() and
+# compute_panchadha_maitri() — same coupling-severing rationale as NAISARGIKA
+# above (module docstring, "Reused, not reinvented"). Both are kept honest by
+# a behavioral drift-guard test
+# (test_bo_pratijna_v4_engine.py::test_tatkalika_and_panchadha_maitri_match_ga_condition_writer_source)
+# that imports the source functions directly — inside the TEST file only, so
+# it never re-enters this writer's own transitive-import digest.
+
+
+def _compute_tatkalika_relation(planet_house: int, reference_planet_house: int) -> str:
+    """Tatkalika (temporary) friendship from house position (BPHS Ch.27).
+
+    A planet occupying the 2nd, 3rd, 4th, 10th, 11th, or 12th house FROM the
+    reference planet is a temporary friend; all others (1st = same sign,
+    5th-9th) are temporary enemies.
+    """
+    offset = (planet_house - reference_planet_house) % 12
+    friend_offsets = {1, 2, 3, 9, 10, 11}   # 2nd, 3rd, 4th, 10th, 11th, 12th from reference
+    return "friend" if offset in friend_offsets else "enemy"
+
+
+def _compute_panchadha_maitri(naisargika: str, tatkalika: str) -> str:
+    """5-fold (panchadha) maitri: combine naisargika (permanent) + tatkalika
+    (temporary) friendship per the BPHS Ch.27 result matrix."""
+    _MATRIX: dict[tuple[str, str], str] = {
+        ("friend",  "friend"): "great_friend",
+        ("friend",  "enemy"):  "neutral",
+        ("neutral", "friend"): "friend",
+        ("neutral", "enemy"):  "enemy",
+        ("enemy",   "friend"): "neutral",
+        ("enemy",   "enemy"):  "great_enemy",
+    }
+    return _MATRIX.get((naisargika, tatkalika), "neutral")
+
 
 # ── §3.1 — the universal base-weight table (Fraction, exact) ───────────────
 BASE_WEIGHTS: dict[str, F] = {
@@ -380,8 +418,8 @@ def dignity_of_with_positions(
                 f"dispositor {need.sign_lord} (both D1 house {graha_house_d1}) — "
                 f"naisargika-only={state}, tatkalika set aside",
             )
-        tatkalika_rel = compute_tatkalika_relation(sign_lord_house_d1, graha_house_d1)
-        compound = compute_panchadha_maitri(need.naisargika_rel, tatkalika_rel)
+        tatkalika_rel = _compute_tatkalika_relation(sign_lord_house_d1, graha_house_d1)
+        compound = _compute_panchadha_maitri(need.naisargika_rel, tatkalika_rel)
         return DignityResult(
             graha, sign_number, compound, DIGNITY_BAND[compound],
             f"naisargika({graha}->{need.sign_lord})={need.naisargika_rel}, "
