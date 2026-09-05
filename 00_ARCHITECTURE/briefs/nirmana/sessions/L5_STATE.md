@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~16:25Z (C8 v2.3 cycle 167) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 pending-checks-only, no red. **#1901's author rebased it** — no
+  longer `DIRTY`, now `BLOCKED`/`MERGEABLE` with fresh checks pending, not yet re-queued.
+  #1861→20, #1844→77 (small advance). #1869 unchanged at 3 comments. #1856 still OPEN. No
+  eligible dispatch.
 - 2026-09-06T~16:20Z (C8 v2.3 cycle 166) — **PR hygiene: #1900 merged**, rebased onto main's
   168-commit advance (new tip `9ee5ea61e`). Force-pushed; #1826's checks reset fresh (none
   red). **#1901 (the mi_vistara delta-skip fix, not mine — authored by amonty84) dropped out
