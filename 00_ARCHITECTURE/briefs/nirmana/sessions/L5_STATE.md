@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~14:20Z (C8 v2.3 cycle 142) — **#1973 resolved fast.** Conductor confirmed the
+  exact root cause (≥8 test files independently racing `CREATE TABLE IF NOT EXISTS`/migration
+  588 replay against one shared throwaway Postgres, `vitest`'s default file-parallelism
+  breaking the `IF NOT EXISTS` guard's race-safety) and shipped **PR #1974**
+  (`--no-file-parallelism` on that one vitest invocation) — genuine positive resolution, nothing
+  further needed from L5. PR hygiene: #1844 still queued (91), #1826 pending-checks-only, no
+  red. #1901=13, #1861=34 unchanged. #1856 still OPEN. No eligible dispatch.
 - 2026-09-06T~14:15Z (C8 v2.3 cycle 141) — **PR hygiene: found and fixed a real
   CLEAN-but-unqueued case on #1844.** Rebased onto main's 143-commit advance (new tip
   `0e7b477ff`, #1885 merged); post-push #1844 dropped out of `is:queued` while showing
