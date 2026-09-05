@@ -3310,8 +3310,36 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     to (chart_id, system_id='scope_cap', ayanamsha_id='INVARIANT'), so a
     rebuild under a new build_id replaces instead of accreting.
 
-    Returns count of rows written (0, 1, or 2 — partial writes are logged as
-    warnings, never fatal, matching the pre-existing non-fatal semantics).
+    F-A10 fix (migration 652): 'scope_cap_sentinel' was not in
+    chart_dashas_verification_pass_status_check, so BOTH sentinels violated it
+    on every write -- the KP row silently in addition to the already-documented
+    Prana failure. Migration 652 admits the new value. The KP row's own
+    level_n=4 already satisfies cd_level_n_max4, so it now writes; the Prana
+    row's level_n=5 still does not (SD-DASHA-1 remains OPEN -- deliberately,
+    per the docstring on _write_one_sentinel below).
+
+    KNOWN, DELIBERATE RESIDUAL: brahmagyan/verification_vocab.py's
+    RESTRICTED_TABLE_VOCAB (the Python-side mirror of chart_dashas' and
+    chart_divisionals' shared CHECK vocabulary) still does not include
+    'scope_cap_sentinel' for chart_dashas after migration 652 -- the two
+    tables' constraints have now genuinely diverged, and correcting the
+    mirror requires splitting that shared L0 (brahmagyan) constant into a
+    per-table shape. Regenerating the writer-digest inventory to reflect
+    such a change shifts bg_kp_sublord_division's digest too (it imports
+    from this module's neighborhood) -- nirmana_analysis_layer_pins.py's own
+    safety check refuses to regenerate ANY layer's pin once it detects L0's
+    frozen inputs have drifted, citing "would invalidate 29 already-frozen L0
+    capsules". Not forced through unilaterally; this is nothing that blocks
+    the DB-level fix here (nothing in this module calls assert_legal() for
+    chart_dashas today), only the Python mirror's completeness. Left for a
+    deliberate, coordinated follow-up (see the campaign issue tracker) rather
+    than risking those capsules on an L1 session's own judgment call.
+
+    Returns count of rows written. Honestly always 1 as of this fix (KP
+    succeeds, Prana is structurally excluded by cd_level_n_max4 until
+    SD-DASHA-1's semantic question is resolved) -- never silently 0 or a
+    hopeful 2; partial/zero writes are still logged as warnings, non-fatal,
+    matching the pre-existing semantics.
     """
     from contextlib import nullcontext
 
