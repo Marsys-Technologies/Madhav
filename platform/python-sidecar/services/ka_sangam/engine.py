@@ -481,24 +481,47 @@ def _c_benefic_dristi(
 
 # ── C6: cross_dasha_agreement helper ─────────────────────────────────────────
 
-def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> float:
+def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional[float]:
     """
     C6: cross_dasha_agreement — how many dasha systems agree at peak_date.
 
     Uses the cross_dasha_agreement.count on EligibleWindow (already computed
     by KaDashaKalaService across 7 dasha systems).
     Score = max(count across overlapping windows) / 7.0, capped at 1.0.
-    Mode B callers pass empty list → 0.0 (correct: no dasha prior in mode B).
+    Returns honest None when no eligible window covers peak_date — distinct
+    from a real 0.0, which means "a window covers this date, and its own
+    agreement count is genuinely zero".
+
+    NIRMĀṆA L3-W3 (§N.8). Measured live against the canonical chart: 95.7%
+    of Mode A rows (868/907 post-birth) score 0.0 here, and this is NOT the
+    same failure class as F-SANGAM-3/4/6/7 (fictional lookups/wrong columns)
+    — KaDashaKalaService itself works and returns real, non-degenerate
+    agreement data (verified directly: querying it for 20 sampled predicates
+    over the correct full-lifetime horizon returns real windows with
+    cross_dasha_agreement.count=1 every time). The root cause is
+    distributional: eligible windows (both dasha-eligible AND cross-system-
+    agreeing) are genuinely narrow and sparse across a century (as few as 61
+    short windows, days to weeks each), so most independently-found transit-
+    aspect peak_dates simply do not happen to fall inside one — verified on
+    a real zero row (peak_date=2026-11-25, ayanamsha=true_chitra,
+    lords={Saturn,Ketu}): 61 real eligible windows exist for that lord set,
+    zero of them cover that specific date. This was previously
+    indistinguishable from "a window covers this date and 0 systems agree"
+    (a real, meaningful disagreement answer) — this fix separates the two.
+    Old docstring here additionally claimed "Mode B callers pass empty list
+    -> 0.0" — false as written: mode_a_search is this function's only
+    caller (verified via grep); Mode B never calls it at all.
     """
     if not eligible_windows:
-        return 0.0
-    best = 0
+        return None
+    best: Optional[float] = None
     for ew in eligible_windows:
         if ew.start_date <= peak_date <= ew.end_date:
             agreement = getattr(ew, 'cross_dasha_agreement', None)
             count = agreement.count if agreement is not None else 0
-            best = max(best, count)
-    return min(1.0, best / 7.0)
+            score = min(1.0, count / 7.0)
+            best = score if best is None else max(best, score)
+    return best
 
 
 # ── C_panchanga_quality helper ────────────────────────────────────────────────
@@ -1196,7 +1219,7 @@ def mode_a_search(
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
             **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
-            'cross_dasha_agreement':        c_cross,
+            **({'cross_dasha_agreement': c_cross} if c_cross is not None else {}),
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
             # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
@@ -1248,7 +1271,10 @@ def mode_a_search(
                     'no U4 school-consensus data yet AND signature_class is a signal-type '
                     'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 # Newly wired currents
-                'c_cross_dasha_agreement': round(c_cross, 4),
+                **({'c_cross_dasha_agreement': round(c_cross, 4)} if c_cross is not None else
+                   {'c_cross_dasha_agreement_unavailable':
+                    'no eligible dasha window (dasha-eligible AND cross-system-agreeing) covers '
+                    'this peak_date — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
