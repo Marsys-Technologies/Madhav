@@ -1776,3 +1776,12 @@ diagnostic, `#1857` now at position 1; E-gate uncheckable, DB access down 18 cyc
 capability landings or adjudications) → next: watch `#1857`'s merge; retry E-gate/dispatch
 dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~08:40Z` — L4 — **CYCLE 29 (v2.3) — `#1857` still at position 1, own checks 6 min
+in, healthy. Steady-state IDLE, 19th consecutive cycle:** PR hygiene clean, all checked own PRs
+genuinely queued unchanged. DB access still down, no new capability landings or adjudications.
+
+CYCLE 29 L4: IDLE-OK (verified: PR hygiene clean, `#1857` healthy at position 1; E-gate
+uncheckable, DB access down 19 cycles; no new capability landings or adjudications) → next:
+watch `#1857`'s merge; retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s
+merge; F1 remains deferred.
+
