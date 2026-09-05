@@ -1269,13 +1269,49 @@ export interface RecurrenceLadderEntry {
 }
 
 /**
+ * F-KALA-1 (L3_W1_ANALYSIS_BATCH_E.md, ka_kalasutra finding 1): ranks a raw activation
+ * row's representative strength for the per-signal collapse below, and for breaking
+ * same-date ties in the final sort. `orb_strength` is 99.6% NULL (measured) — `ka_sangam`
+ * only produces windows for ≤260 of ~50,104 activation predicates — so the OLD comparison
+ * (`(existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)`) was true for EVERY
+ * comparison once both sides were NULL, meaning the loop's "first row wins" was the actual
+ * (undocumented) rule for 99.6% of signals, not a real ranking.
+ *
+ * Mirrors `compareKalaActivationRank`'s semantics (`register_d9_judgment.ts`, same
+ * finding's first fixed call site) — kept as a LOCAL, parallel implementation rather than
+ * a cross-package import (this file is `platform-mcp`; that comparator lives in the
+ * `platform` package, and a shared-lib extraction across packages is its own, separate
+ * design decision, not folded into this fix): primary
+ * `dasha_activation_proximity_score` (0% NULL measured, [0,1], higher = stronger),
+ * `orb_strength` as a secondary tiebreak (real signal for the small fraction of rows
+ * `ka_sangam` does cover), `id` as the final total-order tiebreak (§N.7 item 2).
+ */
+type ActivationRank = readonly [number, number, string]
+
+function activationRepresentativeRank(row: RawActivationRow): ActivationRank {
+  const proximity = typeof row['dasha_activation_proximity_score'] === 'number'
+    ? (row['dasha_activation_proximity_score'] as number) : null
+  const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
+  const id = typeof row['id'] === 'string' ? (row['id'] as string) : ''
+  return [proximity ?? -Infinity, orb ?? -Infinity, id] as const
+}
+
+/** Descending rank comparator: positive when `a` outranks `b`. */
+function compareActivationRank(a: ActivationRank, b: ActivationRank): number {
+  if (a[0] !== b[0]) return a[0] - b[0]
+  if (a[1] !== b[1]) return a[1] - b[1]
+  return a[2].localeCompare(b[2])
+}
+
+/**
  * Item 2: collapses the raw per-predicate `activations` rows into one recurrence-ladder
  * entry per `signal_id` (several predicate rows can share byte-identical ladders for the
  * same signal — a predicate-count artifact, not a real distinction — so this keeps only the
- * highest-`orb_strength` row per signal, exactly the same "collapse duplicated rows into
- * one family" pattern `query_temporal_activation.ts`'s own `window_families` already uses,
- * applied here to a different grouping key). Drops signals whose ladder is entirely in the
- * past relative to `todayISO` (nothing forward to serve) — never fabricates a future point.
+ * highest-ranked row per signal per `activationRepresentativeRank` above, exactly the same
+ * "collapse duplicated rows into one family" pattern `query_temporal_activation.ts`'s own
+ * `window_families` already uses, applied here to a different grouping key). Drops signals
+ * whose ladder is entirely in the past relative to `todayISO` (nothing forward to serve) —
+ * never fabricates a future point.
  */
 function computeRecurrenceLadder(
   rawActivations: RawActivationRow[],
@@ -1283,6 +1319,7 @@ function computeRecurrenceLadder(
   maxItems: number,
 ): { entries: RecurrenceLadderEntry[]; anyLadderPresent: boolean } {
   const bySignal = new Map<string, RecurrenceLadderEntry>()
+  const bestRankBySignal = new Map<string, ActivationRank>()
   let anyLadderPresent = false
 
   for (const row of rawActivations) {
@@ -1291,10 +1328,12 @@ function computeRecurrenceLadder(
     if (!signalId || !Array.isArray(rawDates) || rawDates.length === 0) continue
     anyLadderPresent = true
 
-    const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
-    const existing = bySignal.get(signalId)
-    if (existing && (existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)) continue
+    const rank = activationRepresentativeRank(row)
+    const existingRank = bestRankBySignal.get(signalId)
+    if (existingRank && compareActivationRank(existingRank, rank) >= 0) continue
+    bestRankBySignal.set(signalId, rank)
 
+    const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
     const points: RecurrenceLadderPoint[] = (rawDates as RecurrenceLadderPointRaw[])
       .filter((p): p is RecurrenceLadderPointRaw & { date: string } => typeof p?.date === 'string')
       .map((p) => ({
@@ -1323,7 +1362,11 @@ function computeRecurrenceLadder(
     .sort((a, b) => {
       const aNext = a.future_points[0]?.date ?? '9999-99-99'
       const bNext = b.future_points[0]?.date ?? '9999-99-99'
-      return aNext.localeCompare(bNext) || (b.max_orb_strength ?? 0) - (a.max_orb_strength ?? 0)
+      if (aNext !== bNext) return aNext.localeCompare(bNext)
+      const aRank = bestRankBySignal.get(a.signal_id)
+      const bRank = bestRankBySignal.get(b.signal_id)
+      if (aRank && bRank) return compareActivationRank(bRank, aRank)
+      return (b.max_orb_strength ?? 0) - (a.max_orb_strength ?? 0)
     })
     .slice(0, maxItems)
 

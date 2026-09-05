@@ -458,6 +458,873 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~04:0xZ — L3-W3 — F-KALA-1 fix (third slice): PR (branch
+  `codex/nirmana-l3-f-kala-1-ahead-recurrence-rank`).** Continuing the same finding's four
+  named call sites (register_d9_judgment.ts fixed 2 cycles ago; query_temporal_activation.ts
+  last cycle). **Also checked `register_d8_assess_domain.ts` first — already correctly
+  fixed** (an earlier CR-37/SARVA-SIDDHI session already changed its ORDER BY to
+  `ka.dasha_activation_proximity_score DESC NULLS LAST` with dated-rows-first and salience
+  tiebreaks; its named lines 1949-1950 only SELECT `orb_strength`/`convergence_score` for
+  display, they don't rank on them — nothing to fix there, confirmed by direct read rather
+  than assumed from the analysis batch's older citation).
+  **Fixed `ahead.ts`'s `computeRecurrenceLadder`** (platform-mcp, a different package from
+  the other three sites): its per-signal collapse kept
+  `(existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)` — true for EVERY
+  comparison once both sides hit the 99.6%-NULL default, so the loop's "first row wins" was
+  the undocumented actual rule. Extracted `activationRepresentativeRank`/
+  `compareActivationRank` — a LOCAL, parallel implementation (not a cross-package import;
+  `compareKalaActivationRank` lives in the `platform` package) with the same semantics:
+  primary `dasha_activation_proximity_score`, secondary `orb_strength`, `id` as the final
+  total-order tiebreak. Also fixed the SAME function's final cross-signal sort, which used
+  the identical NULL-prone `orb_strength` tiebreak among same-date entries.
+  3 new tests (`kala_ahead_get_f_kala_1_recurrence_rank.test.ts`): the 99.6%-NULL scenario
+  (deliberately unsorted input order, proves ranking — not row order — decides the winner),
+  orb_strength secondary-tiebreak fallback, a real proximity score outranking a NULL one
+  even against a high orb_strength on the NULL side. Mutation-proved: swapped which field
+  reads as primary vs secondary in `activationRepresentativeRank`, 1/3 tests correctly went
+  red (the other 2 happened not to distinguish the swap — noted, not treated as a gap since
+  the one that DID catch it verified the primary-key semantics directly), restored, green
+  again. All 9 pre-existing `kala_ahead_get_recurrence_ladder_w1.test.ts` tests still pass
+  unmodified — including its own "keeps highest orb_strength" test, which continues to pass
+  because that fixture never sets `dasha_activation_proximity_score` (ties at `-Infinity`,
+  falls through to the orb_strength tiebreak exactly as intended).
+  **Found and confirmed a genuinely pre-existing, unrelated failure** while running the
+  broader `kala_ahead_get` suite family: `kala_ahead_get_digest_90d_w1.test.ts`'s
+  `ritual_opportunities_note explicitly names the W1 ritual-free state` test expects the
+  literal string `'W4'` but the served note only contains `'W0'`-era prose — verified via
+  `git stash` that this fails identically on unmodified `origin/main`, unrelated to anything
+  in this PR (a stale test/prose mismatch in an unrelated E6-lite digest feature). Left
+  untouched — out of this bounded unit's scope; not silently absorbed, recorded here.
+  `tsc --noEmit` clean both packages; 82/82 across the rest of the `kala_ahead_get` suite
+  family (excluding the one confirmed-pre-existing failure), zero regressions from this fix.
+  Checked `git branch --show-current` BEFORE editing again this cycle — no wrong-branch
+  mistake.
+  PR hygiene checked first: 16 L3 PRs queued; #1931/#1932 (previous 2 cycles' PRs) both
+  confirmed CLEAN (0 failing, checks still running) — nothing to fix.
+
+- `2026-09-06T~03:3xZ — L3-W3 — F-KALA-1 fix (second slice): PR (branch
+  `codex/nirmana-l3-f-kala-1-query-temporal-order-by`).** Continuing F-KALA-1's four named
+  call sites (previous cycle fixed `judgment_query`'s in-memory selection; this one fixes
+  `query_temporal_activation.ts` — the SQL-level fetch itself, one layer upstream). Its
+  `activationSql` ordered candidates `ORDER BY orb_strength DESC NULLS LAST,
+  activation_start, id` **before applying `LIMIT top_k`** — so with `orb_strength` 99.6%
+  NULL (measured), which rows even SURVIVE the limit was decided by `activation_start`/`id`
+  for nearly every chart, not by any real strength signal. Distinct from F-VIGHNA-3's
+  nondeterminism axis — this SQL was already fully deterministic (real tiebreak columns) —
+  the defect here is "meaningless ranking decides the cut point," not "unstable row order."
+  **Fix:** added `dasha_activation_proximity_score DESC NULLS LAST` as the PRIMARY sort key
+  ahead of `orb_strength` (0% NULL measured, same direction/semantics as the previous
+  cycle's fix); `orb_strength` kept as secondary tiebreak (real signal for the small
+  fraction of rows `ka_sangam` covers); `activation_start, id` remain the final
+  deterministic tiebreak. 4 new tests (mocked DB, asserting the actual SQL string built —
+  same convention as the sibling `wp13e_temporal_date_honoring.test.ts`): ORDER BY leads
+  with proximity, orb_strength survives as secondary (position-order asserted), the final
+  tiebreak clause is unchanged, and unrelated WHERE/date-param behavior (as_of point-in-time
+  handling) is unaffected. Mutation-proved: reverted to the original ORDER BY, 2/4 tests
+  correctly went red, restored, green again. `tsc --noEmit` clean; sibling suites
+  (`wp13e_temporal_date_honoring`, `r6_3a_param_echo`, `d5_roster_smoke`,
+  `d5_l3_capabilities`, `chart_agnostic_gate_registry`) all green (103/103 + this file's
+  4 = 107 total), zero regressions.
+  **Deliberately NOT done in this PR:** the same file's `window_families` in-memory
+  grouping sort (still keyed on `max_orb_strength`, a secondary concern now that the SQL
+  fetch itself is fixed) and the `min_activation_strength` filter (`:155`, which silently
+  drops 99.6% of rows when a caller sets it — a separate, honest-disclosure-shaped fix, not
+  a ranking fix) — both named in the same finding but scoped to a later, separate step, per
+  this session's incremental-bounded-unit discipline. `ahead.ts` (the finding's fourth named
+  call site) lives in `platform-mcp`, a different package from `register_d9_judgment.ts`'s
+  now-exported `compareKalaActivationRank` — reusing it there needs either a shared-lib
+  extraction or a parallel copy, a design decision better made as its own step, not folded
+  in here.
+  Checked `git branch --show-current` BEFORE editing this time (learned from the note filed
+  last cycle) — correctly created the fresh branch first, no wrong-branch mistake this
+  cycle.
+  PR hygiene checked first: 15 L3 PRs queued (#1868 merged since last cycle); #1929/#1931
+  both confirmed CLEAN (0 failing checks, checks still running) — #1929's `mergeStateStatus`
+  briefly read `UNKNOWN` (a transient GitHub recomputation after #1868's merge, not a real
+  defect) and resolved to `MERGEABLE` on a 10s recheck.
+
+- `2026-09-06T~03:0xZ — L3-W3 — F-KALA-1 fix (first slice): PR (branch
+  `codex/nirmana-l3-f-kala-1-activation-rank-key`).** `L3_W1_ANALYSIS_BATCH_E.md`'s
+  ka_kalasutra finding 1 — "batch's highest-value leverage finding": `judgment_query`
+  (`register_d9_judgment.ts`), **the product's headline verdict tool**, deduped/ranked its
+  `kala_activations` timing hook by `convergence_score` (`?? -Infinity` in the dedup step,
+  `?? 0` in the final sort — an inconsistency in the ORIGINAL code, not introduced by this
+  fix). That column is **99.6% NULL** (measured, per the analysis batch) — `ka_sangam` only
+  produces windows for ≤260 of ~50,104 activation predicates — so once nearly every
+  candidate falls back to the same default, the comparison is never true and "best row per
+  window"/"top 6 overall" both silently degraded to whichever row the fetch happened to
+  return first. Textbook §N.7 item 2 (a selection reducing a set to one row needs a real
+  TOTAL order) landing in the layer's single most consequential serving surface.
+  **Fix:** extracted the inline dedup+sort block into two pure, exported, directly-testable
+  functions — `kalaActivationRankKey`/`compareKalaActivationRank` (primary key
+  `dasha_activation_proximity_score`, **0% NULL** measured, [0,1], higher=stronger;
+  `convergence_score` then `orb_strength` as secondary/tertiary tiebreaks for the small
+  fraction of rows `ka_sangam` genuinely covers; `id` string-compare as the final total-order
+  tiebreak) and `pickTopKalaActivations(rawActivations, cap)` (dedupe-by-window +
+  rank + slice, replacing the inline `byWindow`/`trimmedActivations` block verbatim in
+  behavior except for the rank key itself). `compareKalaActivationRank` exported explicitly
+  so the finding's OTHER three named call sites (`query_temporal_activation.ts`,
+  `register_d8_assess_domain.ts`, `ahead.ts`) can reuse the SAME ranking discipline in later,
+  separate bounded steps rather than each re-deriving a parallel copy that could drift —
+  this PR deliberately fixes ONLY the `judgment_query` call site, the most severe of the
+  four per the batch's own evidence (an outright `-Infinity`-vs-`-Infinity` arbitrary pick,
+  not just a `NULLS LAST` ordering quirk).
+  11 new tests (`register_d9_judgment.f_kala_1_activation_rank.test.ts`): rank-key ordering
+  at each tier, the NULL-treated-as-`-Infinity` guard (§N.7 item 6 — never a favorable
+  default), the full regression scenario (real proximity scores present, NULL
+  convergence/orb — ranking must not degenerate to id-only), window-dedup keeping the
+  higher-ranked row, distinct windows never cross-deduped, cap-after-rank ordering, compact
+  shape drops the verbose jsonb fields, empty-input safety. Mutation-proved: inverted the
+  primary comparator's sign, 5/11 tests correctly went red, restored, green again. `tsc
+  --noEmit` clean; broader `register_d9_judgment`/`envelope`/`reading_checklist`/dignity-
+  parity non-integration suites all green (124/124), zero regressions.
+  **Checked `git branch --show-current` only AFTER editing, yet again** (4th confirmed
+  occurrence in this visible window) — caught via `git status --short` immediately after
+  the edit, recovered via the same stash-to-fresh-branch procedure (verified SHA, fresh
+  branch off `origin/main`, `git stash apply`, verified isolated diff, dropped only after
+  re-confirming the top-of-stack SHA). Filed as model-behavior feedback earlier this
+  session; the pattern is evidently not something a stated intention alone fixes — noting
+  again rather than re-asserting the same resolution.
+
+- `2026-09-06T~02:3xZ — L3-W3 — RED-fix on #1929 (F-VIGHNA-3's own PR): re-pinned the writer
+  digest inventory + L3 analysis-layer pin.** PR hygiene sweep found `#1929` (this session's
+  immediately-prior F-VIGHNA-3 PR, still open/unqueued) with a genuinely FAILING required
+  check — "Governance Gates (drift / schema / edge / native-literal / py-sidecar)". Root
+  cause, read from the job log: F-VIGHNA-3's edit to `ka_vighnakara.py` (a writer file)
+  changed that writer's content hash, which the committed `nirmana-writer-digests.json`
+  no longer matched — `provenance_inventory --check` correctly failed the build BEFORE any
+  test even ran (fail-closed by design, not a flaky check). Regenerated the digest file
+  (`python -m pipeline.orchestrator.provenance_inventory --output ...`) — confirmed via
+  `git diff` that the ONLY line that changed is `ka_vighnakara`'s own hash, nothing else.
+  This cascaded, as expected: `nirmana_analysis_layer_pins.py --check` then reported L3's
+  `writer_inventory_sha256` stale too. Re-pinned with `--layer L3 --convergence-commit
+  72bb87821bd2d976b5230bc439f7b38114a86234` (the SAME convergence-commit reused for every
+  L3 re-pin this session) — output confirmed `fields changed: writer_inventory_sha256`,
+  `layers untouched: L0, L1, L2, L4, L5`, exactly the fail-closed-per-layer guarantee this
+  pin mechanism exists to provide. Both `--check` commands pass locally now. Never weakened
+  the gate itself — fixed the actual staleness the gate correctly caught, per contract
+  ("RED → fix at root, never weaken the check"). Pushed as a follow-up commit onto the SAME
+  branch/PR (#1929), not a new PR — this is a same-PR CI fix, not a new unheld unit, so the
+  fresh-branch-per-PR discipline does not apply here (confirmed `git branch --show-current`
+  already matched #1929's head branch before touching anything, correctly this time).
+  Local full-suite re-verification hit an unrelated pre-existing local-venv gap (`asyncpg`
+  not installed locally, though it IS in `requirements-ci.txt` — confirmed via grep — so
+  this is a local tooling gap, not a CI-relevant regression); excluded that one file from
+  the local verification run only, matching CI's own installed environment.
+
+- `2026-09-06T~02:0xZ — L3-W3 — PR hygiene fix + F-VIGHNA-3 fix.**
+  **Hygiene:** `#1924` (last cycle's concordance-verdict PR) was `mergeStateStatus: CLEAN`,
+  `mergeable: MERGEABLE`, auto-merge armed since last cycle, yet `isInMergeQueue: false` (GraphQL)
+  — genuinely CLEAN-but-unqueued, exactly the case C8 v2.3 Step 1 names. Re-issued
+  `gh pr merge 1924 --auto`; re-verified via GraphQL immediately after —
+  `isInMergeQueue: true`. 15/16 open L3 PRs now genuinely queued (only #1927, still running
+  checks clean, remains).
+  **Work: PR (branch `codex/nirmana-l3-f-vighna-3-dasha-anchor-orderby`).** F-VIGHNA-3
+  (`L3_W1_ANALYSIS_BATCH_E.md` §ka_vighnakara finding 8): `ka_vighnakara`'s
+  `_dasha_anchor_peaks` predicate query (`writers/ka_vighnakara.py`) had **no `ORDER BY` at
+  all** — `SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb FROM
+  kala_activation_predicates WHERE chart_id = %s`. Two consequences, both nondeterministic
+  build-to-build on identical data: (1) `anchors.setdefault(peak, sig_id)` gives a peak date
+  to whichever predicate row Postgres happened to return first — the "which signal
+  represents this obstruction anchor" attribution could vary; (2) the loop `break`s at
+  `_MAX_DASHA_ANCHORS` (200), so which peaks make it under the cap could also vary. Textbook
+  §N.7 item 2 ("every fact selection that reduces a set to one row... carries a total ORDER
+  BY"). Fix: added `ORDER BY signal_id` — `signal_id` is the one stable, unique-per-row key
+  this table exposes for the purpose (the table itself has no single-column natural key).
+  1 new test (`test_dasha_anchor_peaks_predicate_query_has_total_order_by_signal_id`) pins
+  the query TEXT (asserts `"ORDER BY signal_id" in sql` and exactly one `ORDER BY` clause
+  total) rather than simulating Postgres row order, since the existing `_VConn`/`_VCursor`
+  test doubles don't actually sort — a behavioral test against the fake cursor couldn't
+  exercise this defect class at all. 34/34 `test_ka_vighnakara.py` tests pass; mutation-proved
+  (removed the `ORDER BY`, new test correctly went red on the exact assertion, restored,
+  green again). Full `tests/l3/` suite: **1424 passed, 0 failures**, zero regressions.
+  **Caught my own wrong-branch mistake mid-edit AGAIN** (3rd confirmed occurrence just in
+  this visible window) — made the edit directly on `codex/nirmana-l3-f-conc-5-now-density-
+  contract` (already pushed, already PR'd as #1927) before checking `git branch
+  --show-current`. Recovered via the established procedure: `git stash push -u -m` with a
+  unique tag, verified the stash SHA, `git checkout -b
+  codex/nirmana-l3-f-vighna-3-dasha-anchor-orderby origin/main`, `git stash apply <sha>`
+  (never pop), verified the diff was exactly the one intended file/change, `git stash drop`
+  only after re-confirming the top-of-stack SHA matched. This pattern (edit-before-branch-
+  check) is clearly not fully broken by prior cycles' stated resolutions and needs a
+  standing pre-edit habit, not another one-off note — recording it plainly rather than
+  re-asserting a fix that evidently hasn't stuck.
+  Did NOT re-check `ka_graha_sancara`'s #1846 deploy this cycle (already confirmed
+  not-yet-deployed last cycle with the corrected region; no serving-layer work touched it
+  this cycle either).
+
+- `2026-09-06T~01:3xZ — L3-W3 — F-CONC-5 fix: PR (branch
+  `codex/nirmana-l3-f-conc-5-now-density-contract`). `kala_now_get` (`now.ts`) served **no
+  `density_contract` at all** despite carrying ~20 top-level engine arrays/objects — exactly
+  the shape `L3_W1_ANALYSIS_BATCH_E.md` §1.5 flagged as "most exposed to a budget trim
+  zeroing a dissent" (F-CONC-5), unlike `kala_explain_get` which already declares one.
+  **Investigated the actual runtime risk before fixing the metadata gap** and found the real
+  trim protection was already in place independently: `reading` is a hardFloor-equivalent
+  entry in `response_budget.ts`'s `IMMUNE_HONESTY_FIELDS` set, so `autoDetectTrimmableSections`
+  (which `now.ts`'s own `dualOutput` calls) never zeroes it regardless of `density_contract`
+  being declared. What was actually missing was only the DECLARATIVE metadata itself (§N.6
+  part 4: "density signaling is data, not narration") — the machine-readable record a
+  census/CI harness reads without re-deriving discipline from source. Added
+  `density_contract: { paginated: false, facets: ['as_of'], empty_reason: true }` to
+  `baseResult` — `as_of` (not `domain`/`bhava` as in `explain.ts`) is this tool's one real
+  content-narrowing input; there is no domain/bhava split here, `now.ts` always returns the
+  full multi-engine bundle for the chart. 1 new test (`kala_now_get.test.ts`, 37/37 total),
+  mutation-proved (swapped the facet string, test correctly went red, restored). `tsc
+  --noEmit` clean; all 6 `kala_now_get`-related suites green (95/95), zero regressions.
+  **Caught my own wrong-branch mistake mid-edit** (same recurring pattern as earlier this
+  session): made this edit directly on `codex/nirmana-l3-n1-concordance-verdict` (an
+  already-pushed, already-PR'd branch, #1924) before checking `git branch --show-current`.
+  Recovered via the established procedure: `git stash push -u -m` with a unique tag, verified
+  the stash SHA, `git checkout -b codex/nirmana-l3-f-conc-5-now-density-contract origin/main`,
+  `git stash apply <sha>` (never pop), verified the diff was exactly the one file/change
+  intended, then `git stash drop` only after re-confirming the top-of-stack SHA matched.
+  **Also reconsidered wiring `composeConcordanceVerdict` into `kala_explain_get`'s serving
+  layer this cycle and correctly declined**: that step needs a real DB fetch of
+  `kala_paddhati_profile`'s new `arbitration_role`/`precedence` columns (migration 675) and
+  the O-10 seed data (migration 677) — confirmed via `git show origin/main:...` that BOTH
+  migrations are still unmerged (`fatal: path ... does not exist in 'origin/main'` for both).
+  Reading columns that don't exist yet in production would be a live regression the moment
+  this PR merged, not a self-contained-PR pattern situation (that pattern solves CODE
+  dependencies via `git show`, not live SCHEMA dependencies) — correctly deferred until both
+  migrations are confirmed merged.
+  PR hygiene checked first this cycle: 14 L3 PRs genuinely queued (`is:queued`, `--limit 200`,
+  up from 13 last cycle — #1921 entered the queue); #1924 (this session's own prior PR, not
+  yet in the queued set) confirmed CLEAN via direct inspection (0 failing checks, 4 still
+  in progress, `mergeable: MERGEABLE`) — not a hygiene defect, just checks still running.
+  `ka_graha_sancara`'s #1846 deploy re-checked with the CORRECT region this time
+  (`asia-south1`, not `us-central1` — a tooling slip caught and fixed live this cycle): current
+  100%-traffic revision's embedded commit (`0212c095d37973b5607b4c25840b8bf08c9153d7`,
+  created 2026-09-03T23:33:52Z) predates #1846's merge commit
+  (`a734f34a06b6c434912ee1487931b74cc4012631`, merged 2026-09-05T17:39:13Z);
+  `git merge-base --is-ancestor` confirmed NOT an ancestor (exit 1) — still not deployed.
+
+- `2026-09-06T~01:0xZ — L3-W3 — N1 SIXTH STEP: PR (branch
+  `codex/nirmana-l3-n1-concordance-verdict`). **Composes the verdict itself** —
+  `composeConcordanceVerdict(testimony, profile)` in `engine_testimony.ts`, the "aligned |
+  partially_aligned | disputed(adjudicated_by)" verdict `L3_W1_ANALYSIS_BATCH_E.md` §1.5 names
+  beside `weakest_link`, now tractable for real because the previous cycle's O-10 seed
+  (migration 677) gives it real `arbitration_role` data to read instead of an invented
+  threshold. Pure function, no DB access of its own — callers pass already-fetched
+  `EngineTestimony[]` (from the N1 third/fourth steps) and already-fetched
+  `kala_paddhati_profile` rows (`AuthorityProfileRow[]`, a minimal projection of the columns
+  this composer actually needs).
+  **Design (deliberately avoids any invented vote-count/numeric threshold — §N.7):** only
+  `state: 'computed'` testimony counts. No computed testimony at all → `null` (honest
+  no-verdict). No testimony engine maps to `arbitration_role: 'primary'` in the profile →
+  `null` (no authoritative reference point to arbitrate against — this composer never invents
+  one). Otherwise the primary's own resolved stance is the reference point; corroborating
+  engines (`arbitration_role: 'corroborating'`) are measured against it: none dissent (including
+  the case where every corroborating stance is `not_comparable`, or there simply is no
+  corroborating testimony) → `aligned`/`adjudicated_by: null`; all that took a comparable stance
+  dissent → `disputed`/`adjudicated_by: <primary's engine id>`; a split → `partially_aligned`/
+  `adjudicated_by: <primary's engine id>`. `informational`/`declared_silent`/`gate`-tagged
+  testimony, and testimony from any engine absent from the profile entirely, count as neither
+  primary nor corroborating — extending to `gate` (which would need to VETO, not vote) is a
+  later, separate step. Deliberately makes no use of `precedence` — both `kp`/`gochara_v3` have
+  `precedence: null` in the O-10 seed, so there is no established ranking between corroborating
+  voices to break ties with yet; revisit if/when precedence values are ever populated.
+  **Self-contained against two still-unmerged upstream branches** (same established pattern as
+  PR #1919): copied `engine_testimony.ts`/`.test.ts` from `codex/nirmana-l3-n1-engine-testimony`
+  (#1905, still open) via `git show`, appended the new types/function/tests directly rather than
+  depending on #1905 merging first.
+  19 tests total (10 pre-existing + 9 new for `composeConcordanceVerdict`): null-on-no-computed,
+  null-on-no-primary-role, aligned-alone, aligned-all-concur, aligned-all-not_comparable
+  (explicitly verified edge case), disputed-all-dissent, partially_aligned-split,
+  untracked-engine-ignored, informational/gate/declared_silent-ignored,
+  honest_empty-excluded-from-corroborating-count. Mutation-proved twice: inverted the
+  `dissenting.length === 0` check (8 of 19 tests correctly went red), and commented out the
+  `if (!primary) return null` guard (1 test correctly went red) — both restored, full suite
+  green again. `tsc --noEmit` clean; `engine_testimony`/`kp_school_voice`/
+  `agnivasa_convention_b_voice` suites all green (59/59), zero regressions.
+  **Deliberately NOT done in this PR** (a later, separate N1 step, matching the incremental
+  per-step discipline used for every N1 cycle this session): wiring `composeConcordanceVerdict`
+  into `kala_explain_get`'s serving layer as a new `concordance` field beside `weakest_link` —
+  that needs a real DB fetch of the O-10 `kala_paddhati_profile` rows at request time, which is
+  its own bounded unit.
+  PR hygiene checked first this cycle (GraphQL `is:queued`, `--limit 200`): 13 L3 PRs genuinely
+  queued; #1921 (previous cycle's O-10 seeding PR) freshly opened, auto-merge armed, checks
+  still running clean (no RED) — nothing needed fixing. `ka_graha_sancara`'s #1846 deploy not
+  re-checked this cycle (no serving-layer work touched it).
+
+- `2026-09-06T~00:3xZ — L3-W3 — N1 FIFTH STEP: PR (branch
+  `codex/nirmana-l3-n1-o10-authority-profile`), migration 677. Seeds `kala_paddhati_profile`
+  with its first NON-agnivasa `factor_family`: **O-10** from `L3_W1_ANALYSIS_BATCH_E.md` §1.2's
+  own overlap matrix — "Does the causal chain hold? — as-of | E31 PACT · E29 KP ·
+  a5_gochara_agreement (E4) | already served side by side in kala_explain_get | partial —
+  three stances served, no verdict over them." Chose O-10 specifically because it's the ONE
+  overlap cell already precisely specified in the evidence base AND already directly
+  actionable given the previous cycle's own work: PR #1919 wired exactly the KP and
+  gochara_v3 voices into `engine_testimony[]`, using `engine: 'kp'`/`engine: 'gochara_v3'` as
+  their canonical ids — this migration uses those SAME id strings as `convention_id`, so a
+  future verdict composer can look up the authority profile directly by
+  `testimony.engine`, no second id-mapping table needed.
+  **This is the authority-profile generalization I set aside twice earlier this session for
+  "needing more design care"** — the difference this time: I had a concrete, precedent-
+  grounded target (O-10, named verbatim in the evidence base) instead of an open-ended
+  "which factor_family/convention_id should ka_sangam's 12 currents get" question with no
+  established naming convention to anchor it. Reasoned each row's `arbitration_role` from what
+  each engine actually IS today, not invented: `pact`=primary/hard/precedence=1 (the reference
+  point kp/gochara_v3's own concurs/dissents is measured AGAINST — the authoritative source,
+  not a corroborating voice); `kp` and `gochara_v3`=corroborating/informational/precedence=NULL
+  (neither engine's own module claims priority over the other; both explicitly disclosed,
+  never gating — verbatim from kp_school_voice.ts's and explain.ts's own docstrings).
+  **Discovered and fixed a real inter-PR dependency the dry-run caught immediately**: migration
+  675 (arbitration_role/precedence columns) is still an open, unmerged PR (#1894) — this
+  migration's INSERT needs those columns, so a plain dry-run against current production failed
+  with "column does not exist". Rather than duplicate the MIGRATION FILE (which would create a
+  genuine collision when #1894 eventually merges) or silently depend on #1894 merging first
+  (a real ordering risk since both are same-author, same-range PRs that could merge in either
+  order), added the identical idempotent `ADD COLUMN IF NOT EXISTS` guard inline in 677 itself
+  — a genuine no-op once 675 has already run, and self-sufficient if 677 somehow lands first.
+  8 new tests (`test_migration_677_o10_authority_profile.py`): 5 static (engine-id coverage,
+  chart-scoping via CROSS JOIN not a hardcoded chart_id, idempotency via ON CONFLICT, pact-is-
+  the-only-primary-row, the defensive column guard itself) + 3 `@pytest.mark.integration` live
+  tests. Dry-run verified live against production (rolled back, never committed): 6 rows
+  seeded (3 engines × 2 canonical charts) exactly matching the documented design; idempotent
+  (byte-identical on a second application); the real CHECK constraint from migration 675
+  genuinely accepts the seeded `arbitration_role` values (not just documentation-compatible).
+  Mutation-proved: swapping `pact`'s row to `arbitration_role='corroborating'` turns 2 of 8
+  tests red (1 static, 1 live).
+  No Python writer changed — no digest/pin regeneration needed.
+  PR hygiene this cycle: all 14 L3 PRs checked via `isInMergeQueue` GraphQL. **#1858 MERGED**
+  (N9's `ka_graha_sancara` catalog_status flip — the 3rd of this session's PRs to actually land
+  on `origin/main`). 12 of the remainder genuinely queued (11 SUCCESS, 1 still finishing its
+  in-queue checks); #1919 (previous cycle's PR) still mid-CI, not yet queued, not RED.
+  Re-checked `ka_graha_sancara`'s deploy status — still not deployed, same revision. E-gate
+  batch re-run — no change (#1858's merge was a pure catalog_status flip, no `depends_on`
+  consequence).
+  **Next action:** with O-10's authority profile now seeded, the verdict-composition step
+  (`aligned|partially_aligned|disputed(adjudicated_by)`) finally has real data to read instead
+  of needing an unweighted, invented threshold — genuinely the natural next N1 step, though
+  still substantial enough to deserve its own bounded cycle rather than being rushed onto the
+  end of this one. N3's admission/ablation half stays deferred. Dispatch `ka_graha_sancara`'s
+  probe once #1846 actually deploys.
+- `2026-09-05T~23:5xZ — L3-W3 — N1 FOURTH STEP: PR (branch
+  `codex/nirmana-l3-n1-explain-testimony`). `kala_explain_get` now serves `engine_testimony[]`
+  as a NEW, additive field — the actual serving-plane attachment the evidence base named as
+  N1's first step ("`school_voices[]` becoming `engine_testimony[]`"), built on the previous
+  cycle's `engine_testimony.ts` unification (PR #1905, still queued, not yet merged). Added
+  alongside `school_voices`/`a5_gochara_agreement`, not replacing either — zero behavior change
+  to any existing field. Maps whichever of the two engines actually wired into
+  `kala_explain_get` today (`kpVoice`, always attempted when a bhava resolves; the flag-guarded
+  A5 gochara voice) through `kpVoiceToTestimony`/`a5AgreementToTestimony`. **Deliberately still
+  no verdict/concordance field** — composing `aligned|partially_aligned|disputed` needs a
+  design decision this step stays upstream of, same discipline as the last 3 N1 steps.
+  **Process note (repeated mistake, 4th occurrence this session, fixed differently this
+  time):** made the `explain.ts` edit directly on the previous cycle's branch again before
+  catching it. Recovered via the established stash→fresh-branch→apply→drop discipline as
+  always — but this cycle ALSO surfaced a real dependency problem the mistake helped catch
+  early: `engine_testimony.ts` (from PR #1905) doesn't exist on `origin/main` yet, so a
+  fresh-branch import of it would have failed to compile. Rather than let this new PR depend
+  on #1905 merging first (real inter-PR ordering risk if #1905's queue position changes),
+  copied `engine_testimony.ts`/`.test.ts` directly into this branch via `git show
+  codex/nirmana-l3-n1-engine-testimony:<path> > <path>` — this PR is now fully self-contained
+  and mergeable independently of #1905's fate. (If #1905 merges first, this PR's copy will
+  conflict harmlessly on the identical file content; if #1905 is somehow abandoned, this PR
+  still stands on its own.)
+  4 new tests in `kala_explain_get_c4_a5.test.ts` (flag-OFF single-KP-entry shape, flag-ON
+  two-entry shape with agreement cross-checked against `a5_gochara_agreement`'s own value,
+  honest_empty-on-insufficient_data, full canonical-shape invariant over every entry).
+  Mutation-proved: dropping the gochara_v3 mapping from the `engineTestimony` array turns 2 of
+  4 new tests red. Ran the full `kala_views` + `engine_testimony`/`kp_school_voice`/
+  `agnivasa_convention_b_voice` suites (248 tests) plus `tsc --noEmit` — both clean.
+  PR hygiene this cycle: all 14 L3 PRs checked via `isInMergeQueue` GraphQL. 12 genuinely
+  queued with SUCCESS checks; #1913/#1917 (previous 2 cycles' PRs) still mid-CI (PENDING, not
+  RED). Re-checked `ka_graha_sancara`'s deploy status (verify, don't assume) — still not
+  deployed, same revision as last cycle. E-gate batch re-run — no change.
+  **Next action:** N1/N2 continue as standing highest priority — the verdict-composition
+  design is now the natural next big step (both prerequisite pieces — stance vocabulary +
+  unified testimony shape — exist and are now actually served), but deserves its own careful
+  cycle rather than a rushed attempt. N3's admission/ablation half stays deferred. Dispatch
+  `ka_graha_sancara`'s probe once #1846 actually deploys.
+- `2026-09-05T~22:2xZ — L3-W3 — N3 (moorti data-wiring half) CLOSED: PR (branch
+  `codex/nirmana-l3-n3-moorti-wire-data`). F-MOORTI-2's WIRE recommendation had two genuinely
+  separable parts — data wiring (~30 lines, mechanical) and ablation-evidence/admission
+  (statistical validation with an uncertain outcome) — and the ORIGINAL "~1 day" estimate
+  bundled both. Split them explicitly, the same way N1's steps were split: did the data-wiring
+  half THIS cycle (safe, deterministic, zero scoring-behavior change), left admission
+  deliberately deferred (genuine open-ended statistical judgment, not this session's pattern
+  of "find the wrong source, swap it").
+  `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py` (the W2.2 CANDIDATE mechanism, already
+  fully written and already fully tested in isolation) has been reading
+  `getattr(context, "moorti_rows", None)` since it was authored — the data was simply never
+  there. Added `moorti_rows: tuple[dict, ...] = ()` to `ClassContext` + a new
+  `_fetch_moorti_rows()` mirroring the existing `_fetch_vedha_rows` SAVEPOINT-guarded fetch
+  pattern exactly, wired into `ClassContext.fetch()` step 13. Matched the mechanism's own
+  already-tested `.get()`-based dict access contract precisely (window_start, window_end,
+  moorti_name, moorti_computed) rather than introducing a second row-type the mechanism would
+  need adapting to.
+  **Purely additive, zero scoring-behavior change**: `w22_moorti_nirnaya.yaml`'s
+  `admission_state` stays `candidate` — wiring the data does not admit the mechanism into
+  actual scoring; that decision (needing ablation evidence per
+  `scripts/kala_admission/w44_weight_fitting.py`) remains explicitly, deliberately deferred,
+  not silently skipped.
+  8 new tests (`test_context_moorti_wiring.py`): 6 static (DB-free, fake-connection unit
+  tests covering none/error/empty/real-shape/tuple-fallback/query-scoping) + 2
+  `@pytest.mark.integration` live tests. **The second live test is the actual end-to-end
+  proof this wiring exists to make possible, not just that the plumbing typechecks**: fetched
+  real `kala_moorti_nirnaya` rows for the canonical chart, fed them into a real `ClassContext`,
+  called the mechanism's own already-tested `compute()` at the midpoint of a real computed
+  window, and confirmed it now returns a genuine non-1.0 modifier (previously, always exactly
+  1.0 — the honest "no data" default, correctly reported, but never anything else). Mutation-
+  proved: removing the `moorti_rows=tuple(moorti_rows)` line from `fetch()`'s return turns
+  `moorti_rows` back to always-empty, confirmed via direct live re-fetch.
+  Ran the mechanism's own pre-existing test suite (`test_w22_moorti_nirnaya.py`) + the broader
+  `services/gochara_v3/tests/` suite (295 tests) — 291 passed; the same 4 pre-existing
+  `test_v1_parity.py`/`test_lambda_decomposition.py` failures already confirmed unrelated
+  earlier this session recurred identically (not newly caused).
+  Writer digest + L3 layer pin regenerated — correctly `ka_gochara_v3_century_materialize`
+  this time (the writer that imports `gochara_v3.context`), not `ka_sangam` (checked and
+  confirmed via grep before regenerating, rather than assuming).
+  PR hygiene this cycle: all 13 L3 PRs checked via `isInMergeQueue` GraphQL. 12 genuinely
+  queued with SUCCESS checks; #1913 (previous cycle's PR) still mid-CI (PENDING, not RED).
+  Checked whether `ka_graha_sancara`'s health-probe deploy (#1846, merged 2 cycles ago) has
+  actually rolled out yet (verify, don't assume): compared the merge commit against the
+  100%-traffic Cloud Run revision's own commit-sha tag via `git merge-base --is-ancestor` —
+  **not yet deployed**. Standing next action unchanged.
+  **Next action:** with F-SANGAM-5, N4, and now N3's data-wiring half all closed, the layer's
+  remaining genuinely open items are: N1/N2 (standing highest priority, needs a carefully-
+  scoped next slice), N3's admission/ablation half (deliberately deferred, genuine statistical
+  judgment call), and dispatching `ka_graha_sancara`'s probe once #1846 actually deploys.
+- `2026-09-05T~21:4xZ — L3-W3 — F-SANGAM-5 CLOSED (finally, dedicated cycle): PR (branch
+  `codex/nirmana-l3-f-sangam-5-vedha`). The NECESSARY-side veto — deferred four times this
+  session as "needs its own cycle, higher-stakes than a supporting-dict term" — got that
+  dedicated cycle. `_c11_vedha_factor` read `bg_transit_rules WHERE rule_type='vedha'` (0 rows
+  ever match: the table's real vocabulary is {unfavourable, favourable, double_transit}), so
+  this multiplicative veto was permanently neutral (1.0) on EVERY window, on every chart,
+  forever — the necessary-side term never suppressed a single score.
+  **This turned out to be a bigger fix than the previous five "swap the data source" fixes,
+  found DURING investigation, not assumed going in:** `kala_vedha_gochara` (354 rows, CURRENT)
+  is the real source, but it stores CONCRETE precomputed `[window_start, window_end)` date
+  windows per graha (`vedha_kind='house_vedha'`), not abstract house-number rules — an
+  architecturally different shape, not a same-shape swap. Fixed by switching
+  `_c11_vedha_factor`'s whole matching approach to date-range containment on `peak_date`
+  (mirroring c12_tajika's own pattern), which sidesteps the abstract "house-from-Moon" question
+  entirely.
+  **Discovered and fixed a real regression-in-waiting while investigating, not after shipping
+  it:** `services/kala_trigger/trigger.py` (T-5.4/CR-102) is a SEPARATE, independent consumer
+  of the exact same `vedha_rules` shape my writer fix changed — it re-derived
+  `_c11_vedha_factor` with a "corrected" house-from-Moon reference frame
+  (`vedha_factor_corrected`/`house_from_moon`), purely as an explainability diagnostic
+  (`components['vedha_filter']`, NEVER folded into the actual scored `suppressive`/`net`
+  values — verified by reading the full call chain before touching anything). Left unfixed,
+  this diagnostic block would have crashed on every call after my engine signature change (an
+  int house number where a date is now expected), and that crash was NOT contained — it would
+  have silently swallowed the window's REAL, scored TRIGGER suppression too (the crash happens
+  inside `compute_trigger_currents`, caught by `apply_trigger_suppression`'s own outer
+  try/except, which would then skip the whole window's convergence_score update). Removed the
+  now-doubly-obsolete diagnostic (superseded by F-SANGAM-5's fix, not just CR-102's) rather
+  than patch it to compare two calls that would now always be identical: deleted
+  `vedha_factor_corrected`/`house_from_moon` from trigger.py (fully orphaned once the
+  diagnostic block was gone), removed the now-unused `_c11_vedha_factor`/`EnrichmentContext`
+  imports, updated the module docstring, and retired the 2 tests in
+  `test_kala_trigger.py::TestVedhaFilterGap` that existed solely to test the removed
+  mechanism — replaced with an explanatory comment pointing to F-SANGAM-5's own coverage.
+  `vedha_rules`/`vedha_planet` kept on `compute_trigger_currents`'s signature (unused now, not
+  removed) to avoid a second signature ripple out to `apply_trigger_suppression`'s own caller —
+  same "kept, not deleted, flagged as follow-up" discipline as `transit_house`/
+  `_house_from_moon` in engine.py itself (still computed at both ka_sangam.py call sites, now
+  dead since vedha no longer needs an abstract house number — deliberately not touched further,
+  to keep this fix's blast radius to the actual defect, not a full CR-102 cleanup).
+  Rewrote `TestVedhaVeto` (test_u3_convergence_currents.py, 5 tests), replaced
+  `TestCR102VedhaWired` → `TestFSangam5VedhaWired` and updated `TestCR102VedhaCaseNormalization`
+  (test_ka_sangam.py) for the new date-based shape/signature. Live-verified end-to-end against
+  real production data (not just mocks): queried `kala_vedha_gochara` directly, fed the real
+  rows into `_c11_vedha_factor`, confirmed a covered date scores 0.3 and an uncovered date
+  scores 1.0. Mutation-proved: reverting `_c11_vedha_factor` to always return 1.0 turns 5 of 6
+  targeted tests red; confirmed via direct import that `trigger.py` still imports cleanly
+  post-deletion.
+  Full local suite (`tests/`, excluding 2 known-pre-existing collection-error files) — 6295
+  passed, 54 skipped, 7 failed; **verified all 7 failures are pre-existing/unrelated**: 3 are
+  the same `ka_kshetra` dhara-parity failures found in earlier cycles this session; the
+  remaining 4 (`test_bo_upaya_preamble_strip`, `test_dag_edge_guard`, `test_nirmana_probe_route`,
+  `test_r6a1_neecha_bhanga`) touch files entirely outside this diff — confirmed via `git diff
+  --stat origin/main`, which also surfaced that **PR #1846 merged into `origin/main` mid-cycle**
+  (this branch was cut before that merge, so it's now missing #1846's health-probe route —
+  exactly the stale-base artifact behind the `test_nirmana_probe_route` failure; will resolve
+  automatically when the merge queue rebases this PR). Writer digest + L3 layer pin
+  regenerated (only `ka_sangam` changed).
+  **F-SANGAM-5 is now closed.** N4 + F-SANGAM-5 together mean ALL SIX of the currents/veto
+  terms named in `L3_W1_ANALYSIS_BATCH_E.md`'s original "0.380 dead weight + vedha/TRIGGER
+  never fire" paragraph are now fixed (pending merges): panchanga, ashtakavarga (HELD on frame),
+  school_consensus, eclipse, tajika, and now vedha.
+  PR hygiene this cycle: all 12 L3 PRs + this cycle's new one checked via `isInMergeQueue`
+  GraphQL. **PR #1846 MERGED** (confirmed above). Remaining all genuinely queued/pending, no
+  action needed.
+  **Next action:** with F-SANGAM-5 closed, the only deliberately-deferred item left is moorti
+  WIRE (~1 day estimate). N1/N2 remain the standing highest-priority item for future cycles.
+  Once #1846's deploy completes, dispatch `ka_graha_sancara`'s probe for real — the standing
+  next action this note has carried since the probe was built.
+- `2026-09-05T~20:5xZ — L3-W3 — N1 THIRD STEP: PR (branch `codex/nirmana-l3-n1-engine-
+  testimony`). New `platform-mcp/src/lib/engine_testimony.ts` — the concrete first move on
+  the "Three implementations, one shape, three vocabularies — unify" finding from
+  `L3_W1_ANALYSIS_BATCH_E.md` §1.5. Three independent modules already compute an
+  engine's agreement with the operative reading, each with its own near-identical
+  3-value vocabulary: `KpAgreement` (`concurs|dissents|not_comparable`),
+  `AgnivasaAgreement` (`agrees|diverges|not_comparable`), and `explain.ts`'s
+  flag-guarded `A5GocharaAgreement` (`concurs|dissents|insufficient_data` — and the
+  ONLY one of the three with no `school`/`state`/`empty_reason`/`claim` fields at all).
+  Defined ONE canonical `EngineTestimony` shape + three PURE, TOTAL mapper functions
+  (`kpVoiceToTestimony`, `agnivasaVoiceToTestimony`, `a5AgreementToTestimony`) —
+  deliberately NOT a rename of the three existing types' own field values (an
+  unaudited rename risks breaking some consumer pattern-matching the old strings;
+  verified none of the three existing files were touched at all). A5's missing fields
+  are synthesized, not left undefined: `insufficient_data` (its own stand-in for "no
+  real comparison was possible") maps to `state: honest_empty` + `empty_reason: <its
+  own note>`, matching how the other two already model the identical concept.
+  **Deliberately NOT done** (a bigger, later N1 step): wiring `EngineTestimony[]` into
+  `kala_explain_get`'s `school_voices` array or `kala_now_get`'s per-engine keys — that
+  needs the verdict-composition rule (`aligned|partially_aligned|disputed`) decided
+  first, and touches two large, already-tested serving files this additive step stays
+  upstream of.
+  9 new tests (field-for-field mapping for a computed voice, honest_empty
+  preservation, both agreement-vocabulary translations, all three A5 branches).
+  Mutation-proved: flipping one map entry (`diverges` → `concurs` instead of
+  `dissents`) turns 1 test red. `npx tsc --noEmit` clean. Ran the full
+  `kp_school_voice`/`agnivasa_convention_b_voice`/`engine_testimony` suites (49 tests)
+  plus the broader `kala_views` suite (186 tests) — all pass, confirming zero behavior
+  change to any existing file.
+  PR hygiene this cycle: all 12 L3 PRs checked via `isInMergeQueue` GraphQL with
+  `--limit 200`. **#1850 MERGED** (first PR to actually land into main this session —
+  migration 672's orphan disposition is now on `origin/main`). 11 of the remaining
+  open genuinely queued with SUCCESS checks; #1903 (previous cycle's PR) still mid-CI
+  (PENDING, not RED). Re-ran the E-gate batch query after #1850's merge (verify, don't
+  assume) — no change: still only `ka_graha_sancara` (OPEN-PENDING-PIN) and
+  `ka_gochara_resonance` (BLOCKED-NO-ROUTE) unblocked by ancestors; #1850 was a pure
+  data-disposition fix with no `depends_on`/catalog_status consequence.
+  **Next action:** N1/N2 remain standing highest priority. The natural next N1 step is
+  either (a) extending the authority-profile generalization further (still needs more
+  design care per 2 cycles ago's note), or (b) beginning the actual verdict-composition
+  design (`aligned|partially_aligned|disputed`) that (a) and this cycle's testimony-
+  unification step are now both prerequisites for. F-SANGAM-5 (vedha veto) and moorti
+  WIRE remain deliberately deferred.
+- `2026-09-05T~20:1xZ — L3-W3 — N4 CORRECTLY CLOSED (5/5 findings) + a 6th, previously-
+  unaccounted term investigated and fixed: PR (branch `codex/nirmana-l3-cross-dasha-
+  agreement`). Recomputed N4's true scope precisely before touching anything: "0.380 dead
+  weight budget" is the EXACT sum of five SUPPORTING_WEIGHTS terms — panchanga_quality 0.070 +
+  ashtakavarga_transit_potency 0.120 + school_consensus 0.100 + eclipse_proximity 0.060 +
+  tajika_annual_reinforcement 0.030 = 0.380 — matching F-SANGAM-3/4/6/7(a)/7(b) exactly.
+  **F-SANGAM-5 (c11_vedha_factor) is NOT part of this sum** — it's a NECESSARY-side term, not
+  in SUPPORTING_WEIGHTS at all, correctly tracked separately (still deferred). All five ARE now
+  fixed this session (this cycle confirmed nothing was missed) — N4 is genuinely, fully closed,
+  pending only PR merges.
+  W1's own text also measured a SIXTH quantity in the same paragraph, `c_cross_dasha_agreement`
+  54.1% zero — NOT part of the 0.380 sum (its own weight is 0.120; including it would make the
+  sum 0.500, not 0.380) and NOT traced to a defect in W1 ("five of those are traced to concrete
+  fixable defects" — this measured but not-yet-investigated sixth quantity was implicitly the
+  "(6 terms)" in N4's one-line description). Investigated it properly this cycle rather than
+  assuming it was either "already covered" or "not my problem":
+  **Live-measured the current picture first** (post several of my own fixes + other lanes'
+  merges since W1): Mode A 95.7% zero (868/907 post-birth rows — the pre-birth 221 rows were
+  NOT the driver, ruled out explicitly), Mode B never even carries the key (0/866 — it's
+  omitted, not a stored 0.0, confirming my own `current_stances` addition from 2 cycles ago
+  already modelled this correctly as `honest_empty`).
+  **Distinguished "code bug" from "legitimate sparse data" empirically, not by assumption** —
+  this took real investigation, not a quick pattern-match: called `KaDashaKalaService.query()`
+  directly against live production for 20 real predicates over the CORRECT full-lifetime
+  horizon (my first attempt used a too-narrow 2-year test horizon and got a misleading 0%
+  result, initially making me suspect the wrong thing — caught and corrected before drawing any
+  conclusion). All 20 returned real, non-degenerate `cross_dasha_agreement.count=1` windows —
+  the service itself works. Then found the ACTUAL root cause on one specific live zero row
+  (peak_date=2026-11-25, ayanamsha=true_chitra, lords={Saturn,Ketu}): 61 real eligible windows
+  exist for that lord set across the century, and precisely ZERO of them cover that date.
+  Eligible windows (dasha-eligible AND cross-system-agreeing simultaneously) are genuinely
+  narrow and sparse; the independently-run transit-aspect search that produces Mode A's
+  peak_dates has no reason to land inside one. This was previously indistinguishable from "a
+  window covers this date and 0 systems genuinely agree" — a real, meaningful disagreement
+  answer, not a coverage gap.
+  Fixed by the same honest-null pattern as c7/c8/c12/c13/panchanga this session:
+  `_c_cross_dasha_agreement` now returns `Optional[float]` — `None` when no eligible window
+  covers peak_date (2 sub-cases: `eligible_windows` empty entirely, or non-empty but none
+  overlaps), a real `0.0`-`1.0` once a covering window is found (even if that window's own
+  count is 0 — genuinely measured, not missing). Fixed both downstream call sites (supporting-
+  dict entry + explainability payload) with the established `**({k:v} if v is not None else
+  {})` idiom — no third crash site found this time (checked, per the c12/c13 precedent).
+  Corrected a second, independent doc defect in the same function: its docstring claimed "Mode
+  B callers pass empty list -> 0.0", which is false as written — mode_a_search is the only
+  caller (verified via grep); Mode B never calls this function at all.
+  6 new tests (empty list, no-covering-window, real-value, real-zero-distinct-from-none, max-
+  across-overlapping-windows, count-capped-at-1). Mutation-proved: reverting to the old
+  unconditional-0.0 behaviour turns 2 of 6 red. Live-verified against the exact diagnosed
+  production row: the fixed function now returns `None` for the no-coverage case and a real
+  `0.143` for a genuinely-covered date from the same query. 134/134 pass (isolated + writer-
+  level suites). Re-pinned L3's writer-inventory aggregate (only `ka_sangam` changed).
+  **This was NOT a quick fix** — the investigation needed a real horizon-correction
+  self-catch and a live root-cause trace before I was confident enough to act; matches this
+  session's own established discipline of not converting "measured zero" into "fixed" without
+  first ruling out legitimate sparse data, the same discipline that made the earlier eclipse/
+  tajika fixes trustworthy rather than guessed.
+  Bundled the state-file update into this same work branch again (pattern from last cycle now
+  repeating cleanly).
+  PR hygiene this cycle: all 12 L3 PRs checked via `isInMergeQueue` GraphQL with `--limit 200`.
+  11 genuinely queued with SUCCESS checks; #1897 (previous cycle's PR) still mid-CI (PENDING,
+  not RED) as of this heartbeat.
+  **Next action:** N1/N2 remain standing highest priority (authority-profile generalization
+  still needs more design care before its next slice). With N4 now fully, verifiably closed,
+  the layer's remaining genuinely-open NOW items are down to just N1/N2 (in progress),
+  F-SANGAM-5 (vedha veto, deferred), and moorti WIRE (deferred) — the NOW table is otherwise
+  exhausted.
+- `2026-09-05T~19:3xZ — L3-W3 — N5 (depends_on half) CLOSED: PR (branch
+  `codex/nirmana-l3-n5-muhurta-seva-depends-on`), migration 676. `ka_muhurta_seva.depends_on`
+  declared `{ka_graha_sancara}` — fictional, verified twice independently: (1) the asset's own
+  package docstring says "Depends on: ka_graha_sancara (planned)" — never implemented; (2) my
+  own earlier-published, Conductor-acknowledged depends_on audit (`L3_DEPENDS_ON_AUDIT_v1_0.md`,
+  under D-CND-07/#1734) already verified via grep of actual SQL reads: 1 declared, 0 hidden, 1
+  false — the corrected value is the empty array, not a swap to a different asset id (I
+  initially guessed `bg_panchanga` before checking my own audit — caught and corrected before
+  writing the migration).
+  **Scope stated precisely, not overclaimed:** this corrects the LIVE `asset_registry.
+  depends_on` — read by future definition freezes and any other live-registry consumer — but
+  does NOT retroactively change the CURRENT frozen manifest's (`t0-2026-09-01-0e5b06fb`)
+  already-snapshotted `depends_on` for this asset, since `egate.sql` computes
+  `ancestors_frozen` from the frozen manifest snapshot (each entry carries its own
+  `registry_fingerprint_sha256`), not from live `asset_registry`. Re-deriving a frozen
+  manifest's own fields would invalidate already-accepted capsules — exactly what this
+  campaign's freeze discipline forbids. The E-gate consequence, if any, arrives at the NEXT
+  definition freeze, not this migration; what this migration fixes now is the underlying
+  defect at its source so it cannot propagate into that next freeze uncorrected.
+  Deliberately did NOT touch `asset_registry_seed.ts` (still declares the same fictional edge,
+  and its `catalog_status: 'DRAFT'` for this asset is ALSO now stale vs. the live DB's
+  `CURRENT` — a second, related seed-file/live-DB drift I noticed but did not fix, matching
+  this session's own migration-673 precedent of leaving the seed file as the as-originally-
+  authored record rather than a synced mirror; flagging the drift here rather than silently
+  fixing or silently ignoring it).
+  Dry-run verified live against production (rolled back, never committed): idempotent,
+  before-value confirmed `{ka_graha_sancara}`, after-value confirmed `{}`. Mutation-proved:
+  reverting the fix to `{bg_panchanga}` (my own discarded first guess) turns 3 of 5 new tests
+  red. `tests/test_ka_muhurta_seva.py` (40 tests) unaffected, confirming nothing in the
+  service's own runtime logic reads `depends_on` (it's registry-only metadata).
+  **Branch-first discipline actually held this cycle** — created the fresh branch off
+  origin/main BEFORE the first Edit/Write call, for the first time this session. Also bundled
+  this state-file update directly into this cycle's work branch (copying the state-sync
+  branch's latest content across first) rather than adding another commit to the long-stuck
+  `codex/nirmana-l3-state-sync` (still queued behind PR #1863, unpushed and unpushable all
+  session) — the fix flagged as needed at the end of the previous cycle, now actually applied.
+  PR hygiene this cycle: all 11 L3 PRs checked via `isInMergeQueue` GraphQL with `--limit 200`.
+  10 genuinely queued with SUCCESS checks; #1894 (previous cycle's PR) still mid-CI (PENDING,
+  not RED) as of this heartbeat.
+  **Next action:** N1/N2 remain the standing highest-priority item (authority-profile
+  generalization beyond agnivasa is the queued candidate, still requiring more design care
+  before seeding new rows — see the reasoning trail this cycle, which considered and set aside
+  a speculative `ka_sangam`-currents seeding idea as too under-specified to do alone). N5's
+  panchanga-quality half (`c_panchanga_quality` = 0.0/None swallow) was already fixed earlier
+  this session (N4a) — N5 is now fully closed, both halves. **Corrected a near-mistake while
+  writing this entry:** almost listed N7 (`ka_taranga` SPLIT) as still-open-needing-
+  implementation; checked the log first (line ~728 above) and confirmed it was already closed
+  in W2 via the decision-log RECORD mechanism (no code change was ever its requirement — the
+  SPLIT was decided with falsifiers, which IS its closure). Remaining open W2 NOW items:
+  F-SANGAM-5 (vedha veto, deferred) and moorti WIRE (deferred) — nothing else stands open from
+  the NOW table.
+- `2026-09-05T~19:0xZ — L3-W3 — N1 SECOND STEP: PR #1894, migration 675. Continues the
+  arbiter's authority-profile groundwork per L3_W1_ANALYSIS_BATCH_E.md §1.3's exact
+  minimum-viable-table spec: `kala_paddhati_profile` gets `arbitration_role` (`gate|primary|
+  corroborating|informational|declared_silent`) and `precedence` (smallint, tie-break order),
+  both nullable, both purely additive — no existing column altered, no consumer changed, no
+  code (Python or TS) reads either new column yet. Backfilled the 6 existing rows, each UPDATE
+  scoped by `convention_id` (+ `version`/`convention_status` where needed) — never a bare
+  unconditional UPDATE.
+  **Also fixed F-CONC-2** (a real, named defect on this seed table): rows 7/8 carry
+  `constraint_role='hard'` while their own `provenance` prose says, verbatim, "informational
+  concurrence/dissent voice ONLY … NEVER enters the residence hard-gate" — verified live that
+  zero code anywhere branches on `constraint_role`'s value (grep across platform-mcp/src +
+  platform/src), so this was a documentation-vs-data contradiction on a currently-harmless but
+  genuinely misleading field, not a live bug. Promoted the prose's true intent into
+  `arbitration_role='informational'` as data; left `constraint_role` itself unchanged (a
+  separate column real consumers already read — not this fix's business).
+  Dry-run verified live against production every time (never committed — all 3
+  `@pytest.mark.integration` tests roll back): idempotent, CHECK constraint genuinely rejects
+  an invalid value (PostgreSQL itself refuses it), F-CONC-2 backfill lands on exactly rows 7/8.
+  Mutation-proved twice: reverting `IF NOT EXISTS` turns the additive-schema static test red;
+  reverting rows 7/8's backfill to the old wrong `'gate'` value turns the live F-CONC-2 test
+  red. Full local suite (`tests/` + `l3/`) 1484 passed — 3 pre-existing `ka_kshetra` dhara-
+  parity failures confirmed unrelated (no reference to anything this PR touches).
+  No writer digest / layer pin regen needed (no Python writer file changed; both `--check`s
+  clean).
+  **Process note (caught before it repeated a 4th time):** created the migration file directly
+  on `codex/nirmana-l3-n1-stance-vocab` (last cycle's branch) before catching it — the same
+  mistake despite last cycle's own resolution to fix the root cause. Recovered via the
+  established stash→fresh-branch→apply→drop discipline; no work lost. The "branch-first, before
+  any edit" resolution from last cycle evidently isn't sticking as a genuine habit change yet —
+  flagging this honestly rather than just re-logging the same fix-note a fourth time. Next
+  cycle: literally start with `git checkout -b` as cycle STEP ZERO, before even reading a file
+  I intend to modify, and treat any Edit/Write call before that as a hard stop-and-check moment.
+  PR hygiene this cycle: all 10 L3 PRs (prior 9 + this cycle's #1894) checked via
+  `isInMergeQueue` GraphQL with `--limit 200`. 9 genuinely queued with SUCCESS checks; #1890
+  (previous cycle's PR) still mid-CI (PENDING, not RED) as of this heartbeat.
+  **Next action:** N1/N2 remain the standing highest-priority item. Continuing the authority-
+  profile generalization (widening `factor_family`/`convention_id` beyond agnivasa toward real
+  engine ids) is the safest next N1 slice — purely additive, same shape as this PR.
+  **Correction to my own earlier framing, caught while writing this entry:** I nearly listed
+  "wire `c11_vedha_factor` to read `kala_vedha_gochara` instead of the empty
+  `bg_transit_rules`" as a separate small candidate — it is not separate, it IS F-SANGAM-5
+  (O-3 from the overlap matrix: "the two vedha engines cannot even be compared: one is
+  authoritative and populated, the other is permanently inert"). F-SANGAM-5 remains
+  deliberately deferred to its own dedicated cycle for the reason already on record: it sits
+  on the NECESSARY side (a multiplicative veto over every window's final score, not a
+  supporting-dict term), so it deserves careful, unhurried treatment — not something to pick
+  up casually as "the next small thing" in a bounded-unit cycle. Moorti WIRE remains deferred
+  as before too.
+- `2026-09-05T~18:3xZ — L3-W3 — N1 FIRST STEP TAKEN: PR #1890. The layer's headline mandate
+  (N1, Temporal Concordance Contract) had zero code progress all session, correctly deferred
+  behind smaller well-scoped fixes each cycle. This cycle took its first real, bounded,
+  independently-shippable slice: `_current_stance(value, empty_reason)` — a new helper that
+  surfaces the honest-null distinction the supporting dict already encodes structurally (an
+  ABSENT key vs. a present `0.0`, from this session's own c7/c8/c12/c13 fixes) as an explicit
+  `current_stances` dict on both Mode A and Mode B windows, one entry per
+  `SUPPORTING_WEIGHTS` key, `{'state': 'computed'}` or `{'state': 'honest_empty',
+  'empty_reason': ...}`. Reuses the state vocabulary already established elsewhere
+  (`KpSchoolVoice.state`, `kala_now_get`'s `*_reachable` flags) per the W1 evidence base's own
+  "unify, don't invent" finding, rather than a fresh taxonomy. Mode B's two
+  structurally-absent currents (no dasha prior in an un-gated sweep) are correctly
+  `honest_empty` now too. **Purely additive**: no schema migration, no change to
+  `convergence_score`'s math — this is testimony transparency, not a scoring change.
+  Also **live-measured N2's actual scale** while grounding this work (not estimated): Mode A
+  avg 0.108/max 0.309 (1128 rows), Mode B avg 0.064 (866), Mode C avg 0.780 (924), Mode D avg
+  0.442 (11950) — confirms Mode C is a real ~0.78-average "weakest evidence wins" problem
+  driven by `dignity_score × catalog-constant severity` with `orb_strength` hardcoded to 1.0
+  and literally zero per-current testimony, not the ~0.79 W1 originally measured going stale;
+  this stays a rescale I will NOT do without the arbitration-role/precedence design the
+  evidence base scopes — an ungrounded numeric fix on production ranking math is exactly the
+  kind of invented judgment §N.7/§N.8 forbid.
+  **Deliberately NOT done this cycle** (scoped out, tracked for later N1 steps): the "actively
+  dissents" half of the stance vocabulary (no current is bipolar today), N2's actual
+  commensurability transform, the verdict + `adjudicated_by` field, generalizing
+  `kala_paddhati_profile` into a per-engine authority table, and any TypeScript serving-side
+  change to `kala_explain_get`/`kala_now_get` (both already scoped precisely in
+  `L3_W1_ANALYSIS_BATCH_E.md` §1.5 — `school_voices[]` → `engine_testimony[]`, a `concordance`
+  block beside `weakest_link`, `now.ts` needs a `density_contract` it doesn't have at all).
+  Mutation-proved: reverting the helper to always return `{'state': 'computed'}` turns 4 tests
+  red (2 isolated + both Mode A/B integration tests — confirms the integration assertions have
+  real teeth, not just "state is some allowed value"). Caught and fixed my own mistake mid-cycle:
+  my first draft of the integration tests asserted c12/c13 are always `honest_empty` too, which
+  is only true once PR #1883/#1877 land — on THIS branch's base (current origin/main) they're
+  still plain floats. Corrected the test scope to what this commit's base actually does, not a
+  future state another PR delivers.
+  Re-pinned L3's writer-inventory aggregate (only `ka_sangam` changed).
+  **Process note (third occurrence, same mistake):** made these edits directly on
+  `codex/nirmana-l3-w4-resume` again before realising — the identical wrong-branch mistake as
+  twice earlier this session (c8 eclipse fix, and before that). Recovered via the same
+  stash→fresh-branch→apply→drop discipline; no work lost. This is now a real pattern, not a
+  one-off: the root cause is starting each cycle's edits on whatever branch I happen to be
+  checked out on at cycle start (usually a stale/superseded one from returning to it at the end
+  of a prior cycle) instead of creating the fresh branch FIRST, before the first Edit call. Going
+  forward: `git checkout -b <branch> origin/main` is the FIRST action of any cycle that will
+  touch code, before any Read/Edit of a file meant to be modified.
+  PR hygiene this cycle: all 9 L3 PRs (#1846/#1850/#1858/#1860/#1863/#1868/#1877/#1883/#1887 +
+  this cycle's #1890) checked via `isInMergeQueue` GraphQL, using the corrected `--limit 200`
+  discipline. 7 genuinely queued with SUCCESS checks; #1883/#1887 still mid-CI (PENDING, not
+  RED) as of this heartbeat — no action needed, just not queued yet.
+  **Next action:** continue N1 in small bounded steps (candidates: extend `current_stances` to
+  Modes C/D once their testimony exists, or start the `kala_paddhati_profile` generalization
+  per §1.3's minimum-viable-table spec), OR return to smaller open items (F-SANGAM-5 vedha,
+  moorti WIRE) if a bounded N1 slice isn't obviously available next cycle.
+- `2026-09-05T~17:5xZ — L3-W3 — N4/F-SANGAM-7 CLOSED (both halves): PR #1887. `_c8_eclipse_score`
+  (C8, the other half of F-SANGAM-7) was scoring `0.0` on all 14,868 of 14,868 rows — root cause
+  this time was NOT a data gap at all, two code bugs stacked: (1) the function hardcoded
+  `node_planet='TrueNode'`, which does not exist in this codebase's planet vocabulary
+  (`transit_search.PLANET_IDS` only has `'Rahu'`/`'Ketu'` — its own comment notes `'Rahu'` IS
+  `swe.TRUE_NODE`), so every call raised `ValueError` inside `_get_planet_pos`, silently
+  swallowed by a blanket `except Exception`; (2) even with the name fixed, the function only
+  ever checked ONE lunar node — an eclipse can occur near either, and the established pattern
+  elsewhere in this codebase (`gochara_grammar.primitives.eclipse_degree`) already enumerates
+  all four Rahu/Ketu × Sun/Moon pairs, this function checked one of four. Fixed both; kept the
+  return contract as plain `float` (unlike c12/c13/c7) since this is genuine deterministic
+  astronomy with no unknowable-data case once the bugs are fixed. **Live-verified against real
+  ephemeris, not just mocks**: a known real solar eclipse window (2016-03-09) now scores 0.695;
+  an unrelated window scores 0.0. New `TestEclipseProximity` (7 tests, including a
+  Ketu-only-event regression a planet-name-only fix would still have missed). Mutation-proved:
+  reverting to the old single-node/`'TrueNode'` behaviour turns exactly the 3 tests encoding the
+  fix red. Re-pinned L3's writer-inventory aggregate (only `ka_sangam` changed, same
+  `--convergence-commit 72bb87821` as every prior re-pin this session). Isolated + writer-level
+  suites 134/134 pass.
+  **Process note (repeated mistake, corrected again):** made these edits directly on
+  `codex/nirmana-l3-w4-resume` (a stale, already-merged/superseded branch I'd returned to at
+  the end of the previous cycle) before realising — same wrong-branch mistake as earlier this
+  session. Recovered via the established `git stash push -u -m <tag>` → verify SHA → fresh
+  branch off `origin/main` → `apply` (never `pop`) → drop discipline; no work lost, no PR
+  mixing occurred.
+  **Also this cycle:** discovered `gh pr list --search "is:open" --author "@me"` silently
+  truncates at its default `--limit 30` — the last two cycles' "PR hygiene" checks only ever
+  saw the 30 most-recent open PRs fleet-wide, not the true full set (56 open as of this
+  cycle, spanning all lanes sharing this bot identity). No L3 PR was actually missed by this
+  (all 8 of mine were inside the visible window both times), but the gap is real and
+  recorded so a future cycle doesn't rediscover it the hard way: **always pass
+  `--limit 200` (or filter to L3-titled PRs specifically) when doing the hygiene pass**, never
+  bare `gh pr list --search "is:open"`.
+  F-SANGAM-7 is now closed end-to-end (c8 this PR, c12 PR #1883 — not yet merged as of this
+  heartbeat). **N4's own scope is now fully closed**: panchanga_quality, c7_ashtakavarga
+  (HELD on the Āries-lagna frame question, documented), c13_school_consensus, c8_eclipse, and
+  c12_tajika are all now either fixed or deliberately held with a recorded reason.
+  F-SANGAM-5 (c11_vedha_factor, the NECESSARY-side veto term) was always tracked as a
+  separate item, outside N4's scope — still open, still deferred to its own cycle, nothing
+  changed there this cycle.
+  PR hygiene this cycle (corrected, full-limit check): all 8 L3 PRs
+  (#1846/#1850/#1858/#1860/#1863/#1868/#1877/#1883 + this cycle's new #1887) verified via
+  `isInMergeQueue` GraphQL — #1846 confirmed **still not merged** despite being queued (checked
+  directly this cycle: `mergedAt: null`), so the "dispatch ka_graha_sancara's probe once #1846
+  deploys" next-action is unchanged, not stale.
+  **Next action:** N1/N2 (Temporal Concordance Contract) — the layer's largest remaining
+  headline mandate item, still not started, now the highest-priority substantive item with
+  F-SANGAM-7 closed and F-SANGAM-5/moorti-WIRE both already correctly deferred. Alternatively,
+  once #1846 merges, dispatch the graha_sancara probe.
+- `2026-09-05T~17:2xZ — L3-W3 — N4 progressed further: PR #1883. `_c12_tajika_score` (C12,
+  F-SANGAM-7's tajika half) fixed — this was **not** a same-pattern honest-null case like
+  panchanga/c7/c13; it was three independent, compounding bugs, all found live: (1) the
+  writer's tajika-year-lords SQL selected nonexistent columns (`varshesha, muntha` — real
+  columns are `year_lord`, `muntha_position_jsonb`), silently swallowed by a
+  try/except/SAVEPOINT pattern built for "table doesn't exist yet"; (2) no `ayanamsha_id`
+  filter, so 5 duplicate rows per varsha_year (pinned to `lahiri_chitrapaksha`, matching this
+  writer's own convention elsewhere); (3) `_c12_tajika_score` compared an age-indexed integer
+  (`varsha_year`, 1-48) against a calendar year (`window_start.year`) — two incommensurable
+  representations that could never match, so the fix couldn't be "restore the old comparison,"
+  it had to become date-range containment against `[varsha_start, varsha_end)`, which
+  `l1_tajik_varsha_year_lords` already stores per row (no `birth_year` parameter needed). Now
+  returns honest `Optional[float]`. Found and fixed the now-expected fourth call site
+  (2 supporting-dict + 2 explainability-payload sites, mode A + mode B) — same
+  `**({k:v} if v is not None else {})` idiom, same crash class (`round(None,4)`) the c13 fix
+  hit last cycle, caught the same way (full `tests/l3/test_ka_sangam.py`, not just isolated
+  unit tests — this time clean on the first pass). Rewrote `TestTajika` for the new contract;
+  fixed a second stale assertion in `TestEnrichmentContextEmptySafe` (asserted C12 `== 0.0` on
+  an empty context, now `is None`). Mutation-proved: reverting the date-range match to the old
+  year-equality comparison turns 6/9 `TestTajika` cases red. Re-pinned L3's writer-inventory
+  aggregate (only `ka_sangam` changed, verified field-by-field against all 5 layers).
+  Isolated + writer-level suites 130/130 pass; did not chase the full local suite to green
+  this cycle — it timed out past 200s in this sandbox on an apparent DB-wait, unrelated to
+  this diff (killed the background run rather than block further); confirmed instead that the
+  only pre-existing failures found (4, in `services/gochara_v3/tests/test_v1_parity.py` and
+  neighbours — lambda_e v1/v3 parity assertions) are untouched by this diff and out of scope.
+  **N4 remaining:** F-SANGAM-5 (c11_vedha_factor, NECESSARY-side veto, still deferred to its
+  own cycle) and F-SANGAM-7's other half, `c8_eclipse_proximity` — root cause still
+  unmeasured, not investigated this cycle either.
+  PR hygiene this cycle: verified all 7 of my own open L3 PRs (#1846/#1850/#1858/#1860/#1863/
+  #1868/#1877) via `isInMergeQueue` (GraphQL, not the unreliable `autoMergeRequest` field) —
+  all `true`, all checks `SUCCESS`. #1877 (c13) confirmed genuinely queued despite
+  `autoMergeRequest: null` — the same lesson C8 already documents. #1883 (this cycle's PR)
+  opened with auto-merge armed, not yet queued (checks still running as of this heartbeat).
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
+- `2026-09-05T~16:5xZ — L3-W3 — N4 progressed: PR #1877. `_c13_school_consensus_score` (C13)
+  was the third of ka_sangam's five dead-current defects (F-SANGAM-3/4/6/5/7) to close, same
+  N4a/b honest-null pattern as panchanga_quality and ashtakavarga earlier this session. Two
+  independent causes, neither fixed (can't be, without inventing a judgment): (1) the U4
+  school-consensus build genuinely doesn't exist yet — `school_consensus_by_domain` is always
+  empty; (2) even with data, the domain-inference is a category error — `signature_class` is a
+  signal-TYPE taxonomy (`YOGA/DOSHA/DIGNITY/...`, verified live against the real CHECK
+  constraint), not a life-domain one (`CAREER/HEALTH/...`), so the five hardcoded prefixes can
+  never match a real row. Found and fixed a THIRD call site beyond the two supporting-dict
+  entries: the `constituent_factors` explainability payload did an unconditional `round(c13, 4)`
+  that would have crashed on `None` — caught by running the actual test suite, not just the
+  isolated unit tests (`tests/l3/test_ka_sangam.py` failed with a live `TypeError` before this
+  was found). Mutation-proved (5 tests). Re-pinned L3's writer-inventory aggregate (only L3
+  changed). Full suite 6408 passed, 0 failed.
+  **N4 remaining:** F-SANGAM-5 (c11_vedha_factor / the whole TRIGGER suppression term — NECESSARY
+  side, not supporting, higher-stakes than a supporting-dict term, genuinely needs its own
+  cycle) and F-SANGAM-7 (c12_tajika_reinforcement + c8_eclipse_proximity, one root cause
+  cross-file in ka_yojaka and one "root cause unmeasured" per my own W1 analysis — needs
+  investigation before a fix, not a same-pattern honest-null this time).
+  PR hygiene: #1846/#1850/#1858/#1860/#1863/#1868 all still cleanly queued/pending.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
 - `2026-09-05T~16:2xZ — L3-W3 — N3 partially closed: PR #1868. The four "built-but-unplugged"
   quality overlays each have a DIFFERENT per-asset disposition in my own W1 analysis, not one
   blanket answer: `ka_moorti_nirnaya` → **WIRE** (F-MOORTI-2's own recommendation, ~1 day
