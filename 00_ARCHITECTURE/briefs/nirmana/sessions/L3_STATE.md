@@ -440,6 +440,8 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~07:2xZ — L3-W3 — resumed after lane death; §R1 stock-take posted; #1770 answered (all five re-runnable) then CORRECTED upward (3,708 L4 rows, not 188); C13 blast-radius 23/23 published; two no-FK dispositions; MSR re-run sequenced and priced; N4a panchanga honest-null landed — blocked on: nothing, W3 continues.`
+
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
 - `2026-09-05T…Z — L3-W3 — 7 MUSTs landed (M3,M4,M5,M7,M8,M9,M11), each mutation-proved; depends_on audit published (36 hidden / 17 false edges) with a correction to my own earlier claim to the Conductor; verified L2's cascade finding against my own tables (710,899 rows) and committed to hold; 16/19 integrity contracts authored.`

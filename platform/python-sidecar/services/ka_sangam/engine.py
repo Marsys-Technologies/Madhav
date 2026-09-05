@@ -99,7 +99,7 @@ def _c7_ashtakavarga_potency(
     planet: str,
     transit_sign: Optional[int],
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C7: ashtakavarga_transit_potency — does the transit DELIVER?
     Bindus ≥ 5 → strong (→ 1.0 scaled linearly). ≤ 2 → weak (→ 0.0).
@@ -107,10 +107,30 @@ def _c7_ashtakavarga_potency(
     Classical source: Parāśara, Ashtakavarga adhyāya.
     """
     if not ctx.ashtakavarga_bindu or transit_sign is None:
-        return 0.0
-    sign_map = ctx.ashtakavarga_bindu.get(planet, {})
-    bindus = sign_map.get(transit_sign, 0)
-    return min(1.0, bindus / 8.0)
+        return None
+
+    # NIRMĀṆA L3-W3 (§N.8). This lookup has NEVER matched: `ctx.ashtakavarga_bindu` is keyed by
+    # the stored L1 vocabulary — JUP / MAR / MER / MOON / SAT / SUN / VEN / SARVA — while `planet`
+    # arrives Title-case from `_resolve_transit_planet` ("Jupiter"). So `sign_map` is always {},
+    # bindus always 0, and the term has been 0.0 on **4,729 of 4,729** rows carrying the key.
+    #
+    # The vocabulary half is fixable here via the L0 SSoT. The SECOND half is NOT, and is why this
+    # returns an honest None rather than a repaired number:
+    #
+    #   the stored facts are keyed `<GRAHA>-HOUSE_<N>`, and this function looks up by
+    #   `transit_sign` (1-12 rāśi). HOUSE and SIGN are different frames. Classical ashtakavarga
+    #   counts bindus per RĀŚI, which suggests the lookup is right and the fact label is a
+    #   misnomer — but that is an inference about an L1 fact's meaning, not a fact.
+    #
+    # **Both canonical charts have Āries lagna**, where house N ≡ sign N, so the two frames are
+    # indistinguishable on every chart this campaign builds. A vocabulary-only fix would therefore
+    # look perfectly correct here and be silently wrong for any non-Āries-lagna chart. Guessing the
+    # frame to make a number appear is precisely the invented judgment §N.7 item 6 forbids.
+    #
+    # Held pending the frame adjudication. Until then the term is DROPPED, not scored zero —
+    # `sup.get(key, 0.0)` in the saturating combiner makes an absent key contribute nothing, which
+    # is arithmetically what it has always done, but now says so.
+    return None
 
 
 def _c8_eclipse_score(
@@ -1069,7 +1089,7 @@ def mode_a_search(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
-            'ashtakavarga_transit_potency': c7,
+            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        c_cross,
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
@@ -1105,7 +1125,10 @@ def mode_a_search(
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
                 # U3 per-current breakdown (§3.5 — explainability)
-                'c7_ashtakavarga_potency': round(c7, 4),
+                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
+                   {'c7_ashtakavarga_potency_unavailable':
+                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
+                    'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
@@ -1252,7 +1275,7 @@ def mode_b_sweep(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
-            'ashtakavarga_transit_potency': c7,
+            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
@@ -1287,7 +1310,10 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
-                'c7_ashtakavarga_potency': round(c7, 4),
+                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
+                   {'c7_ashtakavarga_potency_unavailable':
+                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
+                    'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
