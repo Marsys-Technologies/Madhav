@@ -1514,3 +1514,33 @@ DATABASE_URL; L2 capability landings unchanged via a git-only check; no new adju
 addressed to L4) → next: retry the E-gate check and the `ph_nimitta` dispatch dry-run once DB
 access returns; watch `#1885` for its actual merge; F1 remains deferred.
 
+`2026-09-06T~05:30Z` — L4 — **CYCLE 10 (v2.3) — another genuine IDLE cycle; DB access still
+down. One real check worth recording: ruled out a repeat of the `#1838` head-of-queue jam
+before assuming one.**
+
+**PR hygiene**: same 6 PRs `is:queued` misses but `mergeQueueEntry`-confirmed queued, positions
+completely unchanged from last cycle (identical entry ids and positions — `main` genuinely
+hasn't advanced this cycle either). `#1842`/`#1885` still `BLOCKED`/no queue entry, checks still
+`IN_PROGRESS` ~10 min after last update — plausible, not yet stale.
+
+**Checked whether the queue had jammed again** (position-1 entry `#1843`, `AWAITING_CHECKS`,
+`createdAt == updatedAt` — the exact `#1838` shape) before reporting it as a repeat: queried
+`mergeQueueEntry.estimatedTimeToMerge` via GraphQL (a field not used in earlier cycles) — it
+reads `650` seconds (~11 min), a live, non-trivial estimate GitHub's own queue engine would not
+compute for a truly dead entry. This is real evidence AGAINST a repeat jam, not just an absence
+of evidence for one — did not escalate on the strength of one superficially-matching symptom
+(`createdAt == updatedAt`) the way `#1838` genuinely warranted after 3 cycles of confirmed zero
+movement. Correctly held off rather than cry wolf on a shallower read of the same pattern.
+
+**Priorities 1-4, re-checked not assumed**: `postgres` MCP tool still absent (`ToolSearch`), no
+shell `DATABASE_URL` — still no E-gate check possible. `L2_STATE.md`'s capability-landing section
+unchanged (git-only check). No new issues since last cycle's timestamp (`gh issue list --search
+"created:>..."` — empty). F1 remains correctly deferred, no new fact.
+
+CYCLE 10 L4: IDLE-OK (verified: PR hygiene clean — same 6 PRs confirmed genuinely queued,
+positions frozen because `main` itself hasn't advanced, not because anything of mine is broken;
+ruled out a repeat queue jam via `estimatedTimeToMerge` rather than assuming one from a shallow
+symptom match; E-gate still uncheckable, no DB access; no new capability landings; no new
+adjudication) → next: same as last cycle — retry E-gate + dispatch dry-run once DB access
+returns; watch `#1885`; F1 remains deferred.
+
