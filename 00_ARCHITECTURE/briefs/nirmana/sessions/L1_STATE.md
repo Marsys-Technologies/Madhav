@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 46; ga_structural F-A14 widened to 3/57 (#1997)
+last_updated: 2026-09-06 — C8 v2.3 cycle 47; ga_structural F-A14 widened to 4/57, F-A17 found (#2000)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -26,7 +26,8 @@ your `nirmana-adjudication` issues → continue.
   #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
   cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43), 753 (`ga_sade_sati` Phase widening,
   cycle 44), 754 (`ga_sade_sati` FINAL widening — 15/15 complete, cycle 45), 755 (`ga_structural`
-  bhadra/panchaka flags, cycle 46) used. 756–759 remain free.
+  bhadra/panchaka flags, cycle 46), 756 (`ga_structural` vargottama_per_varga, F-A17 found, cycle
+  47) used. 757–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1970,6 +1971,58 @@ Next: continue `ga_structural` widening (54 categories remain — likely the "pe
 many sharing a similar re-derivable shape against `ga_vargas`' own varga positions), or
 `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 47 (C8 v2.3) — ga_structural's F-A14 contract widened to 4/57 categories (PR #2000, migration 756); discovers F-A17
+
+**PR hygiene:** clean sweep. `#1827`/`#1997` both CLEAN-but-unqueued (checks green, mid-CI/queue-
+catchup, matched the established pattern) — nothing actionable. All other 32 L1 PRs confirmed
+genuinely `is:queued`. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening arc** (PR **#2000**, migration 756 —
+sixth used in the 752-759 range) — `vargottama_per_varga` (3780 rows), picked deliberately because
+recent deep familiarity with vargottama logic from F-A15 made it the highest-confidence next
+target.
+
+`vargottama_per_varga` (`_build_varga_relationship_rows`) computes, for every varga except D1,
+`is_vargottama = (d1_sign == varga_sign)` where `varga_sign` comes from `_load_varga_positions()` —
+which reads `chart_divisionals`' `varga_position` rows, `ga_vargas`' own sign data. Confirmed this
+IS a legitimate §N.5 citation (unlike F-A15's old bug, which used a hardcoded degree formula and
+never touched `ga_vargas`' data at all) — so the natural conjunct here is a straight cross-check
+against `ga_vargas`' own precomputed `varga_vargottama_flag` boolean, generalized across all 29
+vargas rather than hardcoded to D9 the way migration 745's conjunct (b) was.
+
+**Discovered a second genuine defect, filed as F-A17**: confirmed `varga_vargottama_flag` actually
+exists in `chart_divisionals` for ALL 29 vargas (not just D9 — that was only ever the scope F-A15's
+finding happened to touch), then found `ga_structural`'s re-derived boolean disagrees with it on
+**13/3780 rows** — 3 on the canonical chart (Moon, D3/D14/D27, raman) and 10 on a non-canonical
+chart (8 grahas across 9 vargas, surya_siddhanta_classical). Ruled out a stale-build-id artifact
+first (checked migration-218's one-canonical-build invariant on BOTH sides — clean, exactly one
+`build_id` per `(chart, ayanamsha, varga, graha)` on each). Root cause NOT investigated this cycle
+(a genuinely new question — whether `ga_vargas`' own `varga_position.sign` and
+`varga_vargottama_flag.vargottama` columns can disagree with each other, or `ga_structural`'s
+re-derivation has its own bug) — followed the F-C8/F-A15 precedent exactly: shipped a real,
+mutation-tested detector rather than suppressing or narrowing it. Verified via a synthetic
+post-fix overlay (corrected all 13 rows inside a transaction, confirmed the isolated conjunct then
+reads `true`, then confirmed flipping a clean row makes it read `false` again) — the SAME
+clearing-proof technique F-A15's original migration 745 used, applied here for the first time to
+verify a NEW finding rather than an already-fixed one.
+
+Carried migrations 745's/755's four prior conjuncts forward verbatim, including conjunct (b),
+which remains its own already-tracked RED (unrelated to F-A17, F-A15's fix still hasn't propagated
+to its 2 affected charts). Because both (b) and the new (e) are red, the full combined 5-conjunct
+`SELECT` evaluates `false` on live production today — verified conjuncts (c)/(d)/(e) individually in
+isolation, same discipline as migration 755. No writer touched. Full
+`platform/tests/unit/migrations/` suite: 186 passed / 91 skipped (39 files).
+
+CYCLE 47 L1: widened `ga_structural`'s F-A14 contract to 4/57 categories (PR #2000, migration 756),
+discovered and documented F-A17 — next: continue `ga_structural` widening (53 categories remain;
+the remaining "per_varga" family — `aspect_jaimini_per_varga`, `net_argala_per_varga`,
+`lord_in_house_per_varga`, `graha_dignity_per_varga`, `dispositor_chain_per_varga`,
+`combustion_per_varga`, `conjunction_per_varga`, `parivartana_per_varga`, `kala_sarpa_per_varga`,
+`nway_config_per_varga`, `graha_yuddha_per_varga`, `lord_aspects_lord_per_varga`,
+`aspect_parashari_per_varga` — likely share re-derivable shapes against `ga_vargas`'/each other's
+own data), consider a bounded pass investigating F-A17's root cause, or `ga_positions` re-dispatch
+once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1985,7 +2038,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 — 3/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag); F-A15 **FIXED at the writer level (#1981, cycle 42)** — graha_vargottama_amplification_factor now reads ga_vargas' D9 varga_vargottama_flag instead of re-deriving; migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 — 4/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; **NEW: F-A17** — vargottama_per_varga's re-derived boolean disagrees with ga_vargas' own varga_vargottama_flag on 13/3780 rows across all vargas (not yet root-caused) |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -2000,11 +2053,11 @@ none accepted yet (blocked on #1736).
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
 21-40)**: ga_dashas, ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka,
 ga_medical, ga_vastu, ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial,
-3/57 categories as of cycle 46 — the other 54 remain a future pass], ga_yoga, ga_vichara,
+4/57 categories as of cycle 47 — the other 53 remain a future pass], ga_yoga, ga_vichara,
 **ga_sade_sati [COMPLETE, 15/15 categories as of cycle 45]**, ga_transit_anchors, ga_ayurdaya,
 ga_prashna [scoped to ga_prashna_lagna only — ga_prashna_judgment is genuinely empty on every
 built chart]. `expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with
-8,249 live rows. `ga_structural`'s 54/57 remaining categories are the single largest F-A14
+8,249 live rows. `ga_structural`'s 53/57 remaining categories are the single largest F-A14
 coverage gap in the
 whole campaign.
 
@@ -2608,6 +2661,20 @@ whole campaign.
   affected charts' stored rows yet) — verified the two NEW conjuncts individually in isolation
   rather than via the whole combined `SELECT`, since the full chain can't currently read `true`
   regardless of what this migration adds.
+
+- **D-L1-71** — C8 v2.3 cycle 47: widened `ga_structural`'s F-A14 contract (migration 756,
+  PR #2000), 3/57 → 4/57, adding `vargottama_per_varga`. Confirmed this category legitimately
+  cites `ga_vargas`' own `varga_position` sign data via `_load_varga_positions()` (unlike F-A15's
+  old bug) — but discovered its re-derived vargottama BOOLEAN disagrees with `ga_vargas`' own
+  precomputed `varga_vargottama_flag` (confirmed to exist for ALL 29 vargas, not just D9) on
+  13/3780 rows. Filed as **F-A17**. Ruled out a stale-build-id artifact first (migration-218
+  one-canonical-build invariant clean on both sides) before treating it as genuine. Verified the
+  new conjunct is a real, clearing detector via a synthetic post-fix overlay — the same technique
+  F-A15's original migration 745 used to prove its own then-still-broken conjunct was genuine, now
+  reused here for the first time on a BRAND NEW finding rather than a subsequently-fixed one. Did
+  not investigate root cause (whether `ga_vargas`' own two columns disagree with each other, or
+  `ga_structural`'s re-derivation has its own bug) — followed the F-C8/F-A15 precedent of shipping
+  the real detector now, root-causing later.
 
 ## Held items
 
@@ -3321,3 +3388,23 @@ L1 must satisfy rather than a feature it consumes.
   187 passed / 91 skipped (39 files). CYCLE 46 L1: widened ga_structural's F-A14 contract to 3/57
   categories (PR #1997, migration 755) -- next: continue ga_structural widening (54 categories
   remain, likely the "per_varga" family next), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T05:2xZ -- CYCLE 47 (C8 v2.3). PR hygiene clean: #1827/#1997 CLEAN-but-unqueued
+  (mid-CI/queue-catchup, not stuck), all other 32 L1 PRs confirmed genuinely is:queued.
+  #1928/#1892 unchanged. Unit of work: widened ga_structural's F-A14 contract to 4/57 (PR #2000,
+  migration 756) -- vargottama_per_varga (3780 rows), picked given recent deep familiarity with
+  vargottama logic from F-A15. Confirmed this category legitimately cites ga_vargas' own
+  varga_position sign data via _load_varga_positions() (unlike F-A15's old hardcoded-formula bug)
+  -- but discovered its re-derived boolean disagrees with ga_vargas' own precomputed
+  varga_vargottama_flag (confirmed to exist for ALL 29 vargas, not just D9) on 13/3780 rows.
+  Filed as F-A17. Ruled out a stale-build-id artifact first (migration-218 one-canonical-build
+  invariant clean on both sides). Verified the new conjunct is a real, clearing detector via a
+  synthetic post-fix overlay -- the same technique F-A15's own migration 745 used, reused here for
+  the first time on a brand-new finding. Root cause not investigated (whether ga_vargas' own two
+  columns disagree with each other, or ga_structural's re-derivation has its own bug) --
+  following the F-C8/F-A15 precedent of shipping the real detector now, root-causing later.
+  Carried the 4 prior conjuncts forward verbatim, including the already-tracked-red conjunct (b).
+  No writer touched. Full platform/tests/unit/migrations/ suite: 186 passed / 91 skipped (39
+  files). CYCLE 47 L1: widened ga_structural's F-A14 contract to 4/57 categories (PR #2000,
+  migration 756), discovered and documented F-A17 -- next: continue ga_structural widening (53
+  categories remain, the "per_varga" family), consider a bounded pass investigating F-A17's root
+  cause, or ga_positions re-dispatch once #1892 lands.
