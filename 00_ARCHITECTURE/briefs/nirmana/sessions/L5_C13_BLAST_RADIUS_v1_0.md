@@ -145,3 +145,17 @@ makes the detector unnecessary rather than merely present.
   reference it is not covered here.
 - Per **D-CND-17**, chart `cb73cd3d` is DAMAGED and is not a measurement baseline; row counts are
   whole-table or from `482012f1` / `1c826d5a`.
+
+---
+
+## Heartbeat log (§R3)
+
+- `2026-09-05T~01:40Z` — `L5-W3` — all 7 resume assignments discharged: #1790 rebased/queued;
+  #1785 extended with the free registry window and re-armed; no-FK dispositions posted (#1748);
+  writer audit verified complete on `main` (9 raises present, zero inability-notes remaining) and
+  the held A5 item **decided as B under §R5** rather than left waiting; #1757 answered with the
+  decision *and* the reason a migration cannot deliver it; hold on `mi_bhavisya`/`mi_pramana`
+  re-grounded on the newly-found anchor-identity collision; C13 statements for all 15 routes
+  published. — **Blocked on:** W2 acceptance must wait for #1785 to merge, because D-CND-09 closes
+  the registry window on first acceptance and 691 carries the last of it. Not idle: that is a
+  sequencing constraint I am honouring, not a stall.
