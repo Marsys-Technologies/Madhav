@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 27; ga_tajaka F-A14 landed, migration range exhausted, #1947 filed (#1946)
+last_updated: 2026-09-06 — C8 v2.3 cycle 28; F-D22 closed, build-fatal landmine found and fixed (#1950)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -1089,6 +1089,46 @@ scratch — next: wait on #1947's ruling before any further migration-touching F
 meantime, non-migration L1 work (a serving-layer or writer-only fix) is the highest-priority
 eligible unit, or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 28 (C8 v2.3) — F-D22 closed: a build-fatal FORENSIC landmine in unexercised code, found and fixed writer-only (no migration needed)
+
+**PR hygiene:** clean sweep. `#1928` (the real upstream fix for #1852's `bo_pratijna` coupling)
+still hasn't merged — `#1853` unchanged this cycle, same tracked run. `#1947` (migration range)
+still awaiting the Conductor's ruling — no comments yet.
+
+**Unit of work: F-D22 (`ga_transit_anchors`)**, deliberately chosen because it needs NO new
+migration file — `#1947`'s ruling hasn't landed, so any F-A14 continuation is correctly on hold.
+This was an explicitly-open W2 question (`L1_W2_DECIDE_v1_0.md` §5.1: "Either the assertion is
+wrong or it is dead. Resolve before rebuilding"), not yet investigated this campaign.
+
+**Found a genuine, currently-live, build-fatal landmine sitting in unexercised code.** The
+writer's FORENSIC assertion demanded Moon `natal_sign == 'aquarius'` for the canonical chart on
+EVERY ayanamsha sub-step. Measured live: `surya_siddhanta_classical` correctly stores Moon in
+Pisces (the other four ayanamshas correctly agree on Aquarius; all five agree on
+nakshatra=Purva Bhadrapada — CLAUDE.md's actual FORENSIC anchor). Purva Bhadrapada straddles the
+Aquarius/Pisces sign boundary, so the sign — not the nakshatra — is the value that legitimately
+varies by ayanamsha. The assertion would have raised `AssertionError` and aborted the ENTIRE
+`ga_transit_anchors` build the next time it processes that sub-step for this chart. The 45 live
+rows currently in production predate this specific code path ever running against that
+ayanamsha for this chart, which is why the bug hasn't fired yet — but it would on the next
+rebuild, which matters directly for the `ga_positions` re-dispatch this state file has been
+tracking as "next" for many cycles (once #1892 clears, a chart rebuild would very plausibly
+touch `ga_transit_anchors` too).
+
+Fixed by loading `nakshatra` alongside `sign`/`longitude_sidereal` (nakshatra was never loaded
+at all before) and asserting the true ayanamsha-invariant anchor. `natal_sign` stays exactly as
+before for its own legitimate, correctly-ayanamsha-dependent purpose (house-from-Moon
+computation) — only the FORENSIC check itself changed. 5 new tests, including two CAN-FAIL
+proofs (wrong nakshatra, missing nakshatra) confirming the fix isn't a disguised no-op. Checked
+cross-layer import risk first: this writer has exactly one importer (itself), matching the W1
+finding's own conclusion. No migration needed — a pure writer-code fix.
+
+CYCLE 28 L1: closed F-D22 (`ga_transit_anchors`, PR #1950) — found a real build-fatal landmine
+in code that hasn't fired yet only because it hasn't been exercised against the specific
+ayanamsha that would trigger it, fixed without needing a new migration (correctly deferred given
+#1947 is still pending) — next: wait on #1947's ruling, or `ga_positions` re-dispatch once #1892
+lands; remaining non-migration W1/W2 findings not yet investigated should be checked before
+assuming F-A14 is the only work left.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1109,7 +1149,7 @@ none accepted yet (blocked on #1736).
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1) |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D) |
-| ga_transit_anchors | 45 / 45 | **changed** | AV transit gating does NOT live here — serve-time TS (F-D) |
+| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881) |
@@ -1467,6 +1507,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   before their shared-table nature was confirmed) found the existing UNIQUE already sufficient.
   Worth remembering: "check whether the UNIQUE constraint's key exactly matches the natural key,
   not just whether one exists" is now a confirmed-necessary step, not a hypothetical one.
+- **D-L1-50** — C8 v2.3 cycle 28: with #1947 (migration range) unresolved, deliberately picked
+  F-D22 (`ga_transit_anchors`) as this cycle's unit specifically BECAUSE it needed no migration
+  file — an explicitly-open W2 question (§5.1) that had gone uninvestigated while F-A14 work
+  consumed the last several cycles. Found the assertion was genuinely build-fatal for a correct
+  value (not merely stylistically wrong): the 45 live rows currently in production predate this
+  code path ever running against `surya_siddhanta_classical` for the canonical chart, so the bug
+  is a live landmine that hasn't fired only for lack of opportunity, not because it's dead code.
+  This matters directly for the standing "re-dispatch `ga_positions` once #1892 lands" plan — a
+  real chart rebuild would very plausibly have hit this. Fixed by asserting the true
+  ayanamsha-invariant FORENSIC anchor (nakshatra) instead of a proxy (sign) that varies for a
+  correct reason.
 
 ## Held items
 
@@ -1830,3 +1881,19 @@ L1 must satisfy rather than a feature it consumes.
   #1947 for the next range + tracked #1852's real (not-yet-merged) upstream fix -- next: wait on
   #1947's ruling before more migration-touching work; meanwhile a non-migration L1 fix, or
   ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T01:4xZ -- CYCLE 28 (C8 v2.3). PR hygiene clean; #1928/#1947 both still pending
+  (no new comments on #1947), #1853 unchanged. Unit of work: F-D22 (ga_transit_anchors, PR
+  #1950), deliberately chosen because it needs no migration file. Found the writer's FORENSIC
+  assertion (Moon natal_sign=='aquarius') was genuinely build-fatal for a correct value: measured
+  live, surya_siddhanta_classical correctly puts Moon in Pisces (Purva Bhadrapada straddles the
+  Aquarius/Pisces boundary; all five ayanamshas agree on nakshatra, only sign legitimately
+  varies). The 45 live rows predate this code path running against that ayanamsha for this
+  chart -- a live landmine, not dead code, that would abort the whole asset's build on the next
+  rebuild. Fixed by loading nakshatra (never loaded before) and asserting the true
+  ayanamsha-invariant anchor instead of the sign proxy. natal_sign stays exactly as before for
+  its own correctly-ayanamsha-dependent purpose (house-from-Moon). 5 new tests including two
+  CAN-FAIL proofs. No migration needed -- writer-only fix. CYCLE 28 L1: closed F-D22
+  (ga_transit_anchors, PR #1950) -- found a real build-fatal landmine directly relevant to the
+  standing ga_positions re-dispatch plan, fixed without needing #1947's ruling -- next: wait on
+  #1947, or check for other non-migration W1/W2 findings not yet investigated, or ga_positions
+  re-dispatch once #1892 lands.
