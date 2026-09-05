@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-U: FULL non-destructive dry-run dispatch succeeded for bg_doshas + bg_gochara_arcs (real manifest_digest/run_id, WP-6 warning matches C13 analysis); only real merges + W2 resubmission remain before an actual commit
+last_updated: 2026-09-05 — D-L0-V: flagged #1856 (orchestrator UUID-serialization crash) as an unruled-out risk for a real dispatch of either target asset; queue stalled again at 25-deep
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -449,6 +449,23 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   real (this session used a local patch only), and (3) fresh W2 resubmission under the new fingerprint
   (per D-L0-P/D-L0-T) before a real commit-dispatch.
 
+- **D-L0-V — new risk flagged, not yet confirmed to affect L0: #1856 orchestrator crash may hit a
+  REAL (non-dry-run) dispatch of bg_doshas/bg_gochara_arcs.** L5 found (URGENT, #1856) that
+  `asset_runner.py`'s provenance capture (`compute_upstream_hash`/`canonical_upstream_hash`) crashes
+  with `"Object of type UUID is not JSON serializable"` when `chart_id` arrives as a raw
+  `uuid.UUID` at the JSON-encoding boundary — confirmed live against production, crashes the asset
+  BEFORE the writer even runs. L5's title scopes it to "per-chart assets with declared deps", but
+  their own root-cause note hedges that the bug pattern exists in BOTH candidate call sites
+  regardless of the `declared_deps`-aware branch, i.e. it may not actually be per-chart-specific.
+  **Checked: both `bg_doshas` and `bg_gochara_arcs` are `scope=global` but DO have non-empty
+  `depends_on`** (`bg_ontology`, `bg_ephemeris`) — the other half of L5's trigger condition. Since
+  this crash only fires during actual writer execution (inside a real `--commit` dispatch, never a
+  dry run — D-L0-U's successful dry-runs would NOT have exercised this code path), **it cannot be
+  ruled out that a real dispatch of either target asset hits the same crash**, even though both are
+  global-scope. Not investigating L5's Python further myself (Conductor's fix, not L0's) — just
+  flagging: **check #1856's resolution status before attempting a real (non-dry-run) dispatch**,
+  not just before the migrations merge.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -800,3 +817,14 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   both target assets** — only real merges (692/694, #1838) and a fresh W2 resubmission stand between
   this and an actual commit. NEXT: keep polling the queue; nothing further to de-risk read-only —
   the next real action is entirely gated on merges landing.
+- 2026-09-05 — **Cycle 17.** PR hygiene: all 3 migration PRs still `is:queued` (queue 25-deep now,
+  `main` tip unchanged since last cycle — genuinely stalled again, not re-flagging per own
+  judgment); `#1828` clean, pending checks. Nothing to fix. Checked #1713: L5 hit and root-caused a
+  genuine orchestrator bug (#1856, URGENT) — provenance capture crashes on a raw `uuid.UUID`
+  `chart_id` at a JSON-encoding boundary, confirmed live. **Assessed whether this is an L0 risk
+  (D-L0-V)**: both target assets are `scope=global` but have non-empty `depends_on` (the other half
+  of the bug's trigger condition per L5's own hedge that it isn't provably per-chart-specific), and
+  the crash only fires during REAL writer execution — D-L0-U's dry runs never exercised that code
+  path, so they don't rule this out. Flagged it, didn't chase L5's Python (not L0's fix to make).
+  NEXT: same as before — poll the queue; additionally, **check #1856's resolution status before
+  ever attempting a real (non-dry-run) dispatch**, not just before the migrations merge.
