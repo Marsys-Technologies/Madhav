@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~15:55Z (C8 v2.3 cycle 161) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 pending-checks-only, no red. #1901 still at position 4. #1828
+  (position 1) at ~11.1 min, job-level check confirms only `Governance Gates` still running —
+  genuinely progressing. #1861=25, #1844=82 unchanged. #1869 unchanged at 3 comments. #1856
+  still OPEN. No eligible dispatch.
 - 2026-09-06T~15:50Z (C8 v2.3 cycle 160) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1901 still at position 4. #1828
   (front-of-queue, 2nd cycle) now ~8 min in — within normal window. #1861=25, #1844=82
