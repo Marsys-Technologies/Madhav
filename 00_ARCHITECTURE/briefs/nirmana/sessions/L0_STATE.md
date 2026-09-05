@@ -1060,3 +1060,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   API (more precise than PR-level fields) confirming the queue is genuinely serial, ~10-13 min per
   merge-group CI run, not broken — matches this lane's own observed cadence exactly. Nothing new
   to act on.
+- 2026-09-05 — **Cycle 35: IDLE-OK.** `#1828` re-triggered its own checks again (main advanced),
+  still not queued yet — confirmed genuinely in-progress, not stuck. `#1838` still cleanly queued
+  (45-deep). `bg_gochara_arcs` still not deployed. Nothing to fix, nothing new.
