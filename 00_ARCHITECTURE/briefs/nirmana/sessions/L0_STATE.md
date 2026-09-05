@@ -1167,3 +1167,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 40: IDLE-OK.** PR hygiene: `#1828` clean, still pending own checks;
   `#1851` still cleanly `is:queued`, not merged. Nothing to fix. #1713: L1 confirmed our
   `bg_doshas` run completed and 0/3 slots occupied — no new info for L0. Nothing else changed.
+- 2026-09-05 — **Cycle 41: IDLE-OK.** Same as last cycle: `#1828` clean pending own checks,
+  `#1851` still cleanly queued (46-deep), no new coordination activity. Nothing to fix, nothing
+  new.
