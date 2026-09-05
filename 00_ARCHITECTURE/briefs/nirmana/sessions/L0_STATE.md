@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK: queue advanced to position 30, no PRs merged. 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — D-L0-OO: found Conductor-territory adjudication #1945 — zero stage-transition/foundation-lane receipts exist campaign-wide, meaning L0's eventual W6 freeze ceremony will be REJECTED once 40/40 is reached, until Conductor backfills the stage spine (their call, not L0's). No action for L0 now (still 30/40) but flagged so this isn't a surprise later. Queue still position 30, no PRs merged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -324,6 +324,26 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   CURRENT (all intents ratified) is genuinely NOT met — `catalog_status=DRAFT` remains correct, not
   stale. This is a positive, evidence-based "not yet," not a deferred/unclear item — nothing to act
   on until those two intents are ratified (native/campaign decision, not an L0 writer task).
+
+- **D-L0-OO — found and logged, no action taken (Conductor's call, not L0's): a real gate L0 will
+  hit at its own W6 freeze ceremony.** Noticed via #1713 that the native-directed tracker-rework
+  session (#1944) filed `#1945` — "zero `stage_transition_accepted` and zero
+  `foundation_lane_accepted` receipts exist in the campaign ledger, ever, verified live against
+  `nirmana_evidence.nirmana_elevation_campaign_events`." The canonical stage chain is `BOOTSTRAP →
+  T0_CENSUS → PLAN_FROZEN → DENOMINATOR_FROZEN → F0_FOUNDATION → L0 → …`; with zero receipts
+  anywhere in that chain, `requireStageTransitionProvenance` (`definitions.ts`) will reject a `→ L0`
+  transition at freeze time even though L0's own per-asset evidence (accepted_rebuild_observed,
+  integrity_verified, asset_frozen — the chain D-L0-NN proved out) is completely unaffected. This
+  is explicitly framed in the issue as squarely Conductor/charter §C2/§C7 territory (freeze
+  ordering) needing "an identity authorized for it," not an L0-session action — the issue's own
+  recommended fix (Option A: backfill the five real historical `foundation_lane_accepted` receipts
+  + the `BOOTSTRAP→…→F0_FOUNDATION` transitions, citing real provenance already documented in
+  `CAMPAIGN_STATE.md`) is Conductor's to execute, not mine. **Nothing for L0 to do right now** — L0
+  is 30/40, not yet at its W6 ceremony — but recording this so it isn't a surprise once the
+  remaining 10 assets clear: L0 should NOT assume 40/40 asset-level freezes alone means the layer
+  is done; the W6 ceremony itself has its own separate, currently-unmet precondition that only
+  Conductor can resolve. No comment posted to #1945 — nothing to add, and it's not L0's ruling to
+  make.
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
