@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — D-L0-LL: MILESTONE — first accepted_rebuild_observed of this campaign resumption (bg_vidhi_floors, run `1d24dbed-...`). integrity_verified temporarily blocked by a self-inflicted hand-typed-timestamp bug (fixable by waiting for real time, not a data/code issue) — retry next cycle. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-JJ, D-L0-KK (PR #1923) all still open/awaiting merge.
+last_updated: 2026-09-06 — D-L0-MM: bg_compendium_index writer fully correct (9571/7969/1602 exact); both content-hash pins stale. Migration 702 authored + verified. Real time hasn't yet caught up for the bg_vidhi_floors integrity_verified retry (D-L0-LL) — will retry next cycle. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-KK (PR #1923), D-L0-LL (PR #1925) all still open/awaiting merge.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -47,7 +47,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
 | bg_vidhi_floors | rebuild_only | **MILESTONE (D-L0-LL): first `accepted_rebuild_observed` of this campaign resumption.** Fresh W2 submitted (post-693 registry contract), dispatched (run `1d24dbed-...`), genuine build (14/409, matching pin exactly), authorized in-window, `accepted_rebuild_observed` accepted. `integrity_verified` submission blocked only by a self-inflicted bug (hand-typed future `observed_at` instead of real `date -u`) — real clock needs to catch up to `18:52:00Z`; retry same payload (`integrity_contract_sha256=6fc6f187...`) next cycle once it has. Still needs `catalog_status` DRAFT→CURRENT (D-CND-09) after integrity_verified + asset_frozen land |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
-| bg_compendium_index | rebuild_only | **Job-image blocker cleared; real dispatch (run `27fea532-...`) FAILED integrity_check_sql (D-L0-JJ).** Live counts: total=9538 (pin 9571, −33), `topic_id IS NULL`=7969 (matches pin exactly), `chapter_num IS NULL`=1569 (pin 1602, −33 — exact match to total shortfall). Topic-type rows correct; chapter-type rows missing exactly 33. Not yet root-caused writer-vs-check — writer is a full `WriterBase` subclass needing `ctx.config` to replay (unlike the standalone-function L0 writers diagnosed earlier), not yet replayed in isolation |
+| bg_compendium_index | rebuild_only | **D-L0-JJ refined by D-L0-MM: writer fully correct; both content-hash pins were stale.** Replayed `_build_desired_rows()` directly (no full `ContextSpec` needed — pure function of `classical_text_chunks`/`reference_topic_tags`): produces exactly 9571/7969/1602 matching migration 623's structural pin precisely. Both content hashes (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer file being unchanged since — corpus content evidently evolved since 623 was authored. Migration 702 authored + verified live (rolled-back tx): TRUE on genuine replay, FALSE on stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
 | bg_text_index | rebuild_only | **Now caught by D-L0-FF (4th confirmed instance).** Genuine build (run `27fea532-...`) lost its evidence chain to the D-L0-JJ multi-asset authorization tooling bug (now fixed); solo retry (run `f3c762e6-...`, correctly authorized this time) `skip_no_delta`'d against the still-matching old receipt, so no fresh run/receipt pair exists. Blocked on Conductor's `#1899/#1901` (delta-skip receipt re-attribution) landing — do not retry again until then |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
@@ -263,6 +263,27 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   fields, never hand-type a plausible future value** — the mistake is harmless for client-controlled
   timestamps (git_commit/build_run sources, which don't get overwritten) but breaks
   server_reconstructed occursAfter checks specifically.
+
+- **D-L0-MM (refines D-L0-JJ)** — **bg_compendium_index: writer is fully correct; both
+  content-hash pins in migration 623 were stale.** `CompendiumIndexWriter`'s core logic
+  (`_build_desired_rows`) is a pure function of `classical_text_chunks` + `reference_topic_tags`
+  with no chart-scoped inputs — replayed it directly (no `ContextSpec`/orchestrator machinery
+  needed, just the two source queries + the function call) in a rolled-back transaction. Produces
+  exactly 9571 rows (7969 chapter-scoped + 1602 topic-scoped), matching migration 623's structural
+  pin exactly, and passing the `(chapter_num IS NULL) = (topic_id IS NULL)` alignment check. Both
+  content-hash subclauses (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer
+  file being unchanged since 623's authoring commit (`5f47906bc`, the same commit that authored
+  bg_dasha_systems' wrong catalog_hash pin, D-L0-GG) — the `classical_text_chunks` corpus content
+  has evidently evolved since (verse ranges / `content_en` feeding the mechanical synopsis) while
+  the per-(text,chapter)/(text,topic) partition COUNTS happened to remain identical. (Investigated
+  and ruled out a red herring first: a separate, never-merged branch `codex/nirmana-l0-wave2-
+  correctness` had a `chunk_ids`-populating writer fix that looked directly relevant — confirmed
+  via `git merge-base --is-ancestor` that this commit is NOT an ancestor of `main`/HEAD, so it's
+  irrelevant to the live/deployed writer.) Migration `702_bg_compendium_index_content_hash_repin.sql`
+  authored: re-pins both content hashes to the freshly-computed correct values, verified twice live
+  (rolled-back tx) — applies cleanly against the 623 pin, evaluates TRUE against a genuine writer
+  replay, FALSE (fail-closed) against current stale live data. No writer change. 6th instance this
+  session of the established C12 "correct the check" pattern.
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
