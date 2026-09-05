@@ -2476,3 +2476,15 @@ uncheckable, DB access down 70 cycles; one new commit + one new adjudication che
 L4-relevant) → next: watch `#1839` enter the queue; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-05T~21:00Z` — L4 — **CYCLE 81 (v2.3) — genuinely IDLE; no change from cycle 80.**
+
+**PR hygiene:** 10 own PRs unchanged/queued; `#1839` still legitimately mid-CI (~5.5 min
+elapsed, normal range, `Unit Tests` now finished, `Governance Gates`/`Build Check` pending).
+
+**Priorities 1-4:** no new `main` commits, no new adjudications naming L4. E-gate still
+uncheckable, 71st consecutive cycle DB access down.
+
+CYCLE 81 L4: IDLE-OK (verified: PR hygiene clean, `#1839` legitimately mid-CI; E-gate
+uncheckable, DB access down 71 cycles; nothing new) → next: watch `#1839` enter the queue;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
