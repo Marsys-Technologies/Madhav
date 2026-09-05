@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~06:48Z (C8 v2.3 cycle 58) — **PR hygiene: #1857 merged**, rebased onto main's
+  60-commit advance (new tip `78031d443`). Force-pushed; #1826's checks reset fresh (none red).
+  Queue advancing: #1861 6→5, #1873 19→18, #1844 38→37, #1901 52→51. #1856 still OPEN. No
+  eligible dispatch yet.
 - 2026-09-06T~06:43Z (C8 v2.3 cycle 57) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. Queue positions unchanged for a 3rd
   cycle (#1861=6, #1873=19, #1844=38, #1901=52); #1857 still at position 1, now ~8.6 min in —
