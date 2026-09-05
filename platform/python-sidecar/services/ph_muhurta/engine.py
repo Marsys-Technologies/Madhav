@@ -88,8 +88,44 @@ def compute_composite_quality(
     return round(max(0.0, min(1.0, raw)), 4)
 
 
-def classify_verdict(composite_quality: float) -> tuple[str, Optional[str]]:
-    """M4: honest verdict; never fabricate 'strong' for weak windows."""
+def classify_verdict(
+    composite_quality: float,
+    *,
+    tara_chandra_known: bool = True,
+) -> tuple[Optional[str], Optional[str]]:
+    """M4: honest verdict; never fabricate 'strong' for weak windows -- and never grade at
+    all when a load-bearing input was never measured.
+
+    `tara_chandra_known=False` means tarabala/chandrabala are the JL-016 placeholder
+    (`tarabala_chandrabala_source == 'placeholder_no_ephemeris'`) rather than a real
+    transit-Moon lookup. In that state the verdict is NULL, not 'mediocre', for two
+    reasons -- and both were live defects before this changed:
+
+    1. **The grade was unreachable in every direction but one.** Both placeholders are
+       0.5, so the geometric mean `(tara x chandra)^0.5` is pinned at exactly 0.5 and
+       caps `composite_quality` at 0.5 even if every other factor were 1.0 -- below
+       `_GENUINE_THRESHOLD` (0.55). Measured: 'mediocre' on 134/134 canonical rows and
+       49/49 Abhinandan rows. Of the four values the CHECK constraint permits, ONE was
+       reachable. A verdict with no code path to any other answer is not a verdict
+       (§N.8).
+    2. **The reason it gave was an invented explanation.** It said "Moon may be afflicted
+       or no fixed nakshatra available" -- attributing the low score to the chart, when
+       the actual cause is that nothing computed the Moon's strength at all. That is
+       §N.7 item 6 in its most misleading form: not a missing value, but a plausible
+       astrological story told over one.
+
+    `composite_quality` itself is still returned and stored -- it is a real arithmetic over
+    the inputs available, and `tarabala_chandrabala_jsonb` already labels its provenance
+    honestly. What is withheld is the JUDGEMENT built on top of it.
+    """
+    if not tara_chandra_known:
+        return None, (
+            "Not graded: tarabala/chandrabala are the placeholder stand-in "
+            "(tarabala_chandrabala_source='placeholder_no_ephemeris'), not a live "
+            "transit-Moon lookup. The Moon-strength factor is therefore unmeasured, which "
+            "caps composite_quality at 0.5 and makes every grade above 'mediocre' "
+            "structurally unreachable. An honest null, not a low grade."
+        )
     if composite_quality >= _STRONG_THRESHOLD:
         return 'strong', None
     elif composite_quality >= _GENUINE_THRESHOLD:
@@ -177,7 +213,12 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         tarabala_score=ctx.tarabala_score,
         chandrabala_score=ctx.chandrabala_score,
     )
-    verdict, reason = classify_verdict(composite)
+    # JL-016: the writer already distinguishes a real transit-Moon lookup from the
+    # placeholder. Honour that distinction in the grade rather than grading regardless.
+    verdict, reason = classify_verdict(
+        composite,
+        tara_chandra_known=(ctx.tarabala_chandrabala_source != 'placeholder_no_ephemeris'),
+    )
 
     # Significators: check which are noted (structural; full check needs live ephemeris)
     strengthen_grahas = ctx.activity_significators.get('strengthen_grahas', [])

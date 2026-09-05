@@ -95,6 +95,8 @@ class PhMuhurtaWriter(WriterBase):
         }
 
         rows_inserted = 0
+
+        natural_key_collisions = 0
         with conn.cursor() as cur:
             for anchor in anchors:
                 anchor_id   = str(anchor['anchor_id'])
@@ -223,8 +225,28 @@ class PhMuhurtaWriter(WriterBase):
                         rec.source_citation,
                     ),
                 )
-                rows_inserted += 1
+                # §N.8: count what the database ACCEPTED. This increment was previously
+                # unconditional, immediately after an `ON CONFLICT DO NOTHING` against the
+                # 3-column natural key (chart_id, action_class, window_start) -- so every
+                # key collision was a silently discarded row reported as inserted.
+                # Measured live: 139 claimed / 134 stored on the canonical chart, 56 / 49 on
+                # Abhinandan. The collisions are real and expected (only 5 action_class
+                # values are reachable from 7 anchor domains, and _to_datetime normalises
+                # every date to 06:00, so two anchors in one domain on one day are one key)
+                # -- what was wrong was reporting them as writes.
+                if cur.rowcount == 1:
+                    rows_inserted += 1
+                else:
+                    natural_key_collisions += 1
 
+        if natural_key_collisions:
+            # Never silent: a collapsed row is a real anchor that produced no muhurta row,
+            # and a caller comparing anchor count to window count deserves the reason.
+            logger.info(
+                "ph_muhurta: %d anchor(s) collapsed onto an existing (action_class, "
+                "window_start) key -- same action on the same day is one window, not two",
+                natural_key_collisions,
+            )
         logger.info("ph_muhurta: inserted %d rows into phala_muhurta for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)
 
