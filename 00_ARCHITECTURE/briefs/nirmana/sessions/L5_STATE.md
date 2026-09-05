@@ -457,6 +457,16 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~11:07Z (C8 v2.3 cycle 109) — **#1873 merged** (the `life_events`/`charts` grant
+  fix for #1869) — main advanced 111 commits, rebased+pushed onto `6f6b9f9b5`. **Verified live
+  via `has_table_privilege`**: `life_events`/`charts` SELECT now `true` for
+  `nirmana_evidence_ingress_writer`, but `chart_grants` (the RLS-dependency table found in the
+  follow-up round on #1869) is still `false`. Per my own prior stated position on that issue
+  ("not resubmitting again until that's confirmed done"), **deliberately not resubmitting
+  `lel_events`'s `integrity_verified` yet** — it would hit the identical `permission denied for
+  table chart_grants` 500 again, and a repeated one-off retry against a known-partial fix isn't
+  productive. No new comment on #1869 addressing `chart_grants` yet. PR hygiene: #1844 still
+  queued (19), #1826 clean/pending-checks-only, no red. #1901→33, #1861→54. #1856 still OPEN.
 - 2026-09-06T~11:02Z (C8 v2.3 cycle 108) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1873 (position 1) at ~10.7 min,
   job-level check confirms only `Governance Gates` still running — genuinely progressing.
