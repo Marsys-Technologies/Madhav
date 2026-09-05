@@ -149,21 +149,37 @@ def test_genuinely_empty_chart_is_healthy_no_warning(caplog):
         "a genuinely empty chart must NOT trigger the anti-masking warning"
 
 
-def test_present_rows_but_zero_build_warns_presence_based(caplog):
+def test_present_rows_but_zero_build_RAISES_presence_based():
     """Defensive anti-masking (presence, not identity): if a chart's life_events
-    count is > 0 but the build sourced zero (a sourcing/packaging bug), warn
-    loudly rather than silently succeed. Any chart, not just the native."""
+    count is > 0 but the build sourced zero (a sourcing/packaging bug), the
+    writer must RAISE.
+
+    UPDATED for adjudication #1738 (L5-W3). This test previously asserted
+    warn-and-succeed: `result.rows_inserted == 0` plus a logged WARNING. That
+    encoded the exact defect the ruling names -- the detector fired, said in its
+    own words "This is NOT a healthy empty build", and then returned the SAME
+    WriterResult as the healthy case. The warning went to a log and the reason to
+    `WriterResult.notes`, and nothing in pipeline/orchestrator/ outside writers/
+    reads `notes`; with target_floor = 0 the orchestrator then promoted the asset
+    to 'lit'. A wrongly-empty provenance table silently zeroes the whole
+    downstream calibration loop, since mi_pramana, mi_bhavisya and mi_darshana
+    all declare this asset a dependency.
+
+    Changing this assertion is honest, not a weakening: the condition it
+    describes is unchanged and is still detected. What changed is that the
+    detection now reaches the build system. This was the only test in the repo
+    that encoded the warn-and-succeed contract."""
     writer = MiJivanaghatanaWriter()
     # Inconsistent state the guard exists to catch: COUNT says 57, source read []
     ctx = _FakeCtx(NON_NATIVE_CHART_ID, _FakeConn(life_events_rows=[], count=57))
-    with caplog.at_level(logging.WARNING):
-        result = writer.run(ctx)
 
-    assert result.rows_inserted == 0
-    assert any(
-        "has 57 life_events rows but" in rec.message and "ZERO" in rec.message
-        for rec in caplog.records
-    ), "a chart with rows present but a zero build must warn (presence-based anti-masking)"
+    with pytest.raises(RuntimeError, match="NOT a healthy empty build") as excinfo:
+        writer.run(ctx)
+
+    # The message must still carry the evidence the old warning carried, so an
+    # operator sees WHICH chart and HOW MANY rows were expected.
+    assert "57 life_events rows" in str(excinfo.value)
+    assert "ZERO" in str(excinfo.value)
 
 
 def test_dry_run_reports_would_insert_without_writing(monkeypatch):
