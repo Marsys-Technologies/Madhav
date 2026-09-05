@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-W: PR #1829 (bg_doshas migration 692) MERGED to main — first real progress this resumption; not yet deployed to live DB, watching amjis-web's NIRMANA_DEPLOYED_SHA each cycle
+last_updated: 2026-09-05 — D-L0-X: is:queued PR checks were silently capped at 30 results (real queue is 36); always pass --limit 100 now. Deploy still one commit short of #1829's fix landing live.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -487,6 +487,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (not local-patched) `dispatch_nirmana_campaign_wave.py` once #1838 also merges+deploys. This is
   the first genuinely real, non-simulated step toward an actual L0 freeze this whole resumption.
 
+- **D-L0-X — process correction: `gh pr list --search "is:queued"` was silently truncating to 30
+  results every cycle, causing a false "ejected" scare this cycle.** `#1832` appeared missing from
+  the queue listing (checked without an explicit `--limit`); investigated as a possible real
+  ejection (checked its own checks — all green, `autoMergeRequest: false`), ran `gh pr merge 1832
+  --auto` which replied "already queued to merge" (contradicting the listing), then re-ran the
+  search with `--limit 100` and found **the real queue is 36 deep, not 30** — `#1832` was sitting at
+  position 32, past the CLI's default page size. Nothing was ever ejected; this was a query artifact
+  in every prior cycle's hygiene check, not a PR problem. **Going forward: always pass an explicit
+  `--limit` (100 is plenty) to `is:queued` searches** — the default-30 truncation is silent (no
+  warning, no `next_page` indicator in the plain JSON output) and would otherwise read as a false
+  ejection every time the real queue exceeds 30. No PR was harmed; `#1829` (already merged this
+  session) proves the queue mechanism itself always worked correctly.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -918,3 +931,10 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (`NIRMANA_DEPLOYED_SHA` → `3b208dbfa`) but confirmed via `git merge-base --is-ancestor` it's
   still one commit short of my `#1829` merge commit (`3bfeaf284`) — live `bg_doshas` check
   correspondingly still the old version. Progressing steadily, not there yet.
+- 2026-09-05 — **Cycle 27.** PR hygiene surfaced and resolved a false alarm (D-L0-X): `#1832`
+  appeared to have vanished from `is:queued` — investigated properly per contract (checked its own
+  checks first, all green; tried re-arming auto-merge, which replied "already queued") rather than
+  assuming ejection, then found the actual cause: the CLI search was silently truncating to its
+  default 30-result page while the real queue is 36 deep. Fixed my own process: **use `--limit 100`
+  on every `is:queued` check going forward.** No PR was actually affected. Deploy unchanged since
+  last cycle (`3b208dbfa`, still one commit short); `#1828` clean. Nothing else new.
