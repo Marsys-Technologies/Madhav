@@ -2488,3 +2488,17 @@ CYCLE 81 L4: IDLE-OK (verified: PR hygiene clean, `#1839` legitimately mid-CI; E
 uncheckable, DB access down 71 cycles; nothing new) → next: watch `#1839` enter the queue;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~21:05Z` — L4 — **CYCLE 82 (v2.3) — genuinely IDLE; `#1839` still mid-CI (~8 min,
+job-log confirms only `Governance Gates` outstanding, normal range).**
+
+**PR hygiene:** 10 own PRs unchanged/queued; `#1839` checked via `gh run view` directly rather
+than the REST jobs API alone — 14 of 15 required jobs green, only `Governance Gates` still
+running, consistent with its ~9-12 min historical duration.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications naming L4. E-gate still
+uncheckable, 72nd consecutive cycle DB access down.
+
+CYCLE 82 L4: IDLE-OK (verified: PR hygiene clean, `#1839` legitimately mid-CI (14/15 jobs
+green); E-gate uncheckable, DB access down 72 cycles; nothing new) → next: watch `#1839` enter
+the queue; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
