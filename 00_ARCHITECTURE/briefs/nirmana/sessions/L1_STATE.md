@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 43; ga_sade_sati F-A14 widened to 6/15 (#1987); DIRTY #1898 fixed
+last_updated: 2026-09-06 — C8 v2.3 cycle 44; ga_sade_sati F-A14 widened to 10/15 (#1990)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -24,7 +24,8 @@ your `nirmana-adjudication` issues → continue.
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
   #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
-  cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43) used. 753–759 remain free.
+  cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43), 753 (`ga_sade_sati` Phase widening,
+  cycle 44) used. 754–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1824,6 +1825,45 @@ of the #1852 L2-pin-staleness class (same `bo_pratijna` transitive path) — pos
 messaged `l2-3f` directly, did not touch L2's pin, exact same disposition as `#1853`. #1898 is now
 DIRTY→clean on L1's own side but will show the same L2-staleness RED until L2 re-derives their pin.
 
+## CYCLE 44 (C8 v2.3) — ga_sade_sati's F-A14 contract widened to 10/15 categories (PR #1990, migration 753)
+
+**PR hygiene:** confirmed only `#1853`/`#1898` non-queued, both already tracked (same #1852 L2-pin
+class). `l2-3f` had independently pushed the L2 re-pin fix directly to both branches mid-cycle-43
+(offline-derived, matched CI's reported hash exactly before pushing): `#1898` confirmed clean
+afterward (no more Governance Gates failure, legitimately mid-CI). `#1853` got a partial fix only
+— it's still 26 commits behind `main` (not yet rebased), so `l2-3f` correctly left the rebase to me
+and pinned instead against the most recent L2-writer-touching commit already in that branch's
+history, which will go stale again the moment it's rebased. Acknowledged and deferred the `#1853`
+rebase to a future cycle (not this cycle's bounded unit). #1928/#1892 unchanged.
+
+**Unit of work: widened `ga_sade_sati`'s F-A14 integrity contract from 6/15 to 10/15 categories**
+(PR **#1990**, migration 753 — second used in the 752-759 range). Migration 752 (cycle 43) covered
+the Dhaiya family; this pass adds `sade_sati_phase` plus the three classically-named sub-phase
+categories (`janma_shani_period`, `vishakha_shani_period`, `anumukha_shani_period`).
+
+Read `_emit_cycle_rows` closely first: it computes each classical phase (VISHAKHA/JANMA/ANUMUKHA)
+ONCE from a shared `(ph_start, ph_end, ph_sign)` triple and emits it TWICE — once under the generic
+`sade_sati_phase` category (`phase_start_iso`/`phase_end_iso`/... keys), once under its
+classical-name category (`period_start_iso`/`period_end_iso`/... keys) — the SAME subject string
+both times. Exactly the Dhaiya-family pattern from last cycle, one level up: a genuine cross-category
+consistency check, not a tautology, since the two are separately stored rows. Three new conjuncts:
+(h) `sade_sati_phase` temporal ordering, (i) `sade_sati_phase.duration_days` re-derivation (mirrors
+migration 752's own style), (j) the three classical categories' `period_start_iso`/`period_end_iso`
+(mapped to `sade_sati_phase`'s key names via a `CASE`), `saturn_sign`, `saturn_dignity`, and
+`duration_days` all agree with `sade_sati_phase`'s own value for the same subject — 4560 timestamp
+rows + 1500 other-field rows checked, 0 violations. All three verified live clean, then individually
+mutation-tested via the transactional `UPDATE`+`ROLLBACK` pattern established last cycle (D-L1-66)
+— no repeat of the CTE-overlay slowness. `integrity_check_sql` carried forward migrations 748's/
+752's seven conjuncts verbatim inside the new full-replacement value. No writer touched. Full
+`platform/tests/unit/migrations/` suite: 187 passed / 91 skipped (39 files).
+
+CYCLE 44 L1: widened `ga_sade_sati`'s F-A14 contract to 10/15 categories (PR #1990, migration 753)
+— next: rebase `#1853` onto current `main` (deferred from this cycle, then ping `l2-3f` for the
+follow-up L2 re-pin), continue widening `ga_sade_sati` (5 categories remain:
+`sade_sati_modifier_overlay`, `sade_sati_saturn_retrograde_subset`, `sade_sati_cancellation_check`,
+`sade_sati_concurrent_dasha_overlay`, `sade_sati_downstream_cross_reference`) or `ga_structural`
+(56 categories remain), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1843,7 +1883,7 @@ none accepted yet (blocked on #1736).
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
-| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968, widened #1987 cycle 43 — 6/15 categories: sade_sati_cycle, sade_sati_phase_quarter, dhaiya_period, kantaka_shani_period, ashtama_shani_period, ardha_ashtama_shani_period) |
+| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968, widened #1987 cycle 43, widened again #1990 cycle 44 — 10/15 categories: sade_sati_cycle, sade_sati_phase_quarter, dhaiya_period, kantaka_shani_period, ashtama_shani_period, ardha_ashtama_shani_period, sade_sati_phase, janma_shani_period, vishakha_shani_period, anumukha_shani_period) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
@@ -2415,6 +2455,19 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   (PR #1928, severing the transitive import entirely) is still queued on their side; once it
   lands, future rebases stop hitting this class. They'll push the one-off re-pins on #1853/#1898
   directly next cycle.
+
+- **D-L1-68** — C8 v2.3 cycle 44: widened `ga_sade_sati`'s F-A14 contract (migration 753,
+  PR #1990) from 6/15 to 10/15 categories, adding `sade_sati_phase` and the three
+  classically-named sub-phase categories (`janma_shani_period`, `vishakha_shani_period`,
+  `anumukha_shani_period`) — the same "computed once, emitted under two categories from a shared
+  subject" pattern the Dhaiya family established last cycle (D-L1-66), one level up. Mapped
+  differently-named-but-same-value keys (`period_start_iso`↔`phase_start_iso`, etc.) via a `CASE`
+  inside the cross-category consistency conjunct rather than assuming identical key names across
+  categories. Reused the transactional `UPDATE`+`ROLLBACK` mutation-test pattern from D-L1-66
+  throughout — no repeat of the CTE-overlay slowness. Also: `l2-3f` independently fixed `#1898`'s
+  L2 pin directly (confirmed clean afterward) and partially fixed `#1853`'s (pinned against an
+  in-history commit since that branch isn't rebased yet — will go stale again once it is);
+  deferred the `#1853` rebase to a future cycle rather than fold it into this cycle's bounded unit.
 
 ## Held items
 
@@ -3067,3 +3120,22 @@ L1 must satisfy rather than a feature it consumes.
   ga_sade_sati's F-A14 contract to 6/15 categories (PR #1987, migration 752) + fixed DIRTY #1898
   -- next: continue widening ga_sade_sati (9 categories remain) or ga_structural (56 categories
   remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T04:5xZ -- CYCLE 44 (C8 v2.3). PR hygiene: #1853/#1898 confirmed the only non-queued
+  (same #1852 class, already tracked). l2-3f independently pushed the L2 re-pin fix directly to
+  both branches mid-cycle-43: #1898 confirmed clean afterward; #1853 got a partial fix only (still
+  26 commits behind main, not yet rebased -- l2-3f correctly left the rebase to me, pinned against
+  an in-history commit instead, will go stale again once rebased). Deferred #1853's rebase to a
+  future cycle. #1928/#1892 unchanged. Unit of work: widened ga_sade_sati's F-A14 contract from
+  6/15 to 10/15 categories (PR #1990, migration 753) -- added sade_sati_phase plus the three
+  classically-named sub-phase categories (janma_shani_period, vishakha_shani_period,
+  anumukha_shani_period). _emit_cycle_rows computes each classical phase ONCE and emits it TWICE
+  under two categories from the same subject -- the Dhaiya-family pattern one level up. Mapped
+  differently-named keys (period_start_iso<->phase_start_iso etc.) via a CASE in the
+  cross-category conjunct. Three new conjuncts (temporal ordering, duration_days re-derivation,
+  5-field cross-category consistency), all verified live clean then individually mutation-tested
+  via the transactional UPDATE+ROLLBACK pattern from D-L1-66. integrity_check_sql carried forward
+  the prior seven conjuncts verbatim. No writer touched. Full platform/tests/unit/migrations/
+  suite: 187 passed / 91 skipped (39 files). CYCLE 44 L1: widened ga_sade_sati's F-A14 contract to
+  10/15 categories (PR #1990, migration 753) -- next: rebase #1853 (deferred from this cycle, then
+  ping l2-3f for the follow-up re-pin), continue widening ga_sade_sati (5 categories remain) or
+  ga_structural (56 categories remain), or ga_positions re-dispatch once #1892 lands.
