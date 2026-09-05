@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 11; ga_prashna_judgment orphan disposition, migration 651 (#1879)
+last_updated: 2026-09-06 — C8 v2.3 cycle 20; ga_dashas F-A12 dignity vocabulary fix (#1926)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -747,6 +747,51 @@ narrowed) + #1859's own second RED (self-inflicted missed pin regen, caught and 
 continue `ga_dashas`'s F-A12/F-A13/F-A14, or re-dispatch `ga_positions` once #1892 lands (still
 open as of this cycle).
 
+## CYCLE 20 (C8 v2.3) — ga_dashas's F-A12 dignity vocabulary fix (PR #1926)
+
+**PR hygiene:** #1859/#1881/#1827 all clean (checks settling from cycle 19's fixes, no new RED).
+#1853's stale CI red is the same run (`33982947292`) already confirmed last cycle as L2's #1852
+pattern, not a fresh failure — corroborated again, not re-investigated from scratch.
+
+**Unit of work: F-A12** — `ga_dashas`' persisted `chart_dashas.lord_natal_dignity_d1` disagreed
+with `get_dashas.ts`'s serve-time authority (`chart_facts.graha_dignity_per_varga`) on the same
+natal fact (Sun D1 dignity, 28,923 rows: `"enemy_sign"` vs `"neutral"`). Traced both sides to
+their actual source before touching anything: `ga_structural` computes `graha_dignity_per_varga`
+via the shared `brahmagyan.dignity_oracle.classify_dignity`; `ga_vargas`' `_compute_dignity`
+already delegates to the SAME oracle (confirmed by reading its own docstring, which documents a
+prior refactor away from a local Friend/Enemy table). Live-verified the convergence directly:
+`classify_dignity('Sun','Capricorn',21.9626)` (the chart's real longitude, read from
+`chart_facts`) returns `'neutral'`, matching `chart_facts` exactly.
+
+Root cause isolated to one bad routing choice: `ga_dashas_writer.py` translated `chart_divisionals`'
+Title-cased oracle output through `ga_condition_writer`'s `_DIVISIONAL_DIGNITY_NORMALIZE` — a map
+built for a *different* consumer (`avastha_deeptaadi_from_dignity_and_state`'s own literal
+`"neutral_sign"`/`"enemy_sign"` match arms, confirmed by reading that function directly) and never
+the right vocabulary for this field. Considered and rejected reading `chart_facts.graha_dignity_per_varga`
+directly instead (would have matched get_dashas.ts's authority exactly) — checked `asset_registry.depends_on`
+first and found `ga_structural` depends on `ga_dashas`, not the reverse, so that fact wouldn't yet exist
+when `ga_dashas` runs; would have silently introduced a guaranteed-empty read, not just an
+undeclared-edge risk. Fixed instead by lowercasing `chart_divisionals`' own value directly (data
+`ga_dashas` legitimately has available at its point in the DAG), dropping the misapplied
+`_DIVISIONAL_DIGNITY_NORMALIZE` import entirely — `ga_condition_writer.py`'s own copy and its
+deeptaadi use are untouched.
+
+Checked cross-layer import risk before regenerating anything: `ka_kshetra` (L3),
+`panchang_engine`, `routers/jaimini.py`, `brahmagyan/l0_dasha_systems.py` all reference
+`ga_dashas_writer.py` in comments only; writer-digest diff confirmed only `ga_dashas` moved.
+5 new tests (`test_ga_dashas_f_a12_dignity_vocab.py`), `test_ga7_writer.py`'s
+`FORENSIC_NATAL_FIXTURE` updated to the new (correct) values, full `ga_dashas`/`ga_condition`
+suites re-run green (106 + 43 passed). PR **#1926** opened and armed.
+
+F-A13 (the `ga_vargas` undeclared DAG edge) stays out of scope — already policy-mitigated
+(D-L1-13/D-CND-09: `depends_on` immutable, sequential single-asset dispatch the accepted
+mitigation). F-A14 (`integrity_check_sql`) is a separate migration, not attempted this cycle.
+
+CYCLE 20 L1: landed `ga_dashas`'s F-A12 dignity-vocabulary fix (PR #1926) — considered and
+correctly rejected reading `chart_facts` directly once the DAG check showed it would silently
+read pre-existent-empty data — next: F-A14 (`ga_dashas`/`ga_vargas`/`ga_strength`
+`integrity_check_sql`), or re-dispatch `ga_positions` once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1045,6 +1090,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   `ka_tithi_pravesha`, no import) before regenerating. Treated the hygiene sweep itself as this
   cycle's bounded unit given its depth (three independent root-caused defects), matching cycle 7's
   precedent rather than also forcing a new changed-asset fix into the same cycle.
+- **D-L1-42** — C8 v2.3 cycle 20: fixed F-A12 by tracing BOTH disagreeing surfaces to their actual
+  computation before touching either — proved live that `ga_vargas` and `ga_structural` already
+  delegate to the SAME shared oracle (`classify_dignity`), so the disagreement was a vocabulary
+  bug in `ga_dashas`'s own translation step, not a genuine computation divergence between L1
+  writers. **Explicitly considered and rejected** the more "obvious" fix (read
+  `chart_facts.graha_dignity_per_varga` directly, matching `get_dashas.ts`'s own authority
+  byte-for-byte) after checking `asset_registry.depends_on` and finding `ga_structural` depends ON
+  `ga_dashas` — that fix would have silently read a table not yet populated in the current build,
+  the same defect class as F-A13 but guaranteed rather than occasional. Chose the fix that uses
+  data legitimately available at `ga_dashas`'s actual point in the (immutable) DAG instead.
 
 ## Held items
 
@@ -1286,3 +1341,17 @@ L1 must satisfy rather than a feature it consumes.
   bounded-unit discipline, per cycle 7's precedent. CYCLE 19 L1: #1859 DIRTY fixed + #1881 RED
   root-caused and narrowed + #1859's self-inflicted second RED caught and fixed -- next:
   ga_dashas's F-A12/F-A13/F-A14, or ga_positions re-dispatch once #1892 lands (still open).
+- 2026-09-06T00:0xZ -- CYCLE 20 (C8 v2.3). PR hygiene clean: #1859/#1881/#1827 settling
+  green, #1853's red re-confirmed as the same already-tracked #1852 pattern (not re-diagnosed
+  from scratch). Unit of work: ga_dashas's F-A12 fix (PR #1926) -- traced both disagreeing L1
+  surfaces to the SAME shared dignity_oracle before touching anything, isolating the bug to
+  ga_dashas's own misapplied use of ga_condition's deeptaadi-specific normalization map.
+  Explicitly considered reading chart_facts.graha_dignity_per_varga directly (would have matched
+  get_dashas.ts's authority exactly) and rejected it after checking asset_registry.depends_on
+  live -- ga_structural depends on ga_dashas, not the reverse, so that read would silently hit an
+  empty table. Fixed by lowercasing chart_divisionals' own value instead (data legitimately
+  available at ga_dashas's DAG position). 5 new tests, cross-layer import risk checked clean
+  (comment-only references), writer-digest diff confirmed ga_dashas-only. CYCLE 20 L1: landed
+  ga_dashas's F-A12 dignity-vocabulary fix (PR #1926), rejected a plausible-looking alternative
+  fix after verifying it would break on DAG order -- next: F-A14 (integrity_check_sql for
+  ga_dashas/ga_vargas/ga_strength), or ga_positions re-dispatch once #1892 lands.
