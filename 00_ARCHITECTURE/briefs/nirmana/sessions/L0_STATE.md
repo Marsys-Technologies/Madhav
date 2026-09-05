@@ -1838,3 +1838,5 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   explanation pointing to `#1985`. Confirmed `#1910`/`#1915`/`#1923`/`#1925` (separate PRs/branches)
   were never at risk. This is exactly the "fix any DIRTY (rebase)" contract clause working as
   intended -- caught before merge, not after.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions unchanged (13/19/27/76), no merges, no new activity.
