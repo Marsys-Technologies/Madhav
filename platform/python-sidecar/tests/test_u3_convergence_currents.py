@@ -267,10 +267,20 @@ class TestAshtakavarga:
 # ── C12 tajika_annual_reinforcement ─────────────────────────────────────────
 
 class TestTajika:
+    """
+    L3-W3 (F-SANGAM-7). _c12_tajika_score now matches on the varṣa's own
+    [varsha_start, varsha_end) date range rather than an unreachable
+    varsha_year == calendar_year comparison, and returns honest Optional[float]
+    (None when no covering varṣa row exists, or no domain_lord to compare).
+    """
+
     def test_varshesha_match_returns_one(self):
         from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
         ctx = EnrichmentContext(
-            tajika_year_lords=[{'varsha_year': 2026, 'varshesha': 'Jupiter', 'muntha': 'Mars'}]
+            tajika_year_lords=[{
+                'varsha_year': 43, 'varshesha': 'Jupiter', 'muntha': 'Mars',
+                'varsha_start': date(2026, 2, 5), 'varsha_end': date(2027, 2, 4),
+            }]
         )
         score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', ctx)
         assert score == pytest.approx(1.0)
@@ -278,7 +288,10 @@ class TestTajika:
     def test_muntha_match_returns_half(self):
         from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
         ctx = EnrichmentContext(
-            tajika_year_lords=[{'varsha_year': 2026, 'varshesha': 'Saturn', 'muntha': 'Jupiter'}]
+            tajika_year_lords=[{
+                'varsha_year': 43, 'varshesha': 'Saturn', 'muntha': 'Jupiter',
+                'varsha_start': date(2026, 2, 5), 'varsha_end': date(2027, 2, 4),
+            }]
         )
         score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', ctx)
         assert score == pytest.approx(0.5)
@@ -286,24 +299,57 @@ class TestTajika:
     def test_no_match_returns_zero(self):
         from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
         ctx = EnrichmentContext(
-            tajika_year_lords=[{'varsha_year': 2026, 'varshesha': 'Saturn', 'muntha': 'Mars'}]
+            tajika_year_lords=[{
+                'varsha_year': 43, 'varshesha': 'Saturn', 'muntha': 'Mars',
+                'varsha_start': date(2026, 2, 5), 'varsha_end': date(2027, 2, 4),
+            }]
         )
         score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', ctx)
         assert score == pytest.approx(0.0)
 
-    def test_empty_context_returns_zero(self):
+    def test_empty_context_returns_none(self):
         from services.ka_sangam.engine import _c12_tajika_score
         from services.ka_sangam.engine import EnrichmentContext
         score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', EnrichmentContext.empty())
-        assert score == pytest.approx(0.0)
+        assert score is None
 
-    def test_wrong_year_returns_zero(self):
+    def test_no_domain_lord_returns_none(self):
         from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
         ctx = EnrichmentContext(
-            tajika_year_lords=[{'varsha_year': 2025, 'varshesha': 'Jupiter', 'muntha': 'Jupiter'}]
+            tajika_year_lords=[{
+                'varsha_year': 43, 'varshesha': 'Jupiter', 'muntha': 'Mars',
+                'varsha_start': date(2026, 2, 5), 'varsha_end': date(2027, 2, 4),
+            }]
+        )
+        score = _c12_tajika_score(date(2026, 4, 1), None, ctx)
+        assert score is None
+
+    def test_window_outside_any_covering_varsha_returns_none(self):
+        from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
+        ctx = EnrichmentContext(
+            tajika_year_lords=[{
+                'varsha_year': 42, 'varshesha': 'Jupiter', 'muntha': 'Jupiter',
+                'varsha_start': date(2025, 2, 5), 'varsha_end': date(2026, 2, 4),
+            }]
         )
         score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', ctx)
-        assert score == pytest.approx(0.0)
+        assert score is None
+
+    def test_datetime_with_date_method_is_handled(self):
+        """varsha_start/varsha_end arrive as tz-aware datetimes in production
+        (l1_tajik_varsha_year_lords.varsha_start_iso/varsha_end_iso are
+        timestamptz columns) — must compare on the .date() component."""
+        from datetime import datetime, timezone
+        from services.ka_sangam.engine import _c12_tajika_score, EnrichmentContext
+        ctx = EnrichmentContext(
+            tajika_year_lords=[{
+                'varsha_year': 43, 'varshesha': 'Jupiter', 'muntha': 'Mars',
+                'varsha_start': datetime(2026, 2, 5, 5, 12, 38, tzinfo=timezone.utc),
+                'varsha_end': datetime(2027, 2, 4, 11, 27, 24, tzinfo=timezone.utc),
+            }]
+        )
+        score = _c12_tajika_score(date(2026, 4, 1), 'Jupiter', ctx)
+        assert score == pytest.approx(1.0)
 
 
 # ── EnrichmentContext empty-safe ─────────────────────────────────────────────
@@ -318,7 +364,7 @@ class TestEnrichmentContextEmptySafe:
         ctx = EnrichmentContext.empty()
         assert _c7_ashtakavarga_potency('Jupiter', 1, ctx) is None  # held-null (N4b), not a crash
         assert _c11_vedha_factor('Jupiter', 1, ctx) == pytest.approx(1.0)
-        assert _c12_tajika_score(date(2026, 1, 1), 'Jupiter', ctx) == pytest.approx(0.0)
+        assert _c12_tajika_score(date(2026, 1, 1), 'Jupiter', ctx) is None  # held-null (F-SANGAM-7), not a crash
 
 
 # ── independent_current_count coupling rules (U3 extensions) ─────────────────
