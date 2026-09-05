@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 40; ga_prashna F-A14 landed (#1977) — all 19 assets now have a first F-A14 pass
+last_updated: 2026-09-06 — C8 v2.3 cycle 41; F-A16 fixed at the writer level (#1979)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -1630,6 +1630,57 @@ vargottama re-derivation) or F-A16 (`ga_yoga`'s unearned formula-version label) 
 writers, or (c) `ga_positions` re-dispatch once #1892 lands — whichever is highest-priority per
 the contract when this state file is next read.
 
+## CYCLE 41 (C8 v2.3) — F-A16 fixed at the writer level (PR #1979); first non-migration writer fix since the F-A14 campaign began
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. All prior L1 PRs
+confirmed genuinely `is:queued` (including #1827/#1975/#1977, which self-queued since last
+cycle). Nothing DIRTY/RED/CLEAN-but-unqueued.
+
+**Unit of work: fix F-A16** (`ga_yoga_writer.py`) — the F-A14 first pass is complete, so this
+cycle picked the next-highest-priority item from the closing list: the genuine, already-root-
+caused defect discovered while authoring migration 746 (cycle 35), rather than a migration.
+
+Both `ga_yoga_firings` insert sites (`_build_karakamsha_firings` and the generic detector-insert
+path in `build_ga_yoga_substep`) wrote `derivation or STRENGTH_FORMULA_VERSION`. Since
+`derivation` is `None` whenever `_compute_constituent_bala_strength` legitimately found no
+resolvable classical shadbala (the Rahu-only karakāṃśa case — Rahu has no classical shadbala),
+the Python `or` fallback silently substituted `STRENGTH_FORMULA_VERSION` — the UNRELATED Pancha
+Mahapurusha dignity formula's own constant, from a completely different code path — into
+`strength_formula_version`, even though `strength` correctly stayed `NULL`. Fixed both sites to
+pass `derivation` directly; `STRENGTH_FORMULA_VERSION`'s one legitimate use (the Pancha
+Mahapurusha path, where `strength` IS actually computed) is untouched.
+
+New regression test (`test_ga_yoga_f_a16_strength_formula_version.py`) builds a minimal
+`ChartState` reproducing the exact live defect scenario (Rahu in the karakāṃśa sign, empty
+`shadbala_map`), captures the INSERT parameters via a fake cursor, and asserts both `strength`
+and `strength_formula_version` land as `None`. **Genuinely mutation-tested the test itself**: swapped
+in the pre-fix `origin/main` version of the writer, confirmed the test fails with the exact live
+defect value `'yoga_strength_formula_v1'`, then restored the fix and confirmed it passes again —
+not a tautological test that would pass either way.
+
+Ran the full existing karakāṃśa/NBRY/detector-registry/bypass-guard test suites (144 tests) plus
+the complete `ga_writers/` + `pipeline/orchestrator/writers/__tests__/` suites (602 tests) — all
+pass, no regressions. Regenerated the writer digest inventory (`provenance_inventory --check`
+failed as expected after touching a writer, clean after regen) — **before regenerating, checked
+cross-layer import risk per standing discipline**: grepped every file mentioning
+`ga_yoga_writer` and confirmed the L2 (`bo_laksana.py`) and L3 (`taranga_kernel`, `ka_kota_chakra`,
+`ka_vedha_gochara`) hits are all comment/docstring mentions of the filename, never real `import`
+statements — zero actual cross-layer dependents. Separately noticed (not investigated further,
+out of scope for this cycle) that `ga_yoga`, `ga_structural`, and `ga_sensitive_degree` shared an
+byte-identical digest value both BEFORE and after this change — a pre-existing quirk of the
+digest tool's transitive-import-following mechanism, not something this fix introduced or a
+cross-layer risk; worth a future look if the campaign ever audits the digest tooling itself.
+
+This is a writer-level data-correctness fix, not a migration — the 4 already-built rows on the
+affected chart (1c826d5a) will carry the corrected value only after that chart's next rebuild;
+migration 746's F-A14 conjunct (a) will clear at that point, not before.
+
+CYCLE 41 L1: fixed F-A16 in `ga_yoga_writer.py` (PR #1979) — next: fix F-A15
+(`ga_structural`'s D9 vargottama re-derivation, the bigger of the two writer fixes — needs to
+cite `ga_vargas`' authority instead of re-deriving, touching a 7,900-line file), consider a
+follow-up F-A14 pass widening `ga_structural`/`ga_sade_sati` coverage, or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1647,7 +1698,7 @@ none accepted yet (blocked on #1736).
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
 | ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); **NEW: F-A15 — graha_vargottama_amplification_factor re-derives D9 vargottama instead of citing ga_vargas' authority, 4/105 rows disagree (§N.5)** |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
-| ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); **NEW: F-A16 — strength_formula_version invents an unrelated label when the real derivation returns nothing, 4/212 rows (jaimini_karakamsha_rahu)** |
+| ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
@@ -2151,6 +2202,20 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   "ship the correct check even if it reads red" precedent (F-C8/F-A15/F-A16): sometimes the
   honest move is to ship NO check for a genuinely-untestable claim, not a red one and not a green
   one either.
+- **D-L1-63** — C8 v2.3 cycle 41: fixed **F-A16** at the writer level (`ga_yoga_writer.py`) — the
+  first non-migration writer fix undertaken since the F-A14 campaign began (cycle 21). Both
+  `derivation or STRENGTH_FORMULA_VERSION` sites replaced with bare `derivation`. Before
+  regenerating the stale writer-digest inventory, checked cross-layer import risk per standing
+  discipline (grep every `ga_yoga_writer` mention, confirm which are real `import`s vs comment
+  text) and found zero real cross-layer imports — the L2/L3 hits were all docstring/comment
+  mentions of the filename. Separately surfaced (not investigated, explicitly out of scope): the
+  digest tool's transitive-import-following mechanism gives `ga_yoga`, `ga_structural`, and
+  `ga_sensitive_degree` an identical hash both before AND after this change — a pre-existing
+  quirk, not a regression this fix caused, and not something to chase down mid-cycle. Also
+  mutation-tested the REGRESSION TEST ITSELF, not just the fix: swapped in the pre-fix
+  `origin/main` writer, confirmed the new test fails with the exact live defect value, then
+  restored the fix and confirmed it passes — the same discipline this campaign has applied to
+  every SQL migration conjunct, now applied to a Python unit test for the first time.
 
 ## Held items
 
@@ -2733,3 +2798,24 @@ L1 must satisfy rather than a feature it consumes.
   (PR #1977, migration 751) -- next: choose among a follow-up F-A14 pass widening
   ga_structural/ga_sade_sati coverage, fixing F-A15/F-A16 in their actual writers, or ga_positions
   re-dispatch once #1892 lands.
+- 2026-09-06T04:0xZ -- CYCLE 41 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged; ALL
+  prior L1 PRs confirmed genuinely is:queued (including #1827/#1975/#1977, self-queued since last
+  check). Unit of work: fixed F-A16 at the writer level (PR #1979) -- the F-A14 first pass is
+  complete, so picked the next-highest-priority item, a genuine already-root-caused defect rather
+  than a new migration. Both ga_yoga_firings insert sites' `derivation or STRENGTH_FORMULA_VERSION`
+  fallback replaced with bare `derivation` -- strength_formula_version now stays honestly NULL
+  alongside strength instead of inventing the unrelated Pancha Mahapurusha constant.
+  STRENGTH_FORMULA_VERSION's one legitimate use untouched. New regression test builds a minimal
+  ChartState reproducing the exact live defect (Rahu in karakamsha sign, empty shadbala_map),
+  captures INSERT params via a fake cursor. Mutation-tested the TEST ITSELF: swapped in the
+  pre-fix origin/main writer, confirmed the test fails with the exact live defect value
+  'yoga_strength_formula_v1', restored the fix, confirmed it passes -- first time this campaign's
+  mutation discipline applied to a Python unit test rather than a SQL conjunct. Ran 144 +
+  602 existing tests, all pass. Checked cross-layer import risk before regenerating the stale
+  writer-digest inventory: zero real imports of ga_yoga_writer.py outside L1 (L2/L3 hits were all
+  comment mentions). Noted but did not chase: ga_yoga/ga_structural/ga_sensitive_degree share an
+  identical digest both before and after this change -- a pre-existing digest-tool quirk, not a
+  regression. This is a writer fix, not a migration -- migration 746's conjunct (a) clears only
+  once the affected chart rebuilds. CYCLE 41 L1: fixed F-A16 (PR #1979) -- next: fix F-A15 (the
+  bigger ga_structural writer change), a follow-up F-A14 pass widening ga_structural/ga_sade_sati
+  coverage, or ga_positions re-dispatch once #1892 lands.
