@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK: verified queue is genuinely healthy (position 32→31, checked current queue-head #1873's real check-runs via gh-readonly-queue — 20/26 already passing, rest in_progress, not stuck), still no PRs of mine merged. 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — IDLE-OK: queue still position 31, no PRs merged. 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1609,4 +1609,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   current queue-head (#1873) via `gh-readonly-queue/main/pr-1873-...`'s real check-runs: 20/26
   already `success`, the rest `in_progress` (started `19:43`) — not a repeat of the #1867-class
   stall. Still none of my own PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
 
