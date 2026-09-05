@@ -1848,3 +1848,16 @@ CYCLE 35 L4: IDLE-OK (verified: PR hygiene clean, `#1854` legitimately pre-queue
 or adjudications) → next: watch `#1854`/`#1864` progress; retry E-gate/dispatch dry-run once DB
 access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~09:50Z` — L4 — **CYCLE 36 (v2.3) — `#1854`'s `updatedAt` identical to last cycle
+(18:03:04Z) despite ~7 min more real time — same 2 checks still `IN_PROGRESS`, no new
+completions. Within the ~10-11 min normal range still, not yet escalating, but flagged to check
+closely next cycle if it hasn't moved.** New queue-head entry (`#1862`, fresh) — no deep-dive
+needed. PR hygiene otherwise clean. DB access still down (26th consecutive cycle), no new
+capability landings or adjudications.
+
+CYCLE 36 L4: IDLE-OK (verified: PR hygiene clean; `#1854` watched closely — unchanged
+`updatedAt` but still within normal check-duration range, not yet a confirmed stall; E-gate
+uncheckable, DB access down 26 cycles; no new capability landings or adjudications) → next:
+re-verify `#1854` next cycle (escalate if truly stuck); retry E-gate/dispatch dry-run once DB
+access returns; watch `#1885`'s merge; F1 remains deferred.
+
