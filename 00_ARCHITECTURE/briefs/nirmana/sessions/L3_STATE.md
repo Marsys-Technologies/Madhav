@@ -191,14 +191,21 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 
 ## Held items
 
-| item | blocked on | since | note |
-|---|---|---|---|
-| **W4 for ALL 23 assets** | **#1730** (dispatcher enforces strict layer sequencing) | 2026-09-05 | the hard blocker: no layer session can dispatch anything |
-| **The gate canary itself** | **#1734** (E-gate soundness / DAG truth) | 2026-09-05 | L3 has no honest canary until the DAG is reconciled and superseded |
-| W2 acceptance events (all 23) | **#1715** (evidence spine generalisation, RULED — L1 authors) | 2026-09-05 | W2 *decisions* are unaffected and proceed |
-| W4 for 15 of 23 assets | **PR #1728** (fingerprint ordering, RULED, auto-merge armed) | 2026-09-05 | resolves on merge; record the SORTED fingerprint |
-| Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | 2026-09-05 | poll `L2_STATE.md` §CAPABILITIES LANDED on `origin/main` |
-| 18 of 23 assets' W4 | L0/L1/L2 freezes (E-gate, C2) | 2026-09-05 | `ga_positions` is the single highest-leverage unlock (5 assets) |
+**REFRESHED 2026-09-05T~15:1xZ** — most of the rows this table originally carried (all dated
+its W1-open snapshot) are now stale/resolved; corrected in place rather than left to accumulate
+silent drift (C9). Verified each against current `origin/main`/live DB rather than assumed.
+
+| item | blocked on | status |
+|---|---|---|
+| `ka_graha_sancara`'s W4 probe dispatch | PR #1846 (health_probe, deploy) | genuinely open — PR queued, not yet merged/deployed |
+| `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
+| 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
+| MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
+| Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | genuinely open — PR #1741 landed the WRITER only (confirmed via `L2_STATE.md` CAPABILITIES LANDED); data unreachable until the (held) `bo_laksana` rebuild |
+| ~~W4 for ALL 23 assets, blocked on #1730~~ | ~~dispatcher strict-layer-sequencing~~ | **RESOLVED** — #1730 ruled via #1737 (merged), dispatcher now gates on C2's ancestor closure |
+| ~~W2 acceptance events (all 23), blocked on #1715~~ | ~~evidence spine generalisation~~ | **RESOLVED** — #1736 merged+deployed (verified live 2 cycles ago); `ka_graha_sancara`'s recorded, others available whenever their route work reaches this point |
+| ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
+| ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -451,6 +458,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~15:2xZ — L3-W3/bookkeeping — verify-before-redo caught stale tracking: checked
+  M1's remainder (`ka_vighnakara._fetch_natal_lagna_lon` bare-`longitude` key;
+  `ka_kshetra`'s `fact_category='lagna'` lookup) before starting it as "next unheld work" — both
+  are **already fixed**, landed inside PR #1751 (my own earlier W3 batch, titled "M7+M8" but
+  bundling this in too; confirmed via `git log` + running the pre-written regression guard
+  `tests/l3/test_m1b_zero_row_fact_reads.py`, 3/3 pass). My own state file's "Not started" note
+  had simply never been corrected after that PR merged — fixed the CURRENT heartbeat pointer
+  (an old historical paragraph further up is left as-is; it's a point-in-time record, not a
+  status the newer entries were meant to keep re-stating).
+  Also refreshed the whole **Held items** table — it still carried the W1-open snapshot verbatim
+  (5 of its 6 rows were already resolved: #1730/#1715/#1728 all ruled+merged, re-verified against
+  `origin/main` rather than assumed). Replaced with a genuinely-current table: 4 items still
+  really open (`ka_graha_sancara` W4 pending #1846 deploy; `ka_gochara_resonance`'s true-closure
+  hold; 20 assets' W4 on L0/L1/L2 freezes; the MSR re-run and its downstream salience-multiplier
+  consumer, both still genuinely blocked on `bo_laksana`), 4 struck through with their resolution
+  named. C9's "never let state lag more than a few cycles" is about exactly this class of drift.
+  No new PR this cycle — pure state-file correction, run through the same rigor as a code change
+  (verified via git log + a live test run, not asserted from memory) rather than skipped as "just
+  docs." PR hygiene: #1846/#1850/#1801 all still genuinely `is:queued`, nothing actionable.
+  **Next action unchanged:** once #1846 deploys, dispatch `ka_graha_sancara`'s probe for real.
 - `2026-09-05T~15:0xZ — L3-W3 — M12 closed: PR #1850 (migration 672, disposes the 54
   unrefreshable `ka_gochara_v3` orphan rows, F-CENT-2). Verified live before touching anything:
   no FK/chain/outcome-column dependency; flips migration 670's conjunct (f) false→true; staging
@@ -471,10 +498,7 @@ your layer close.
   resume/probe branch; next migration number is **673** (671 claimed by #1846, still open; 672
   claimed here).
   **Next action:** #1846/#1850/#1801 all mid-queue; once #1846 deploys, dispatch
-  `ka_graha_sancara`'s probe for real (still the layer's top W4 priority). If more W3 backlog is
-  wanted first: M1's two zero-row fact reads (`ka_vighnakara._fetch_natal_lagna_lon`;
-  `ka_kshetra` pinning `fact_category='lagna'` where the real category is `lagna_position`) are
-  the next unheld, independent items.
+  `ka_graha_sancara`'s probe for real (still the layer's top W4 priority).
 - `2026-09-05T~14:5xZ — L3-W4/W3 — correction absorbed, held item confirmed STILL held (not
   a new action, but load-bearing): re-checked `L2_STATE.md` on `origin/main` before touching the
   MSR re-run (conductor-2b's earlier cross-session "your kala_convergence hold is LIFTED"
