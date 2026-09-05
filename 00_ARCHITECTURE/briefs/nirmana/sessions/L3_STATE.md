@@ -54,10 +54,20 @@ your `nirmana-adjudication` issues → continue.
 Full `python-sidecar` suite after these: **6,135 passed, 0 failures.** `platform` + `platform-mcp`
 `tsc`: 0 errors. `L3_kala` 107 passed; `kala_views` + `kala_ritual_resonance` 214 passed.
 
-**In flight:** 19 D-CND-03 integrity contracts (14 authored + mutation-proved so far, by three
-subagents; 3 authored by me including the **v1-corpus guard**, which is now the only in-database
-detector of loss for that irreplaceable corpus since migration 588 removed its triggers) ·
-the full both-directions `depends_on` audit that D-CND-07 now requires.
+**In flight:** the last 2 of 19 D-CND-03 integrity contracts (`ka_kshetra`, the century
+materializer — 17 authored and mutation-proved, staged in `~/nirmana-s/.l3-tools/contracts/`, four
+files each: contract, mutation proof, volume derivation, live evidence). Three are mine, including
+the **v1-corpus guard**, which is now the only in-database detector of loss for that irreplaceable
+corpus since migration 588 removed its triggers. **One contract already returns `f` — a true
+positive:** `ka_bhavishya_lekha`'s degeneracy conjunct fires because all 100 projections on the
+canonical chart share one `peak_date`, proven two-valued against the second chart.
+
+**Next action on resume:** the last two contracts land → author **migration 670** (19
+`integrity_check_sql` + `expected_volume_formula`/`_inputs` + achieved-count `target_floor` +
+`ka_gochara`'s `count_sql` correction (M6) + 10 `DRAFT`→`CURRENT`, holding `ka_graha_sancara` at
+DRAFT until M3 deploys). Then N1, the Temporal Concordance Contract, for which W1 established the
+evidence base: 34 engines, a 10-cell overlap matrix, one existing arbiter, and `ka_sangam` already
+~60% of the way there.
 
 **Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
 rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
