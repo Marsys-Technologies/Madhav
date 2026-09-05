@@ -139,6 +139,84 @@ treating any inherited `integrity_check_sql` failure as a data defect, check whe
 *ever* been green — an R0-T01 Conform pilot authored before the build it now judges is a proposal,
 not a gate.
 
+### ⛔ ACTIVE HOLDS — read before dispatching anything (2026-09-05, CONDUCTOR)
+
+**These survive a Conductor session death. A successor Conductor inherits them from this section,
+not from the issue tracker.**
+
+| held | scope | released when | ruling |
+|---|---|---|---|
+| **`ph_nimitta` / any write to `phala_anchors`** | campaign-wide | L4 announces a deterministic `anchor_id` under `## CAPABILITIES LANDED` in `L4_STATE.md` on `main` | #1732 / D-CND-04 |
+| **L2 `bo_laksana` / any `bodha_msr_signals` write** | campaign-wide | **RELEASED** 2026-09-05T00:0Z on snapshot `cloudsql-backup:1788566627645` — but **L2 must not dispatch until L3 confirms on #1770** its five `kala_*` tables are re-runnable from a rebuilt MSR base; and it is **`weight: monster`, runs SOLO** | #1770 / D-CND-15 |
+| **L3 `kala_convergence` write** | campaign-wide | released on the same snapshot, but **sequenced AFTER L2's MSR rebuild** | #1770 |
+| `ka_gochara_resonance`, `ka_graha_sancara` | L3 | their declared `depends_on` is corrected/confirmed against what their writers actually read | #1734 / D-CND-07 |
+
+### CONDUCTOR rulings — night 1, wave 3: the CASCADE finding, and a ruling of mine reversed
+
+**#1770 (L2, TIME-CRITICAL) is the most consequential finding of the campaign, and it corrects the
+Conductor's own ruling on #1748.**
+
+L2 checked a *favourable* conclusion about its own table — one I had ratified — and found two
+load-bearing inferences wrong. Both verified by the Conductor before ruling:
+
+1. **`bodha_msr_signals` REPLACES, it does not accrete.** `bodha_writers/_idempotency.py:131` issues
+   an explicit `DELETE FROM bodha_msr_signals` (§N.3 per-chart delete-then-insert, working as
+   designed). Canonical chart holds 49,955 + 104 + 45 across three `build_id`s — one live
+   generation plus two satellite writes, not three generations. Nine builds under accretion would
+   be ~450,000 rows; there are 150,150.
+2. **All eight FKs are `ON DELETE CASCADE`** (`confdeltype='c'`), while `_idempotency.py` asserts
+   `NO ACTION` at lines 55 **and** 110. That false comment is how #1748 reached its conclusion and
+   how the Conductor ratified it.
+
+**The transitive closure, traced by the Conductor (not in the original filing):**
+
+```
+bodha_msr_signals → kala_convergence → phala_anchors → phala_pramana
+                                                     → phala_sankrama
+                                                     → phala_sodhana
+                                                     → phala_suddha_sodhana
+```
+
+**864,733 rows across 12 tables in THREE layers** — L2 150,126 (deliberate) · **L3 710,899** ·
+**L4 3,708**. The L4 tail lands on `phala_anchors`: **the exact table #1732's hold exists to
+protect.** The campaign was guarding the front door while an L2 rebuild would have come through
+the wall.
+
+**Snapshot `cloudsql-backup:1788566627645`** — `SUCCESSFUL`, instance-level, 2026-09-05T00:03:47Z,
+with all 17 exposed tables' pre-state row counts recorded on #1770 so a restore is checkable
+rather than asserted. **Honest limit, stated rather than glossed: the backup is SUCCESSFUL; a
+restore has NOT been exercised.** A clone-restore drill is real spend and was not authorised
+tonight; the gap is named and goes to the Phase-Z register with the Conductor's name on it.
+
+#### Standing rulings added in this wave
+
+- **D-CND-15** — the campaign's DAG models **ancestors**, and the E-gate gates on ancestors.
+  **`ON DELETE CASCADE` makes DESCENDANTS a destruction surface**, and nothing in the E-gate, the
+  run-slot protocol, or a writer's own idempotency helper models that direction. Before any
+  `rebuild_only` dispatch, the owning session enumerates the **transitive CASCADE closure** of
+  every table its writer deletes from and holds if it crosses a layer boundary. A §N.3 in-layer
+  delete-then-insert is only "in-layer" *if the FKs say so*.
+- **D-CND-16** — **a comment asserting a schema property is not evidence of that property.** Where
+  code's safety depends on FK delete behaviour, trigger semantics or a constraint, the check
+  queries the catalogue. A stale comment is worse than no comment, because it stops the next
+  reader looking.
+
+#### The Conductor's error, recorded in full
+
+The #1748 ruling verified the `ON CONFLICT` key and the `build_id` count and wrote *"your mechanism
+is right."* It **never checked for the explicit DELETE, and never checked `confdeltype`** — each one
+query. **D-CND-16 is the rule that would have caught it, and it was written four hours later by the
+session that made the mistake.**
+
+What still stands from #1748, unamended: the 0-dangling measurement (re-verified directly:
+`phala_anchors` 188/0, `kala_convergence` 35,365/0, `mimamsa_attribution` 1,425/0) — but meaning
+only what L2 says it means, *a fact about build order, not a property of the design*, since the last
+`bo_laksana` build predates the L3/L4/L5 rows now pointing into it. D-CND-11 is unaffected.
+
+**The correction came from the session that stood to gain from the original grading being right.**
+That is the campaign's most important result of the night, and it is a process result, not a
+technical one.
+
 ### CONDUCTOR rulings — night 1 (2026-09-05)
 
 Eleven adjudication issues filed by five sessions in the first ~90 minutes; **all ruled in
