@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:37Z (C8 v2.3 cycle 44) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 pending-checks-only, no red. #1901 progressing — down to 2 pending
+  checks (Governance Gates, Build Check) from 3 last cycle, no red, not yet queued. Queue
+  positions unchanged (#1861=11, #1873=24, #1844=44); main tip unchanged. #1856 still OPEN.
 - 2026-09-06T~05:32Z (C8 v2.3 cycle 43) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. **#1901 (the #1899 fix) still OPEN**, own
   CI checks still running, not yet queued. Queue positions fully unchanged (#1861=11, #1873=24,
