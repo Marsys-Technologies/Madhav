@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_text_index solo retry (authorization tooling now fixed) skip_no_delta'd against its old receipt — now a 4th confirmed D-L0-FF instance (with bg_gochara_arcs, bg_doshas). Not retrying further until Conductor's #1899/#1901 lands. D-L0-II, D-L0-GG (PR #1910), D-L0-JJ (bg_compendium_index integrity failure) all still open.
+last_updated: 2026-09-05 — D-L0-KK: bg_yogas dispatch failed integrity_check_sql but writer is fully correct (233/233/233/85, all 3 hashes match) — 5th instance this session of the same FULL-JOIN scope-leak defect class. Migration 701 authored + verified, PR pending. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-JJ (bg_compendium_index) all still open.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -42,7 +42,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 |---|---|---|
 | bg_cohort | rebuild_only | **Job-image blocker CLEARED (deployed image now `80a9cd71e...`, confirmed ancestor of #1772). Genuine dispatch succeeded (run `a9446885-...`, real build, valid receipt) but hit a NEW structural blocker (D-L0-II): `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set for its `depends_on`, so `receipt_state` is permanently `'unknown'`.** Posted to #1713 for Conductor; not L0-fixable (shared orchestrator provenance code). Only L0 asset affected (checked: no other L0 asset depends on a service-kind asset) |
 | bg_gochara_arcs | rebuild_only | **Structural bind (D-L0-FF): 2 runs now** — `bfdc6919` (genuine build, valid receipt, WRONG authorization) and `5ba8cedf` (valid authorization, `skip_no_delta`'d, stale receipt). Neither completes the evidence chain; may need Conductor input on a `force` path |
-| bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
+| bg_yogas | rebuild_only | **D-L0-J refined by D-L0-KK: real dispatch (run `f89f70fa-...`) failed integrity_check_sql, but writer is fully correct.** Genuine `seed_yogas()` replay produces exactly 233/233/233/85 with all three content-hash pins matching byte-for-byte — the ONLY failing subclause is the same FULL-JOIN scope leak as bg_doshas/692 and bg_dasha_systems/700 (`entity_class='yoga'` in the ON clause, 508 non-yoga `brahma_ontology` rows leak in). Migration 701 authored + verified live (TRUE on genuine replay, FALSE on stale live data). No writer change; awaiting PR merge + deploy, then re-dispatch. CASCADE parent → snapshot+`--acknowledge-destroys` (already done this cycle) |
 | bg_dasha_systems | rebuild_only | **D-L0-K refined by D-L0-GG: writer still correct; the CHECK had two bugs.** Real genuine dispatch (run `ce86f4cf`, not skip_no_delta) failed `integrity_check_sql`. Root-caused live: (1) same FULL-JOIN scope bug as bg_doshas/692 — `ontology.entity_class='dasha_system'` in the ON clause instead of a pre-filtered subquery, so all non-dasha_system `brahma_ontology` rows leaked in; (2) migration 621's `catalog_hash` pin itself was wrong at authoring time (writer content unchanged since 5f47906bc; genuine hash is `8e35495f...`, pin says `30742da6...`). Fix migration 700 authored + verified live (rolled-back tx): guard matches 621's exact pin, corrected check evaluates **TRUE** against a genuine fresh writer run and **FALSE** (fail-closed, as expected) against current stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
 | bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
@@ -203,6 +203,28 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   standalone-function L0 writers (`l0_dasha_systems.py` etc.) diagnosed earlier this session via a
   bare psycopg2 call — replaying it in isolation needs more setup, left for next cycle. Both
   assets' evidence chains remain open; no writer fix made yet for either.
+
+- **D-L0-KK (refines D-L0-J)** — **bg_yogas: a genuine, correctly-authorized, CASCADE-acknowledged
+  dispatch (run `f89f70fa-59f3-4d57-92f2-758de7d66a09`, wave 1) failed `integrity_check_sql`, rolling
+  back to the prior stale data — but the writer itself is fully correct.** Root-caused with the same
+  discipline as D-L0-GG: replayed `seed_yogas()` directly in a rolled-back transaction. The genuine
+  writer output is exactly `233/233/233/85` (catalog/ontology/reference/source_chunks), matching
+  D-L0-J's original prediction precisely, and all THREE content-hash pins
+  (`catalog_hash`/`ontology_hash`/`reference_hash`) match the registry's pinned values byte-for-byte.
+  Isolated the ONE failing subclause by evaluating each condition separately: the same FULL-JOIN
+  scope leak already fixed for `bg_doshas` (692) and `bg_dasha_systems` (700) —
+  `ontology.entity_class='yoga'` sits in the ON clause of a FULL JOIN against `brahma_ontology`
+  (shared across every L0 entity class) instead of a pre-filtered subquery, so every non-yoga
+  ontology row surfaces as a spurious violation. Verified live: raw violation count is exactly 508,
+  and `count(*) FROM brahma_ontology WHERE entity_class != 'yoga'` is also exactly 508 — zero real
+  yoga misalignments. Migration `701_bg_yogas_integrity_check_join_scope_fix.sql` authored: applies
+  the same subquery-pre-filter fix, verified twice live (rolled-back tx) — applies cleanly against
+  the current pin, evaluates TRUE against a genuine `seed_yogas()` replay, and FALSE (fail-closed)
+  against current stale live data. No writer change. 5th instance this session of the established
+  C12 "correct the check" pattern (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694,
+  bg_dasha_systems/700, bg_yogas/701). Fresh Cloud SQL backup taken before the dispatch
+  (`cloudsql-backup:1788631501151`) per WP-6 CASCADE-parent discipline; no destructive action was
+  needed since the run failed cleanly (savepoint rollback, no partial writes).
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
