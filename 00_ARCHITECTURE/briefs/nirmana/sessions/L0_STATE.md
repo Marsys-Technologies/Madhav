@@ -1917,3 +1917,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1767 merged (`8d35be284`), positions dropped by 2
   again (5/11/19/68). Queue draining steadily (~1 merge per 15-30min). No DIRTY, no RED, no merges
   of my own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 5/11/19/68). New queue
+  head #1907, ~4.5min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
