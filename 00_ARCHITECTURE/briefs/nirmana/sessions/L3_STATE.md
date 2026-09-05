@@ -461,6 +461,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ (e) — L3-W3 — IDLE-OK (6th consecutive unchanged): PR hygiene clean
+  (26/27 queued, #1961 pending checks, 0 failures); #1903/#1958/#1894/#1921/sidecar-traffic/
+  #1960 all re-verified fresh, unchanged.
+
 - `2026-09-06T~11:0xZ (d) — L3-W3 — IDLE-OK: #1903/#1958/#1894/#1921, sidecar traffic,
   and #1960's comment count all re-checked fresh, unchanged again. PR hygiene clean
   (26/27 queued; #1961 checks still IN_PROGRESS, 0 failures, `isInMergeQueue: false` —
