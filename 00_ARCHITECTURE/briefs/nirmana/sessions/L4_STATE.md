@@ -2384,3 +2384,25 @@ CYCLE 75 L4: IDLE-OK (verified: PR hygiene clean — 10/11 own PRs genuinely que
 and one new adjudication checked, neither L4-relevant) → next: watch `#1834` enter the queue;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~20:40Z` — L4 — **CYCLE 76 (v2.3) — PR hygiene: `#1834` finally entered the queue
+(position 87), resolving the last "mid-CI" watch item; the Jobs API had gone stale again the
+same way as the earlier `#1873` incident (job-log showed the run complete while the API still
+read `in_progress`).**
+
+**PR hygiene:** `#1834`'s `Governance Gates` job still read `status: in_progress`/`started_at
+unchanged` via the REST jobs API at ~12 min elapsed — right at the edge of the historical
+range, so checked the actual run log rather than trusting the API number: `gh run view` showed
+the run's own top-level status as **complete** (✓), `Governance Gates` finished in `11m53s`, all
+15 required jobs green. Re-queried the PR directly: `mergeStateStatus: CLEAN`,
+`autoMergeRequest: null`, `mergeQueueEntry` position 87 — genuinely entered the queue on its
+own, no manual re-arm needed. All 11 own PRs are now uniformly healthy and queued.
+
+**Priorities 1-4:** no new `main` commits since last cycle; new adjudications checked, none
+name L4. E-gate still uncheckable — 66th consecutive cycle DB access has been down.
+
+CYCLE 76 L4: PR hygiene — confirmed `#1834` entered the queue (position 87) after its Jobs-API
+read went stale the same way `#1873` did earlier this session; job-log cross-check, not the API
+number, settled it → all 11 own PRs now uniformly queued and healthy → E-gate uncheckable, DB
+access down 66 cycles, nothing new to act on → next: watch remaining queue positions advance;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
