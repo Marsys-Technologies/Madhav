@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — registry_fingerprint_sha256 replica built + validated on both target assets (D-L0-P); analysis_digest function still to be located; 3 PRs queued (long queue), 1 pending checks
+last_updated: 2026-09-05 — D-L0-P CLOSED: full submission-payload toolkit built + cross-validated against the frozen manifest's own fingerprint; just waiting on the merge queue now
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -291,6 +291,30 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   cross-verify the fingerprint replica before ever submitting for real — a wrong digest here isn't
   destructive (submission would just 403), but worth checking before spending a submission attempt.
 
+- **D-L0-P continued 3 — CLOSED: the full submission-payload toolkit is built and
+  cross-validated.** Read `canonicalNirmanaAssetAnalysisDigestForRegistryRow` +
+  `canonicalNirmanaAssetAnalysisReceiptDigest` + `NirmanaAssetAnalysisReceiptSchema`
+  (`definitions.ts:1111-1167`) — same `stableJson`+sha256 pattern, applied to `{schema_version,
+  base: receiptBase, frozen_manifest_asset, current_registry_contract}`. Sourced every input live:
+  `receiptBase.grounding.convergence_commit` for L0 = `49bb5c98b864a2cb2fee037cdb7f14f6892a8263`
+  (`nirmana-analysis-layer-pins.json`); `writer_digest_sha256` per asset from
+  `nirmana-writer-digests.json`'s `writers` map; `frozen_manifest_asset` queried directly from
+  `nirmana_evidence.nirmana_elevation_campaign_definitions.manifest -> 'assets'` for revision
+  `t0-2026-09-01-0e5b06fb`. Extended the Python replica
+  (`.../scratchpad/compute_analysis_digest.py`) and ran it for both assets. **Independent
+  cross-validation, not just inspection**: the frozen manifest asset's own embedded
+  `registry_fingerprint_sha256` field (computed by the real server at freeze time) matches this
+  session's from-scratch Python computation **byte-for-byte** for both bg_doshas
+  (`073def4a…`) and bg_gochara_arcs (`93fa16df…`) — resolving last cycle's "not
+  execution-verified" caveat with a real independent check, not a bigger risk taken. Computed
+  today's `analysis_digest` values too (`49113930…` bg_doshas, `66cb710b…` bg_gochara_arcs) —
+  these will change once migrations 692/694 merge (the `current_registry_contract` embeds
+  `integrity_check_sql`, which the merge changes by design; that's the whole point of the LIVE-vs-
+  frozen distinction #1816 already settled). **The full toolkit is now ready**: once a migration
+  merges, re-run the two scripts against fresh live data, build the `record_evidence` JSON body per
+  the schema already traced (D-L0-P), dry-run via `l0_submit_evidence.sh`, then submit for real.
+  Nothing structurally unknown remains between here and an actual accept.
+
 ## Held items
 
 - **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
@@ -529,3 +553,20 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `definitions.ts`'s DB-pool-creating transitive imports this cycle). NEXT: read the second,
   more involved function (`canonicalNirmanaAssetAnalysisDigestForRegistryRow`) — still not located
   this cycle — then the submission payload is fully computable; keep polling the long PR queue.
+- 2026-09-05 — **Cycle 10.** PR hygiene: refined the PR filter this cycle after `#1844` (an L5 PR,
+  matched only because its title contains the substring "non-L0") showed up in a loose search —
+  correctly excluded it (not mine to manage) by filtering on the L0 branch-namespace prefix instead
+  of a raw text match, per the state file's own branch-namespace note. All 3 migration PRs
+  (`#1829`/`#1832`/`#1836`) confirmed still genuinely `is:queued` (queue now 17 deep, growing —
+  #1836 stayed queued, nothing ejected); `#1828` clean, pending checks. Nothing to fix. Job-image
+  still stale. **D-L0-P CLOSED this cycle**: found and read
+  `canonicalNirmanaAssetAnalysisDigestForRegistryRow` + `canonicalNirmanaAssetAnalysisReceiptDigest`
+  + the exact receipt schema, sourced every input live (L0 convergence_commit, per-asset
+  writer_digest_sha256, frozen manifest asset queried directly from the definitions table), and
+  **got independent cross-validation for free**: the frozen manifest's own embedded
+  `registry_fingerprint_sha256` (computed by the real server at freeze time) matches this session's
+  from-scratch Python replica byte-for-byte for both target assets — resolving last cycle's
+  "not execution-verified" caveat properly rather than leaving it open. Full toolkit now built:
+  `compute_registry_fingerprint.py`, `compute_analysis_digest.py`, `l0_submit_evidence.sh`. NEXT:
+  once any of #1829/#1832/#1836 actually merges (still just queue position, not stuck), re-run the
+  scripts against fresh post-merge live data and do the first real submission attempt.
