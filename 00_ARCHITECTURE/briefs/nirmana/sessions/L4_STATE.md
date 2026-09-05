@@ -2836,3 +2836,34 @@ CYCLE 104 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queu
 uncheckable, DB access down 94 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~23:00Z` — L4 — **CYCLE 105 (v2.3) — PR hygiene found and fixed TWO real DIRTY
+PRs (`#1849`, `#1845`); this time the conflicts landed on the writer-digest inventory itself,
+not just the pin — each resolved by verifying the branch's own real code fix survived the
+rebase before trusting the regenerated hash.**
+
+**PR hygiene:** GraphQL sweep showed `#1849` (`ph_suddha_sodhana` F-16) and `#1845` (`ph_sodhana`
+F-14) both `CONFLICTING`/`DIRTY` — main had advanced 4 positions since the last check. Fixed
+both via the standard sequence, extended this time: `git rebase origin/main` conflicted on
+**`nirmana-writer-digests.json` itself** (not just the pin) on both branches — `--skip`ped the
+stale digest-regen commit, then the stale pin-splice commit, on each. Regenerated the digest
+fresh for both: `ph_suddha_sodhana`'s and `ph_sodhana`'s hashes each changed for real.
+**Verified each branch's own code fix was still intact against the new base** before trusting
+the new hash (`git diff origin/main -- <file>`) rather than assuming a clean rebase preserved
+the work — caught my own wrong first guess on `#1845`'s file path (checked
+`pipeline/orchestrator/writers/ph_sodhana.py`, found no diff, then correctly located the real
+change in `services/ph_sodhana/engine.py` via `git show --stat` on the branch's own commit
+before concluding anything was lost). Re-spliced each L4 pin fresh, verified `--check` PASS on
+both. Ran each PR's own test file: `test_ph_wave5.py` 51/51 pass (both). Pushed
+`--force-with-lease` clean on both (neither branch was itself enqueued while I worked). Re-armed
+auto-merge on both; swept the other 8 own PRs afterward, none cascaded into DIRTY.
+
+**This cycle's unit was the two DIRTY fixes.** Priorities 1-4 otherwise unchanged: E-gate still
+uncheckable, 95th consecutive cycle DB access down.
+
+CYCLE 105 L4: PR hygiene — found and fixed 2 real DIRTY PRs (`#1849`, `#1845`) whose conflicts
+landed on the writer-digest itself; verified each branch's real fix survived the rebase before
+trusting the regenerated hash (caught and corrected my own wrong file-path guess on `#1845`
+before concluding anything) → other 8 own PRs confirmed healthy → E-gate uncheckable, DB access
+down 95 cycles → next: watch `#1849`/`#1845` re-enter the queue; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
