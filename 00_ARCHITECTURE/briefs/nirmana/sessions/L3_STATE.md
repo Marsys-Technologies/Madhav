@@ -440,6 +440,7 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~08:0xZ — L3-W3 — post-resume loop 2: N4a/N4b (two 100%-zero ka_sangam terms → honest null; c7's fix HELD on the Āries-lagna frame question, #1810), N12 (a below-range 0.5 invented into a ranking score on 99.6% of rows), kala_bhavishya's P7 outcome seam preserved across rebuild, L3 analysis pin re-generated (#1814 filed on the generator's all-layers coupling) — blocked on: nothing; #1801 queued and armed; spine merged but NOT deployed so W2 acceptance still impossible.`
 - `2026-09-05T~07:2xZ — L3-W3 — resumed after lane death; §R1 stock-take posted; #1770 answered (all five re-runnable) then CORRECTED upward (3,708 L4 rows, not 188); C13 blast-radius 23/23 published; two no-FK dispositions; MSR re-run sequenced and priced; N4a panchanga honest-null landed — blocked on: nothing, W3 continues.`
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
