@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 45; ga_sade_sati F-A14 COMPLETE 15/15 (#1994)
+last_updated: 2026-09-06 — C8 v2.3 cycle 46; ga_structural F-A14 widened to 3/57 (#1997)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -25,8 +25,8 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
   #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
   cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43), 753 (`ga_sade_sati` Phase widening,
-  cycle 44), 754 (`ga_sade_sati` FINAL widening — 15/15 complete, cycle 45) used. 755–759 remain
-  free.
+  cycle 44), 754 (`ga_sade_sati` FINAL widening — 15/15 complete, cycle 45), 755 (`ga_structural`
+  bhadra/panchaka flags, cycle 46) used. 756–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1919,6 +1919,57 @@ three cycles (752/753/754, cycles 43-45). Next: pick the next F-A14 widening tar
 (`ga_structural`, 56/57 categories remain — by far the largest remaining gap in the campaign) or
 `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 46 (C8 v2.3) — ga_structural's F-A14 contract widened to 3/57 categories (PR #1997, migration 755); first cross-writer-owned-category conjuncts
+
+**PR hygiene:** clean sweep. `#1827`/`#1994` both CLEAN-but-unqueued (checks green, no
+DIRTY/RED) — confirmed nothing actionable (mid-CI/queue-catchup, matched the exact pattern from
+the last several cycles). All other 31 L1 PRs confirmed genuinely `is:queued`. #1928/#1892
+unchanged.
+
+**Unit of work: started `ga_structural`'s F-A14 widening arc** (PR **#1997**, migration 755 —
+fourth used in the 752-759 range). `ga_structural` is the single largest remaining F-A14 gap in
+the campaign (56/57 categories, on a ~7,900-line writer covering 16 shodasha vargas) — picked the
+smallest 3 remaining categories by row count as a bounded first target: `eclipse_proximity_natal`
+(15 rows), `bhadra_flag` (18), `panchaka_flag` (20).
+
+**First genuine surprise**: neither `bhadra_flag` nor `panchaka_flag` nor `eclipse_proximity_natal`
+is actually emitted by `ga_structural_writer.py` at all — grepping the writer for these category
+names returned nothing. All three are physically written by `ga_panchanga_writer.py`, but OWNED by
+`ga_structural` per `fact_category_ownership` (a cross-writer attribution this campaign hadn't
+previously exercised for F-A14 — every asset so far has authored contracts for categories its own
+writer emits). Confirmed this is a legitimate D-CND-03 scope: the integrity contract belongs to the
+OWNING asset's registry row, not the emitting writer file.
+
+Two conjuncts landed clean:
+- `bhadra_flag.active_at_birth_flag` cross-checked against `panchanga_karana`'s own
+  `vishti_bhadra_flag` (same `karana.id==7` source, stored twice under different categories) —
+  joined on `chart_id` alone since the writer's own comment marks `bhadra_flag` ayanamsha-invariant,
+  not per-ayanamsha. 0/18 violations.
+- `panchaka_flag.active_at_birth_flag` re-derived from `panchanga_nakshatra_moon.number` against
+  the writer's own `PANCHAKA_NAKSHATRAS` set (23-27). 0/15 violations.
+
+**`eclipse_proximity_natal` deliberately skipped**: its one stored value is a fixed
+`EXTERNAL_COMPUTATION_REQUIRED` placeholder string on every chart/ayanamsha today (a real G4
+eclipse-table lookup was never wired in) — an honest B.10 floor with no independent formula to
+re-derive against, same disposition as D-L1-62's `ga_prashna_judgment` (an honest absence-of-check,
+not a red or green one).
+
+**Carried migration 745's conjunct (b) forward verbatim, still genuinely RED**: F-A15's writer fix
+(PR #1981, cycle 42) hasn't propagated to the 2 charts whose stored `graha_vargottama_
+amplification_factor` rows predate the fix — that RED is expected and tracked, not something this
+migration attempts to resolve. Because of it, the full combined 4-conjunct `SELECT` still evaluates
+`false` on live production today, exactly as migration 745 already did before this pass. Verified
+the two NEW conjuncts INDIVIDUALLY (their own `NOT EXISTS` subquery in isolation, not the whole
+chain) — both return `true` alone — then mutation-tested each via a real transactional
+`UPDATE`+`ROLLBACK`. No writer touched. Full `platform/tests/unit/migrations/` suite: 187 passed /
+91 skipped (39 files).
+
+CYCLE 46 L1: widened `ga_structural`'s F-A14 contract to 3/57 categories (PR #1997, migration 755)
+— discovered and correctly handled the campaign's first cross-writer-owned-category F-A14 target.
+Next: continue `ga_structural` widening (54 categories remain — likely the "per_varga" family next,
+many sharing a similar re-derivable shape against `ga_vargas`' own varga positions), or
+`ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1934,7 +1985,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); F-A15 **FIXED at the writer level (#1981, cycle 42)** — graha_vargottama_amplification_factor now reads ga_vargas' D9 varga_vargottama_flag instead of re-deriving; migration 745's conjunct (b) will clear once the 2 affected charts rebuild |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 — 3/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag); F-A15 **FIXED at the writer level (#1981, cycle 42)** — graha_vargottama_amplification_factor now reads ga_vargas' D9 varga_vargottama_flag instead of re-deriving; migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -1949,11 +2000,12 @@ none accepted yet (blocked on #1736).
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
 21-40)**: ga_dashas, ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka,
 ga_medical, ga_vastu, ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial,
-1/57 categories — the other 56 remain a future pass], ga_yoga, ga_vichara, **ga_sade_sati
-[COMPLETE, 15/15 categories as of cycle 45]**, ga_transit_anchors, ga_ayurdaya, ga_prashna
-[scoped to ga_prashna_lagna only — ga_prashna_judgment is genuinely empty on every built chart].
-`expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
-`ga_structural`'s 56/57 remaining categories are now the single largest F-A14 coverage gap in the
+3/57 categories as of cycle 46 — the other 54 remain a future pass], ga_yoga, ga_vichara,
+**ga_sade_sati [COMPLETE, 15/15 categories as of cycle 45]**, ga_transit_anchors, ga_ayurdaya,
+ga_prashna [scoped to ga_prashna_lagna only — ga_prashna_judgment is genuinely empty on every
+built chart]. `expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with
+8,249 live rows. `ga_structural`'s 54/57 remaining categories are the single largest F-A14
+coverage gap in the
 whole campaign.
 
 ## Decisions log
@@ -2540,6 +2592,22 @@ whole campaign.
   gates passed immediately with zero regeneration needed — `l2-3f`'s prior partial fix on that
   branch turned out to already be valid against the rebased tree, no further action required from
   either session.
+
+- **D-L1-70** — C8 v2.3 cycle 46: started `ga_structural`'s F-A14 widening arc (migration 755,
+  PR #1997), 1/57 → 3/57. Discovered the campaign's first cross-writer-owned-category F-A14
+  target: `bhadra_flag`/`panchaka_flag`/`eclipse_proximity_natal` are all physically emitted by
+  `ga_panchanga_writer.py` but OWNED by `ga_structural` per `fact_category_ownership` — grepping
+  `ga_structural_writer.py` for these names returned nothing, which could have looked like a dead
+  end but is actually the correct D-CND-03 scope (the contract belongs to the owning registry row,
+  not the emitting writer file). Landed 2 real cross-category conjuncts (`bhadra_flag` vs
+  `panchanga_karana.vishti_bhadra_flag`, joined on `chart_id` alone since the category is
+  ayanamsha-invariant; `panchaka_flag` re-derived from `panchanga_nakshatra_moon.number`).
+  Deliberately skipped `eclipse_proximity_natal` — an honest `EXTERNAL_COMPUTATION_REQUIRED`
+  placeholder with no independent formula to check, same disposition as D-L1-62. Carried migration
+  745's conjunct (b) forward verbatim, still genuinely RED (F-A15's fix hasn't propagated to the 2
+  affected charts' stored rows yet) — verified the two NEW conjuncts individually in isolation
+  rather than via the whole combined `SELECT`, since the full chain can't currently read `true`
+  regardless of what this migration adds.
 
 ## Held items
 
@@ -3232,3 +3300,24 @@ L1 must satisfy rather than a feature it consumes.
   migration 754 cycle 45, across 4 migrations/3 cycles) -- next: pick up ga_structural's F-A14
   widening (56/57 categories remain, now the single largest coverage gap in the campaign), or
   ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T05:1xZ -- CYCLE 46 (C8 v2.3). PR hygiene clean: #1827/#1994 CLEAN-but-unqueued
+  (mid-CI/queue-catchup, not stuck), all other 31 L1 PRs confirmed genuinely is:queued.
+  #1928/#1892 unchanged. Unit of work: started ga_structural's F-A14 widening arc (PR #1997,
+  migration 755), 1/57 -> 3/57. Picked the 3 smallest remaining categories by row count
+  (eclipse_proximity_natal 15, bhadra_flag 18, panchaka_flag 20) as a bounded first target.
+  Discovered the campaign's first cross-writer-owned-category F-A14 target: all three are
+  physically emitted by ga_panchanga_writer.py, not ga_structural_writer.py, but OWNED by
+  ga_structural per fact_category_ownership -- confirmed this is the correct D-CND-03 scope (the
+  contract belongs to the owning registry row, not the emitting writer file), not a dead end.
+  Landed 2 real cross-category conjuncts: bhadra_flag vs panchanga_karana.vishti_bhadra_flag
+  (same karana.id==7 source, joined on chart_id alone since bhadra_flag is ayanamsha-invariant),
+  panchaka_flag re-derived from panchanga_nakshatra_moon.number against the writer's own
+  PANCHAKA_NAKSHATRAS set. Deliberately skipped eclipse_proximity_natal -- honest
+  EXTERNAL_COMPUTATION_REQUIRED placeholder, no formula to check (D-L1-62 disposition). Carried
+  migration 745's conjunct (b) forward verbatim, still genuinely RED (F-A15's fix hasn't
+  propagated to the 2 affected charts yet) -- verified the 2 new conjuncts individually in
+  isolation since the full chain can't currently read true regardless. Both mutation-tested via
+  transactional UPDATE+ROLLBACK. No writer touched. Full platform/tests/unit/migrations/ suite:
+  187 passed / 91 skipped (39 files). CYCLE 46 L1: widened ga_structural's F-A14 contract to 3/57
+  categories (PR #1997, migration 755) -- next: continue ga_structural widening (54 categories
+  remain, likely the "per_varga" family next), or ga_positions re-dispatch once #1892 lands.
