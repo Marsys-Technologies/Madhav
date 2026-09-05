@@ -538,6 +538,34 @@ CYCLE 14 L1: landed the fact_id stability fix (PR #1898, #1747) — next: re-dis
 `fact_id`s will finally be stable across future rebuilds too), or continue
 changed-asset MUST work (`ga_dashas`, `ga_transit_anchors`) while waiting.
 
+## CYCLE 15 (C8 v2.3) — #1898 went RED on #1852 live; get_dashas yogini natal fix (F-A11, PR #1900)
+
+**PR hygiene:** #1898 (cycle 14's PR) was RED on `nirmana_analysis_layer_pins.py --check`:
+L2's own pin stale (`bo_pratijna` moved again, same #1852 coupling — cycle 14's writer-digest
+regen). Did not touch L2's pin myself; posted concrete CI evidence to #1852 and messaged `l2-3f`
+directly (found via `ListAgents`), same protocol as cycle 7. L2 independently re-verified and
+pushed its own `--layer L2` re-pin onto my branch within the cycle; re-armed auto-merge on #1898
+once L2's commit landed. All other L1 PRs confirmed `is:queued`.
+
+**Unit of work: `get_dashas.ts`'s F-A11 fix** — 83,740 yogini dasha rows carry a
+correctly-resolved `lord_natal_shadbala_total` (writer-populated) that the serve-side R-43
+re-derivation overwrites with NULL, because its graha-name→`fact_subject` map only knows the 9
+classical graha display names; `chart_dashas.lord_graha` stores yogini's 8 *deity* names
+(Mangala/Pingala/…) for that system, not the graha itself. Found the writer's own
+`_YOGINI_DEITY_TO_GRAHA` alias table (derived from `YOGINI_SEQUENCE`) and mirrored the same 8
+pairs in TS rather than guessing. Live-verified the exact case the finding cites before writing
+any code: `Pingala`'s writer-populated `lord_natal_shadbala_total = 8.47` on the canonical chart
+matches `chart_facts.SUN.graha_shadbala_total.rupa = 8.47` exactly — confirming the fix resolves
+to the SAME correct value already sitting in the writer's own denormalized column, not an
+invented one. Lifted the lookup to a module-level exported `factSubjectForLord()` for direct
+unit testing (18 new tests) rather than mocking the DB. 104 tests passing across the file's own
+suite.
+
+CYCLE 15 L1: PR hygiene recovered #1898 from RED (L2's pin, not mine to fix) and landed the
+yogini natal-condition fix (PR #1900, F-A11) — next: re-dispatch `ga_positions` once #1892
+lands, or continue `ga_dashas`'s remaining MUST findings (F-A9 floor correction, F-A10 scope_cap
+sentinel, F-A12 dignity divergence, F-A13 undeclared DAG edge, F-A14 integrity_check_sql).
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -782,6 +810,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   occurrence of `bo_pratijna`'s cross-layer digest coupling (#1852) — followed the exact same
   protocol as D-L1-27/D-L1-31: regenerated only `--layer L1`'s pin, left L2's pin untouched,
   corroborated on the existing issue rather than filing a duplicate or fixing L2's file myself.
+- **D-L1-37** — C8 v2.3 cycle 15: `get_dashas.ts`'s F-A11 yogini natal-condition fix (PR #1900,
+  full account in CYCLE 15 above). Did not guess the yogini deity→graha alias table — found and
+  mirrored the writer's own `_YOGINI_DEITY_TO_GRAHA`. Live-verified the exact cited case
+  (Pingala→8.47) against production chart_facts before writing code, not after. Also: #1898 went
+  genuinely RED on `#1852`'s coupling this cycle — held the line on not fixing L2's pin myself a
+  third time, escalated with CI evidence + direct message to `l2-3f` (found via `ListAgents`), got
+  a fast independent-verification-backed fix back.
 
 ## Held items
 
@@ -960,3 +995,14 @@ L1 must satisfy rather than a feature it consumes.
   -- regenerated only --layer L1's pin, corroborated on #1852 rather than touching L2's pin.
   CYCLE 14 L1: landed the fact_id stability fix (PR #1898, #1747) -- next: re-dispatch
   ga_positions once #1892 lands, or continue changed-asset MUST work while waiting.
+- 2026-09-05T17:10Z -- CYCLE 15 (C8 v2.3). PR hygiene found #1898 genuinely RED on #1852's
+  bo_pratijna coupling (L2's pin stale); did not fix L2's file, posted CI evidence to #1852 +
+  messaged l2-3f directly, L2 independently verified and pushed its own re-pin, re-armed #1898.
+  Unit of work: get_dashas.ts's F-A11 fix (PR #1900) -- yogini dasha lords are deity names
+  (Mangala/Pingala/...), not graha names, so the serve-side natal re-derivation's lookup map
+  resolved nothing for 83,740 yogini rows and nulled out the writer's correct
+  lord_natal_shadbala_total. Mirrored the writer's own _YOGINI_DEITY_TO_GRAHA table; live-verified
+  the Pingala->8.47 case against production chart_facts before coding. 18 new tests, 104 passing
+  overall. CYCLE 15 L1: recovered #1898 from RED (L2's issue, not mine) and landed the yogini
+  natal fix (PR #1900, F-A11) -- next: re-dispatch ga_positions once #1892 lands, or continue
+  ga_dashas's remaining MUST findings (F-A9/F-A10/F-A12/F-A13/F-A14).
