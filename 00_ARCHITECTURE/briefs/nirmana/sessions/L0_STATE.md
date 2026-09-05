@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-II: bg_cohort's job-image blocker cleared and a genuine dispatch succeeded, but hit a NEW structural evidence-chain gap (service-kind dependency can never produce a 'proven' receipt) — posted to #1713 for Conductor. D-L0-GG (migration 700, PR #1910) and D-L0-FF still open/awaiting merge.
+last_updated: 2026-09-05 — D-L0-JJ: dispatched bg_compendium_index+bg_text_index (job-image blocker cleared). bg_text_index built genuinely but its evidence chain was lost to a multi-asset authorization tooling bug (now fixed); bg_compendium_index failed integrity_check_sql for real (33 chapter-rows short of pin, not yet root-caused). D-L0-II, D-L0-GG (PR #1910), D-L0-FF all still open/awaiting merge.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -47,9 +47,9 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
 | bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
-| bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
+| bg_compendium_index | rebuild_only | **Job-image blocker cleared; real dispatch (run `27fea532-...`) FAILED integrity_check_sql (D-L0-JJ).** Live counts: total=9538 (pin 9571, −33), `topic_id IS NULL`=7969 (matches pin exactly), `chapter_num IS NULL`=1569 (pin 1602, −33 — exact match to total shortfall). Topic-type rows correct; chapter-type rows missing exactly 33. Not yet root-caused writer-vs-check — writer is a full `WriterBase` subclass needing `ctx.config` to replay (unlike the standalone-function L0 writers diagnosed earlier), not yet replayed in isolation |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
-| bg_text_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — same as bg_compendium_index |
+| bg_text_index | rebuild_only | **Job-image blocker cleared; genuine dispatch SUCCEEDED (run `27fea532-...`, disposition=build, fresh receipt) but its `accepted_rebuild_observed` chain was never submitted** — authorization for that run was rejected because it covered only `bg_compendium_index` (sibling in the same multi-asset dispatch), not both assets (D-L0-JJ, tooling bug in `authorize_build_run.sh`, now fixed to accept comma-separated asset lists). Needs a fresh isolated re-dispatch next cycle to complete the chain |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
 
 ## Decisions log
@@ -181,6 +181,28 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   Conductor picked it up as #1899/#1901); not attempting a fix myself since `compute_upstream_hash`/
   `build_receipt` are shared orchestrator code, not L0-owned. bg_cohort's writer output itself is
   genuinely correct (real build, real receipt content, real digest) — purely an evidence-chain gap.
+
+- **D-L0-JJ** — **bg_compendium_index + bg_text_index dispatched together (run
+  `27fea532-d8c1-44c2-84ca-7cfaf3f95ade`, wave 2), mixed outcome, one real defect + one tooling
+  bug.** `bg_text_index` built genuinely (`disposition='build'`, fresh receipt) but
+  `bg_compendium_index` failed its post-write `integrity_check_sql`, so the run's overall state is
+  `failed`. Separately, my own `authorize_build_run.sh` only ever accepted a single `asset_id` —
+  submitting `asset_ids: ["bg_compendium_index"]` for a run that actually planned BOTH assets
+  tripped `requireBuildRunAuthorizationProvenance`'s exact-set-match requirement
+  (`definitions.ts:2367-2390`, both directions: every planned asset must be in the authorized set
+  AND vice versa), rejecting the WHOLE authorization (HTTP 409) — so `bg_text_index`'s otherwise-
+  clean build never got its `accepted_rebuild_observed` chain this attempt, even though nothing
+  was wrong with the build itself. Fixed the script to accept a comma-separated asset list. For
+  `bg_compendium_index` itself: live counts post-failure are `total=9538` (pin expects `9571`, −33),
+  `topic_id IS NULL`=7969 (matches pin exactly), `chapter_num IS NULL`=1569 (pin expects `1602`,
+  −33 — exactly the total shortfall); the structural `(chapter_num IS NULL) = (topic_id IS NULL)`
+  alignment check passes. So topic-type rows are exactly right and chapter-type rows are missing
+  precisely 33 — narrows the defect to chapter-row production/extraction, but NOT yet root-caused
+  to writer-defect vs. stale-pin: `CompendiumIndexWriter` (`writers/bg_compendium_index.py`) is a
+  full `WriterBase` subclass needing a real `ContextSpec`/`ctx.config` to replay, unlike the
+  standalone-function L0 writers (`l0_dasha_systems.py` etc.) diagnosed earlier this session via a
+  bare psycopg2 call — replaying it in isolation needs more setup, left for next cycle. Both
+  assets' evidence chains remain open; no writer fix made yet for either.
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
