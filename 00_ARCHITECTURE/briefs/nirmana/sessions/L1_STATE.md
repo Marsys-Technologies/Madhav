@@ -402,6 +402,37 @@ assets, condition 2 still open (their own cycle, per D-L1-23).
 Canary `ga_positions`: **cond 1 ✅ · cond 2 ❌ (#1715 → PR #1736) · cond 3 ✅.**
 Manifest waves: W0=1, W1=9, W2=3, W3=3, W4=2, W5=1.
 
+## CYCLE 12 (C8 v2.3) — vastu_read vidhi primitive (F-E10), the last open ga_vastu MUST
+
+**PR hygiene:** all L1 PRs confirmed `is:queued` (#1827/#1841/#1853/#1859/#1865/#1871/#1874/#1879)
+— nothing DIRTY, RED, or unqueued.
+
+**Unit of work: F-E10's route decision** (PR **#1881**) — the last open MUST on `ga_vastu`.
+`get_vastu_directions` had zero routed vidhi consumers (245 primitives, none mentioning vastu).
+Checked `tool_name_bridge.ts` first rather than assuming a name: `ganita_vastu_get` already
+bridges to `get_vastu_directions` and is on the registry-completeness test's verified live-tool
+allowlist. Minted `vastu_read` (`platform/src/lib/vidhi/registry_data.ts`), following the
+`ayurdaya_read`/`medical_read` shape.
+
+Deliberately did NOT force it onto any life-domain deepdive floor: none of the six
+(wealth/career/health/marriage/spirituality/education/progeny) fit a directional-dwelling read,
+and `compiler.ts`'s own `DOMAIN_TO_INTENT` comment already documents `property` as a domain with
+no dedicated deepdive floor yet — minting a new domain/floor is a shared retrieval-plane change
+(vidhi/compiler.ts routes every layer's primitives, not just L1's), out of scope for this
+finding. Confirmed floor-less primitives are an accepted existing pattern in this exact file
+(5 precedents: `dasha_window`, `transit_window_scan`, `muhurta_scan`, `explain_read`,
+`upaya_read` — defined, referenced by no floor). `fallback_face: null` — `query_vastu_directions`
+(L0's classical reference) is not in the bridged/verified live-tool catalog, so not fabricated.
+1 new test file (`f_e10_vastu_read.test.ts`); `npx vitest run src/lib/vidhi/` 8 files/76 tests
+green; `tsc --noEmit` clean.
+
+This closes the last open MUST for `ga_vastu` (F-E12/F-E13/F-E14 were NOW-priority, not MUST, per
+`L1_W1_ANALYSIS_BATCH_E.md` — not required before W4 dispatch eligibility).
+
+CYCLE 12 L1: landed `vastu_read` vidhi primitive (PR #1881, F-E10) — next: the prashna
+tool-naming disambiguation (DR-6, non-DB), remaining NOW-priority `ga_vastu`/`ga_tajaka` findings
+if no MUST work remains, or check #1838 for `ga_positions` dispatch viability.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -425,7 +456,7 @@ none accepted yet (blocked on #1736).
 | ga_transit_anchors | 45 / 45 | **changed** | AV transit gating does NOT live here — serve-time TS (F-D) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
-| ga_vastu | 40 / 40 | rebuild_only | highest leverage: L0 direction remedies never joined (F-E) |
+| ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881) |
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
@@ -625,6 +656,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   legitimate reason to survive its own rebuild; a prashna judgment with no backing chart does not.
   Dry-ran the migration against production inside BEGIN/ROLLBACK and mutation-tested both safety
   guards before shipping — matches the discipline D-L1-16 set for migration 650.
+- **D-L1-34** — C8 v2.3 cycle 12: `get_vastu_directions`'s F-E10 route decision (PR #1881, full
+  account in CYCLE 12 above) — minted the `vastu_read` vidhi primitive rather than a bare
+  no-consumer disposition, since the underlying data is genuinely actionable (especially
+  post-F-E11's remedy join). Deliberately left it off every life-domain deepdive floor: `property`
+  is a documented no-floor-yet domain in `compiler.ts`, and minting a new domain/floor is a shared
+  retrieval-plane change (affects every layer's primitives), not an L1 asset-file fix — recorded
+  as the explicit disposition the finding's second option asked for, combined with the first.
 
 ## Held items
 
@@ -769,3 +807,13 @@ L1 must satisfy rather than a feature it consumes.
   production before shipping. CYCLE 11 L1: landed ga_prashna_judgment orphan disposition
   (PR #1879, migration 651) -- next: F-E10's route decision (vastu zero-consumers), the
   prashna tool-naming disambiguation, or check #1838 for ga_positions dispatch viability.
+- 2026-09-05T16:05Z -- CYCLE 12 (C8 v2.3). PR hygiene clean, all 8 L1 PRs confirmed is:queued.
+  Unit of work: get_vastu_directions's F-E10 fix (PR #1881) -- minted a vastu_read vidhi
+  primitive (live_tool ganita_vastu_get, verified via tool_name_bridge.ts) so the tool is
+  planner-citable, not just reachable by explicit name. Deliberately left off every life-domain
+  deepdive floor -- property/dwelling has no dedicated floor yet (documented in compiler.ts),
+  and minting one is a shared retrieval-plane change out of scope here; 5 existing floor-less
+  primitives confirmed this is an accepted pattern. Closes the last open MUST on ga_vastu.
+  CYCLE 12 L1: landed vastu_read primitive (PR #1881, F-E10) -- next: prashna tool-naming
+  disambiguation (DR-6), remaining NOW-priority findings, or check #1838 for ga_positions
+  dispatch viability.
