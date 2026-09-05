@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:52Z (C8 v2.3 cycle 47) — **IDLE-OK, verified. #1901 nearly done.**
+  `Governance Gates` cleared; `Build Check (PR only)` (a real 3-image Docker build: web,
+  sidecar, pipeline-job, no-push) has all build steps `completed success`, now just in post/
+  cleanup steps — should finish imminently. PR hygiene: #1844 still `is:queued` true, #1826
+  pending-checks-only, no red. Queue positions unchanged (#1861=9, #1873=22, #1844=42). #1856
+  still OPEN. No eligible dispatch yet — watch closely next cycle for #1901's merge.
 - 2026-09-06T~05:47Z (C8 v2.3 cycle 46) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1901's last two jobs (`Governance Gates`,
   `Build Check`) both confirmed genuinely `in_progress` at the job level, everything else in
