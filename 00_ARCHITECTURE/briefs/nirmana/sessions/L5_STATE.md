@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~16:15Z (C8 v2.3 cycle 165) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 pending-checks-only, no red. #1901 still at position 2. #1900
+  (position 1, 3rd cycle) now ~9.9 min in — within normal window. #1861=23, #1844=80
+  unchanged. #1869 unchanged at 3 comments. #1856 still OPEN. No eligible dispatch yet.
 - 2026-09-06T~16:10Z (C8 v2.3 cycle 164) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1901 still at position 2. #1900
   (front-of-queue, 2nd cycle) now ~6.8 min in — within normal window. #1861=23, #1844=80
