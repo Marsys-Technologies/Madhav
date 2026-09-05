@@ -1189,3 +1189,5 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 45: IDLE-OK.** `main` advanced (`6be9f5302`) but not `#1851`; `#1828`
   clean, `#1851` still cleanly queued (49-deep). L0's convergence pin re-checked, still unchanged.
   Nothing to fix, nothing new.
+- 2026-09-05 — **Cycle 46: IDLE-OK.** Queue shrinking (49→45), still moving, but `#1851` itself
+  still not merged. `#1828` clean, pin unchanged. Nothing to fix, nothing new.
