@@ -461,6 +461,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ (b) — L3-W3 — IDLE-OK: re-checked #1903/#1958/#1894/#1921 and the
+  sidecar traffic split fresh — all unchanged from the immediately-prior cycle (only ~90s
+  of real wall-clock elapsed between supervisor invocations this round). PR hygiene clean
+  (26/27 queued; #1961's checks IN_PROGRESS since `20:59:33Z`, ~90s old, not stuck — nothing
+  RED). Declined to manufacture a second prep item this cycle (cost ledger would need
+  fabricated token estimates this session has no real instrumentation for; a close-report
+  draft would be premature with N1/F-CONC-6/F-CONC-7 all still open) — an honest IDLE-OK
+  beats fake busywork per the contract's own framing.
+  **Next action unchanged:** re-check the four PR blockers + sidecar traffic each cycle;
+  fire the pre-written `ka_graha_sancara` probe dispatch (previous entry) the moment either
+  clears.
+
 - `2026-09-06T~11:0xZ — L3-W3 — prep unit (priority 5, nothing higher eligible): pre-wrote
   `ka_graha_sancara`'s W4 probe-dispatch procedure, precomputed and ready to fire the moment
   `amjis-sidecar`'s traffic cutover catches up to #1846.** Re-checked all four standing PR
