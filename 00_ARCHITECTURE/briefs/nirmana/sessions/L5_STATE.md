@@ -451,6 +451,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~03:40Z (C8 v2.3 cycle 31, part 2) — **#1835 merged** (main advanced 31 commits,
+  new tip `4d2a3ef05`). Rebased my own branch onto it (force-with-lease push). Queue advanced
+  one slot each: #1844→2, #1851→5, #1861→17, #1873→30. #1826 not yet in queue (checks re-running
+  fresh post-rebase, all `pending`, none failed). #1869 still 3 comments, no `chart_grants`
+  response. No new E-gate movement this cycle.
 - 2026-09-06T~03:35Z (C8 v2.3 cycle 31) — **Routine cycle, #1835 still at position 1 (4th
   cycle), now ~9 min into its check — inside the 18-min watch threshold, not escalating yet.**
   PR hygiene: #1844 ejected/re-armed (normal pattern); #1826 checks-pending only. Positions
