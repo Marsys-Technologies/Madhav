@@ -413,6 +413,20 @@ describe('kala_now_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)
     }
   })
 
+  // F-CONC-5 (L3_W1_ANALYSIS_BATCH_E.md §1.5): kala_now_get carries ~20 top-level engine
+  // arrays/objects but served no density_contract at all (unlike kala_explain_get). Real
+  // trim protection for `reading` was already in place independently (response_budget.ts's
+  // IMMUNE_HONESTY_FIELDS) — this only closes the missing declarative metadata (§N.6 part 4).
+  it('declares a density_contract naming as_of as its one real content-narrowing facet', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.density_contract).toEqual({
+      paginated: false,
+      facets: ['as_of'],
+      empty_reason: true,
+    })
+  })
+
   it('reading_prose is composed via the shared argument_composer (non-empty, includes thesis)', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)

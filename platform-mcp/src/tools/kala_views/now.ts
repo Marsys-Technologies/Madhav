@@ -86,6 +86,7 @@ import {
   type KalaCoverageEntry,
   type FieldSnapshotState,
   type CalibrationMaturityResolution,
+  type KalaDensityContract,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
@@ -2088,11 +2089,30 @@ export async function computeKalaNow(
     calibrationMaturity: await fetchCalibrationMaturity(chartId, principal),
   })
 
+  // F-CONC-5 (L3_W1_ANALYSIS_BATCH_E.md §1.5): this facade served no `density_contract` at
+  // all (the pattern explain.ts already declares) despite carrying ~20 top-level engine
+  // arrays/objects — the exact shape §N.6 calls "most exposed to a budget trim zeroing a
+  // dissent". The trim protection itself is already real without this: `reading` is a
+  // hardFloor-equivalent entry in response_budget.ts's IMMUNE_HONESTY_FIELDS set, so
+  // autoDetectTrimmableSections (called by this file's own dualOutput, below) never
+  // zeroes it. What was missing is the DECLARATIVE metadata itself (§N.6 part 4:
+  // "density signaling is data, not narration") — the machine-readable record a census/CI
+  // harness reads without re-deriving discipline from source. `as_of` (not `domain`/`bhava`
+  // as in explain.ts) is this tool's one real content-narrowing input — it selects which
+  // date's NOW state is returned; there is no domain/bhava split here, this facade always
+  // returns the full multi-engine bundle for the chart.
+  const densityContract: KalaDensityContract = {
+    paginated: false,
+    facets: ['as_of'],
+    empty_reason: true,
+  }
+
   const baseResult = {
     tool: 'kala_now_get' as const,
     chart_id: chartId,
     as_of_date: asOfDate,
     ...envelope,
+    density_contract: densityContract,
     reading_prose: composed.full_text,
     windows: windowFamilies,
     darshana,
