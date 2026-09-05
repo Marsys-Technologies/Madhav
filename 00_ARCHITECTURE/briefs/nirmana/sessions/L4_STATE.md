@@ -2423,3 +2423,19 @@ uncheckable, DB access down 67 cycles; no new `main` commits, adjudications, or 
 landings) → next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB
 access returns; F1 remains deferred.
 
+`2026-09-05T~20:50Z` — L4 — **CYCLE 78 (v2.3) — genuinely IDLE again; queue head (`#1879`,
+not mine) checked directly, actively processing not stalled.**
+
+**PR hygiene:** all 11 own PRs unchanged/genuinely queued, no net `main` movement for the third
+consecutive cycle. Checked the queue head directly rather than assume: `#1879` `AWAITING_CHECKS`
+at position 1, ~14 min estimated — actively processing, consistent with the short real
+wall-clock gap between cycles, not campaign infrastructure trouble.
+
+**Priorities 1-4:** `main` HEAD unchanged; E-gate still uncheckable, 68th consecutive cycle DB
+access down; no new adjudications name L4.
+
+CYCLE 78 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs unchanged/queued; queue head
+actively processing, not stalled; E-gate uncheckable, DB access down 68 cycles; nothing new) →
+next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
