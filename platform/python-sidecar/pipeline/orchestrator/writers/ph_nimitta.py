@@ -760,9 +760,10 @@ class PhNimittaWriter(WriterBase):
             # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
             # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
             # ayanamsha_id); multi_system_confirmation_count is a real join from ka_yojaka's
-            # own already-computed kala_activation_predicates row. Fall back to the prior
-            # neutral defaults only when no pratijna/yojaka row exists for this signal (e.g.
-            # its domain has no matching event class) — never a fabricated non-neutral value.
+            # own already-computed kala_activation_predicates row. When no pratijna row exists
+            # for this signal, the status is 'no_evidence' and the lift is exactly 1.0 — the
+            # claim "never a fabricated non-neutral value" is now true of the code below it,
+            # which it was not before.
             # av_transit_potency has no real scalar source in the codebase yet (ka_yojaka's
             # transit_trigger_jsonb is a symbolic type descriptor, not a potency score) — B.10
             # forbids inventing one, so it stays the documented placeholder pending a real
@@ -771,8 +772,16 @@ class PhNimittaWriter(WriterBase):
             # age-band prior, ROW-NORMALIZED to sum 1.0 at lookup (native point-2), for the
             # age band containing this anchor's predicted date. See _resolve_base_rate.
             event_class_id=post.get('event_class_id'),
-            pratijna_grade=post.get('pratijna_grade') if post.get('pratijna_grade') is not None else 5.0,
-            pratijna_status=post.get('pratijna_status') or 'conditional',
+            # §N.7 item 6 / D-CND-16 -- the comment above used to say "never a fabricated
+            # non-neutral value" while this line did exactly that. grade=5.0 with
+            # status='conditional' yields _promise_lift() = 1.75: a 75% amplification of the
+            # posterior derived from NO evidence, on 54 of 139 anchors. The genuinely neutral
+            # branch already existed in the engine and was simply never reached, because the
+            # substitution happened here, upstream of it.
+            #
+            # Verified: _promise_lift(5.0,'conditional') = 1.75; _promise_lift(0.0,'no_evidence') = 1.0.
+            pratijna_grade=post.get('pratijna_grade') if post.get('pratijna_grade') is not None else 0.0,
+            pratijna_status=post.get('pratijna_status') or 'no_evidence',
             multi_system_confirmation_count=post.get('multi_system_confirmation_count', 0),
             av_transit_potency=0.0,
             base_rate=self._resolve_base_rate(row, post),

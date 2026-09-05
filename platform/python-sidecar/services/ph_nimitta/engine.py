@@ -736,7 +736,13 @@ def derive_anchor_from_discovery(
         discovery_id=str(row.get('id')) if row.get('id') else None,
         signal_id=str(row.get('signal_id')) if row.get('signal_id') else None,
         event_type=_resolve_event_type(ctx.event_class_id, domain, 'discovery'),
-        direction='elevated',
+        # §N.7 item 6. This was hardcoded 'elevated' -- a favourable direction asserted for
+        # every discovery-sourced anchor on no evidence whatsoever. bodha_discoveries carries
+        # NO direction, valence or probability column (verified against the live catalogue),
+        # so there is nothing to derive one from. 'mixed' is this file's own documented
+        # neutral convention for exactly this case (see the P0-11 note on the convergence
+        # path, which fixed the identical defect there and left this path untouched).
+        direction='mixed',
         domain=domain,
         horizon_tier=_horizon_tier(window_end),
         window_start=window_start,
@@ -755,7 +761,7 @@ def derive_anchor_from_discovery(
         contradiction_jsonb={
             'contested': ctx.contradiction_contested,
             'countervailing_thread': ctx.contradiction_thread,
-            'net_direction': ctx.contradiction_net or 'elevated',
+            'net_direction': ctx.contradiction_net or 'mixed',   # same defect, same fix
         },
         causal_chain_jsonb={'root_graha': ctx.root_graha, 'cgm_path_ids': ctx.cgm_path_ids},
         precedent_refs_jsonb={'nearest_signal_ids': ctx.precedent_signal_ids},
