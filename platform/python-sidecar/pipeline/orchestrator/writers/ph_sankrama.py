@@ -26,15 +26,38 @@ logger = logging.getLogger(__name__)
 _LINKAGE_THRESHOLD = 0.25
 
 # Anchor domains (ph_nimitta) → CDLM domains (bodha_cdlm_cells.domain_row/domain_col).
-# ph_nimitta uses: career, relationship, financial, spiritual, health, transition, psychological
-# CDLM uses:       career, relationship, wealth,    spirituality, health, general,    character
-# The 3 exact matches (career, relationship, health) pass through unchanged.
-_ANCHOR_TO_CDLM_DOMAIN: dict[str, str] = {
-    'financial':    'wealth',
-    'spiritual':    'spirituality',
-    'psychological': 'character',
-    'transition':   'general',
-}
+#
+# THIS MAP IS NOW EMPTY, DELIBERATELY. The two vocabularies have converged: phala_anchors.domain
+# already stores CDLM-native terms, so every translation this map used to perform is either
+# inert or harmful. Verified live against production before emptying it:
+#
+#   anchor domains (7): career character health relationship spirituality transition wealth
+#   CDLM domain_row (11): career character education family health progeny relationship
+#                         residence spirituality transition travel
+#
+# Six of the seven match exactly. The map's four entries were all written against ph_nimitta's
+# OLD vocabulary and its comment misdescribed CDLM's on four of seven terms:
+#
+#   'financial' → 'wealth'       DEAD: 'financial' is not an anchor domain (and 'wealth' is not
+#                                a CDLM domain either -- see the honest empty below)
+#   'spiritual' → 'spirituality' DEAD: the anchor domain is already 'spirituality'
+#   'psychological' → 'character' DEAD: the anchor domain is already 'character'
+#   'transition' → 'general'     HARMFUL: 'transition' IS an anchor domain AND IS a CDLM
+#                                domain_row with 5 material cells -- but 'general' does not
+#                                exist in CDLM at all, so this entry redirected a working match
+#                                into a guaranteed miss and silently destroyed every spillover
+#                                row those anchors should have produced. Measured: 250 rows on
+#                                the canonical chart (10% of the asset), 355 across both charts.
+#
+# Identity mapping is therefore the correct behaviour, not a shortcut. If the vocabularies ever
+# diverge again, add the entry here AND to the domain-coverage disclosure in run().
+_ANCHOR_TO_CDLM_DOMAIN: dict[str, str] = {}
+
+# Anchor domains with no CDLM counterpart. 'wealth' is a genuine vocabulary divergence, not a
+# defect: bodha_cdlm_cells has no 'wealth' domain_row, so those anchors legitimately produce no
+# spillover. B.10 forbids dropping that silently -- run() logs it explicitly rather than letting
+# the caller read an unexplained zero.
+_KNOWN_UNMAPPED_ANCHOR_DOMAINS: frozenset[str] = frozenset({'wealth'})
 
 
 @register('ph_sankrama')
@@ -69,6 +92,8 @@ class PhSankramaWriter(WriterBase):
         )
 
         rows_inserted = 0
+        unmapped_known: dict[str, int] = {}
+        unmapped_unexpected: dict[str, int] = {}
         with conn.cursor() as cur:
             for anchor in anchors:
                 anchor_id   = str(anchor['anchor_id'])
@@ -86,9 +111,9 @@ class PhSankramaWriter(WriterBase):
                     try: we = date.fromisoformat(we)
                     except ValueError: we = None
 
-                # Translate anchor domain to CDLM vocabulary before matching.
-                # ph_nimitta and CDLM use different terms for the same domains;
-                # without this mapping the JOIN finds zero cells for 4 of 7 domains.
+                # The vocabularies have converged, so this is now an identity lookup --
+                # see the note on _ANCHOR_TO_CDLM_DOMAIN for why the old translations were
+                # all stale and one of them was actively destructive.
                 cdlm_domain = _ANCHOR_TO_CDLM_DOMAIN.get(domain, domain)
 
                 # Cells where domain_row = this anchor's domain (CDLM vocabulary)
@@ -98,6 +123,14 @@ class PhSankramaWriter(WriterBase):
                 ]
 
                 if not matching_cells:
+                    # B.10: never drop silently. An anchor domain with no CDLM counterpart
+                    # produces no spillover, and the caller must be able to tell that apart
+                    # from a bug. 'wealth' is the known, honest case (no such domain_row
+                    # exists); anything else is a vocabulary drift worth surfacing loudly.
+                    if domain in _KNOWN_UNMAPPED_ANCHOR_DOMAINS:
+                        unmapped_known[domain] = unmapped_known.get(domain, 0) + 1
+                    else:
+                        unmapped_unexpected[domain] = unmapped_unexpected.get(domain, 0) + 1
                     continue
 
                 sctx = SankramaContext(
@@ -151,8 +184,27 @@ class PhSankramaWriter(WriterBase):
                             s.falsifier, json.dumps(s.derivation_ledger_jsonb), s.source_citation,
                         ),
                     )
-                    rows_inserted += 1
+                    # §N.8: count what the database accepted. An unconditional increment
+                    # beside ON CONFLICT DO NOTHING is a claimed count with no measurement
+                    # behind it -- the defect W1 found live in ph_muhurta (139 claimed / 134
+                    # stored). Latent here because this natural key cannot collide; counted
+                    # honestly anyway, so it stays correct if the key ever changes.
+                    if cur.rowcount == 1:
+                        rows_inserted += 1
 
+        if unmapped_known:
+            logger.info(
+                "ph_sankrama: %s anchor(s) produced no spillover -- their domain has no CDLM "
+                "counterpart, which is a known vocabulary divergence, not a defect: %s",
+                sum(unmapped_known.values()), dict(sorted(unmapped_known.items())),
+            )
+        if unmapped_unexpected:
+            logger.warning(
+                "ph_sankrama: %s anchor(s) in %s matched NO CDLM cell and the domain is not a "
+                "known divergence -- this is vocabulary drift between phala_anchors.domain and "
+                "bodha_cdlm_cells.domain_row and it is silently costing spillover rows",
+                sum(unmapped_unexpected.values()), dict(sorted(unmapped_unexpected.items())),
+            )
         logger.info("ph_sankrama: inserted %d rows into phala_sankrama for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_sankrama', rows_inserted=rows_inserted)
 
@@ -208,7 +260,14 @@ class PhSankramaWriter(WriterBase):
                         contradicting_pairs_count=int(r.get('contradicting_signal_pairs_count') or 0),
                         cgm_bridge_edge_seeds=bridge_seeds if isinstance(bridge_seeds, list) else [],
                         predicted_activation_windows=act_windows if isinstance(act_windows, list) else [],
-                        evolution_gradient_score=float(r.get('cell_evolution_gradient_score') or 0.0),
+                        # §N.7 item 6: `or 0.0` turned "I don't know" into "flat", and a flat
+                        # gradient reads as the favourable-sounding 'stable'. The upstream L2
+                        # column is 100% NULL, so that default was the ONLY branch reachable --
+                        # 2,985 rows all claiming a trajectory nothing measured. Carry the None.
+                        evolution_gradient_score=(
+                            None if r.get('cell_evolution_gradient_score') is None
+                            else float(r['cell_evolution_gradient_score'])
+                        ),
                     ))
                 return cells
         except Exception as exc:
