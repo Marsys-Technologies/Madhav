@@ -567,9 +567,27 @@ class MiParikshaWriter(WriterBase):
             controls = cur.fetchall()
 
         with conn.cursor() as cur:
+            # B-F-09 (L5-W3): this DELETE was scoped by EXCLUSION --
+            # `check_type NOT IN ('control_window', 'ablation')` -- while every
+            # sibling substep scopes its own DELETE by INCLUSION of exactly the
+            # check_type it writes (control_windows :305, ablation :384,
+            # tail_only :796). The exclusion form therefore also wiped
+            # `tail_only` rows, and would wipe any check_type added later.
+            #
+            # It survived only on substep ORDERING: `tail_only` happens to run
+            # after `neg_control` in plan_substeps, so the row it deletes is
+            # rewritten moments later. Any substep-level resume or a
+            # re-dispatch of `neg_control` alone silently destroys the
+            # `tail_only` row -- and mi_pariksha's count_sql counts it, so the
+            # asset would under-report with no error.
+            #
+            # This substep writes exactly two check_types (see below):
+            # 'negative_control' and 'degenerate_distribution'. Scoping to
+            # those makes the idempotency per-chart × natural-key as §N.3
+            # requires, and makes the substep order-independent.
             cur.execute(
                 "DELETE FROM mimamsa_qa_eval WHERE chart_id = %s "
-                "AND check_type NOT IN ('control_window', 'ablation')",
+                "AND check_type IN ('negative_control', 'degenerate_distribution')",
                 (chart_id,),
             )
 
