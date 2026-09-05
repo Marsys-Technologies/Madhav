@@ -11,14 +11,16 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W3 COMPLETE` — RESUMED 2026-09-05 after the lane died ~00:37Z, then a second
-stale-worktree recovery this cycle (see heartbeat). W1 ✅ 15/15 · W2 ✅ 15/15 routed · **W3 ✅
-complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811 recovered W5/runbook)
-**+ #1790 queued this cycle** (mi_pariksha idempotency scar). W4 gated only on holds: #1732 for
-`mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live). The receipt spine (#1736)
-and per-chart detector (#1723) that used to gate W4 have **both merged** — see
-`L5_W6_CLOSE_REPORT_v1_0.md` §6 for the current, honest gate statement (a sequencing choice, not
-a block). Three canaries (`mi_vistara`, `lel_events`, `mi_jivanaghatana`) are dispatchable NOW.
+**Position:** `L5-W4 IN FLIGHT` — RESUMED 2026-09-05 after the lane died ~00:37Z, then a second
+stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
+15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
+recovered W5/runbook) **+ #1790 fixed/re-queued, #1826 state PR in flight.** **W4: `mi_vistara`'s
+`asset_analysis_accepted` event is RECORDED LIVE** — the first W2-acceptance evidence any `mi_*`
+asset has ever had (C2.2 condition 2, half done for canary 1). Still needed before dispatch:
+`mi_vistara`'s `optimization_verdict_accepted`, then the slot claim + dry-run + commit per the
+runbook. W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4
+anchor-identity collision, still live). Three canaries (`mi_vistara`, `lel_events`,
+`mi_jivanaghatana`) remain dispatchable.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -394,6 +396,29 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~20:00Z (C8 v2.3 cycle 3) — **W4 begins: `mi_vistara`'s `asset_analysis_accepted`
+  event recorded live — first ever for any `mi_*` asset.** PR hygiene first: #1790 and #1826 both
+  still checks-pending (BLOCKED, not DIRTY/RED) — nothing to fix, just waiting; verify `is:queued`
+  next cycle. Then followed the canary runbook's precondition check: P2c (migration 691) is now
+  merged, so P4 (W2 route recorded) was next — live query confirmed **zero** events existed yet
+  for `mi_vistara` (`SELECT ... WHERE entity_id='mi_vistara'` → 0 rows), i.e. the acceptance
+  events described as "recorded" in W2 docs were never actually submitted to the evidence spine.
+  `npm ci` in this worktree (node_modules was absent — first real DB/build work needs it).
+  Computed `registry_fingerprint_sha256` / `analysis_digest` via the REAL exported functions
+  (`registryContractFingerprintInput`, `canonicalRegistryContractDigest`,
+  `canonicalNirmanaAssetAnalysisDigestForRegistryRow` from `definitions.ts`) — never
+  hand-reimplemented, to avoid silent drift from the server's own hasher — driven by the live
+  `asset_registry` row + frozen manifest asset fetched via SQL, run through a temporary Vitest
+  test (vitest already stubs `server-only` and the `@` alias; deleted after use, never committed).
+  Submitted via `nrec --as executor` with `source_kind: git_commit`, `source_ref` = the exact
+  live-deployed Cloud Run commit-sha (`75ac19c66…`, confirmed via `gcloud run services describe`
+  — L1 had independently used the identical sha minutes earlier, cross-confirming freshness).
+  **HTTP 201, `{"outcome":"created"}`**, independently re-verified by a direct read of
+  `nirmana_evidence.nirmana_elevation_campaign_events` (correct `recorded_by:
+  nirmana-executor:amjis-nirmana-executor@…`). **Next cycle: `optimization_verdict_accepted`**
+  (needs a real measurement citation — locate `mi_vistara`'s actual 0.287s/39-run timing source
+  before constructing the verdict payload, per §N.8 — then the runbook's slot-claim + dry-run +
+  `--commit` dispatch sequence.**
 - 2026-09-05T~19:45Z (C8 v2.3 cycle 2) — **PR hygiene: #1790 unqueued by the new pin gate, fixed.**
   Re-read #1713's latest Conductor comment: main picked up a merge-group Governance Gate
   (Nirmana analysis-layer pin check, via #1815) that runs pins with #1790 opened before it — #1790
