@@ -22,8 +22,10 @@
  *   marsys://tool/L3/query_convergence_windows   (data)
  *   marsys://tool/L3/query_life_arc              (data)
  *   marsys://tool/L3/query_projections           (data)
- *   marsys://tool/L3/query_obstruction_periods   (data, STUBBED-PENDING-DATA)
- *   marsys://tool/L3/query_temporal_view         (data, STUBBED-PENDING-DATA)
+ *   marsys://tool/L3/query_obstruction_periods   (data — F-VIGHNA-8: no longer stubbed;
+ *                                                  serves live kala_obstruction rows)
+ *   marsys://tool/L3/query_temporal_view         (data — F-DARSH-8: no longer stubbed;
+ *                                                  serves live kala_darshana rows)
  *   marsys://tool/L3/call_transit_search         (service)
  *   marsys://tool/L3/call_ephemeris_at_t         (service)
  *   marsys://tool/L3/call_dasha_eligibility      (service)
