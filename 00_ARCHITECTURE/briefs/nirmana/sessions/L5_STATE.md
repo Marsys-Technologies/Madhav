@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:32Z (C8 v2.3 cycle 43) — **IDLE-OK, verified.** PR hygiene: #1844 still
+  `is:queued` true; #1826 pending-checks-only, no red. **#1901 (the #1899 fix) still OPEN**, own
+  CI checks still running, not yet queued. Queue positions fully unchanged (#1861=11, #1873=24,
+  #1844=44); main tip unchanged. #1856 still OPEN. No eligible dispatch, no unheld W3 item.
 - 2026-09-06T~05:27Z (cross-session note, not a full cycle) — **conductor-2b pinged: #1899 fixed,
   shipped as PR #1901** (re-attributes an unchanged receipt's `build_id` on delta-skip; verified
   against my exact repro in a rolled-back test transaction). Confirmed live: #1901 exists,
