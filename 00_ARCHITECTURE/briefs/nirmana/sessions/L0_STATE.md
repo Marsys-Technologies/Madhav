@@ -1027,3 +1027,8 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   and is exactly the kind of claim to verify before asserting per §N.8. NEXT: still #1838; once it
   merges+deploys, dispatch (even a no-op-content rebuild) is required for every asset before any
   `integrity_verified`/`asset_frozen` submission — plan accordingly, don't try to skip it again.
+- 2026-09-05 — **Cycle 31: IDLE-OK.** PR hygiene: `#1836`/`#1838` still cleanly `is:queued`
+  (41-deep), `#1828` clean, nothing to fix. `bg_vidhi_floors` still shows old `hi<>n` (not
+  deployed). #1713: L5 flagged that Conductor's own #1851/#1861 (the two orchestrator fixes) are
+  green but never queued/armed for ~75-90 min — not my PR to act on, noted for context only.
+  Nothing new to diagnose or act on this cycle.
