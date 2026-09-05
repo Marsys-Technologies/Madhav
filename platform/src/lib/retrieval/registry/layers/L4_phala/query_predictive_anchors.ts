@@ -10,6 +10,7 @@
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
+import { ANCHOR_MAGNITUDE_ORDER, salienceRank } from './salience_order'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
@@ -47,7 +48,12 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
   traversal_level: 'L-DOMAIN',
   tool_role: 'umbrella',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: this capability's SELECT list contains no fact identifier of any kind, so a
+  // caller cannot drill from a served row to an L1 fact. Claiming otherwise is an unearned
+  // signal (§N.8): there is no code path by which the flag could correctly read false. The
+  // path exists in the data (signal_id -> bodha_msr_signals.constituent_facts_array ->
+  // chart_facts) but it is not served, so the honest declaration is false until it is.
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
   drill_children: [
     'marsys://tool/L4/query_domain_result',
@@ -132,7 +138,7 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
                posterior, lift_vector_jsonb
         FROM phala_anchors
         WHERE ${conds.join(' AND ')}
-        ORDER BY magnitude DESC NULLS LAST
+        ORDER BY ${salienceRank('magnitude', ANCHOR_MAGNITUDE_ORDER)}, peak_date
         LIMIT $${p}
       `
 

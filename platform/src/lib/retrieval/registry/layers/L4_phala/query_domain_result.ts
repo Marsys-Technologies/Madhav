@@ -41,7 +41,9 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
   traversal_level: 'L-DOMAIN',
   tool_role: 'drill',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: the SELECT list contains no fact identifier, so no drill to L1 is possible
+  // from a served row. An unearned signal (§N.8) -- no code path could make it read false.
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
