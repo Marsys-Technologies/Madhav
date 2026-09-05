@@ -1612,3 +1612,15 @@ staleness or `estimatedTimeToMerge`), used it to correctly rule out a jam on `#1
 guess → E-gate still uncheckable, DB access down 3 cycles running → next: retry E-gate/dispatch
 dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~06:10Z` — L4 — **CYCLE 14 (v2.3) — `#1851` merged (confirms last cycle's no-jam
+read via the merge-group check-runs was correct). PR hygiene clean: all 12 own PRs genuinely
+queued (`#1845`/`#1849` both entered the queue since last cycle, positions 50/48; `#1845` shows
+`UNSTABLE` but that's one still-running check, no failure). DB access still down (4th
+consecutive cycle) — E-gate uncheckable. No new L2 capability landing, no new adjudication,
+`#1885` still queued but not yet merged. Genuine IDLE, nothing padded.**
+
+CYCLE 14 L4: IDLE-OK (verified: PR hygiene clean, all 12 own PRs genuinely queued per
+`mergeQueueEntry`; `#1851`'s merge confirms last cycle's diagnostic call; E-gate uncheckable, DB
+access down 4 cycles; L2 capabilities unchanged; no new adjudication) → next: retry E-gate/
+dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
