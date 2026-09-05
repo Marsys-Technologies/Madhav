@@ -451,6 +451,23 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~00:30Z (C8 v2.3 cycle 19) — **Not idle this time: found #1851/#1861 fully green
+  but genuinely stalled (not just checks-pending), nudged on #1713.** PR hygiene: #1844 confirmed
+  already queued; #1826 checks-pending only. Looked one level deeper than the usual "still OPEN"
+  check on #1851/#1861 this cycle — checked their actual `mergeStateStatus`/`autoMergeRequest`
+  and ran `gh pr checks` directly rather than just re-noting "unmerged": **both have every check
+  passing**, but `autoMergeRequest=null` on both and neither has been touched since 14:45Z/15:09Z
+  respectively (~75-90 min stale). This is a genuine stall, not checks-in-progress — matches
+  what C8's own Conductor-specific Step 1.5 fleet sweep exists to catch. Posted one factual nudge
+  comment on #1713 (not queuing their PRs myself — not mine to arm, would be presumptuous).
+  #1873 (the `life_events`/`charts` grant fix) is separately CLEAN + armed but also not yet
+  actually in the queue — noted in the same comment. #1869 still 3 comments, no `chart_grants`
+  response. No new E-gate movement.
+  **Next cycle: check whether the nudge produced movement** — if #1851/#1861/#1873 get queued
+  and merge, that's real progress to act on immediately (retry dispatches / resubmit the
+  preserved `lel_events` digests). If not, this specific nudge has been made once; repeating it
+  every cycle without new information would itself become the theater C8 forbids — a further
+  wait without re-nudging would be the honest move next time.
 - 2026-09-06T~00:15Z (C8 v2.3 cycle 18) — **IDLE-OK, verified (second consecutive idle cycle —
   genuinely nothing new, not fatigue).** PR hygiene: #1844 confirmed queued via GraphQL; #1826
   checks-pending only. Re-checked all three blocking PRs (#1851, #1861, #1873) — all still
