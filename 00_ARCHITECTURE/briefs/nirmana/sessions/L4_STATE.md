@@ -56,7 +56,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_pratikara` | **changed** | W2 done → **W3-3l** | wave 1 · 40/49 unfrozen | — | real MUST count was 5 unique (F-7/F-8 were F-3.4 duplicates); **4/5 shipped** (F-3.4 #1831, F-3/F-4/F-5 #1854, F-6-partial source_id #1864); only F-2 (rerun, blocked on E-gate) remains — F-6's other half (estimated_time/phase_duration) verified live to have no real data, correctly not attempted |
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
-| `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h/W3-3k** | wave 1 · 38/47 unfrozen | — | F-10 sort **shipped** (#1783, MERGED); F-14 leakage blind spot **shipped** (#1845); F-13 ceiling-inputs detector **shipped** (#1857); only F-12 (narration/falsy-zero, NOW-tier) remains |
+| `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h/W3-3k/W3-3m** | wave 1 · 38/47 unfrozen | — | **all findings shipped**: F-10 sort (#1783), F-14 leakage blind spot (#1845), F-13 ceiling-inputs detector (#1857), F-12 falsy-zero (#1870) — 0 open items |
 | `ph_suddha_sodhana` | **changed** | W2 done → **W3-3i** | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; F-16 silent classify-clean **shipped** (#1849); `changed` remains for C12 registry NULLs |
 | `ph_pramana` | **changed** | W2 done → **W3-3g** | wave 3 · 45/54 unfrozen | — | 1/1 MUST **shipped** (F2 domain normalisation + `detector_unavailable`, #1842, incl. migration 684); needs a rerun once E-gate opens |
 | `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
@@ -1022,4 +1022,43 @@ build/run verification capability here) it should wait for a session or reviewer
 → drafted `L4_W6_CLOSE_REPORT_v1_0.md` scaffold (the one permitted prep item, priorities 1-4
 exhausted) → next: watch for E-gate opening on `ph_nimitta`, watch for L2's D-SYNTHESIS/
 D-SALIENCE capabilities landing, or take up F-12 (`ph_sodhana`, smallest remaining item).
+
+`2026-09-06T~01:15Z` — L4 — **cycle: PR hygiene clean (all ten own PRs healthy) → shipped
+W3-3m, `ph_sodhana` F-12 — the layer's last remaining finding, and it turned out to be a real
+correctness fix, not the numerically-inert cosmetic tweak I'd assumed two cycles ago.**
+
+**PR hygiene:** nine `UNKNOWN` (queued-normal), #1864 legitimately `BLOCKED`-pending-CI (~9
+min, sane). No RED, no DIRTY.
+
+**The unit: F-12**, re-examined properly rather than deferred a second time on the strength of
+an old assumption. `_g_ladder_ceiling`'s two `int(x or default)` coercions looked like the same
+falsy-zero pattern fixed everywhere else this session, and I'd previously judged the whole
+finding numerically inert because `n_independent`'s clamp floor (1) absorbs the difference
+between a genuine 0 and a missing None. **That judgment was only half right.**
+`ayanamsha_robustness`'s clamp floor is 0, not 1 — so `0 or 3` genuinely, silently substitutes
+a more lenient default for a real "zero robustness" measurement, which would make
+`confidence_inflation` miss real inflation on a chart where that ever happens. Caught this by
+actually re-deriving both clamp ranges instead of trusting the earlier note.
+
+**Caught my own arithmetic error before shipping, not after:** the first test I wrote for the
+`n_independent=0` no-op case asserted the wrong boolean — I'd written "n=3" in the test comment
+while actually passing `dasha_consensus_count=0` (which floors to n=1, ceiling 0.506, not the
+n=3 ceiling of 0.598 I was thinking of). The test failed on its first run; recomputed the
+arithmetic directly, found my own error, rewrote the test correctly rather than adjusting the
+code to match a wrong expectation. Recording this because it's exactly the "verify, don't
+assume" discipline this session has otherwise applied to *findings* — this time it caught a
+mistake in my own *test*.
+
+3 new tests proving the asymmetry explicitly (robustness-side changes real output; n-side
+changes nothing); 47/47 wave5 + sodhana_engine tests pass. Governance gates handled
+proactively (eleven-for-eleven). **Shipped PR #1870**, auto-merge armed.
+
+**`ph_sodhana` now has zero open findings** — the first L4 asset to reach that state this
+session (all four of its findings: F-10, F-14, F-13, F-12, all shipped).
+
+CYCLE L4: PR hygiene clean → shipped #1870 (`ph_sodhana` F-12, a genuine correctness fix once
+properly re-examined, not the inert tweak previously assumed) → `ph_sodhana` is now fully
+clean, the first L4 asset to reach zero open findings → next: F1 remains the layer's one
+deferred code item (documented reason, see close-report scaffold); otherwise watching for
+E-gate / L2 capability landings.
 
