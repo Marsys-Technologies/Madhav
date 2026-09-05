@@ -38,8 +38,8 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
 | bg_gochara_arcs | rebuild_only | count pin stale (33,933 vs 34,553; Rahu/Ketu −310 each; **tiles perfectly**). Verdict: correct check → tiling invariant + derived/floored volume (C12) |
-| bg_yogas | rebuild_only | 4 yogas missing from ontology+reference (fix writer, MUST); `brahma_yoga_source_chunks` 0 vs pin 85 (check pin git-provenance — never-green=proposal). CASCADE parent → snapshot+`--acknowledge-destroys` |
-| bg_dasha_systems | rebuild_only | `kp` missing from `reference_dasha_systems` (19 vs 20) — real referential gap |
+| bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
+| bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | rebuild_only | 658 FULL-JOIN violations — catalog/ontology/reference canonical_ids misaligned |
 | bg_vidhi_floors | rebuild_only | `catalog_status=DRAFT` (bundle DRAFT→CURRENT with re-acceptance, D-CND-09); 11/286 vs 14/409, 7 intents don't tile |
 | bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
@@ -120,6 +120,21 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `feat/nirmana-l0-cycle-resume` off fresh `origin/main` (prior `feat/nirmana-l0-heartbeat-2` /
   `feat/nirmana-l0-state-heartbeat` are stale side-branches, superseded by merged PR #1817 — safe to
   ignore, not deleted).
+
+- **D-L0-K** — **bg_dasha_systems writer verdict CLOSED: no code fix needed (same pattern as
+  D-L0-J).** Live DB: `brahma_dasha_systems`=20 rows (incl. `kp`), `brahma_ontology
+  entity_class='dasha_system'`=20, `reference_dasha_systems`=**19 (missing `kp`)**. Read
+  `l0_dasha_systems.py:690-826 seed_yogas`-equivalent seeder: one `DELETE`-then-loop-`INSERT` over
+  the single `DASHA_SYSTEMS` source list writes all three tables **uniformly per iteration in one
+  transaction**, with an exact postflight check (`actual != expected` raises → rolls back
+  everything). Verified `DASHA_SYSTEMS` directly: **20 entries, 20 unique canonical_ids, `kp`
+  present** — so a live run cannot produce today's 20/20/19 split (that would require the
+  postflight to have silently passed on a mismatch, which the code does not allow). The split is
+  therefore historical, not a live code defect: `kp` was added to the writer's source list by
+  commit `63aeba051` ("reconcile L0 dasha systems"), and the DB has not been rebuilt since —
+  `reference_dasha_systems` is pre-reconciliation stale data, same story as bg_yogas. **No writer
+  fix, no adjudication, no migration for bg_dasha_systems.** Blocked only on job-image deploy
+  (unchanged, re-checked this cycle: still `d93d9d0a…`, still predates #1772).
 
 ## Held items
 
@@ -231,3 +246,15 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   without dispatch, same pattern as D-L0-J). **PR #1828 opened + auto-merge armed** (checks were
   IN_PROGRESS at cycle end — mergeStateStatus BLOCKED pending them, not queued yet). NEXT CYCLE:
   verify #1828 with `is:queued` per C8 Step 1 before starting new work; queue it if CLEAN+unqueued.
+- 2026-09-05 — **Cycle 2.** PR hygiene: #1828 re-checked — not in `is:queued` yet (only
+  #1808/#1790/#1778/#1777/#1767 queued), but **not DIRTY, not RED** either — 3 checks
+  (Unit/DB-Integration/Governance-Gates) still IN_PROGRESS, 0 failures; auto-merge already armed
+  from last cycle so nothing to fix, will self-queue when checks clear. Job-image still stale
+  (unchanged). **bg_dasha_systems writer verdict (D-L0-K) — CLOSED, no fix needed**, same pattern
+  as D-L0-J (see decisions log): `kp` present + unique in the writer's `DASHA_SYSTEMS` source list,
+  one synced atomic 3-table loop, live 20/20/19 split proven to be pre-reconciliation stale data,
+  not a reachable live-code output. **Two of four "real data defect" C12 verdicts (D-L0-F) are now
+  reclassified stale-data-not-defect** (bg_yogas, bg_dasha_systems); bg_doshas (658-violation) and
+  bg_vidhi_floors (DRAFT status + tiling) remain unverified — NEXT: same read-only-writer-audit
+  pattern on bg_doshas (`l0_doshas.py` or equivalent), since it's the next unheld/unverified item
+  and requires no dispatch.
