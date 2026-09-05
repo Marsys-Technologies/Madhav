@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -23,6 +24,12 @@ def _normalise(value: Any) -> Any:
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    if isinstance(value, uuid.UUID):
+        # psycopg3 adapts a `uuid` column to a native uuid.UUID by default -- any
+        # digest input carrying a DB-sourced id (chart_id, run_id, ...) can arrive
+        # as one of these rather than a str, and json.dumps cannot serialize it
+        # (Nirmana #1856).
+        return str(value)
     if isinstance(value, dict):
         return {str(key): _normalise(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):

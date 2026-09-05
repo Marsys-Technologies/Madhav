@@ -161,7 +161,11 @@ def canonical_upstream_hash(
     payload = {
         "version": _UPSTREAM_HASH_VERSION,
         "asset_id": asset_id,
-        "chart_id": chart_id,
+        # chart_id can arrive as a native uuid.UUID (psycopg3's default column
+        # adapter for a `uuid` column), which json.dumps cannot serialize --
+        # coerce explicitly rather than crash (Nirmana #1856). str(chart_id) is
+        # a no-op for the already-str case, so no existing digest changes.
+        "chart_id": str(chart_id) if chart_id is not None else None,
         "upstreams": [
             {"asset_id": str(row["asset_id"]), "last_built_at": _canonical_timestamp(row.get("last_built_at"))}
             for row in sorted(upstreams, key=lambda row: str(row["asset_id"]))
