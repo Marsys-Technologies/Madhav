@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-S: full dispatch-script flow read + specified; entire path to a real L0 freeze now fully known, purely waiting on #1838 in a stalled 19-deep queue
+last_updated: 2026-09-05 — D-L0-T: dispatch dry-run confirms #1833 live + reveals a --reviewed-deployment-sha batching gotcha (multi-asset waves need aligned W2 resubmission); single-asset dispatch is the safer first attempt
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -400,6 +400,34 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   then commit-dispatch via `dispatch_nirmana_campaign_wave.py`. Nothing structurally unknown remains
   in the whole path from here to a real, verified L0 freeze.
 
+- **D-L0-T — hands-on-verified the #1833 schema bug live, then discovered a real
+  `--reviewed-deployment-sha` batching gotcha that changes the dispatch plan.** Ran
+  `dispatch_nirmana_campaign_wave.py` (dry-run, no `--commit`, no writes) against `bg_compendium_index`
+  on unmodified `origin/main`: reproduced the exact `relation "nirmana_elevation_campaign_definitions"
+  does not exist` error live (not just trusting Conductor's report). Then built a **local-only**
+  patched copy (`.../scratchpad/dispatch_test/`, 4-site schema-qualify, matching #1838's actual diff
+  exactly — verified via `gh pr diff 1838`) to keep testing without waiting for the merge; this is a
+  scratch test copy, never touches the shared repo. Dry-run against the patched copy got past the
+  schema bug and hit: `"accepted asset analysis does not match the current live registry contract for
+  bg_compendium_index"` — surprising, since this session's toolkit confirmed BOTH
+  `registry_fingerprint_sha256` AND `analysis_digest` match the recorded W2 event exactly. Root
+  cause, traced to `_registry_evidence_bindings` (~line 373): the script also requires
+  **`row["source_ref"] == f"git:{reviewed_deployment_sha}"` EXACTLY** — not just a valid format.
+  `bg_compendium_index`'s W2 was accepted under `source_ref=git:4f7a9cc8…` (whatever was deployed
+  when a prior session submitted it); I'd passed `eb35945bc…` (today's deployed SHA) as
+  `--reviewed-deployment-sha`, so the row was correctly excluded — by design, per the script's own
+  comment ("a prior valid receipt may retain the same registry fingerprint while an explicitly
+  reviewed deployment advances... it remains auditable history, not current dispatch authority").
+  **This is the exact same gotcha Conductor hit with L5's `mi_vistara`/`mi_jivanaghatana` pairing**
+  (#1713, 14:53:47Z: "the dispatch script requires ONE `--reviewed-deployment-sha` for the whole
+  batch and filters evidence rows to exact-match it... no single value satisfies both"). **Changes
+  the plan**: a combined multi-asset dispatch wave needs every included asset's W2 acceptance
+  aligned to the SAME `source_ref` — in practice, **resubmit fresh W2 (`asset_analysis_accepted`+
+  `optimization_verdict_accepted`) for every asset going into one dispatch batch, under one common
+  current deployed SHA, right before dispatching** — not just for bg_doshas/bg_gochara_arcs (whose
+  migrations will stale them anyway) but potentially for every other ready asset too, if dispatching
+  them together in one wave. Single-asset (or same-source_ref-batch) dispatch remains simpler.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -720,3 +748,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   just waiting on #1838 in the queue. NEXT: keep polling; if the queue stays stuck multiple more
   cycles with zero movement, consider whether a second coordination note is warranted (once is an
   observation, repeating it every cycle would be noise).
+- 2026-09-05 — **Cycle 15.** PR hygiene: unchanged since last cycle (queue 20-deep now, one more
+  merge landed overall but still effectively stalled — not re-flagging, already noted, would be
+  noise); nothing to fix on my own PRs. Checked #1713 for new developments: Conductor found+fixed a
+  second dispatch bug (#1848/#1851) and flagged that pin-staleness checks are now recurring routine
+  Step-1 hygiene as merges land — confirmed my own 3 PRs are unaffected (migration-only, no writer
+  files touched, all PR-level checks green, never ejected from queue across 15 cycles). **Went
+  hands-on instead of continuing to plan (D-L0-T)**: ran the real dispatch script dry-run, reproduced
+  the #1833 schema bug live, built a scratch-local patched copy matching #1838's actual diff, and got
+  further — straight into the exact `--reviewed-deployment-sha` batching gotcha Conductor
+  independently hit with L5's `mi_vistara`/`mi_jivanaghatana` pairing: dispatch requires an EXACT
+  `source_ref` match to whatever SHA was deployed when each asset's W2 was accepted, not just a
+  matching fingerprint. **This changes the dispatch plan**: any multi-asset combined wave needs every
+  included asset's W2 refreshed under one common current SHA immediately before dispatch, not just
+  the two migration-affected assets. NEXT: once #1838 merges for real, dispatch will need this
+  batch-aligned resubmission step for whichever assets go together — single-asset dispatch is
+  simpler and could be the first real attempt to de-risk the flow.
