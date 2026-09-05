@@ -1964,3 +1964,17 @@ normal range; E-gate uncheckable, DB access down 35 cycles; no new capability la
 adjudications) → next: watch `#1864`'s progress; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~11:30Z` — L4 — **CYCLE 46 (v2.3) — `#1864`'s PR-level `updatedAt` looked frozen
+but the underlying check runs had actually restarted (new run/job IDs) — caught via job-log
+inspection rather than trusting the cached PR-level timestamp, confirmed genuinely progressing
+(11+ steps green each, matching the healthy pattern every prior merge showed at this point).
+`#1866` (queue head) also confirmed healthy via job-log (past the previous "stuck-looking" pytest
+step onto a new one).** PR hygiene otherwise clean. DB access still down (36th consecutive
+cycle), no new capability landings or adjudications.
+
+CYCLE 46 L4: IDLE-OK (verified: PR hygiene clean; both `#1864` and the queue head `#1866`
+confirmed genuinely progressing via job-log inspection, not just PR-level timestamps that can
+look frozen even when checks restarted; E-gate uncheckable, DB access down 36 cycles; no new
+capability landings or adjudications) → next: watch `#1864`/`#1866`; retry E-gate/dispatch
+dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
