@@ -458,6 +458,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~15:4xZ — L3-W3 — N9 fully complete: PR #1858 flips `ka_graha_sancara`'s last
+  DRAFT catalog_status to CURRENT, now that M3 (PR #1751) is confirmed deployed (git-ancestor
+  check against both serving revisions, same method as the last two cycles). Verify-before-redo
+  is paying off repeatedly this session: before picking this unit, re-checked several other
+  "Not started"/"NOW" items from the old W1-close snapshot and found them **already done**,
+  just never marked closed — `ka_muhurta_seva`/`ka_sangam`'s N5 panchanga-quality swallow
+  (already returns honest `None`, matching the N4a fix from much earlier this session) and N9's
+  other 10 DRAFT→CURRENT flips (confirmed live: only `ka_graha_sancara` DRAFT + `ka_gochara_sweep`
+  RETIRED remain non-CURRENT among L3's 23). Didn't touch either — nothing to fix. Migration
+  673 is genuinely new work: dry-run + `ROLLBACK` only this time (learned from the M12 cycle's
+  process deviation), left real application to the deploy pipeline.
+  PR hygiene: #1846 re-running post-fix (pending, no failures); #1850/#1801 still cleanly
+  queued.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
 - `2026-09-05T~15:3xZ — L3-W4 — PR hygiene: #1846 was genuinely RED (Governance Gates),
   fixed at root. `tests/test_nirmana_probe_release_smoke.py`'s happy-path test hardcoded
   `seen_assets == ["bg_panchanga", "bg_ephemeris_engine"]`, predating that PR's own addition of
