@@ -1,0 +1,42 @@
+-- 676_nirmana_l3_n5_muhurta_seva_depends_on.sql
+--
+-- NIRMĀṆA L3 Kāla — W3 IMPLEMENT. Discharges the depends_on half of finding N5
+-- (L3_W2_DECIDE_v1_0.md): `ka_muhurta_seva.depends_on` declares `{ka_graha_sancara}`, and this
+-- edge is FICTIONAL — verified twice, independently:
+--
+--   1. The asset's own package docstring already says so: `services/ka_muhurta_seva/
+--      __init__.py:27` reads "Depends on: ka_graha_sancara (planned)" — a dependency that was
+--      never implemented, not one that regressed.
+--   2. L3's own campaign-wide depends_on audit (L3_DEPENDS_ON_AUDIT_v1_0.md, produced under
+--      Conductor ruling D-CND-07 on #1734, upheld in full) verified this by grepping the
+--      writer's actual SQL: `ka_muhurta_seva`'s only SQL statement anywhere is its own
+--      service-health self-write to `asset_registry` (`services/ka_muhurta_seva/writer.py:295`)
+--      — zero reads of any table `ka_graha_sancara` or anything else produces. The audit's
+--      verdict on this asset: 1 declared, 0 hidden, 1 false — i.e. the CORRECTED depends_on is
+--      the empty array, not a swap to a different asset id.
+--
+-- Scope of the fix, stated precisely so it is not overclaimed: this corrects the LIVE
+-- `asset_registry.depends_on` — the authoritative source future definition freezes read from,
+-- and what any other consumer querying the live registry sees. It does NOT retroactively
+-- change the CURRENT frozen manifest's (t0-2026-09-01-0e5b06fb) already-snapshotted
+-- `depends_on` for this asset, since `egate.sql` computes ancestors_frozen from
+-- `nirmana_elevation_campaign_definitions.manifest` (a point-in-time snapshot with its own
+-- `registry_fingerprint_sha256`), not from live `asset_registry` — re-deriving a frozen
+-- manifest's own fields is exactly what this campaign's freeze discipline forbids (it would
+-- invalidate already-accepted capsules). The E-gate consequence, if any, arrives at the NEXT
+-- definition freeze, not this migration. What this migration fixes now is the underlying
+-- defect finding 2.1 named as the single most important thing W1 found (#1734): "fictional
+-- edges shut gates that should be open" — corrected at its source, so it cannot propagate
+-- into a future freeze uncorrected.
+--
+-- Deliberately NOT touched here: the TypeScript seed file
+-- (platform/scripts/seed/asset_registry_seed.ts) still declares the same fictional
+-- depends_on — left as-is, matching this session's own established precedent (migration 673's
+-- catalog_status DRAFT->CURRENT flip made the identical choice, for the identical reason: the
+-- seed file is the as-originally-authored record, migrations are the living correction layer
+-- on top of it; re-syncing the seed file is a separate, campaign-wide question this migration
+-- does not decide alone).
+--
+-- Transaction ownership belongs to platform/scripts/migrate.ts.
+
+UPDATE asset_registry SET depends_on = '{}' WHERE asset_id = 'ka_muhurta_seva';
