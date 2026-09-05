@@ -2315,4 +2315,141 @@ describe('projectNirmanaElevationSnapshot', () => {
       ]),
     })
   })
+
+  // Final-review fix wave (NIRMANA_TRACKER_V21_REALTIME_PLAN_v1_0.md) — Fixes 2/3/4/5.
+  describe('final-review fix wave', () => {
+    it('Fix 2: reports the LAYERS arc phase as unknown, never a fabricated pending, when every layer state is unknown', () => {
+      // No campaign_definitions at all -> manifest never resolves -> every layer's
+      // assets_total is null -> deriveLayerActivityState returns 'unknown' for all six.
+      const snapshot = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+
+      expect(snapshot.layers.every((layer) => layer.activity_state === 'unknown')).toBe(true)
+      expect(snapshot.programme.arc.find((phase) => phase.phase_id === 'LAYERS')).toMatchObject({ state: 'unknown' })
+    })
+
+    it('Fix 3: reflects real CLOSING/COMPLETE stage evidence in the PHASE_Z arc entry, agreeing with programme.phase_z.state, instead of pinning it from all-layers-completed alone', () => {
+      const layerSpecs = [
+        ['L0', 'bg_alpha', 'brahmagyan'], ['L1', 'ga_alpha', 'ganita'], ['L2', 'bo_alpha', 'bodha'],
+        ['L3', 'ka_alpha', 'kala'], ['L4', 'ph_alpha', 'phala'], ['L5', 'mi_alpha', 'mimamsa'],
+      ] as const
+      const assetRegistry = layerSpecs.map(([layer, asset_id, registryLayer], index) => registryAsset({
+        asset_id, english_name: `${layer} Asset`, layer: registryLayer, sort_order: index + 1,
+        target_table: asset_id, count_sql: `SELECT count(*) FROM ${asset_id}`,
+      }))
+      const manifest = manifestFor(assetRegistry, layerSpecs.map(([layer, asset_id]) => ({
+        asset_id, layer, wave_index: 0, execution_obligation: 'build' as const,
+      })))
+      const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+        asset_registry: assetRegistry,
+        asset_throughput: [],
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        campaign_events: [
+          ...foundationLaneEvents(), ...stageEventsThrough('COMPLETE'),
+          ...layerSpecs.flatMap(([layer, assetId]) => assetMilestoneEvents(assetId, layer, layerRunIds[layer], { registryFingerprint: manifest.assets.find((asset) => asset.asset_id === assetId)!.registry_fingerprint_sha256 })),
+        ],
+        build_runs: layerSpecs.map(([layer]) => ({
+          id: layerRunIds[layer], chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
+          created_at: observedAt, started_at: observedAt,
+        })),
+        build_run_assets: layerSpecs.map(([layer, asset_id], position) => ({
+          run_id: layerRunIds[layer], asset_id, position, state: 'complete',
+          started_at: observedAt, ended_at: observedAt, error: null,
+        })),
+      }, []), { generatedAt: observedAt })
+
+      expect(snapshot.campaign.current_stage).toBe('COMPLETE')
+      expect(snapshot.programme.phase_z.state).toBe('completed')
+      // The bug this fix closes: the arc chip and the history-drawer's own phase_z.state
+      // could disagree (arc pinned 'active' forever, phase_z.state genuinely 'completed').
+      expect(snapshot.programme.arc.find((phase) => phase.phase_id === 'PHASE_Z')).toMatchObject({ state: 'completed' })
+    })
+
+    it('Fix 4(a): with NO stage spine at all, a lifecycle-complete freeze is accepted on its own evidence — counted frozen, milestone earned, no ordering contradiction', () => {
+      const manifest = defaultManifest()
+      const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        // Deliberately NO foundationLaneEvents()/stageEventsThrough() — zero
+        // stage_transition_accepted events anywhere in the ledger (the live production
+        // state this fix targets: 0 stage transitions, 30 assets frozen).
+        campaign_events: [
+          ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 }),
+        ],
+        build_runs: [{
+          id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
+          created_at: observedAt, started_at: observedAt,
+        }],
+        build_run_assets: [{
+          run_id: runOne, asset_id: 'bg_prashna_rules', position: 1, state: 'complete',
+          started_at: observedAt, ended_at: observedAt, error: null,
+        }],
+      }, []), { generatedAt: observedAt })
+
+      expect(snapshot.progress.assets_frozen).toBe(1)
+      expect(snapshot.layers[0].frozen).toBe(1)
+      const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')
+      expect(asset?.campaign_state).toBe('completed')
+      expect(asset?.milestones.at(-1)).toMatchObject({ milestone_id: 'frozen', state: 'earned' })
+      expect(snapshot.data_quality.contradictions).toEqual([])
+    })
+
+    it('Fix 4(b): a spine that DOES exist (even a minimal one) keeps the full ordering discipline — a freeze before its own layer\'s spine entry is still demoted and flagged', () => {
+      const manifest = defaultManifest()
+      const snapshot = projectNirmanaElevationSnapshot(sourcesWithLabels({
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        // A spine exists (through BOOTSTRAP only) but never enters L0 — the freeze below is
+        // genuinely premature and must still be caught; Fix 4 narrows the gate, it does not
+        // remove it.
+        campaign_events: [
+          ...foundationLaneEvents(), ...stageEventsThrough('BOOTSTRAP'),
+          ...assetMilestoneEvents('bg_prashna_rules', 'L0', runOne, { registryFingerprint: manifest.assets[0].registry_fingerprint_sha256 }),
+        ],
+        build_runs: [{
+          id: runOne, chart_id: canonicalChartId, action: 'rebuild', state: 'completed', current_asset_id: null,
+          created_at: observedAt, started_at: observedAt,
+        }],
+        build_run_assets: [{
+          run_id: runOne, asset_id: 'bg_prashna_rules', position: 1, state: 'complete',
+          started_at: observedAt, ended_at: observedAt, error: null,
+        }],
+      }, []), { generatedAt: observedAt })
+
+      expect(snapshot.progress.assets_frozen).toBe(0)
+      const asset = snapshot.assets.find((candidate) => candidate.asset_id === 'bg_prashna_rules')
+      expect(asset?.campaign_state).not.toBe('completed')
+      expect(asset?.milestones.at(-1)?.state).not.toBe('earned')
+      expect(snapshot.data_quality.contradictions).toEqual(expect.arrayContaining([
+        expect.stringMatching(/bg_prashna_rules.*freeze evidence.*governed stage\/wave order/i),
+      ]))
+    })
+
+    it('Fix 5: discloses programme.excluded_assets on the wire — null before the denominator is frozen, a real non-negative count once it is', () => {
+      const reconciling = projectNirmanaElevationSnapshot(sources(), { generatedAt: observedAt })
+      expect(reconciling.programme.excluded_assets).toBeNull()
+
+      const manifest = defaultManifest()
+      const frozen = projectNirmanaElevationSnapshot(sourcesWithLabels({
+        campaign_definitions: [{
+          campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_at: observedAt,
+        }],
+        campaign_events: [],
+      }, []), { generatedAt: observedAt })
+
+      // Every manifest asset that validates against the live registry (assertManifestMatchesRegistryIdentity's
+      // exact-identity requirement) always resolves a non-null milestone denominator, so this
+      // is 0 today — the disclosure is defensive per §N.7 item 6 (an honest 0 over silence),
+      // wired end-to-end so a future divergence is never silently invisible.
+      expect(frozen.progress.assets_total).toBe(1)
+      expect(frozen.programme.excluded_assets).toBe(0)
+    })
+  })
 })

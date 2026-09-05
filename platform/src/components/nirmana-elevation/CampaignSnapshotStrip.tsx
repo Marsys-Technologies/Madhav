@@ -83,7 +83,12 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
     && denominatorStageAccepted
     ? `${snapshot.progress.assets_frozen} / ${snapshot.progress.assets_total}`
     : snapshot.progress.denominator_status === 'frozen'
-      ? 'Accepted denominator unavailable'
+      // Fix 6: this metric reports the pre-v2.1 stage-machine's own DENOMINATOR_FROZEN
+      // ceremony acceptance — a different fact from the v2.1 asset-milestone bar
+      // (ProgrammeOverview's "N% · X of 128 assets frozen") that now renders just above it
+      // on the same page. Worded to make that explicit rather than reading as though the
+      // new bar's own figure were unavailable.
+      ? 'Stage-machine denominator ceremony: not accepted'
       : 'Reconciling — no percentage'
   const caveats = [...snapshot.data_quality.gaps, ...snapshot.data_quality.contradictions]
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')

@@ -54,7 +54,7 @@ function ArcChip({ phase }: { phase: ArcPhase }) {
 }
 
 export function ProgrammeOverview({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
-  const { overall, arc, o_wave } = snapshot.programme
+  const { overall, excluded_assets: excludedAssets, arc, o_wave } = snapshot.programme
   const percent = overall.percent
   const { assets_frozen: frozenTotal, assets_total: assetsTotal } = snapshot.progress
 
@@ -83,6 +83,12 @@ export function ProgrammeOverview({ snapshot }: { snapshot: NirmanaElevationSnap
         `programme.position_label` verbatim) even though both draw on the same underlying
         counts — the two surfaces intentionally never repeat identical text on the page. */}
     <p className="mt-1 text-xs text-brand-text-3">{overall.earned} of {overall.required} required milestones earned · {frozenTotal} of {assetsTotal ?? '—'} assets frozen. 100% is asset elevation complete, not campaign close — Phase Z close-out follows.</p>
+    {/* Fix 5: without this, the bar can read 100% while the frozen count is (128-K)/128 for
+        assets excluded from the denominator because their obligation never resolved a
+        milestone count — the reader has no way to know K exists. */}
+    {excludedAssets !== null && excludedAssets > 0 && (
+      <p className="mt-1 text-xs text-brand-text-3">{excludedAssets} {excludedAssets === 1 ? 'asset' : 'assets'} excluded (obligation unresolved)</p>
+    )}
 
     <div className="mt-4 flex flex-wrap gap-2" aria-label="Programme arc">
       {arc.map((phase) => phase.phase_id === 'O_WAVE'

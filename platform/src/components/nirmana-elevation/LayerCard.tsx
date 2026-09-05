@@ -2,12 +2,17 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { deriveLayerActivityState } from '@/lib/nirmana-elevation/projection'
 import type { NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import { LayerStage } from './LayerStage'
 import { WaveProgressBar } from './WaveProgressBar'
 
-type LayerActivityState = ReturnType<typeof deriveLayerActivityState>
+// Fix 1: no VALUE import from `@/lib/nirmana-elevation/projection` here. That module
+// transitively imports `definitions.ts`'s `import 'server-only'`, which broke the client
+// bundle build (`next build --webpack` failed with a server-only import trace through this
+// file) — every other client component in this tree uses `import type` from projection,
+// which erases at build time; this was the one exception. `layer.activity_state` is now
+// computed server-side (`snapshot.ts`) and carried on the wire instead.
+type LayerActivityState = NirmanaElevationSnapshotV2['layers'][number]['activity_state']
 
 const STATE_LABEL: Record<LayerActivityState, string> = {
   completed: 'Completed',
@@ -52,11 +57,7 @@ export function LayerCard({ layer, assets, onOpenAudit, defaultOpen = false }: {
   defaultOpen?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const state = deriveLayerActivityState({
-    assetsTotal: layer.assets_total,
-    frozen: layer.frozen,
-    milestonesEarned: layer.completion.earned,
-  })
+  const state = layer.activity_state
   const percent = layer.completion.percent
   const panelId = `layer-card-panel-${layer.layer_id}`
 

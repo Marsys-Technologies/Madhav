@@ -100,7 +100,10 @@ describe('CampaignSpine', () => {
 
     render(<CampaignSurface snapshot={snapshot} />)
 
-    expect(screen.getByText('Accepted denominator unavailable')).toBeVisible()
+    // Fix 6: reworded so this stage-machine-ceremony fact reads as visibly distinct from
+    // ProgrammeOverview's v2.1 asset-milestone bar, which renders the same "unavailable
+    // denominator" moment as a real percentage instead.
+    expect(screen.getByText('Stage-machine denominator ceremony: not accepted')).toBeVisible()
     expect(screen.queryByText('0 / 128')).not.toBeInTheDocument()
   })
 

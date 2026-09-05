@@ -393,11 +393,21 @@ export async function handleNirmanaEvidenceCommand(
       outcome,
     })
     if (outcome === 'created') {
+      // Fix 8: this generic publish fires for every accepted receipt type, not only asset
+      // receipts — `campaignStageReceipt` (`entity_id` a stage id like "F0_FOUNDATION"),
+      // `foundationLaneReceipt` (`entity_id` a lane letter like "C"), and
+      // `buildRunAuthorizationReceipt` (`entity_id` a build-run UUID) all reach this same
+      // branch. `entity_type`/`entity_id` are always accurate for whichever receipt this
+      // is; `asset_id` is included ONLY when the receipt is actually asset-scoped, so a
+      // future consumer can never read a stage/lane/build-run id as though it were an
+      // asset id.
       await publishCockpitEvent({
         type: 'nirmana.evidence_accepted',
         event_type: parsedData.event_type,
-        asset_id: parsedData.entity_id,
+        entity_type: parsedData.entity_type,
+        entity_id: parsedData.entity_id,
         layer: parsedData.layer,
+        ...(parsedData.entity_type === 'asset' ? { asset_id: parsedData.entity_id } : {}),
       })
     }
     return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })

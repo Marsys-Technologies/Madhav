@@ -142,6 +142,8 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
       chart_id: CANONICAL_CHART_ID,
       type: 'nirmana.evidence_accepted',
       event_type: 'asset_frozen',
+      entity_type: 'asset',
+      entity_id: 'bg_prashna_rules',
       asset_id: 'bg_prashna_rules',
       layer: 'L0',
     })
@@ -162,6 +164,8 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
       chart_id: CANONICAL_CHART_ID,
       type: 'nirmana.evidence_accepted',
       event_type: 'asset_analysis_accepted',
+      entity_type: 'asset',
+      entity_id: 'bg_prashna_rules',
       asset_id: 'bg_prashna_rules',
       layer: 'L0',
     })
@@ -195,9 +199,49 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
       chart_id: CANONICAL_CHART_ID,
       type: 'nirmana.evidence_accepted',
       event_type: 'probe_accepted',
+      entity_type: 'asset',
+      entity_id: 'bg_prashna_rules',
       asset_id: 'bg_prashna_rules',
       layer: 'L0',
     })
+  })
+
+  it('publishes a campaign-stage receipt using entity_type/entity_id, never a bogus asset_id', async () => {
+    recordEvidenceMock.mockResolvedValue('created')
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const stageCommand = {
+      command: 'record_evidence' as const,
+      campaign_id: 'nirmana-elevation' as const,
+      definition_revision: 'v1',
+      idempotency_key: 'stage:F0_FOUNDATION:1',
+      event_type: 'stage_transition_accepted' as const,
+      entity_type: 'campaign_stage' as const,
+      entity_id: 'F0_FOUNDATION' as const,
+      layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1' as const,
+        from_stage: 'DENOMINATOR_FROZEN' as const,
+        to_stage: 'F0_FOUNDATION' as const,
+        manifest_sha256: 'a'.repeat(64),
+      },
+      source_kind: 'server_reconstructed' as const,
+      source_ref: 'nirmana-elevation:stage-spine' as const,
+      observed_at: '2026-08-25T09:00:00.000Z',
+    }
+    const response = await handleNirmanaEvidenceCommand(stageCommand, 'admin-1')
+    expect(response.status).toBe(201)
+    expect(publishMessage).toHaveBeenCalledTimes(1)
+    const [[call]] = publishMessage.mock.calls
+    const payload = JSON.parse(Buffer.from(call.data).toString('utf-8'))
+    expect(payload).toEqual({
+      chart_id: CANONICAL_CHART_ID,
+      type: 'nirmana.evidence_accepted',
+      event_type: 'stage_transition_accepted',
+      entity_type: 'campaign_stage',
+      entity_id: 'F0_FOUNDATION',
+      layer: null,
+    })
+    expect(payload).not.toHaveProperty('asset_id')
   })
 
   it('publishes nirmana.definition_superseded exactly once after a successful supersession', async () => {

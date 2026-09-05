@@ -835,6 +835,12 @@ export function deriveLayerActivityState(args: {
   milestonesEarned: number
 }): 'completed' | 'active' | 'pending' | 'unknown' {
   if (args.assetsTotal === null) return 'unknown'
+  // Final-review fix wave, opportunistic guard (same family as Fixes 2/3): assetsTotal === 0
+  // would otherwise fall through to `frozen === assetsTotal` (0 === 0) and read 'completed'
+  // on vacuous truth — zero assets were never actually elevated through anything. assetsTotal
+  // === 0 is real evidence (a known, non-null count), unlike the null case above, so this is
+  // 'pending' (nothing has happened, nothing is owed), not 'unknown'.
+  if (args.assetsTotal === 0) return 'pending'
   if (args.frozen === args.assetsTotal) return 'completed'
   if (args.milestonesEarned > 0) return 'active'
   return 'pending'

@@ -974,6 +974,12 @@ describe('deriveLayerActivityState', () => {
   it('is pending when nothing has been earned yet', () => {
     expect(deriveLayerActivityState({ assetsTotal: 5, frozen: 0, milestonesEarned: 0 })).toBe('pending')
   })
+
+  it('is pending, never a vacuously-true completed, when assetsTotal is a real zero', () => {
+    // frozen === assetsTotal (0 === 0) would otherwise read 'completed' with zero evidence
+    // that anything was ever actually elevated — the exact §N.8 vacuous-truth defect class.
+    expect(deriveLayerActivityState({ assetsTotal: 0, frozen: 0, milestonesEarned: 0 })).toBe('pending')
+  })
 })
 
 describe('projectProgrammePositionV21', () => {

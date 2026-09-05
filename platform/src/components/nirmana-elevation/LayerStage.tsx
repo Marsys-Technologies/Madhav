@@ -50,8 +50,18 @@ export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveP
     <ul aria-label="Asset state legend" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-brand-text-3">
       {['Frozen', 'Active', 'Blocked', 'Eligible next', 'Locked', 'Unknown'].map((label) => <li key={label}>{label}</li>)}
     </ul>
+    {/*
+      Fix 7: `layer.eligible_next_asset_ids` is the pre-v2.1 sequential-spine concept —
+      `snapshot.ts` populates it only for the single `current_layer`, so five of six
+      LayerCards would otherwise show "No asset is evidenced as eligible next" directly
+      below LayerCard's own v2.1 `frontier: N ready` count, reading as a contradiction. The
+      heading/empty-state text below is explicit about which concept this section is: the
+      old single-current-layer stage machine's own eligibility, not the v2.1 asset-frontier
+      figure shown above.
+    */}
     <section aria-label="Eligible-next preview" className="rounded-lg border border-brand-border bg-brand-surface p-3">
       <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-text-2">Eligible-next preview</h4>
+      <p className="mt-0.5 text-[11px] text-brand-text-3">Sequential stage-machine eligibility (single current layer only) — see &ldquo;frontier: N ready&rdquo; above for the v2.1 asset-frontier count.</p>
       {layer.eligible_next_asset_ids.length > 0
         ? <ul className="mt-2 flex flex-wrap gap-2">{layer.eligible_next_asset_ids.map((assetId) => {
           const asset = assets.find((candidate) => candidate.asset_id === assetId)
@@ -60,7 +70,7 @@ export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveP
             <span className="ml-1 font-mono text-brand-text-3">({assetId})</span>
           </li>
         })}</ul>
-        : <p className="mt-2 text-xs text-brand-text-3">No asset is evidenced as eligible next.</p>}
+        : <p className="mt-2 text-xs text-brand-text-3">No asset is evidenced as eligible next under the sequential stage machine.</p>}
     </section>
     {waves.length > 0
       ? <div className="space-y-3">{waves.map((wave) => ['completed', 'locked', 'unknown'].includes(wave.state)

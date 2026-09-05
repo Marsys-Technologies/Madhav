@@ -197,6 +197,8 @@ const WaveProgressSchema = z.object({
   }
 })
 
+const LayerActivityStateSchema = z.enum(['completed', 'active', 'pending', 'unknown'])
+
 const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.extend({
   layer_id: LayerIdSchema,
   layer_name: LayerNameSchema,
@@ -207,6 +209,14 @@ const V2LayerSchema = NirmanaElevationSnapshotV1Schema.shape.layers.element.exte
   completion: CompletionSchema,
   frontier_ready: z.array(z.string()),
   last_evidence_at: nullableIso,
+  /**
+   * v2.1 concurrent-layer state (Fix 1): computed server-side by
+   * `deriveLayerActivityState` and put on the wire here so client components never need a
+   * VALUE import from `projection.ts` — that module transitively imports `definitions.ts`'s
+   * `import 'server-only'`, which broke the client bundle build (`next build --webpack`)
+   * when `LayerCard.tsx` imported the function directly.
+   */
+  activity_state: LayerActivityStateSchema,
 }).superRefine((layer, context) => {
   if (layer.layer_name !== NIRMANA_LAYER_NAMES[layer.layer_id]) {
     context.addIssue({ code: 'custom', path: ['layer_name'], message: `${layer.layer_id} must use its governed layer name.` })
@@ -372,6 +382,14 @@ const ArcPhaseSchema = z.object({
 const ProgrammeSnapshotSchema = z.object({
   position_label: z.string(),
   overall: CompletionSchema,
+  /**
+   * Fix 5: how many manifest-frozen assets are excluded from `overall`'s denominator
+   * because `milestones_required` is null (unresolved obligation). Null only when the
+   * denominator itself is not yet frozen (no manifest to count against); otherwise a real,
+   * possibly-zero count — never inferred from the overall percent alone, which cannot
+   * distinguish "0 excluded" from "denominator unknown."
+   */
+  excluded_assets: z.number().int().nonnegative().nullable(),
   arc: z.array(ArcPhaseSchema).length(4),
   conform_drift: z.object({
     status_echo: z.string(),

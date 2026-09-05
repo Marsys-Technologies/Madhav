@@ -57,6 +57,33 @@ describe('ProgrammeOverview', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
   })
 
+  it('discloses excluded assets so a 100%-reading bar cannot hide (128-K)/128 frozen', () => {
+    const snapshot = snapshotFixture()
+    snapshot.programme = { ...snapshot.programme, excluded_assets: 12 }
+
+    render(<ProgrammeOverview snapshot={snapshot} />)
+
+    expect(screen.getByText('12 assets excluded (obligation unresolved)')).toBeVisible()
+  })
+
+  it('renders no exclusion disclosure when zero assets are excluded', () => {
+    const snapshot = snapshotFixture()
+    snapshot.programme = { ...snapshot.programme, excluded_assets: 0 }
+
+    render(<ProgrammeOverview snapshot={snapshot} />)
+
+    expect(screen.queryByText(/excluded/i)).not.toBeInTheDocument()
+  })
+
+  it('renders no exclusion disclosure when the denominator has not been frozen (excluded_assets null)', () => {
+    const snapshot = snapshotFixture()
+    snapshot.programme = { ...snapshot.programme, excluded_assets: null }
+
+    render(<ProgrammeOverview snapshot={snapshot} />)
+
+    expect(screen.queryByText(/excluded/i)).not.toBeInTheDocument()
+  })
+
   it('renders the 4-phase arc strip with a provenance chip on every chip, and an O-Wave popover listing WPs plus the post-wave addendum', () => {
     const snapshot = snapshotFixture()
 

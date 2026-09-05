@@ -36,13 +36,18 @@ describe('LayerCard', () => {
     ['active', 'Active'],
     ['pending', 'Pending'],
     ['unknown', 'Unknown'],
-  ] as const)('renders the %s state as the "%s" badge, never "locked"', (_state, label) => {
+  ] as const)('renders the %s state as the "%s" badge, never "locked"', (state, label) => {
     const snapshot = snapshotFixture()
     const l0 = layer(snapshot, 'L0')
     if (label === 'Completed') Object.assign(l0, { assets_total: l0.frozen })
     if (label === 'Active') Object.assign(l0, { assets_total: l0.frozen + 1, completion: { ...l0.completion, earned: Math.max(l0.completion.earned, 1) } })
     if (label === 'Pending') Object.assign(l0, { assets_total: l0.frozen + 1, frozen: 0, completion: { ...l0.completion, earned: 0 } })
     if (label === 'Unknown') Object.assign(l0, { assets_total: null })
+    // Fix 1: LayerCard now reads `layer.activity_state` verbatim (computed server-side by
+    // `deriveLayerActivityState` in snapshot.ts) instead of re-deriving it client-side from
+    // assets_total/frozen/completion — this is what makes the fixture mutations above alone
+    // insufficient to drive the badge; the server-computed field must be set explicitly too.
+    Object.assign(l0, { activity_state: state })
 
     render(<LayerCard layer={l0} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
 
