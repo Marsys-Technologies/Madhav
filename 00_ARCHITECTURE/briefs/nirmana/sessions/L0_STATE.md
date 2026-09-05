@@ -1857,3 +1857,10 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   after two cycles of drift) — normal, still no merges landing yet. #1985 and #1901 (D-L0-FF fix,
   Conductor's) both mid-CI (Unit Tests/Governance Gates pending, no reds). No DIRTY, no RED, no
   neglected-unqueued. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat for a third consecutive read (10/16/24/73) but
+  confirmed the queue itself is healthy, not stuck: `origin/main` HEAD has advanced with 4 new
+  merges from other layers (#1900 L1, #1889 L2, #1896 L2, #1894 L3) since the last #1828 (L0) merge
+  — the front of the queue is processing normally, my PRs are just further back. Only one
+  `gh-readonly-queue/*` branch exists (single head-of-queue entry in flight), consistent with
+  ordinary sequential drain, not a hang. No DIRTY, no RED. 30/40 frozen holds.
