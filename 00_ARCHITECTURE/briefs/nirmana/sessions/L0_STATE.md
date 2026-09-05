@@ -896,3 +896,10 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   resumption — recorded the exact next-steps sequence (re-run toolkit, fresh W2, real dispatch) once
   deploy catches up. NEXT: check `amjis-web`'s deployed SHA each cycle; the moment it advances past
   `3bfeaf284`, execute the real W2-resubmission + dispatch sequence for `bg_doshas`.
+- 2026-09-05 — **Cycle 23.** PR hygiene: `#1832`/`#1836` unchanged, still cleanly `is:queued`
+  (30-deep); `#1828` clean, pending checks. Nothing to fix; no new merges this cycle. Deploy still
+  hasn't caught up — `NIRMANA_DEPLOYED_SHA` unchanged (`bd398f065`), live `integrity_check_sql`
+  still the old version. Conductor's own fleet-status post (#1713, 16:57Z) independently confirms
+  the queue is genuinely draining, not stalled — "steady merges every cycle... deepest the queue
+  has been all campaign" — consistent with what this lane observed with #1829. Nothing new to
+  diagnose or act on; deploy lag is the only remaining wait.
