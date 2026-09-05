@@ -69,8 +69,10 @@ class EnrichmentContext:
         Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
     vedha_rules: list of dicts with keys {graha, transit_to_house, vedha_house}
         Sourced from bg_transit_rules WHERE rule_type='vedha'.
-    tajika_year_lords: list of dicts with keys {varsha_year, varshesha, muntha}
-        Sourced from l1_tajik_varsha_year_lords for the current chart.
+    tajika_year_lords: list of dicts with keys
+        {varsha_year, varshesha, muntha, varsha_start, varsha_end}
+        Sourced from l1_tajik_varsha_year_lords for the current chart, pinned to
+        ayanamsha_id='lahiri_chitrapaksha'.
     school_consensus_by_domain: {domain: schools_agreeing (0-7)}
         Sourced from convergence_scores (populated by POST /api/build/school-consensus).
         C13 score = schools_agreeing / 7.0.
@@ -594,27 +596,47 @@ def _c12_tajika_score(
     window_start: date,
     domain_lord: Optional[str],
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C12: tajika_annual_reinforcement — varṣa chart varṣeśa/muntha agrees with window.
-    Returns 1.0 if the year-lord for this window's year matches the domain's lord,
-    0.5 if muntha matches, 0.0 otherwise.
+    Returns 1.0 if the year-lord for the varṣa containing this window matches the
+    domain's lord, 0.5 if muntha matches, 0.0 if a covering varṣa was found but
+    neither matches. Returns honest **None** when no varṣa row covers this window
+    at all, or there is no domain_lord to compare against — distinct from a real
+    0.0, which means "evaluated, and disagrees".
     Source: l1_tajik_varsha_year_lords.
+
+    NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This used to compare `row.get('varsha_year')`
+    (an age-indexed integer, 1..48 for a chart this old — NOT a calendar year)
+    against `window_start.year` (an actual calendar year, e.g. 2015) — two
+    incommensurable representations that could never be equal, so this branch
+    was unreachable on every real call regardless of the writer-side SQL bug
+    fixed alongside this (ka_sangam.py's tajika-year-lords fetch previously
+    selected nonexistent columns and silently returned nothing). Fixed by
+    matching on the varṣa's own [varsha_start, varsha_end) date range — which
+    `l1_tajik_varsha_year_lords` already stores per row — instead of re-deriving
+    a year index from the native's birth date (this function still has no
+    birth_year parameter, and does not need one now).
     """
     if not ctx.tajika_year_lords or domain_lord is None:
-        return 0.0
-    year = window_start.year
+        return None
     for row in ctx.tajika_year_lords:
-        row_year = row.get('varsha_year')
-        if row_year != year:
+        varsha_start = row.get('varsha_start')
+        varsha_end = row.get('varsha_end')
+        if varsha_start is None or varsha_end is None:
             continue
-        varshesha = row.get('varshesha') or row.get('varshesha_by_tajik_classical')
+        start_date = varsha_start.date() if hasattr(varsha_start, 'date') else varsha_start
+        end_date = varsha_end.date() if hasattr(varsha_end, 'date') else varsha_end
+        if not (start_date <= window_start <= end_date):
+            continue
+        varshesha = row.get('varshesha')
         muntha = row.get('muntha')
         if varshesha == domain_lord:
             return 1.0
         if muntha == domain_lord:
             return 0.5
-    return 0.0
+        return 0.0  # a covering varṣa was found and genuinely disagrees
+    return None  # no varṣa row covers this window at all
 
 
 # ── I-16: convergence_score ───────────────────────────────────────────────────
@@ -1130,7 +1152,7 @@ def mode_a_search(
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
-            'tajika_annual_reinforcement':  c12,
+            **({'tajika_annual_reinforcement': c12} if c12 is not None else {}),
             **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
@@ -1161,7 +1183,10 @@ def mode_a_search(
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
-                'c12_tajika_reinforcement': round(c12, 4),
+                **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
+                   {'c12_tajika_reinforcement_unavailable':
+                    'no varṣa row covers this window, or no domain_lord to compare — '
+                    'term dropped, NOT scored zero (L3-W3, F-SANGAM-7)'}),
                 **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
                    {'c13_school_consensus_unavailable':
                     'no U4 school-consensus data yet AND signature_class is a signal-type '
@@ -1319,7 +1344,7 @@ def mode_b_sweep(
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
-            'tajika_annual_reinforcement':  c12,
+            **({'tajika_annual_reinforcement': c12} if c12 is not None else {}),
             **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
@@ -1349,7 +1374,10 @@ def mode_b_sweep(
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
-                'c12_tajika_reinforcement': round(c12, 4),
+                **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
+                   {'c12_tajika_reinforcement_unavailable':
+                    'no varṣa row covers this window, or no domain_lord to compare — '
+                    'term dropped, NOT scored zero (L3-W3, F-SANGAM-7)'}),
                 **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
                    {'c13_school_consensus_unavailable':
                     'no U4 school-consensus data yet AND signature_class is a signal-type '

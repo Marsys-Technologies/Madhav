@@ -1063,24 +1063,41 @@ class KaSangamWriter(WriterBase):
                 pass
 
         # C12: tajika year lords (may not exist yet — pre-L3 builds)
+        #
+        # NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This query used to select
+        # `varshesha, muntha` — neither column exists on
+        # l1_tajik_varsha_year_lords (real columns: year_lord, a plain lord-name
+        # string; muntha_position_jsonb, a JSON object with a top-level 'lord'
+        # key). Every call raised "column does not exist", silently swallowed
+        # by the surrounding try/except (designed for "table doesn't exist yet",
+        # not "my query is wrong"), so tajika_year_lords was permanently empty —
+        # the actual, real cause of C12's 100% zero, not a genuine data gap
+        # (240 rows exist for the canonical chart). Also added the missing
+        # ayanamsha_id pin: without it, 5 rows (one per ayanamsha) come back per
+        # varsha_year, and the unpinned duplicate the loop in
+        # _c12_tajika_score would have picked from was arbitrary.
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_tajika")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT varsha_year, varshesha, muntha
+                    SELECT varsha_year, year_lord, muntha_position_jsonb,
+                           varsha_start_iso, varsha_end_iso
                     FROM l1_tajik_varsha_year_lords
-                    WHERE chart_id = %s
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
                     ORDER BY varsha_year
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
+                    muntha_position = row['muntha_position_jsonb'] or {}
                     tajika_year_lords.append({
                         'varsha_year': row['varsha_year'],
-                        'varshesha': row['varshesha'],
-                        'muntha': row['muntha'],
+                        'varshesha': row['year_lord'],
+                        'muntha': muntha_position.get('lord'),
+                        'varsha_start': row['varsha_start_iso'],
+                        'varsha_end': row['varsha_end_iso'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_tajika")
