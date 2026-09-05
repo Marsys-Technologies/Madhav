@@ -451,6 +451,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:12Z (C8 v2.3 cycle 36) — **#1844 is now genuinely mid-merge-group-check**
+  (~3 min into `CI — Ganga Quality Gate`, other 2 top-level workflows already green) — the
+  `entries(first:1)` GraphQL query transiently omitted its position-1 row while it's in this
+  state, a new quirk worth remembering (not a stuck/missing entry). PR hygiene otherwise clean:
+  #1826 pending-checks-only, no red. #1848/#1856/#1869 all still OPEN, #1869 unchanged at 3
+  comments. No eligible dispatch, no unheld W3 item.
 - 2026-09-06T~04:07Z (C8 v2.3 cycle 35, part 2) — **Real movement.** #1843 merged (main's tip
   is now `6be9f5302`, 36 commits ahead of the last-observed tip across the shared queue — other
   lanes' merges too, not just mine). Rebased+pushed onto it. **#1844 (my own migration-692 PR)
