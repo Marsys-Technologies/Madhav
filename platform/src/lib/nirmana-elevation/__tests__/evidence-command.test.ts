@@ -6,9 +6,9 @@
 // the underlying acceptance-rule coverage). recordNirmanaElevationEvidence and
 // supersedeNirmanaElevationDefinition are mocked to a controlled outcome here
 // so these tests can assert, in isolation, exactly when
-// publishCockpitEvent's underlying publishMessage fires -- once per successful
-// capsule freeze / definition supersession, and never for any other outcome
-// or event type.
+// publishCockpitEvent's underlying publishMessage fires -- once per newly
+// created evidence receipt (any event_type) / definition supersession, and
+// never for an idempotent replay.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
@@ -56,6 +56,24 @@ function assetFrozenCommand(overrides: Record<string, unknown> = {}) {
     evidence_payload: { ...lifecycleBinding, lifecycle_digest: 'c'.repeat(64) },
     source_kind: 'server_reconstructed',
     source_ref: 'nirmana-elevation:freeze:bg_prashna_rules',
+    observed_at: '2026-08-25T09:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function assetAnalysisAcceptedCommand(overrides: Record<string, unknown> = {}) {
+  return {
+    command: 'record_evidence' as const,
+    campaign_id: 'nirmana-elevation' as const,
+    definition_revision: 'v1',
+    idempotency_key: 'asset:bg_prashna_rules:analysis:1',
+    event_type: 'asset_analysis_accepted' as const,
+    entity_type: 'asset' as const,
+    entity_id: 'bg_prashna_rules',
+    layer: 'L0' as const,
+    evidence_payload: { ...lifecycleBinding },
+    source_kind: 'git_commit',
+    source_ref: `git:${'f'.repeat(40)}`,
     observed_at: '2026-08-25T09:00:00.000Z',
     ...overrides,
   }
@@ -109,18 +127,44 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
     vi.unstubAllEnvs()
   })
 
-  it('publishes nirmana.asset_frozen exactly once after a newly created asset_frozen receipt', async () => {
+  it('publishes nirmana.evidence_accepted exactly once after a newly created asset_frozen receipt', async () => {
     recordEvidenceMock.mockResolvedValue('created')
     const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
     const response = await handleNirmanaEvidenceCommand(assetFrozenCommand(), 'admin-1')
     expect(response.status).toBe(201)
     expect(publishMessage).toHaveBeenCalledTimes(1)
     expect(publishMessage).toHaveBeenCalledWith(expect.objectContaining({
-      attributes: { chart_id: CANONICAL_CHART_ID, type: 'nirmana.asset_frozen' },
+      attributes: { chart_id: CANONICAL_CHART_ID, type: 'nirmana.evidence_accepted' },
     }))
     const [[call]] = publishMessage.mock.calls
     const payload = JSON.parse(Buffer.from(call.data).toString('utf-8'))
-    expect(payload).toEqual({ chart_id: CANONICAL_CHART_ID, type: 'nirmana.asset_frozen', asset_id: 'bg_prashna_rules' })
+    expect(payload).toEqual({
+      chart_id: CANONICAL_CHART_ID,
+      type: 'nirmana.evidence_accepted',
+      event_type: 'asset_frozen',
+      asset_id: 'bg_prashna_rules',
+      layer: 'L0',
+    })
+  })
+
+  it('publishes nirmana.evidence_accepted exactly once after a newly created asset_analysis_accepted receipt', async () => {
+    recordEvidenceMock.mockResolvedValue('created')
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(assetAnalysisAcceptedCommand(), 'admin-1')
+    expect(response.status).toBe(201)
+    expect(publishMessage).toHaveBeenCalledTimes(1)
+    expect(publishMessage).toHaveBeenCalledWith(expect.objectContaining({
+      attributes: { chart_id: CANONICAL_CHART_ID, type: 'nirmana.evidence_accepted' },
+    }))
+    const [[call]] = publishMessage.mock.calls
+    const payload = JSON.parse(Buffer.from(call.data).toString('utf-8'))
+    expect(payload).toEqual({
+      chart_id: CANONICAL_CHART_ID,
+      type: 'nirmana.evidence_accepted',
+      event_type: 'asset_analysis_accepted',
+      asset_id: 'bg_prashna_rules',
+      layer: 'L0',
+    })
   })
 
   it('does not publish for an idempotent asset_frozen replay', async () => {
@@ -131,12 +175,29 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
     expect(publishMessage).not.toHaveBeenCalled()
   })
 
-  it('does not publish for a created receipt of a different event type', async () => {
+  it('does not publish for an idempotent asset_analysis_accepted replay', async () => {
+    recordEvidenceMock.mockResolvedValue('idempotent')
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(assetAnalysisAcceptedCommand(), 'admin-1')
+    expect(response.status).toBe(200)
+    expect(publishMessage).not.toHaveBeenCalled()
+  })
+
+  it('publishes for any newly created receipt regardless of event type', async () => {
     recordEvidenceMock.mockResolvedValue('created')
     const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
     const response = await handleNirmanaEvidenceCommand(probeAcceptedCommand(), 'admin-1')
     expect(response.status).toBe(201)
-    expect(publishMessage).not.toHaveBeenCalled()
+    expect(publishMessage).toHaveBeenCalledTimes(1)
+    const [[call]] = publishMessage.mock.calls
+    const payload = JSON.parse(Buffer.from(call.data).toString('utf-8'))
+    expect(payload).toEqual({
+      chart_id: CANONICAL_CHART_ID,
+      type: 'nirmana.evidence_accepted',
+      event_type: 'probe_accepted',
+      asset_id: 'bg_prashna_rules',
+      layer: 'L0',
+    })
   })
 
   it('publishes nirmana.definition_superseded exactly once after a successful supersession', async () => {

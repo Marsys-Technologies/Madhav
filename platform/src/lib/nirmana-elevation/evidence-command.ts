@@ -392,8 +392,13 @@ export async function handleNirmanaEvidenceCommand(
       source_ref: parsedData.source_ref,
       outcome,
     })
-    if (outcome === 'created' && parsedData.event_type === 'asset_frozen') {
-      await publishCockpitEvent({ type: 'nirmana.asset_frozen', asset_id: parsedData.entity_id })
+    if (outcome === 'created') {
+      await publishCockpitEvent({
+        type: 'nirmana.evidence_accepted',
+        event_type: parsedData.event_type,
+        asset_id: parsedData.entity_id,
+        layer: parsedData.layer,
+      })
     }
     return NextResponse.json({ outcome }, { status: outcome === 'created' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

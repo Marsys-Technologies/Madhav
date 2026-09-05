@@ -577,6 +577,23 @@ describe('NirmanaElevationTracker', () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterMount + 1)
   })
 
+  it('debounces a nirmana.evidence_accepted SSE event into exactly one additional snapshot refetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshotV2()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<NirmanaElevationTracker />)
+    await screen.findByText('Praśna Rules')
+    const callsAfterMount = fetchMock.mock.calls.length
+    const source = MockEventSource.instances[0]
+
+    vi.useFakeTimers()
+    act(() => { source.emit('nirmana.evidence_accepted') })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount)
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterMount + 1)
+  })
+
   it('coalesces a burst of SSE events within the debounce window into one refetch', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshotV2()))
     vi.stubGlobal('fetch', fetchMock)
@@ -589,6 +606,7 @@ describe('NirmanaElevationTracker', () => {
     vi.useFakeTimers()
     act(() => { source.emit('run.state_change') })
     act(() => { source.emit('asset.state_change') })
+    act(() => { source.emit('nirmana.evidence_accepted') })
     expect(fetchMock.mock.calls.length).toBe(callsAfterMount)
 
     await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
