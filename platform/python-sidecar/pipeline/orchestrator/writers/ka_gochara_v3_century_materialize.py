@@ -418,12 +418,58 @@ EVENT_CLASSES = [
     "business_launch",
 ]
 
-# Julian Day for 1984-02-05 00:00 UTC (native birth date).
-# JD = 2445736.5  (standard astronomical reference).
+# NIRMĀṆA L3-W3 finding M5 (§N.5, B.10).
+#
+# THE DEFECT. These two values were the CENTURY GRID for every chart this writer ran on. They
+# encode the NATIVE's birth (1984-02-05), so the second canonical chart — Abhinandan, born
+# 1985-03-02 — was materialised over 1984-02-05 → 2084-02-05: **a century grid starting 13 months
+# before that native existed**, with `era_slice_key` labels (`g3_1984_1994`, …) naming years that
+# are not that chart's decades at all. Nothing detected it, because a hardcoded constant cannot
+# disagree with itself.
+#
+# They are retained ONLY as the native's documented values and as the regression anchor proving
+# the per-chart derivation reproduces them exactly. They are no longer the source of truth:
+# `build_decade_slices()` now takes the birth epoch of the chart being built, resolved through
+# `services.ka_temporal.date_resolver.resolve_birth_date` — the shared resolver that returns None
+# rather than fabricating.
+#
+# EPOCH ANOMALIES — measured while implementing M5, reported as separate L3-W3 findings and
+# DELIBERATELY NOT RESOLVED HERE. Both change where every century window falls, so picking a
+# convention inside an unrelated fix would be exactly the kind of quiet astronomical change this
+# campaign exists to eliminate. Recorded at the constant so the next reader cannot miss them:
+#
+#   (a) The value disagrees with its own comment by one day. The true Julian Day for
+#       1984-02-05 00:00 UT is **2445735.5**; 2445736.5 is 1984-02-06 00:00 UT. Verified two
+#       ways: from the standard reference JD 2451545.0 = 2000-01-01 12:00 UT, and from the
+#       1970-01-01 epoch. So either the constant is a day late or the comment names the wrong
+#       instant — and which one is right depends on what the downstream comparison expects.
+#   (b) It disagrees with its own engine by a further half day. `services/gochara_v3/
+#       resolution_hierarchy.py` uses `_EPOCH_JD = 2440588.0` (noon-based), yielding 2445736.0
+#       for the same date, against this writer's implied 2440588.5.
+#
+# `_birth_jd()` below therefore reproduces THIS WRITER'S EXISTING VALUE EXACTLY rather than the
+# astronomically correct one: the native chart's grid must not shift as a side effect of fixing
+# the multi-chart defect, and the second chart is derived on the same convention so the two are
+# at least consistent with each other. Fixing the epoch is its own change, with its own evidence.
 BIRTH_JD: float = 2445736.5
 
-# Birth year for decade-slice labelling.
+# Birth year for decade-slice labelling. Native default; see BIRTH_JD above.
 BIRTH_YEAR: int = 1984
+
+# The epoch this writer's BIRTH_JD constant actually implies — NOT the true JD epoch. Named for
+# what it is rather than for what it ought to be (2440587.5 would be 1970-01-01 00:00 UT).
+# Derived, not guessed: BIRTH_JD - (1984-02-05 - 1970-01-01).days = 2445736.5 - 5148.
+_WRITER_IMPLIED_EPOCH_JD: float = 2440588.5
+
+
+def _birth_jd(birth_date) -> float:
+    """This writer's own JD for a calendar date, on its existing (anomalous) epoch.
+
+    Reproduces the historical `BIRTH_JD` constant exactly for the native's 1984-02-05 — the
+    regression anchor the tests assert — so no already-built chart's grid moves.
+    """
+    import datetime as _date_mod
+    return _WRITER_IMPLIED_EPOCH_JD + (birth_date - _date_mod.date(1970, 1, 1)).days
 
 # Number of decade slices in a century build.
 DECADE_COUNT: int = 10
@@ -603,24 +649,29 @@ class DecadeSlice:
     year_end: int
 
 
-def build_decade_slices() -> list[DecadeSlice]:
-    """Return 10 DecadeSlice objects covering the century from BIRTH_JD.
+def build_decade_slices(
+    birth_jd: float = BIRTH_JD,
+    birth_year: int = BIRTH_YEAR,
+) -> list[DecadeSlice]:
+    """Return 10 DecadeSlice objects covering the century from `birth_jd`.
 
     Slice boundaries are exact Julian Days computed as:
-        start_jd = BIRTH_JD + decade_index × 10 × DAYS_PER_YEAR
-        end_jd   = BIRTH_JD + (decade_index + 1) × 10 × DAYS_PER_YEAR
+        start_jd = birth_jd + decade_index × 10 × DAYS_PER_YEAR
+        end_jd   = birth_jd + (decade_index + 1) × 10 × DAYS_PER_YEAR
 
-    Labels use calendar years: 'g3_{BIRTH_YEAR + 0}_{BIRTH_YEAR + 10}',
-    'g3_{BIRTH_YEAR + 10}_{BIRTH_YEAR + 20}', …
+    Labels use calendar years: 'g3_{birth_year + 0}_{birth_year + 10}',
+    'g3_{birth_year + 10}_{birth_year + 20}', …
 
-    Returns exactly DECADE_COUNT = 10 slices.
+    L3-W3 M5: the epoch is now a PARAMETER, defaulting to the native's values so existing
+    callers and the native chart's grid are unchanged byte-for-byte. The writer passes the
+    epoch of the chart it is actually building. Returns exactly DECADE_COUNT = 10 slices.
     """
     slices: list[DecadeSlice] = []
     for i in range(DECADE_COUNT):
-        year_start = BIRTH_YEAR + i * 10
-        year_end = BIRTH_YEAR + (i + 1) * 10
-        start_jd = BIRTH_JD + i * 10 * DAYS_PER_YEAR
-        end_jd = BIRTH_JD + (i + 1) * 10 * DAYS_PER_YEAR
+        year_start = birth_year + i * 10
+        year_end = birth_year + (i + 1) * 10
+        start_jd = birth_jd + i * 10 * DAYS_PER_YEAR
+        end_jd = birth_jd + (i + 1) * 10 * DAYS_PER_YEAR
         era_slice_key = f"g3_{year_start}_{year_end}"
         slices.append(DecadeSlice(
             era_slice_key=era_slice_key,
@@ -632,8 +683,33 @@ def build_decade_slices() -> list[DecadeSlice]:
     return slices
 
 
-# Module-level constant: the 10 decade slices (built once at import time).
+# The native's 10 decade slices, built once at import time.
+#
+# L3-W3 M5: this is now the NATIVE'S grid specifically, not "the" grid. Any code path that builds
+# a chart must call `_decade_slices_for_chart(conn, chart_id, birth_params)` instead; this
+# constant survives for the native-anchored tests and for callers that legitimately want the
+# documented reference grid.
 DECADE_SLICES: list[DecadeSlice] = build_decade_slices()
+
+
+def _decade_slices_for_chart(conn, chart_id, birth_params=None) -> list[DecadeSlice]:
+    """The century grid of the chart actually being built (L3-W3 M5).
+
+    Refuses rather than fabricates: if no birth date can be resolved for the chart, this raises.
+    Falling back to the native's 1984 epoch is what produced a century grid 13 months before the
+    second native's birth, so silence is exactly what must not happen here (§N.8, B.10).
+    """
+    from services.ka_temporal.date_resolver import resolve_birth_date
+
+    birth_date = resolve_birth_date(conn, chart_id, birth_params)
+    if birth_date is None:
+        raise RuntimeError(
+            f"ka_gochara_v3_century_materialize: cannot resolve a birth date for chart_id="
+            f"{chart_id}. The century grid is anchored on the native's own birth epoch and "
+            f"there is no honest default — refusing rather than materialising a century that "
+            f"belongs to a different chart (L3-W3 M5)."
+        )
+    return build_decade_slices(_birth_jd(birth_date), birth_date.year)
 
 
 # ---------------------------------------------------------------------------
@@ -1705,9 +1781,14 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
             return []
 
+        # L3-W3 M5: the century grid belongs to the chart being built, not to the native.
+        decade_slices = _decade_slices_for_chart(
+            ctx.db_conn, chart_id, ctx.config.get("birth_params")
+        )
+
         steps: list[SubStep] = []
         for event_class in event_classes:
-            for decade in DECADE_SLICES:
+            for decade in decade_slices:
                 key = f"{event_class}::{decade.era_slice_key}"
                 label = (
                     f"W3.4 century: {event_class} "
@@ -1760,9 +1841,18 @@ class GocharaV3CenturyMaterializeWriter(WriterBase):
             )
         event_class, era_slice_key = parts
 
-        # Find the matching DecadeSlice.
+        # Find the matching DecadeSlice. L3-W3 M5: resolved against THIS chart's grid — matching
+        # against the native's would silently accept another chart's era key and then materialise
+        # that chart's decade into this one.
         decade = next(
-            (d for d in DECADE_SLICES if d.era_slice_key == era_slice_key), None
+            (
+                d
+                for d in _decade_slices_for_chart(
+                    conn, chart_id, ctx.config.get("birth_params")
+                )
+                if d.era_slice_key == era_slice_key
+            ),
+            None,
         )
         if decade is None:
             logger.error(

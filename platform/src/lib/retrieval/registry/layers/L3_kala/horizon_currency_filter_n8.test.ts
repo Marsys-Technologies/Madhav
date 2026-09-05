@@ -64,7 +64,7 @@ describe('L3 horizon capabilities — currency filter runs in SQL, before the ro
   for (const { name, cap } of CAPS) {
     it(`${name}: current_only pushes the window predicate into the WHERE clause`, async () => {
       primeDb([], 0)
-      await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, null)
+      await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, undefined)
 
       const sqls = issuedSql()
       expect(sqls.length).toBeGreaterThan(0)
@@ -78,7 +78,7 @@ describe('L3 horizon capabilities — currency filter runs in SQL, before the ro
 
     it(`${name}: without current_only the predicate is NOT added (existing callers unchanged)`, async () => {
       primeDb([], 0)
-      await cap.handler!({ chart_id: CHART, as_of: AS_OF }, null)
+      await cap.handler!({ chart_id: CHART, as_of: AS_OF }, undefined)
 
       // `is_current` is still computed as a SELECT-list expression; what must be absent is the
       // WHERE-clause restriction. Check the count query, which has no SELECT-list expression.
@@ -90,7 +90,7 @@ describe('L3 horizon capabilities — currency filter runs in SQL, before the ro
     it(`${name}: reports \`truncated\` so a capped page is never readable as an absence`, async () => {
       // One row returned, but the table holds more matches than the page — i.e. truncated.
       primeDb([{ graha: 'Saturn' }], 99)
-      const res = await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, null)
+      const res = await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, undefined)
       const content = (res as { content: Record<string, unknown> }).content
 
       expect(content['truncated']).toBe(true)
@@ -98,7 +98,7 @@ describe('L3 horizon capabilities — currency filter runs in SQL, before the ro
 
       // And the honest case: nothing dropped.
       primeDb([{ graha: 'Saturn' }], 1)
-      const res2 = await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, null)
+      const res2 = await cap.handler!({ chart_id: CHART, as_of: AS_OF, current_only: true }, undefined)
       const content2 = (res2 as { content: Record<string, unknown> }).content
       expect(content2['truncated']).toBe(false)
     })

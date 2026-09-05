@@ -159,7 +159,11 @@ def _ctx(conn, **extra_config) -> ContextSpec:
         asset_id=ASSET_ID,
         build_id="test-build-f52",
         db_conn=conn,
-        config={"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", **extra_config},
+        # L3-W3 M5: the century writer now resolves its grid from the birth epoch of the chart
+        # being built and refuses rather than defaulting to the native's hardcoded 1984. These
+        # fixtures therefore supply what the orchestrator supplies in production. The value is
+        # the native's own birth, so every existing g3_1984_* assertion holds unchanged.
+        config={"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "birth_params": {"datetime_iso": "1984-02-05T10:43:00"}, **extra_config},
     )
 
 
