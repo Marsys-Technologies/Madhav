@@ -2121,3 +2121,13 @@ the front; E-gate uncheckable, DB access down 50 cycles; no new capability landi
 adjudications) → next: watch `#1831`'s merge; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~14:00Z` — L4 — **CYCLE 61 (v2.3) — steady-state IDLE, 51st consecutive cycle.**
+`#1831` unchanged at position 4 (`main` itself hasn't moved). PR hygiene clean, all 10 checked
+own PRs genuinely queued unchanged. DB access still down, no new capability landings or
+adjudications.
+
+CYCLE 61 L4: IDLE-OK (verified: PR hygiene clean, `#1831` unchanged at position 4; E-gate
+uncheckable, DB access down 51 cycles; no new capability landings or adjudications) → next:
+watch `#1831`'s merge; retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s
+merge; F1 remains deferred.
+
