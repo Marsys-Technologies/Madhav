@@ -1785,3 +1785,13 @@ uncheckable, DB access down 19 cycles; no new capability landings or adjudicatio
 watch `#1857`'s merge; retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s
 merge; F1 remains deferred.
 
+`2026-09-06T~08:50Z` — L4 — **CYCLE 30 (v2.3) — `#1857` still position 1, 2nd cycle, ~9 min in
+(same `started_at`), within normal range, no escalation needed yet.** Steady-state IDLE, 20th
+consecutive cycle: PR hygiene clean, all checked own PRs genuinely queued unchanged. DB access
+still down, no new capability landings or adjudications.
+
+CYCLE 30 L4: IDLE-OK (verified: PR hygiene clean, `#1857` healthy 2nd cycle at position 1,
+within normal timing; E-gate uncheckable, DB access down 20 cycles; no new capability landings
+or adjudications) → next: watch `#1857`'s merge; retry E-gate/dispatch dry-run once DB access
+returns; watch `#1885`'s merge; F1 remains deferred.
+
