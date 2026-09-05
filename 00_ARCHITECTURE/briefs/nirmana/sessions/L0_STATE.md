@@ -1864,3 +1864,10 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   — the front of the queue is processing normally, my PRs are just further back. Only one
   `gh-readonly-queue/*` branch exists (single head-of-queue entry in flight), consistent with
   ordinary sequential drain, not a hang. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat for a 4th consecutive read (10/16/24/73, ~2h
+  static). Verified NOT a hang via the `gh-readonly-queue/main/pr-<N>-<sha>` technique: current
+  queue head is #1906 (Conductor's `count_sql` migration-governance PR), and every one of its 26
+  real check-runs is `completed` (23 success, 3 skipped-by-design) — main just hasn't absorbed the
+  merge yet, plain GitHub processing lag, not a stuck CI job. Expect main to advance and my
+  positions to drop next cycle. No DIRTY, no RED. 30/40 frozen holds.
