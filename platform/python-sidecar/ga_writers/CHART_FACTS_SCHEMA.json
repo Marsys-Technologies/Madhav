@@ -1359,7 +1359,7 @@
           "value_type": "text",
           "verification_min": "single"
         },
-        "arambha_iso": {
+        "end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
@@ -1450,7 +1450,7 @@
           "precision": 0,
           "verification_min": "single"
         },
-        "arambha_iso": {
+        "end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
@@ -1509,7 +1509,7 @@
           ],
           "verification_min": "single"
         },
-        "arambha_iso": {
+        "end_iso": {
           "value_type": "text",
           "verification_min": "single"
         }
@@ -1547,7 +1547,7 @@
           "value_type": "text",
           "verification_min": "single"
         },
-        "arambha_iso": {
+        "end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
@@ -1720,19 +1720,19 @@
           "precision": 4,
           "verification_min": "single"
         },
-        "tithi_arambha_iso": {
+        "tithi_end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
-        "nakshatra_arambha_iso": {
+        "nakshatra_end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
-        "yoga_arambha_iso": {
+        "yoga_end_iso": {
           "value_type": "text",
           "verification_min": "single"
         },
-        "karana_arambha_iso": {
+        "karana_end_iso": {
           "value_type": "text",
           "verification_min": "single"
         }

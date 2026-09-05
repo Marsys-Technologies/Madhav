@@ -97,6 +97,12 @@ FORBIDDEN_NARRATION_PATTERNS = [
 
 # ── Mock PanchangaInstant fixture factory ─────────────────────────────────────
 
+def _dt(year, month, day, hour, minute, second):
+    """UTC datetime factory for anga-boundary regression tests (F-B24)."""
+    from datetime import datetime, timezone
+    return datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+
+
 def _mock_anga(name: str, anga_id: int, end_utc=None) -> Any:
     """Create a mock Anga-like object."""
     m = MagicMock()
@@ -343,6 +349,71 @@ class TestRowEmitters:
         assert len(rows) == 5
         for r in rows:
             assert r["ayanamsha_id"] == "INVARIANT"
+
+    # ── F-B24 regression: the anga-end timestamp must be keyed/labeled as an
+    # end, never as an "arambha" (beginning) — see L1_W1_ANALYSIS_BATCH_B.md
+    # §5.3. `arambha_iso` used to store `end_utc` under a key that means
+    # "beginning"; both the key and the docstring below assert this can never
+    # come back, for every emitter that reports an anga's boundary.
+    #
+    # Each test builds its own fresh PanchangaInstant mock (not the shared
+    # module-scoped `forensic_pi` fixture) so mutating `end_utc` here can
+    # never leak into other tests in this module.
+
+    def test_emit_tithi_end_iso_key_and_value(self):
+        pi = _make_forensic_pi()
+        end = _dt(1984, 2, 5, 7, 12, 47)
+        pi.tithi.end_utc = end
+        w = _writer()
+        rows = w._emit_tithi(pi, CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00")
+        by_key = {r["fact_key"]: r for r in rows}
+        assert "arambha_iso" not in by_key
+        assert by_key["end_iso"]["fact_value_text"] == w._ts_iso(end)
+        assert "ends" in by_key["end_iso"]["citation_human"].lower()
+
+    def test_emit_yoga_end_iso_key_and_value(self):
+        pi = _make_forensic_pi()
+        end = _dt(1984, 2, 5, 19, 29, 13)
+        pi.yoga.end_utc = end
+        w = _writer()
+        rows = w._emit_yoga(pi, CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00")
+        by_key = {r["fact_key"]: r for r in rows}
+        assert "arambha_iso" not in by_key
+        assert by_key["end_iso"]["fact_value_text"] == w._ts_iso(end)
+
+    def test_emit_karana_end_iso_key_and_value(self):
+        pi = _make_forensic_pi()
+        end = _dt(1984, 2, 5, 7, 12, 47)
+        pi.karana.end_utc = end
+        w = _writer()
+        rows = w._emit_karana(pi, CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00")
+        by_key = {r["fact_key"]: r for r in rows}
+        assert "arambha_iso" not in by_key
+        assert by_key["end_iso"]["fact_value_text"] == w._ts_iso(end)
+
+    def test_emit_nakshatra_moon_end_iso_key_and_value(self):
+        pi = _make_forensic_pi()
+        end = _dt(1984, 2, 5, 17, 55, 22)
+        pi.nakshatra.end_utc = end
+        w = _writer()
+        rows = w._emit_nakshatra_moon(pi, CANONICAL_CHART_ID, BUILD_ID,
+                                       "2026-06-10T00:00:00+00:00", "lahiri_chitrapaksha")
+        by_key = {r["fact_key"]: r for r in rows}
+        assert "arambha_iso" not in by_key
+        assert by_key["end_iso"]["fact_value_text"] == w._ts_iso(end)
+
+    def test_emit_sun_moon_dynamics_anga_end_iso_keys(self):
+        pi = _make_forensic_pi()
+        end = _dt(1984, 2, 5, 7, 12, 47)
+        for anga in (pi.tithi, pi.nakshatra, pi.yoga, pi.karana):
+            anga.end_utc = end
+        w = _writer()
+        rows = w._emit_sun_moon_dynamics(pi, CANONICAL_CHART_ID, BUILD_ID,
+                                          "2026-06-10T00:00:00+00:00")
+        keys = {r["fact_key"] for r in rows}
+        for anga_name in ("tithi", "nakshatra", "yoga", "karana"):
+            assert f"{anga_name}_arambha_iso" not in keys
+            assert f"{anga_name}_end_iso" in keys
 
 
 # ── 17-20: Tara bala baseline ─────────────────────────────────────────────────

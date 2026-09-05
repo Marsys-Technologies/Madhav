@@ -350,8 +350,7 @@ def _emit_tithi(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list
     # A4 §3 requires percent_elapsed_at_birth — stored as null if unavailable
     pct = ta.pct_elapsed if (ta and ta.pct_elapsed is not None) else None
 
-    pravesh_iso = None  # start of tithi (not in PanchangaInstant directly)
-    arambha_iso = _ts_iso(t.end_utc)  # end of tithi
+    end_iso = _ts_iso(t.end_utc)  # end of tithi; the true beginning is not in PanchangaInstant
 
     # Inauspicious tithis: 4,6,8,9,12,14,30 (classical)
     INAUSPICIOUS_TITHIS = {4, 6, 8, 9, 12, 14, 30}
@@ -379,9 +378,9 @@ def _emit_tithi(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list
              value_text=lord,
              citation_human=f"Tithi lord: {lord}.",
              verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "arambha_iso",  chart_id, ay, build_id,
-             value_text=arambha_iso,
-             citation_human=f"Tithi ends: {arambha_iso}.",
+        _row(cat, subj, "end_iso",  chart_id, ay, build_id,
+             value_text=end_iso,
+             citation_human=f"Tithi ends: {end_iso}.",
              verification_pass_status=vp, computed_at=computed_at),
         _row(cat, subj, "inauspicious_flag", chart_id, ay, build_id,
              value_text=str(inauspicious).lower(),
@@ -446,7 +445,7 @@ def _emit_yoga(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[
     yoga_num = y.id  # 1..27
     INAUSPICIOUS_YOGAS = {1, 6, 9, 10, 13, 15, 17, 19, 27}
     inauspicious = yoga_num in INAUSPICIOUS_YOGAS
-    arambha_iso = _ts_iso(y.end_utc)
+    end_iso = _ts_iso(y.end_utc)
 
     rows = [
         _row(cat, subj, "name",         chart_id, ay, build_id,
@@ -457,9 +456,9 @@ def _emit_yoga(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[
              value_num=float(yoga_num),
              citation_human=f"Yoga number: {yoga_num} (1=Vishkambha, 27=Vaidhriti).",
              verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "arambha_iso",  chart_id, ay, build_id,
-             value_text=arambha_iso,
-             citation_human=f"Yoga ends: {arambha_iso}.",
+        _row(cat, subj, "end_iso",  chart_id, ay, build_id,
+             value_text=end_iso,
+             citation_human=f"Yoga ends: {end_iso}.",
              verification_pass_status=vp, computed_at=computed_at),
         _row(cat, subj, "inauspicious_flag", chart_id, ay, build_id,
              value_text=str(inauspicious).lower(),
@@ -482,7 +481,7 @@ def _emit_karana(pi: Any, chart_id: str, build_id: str, computed_at: str) -> lis
     vishti_flag = karana_id == 7
     MOVABLE_KARANAS = {1, 2, 3, 4, 5, 6, 7}
     half_tithi = "second" if karana_id in {8, 9, 10, 11} else "first"
-    arambha_iso = _ts_iso(k.end_utc)
+    end_iso = _ts_iso(k.end_utc)
 
     rows = [
         _row(cat, subj, "name",         chart_id, ay, build_id,
@@ -501,9 +500,9 @@ def _emit_karana(pi: Any, chart_id: str, build_id: str, computed_at: str) -> lis
              value_text=str(vishti_flag).lower(),
              citation_human=f"Bhadra/Vishti karana active: {vishti_flag}.",
              verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "arambha_iso",  chart_id, ay, build_id,
-             value_text=arambha_iso,
-             citation_human=f"Karana ends: {arambha_iso}.",
+        _row(cat, subj, "end_iso",  chart_id, ay, build_id,
+             value_text=end_iso,
+             citation_human=f"Karana ends: {end_iso}.",
              verification_pass_status=vp, computed_at=computed_at),
     ]
     return rows
@@ -625,7 +624,7 @@ def _emit_sun_moon_dynamics(pi: Any, chart_id: str, build_id: str, computed_at: 
              verification_pass_status=vp, computed_at=computed_at),
     ]
 
-    # Also emit tithi/nakshatra/yoga/karana pravesh+arambha from the anga objects
+    # Also emit tithi/nakshatra/yoga/karana end times from the anga objects
     tithi = pi.tithi
     nak = pi.nakshatra
     yoga = pi.yoga
@@ -634,10 +633,10 @@ def _emit_sun_moon_dynamics(pi: Any, chart_id: str, build_id: str, computed_at: 
     for anga_name, anga_obj in [("tithi", tithi), ("nakshatra", nak),
                                  ("yoga", yoga), ("karana", karana)]:
         if anga_obj is not None:
-            arambha = _ts_iso(anga_obj.end_utc)
-            rows.append(_row(cat, subj, f"{anga_name}_arambha_iso", chart_id, ay, build_id,
-                             value_text=arambha,
-                             citation_human=f"{anga_name.title()} ends: {arambha}.",
+            end_iso = _ts_iso(anga_obj.end_utc)
+            rows.append(_row(cat, subj, f"{anga_name}_end_iso", chart_id, ay, build_id,
+                             value_text=end_iso,
+                             citation_human=f"{anga_name.title()} ends: {end_iso}.",
                              verification_pass_status=vp, computed_at=computed_at))
 
     return rows
@@ -1005,7 +1004,7 @@ def _emit_nakshatra_moon(pi: Any, chart_id: str, build_id: str, computed_at: str
 
     nak_id = nak.id  # 1..27
     nak_name = nak.name
-    arambha_iso = _ts_iso(nak.end_utc)
+    end_iso = _ts_iso(nak.end_utc)
     lord = NAKSHATRA_LORDS[nak_id - 1]
 
     rows = [
@@ -1021,9 +1020,9 @@ def _emit_nakshatra_moon(pi: Any, chart_id: str, build_id: str, computed_at: str
              value_text=lord,
              citation_human=f"Vimshottari dasha starting lord for {nak_name}: {lord} ({ayanamsha_id}).",
              verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "arambha_iso",  chart_id, ay, build_id,
-             value_text=arambha_iso,
-             citation_human=f"Moon nakshatra ends: {arambha_iso} ({ayanamsha_id}).",
+        _row(cat, subj, "end_iso",  chart_id, ay, build_id,
+             value_text=end_iso,
+             citation_human=f"Moon nakshatra ends: {end_iso} ({ayanamsha_id}).",
              verification_pass_status=vp, computed_at=computed_at),
     ]
 
