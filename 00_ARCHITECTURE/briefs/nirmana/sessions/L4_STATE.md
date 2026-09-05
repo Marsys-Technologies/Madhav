@@ -1638,3 +1638,15 @@ positions since `main` itself hasn't moved; E-gate uncheckable, DB access down 5
 no new capability landings or adjudications) → next: retry E-gate/dispatch dry-run once DB
 access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~06:30Z` — L4 — **CYCLE 16 (v2.3) — steady-state IDLE, 6th consecutive cycle.**
+Position-1 entry (`#1850`) checked via the `gh-readonly-queue` diagnostic before assuming a
+repeat jam from `main`'s 3-cycle freeze: merge-group checks started 9 min prior, 25/26 already
+passed — genuinely progressing, same healthy pattern as `#1843`/`#1851` before it. PR hygiene
+clean, all 8 checked PRs genuinely queued at unchanged positions. DB access still down, no new
+capability landings, no new adjudications.
+
+CYCLE 16 L4: IDLE-OK (verified: PR hygiene clean; queue head checked via `gh-readonly-queue`
+diagnostic — genuinely progressing, not stalled; E-gate uncheckable, DB access down 6 cycles; no
+new capability landings or adjudications) → next: retry E-gate/dispatch dry-run once DB access
+returns; watch `#1885`'s merge; F1 remains deferred.
+
