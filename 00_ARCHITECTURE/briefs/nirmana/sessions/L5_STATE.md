@@ -14,13 +14,15 @@ worktree: ~/nirmana-s/l5
 **Position:** `L5-W4 IN FLIGHT` — RESUMED 2026-09-05 after the lane died ~00:37Z, then a second
 stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
 15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
-recovered W5/runbook) **+ #1790 fixed/re-queued, #1826 state PR in flight.** **W4: `mi_vistara`'s
-`asset_analysis_accepted` event is RECORDED LIVE** — the first W2-acceptance evidence any `mi_*`
-asset has ever had (C2.2 condition 2, half done for canary 1). Still needed before dispatch:
-`mi_vistara`'s `optimization_verdict_accepted`, then the slot claim + dry-run + commit per the
-runbook. W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4
-anchor-identity collision, still live). Three canaries (`mi_vistara`, `lel_events`,
-`mi_jivanaghatana`) remain dispatchable.
+recovered W5/runbook) **+ #1790 fixed/queued** (verified `is:queued`), **#1826 state PR in
+flight** (checks pending). **W4: `mi_vistara` is fully gate-eligible.** Both C2.2 acceptance
+events (`asset_analysis_accepted` + `optimization_verdict_accepted`) are RECORDED LIVE and
+independently re-verified — the first W2-acceptance evidence any `mi_*` asset has ever had. Live
+`egate.sql` now reads `mi_vistara: w2_analysis=t, w2_verdict=t, gate=OPEN-PENDING-PIN`. **Next:
+claim a run slot on #1713, dry-run + `--commit` dispatch per the canary runbook.** W4 gated only
+on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity
+collision, still live). `lel_events` and `mi_jivanaghatana` remain dispatchable behind
+`mi_vistara`.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -396,6 +398,26 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~20:10Z (C8 v2.3 cycle 4) — **`mi_vistara`'s `optimization_verdict_accepted`
+  recorded live — E-gate condition 2 fully satisfied for canary 1.** PR hygiene first: #1790
+  confirmed in `is:queued` (fixed last cycle, no further action); #1826 still checks-pending
+  (BLOCKED, not DIRTY/RED — nothing to fix). Independently re-derived the measurement rather than
+  trusting the W1 doc's numbers: `SELECT ... percentile_cont(0.5/0.9) ... FROM build_run_assets
+  WHERE asset_id='mi_vistara'` → n=39, mean 287.4ms (matches the doc's "0.287s mean" exactly),
+  p50=129.8ms, p90=1108.9ms. Read `mi_vistara.py` at HEAD to ground the `hotspot` field honestly:
+  two trivial single-row queries, no loop, no substeps — the p50→p90 spread is orchestrator-level
+  overhead, not writer inefficiency, so `verdict: examined_and_already_efficient` /
+  `action: no_change` is the truthful call (first `status: measured` verdict anywhere in the
+  campaign so far; no format precedent existed to copy). Submitted via `nrec --as executor`
+  (same `source_kind: git_commit` / `source_ref: git:75ac19c66…` as the prior event — re-verified
+  still the live-deployed sha before submitting). **HTTP 201**, independently re-verified by a
+  direct DB read (`verdict='examined_and_already_efficient'`, correct `recorded_by`) and by
+  re-running `scripts/nirmana/egate.sql -v layer=L5`: `mi_vistara` now reads `w2_analysis=t,
+  w2_verdict=t, gate=OPEN-PENDING-PIN` — the "PENDING-PIN" is honest per the tool's own docs (C2.3
+  pin-match is self-certified, not DB-derived) and I re-verified my pins fresh this cycle.
+  **Next cycle: claim the run slot on #1713, dry-run, then `--commit` dispatch** (needs a fresh
+  verified snapshot-ref per hard floor §3.5 — check what "fresh verified snapshot" means/how to
+  obtain one before dispatching, since the runbook names it as mandatory but doesn't say how).
 - 2026-09-05T~20:00Z (C8 v2.3 cycle 3) — **W4 begins: `mi_vistara`'s `asset_analysis_accepted`
   event recorded live — first ever for any `mi_*` asset.** PR hygiene first: #1790 and #1826 both
   still checks-pending (BLOCKED, not DIRTY/RED) — nothing to fix, just waiting; verify `is:queued`
