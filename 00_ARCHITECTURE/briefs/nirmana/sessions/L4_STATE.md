@@ -369,3 +369,11 @@ execution-safe rule). Until then D-CND-04's hold correctly stands.
 **No dispatch, no slot claimed.** `ph_nimitta` is E-gate-blocked independently (37/46 ancestors
 unfrozen), D-CND-04 holds it, and D-NATIVE-05 holds destructive dispatch campaign-wide.
 
+`2026-09-05T~11:35Z` — L4-W3 — **all seven resume assignments addressed.** Pushed #1799 (D-CND-04
+completion), resolved and re-armed #1789 and #1791, shipped #1802 (`signal_id` disposition), filed
+#1803 (the cross-layer half I cannot decide alone) and #1805 (a real under-reporting bug in the
+Conductor's own `cascade_check.sql`). C13 re-verified with that tool: 4 cascade children, all
+in-layer, 3,513 rows — matching my hand closure in #1784 exactly. Blocked on: nothing. Next:
+announce CAPABILITIES LANDED once #1799 is live; then W3-3 writer work (`ph_nimitta` promise_lift /
+direction defaults).
+
