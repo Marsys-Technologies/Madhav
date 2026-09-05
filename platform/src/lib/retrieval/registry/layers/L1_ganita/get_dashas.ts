@@ -87,6 +87,34 @@ function normalizeLevel(input: string | number): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+// R-43 / F-A11: `chart_dashas.lord_graha` holds the 9 classical graha display
+// names for every system EXCEPT yogini, whose lords are deity names
+// (Mangala/Pingala/…) — the deity a graha's natal condition is inherited
+// through, not the graha itself. Same alias table as ga_dashas_writer.py's
+// _YOGINI_DEITY_TO_GRAHA (derived from its YOGINI_SEQUENCE) — kept in sync by
+// inspection, not imported, since this is a TS serving file with no Python
+// dependency. Without this, the serve-side natal re-derivation below (which
+// keys ONLY on the 9 graha names) resolves nothing for yogini's 83,740 rows
+// and overwrites the writer's correctly-populated lord_natal_* with NULL.
+const YOGINI_DEITY_TO_GRAHA_NAME: Record<string, string> = {
+  Mangala: 'Moon', Pingala: 'Sun', Dhanya: 'Jupiter', Bhramari: 'Mars',
+  Bhadrika: 'Mercury', Ulka: 'Saturn', Siddha: 'Venus', Sankata: 'Rahu',
+}
+
+const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    .map(name => [name, grahaCodeOf(name)]),
+)
+
+/**
+ * Resolve a chart_dashas.lord_graha value (classical graha name OR yogini
+ * deity name) to its chart_facts fact_subject code, or undefined if
+ * unrecognized. Exported for unit testing (no DB access required).
+ */
+export function factSubjectForLord(lordGraha: string | undefined): string | undefined {
+  return GRAHA_NAME_TO_FACT_SUBJECT[YOGINI_DEITY_TO_GRAHA_NAME[lordGraha ?? ''] ?? lordGraha ?? '']
+}
+
 // ── fields projection (design §3 `select` idiom — "projection, the 63KB killer") ──
 // chart_dashas carries ~40 columns/row (citation strings, verification metadata, jsonb
 // blobs) — a single unprojected row already runs ~2KB serialized, which alone busts the
@@ -456,15 +484,9 @@ export const getDashasCapability: CapabilityDescriptor = {
       // enrichment attempt keyed shadbala on 2-letter codes (SU/VE…), but chart_dashas.lord_graha
       // stores the DISPLAY name ("Venus") — so it silently matched nothing (a second R-43 bug).
       // This block keys on display-name → chart_facts subject-code, per (ayanamsha, graha),
-      // and carries a PERMANENT verifier cross-check (served == chart_facts).
-      // Values sourced from the graha SSoT (address_resolver.grahaCodeOf)
-      // rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
-      const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
-        ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
-          .map(name => [name, grahaCodeOf(name)]),
-      )
-
-      // Re-derived condition keyed by `${ayanamsha_id}|${factSubject}`.
+      // and carries a PERMANENT verifier cross-check (served == chart_facts). Re-derived
+      // condition keyed by `${ayanamsha_id}|${factSubject}` (factSubjectForLord, F-A11,
+      // handles both classical graha names and yogini deity names).
       const dignityMap: Record<string, string | null> = {}
       const shadbalMap: Record<string, number | null> = {}
       try {
@@ -472,7 +494,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         const pairs = new Map<string, { aya: string; subj: string }>()
         for (const r of rows) {
           const aya = r['ayanamsha_id'] as string | undefined
-          const subj = GRAHA_NAME_TO_FACT_SUBJECT[(r['lord_graha'] as string) ?? '']
+          const subj = factSubjectForLord(r['lord_graha'] as string | undefined)
           if (aya && subj) pairs.set(`${aya}|${subj}`, { aya, subj })
         }
         if (pairs.size > 0) {
@@ -513,7 +535,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       // independently re-reads chart_facts and asserts equality on every dasha row of both charts.
       const enrichedRows = rows.map(row => {
         const aya = row['ayanamsha_id'] as string | undefined
-        const subj = GRAHA_NAME_TO_FACT_SUBJECT[(row['lord_graha'] as string) ?? '']
+        const subj = factSubjectForLord(row['lord_graha'] as string | undefined)
         const key = aya && subj ? `${aya}|${subj}` : null
         const rederivedDignity = key ? (dignityMap[key] ?? null) : null
         const rederivedShadbala = key ? (shadbalMap[key] ?? null) : null
