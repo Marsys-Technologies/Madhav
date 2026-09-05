@@ -228,4 +228,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (old heartbeat branches are stale but harmless — their content already landed via #1817). NEXT:
   poll job-image deploy each cycle; if still stale, continue unblocked deepening
   (bg_dasha_systems `kp` gap, bg_doshas 658-violation categorization — both readable/verifiable
-  without dispatch, same pattern as D-L0-J).
+  without dispatch, same pattern as D-L0-J). **PR #1828 opened + auto-merge armed** (checks were
+  IN_PROGRESS at cycle end — mergeStateStatus BLOCKED pending them, not queued yet). NEXT CYCLE:
+  verify #1828 with `is:queued` per C8 Step 1 before starting new work; queue it if CLEAN+unqueued.
