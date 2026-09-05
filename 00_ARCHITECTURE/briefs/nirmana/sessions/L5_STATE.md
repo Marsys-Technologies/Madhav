@@ -451,6 +451,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~00:00Z (C8 v2.3 cycle 17) — **IDLE-OK, verified.** PR hygiene: #1844 confirmed
+  queued via GraphQL; #1826 checks-pending only, nothing broken. Read #1869 fully (all 3
+  comments): Conductor confirmed my `life_events`/`charts` diagnosis exactly, shipped the fix as
+  migration 645 in **PR #1873** (idempotent + self-verifying pattern matching 632, independently
+  migration-guard-reviewed) — that PR is what I resubmitted against last cycle, hitting the
+  `chart_grants` RLS wall. **#1873 itself is still open/unmerged**, and no new comment or PR
+  addresses `chart_grants` yet. Re-ran the L5 ancestor-closure query for all `mi_*`/`lel_events` —
+  no new E-gate movement (`mi_kula` still exactly 3 unfrozen ancestors, same three as every prior
+  check). Explicitly did not re-attempt `lel_events`'s resubmission — I already stated on #1869
+  I wouldn't chase this table-by-table, and nothing has changed since to justify going back on
+  that. Four structural blockers (#1840 self-fixed for `mi_vistara`, #1848 fix in flight,
+  #1856 fix in flight, #1869 partially fixed but genuinely still blocking) remain outside my
+  further authority to move.
+  **Next cycle: check #1851/#1861/#1873 merge status and #1869 for a chart_grants response.**
 - 2026-09-05T~23:45Z (C8 v2.3 cycle 16) — **#1869 got a real partial fix, resubmission attempt
   peeled back one more layer (RLS dependency), reported and stopped rather than chase further.**
   PR hygiene first: #1844 confirmed queued; #1826 checks-pending only. Checked #1869 for
