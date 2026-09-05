@@ -1720,3 +1720,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   Actions' 360-min default -- meaning up to ~6h before this self-resolves without intervention.
   Not something I can fix (no Actions-cancel access, not an L0 asset) -- reported to #1713 with
   the exact run/job IDs for whoever has admin access. My own queue position: still 20.
+
+- 2026-09-06 — **IDLE-OK, D-L0-PP resolved.** The CI hang cleared -- queue head moved from #1825
+  to #1884, my position advanced from 20 to 17. No merges of mine yet, no new coordination activity
+  beyond my own D-L0-PP report.
