@@ -457,6 +457,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~14:05Z (C8 v2.3 cycle 140) — **PR hygiene RED recurrence, root-caused, adjudication
+  filed.** #1826's `DB Integration Tests` job failed a SECOND time (2 hours after the first,
+  same PR, same job) — this time colliding on `conversation_messages` (was
+  `pariprashna_samiksha_digest_journal` the first time), same
+  `pg_type_typname_nsp_index`/"already exists" signature despite `CREATE TABLE IF NOT EXISTS`.
+  Two different, unrelated tables hitting the identical error class on a pure-markdown PR
+  confirms this is a genuine shared-fixture race in the throwaway-Postgres test harness, not a
+  regression — filed **#1973** with both occurrences' evidence and a non-prescriptive
+  recommendation (check test-file parallelism/isolation against one shared container), since
+  fixing the harness itself is outside L5's remit. Attempted to retry the failed job as done
+  last time, but the overall workflow run didn't finish completing within this cycle's window
+  (`gh run rerun` requires full completion first) — deferring the retry to next cycle rather
+  than force it. #1844 still queued at position 2, not yet merged. #1901=16, #1861=37
+  unchanged. #1856 still OPEN.
 - 2026-09-06T~13:55Z (C8 v2.3 cycle 139) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true at position 2; #1826 pending-checks-only, no red. #1885 (front-of-queue,
   2nd cycle) now ~8 min in — within normal window. #1901=16, #1861=37 unchanged. #1869
