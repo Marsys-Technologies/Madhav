@@ -146,7 +146,6 @@ not from the issue tracker.**
 
 | held | scope | released when | ruling |
 |---|---|---|---|
-| **L3 `kala_convergence` write** | campaign-wide | **L4 confirms on #1770** that its five cascade-exposed tables (`phala_anchors` + 4, incl. `phala_sankrama` 2,985 rows) are regenerable — L3's own C13 re-run found the depth-2 paths it had missed and corrected 188 → 3,708 L4 rows at risk | #1770 |
 | `ka_gochara_resonance`, `ka_graha_sancara` | L3 | their declared `depends_on` rows in `asset_registry` are corrected to match what their writers actually read. The audit itself is published (`L3_DEPENDS_ON_AUDIT_v1_0.md` + DAG corrections register #1823, both on main); the registry correction is what remains | #1734 / D-CND-07 |
 
 **Lifted this arc (recorded so a successor doesn't re-enforce them):**
@@ -155,9 +154,10 @@ not from the issue tracker.**
 |---|---|---|
 | `ph_nimitta` / `phala_anchors` writes | 2026-09-05T07:46Z, #1732 **closed** | deterministic `anchor_id` verified **live** (default `gen_random_uuid()` gone, 195/195 distinct, 0 orphans in `phala_pramana`/`phala_sankrama`/`mimamsa_predictions` after remap) — not taken from the missing C6 announcement line |
 | L2 `bo_laksana` / `bodha_msr_signals` write | 2026-09-05T07:46Z, ruled on #1770 | L3 confirmed its five `kala_*` tables re-runnable from a rebuilt MSR base. Dispatch conditions stand: **RESUMED L2 session only** (#1819), `weight: monster`, runs **SOLO**, on snapshot `cloudsql-backup:1788566627645`, `cascade_check.sql` C13 statement first (its no-FK query under-reports, #1805 — `(0 rows)` ≠ clean) |
+| L3 `kala_convergence` write | 2026-09-05T14:05Z, ruled on #1770 | L4 confirmed all five cascade-exposed L4 tables (`phala_anchors` + 4) regenerable — D-CND-04's deterministic `anchor_id` live-deployed (not just merged), zero FKs into the other four's own churning PKs campaign-wide. Sequencing note: `ph_nimitta` reruns before the other four L4 writers |
 
-The two remaining holds are **different gates** and must not be conflated: L2 dispatching needed
-*L3's* confirmation (given); L3 regenerating needs *L4's* (outstanding).
+The one remaining active hold (#1734/D-CND-07) is a registry-correction item, unrelated to either
+lifted dispatch gate above.
 
 ### CONDUCTOR rulings — night 1, wave 3: the CASCADE finding, and a ruling of mine reversed
 
@@ -354,6 +354,63 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-05T14:05Z` — cycle 7: **#1770's last outstanding condition cleared — L3's
+  `kala_convergence` write hold is LIFTED.** L4 answered directly on #1770 (also confirmed via
+  its own cross-session reply): all five cascade-exposed L4 tables regenerable, D-CND-04's
+  deterministic `anchor_id` verified live-deployed (not just merged — C4 execution-safe rule
+  honored), zero FKs into the other four's own churning PKs campaign-wide. Ruled and posted on
+  #1770; **notified both L3 and L4 directly by cross-session message** (not just the GitHub
+  comment) since last cycle's L4 miss showed the comment channel alone isn't reliable. Both the
+  `ka_gochara_resonance`/`ka_graha_sancara` depends_on-registry hold (#1734/D-CND-07) and the
+  ACTIVE HOLDS table's doc update remain — the table itself only exists in queued PR #1778, not
+  yet on `main`, so I ruled directly on the issue rather than let doc-lag gate a real unblock;
+  the table will show the lift once #1778 merges or a fast follow-up doc PR lands. PR hygiene
+  clean this cycle (#1778/#1825 both `is:queued`); fleet sweep found zero unaddressed RED/DIRTY.
+  Outstanding ball now shifts: watch #1734's registry-correction hold (last remaining active
+  hold) and whether L3 actually dispatches the regen cleanly.
+- `2026-09-05T14:00Z` — cycle 6: PR hygiene clean (#1733 MERGED; #1778 confirmed `is:queued`;
+  #1825 checks still pending, no failures). Fleet sweep found no unaddressed RED/DIRTY: #1818
+  (L2) — which I'd flagged as stale — turned out to already have a fresh 13:49:43Z fix pushed
+  (migration-660 collision + L2 pin regen), and RESUMED L2 acknowledged D-CND-24/25 on #1819
+  in writing, confirming which session is which. **Found the real gap this cycle: `L4_STATE.md`
+  on `origin/main` has zero mention of #1770** — the GitHub-comment nudges (on #1770 itself and
+  on #1713, twice) evidently never reached L4, which is deep in its own W3 writer queue
+  (ph_pratikara/ph_pramana/ph_rectification/ph_phaladesa). Sent a **direct cross-session message
+  to `l4-02`** (this fleet's actual L4 Claude Code session, discovered live via `ListAgents`)
+  spelling out the ask plainly: confirm on #1770 whether the five cascade-exposed L4 tables
+  (`phala_anchors` + 4, `phala_sankrama` 2,985 rows) are regenerable after an L3
+  `kala_convergence` regen, which is what releases L3's hold — explicitly not urgent beyond
+  L4's next natural stopping point, and explicitly not asking it to drop current work. This is a
+  higher-signal channel than another buried issue comment and worth trying before treating the
+  silence as negligence. Outstanding ball unchanged, but now delivered directly rather than
+  broadcast only.
+- `2026-09-05T13:52Z` — cycle 5: PR hygiene re-verified first (own three: #1733/#1778 still
+  `is:queued`; #1825 BLOCKED only on in-progress checks, no failures). Fleet sweep: #1766 (L1)
+  and #1791 (L4) both pushed fresh commits responding directly to the cycle-3 pin-regen nudge
+  (`ga_vargas` pin regen; a `ph_muhurta` test fix) — no new nudge warranted. #1818 (L2) and
+  #1801 (L3) remain stale (no push since the notice), still under the 2-cycle escalation
+  threshold. Then ran the **capsule integrity audit** (`capsule_audit.sql`, #1733, pulled live
+  off the unmerged PR branch since it hasn't landed yet) directly against production as this
+  cycle's standing-auditor duty (PROMPT_CONDUCTOR duty 8): **§1 (evidence-chain completeness) 0
+  rows — CLEAN. §2 (implementer/verifier identity separation) 11/11 rows `ok` — CLEAN, no
+  crossings. §3 (position): 29/128 frozen campaign-wide (22.7%) — L0 29/40 (11 routed-not-frozen,
+  0 unrouted), L1–L5 all still 0/frozen (L1 19 unrouted, L2 22, L3 23, L4 9, L5 15).** This is
+  the first SQL-verified (not narrated) total for L1–L5's unrouted state and confirms L0's 29
+  independently of #1817. Not committed as its own artefact — logged here; the full audit
+  becomes routine once #1733 merges. Outstanding ball unchanged: L4 owes #1770's five-table
+  regenerability confirmation, which releases L3.
+- `2026-09-05T13:41Z` — cycle 4: verified all 12 open `nirmana-adjudication` issues already carry
+  a posted Conductor ruling (none genuinely unruled this cycle — several stay open by design,
+  awaiting a merge or an ack, not awaiting a decision). Own-PR hygiene re-verified: #1733/#1778
+  both CLEAN and confirmed **`is:queued`** (not just `autoMergeRequest`, per C8's own warning).
+  Published the cycle-2/cycle-3 log entries (previously local-only) as PR **#1825**, deliberately
+  built off fresh `origin/main` rather than pushed onto #1778 (which is mid-queue and cannot
+  accept new commits — protected-branch push rejected on the attempt, confirming the queue
+  mechanic directly rather than assuming it) — and pruned the duplicate cycle-1 paragraph from
+  #1825's diff so the two PRs don't double the same log entry once both land. Auto-merge armed
+  on #1825 (checks running at cycle close). No new fleet-PR nudges needed: the pin-regen and
+  RED/DIRTY nudges from cycle 3 are <1 cycle old, not yet due for escalation. Outstanding ball
+  unchanged: L4 owes #1770's five-table regenerability confirmation, which releases L3.
 - `2026-09-05T13:25Z` — first supervised cycle under C8 v2.3: own-PR hygiene cleared a two-day
   backlog — #1731 and #1765 closed as superseded (each branch a verified strict ancestor of its
   superset PR), #1733 and #1778 rebased onto main (both purely additive, zero deletions) with
