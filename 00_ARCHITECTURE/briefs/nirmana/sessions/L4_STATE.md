@@ -59,7 +59,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
 | `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
 | `ph_pramana` | **changed** | W2 done | wave 3 · 45/54 unfrozen | — | 1 MUST: `life_event_miss` is a refutation from a detector that cannot return a match. D5 gate verified CLEAN — do not add a score |
-| `ph_phaladesa` | **changed** | W2 done | wave 4 · 46/55 unfrozen | — | 2 MUST: **zero MCP consumers**; headline anchor ignores the purification verdict |
+| `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
 
 All 9: `asset_kind=artifact` · `asset_type=data` · `scope=per_chart` · `has_writer=true` ·
 `has_substeps=false` · `domain=chart` · `rung=R4` · `is_active=true` · `catalog_status=DRAFT` ·
@@ -597,4 +597,52 @@ CYCLE L4: PR hygiene (re-armed dropped #1808) → shipped #1834 (`ph_rectificati
 now correctly False given the current scoring method's structural non-discrimination — traced to
 root cause, not patched around) → next: watch #1834/#1791/#1808/#1831 merge, then `ph_pramana`/
 `ph_phaladesa` or `ph_pratikara`'s remaining MUSTs.
+
+`2026-09-05T~21:00Z` — L4 — **cycle: PR hygiene clean → W3-3f shipped, `ph_phaladesa`'s F-4.2
+(headline anchor ignoring the purification verdict).**
+
+**PR hygiene:** #1791/#1808 genuinely `is:queued`; #1831/#1834 legitimately `pending` CI (checked
+run age — 12 min and 3 min respectively, within/near normal range, not stuck) — no RED, no DIRTY,
+nothing to act on.
+
+**Scoping decision, logged rather than attempted blind:** `ph_phaladesa` carries 2 MUST findings.
+**F1 (zero MCP consumers)** — W1 itself calls this "the single highest-leverage W2 item in L4" —
+was investigated first: traced through FOUR separate registries (`L4_phala/index.ts` →
+`registerCapability`, confirmed both `query_domain_result`/`query_falsifiers` ARE registered there;
+`canonical_faces.json`'s 96-entry list, confirmed neither has a face; `tool_name_bridge.ts`'s
+generated-projection bridge; `mcp_surface_profiles.generated.ts`'s actual `uri`/uri-mapping
+entries) before concluding it is a genuine cross-cutting MCP-surface wiring gap, not a one-file fix
+— multiple `.generated.*` outputs would need correct regeneration together, a materially larger and
+riskier unit than my established one-writer/one-defect pattern. **Deliberately not attempted this
+cycle**; the root cause is now precisely located (`canonical_faces.json` needs
+`phala_domain_result_get`/`phala_falsifiers_get` added) for whichever cycle takes it on properly.
+
+**The unit taken instead: F-4.2**, well-scoped and single-writer. `ph_phaladesa` reads
+`cleanliness_status` (the `ph_sodhana`/`ph_suddha_sodhana` purification verdict) but only for two
+aggregate counters — the domain's headline anchor was picked by `ORDER BY pa.domain,
+pa.confidence_high DESC NULLS LAST`, taking the first row per domain with **no reference to
+cleanliness at all**. `confidence_high` is exactly the field `ph_sodhana` already found inflated on
+90/139 anchors, so sorting by it alone systematically promoted the flagged anchors. Fixed with a
+`CASE`-ranked `ORDER BY` (clean anchors first per domain, confidence_high as tiebreak; honest
+fallback to the best flagged anchor when no clean one exists — never an empty `top_anchor_id`).
+
+**Verified live impact before writing any test**, matching my established discipline: simulated the
+exact new `ORDER BY` against the canonical chart via read-only query. 6/7 domains led with a
+flagged anchor before the fix (matching W1's own measurement exactly); after, 4 of those 6
+(character, health, relationship, wealth) correctly flip to a clean anchor, `career` is unchanged
+(already clean), and `spirituality`/`transition` correctly **stay** flagged — verified those two
+domains genuinely have no clean-status anchor to fall back to, so this is the honest outcome, not a
+partial fix.
+
+1 new source-text test (this writer has no hermetic DB-mock harness for its SQL-query methods,
+matching the file's own existing AST/text-assertion convention for query-shape invariants — same
+pattern as its `test_writer_never_commits` neighbour). 45/45 wave7 + narration tests pass.
+Governance gates handled proactively (now three-for-three): digest + pin regenerated and
+offline-verified before pushing. **Shipped PR #1839**, auto-merge armed.
+
+CYCLE L4: PR hygiene clean → shipped #1839 (`ph_phaladesa` F-4.2, 4/6 previously-flagged domains now
+correctly lead with a clean anchor) → deliberately deferred F1 (zero MCP consumers) after locating
+its exact root cause (missing `canonical_faces.json` entries) rather than attempting a multi-
+registry cross-cutting fix as one unit → next: watch #1839/#1834/#1831/#1808/#1791 merge, then
+`ph_pramana` (its sole MUST) or F1's proper multi-file fix.
 
