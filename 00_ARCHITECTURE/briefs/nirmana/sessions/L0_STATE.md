@@ -850,3 +850,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (`291beab7b…`) — confirms deploy automation is healthy, but #1838 (the actual dispatch-unblock)
   still isn't merged, so this doesn't change anything actionable. #1856 still `OPEN`. Nothing new
   to diagnose, nothing to fix, no fresh merge to act on — genuinely idle this cycle.
+- 2026-09-05 — **Cycle 20: IDLE-OK.** Verified: all 3 migration PRs still `is:queued` (26-deep,
+  `main` tip unchanged since last cycle — zero merges this time); `#1828` clean, pending checks;
+  none DIRTY. Coordination issue #1713 has no new comment since last check; #1856 still `OPEN`.
+  Nothing to fix, nothing new to diagnose, no fresh merge to act on.
