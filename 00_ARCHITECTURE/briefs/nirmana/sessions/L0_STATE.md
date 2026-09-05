@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — D-L0-OO: found Conductor-territory adjudication #1945 — zero stage-transition/foundation-lane receipts exist campaign-wide, meaning L0's eventual W6 freeze ceremony will be REJECTED once 40/40 is reached, until Conductor backfills the stage spine (their call, not L0's). No action for L0 now (still 30/40) but flagged so this isn't a surprise later. Queue still position 30, no PRs merged.
+last_updated: 2026-09-06 — IDLE-OK: D-L0-OO (#1945) still unactioned by Conductor, no L0 action needed. Queue still position 30, no PRs merged. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1640,3 +1640,5 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
 
 - 2026-09-06 — **IDLE-OK.** Queue advanced to position 30, still no PRs of mine merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 30, no merges. #1945 unactioned (Conductor's call).
