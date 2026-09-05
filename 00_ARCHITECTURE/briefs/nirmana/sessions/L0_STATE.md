@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-FF: found a real structural gap — the orchestrator's delta-skip optimization has no evidence-layer bypass, so accepted_rebuild_observed may be unreachable for either target asset via current tooling. Considering escalation or a fresh-asset workaround.
+last_updated: 2026-09-05 — D-L0-GG: bg_dasha_systems check had TWO bugs (join-scope leak + wrong catalog_hash pin), not a writer defect; migration 700 authored + verified live, awaiting PR merge/deploy. D-L0-FF (delta-skip vs evidence-chain gap) still open, unescalated.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -43,7 +43,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
 | bg_gochara_arcs | rebuild_only | **Structural bind (D-L0-FF): 2 runs now** — `bfdc6919` (genuine build, valid receipt, WRONG authorization) and `5ba8cedf` (valid authorization, `skip_no_delta`'d, stale receipt). Neither completes the evidence chain; may need Conductor input on a `force` path |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
-| bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
+| bg_dasha_systems | rebuild_only | **D-L0-K refined by D-L0-GG: writer still correct; the CHECK had two bugs.** Real genuine dispatch (run `ce86f4cf`, not skip_no_delta) failed `integrity_check_sql`. Root-caused live: (1) same FULL-JOIN scope bug as bg_doshas/692 — `ontology.entity_class='dasha_system'` in the ON clause instead of a pre-filtered subquery, so all non-dasha_system `brahma_ontology` rows leaked in; (2) migration 621's `catalog_hash` pin itself was wrong at authoring time (writer content unchanged since 5f47906bc; genuine hash is `8e35495f...`, pin says `30742da6...`). Fix migration 700 authored + verified live (rolled-back tx): guard matches 621's exact pin, corrected check evaluates **TRUE** against a genuine fresh writer run and **FALSE** (fail-closed, as expected) against current stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
 | bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
@@ -139,6 +139,17 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `reference_dasha_systems` is pre-reconciliation stale data, same story as bg_yogas. **No writer
   fix, no adjudication, no migration for bg_dasha_systems.** Blocked only on job-image deploy
   (unchanged, re-checked this cycle: still `d93d9d0a…`, still predates #1772).
+
+- **D-L0-GG (refines D-L0-K)** — **a genuine, correctly-authorized dispatch (run `ce86f4cf`, NOT
+  skip_no_delta) failed `integrity_check_sql` — the writer is still correct, but the CHECK had two
+  independent bugs: the same FULL-JOIN entity_class-in-ON-clause scope leak as bg_doshas/D-L0-L,
+  plus a `catalog_hash` pin that was computed wrong at migration 621's own authoring time (writer
+  content unchanged since; genuine hash `8e35495f...` ≠ pinned `30742da6...`).** Migration
+  `700_bg_dasha_systems_catalog_hash_repin.sql` authored, fixes both, verified live twice
+  (rolled-back tx): correctly guards on 621's exact prior pin, evaluates TRUE against a genuine
+  writer replay and FALSE (fail-closed) against current stale live data. Full root-cause account
+  in the Heartbeat entry below. No writer change. 4th instance this session of "correct the check"
+  (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694, bg_dasha_systems/700).
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
@@ -1327,3 +1338,32 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   never-dispatched asset (e.g. `bg_dasha_systems`/`bg_yogas`) where no prior matching receipt
   exists yet, to see if a FIRST properly-authorized dispatch can complete the whole chain in one
   shot before deciding this needs escalation.
+
+- **D-L0-GG** — **bg_dasha_systems: genuine dispatch (run `ce86f4cf`, correctly authorized, NOT
+  skip_no_delta) failed `integrity_check_sql`, refining D-L0-K.** Root-caused with the same
+  discipline as D-L0-J/L/N: ran `seed_dasha_systems()` directly in a rolled-back transaction,
+  then evaluated the registry's own pinned check-SQL subclauses against the just-written
+  (uncommitted) rows. Found TWO independent check bugs, not a writer bug: (1) a **FULL JOIN
+  scope leak identical to bg_doshas/692** — the check's `FULL JOIN brahma_ontology AS ontology
+  ON ontology.entity_class='dasha_system' AND ontology.canonical_id=catalog.canonical_id` puts
+  the entity_class filter in the ON clause, so every OTHER entity_class row in the (shared,
+  multi-domain) `brahma_ontology` table surfaces as an unmatched row and trips the alignment
+  NOT EXISTS — verified live by dumping the raw join's violation rows and finding they were all
+  `nak_*`/other-class ontology ids, zero real dasha-system misalignments; (2) migration 621's
+  `catalog_hash` pin was **wrong at authoring time** — `git show` on 5f47906bc (the commit that
+  both introduced the DASHA_SYSTEMS `kp` entry and authored migration 621's pin, "PYTHONHASHSEED=0
+  and 3 production-shaped replays produced these digests") confirms the writer's DASHA_SYSTEMS
+  content has not changed since; recomputing the same `jsonb_build_array(...)::text` SHA256 the
+  check itself uses, against a genuine fresh writer run, produces `8e35495ffef68342f7e88e2adee0-
+  0654701feeee7852634cdada8df3932bf906` every time, never the pinned `30742da6005fc977124192ae27-
+  ee1ca0bb29dd5363267860dfd8260e8bb3173a`. `ontology_hash`/`reference_hash` both matched their
+  pins exactly throughout — this narrows the defect precisely to the catalog_hash literal, an
+  authoring-time computation slip, not drift. Migration `700_bg_dasha_systems_catalog_hash_repin.sql`
+  authored: fixes the join scope (subquery pre-filter, mirroring 692's exact pattern) AND re-pins
+  catalog_hash to the verified-correct value. Verified twice live (rolled-back tx): guard clause
+  matches 621's stored pin byte-for-byte (no exception on apply); post-fix check evaluates **TRUE**
+  against a genuine writer replay and **FALSE** against current stale live data (fail-closed
+  preserved — no silent pass on unfixed data). This is the 4th instance this session of the
+  established C12 pattern (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694, now
+  bg_dasha_systems/700): "correct the check, not the writer." No writer change made or needed.
+
