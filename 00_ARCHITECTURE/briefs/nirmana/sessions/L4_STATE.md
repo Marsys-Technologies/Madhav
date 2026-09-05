@@ -1624,3 +1624,17 @@ CYCLE 14 L4: IDLE-OK (verified: PR hygiene clean, all 12 own PRs genuinely queue
 access down 4 cycles; L2 capabilities unchanged; no new adjudication) → next: retry E-gate/
 dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~06:20Z` — L4 — **CYCLE 15 (v2.3) — steady-state IDLE, 5th consecutive cycle: `main`
+frozen at the same commit, all 8 checked own PRs at unchanged queue positions (queue itself
+static, not broken), DB access still down. Nothing new to verify beyond re-confirming none of
+these facts have changed.** Not escalating the DB-access gap as an adjudication — it is a
+tool-connectivity condition in this environment, not a shared-campaign-tooling defect Conductor
+owns, and 5 cycles of a stable (not worsening) gap does not yet warrant it; continuing to log it
+plainly each cycle is the correct decide-and-log resolution until it either clears or genuinely
+blocks something time-critical.
+
+CYCLE 15 L4: IDLE-OK (verified: PR hygiene clean, all 8 checked PRs genuinely queued, unchanged
+positions since `main` itself hasn't moved; E-gate uncheckable, DB access down 5 cycles running;
+no new capability landings or adjudications) → next: retry E-gate/dispatch dry-run once DB
+access returns; watch `#1885`'s merge; F1 remains deferred.
+
