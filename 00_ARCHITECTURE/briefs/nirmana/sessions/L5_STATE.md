@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~07:58Z (C8 v2.3 cycle 72) — **#1861 is now queued too** (position 65) — its own
+  CI finished. All four tracked PRs now queued: #1873=11, #1844=30, #1901=44, #1861=65. Learned
+  a quirk: `gh pr checks` right after a rebase-push can under-report (only 10 checks shown)
+  because the heavy `CI — Ganga Quality Gate` workflow (which contains Unit Tests, Governance
+  Gates, DB Integration Tests, etc. as sub-jobs) was still `pending`/queued, not yet started —
+  not a real gap, just very early CI state; confirmed via the workflow-runs API rather than
+  assuming something was wrong. #1826 unaffected, still pending-checks-only, no red. #1856
+  still OPEN. No eligible dispatch.
 - 2026-09-06T~07:53Z (C8 v2.3 cycle 71) — **PR hygiene: #1860 merged**, rebased onto main's
   73-commit advance (new tip `a66cfb2cd`). Force-pushed; #1826's checks reset fresh (none red).
   #1844 stayed queued throughout, now at 30 (was 31). #1873→11, #1901→44. #1861 status
