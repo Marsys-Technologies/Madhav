@@ -15,18 +15,29 @@ worktree: ~/nirmana-s/l5
 stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
 15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
 recovered W5/runbook) **+ #1790 fixed/queued** (verified `is:queued`), **#1826 state PR in
-flight** (checks pending). **CANARY 1 (`mi_vistara`) BUILD COMPLETE, CAPSULE BLOCKED:** `run_id=
-e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`, 18.29s, verified live in job logs +
-DB (`asset_throughput.state='lit'`, first-ever `mi_*` provenance receipt, `receipt_state=
-'unknown'`). **Cross-layer finding filed as #1840:** `accepted_rebuild_observed` /
-`asset_frozen` are structurally unreachable for EVERY non-L0 asset campaign-wide —
-`asset_output_digest_specs` has 37 rows, all `bg_*`, zero for any other layer; 0 non-L0 assets
-have ever reached either event. Did not fabricate a digest or weaken the schema. Recommended
-(and will do myself, not blocking on the issue) authoring `mi_vistara`'s own spec as ordinary L5
-migration-range work. W5 mechanical checks/capsule remain fresh-context-verifier-only regardless.
-W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4
-anchor-identity collision, still live). `lel_events` and `mi_jivanaghatana` remain dispatchable behind
-`mi_vistara`.
+flight** (checks pending). **CANARY 1 (`mi_vistara`) BUILD COMPLETE, CAPSULE IN PROGRESS:**
+`run_id=e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`, 18.29s, verified live in job
+logs + DB. Cross-layer finding filed as **#1840** (`accepted_rebuild_observed`/`asset_frozen`
+structurally unreachable for every non-L0 asset — `asset_output_digest_specs` had 0 non-`bg_*`
+rows). **Migration 692 authored, applied, and live-verified** — `mi_vistara`'s own spec is now
+the first non-L0 entry (`nrec`/server-function digests independently cross-checked); PR
+**#1844 queued** (`migration-guard` PASS — spec_sha256 independently re-derived and matches
+exactly; ON CONFLICT target matches the real PK; columns cross-checked against three independent
+sources). **Real remaining gap found while tracing
+the full validator** (`requireAcceptedRebuildProvenance`/`requireBuildRunAuthorizationProvenance`
+in `definitions.ts`): `accepted_rebuild_observed` also needs a **`build_run_authorized`** event
+(source_kind `campaign_authorization`, entity_type `build_run`) submitted **BEFORE** the run
+starts (`build_runs.state='planned'`, `started_at IS NULL`) — my existing `e45e343b` run has
+neither that event nor a `receipt_state='proven'` receipt (the receipt predates the spec), so it
+cannot retroactively satisfy the chain. **A genuine ~23s window exists** between
+`build_runs.created_at` and `started_at` (measured on `e45e343b`: 14:09:42.233Z →
+14:10:05.152Z) — enough to script `build_run_authorized` immediately after the dispatch script
+returns its `run_id`, before the job actually starts. Next cycle: re-dispatch `mi_vistara`
+(now that its spec exists) with `build_run_authorized` submitted in that window, then
+`accepted_rebuild_observed`. W5 mechanical checks/capsule remain fresh-context-verifier-only
+regardless. W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana`
+(L4 anchor-identity collision, still live). `lel_events` and `mi_jivanaghatana` remain
+dispatchable behind `mi_vistara`.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -402,6 +413,39 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~21:00Z (C8 v2.3 cycle 7) — **Migration 692 authored, applied, live-verified,
+  guard-reviewed PASS — `mi_vistara`'s `output_digest_spec` exists (first non-L0 entry).** PR
+  hygiene first: #1790 still queued; #1826 checks-pending, nothing broken. Read
+  `platform/supabase/migrations/598_/601_nirmana_output_digest_specs.sql` for the exact
+  precedent shape (one component per relation, key_columns = real PK, value_columns = every
+  content column, no pipeline-bookkeeping fields to exclude here). Computed `spec_sha256` via
+  the REAL `canonical_digest`/`_validate_spec` functions from the sidecar (never
+  hand-reimplemented) — both independently confirmed the value before it went in the migration.
+  Placed in `platform/migrations/` (my normal L5 track) rather than `supabase/migrations/`
+  (a separate, older numbering lineage that predates the charter's 690-699 range) since
+  `migrate.ts` pools both directories into one applied-migrations namespace regardless — pure
+  naming-convention choice, not a functional one. First `npx tsx scripts/migrate.ts` run timed
+  out at 2 minutes with no query ever appearing in `pg_stat_activity` (likely just slow
+  connection acquisition under concurrent L3 load, not a real hang); retried with a longer
+  timeout and it applied cleanly. Verified live: row exists, `retired_at IS NULL`, sha matches.
+  Opened **PR #1844** on its own branch (`codex/nirmana-l5-mi-vistara-digest-spec`, separate from
+  the state-file branch — migrations get their own PR, matching this session's own established
+  pattern), dispatched `migration-guard` per the create-migration skill's own step 4: **PASS**,
+  posted to the PR, queued.
+  **Traced the full `accepted_rebuild_observed` validator** (`requireAcceptedRebuildProvenance` +
+  `requireBuildRunAuthorizationProvenance` in `definitions.ts`) before attempting a resubmit, and
+  found the spec alone is NOT enough: it also strictly requires (a) a `receipt.receipt_state =
+  'proven'` row — my existing `e45e343b` receipt predates the spec and stays `'unknown'`
+  forever (receipts are append-only, not retroactively recomputed) so a fresh build is needed;
+  (b) a `build_run_authorized` event (source_kind `campaign_authorization`, entity_type
+  `build_run`) bound to that run, which per its own validator must be submitted **while
+  `build_runs.state='planned'` and `started_at IS NULL`** — i.e. BEFORE the job starts, not
+  after. Measured the real window on `e45e343b`: `created_at` 14:09:42.233Z → `started_at`
+  14:10:05.152Z, **~23 seconds** — comfortably scriptable, not a hostile race.
+  **Next cycle: re-dispatch `mi_vistara`**, submit `build_run_authorized` via `nrec --as
+  executor` immediately after the dispatch script returns its `run_id` (source_ref =
+  `build_run:<run_id>`, still inside the ~20s window), then verify the new receipt reaches
+  `receipt_state='proven'`, then submit `accepted_rebuild_observed` referencing it.
 - 2026-09-05T~20:40Z (C8 v2.3 cycle 6) — **Filed #1840: `output_digest_spec` is L0-only,
   blocking `accepted_rebuild_observed`/`asset_frozen` for EVERY non-L0 asset campaign-wide.**
   PR hygiene first: #1790 confirmed still queued; #1826 checks-pending, nothing broken. Went to
