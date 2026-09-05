@@ -143,7 +143,16 @@ ORDER BY (layer = own_layer), depth, live_rows DESC;
 -- body reliably across psql versions, and PL/pgSQL's own `:=` assignment syntax makes
 -- relying on it there doubly fragile. Pass the target table in through a TEMP TABLE
 -- instead of interpolating it into the block.
-CREATE TEMP TABLE IF NOT EXISTS _cascade_check_target (t text) ON COMMIT DROP;
+--
+-- Deliberately NOT `ON COMMIT DROP`: under psql's default autocommit, each top-level
+-- statement is its own transaction, so a table created `ON COMMIT DROP` is dropped
+-- the instant its own CREATE statement's transaction commits -- before the very next
+-- statement in this same file can see it (verified live: reproduces a bare "relation
+-- ... does not exist" on the following DELETE, every time). `IF NOT EXISTS` + the
+-- `DELETE FROM` immediately below it are what keep this idempotent/safe to re-run in
+-- one session instead; the table lives for the rest of the session and is cleaned up
+-- automatically when the connection closes, same as any other TEMP TABLE.
+CREATE TEMP TABLE IF NOT EXISTS _cascade_check_target (t text);
 DELETE FROM _cascade_check_target;
 INSERT INTO _cascade_check_target VALUES (:'table');
 
@@ -158,9 +167,12 @@ DECLARE
 BEGIN
   SELECT t INTO target_table FROM _cascade_check_target LIMIT 1;
 
+  -- Same reason as _cascade_check_target above: this DO block is itself one
+  -- statement/transaction, so ON COMMIT DROP here would drop this table before
+  -- the plain SELECT right after the block could read it.
   CREATE TEMP TABLE IF NOT EXISTS _cascade_check_orphans (
     table_name text, column_name text, resolving_rows bigint, sample_note text
-  ) ON COMMIT DROP;
+  );
   DELETE FROM _cascade_check_orphans;
 
   EXECUTE format(
