@@ -37,8 +37,28 @@ def test_assign_quality_ongoing_low_score():
 
 
 def test_assign_quality_ongoing_no_score():
-    """Ongoing period with no avg_score -> building."""
+    """F-PARVA-3 (§N.8): an ongoing period with NO measured convergence windows at all
+    (avg_score=None) must NOT silently read as 'building' — that label asserts momentum
+    a real detector never measured. Measured live: 52/100 rows on the native chart were
+    exactly this case. Corrected to 'transitional' — honest 'no evidence yet', not a
+    fabricated positive."""
     result = _assign_quality(0, 9, 0, None, TODAY_Y - 1, TODAY_Y + 5)
+    assert result == 'transitional'
+
+
+def test_assign_quality_ongoing_zero_score_is_building_not_transitional():
+    """F-PARVA-4 (§N.7 item 6): a genuinely computed avg_score=0.0 (real convergence
+    windows measured, they just scored zero) is NOT the same claim as 'no evidence
+    at all' (avg_score=None) — the former is a real, if weak, measurement and stays
+    'building'; only a true absence of data becomes 'transitional'."""
+    result = _assign_quality(0, 9, 0, 0.0, TODAY_Y - 1, TODAY_Y + 5)
+    assert result == 'building'
+
+
+def test_assign_quality_ongoing_low_nonzero_score_is_building():
+    """A real, if modest, ongoing avg_score below the peak threshold is 'building' —
+    the honest label for measured-but-not-yet-peak activity."""
+    result = _assign_quality(0, 9, 0, 0.05, TODAY_Y - 1, TODAY_Y + 5)
     assert result == 'building'
 
 
