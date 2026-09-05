@@ -1660,3 +1660,15 @@ E-gate uncheckable, DB access down 7 cycles; no new capability landings or adjud
 next: retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
 deferred.
 
+`2026-09-06T~06:50Z` — L4 — **CYCLE 18 (v2.3) — steady-state IDLE, 8th consecutive cycle. Posted
+a status note to #1713** (not an adjudication — a plain flag, in case the tool gap is visible/
+fixable from outside my session): `postgres` MCP disconnected 8 cycles running, every cycle since
+has correctly logged `IDLE-OK` rather than fabricate a DB check. PR hygiene (GitHub API only,
+unaffected) stays clean — all checked PRs genuinely queued at unchanged positions (`main` itself
+hasn't moved since last cycle). No new capability landings or adjudications.**
+
+CYCLE 18 L4: IDLE-OK (verified: PR hygiene clean; E-gate uncheckable, DB access down 8 cycles —
+flagged as a status note on #1713 this cycle, not an adjudication; no new capability landings)
+→ next: retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
+deferred.
+
