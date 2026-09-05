@@ -3247,10 +3247,34 @@ export const ASSET_REGISTRY_UPSERT_SQL = `INSERT INTO asset_registry (
   target_table = EXCLUDED.target_table,
   count_sql = EXCLUDED.count_sql,
   size_sql = EXCLUDED.size_sql,
-  target_floor = EXCLUDED.target_floor,
-  expected_volume_formula = EXCLUDED.expected_volume_formula,
-  expected_volume_inputs = EXCLUDED.expected_volume_inputs,
-  volume_explanation = EXCLUDED.volume_explanation,
+  -- Volume expectation is migration-governed once a row exists (C12 /
+  -- D-CND-01; NIRMANA issue #1757). The seed supplies these for NEW rows, but a
+  -- routine re-seed must not revert a derivation a layer authored against
+  -- measured data. Same rule, and same reasoning, as depends_on below.
+  --
+  -- This is not a preference. C12 directs every layer to populate
+  -- expected_volume_formula / expected_volume_inputs from first principles, and
+  -- those formulas are chart-partitioned SQL predicates that parseFormula above
+  -- cannot parse: its grammar admits only ACTUAL(), FILE_COUNT() and arithmetic,
+  -- and throws on lowercase identifiers, comparison operators, commas or a chart
+  -- placeholder. Mirroring the campaign's values back into the TS literals would
+  -- therefore require a SECOND, incompatible grammar in a column that already
+  -- executes one. Governing the columns from migrations instead keeps
+  -- parseFormula with exactly one grammar over its own literals, and keeps six
+  -- parallel sessions out of this shared file.
+  --
+  -- Note estimated_seconds is already treated this way by omission: it is in the
+  -- INSERT column list but not in this DO UPDATE SET, so re-measured durations
+  -- already survive a re-seed. This generalises that treatment from one measured
+  -- field to the rest.
+  --
+  -- NOTE TO EDITORS: this comment sits inside a TypeScript template literal.
+  -- Do not use backticks in it -- they terminate the string. (Learned the hard
+  -- way: the first version of this comment did, and broke tsc.)
+  target_floor = asset_registry.target_floor,
+  expected_volume_formula = asset_registry.expected_volume_formula,
+  expected_volume_inputs = asset_registry.expected_volume_inputs,
+  volume_explanation = asset_registry.volume_explanation,
   -- Dependency identity is migration-governed once a row exists. The seed
   -- supplies it for new rows but a routine re-seed cannot rewrite the live DAG.
   depends_on = asset_registry.depends_on,
