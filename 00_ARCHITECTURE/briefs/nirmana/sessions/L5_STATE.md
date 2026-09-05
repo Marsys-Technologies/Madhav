@@ -15,12 +15,17 @@ worktree: ~/nirmana-s/l5
 stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
 15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
 recovered W5/runbook) **+ #1790 fixed/queued** (verified `is:queued`), **#1826 state PR in
-flight** (checks pending). **CANARY 1 (`mi_vistara`) DISPATCHED AND COMPLETE:** `run_id=
+flight** (checks pending). **CANARY 1 (`mi_vistara`) BUILD COMPLETE, CAPSULE BLOCKED:** `run_id=
 e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`, 18.29s, verified live in job logs +
-DB (`asset_throughput.state='lit'`, first-ever `mi_*` provenance receipt). **W5 (mechanical
-checks + capsule) still owed — fresh-context verifier only, not me.** W4 gated only
-on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity
-collision, still live). `lel_events` and `mi_jivanaghatana` remain dispatchable behind
+DB (`asset_throughput.state='lit'`, first-ever `mi_*` provenance receipt, `receipt_state=
+'unknown'`). **Cross-layer finding filed as #1840:** `accepted_rebuild_observed` /
+`asset_frozen` are structurally unreachable for EVERY non-L0 asset campaign-wide —
+`asset_output_digest_specs` has 37 rows, all `bg_*`, zero for any other layer; 0 non-L0 assets
+have ever reached either event. Did not fabricate a digest or weaken the schema. Recommended
+(and will do myself, not blocking on the issue) authoring `mi_vistara`'s own spec as ordinary L5
+migration-range work. W5 mechanical checks/capsule remain fresh-context-verifier-only regardless.
+W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4
+anchor-identity collision, still live). `lel_events` and `mi_jivanaghatana` remain dispatchable behind
 `mi_vistara`.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
@@ -397,6 +402,26 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~20:40Z (C8 v2.3 cycle 6) — **Filed #1840: `output_digest_spec` is L0-only,
+  blocking `accepted_rebuild_observed`/`asset_frozen` for EVERY non-L0 asset campaign-wide.**
+  PR hygiene first: #1790 confirmed still queued; #1826 checks-pending, nothing broken. Went to
+  submit `mi_vistara`'s `accepted_rebuild_observed` (the natural next step after canary 1's
+  build) and found `NirmanaRebuildEvidenceSchema.output_digest` is non-nullable while
+  `asset_provenance_receipts.output_digest` is NULL for `mi_vistara` — traced to
+  `compute_output_digest()` deliberately returning `(None, None)` when no
+  `asset_output_digest_specs` row exists for the asset (honest by design, not a writer bug). Live
+  query: **37 registered specs, all `bg_*`; zero for any other layer.** Corroborated: **0 rows**
+  for `event_type IN ('accepted_rebuild_observed','asset_frozen') AND layer != 'L0'` anywhere in
+  campaign history — no non-L0 asset has EVER reached either event, and L5's canary is simply the
+  first session to hit the wall since it's the first non-L0 build to complete. **Did not
+  fabricate a digest or relax the schema** (hard floor — same reasoning as D-L5-03 on #1719).
+  Filed with full evidence, three options (A: per-layer spec authoring, mirrors the #1715
+  precedent — recommended; B: relax the schema to accept null — explicitly NOT recommended,
+  named only so it's rejected on the record; C: Conductor establishes a shared template first).
+  **Committed to authoring `mi_vistara`'s own spec myself as ordinary L5 migration-range (690–699)
+  work, not blocking on the issue** — its shape is trivial (one component, `mimamsa_export_log`,
+  key `export_id`), same pattern as the 37 existing `bg_*` specs I read for precedent. **Next
+  cycle: author that migration**, then retry `accepted_rebuild_observed` for `mi_vistara`.
 - 2026-09-05T~20:25Z (C8 v2.3 cycle 5) — **CANARY 1 DISPATCHED AND VERIFIED COMPLETE —
   `mi_vistara` build ran end-to-end for the first time this campaign.** PR hygiene first: #1790
   confirmed queued; #1826 checks-pending, nothing broken. Took a fresh on-demand Cloud SQL backup
