@@ -904,3 +904,42 @@ confirmed the queue moved for the first time in 5 cycles (#1791 merged) → ship
 multi-registry MCP-wiring fix — both still open, `ph_sodhana`'s remaining F-12 is now the
 smallest item in the whole layer.
 
+`2026-09-06T~00:10Z` — L4 — **cycle: this WAS the PR hygiene step — #1854 went genuinely DIRTY
+for the first time this session, the direct consequence of #1791 (finally) merging.**
+
+**Confirmed the queue kept moving**: main advanced by exactly one more merge since last
+cycle's check — still just #1791, nothing new — 25-deep queue, throughput is real but very
+slow. Not treating "one merge" as "fixed"; watching, not declaring victory.
+
+**PR hygiene swept all nine open PRs**: seven genuinely queued (`UNKNOWN` merge state, the
+documented normal-while-queued reading), #1857 legitimately `BLOCKED`/pending CI (pushed last
+cycle, no RED), and **#1854 (`ph_pratikara` F-3/F-4/F-5) was `DIRTY`/`CONFLICTING`** — the
+first real merge conflict of the whole session, and the predictable cost of #1791 finally
+landing: #1791 itself touched the shared `nirmana-writer-digests.json`/
+`nirmana-analysis-layer-pins.json` files, so every OTHER open PR based on an older `main` now
+disagrees with the new base on those two files.
+
+**Fixed at root, not by force-pushing over it:** checked out #1854's branch, `git rebase
+origin/main` — the writer-fix and digest-regen commits underneath applied clean; only the
+FINAL pin-splice commit conflicted (it had hardcoded the pre-#1791 "committed hash to
+replace"). `git rebase --skip` dropped that one stale commit rather than hand-resolving JSON
+conflict markers (safer — a hand-merged JSON pin file is exactly the kind of file this whole
+gate exists to distrust). Re-ran both test suites post-rebase (62/62 Python — one more than
+before, from whatever #1791 itself added; 6/6 TS) before trusting the rebase, then recomputed
+the pin fresh against the new base and reverified with the script's own `--check`. Push
+succeeded directly this time — unlike #1808's stall two cycles ago, this branch was never
+itself enqueued while I worked on it, so no GraphQL dequeue was needed. Re-armed auto-merge;
+swept the other eight PRs once more afterward and confirmed none of them had also gone DIRTY.
+
+**This cycle's unit was the DIRTY fix itself** — no new W3-3 code shipped. Given the queue's
+demonstrated fragility (one merge landing can DIRTY every sibling PR touching the same shared
+generated files), expect this same class of fix to recur each time a PR actually lands; will
+keep checking `mergeStateStatus` explicitly rather than trusting `is:queued` alone to mean
+"safe," since a DIRTY PR can still show up in that list mid-transition.
+
+CYCLE L4: PR hygiene — #1854 went DIRTY (first real conflict this session) as the direct
+consequence of #1791 finally merging; rebased via `--skip` on the stale pin commit rather than
+hand-resolving JSON, re-verified both test suites, recomputed the pin fresh, re-armed → next:
+`ph_pratikara`'s F-6 or F1's multi-registry MCP-wiring fix, watching for more DIRTY fallout as
+the queue continues to drain.
+
