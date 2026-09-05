@@ -1723,3 +1723,13 @@ uncheckable, DB access down 13 cycles; no new capability landings or adjudicatio
 retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
 deferred.
 
+`2026-09-06T~07:50Z` — L4 — **CYCLE 24 (v2.3) — `#1855` merged, queue advancing well; `#1854`
+now at position 4, close to the front. PR hygiene clean, all 9 checked own PRs genuinely
+queued and advancing. DB access still down (14th consecutive cycle), no new capability
+landings or adjudications.**
+
+CYCLE 24 L4: IDLE-OK (verified: PR hygiene clean, all checked PRs genuinely queued and
+advancing — `#1854` near the front; E-gate uncheckable, DB access down 14 cycles; no new
+capability landings or adjudications) → next: retry E-gate/dispatch dry-run once DB access
+returns; watch `#1885`'s merge; F1 remains deferred.
+
