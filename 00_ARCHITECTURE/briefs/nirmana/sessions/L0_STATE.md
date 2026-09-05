@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK (8th consecutive no-change cycle): queue at position 32, no PRs merged, no new coordination activity. 30/40 frozen holds from D-L0-NN. Self-pacing the next wakeup to ~20 min via ScheduleWakeup rather than keep re-checking faster than the queue can move.
+last_updated: 2026-09-06 — IDLE-OK (9th consecutive no-change cycle): queue still position 32, no PRs merged, no new coordination activity. This cycle arrived before the prior ~20min self-paced wakeup fired (a manual/external "Continue" appears to be resending faster than that), so re-arming the wakeup again. 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1595,4 +1595,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK, 8th consecutive no-change cycle.** Queue at position 32, no merges.
   Self-pacing the next wakeup to ~20 minutes via ScheduleWakeup instead of re-checking immediately.
+
+- 2026-09-06 — **IDLE-OK, 9th consecutive no-change cycle.** Queue still position 32, no merges.
+  This cycle's own re-invocation arrived before the prior 20-min self-paced wakeup — re-arming.
 
