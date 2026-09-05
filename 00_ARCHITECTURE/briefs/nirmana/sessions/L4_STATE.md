@@ -58,7 +58,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_sankrama` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: 250 rows (10%) destroyed by a stale domain map; `trajectory` constant from an `or 0.0` |
 | `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
 | `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
-| `ph_pramana` | **changed** | W2 done | wave 3 · 45/54 unfrozen | — | 1 MUST: `life_event_miss` is a refutation from a detector that cannot return a match. D5 gate verified CLEAN — do not add a score |
+| `ph_pramana` | **changed** | W2 done → **W3-3g** | wave 3 · 45/54 unfrozen | — | 1/1 MUST **shipped** (F2 domain normalisation + `detector_unavailable`, #1842, incl. migration 684); needs a rerun once E-gate opens |
 | `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
 
 All 9: `asset_kind=artifact` · `asset_type=data` · `scope=per_chart` · `has_writer=true` ·
@@ -645,4 +645,54 @@ correctly lead with a clean anchor) → deliberately deferred F1 (zero MCP consu
 its exact root cause (missing `canonical_faces.json` entries) rather than attempting a multi-
 registry cross-cutting fix as one unit → next: watch #1839/#1834/#1831/#1808/#1791 merge, then
 `ph_pramana` (its sole MUST) or F1's proper multi-file fix.
+
+`2026-09-05T~21:35Z` — L4 — **cycle: PR hygiene clean (all checked age-sane, no RED/DIRTY) →
+W3-3g shipped, `ph_pramana`'s sole MUST (F2) — the layer's last single-writer MUST finding
+before F1.**
+
+`ph_pramana`'s LEL-match lookup compared `phala_anchors.domain` (canonical) against
+`life_events.domain` **verbatim** — but `life_events.domain` is a compound
+`"<category>/<subtype>"` slug (e.g. `career/award_selection`), never a bare canonical domain.
+**Confirmed live before writing code:** `SELECT DISTINCT domain FROM life_events` returned 53
+compound slugs, zero of which could ever equal a 13-member canonical domain string —
+`life_event_match` fires 0 times across the whole DB. Root cause traced one level further than
+the finding stated: `life_events` has a SEPARATE `category` column (14 distinct values:
+career/creative/education/family/finance/health/loss/other/psychological/relationship/
+residential+travel/spiritual/travel/travel_event) that IS the coarse bucket meant to align
+with the canonical vocabulary — the writer was reading the wrong column entirely.
+
+**Two-part fix, both required** (the finding's own warning: a fix that only normalises would
+silently turn every unmatched past-window anchor into a `life_event_miss` again for domains
+with zero data, same defect shape, no doubling as before but the same over-claim persists):
+1. Load `category` (not `domain`) and normalise it via `brahmagyan.domain_vocabulary`'s
+   **existing** synonym map (`DOMAIN_SYNONYMS`/`CANONICAL_DOMAINS`, imported not extended —
+   verified live that 9/14 categories resolve cleanly through synonyms already in the map;
+   deliberately did NOT add new synonyms for the 5 that don't (`creative`, `loss`, `other`,
+   `residential+travel`, `travel_event`) — that's an interpretive call belonging to whoever
+   owns the shared vocabulary, not a mechanical fix).
+2. **Migration 684**: widens `phala_pramana_evidence_type_check` to accept a new
+   `detector_unavailable` value — asserted only when the window has closed AND the detector
+   has zero LEL data in the anchor's (normalised) domain at all, distinct from a genuine
+   `life_event_miss` (LEL data existed in-domain, just not inside the window). Included a
+   rewrite-floor self-test proving the widened constraint accepts the new value and still
+   rejects garbage — same discipline as #1754/#1799's migrations.
+
+Fixed one pre-existing test the same way as the last two cycles: `test_past_window_no_lel_is_miss`
+encoded the exact naive assumption the defect embodied (zero LEL entries anywhere → "miss") —
+renamed and reasserted as `detector_unavailable`, plus 9 new tests (genuine-miss-vs-unavailable
+distinction, synonym-match, never-silently-forced-match). 32/32 wave6 + 69/69 combined tests
+pass. Governance gates handled proactively (four-for-four now). **Shipped PR #1842**
+(includes migration 684 — first migration since #1799/#1754), auto-merge armed. Will verify
+the migration live once merged, matching the D-CND-04 execution-safe discipline.
+
+`ph_pramana` now has **0 of 1 W2 MUST findings remaining.** Five of nine L4 assets are now
+fully clean on their W2 MUST ledger (`ph_nimitta`, `ph_muhurta`, `ph_rectification`,
+`ph_pramana`, and `ph_phaladesa`'s F-4.2 half) awaiting only their E-gate-gated rerun; only
+`ph_pratikara` (6/7 remaining), `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, and
+`ph_phaladesa`'s F1 remain untouched or partial.
+
+CYCLE L4: PR hygiene clean → shipped #1842 (`ph_pramana` F2, domain vocabulary mismatch fixed +
+`detector_unavailable` disposition, migration 684) → next: watch #1842's migration apply +
+merges generally, then `ph_pratikara`'s remaining MUSTs, `ph_sankrama`/`ph_sodhana`/
+`ph_suddha_sodhana`, or F1's proper multi-registry fix.
 
