@@ -2745,7 +2745,11 @@ def _build_karakamsha_firings(
                 json.dumps([planet]),
                 json.dumps(constituent_houses),
                 strength,
-                derivation or STRENGTH_FORMULA_VERSION,
+                # F-A16: strength_formula_version must never claim a formula ran when `strength`
+                # itself is None (e.g. Rahu-only constituents, no classical shadbala) — falling
+                # back to STRENGTH_FORMULA_VERSION here named an unrelated code path's own
+                # constant (the Pancha Mahapurusha dignity formula). Honest NULL floor instead.
+                derivation,
                 None, False,
                 None, None, bhanga_na_reason,
                 derivation, strength_label, citation_ref, citation_human,
@@ -3026,7 +3030,10 @@ def build_ga_yoga_substep(
                     json.dumps(constituent_planets),
                     json.dumps(constituent_houses),
                     strength,
-                    derivation or STRENGTH_FORMULA_VERSION,
+                    # F-A16: same fix as the karakāṃśa insert above -- never invent an unrelated
+                    # formula-version label when the real constituent_bala_v1 derivation returned
+                    # nothing.
+                    derivation,
                     None, False,
                     verdict["bhanga_active"], verdict["bhanga_rule_fired"], verdict["bhanga_na_reason"],
                     derivation, strength_label, citation_ref, citation_human,
