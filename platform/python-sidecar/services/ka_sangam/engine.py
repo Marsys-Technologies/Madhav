@@ -455,24 +455,60 @@ def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> float:
 
 # ── C_panchanga_quality helper ────────────────────────────────────────────────
 
+_PANCHANGA_UNAVAILABLE_WARNED = False
+
+
 def _c_panchanga_quality(
     peak_date: Any,
     muhurta_service: Any,
     native_location: Optional[dict],
-) -> float:
+) -> Optional[float]:
     """
-    C_panchanga: muhurta score for peak_date at native's birth location.
-    Returns 0.0 if muhurta_service is None or location is unavailable.
-    Score normalized from 0-100 service scale to 0-1.
+    C_panchanga: muhurta score for peak_date at the native's birth location,
+    normalised from the service's 0-100 scale to [0,1].
+
+    Returns **None when the term could not be evaluated at all** — distinct from 0.0, which
+    means "evaluated, and the pāñcāṅga does not support this window".
+
+    NIRMĀṆA L3-W3 (§N.8, §N.7 item 6). This used to return 0.0 for every failure mode and
+    swallow the exception at DEBUG. It is called with ``event='general'``, which is **not in
+    ``muhurat.finder.EVENTS_MVP``** (a curated eight-event set, settled D2 2026-05-19), so
+    ``score()`` raises on every call and the term has been 0.0 on **4,729 of 4,729 Mode A/B
+    rows** — every row that carries the key at all. Nothing could ever have made it read
+    otherwise.
+
+    Two consequences, both silent:
+      * ``constituent_factors.currents.panchanga`` is derived as ``c_panchanga_quality > 0.0``,
+        so every row asserted *"pāñcāṅga did not support this window"* when the truth was
+        *"pāñcāṅga was never consulted"*;
+      * that current feeds ``independent_current_count`` (the I-22 coupling discount), so the
+        independence count is systematically understated by a term that was never evaluated.
+
+    **This function does not fix the underlying gap and must not pretend to.** Wiring the term
+    needs a general-purpose pāñcāṅga quality that ``ka_muhurta_seva`` deliberately does not
+    expose; substituting one of the eight curated events as a proxy would invent a semantic
+    (§N.7 item 6 — an honest null beats an invented judgment). What changes here is that the
+    absence becomes *reportable* instead of masquerading as a computed zero.
     """
+    global _PANCHANGA_UNAVAILABLE_WARNED
+
     if muhurta_service is None or native_location is None:
-        return 0.0
+        return None
     try:
         raw = muhurta_service.score(peak_date, native_location, event='general')
         return min(1.0, max(0.0, float(raw) / 100.0))
     except Exception as exc:
-        logger.debug("_c_panchanga_quality failed for %s: %s", peak_date, exc)
-        return 0.0
+        # Once per process, at WARNING: a per-row DEBUG line is how this stayed invisible.
+        if not _PANCHANGA_UNAVAILABLE_WARNED:
+            logger.warning(
+                "[ka_sangam] c_panchanga_quality is NOT COMPUTABLE and the term is being "
+                "dropped, not scored zero: %s: %s. event='general' is not in EVENTS_MVP, so "
+                "this affects every row. 0.070 of the supporting-weight budget is unreachable "
+                "until a general-purpose pāñcāṅga quality exists (L3-W3).",
+                type(exc).__name__, exc,
+            )
+            _PANCHANGA_UNAVAILABLE_WARNED = True
+        return None
 
 
 def _c13_school_consensus_score(
@@ -1037,7 +1073,11 @@ def mode_a_search(
             'cross_dasha_agreement':        c_cross,
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            c_pancha,
+            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
+            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
+            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
+            # from a real zero score.
+            **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
@@ -1075,7 +1115,14 @@ def mode_a_search(
                 # Newly wired currents
                 'c_cross_dasha_agreement': round(c_cross, 4),
                 'c_benefic_dristi': round(c_dristi, 4),
-                'c_panchanga_quality': round(c_pancha, 4),
+                # L3-W3: the key is present ONLY when the term was actually evaluated. Its
+                # absence is read downstream as "not consulted"; a 0.0 would be read as
+                # "consulted, and unsupportive" — which was false on every row.
+                **({'c_panchanga_quality': round(c_pancha, 4)}
+                   if c_pancha is not None
+                   else {'c_panchanga_quality_unavailable':
+                         "event='general' is not in muhurat EVENTS_MVP — term dropped from the "
+                         "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
             },
@@ -1209,7 +1256,11 @@ def mode_b_sweep(
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            c_pancha,
+            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
+            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
+            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
+            # from a real zero score.
+            **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
@@ -1244,7 +1295,14 @@ def mode_b_sweep(
                 'c12_tajika_reinforcement': round(c12, 4),
                 'c13_school_consensus': round(c13, 4),
                 'c_benefic_dristi': round(c_dristi, 4),
-                'c_panchanga_quality': round(c_pancha, 4),
+                # L3-W3: the key is present ONLY when the term was actually evaluated. Its
+                # absence is read downstream as "not consulted"; a 0.0 would be read as
+                # "consulted, and unsupportive" — which was false on every row.
+                **({'c_panchanga_quality': round(c_pancha, 4)}
+                   if c_pancha is not None
+                   else {'c_panchanga_quality_unavailable':
+                         "event='general' is not in muhurat EVENTS_MVP — term dropped from the "
+                         "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
             },
