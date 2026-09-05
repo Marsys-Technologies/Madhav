@@ -1874,3 +1874,14 @@ E-gate uncheckable, DB access down 27 cycles; no new capability landings or adju
 next: watch `#1854`/`#1864`; retry E-gate/dispatch dry-run once DB access returns; watch
 `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~10:10Z` — L4 — **CYCLE 38 (v2.3) — `#1854`'s checks completed clean and it entered
+the queue (position 64) — confirms last cycle's job-log-based "not stuck" read was correct.**
+PR hygiene otherwise clean, all checked own PRs genuinely queued, `#1864` still at position 3.
+DB access still down (28th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 38 L4: IDLE-OK (verified: PR hygiene clean, `#1854`'s checks passed and it's now queued —
+validates last cycle's diagnostic; `#1864` still near the front; E-gate uncheckable, DB access
+down 28 cycles; no new capability landings or adjudications) → next: watch `#1864`'s merge;
+retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
+deferred.
+
