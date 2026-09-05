@@ -146,10 +146,18 @@ not from the issue tracker.**
 
 | held | scope | released when | ruling |
 |---|---|---|---|
-| **`ph_nimitta` / any write to `phala_anchors`** | campaign-wide | L4 announces a deterministic `anchor_id` under `## CAPABILITIES LANDED` in `L4_STATE.md` on `main` | #1732 / D-CND-04 |
-| **L2 `bo_laksana` / any `bodha_msr_signals` write** | campaign-wide | **RELEASED** 2026-09-05T00:0Z on snapshot `cloudsql-backup:1788566627645` — but **L2 must not dispatch until L3 confirms on #1770** its five `kala_*` tables are re-runnable from a rebuilt MSR base; and it is **`weight: monster`, runs SOLO** | #1770 / D-CND-15 |
-| **L3 `kala_convergence` write** | campaign-wide | released on the same snapshot, but **sequenced AFTER L2's MSR rebuild** | #1770 |
-| `ka_gochara_resonance`, `ka_graha_sancara` | L3 | their declared `depends_on` is corrected/confirmed against what their writers actually read | #1734 / D-CND-07 |
+| **L3 `kala_convergence` write** | campaign-wide | **L4 confirms on #1770** that its five cascade-exposed tables (`phala_anchors` + 4, incl. `phala_sankrama` 2,985 rows) are regenerable — L3's own C13 re-run found the depth-2 paths it had missed and corrected 188 → 3,708 L4 rows at risk | #1770 |
+| `ka_gochara_resonance`, `ka_graha_sancara` | L3 | their declared `depends_on` rows in `asset_registry` are corrected to match what their writers actually read. The audit itself is published (`L3_DEPENDS_ON_AUDIT_v1_0.md` + DAG corrections register #1823, both on main); the registry correction is what remains | #1734 / D-CND-07 |
+
+**Lifted this arc (recorded so a successor doesn't re-enforce them):**
+
+| was held | lifted | basis |
+|---|---|---|
+| `ph_nimitta` / `phala_anchors` writes | 2026-09-05T07:46Z, #1732 **closed** | deterministic `anchor_id` verified **live** (default `gen_random_uuid()` gone, 195/195 distinct, 0 orphans in `phala_pramana`/`phala_sankrama`/`mimamsa_predictions` after remap) — not taken from the missing C6 announcement line |
+| L2 `bo_laksana` / `bodha_msr_signals` write | 2026-09-05T07:46Z, ruled on #1770 | L3 confirmed its five `kala_*` tables re-runnable from a rebuilt MSR base. Dispatch conditions stand: **RESUMED L2 session only** (#1819), `weight: monster`, runs **SOLO**, on snapshot `cloudsql-backup:1788566627645`, `cascade_check.sql` C13 statement first (its no-FK query under-reports, #1805 — `(0 rows)` ≠ clean) |
+
+The two remaining holds are **different gates** and must not be conflated: L2 dispatching needed
+*L3's* confirmation (given); L3 regenerating needs *L4's* (outstanding).
 
 ### CONDUCTOR rulings — night 1, wave 3: the CASCADE finding, and a ruling of mine reversed
 
