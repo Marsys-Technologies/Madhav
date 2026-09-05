@@ -1176,3 +1176,13 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 43: IDLE-OK.** `main` tip still `4d2a3ef05` (3rd cycle unchanged), `#1851`
   still queued/unmerged, `#1828` clean, no new coordination activity since 16:17:30Z. Nothing to
   fix, nothing new.
+- 2026-09-05 — **Cycle 44.** PR hygiene: `#1828` clean, `#1851` still cleanly queued/unmerged
+  (49-deep); `main` tip unchanged (`4d2a3ef05`, 4th cycle). Nothing to fix. New coordination
+  activity: L1 dispatched `ga_positions` and reported a real, generally-applicable finding — a
+  layer's shared `convergence_commit` pin can silently invalidate an UNRELATED sibling asset's W2
+  acceptance if any OTHER writer in the same layer gets fixed (C2.3 pin-mismatch working as
+  designed, not a bug, but easy to miss). Checked whether this could have staled `bg_doshas`/
+  `bg_gochara_arcs`' own fresh W2 (D-L0-Y/D-L0-BB): **confirmed L0's `convergence_commit`
+  (`49bb5c98…`) and `writer_inventory_sha256` are both unchanged** since those submissions — no
+  other L0 writer has been touched this session, so both remain valid. Worth re-checking this
+  each cycle before the eventual dispatch retry, cheaply, rather than assuming it still holds.
