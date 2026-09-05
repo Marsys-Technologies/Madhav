@@ -26,13 +26,15 @@ asset — `asset_output_digest_specs` had 0 non-`bg_*` rows; **fixed for `mi_vis
 that `mi_vistara`'s own already-completed canary-1 run now permanently prevents it from ever
 getting the `build_run_authorized`-then-dispatch sequence `accepted_rebuild_observed` requires,
 under this one frozen `definition_revision`). Confirmed live (dry-run, no side effects) that
-bundling with a second ready asset clears the guard — **L5's practical path: once
-`mi_jivanaghatana` or another asset is genuinely W2-accepted, dispatch it bundled with
-`mi_vistara`** to get a fresh `triggered_by`, submitting `build_run_authorized` in the real
-~20s Cloud-Run-cold-start window immediately after `--commit` returns (measured on `e45e343b`:
-`created_at` 14:09:42.233Z → `started_at` 14:10:05.152Z). W5 mechanical checks/capsule remain
-fresh-context-verifier-only regardless of any of this. W4 gated only on holds for two OTHER
-assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
+bundling with a second ready asset clears the guard. **`mi_jivanaghatana`'s own W2 (C2.2) is now
+COMPLETE** — both events recorded live and independently re-verified, `egate.sql` confirms
+`w2_analysis=t, w2_verdict=t, gate=OPEN-PENDING-PIN` — making it the pairing partner for
+`mi_vistara`'s bundle-dispatch workaround. **Next: `--assets mi_vistara,mi_jivanaghatana`**
+(fresh `triggered_by`), submitting `build_run_authorized` in the real ~20s Cloud-Run-cold-start
+window immediately after `--commit` returns (measured on `e45e343b`: `created_at` 14:09:42.233Z
+→ `started_at` 14:10:05.152Z). W5 mechanical checks/capsule remain fresh-context-verifier-only
+regardless of any of this. W4 gated only on holds for two OTHER assets: #1732 for
+`mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -408,6 +410,39 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~21:45Z (C8 v2.3 cycle 9) — **`mi_jivanaghatana`'s W2 (C2.2) complete —
+  its own real value, and the #1848 bundle-dispatch pairing partner for `mi_vistara`.** PR
+  hygiene first: #1844 confirmed in `is:queued`; #1826 still checks-pending only, nothing
+  broken. `egate.sql` showed `mi_jivanaghatana: gate=BLOCKED-NO-ROUTE, unfrozen_ancestors=0` —
+  upstream-clear, only its own W2 missing (never gated, always doable per C2). Verified its two
+  prior findings were genuinely resolved before submitting anything, not assumed from state-file
+  notes: **A-F-09** (volume formula) — confirmed live via `asset_registry.expected_volume_formula`
+  now chart-partitioned, migration 690. **A-F-10** (unfalsifiable `admissible_clean`) — read
+  `_admissibility()` at HEAD and confirmed three real, independently-triggerable false-producing
+  branches exist (not a hardcoded true). Computed digests via the real server functions (same
+  verified pattern as `mi_vistara`), submitted `asset_analysis_accepted` — **hit a transient
+  HTTP 409 "Evidence Git source does not match the currently deployed commit"** even though the
+  `NIRMANA_DEPLOYED_SHA` env var on the 100%-traffic revision matched exactly at the moment of
+  the check; retried immediately with the same unchanged payload and got HTTP 201 — a genuine
+  deploy-propagation blip in a continuously-deploying fleet, not a real mismatch (confirmed by
+  re-reading the revision's env var again right before the retry: unchanged). **Caught and fixed
+  a real near-miss before submitting the verdict**: my first draft claimed A-F-08's fix was
+  "queries the real ontology columns now" and named an N+1 per-event DB lookup as the measured
+  `hotspot` — re-reading `_lookup_event_class()` at HEAD before submitting showed BOTH claims
+  false. The function is a documented no-op (`del conn, category, subcategory; return None`) —
+  A-F-08's real fix was making event_class_id an HONEST declared-unresolvable null (§N.7 item 6)
+  instead of a silently-swallowed exception, not making the lookup succeed; and there is no
+  per-row DB call at all (one SELECT, an in-memory loop, one batched `executemany` INSERT), so
+  the true `hotspot` is the same orchestrator-overhead pattern already recorded for `mi_vistara`.
+  Rewrote both before submitting — verdict `correct` (two real, already-fixed defects: A-F-09
+  registry, A-F-08 honest-null), real measured `p50=189ms/p90=1533ms/n=43`. **HTTP 201**,
+  independently re-verified by direct DB read and `egate.sql`: `mi_jivanaghatana` now reads
+  `w2_analysis=t, w2_verdict=t, gate=OPEN-PENDING-PIN`, same as `mi_vistara`.
+  **Next cycle: bundle-dispatch `--assets mi_vistara,mi_jivanaghatana`** per #1848's confirmed
+  workaround — dry-run first (review the manifest digest WITH `--snapshot-ref` included, take a
+  fresh Cloud SQL backup first), then `--commit`, then submit `build_run_authorized` for BOTH
+  assets immediately in the ~20s window, then verify both receipts reach `receipt_state='proven'`
+  before submitting `accepted_rebuild_observed` for either.
 - 2026-09-05T~21:20Z (C8 v2.3 cycle 8) — **Filed #1848: the dispatch script's duplicate-run
   guard permanently blocks re-authorizing an asset's own already-completed build.** PR hygiene
   first: **#1790 MERGED** (14:35:01Z — `gh pr merge --auto` had claimed "already queued" while
