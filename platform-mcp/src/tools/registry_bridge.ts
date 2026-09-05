@@ -542,6 +542,65 @@ function orientationEntityProfilesSection(): TrimmableSection<Record<string, unk
 }
 
 /**
+ * NIRMĀṆA L2-W3 — the constitutional tail section (D-SALIENCE).
+ *
+ * The doctrine: "every umbrella envelope reserves a hard-floored `tail_watch` section
+ * (top consequence-bearers below the salience fold + rare-class leaders via
+ * percentile-in-class + `low_salience_high_consequence` anomalies) that no budget trim
+ * may zero."
+ *
+ * Declared HERE, once, rather than per-capability, for the same reason
+ * orientationEntityProfilesSection is: every bridged response passes through
+ * applyMcpBudget or applyMcpBudgetAuto, so one declaration covers the whole surface and
+ * cannot be forgotten by the next capability author. Populating `content.tail_watch` is
+ * each capability's job; protecting it is this function's.
+ *
+ * Three details that are easy to get wrong, and each of which would silently defeat the
+ * doctrine:
+ *
+ *   1. `hardFloor: true` buys two things — the section is cut only after EVERY
+ *      non-hardFloor section has already been reduced to its own floor (tier ordering),
+ *      and it is exempt from the hard-cap fallback pass that overrides every other
+ *      section's minKeep to zero.
+ *   2. `minKeep` must be >= 1. hardFloor imposes no floor of its own; it makes PASS 2
+ *      RESPECT the declared minKeep. `hardFloor: true` with `minKeep: 0` is still
+ *      zeroable, which reads as protection and is not.
+ *   3. Neither of the above reaches autoDetectTrimmableSections or the last-resort
+ *      string truncator. That is what 'tail_watch' in IMMUNE_HONESTY_FIELDS covers —
+ *      see the comment there. The two mechanisms are complements, not alternatives.
+ *
+ * `recover.instrument` names a REAL exposed MCP tool. The SC-18 regression note at the
+ * drill-pointer merge site records what happens otherwise: a section shipped
+ * 'query_signals', which is a capability id and not a tool anyone can call, so its
+ * recovery pointer pointed nowhere.
+ */
+const TAIL_WATCH_MIN_KEEP = 3
+
+function tailWatchSection<T extends Record<string, unknown>>(): TrimmableSection<T> {
+  const locate = (root: Record<string, unknown>): { holder: Record<string, unknown>; arr: unknown[] } | undefined => {
+    if (Array.isArray(root['tail_watch'])) return { holder: root, arr: root['tail_watch'] as unknown[] }
+    const content = root['content'] as Record<string, unknown> | undefined
+    if (content && Array.isArray(content['tail_watch'])) return { holder: content, arr: content['tail_watch'] as unknown[] }
+    return undefined
+  }
+  return {
+    path: 'tail_watch',
+    label: 'tail_watch (constitutional tail — D-SALIENCE; trimmed last, never zeroed)',
+    getArray: (root) => locate(root as Record<string, unknown>)?.arr,
+    setArray: (root, kept) => {
+      const found = locate(root as Record<string, unknown>)
+      if (found) found.holder['tail_watch'] = kept
+    },
+    minKeep: TAIL_WATCH_MIN_KEEP,
+    hardFloor: true,
+    recover: {
+      instrument: 'bodha_signals_get',
+      hint: 'the full tail: consequence-bearers below the salience fold, rare-class leaders by percentile-in-class, and low_salience_high_consequence anomalies. This response kept only the top rows of it under a byte budget — nothing here was dropped as noise.',
+    },
+  }
+}
+
+/**
  * Apply the shared response-budget trimmer to a fully-assembled MCP response object
  * (`{ orientation_context, orientation_ok, ...envelope-fields }`). Thin wrapper over
  * `finalizeMcpBudget` (response_budget.ts) — the self-verifying entry point that measures
@@ -557,7 +616,11 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   sections: TrimmableSection<T>[],
   budgetKbRequested?: number,
 ): T {
-  const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  const allSections = [
+    ...sections,
+    orientationEntityProfilesSection() as unknown as TrimmableSection<T>,
+    tailWatchSection<T>(),
+  ]
   return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
@@ -589,7 +652,11 @@ function applyMcpBudgetAuto<T extends Record<string, unknown>>(
   budgetKbRequested?: number,
 ): T {
   const autoSections = autoDetectTrimmableSections(response, toolName)
-  const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  const allSections = [
+    ...autoSections,
+    orientationEntityProfilesSection() as unknown as TrimmableSection<T>,
+    tailWatchSection<T>(),
+  ]
   return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
