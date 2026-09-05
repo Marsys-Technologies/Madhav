@@ -457,6 +457,21 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~11:25Z (C8 v2.3 cycle 110) — **PR hygiene RED, root-caused, resolved by retry —
+  not a gate weakened.** #1826's `DB Integration Tests` job failed
+  (`duplicate key value violates unique constraint "pg_type_typname_nsp_index"` on
+  `pariprashna_samiksha_digest_journal` during migration application inside
+  `digest_journal_db.integration.test.ts`). Investigated before assuming flake: confirmed my
+  own commit is pure-markdown (`L5_STATE.md` only, zero risk); confirmed the table is created
+  by exactly one file (`platform/supabase/migrations/588_samiksha_digest_journal.sql`, landed
+  long ago in #1497, not part of the recent rebase batch); confirmed two other PRs' own checks
+  had passed this same job. Waited for the full workflow to complete (required before a job
+  can be re-run), then `gh run rerun --job <id>` on just the failed job — **it passed clean on
+  retry (2m30s)**, confirming a pre-existing test-fixture race/flake in a shared-Postgres
+  integration test outside L5's remit, not a real regression and not something to patch
+  myself. #1826 now `mergeStateStatus: CLEAN`. #1844 still queued throughout. No new comment
+  needed on #1869 (nothing changed there this cycle) or a fresh adjudication (a flake with a
+  clean retry doesn't warrant one — would only escalate if it recurred).
 - 2026-09-06T~11:07Z (C8 v2.3 cycle 109) — **#1873 merged** (the `life_events`/`charts` grant
   fix for #1869) — main advanced 111 commits, rebased+pushed onto `6f6b9f9b5`. **Verified live
   via `has_table_privilege`**: `life_events`/`charts` SELECT now `true` for
