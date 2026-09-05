@@ -26,14 +26,22 @@ asset — `asset_output_digest_specs` had 0 non-`bg_*` rows; **fixed for `mi_vis
 that `mi_vistara`'s own already-completed canary-1 run now permanently prevents it from ever
 getting the `build_run_authorized`-then-dispatch sequence `accepted_rebuild_observed` requires,
 under this one frozen `definition_revision`). Confirmed live (dry-run, no side effects) that
-bundling with a second ready asset clears the guard. **`mi_jivanaghatana`'s own W2 (C2.2) is now
-COMPLETE** — both events recorded live and independently re-verified, `egate.sql` confirms
-`w2_analysis=t, w2_verdict=t, gate=OPEN-PENDING-PIN` — making it the pairing partner for
-`mi_vistara`'s bundle-dispatch workaround. **Next: `--assets mi_vistara,mi_jivanaghatana`**
-(fresh `triggered_by`), submitting `build_run_authorized` in the real ~20s Cloud-Run-cold-start
-window immediately after `--commit` returns (measured on `e45e343b`: `created_at` 14:09:42.233Z
-→ `started_at` 14:10:05.152Z). W5 mechanical checks/capsule remain fresh-context-verifier-only
-regardless of any of this. W4 gated only on holds for two OTHER assets: #1732 for
+bundling with a second ready asset clears the guard — **but the bundle itself turned out
+unworkable for this pair** (their W2 evidence is bound to two different deployed commits; the
+dispatch script requires one shared `--reviewed-deployment-sha` for the whole batch, and
+resubmitting `mi_vistara`'s analysis at the newer sha was correctly refused by the server —
+"one accepted analysis per registry/analysis generation" is real, not a bug). Dispatched
+`mi_jivanaghatana` SOLO instead (never attempted before, no #1848 collision) doing the FULL
+correct sequence for the first time: `build_run_authorized` submitted live 3.4s before
+`started_at` — **and the run CRASHED** in provenance capture before the writer ran:
+`"provenance: Object of type UUID is not JSON serializable"`. Traced to
+`asset_runner.py`'s `compute_upstream_hash`/`canonical_upstream_hash` passing a raw `chart_id`
+into a `json.dumps()` call with no `uuid.UUID` case in `_normalise()` — filed as **#1856**
+(URGENT, possibly production-`click-Build`-affecting, not patched myself per §N.2 — core FROZEN
+orchestrator internals). This is the THIRD structural blocker found this session (#1840 data,
+#1848 guard logic, #1856 a genuine crash bug) — every one is now a real, independently-verified,
+well-evidenced campaign-wide finding, not a workaround-and-move-on. W5 mechanical checks/capsule
+remain fresh-context-verifier-only regardless. W4 gated only on holds for two OTHER assets: #1732 for
 `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
@@ -410,6 +418,44 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~22:00Z (C8 v2.3 cycle 10) — **`mi_jivanaghatana` dispatched solo, the full
+  authorized sequence executed correctly, and the run CRASHED on a real orchestrator bug —
+  filed as #1856.** PR hygiene first: #1844 confirmed queued; #1826 checks-pending only.
+  Took a fresh Cloud SQL backup (`cloudsql-backup:1788619797817`), claimed the slot for the
+  planned bundle-dispatch `mi_vistara,mi_jivanaghatana`, dry-ran it — **and hit a real blocker
+  distinct from #1848**: `--reviewed-deployment-sha` binds the WHOLE dispatch batch to one
+  commit, but `mi_vistara`'s accepted analysis is bound to `git:75ac19c66…` (submitted several
+  cycles ago) while `mi_jivanaghatana`'s is bound to `git:589284957…` (main had advanced) —
+  no single value satisfies both. Tried resubmitting `mi_vistara`'s analysis at the newer sha;
+  server correctly refused (`409`, "a conflicting lifecycle receipt already exists for this
+  registry/analysis generation") — confirmed this is intended immutability, not a bug to route
+  around. **Pivoted cleanly**: posted a correction to the slot-claim comment, dispatched
+  `mi_jivanaghatana` SOLO instead (fresh `triggered_by`, never attempted, no #1848 collision).
+  Dry-ran WITH `--snapshot-ref`, `--commit`'d (`run_id=21e3d6e6-…`), computed
+  `authorization_sha256` as `sha256({run_id, wave_index, asset_ids})` (derived, not arbitrary),
+  and submitted `build_run_authorized` immediately — **landed at 14:54:43.897Z, 3.4 seconds
+  before `started_at` (14:54:47.257Z)**, the campaign's first-ever successful submission of this
+  event for any non-L0 asset. The run itself then failed: `build_run_assets.error =
+  "provenance: Object of type UUID is not JSON serializable"`, crashing before the writer even
+  ran (no writer log line in the job output). Traced the exact code path in `asset_runner.py`:
+  both `compute_upstream_hash`'s `declared_deps`-aware branch AND the original
+  `canonical_upstream_hash` (`declared_deps=None`) branch put a raw `chart_id` parameter into a
+  dict that gets `json.dumps`'d, and `provenance.py`'s `_normalise()` has no `uuid.UUID` case —
+  confirmed by reading it directly. Checked whether any other build hit this before: found five
+  OLDER, unrelated `TypeError:`-prefixed writer-internal bugs (`ga_vichara`, `ph_sodhana`, etc.,
+  from July, different code path, different bug class) but exactly zero prior
+  `"provenance: ..."`-prefixed rows — this is a first-time discovery. **Did not patch it myself**
+  — it's inside the FROZEN core orchestrator (§N.2: "if a writer seems to need a contract change →
+  STOP and raise with the native"; this isn't a contract question but IS core orchestrator
+  internals, and I flagged real uncertainty about whether production's "click Build" flow is
+  equally exposed, which needs native/Conductor-level tracing, not my guess). Filed as **#1856**
+  (URGENT, third structural blocker this session alongside #1840/#1848), released the slot on
+  #1713 with the full honest account (run genuinely `failed`, not masked).
+  **Next cycle: check #1856/#1840/#1848 for rulings before attempting any further dispatch** —
+  three real blockers now stand between here and any L5 asset reaching
+  `accepted_rebuild_observed`; re-attempting blind would just repeat this crash. If nothing has
+  moved, `lel_events` (canary 2 — a disposition/reconciliation proof, not a build dispatch, so
+  untouched by any of #1840/#1848/#1856) is the one piece of W4 progress still fully available.
 - 2026-09-05T~21:45Z (C8 v2.3 cycle 9) — **`mi_jivanaghatana`'s W2 (C2.2) complete —
   its own real value, and the #1848 bundle-dispatch pairing partner for `mi_vistara`.** PR
   hygiene first: #1844 confirmed in `is:queued`; #1826 still checks-pending only, nothing
