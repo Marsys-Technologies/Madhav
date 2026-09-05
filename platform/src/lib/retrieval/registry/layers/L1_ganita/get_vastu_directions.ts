@@ -5,6 +5,14 @@
  * computed (40 rows/chart on both charts) but with NO MCP serving path, so the
  * vastu direction-impact map was UNREACHABLE by any consuming LLM. Read-only.
  *
+ * F-E11 (highest-leverage item in L1_W1_ANALYSIS_BATCH_E.md): the per-chart
+ * weakened/strengthened directions here and the 24-row classical per-direction
+ * remedies in bg_vastu_direction_remedials (L0, query_vastu_direction_remedials.ts)
+ * were never joined — the instrument held both halves of "your East is
+ * afflicted, here is the classical remedy" with no surface putting them
+ * together. Each served row now carries direction_remedies: the L0 catalog's
+ * color/symbol/material/space guidance for that row's own direction.
+ *
  * Chart-scoped (principle #14). Bounded serving with disclosed total.
  */
 import type { CapabilityDescriptor } from '../../types'
@@ -21,9 +29,13 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the vastu (directional) planet-impact map for a chart from',
     'ga_vastu_planet_direction_map. Per-graha rows: direction, condition_score,',
-    'dignity_d1, direction_impact, indication_tier, classical_citation. Filters:',
-    'graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows with',
-    'a disclosed total.',
+    'dignity_d1, direction_impact, indication_tier, classical_citation, and',
+    'direction_remedies (F-E11) -- the classical per-direction remedy set',
+    '(color/symbol/material/space guidance, Brihat Samhita Ch.53 / Mayamata Ch.6)',
+    'from bg_vastu_direction_remedials for that direction, joined server-side so an',
+    'afflicted direction and its remedy are never read apart.',
+    'Filters: graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows',
+    'with a disclosed total.',
   ].join(' '),
 
   input_schema: {
@@ -59,27 +71,42 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
     const indication_tier = args['indication_tier'] ? String(args['indication_tier']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ['chart_id = $1']
+    const filters: string[] = ['m.chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
-    if (graha)           { filters.push(`graha = $${p++}`);           params.push(graha) }
-    if (direction)       { filters.push(`direction = $${p++}`);       params.push(direction) }
-    if (ayanamsha_id)    { filters.push(`ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
-    if (indication_tier) { filters.push(`indication_tier = $${p++}`); params.push(indication_tier) }
+    if (graha)           { filters.push(`m.graha = $${p++}`);           params.push(graha) }
+    if (direction)       { filters.push(`m.direction = $${p++}`);       params.push(direction) }
+    if (ayanamsha_id)    { filters.push(`m.ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    if (indication_tier) { filters.push(`m.indication_tier = $${p++}`); params.push(indication_tier) }
     const where = filters.join(' AND ')
 
+    // F-E11: LEFT JOIN LATERAL the L0 classical remedy set for this row's own
+    // direction (bg_vastu_direction_remedials: 3 rows/direction — color, symbol,
+    // material/space — aggregated so the fan-out never duplicates the served row).
     const sql = `
-      SELECT id, graha, ayanamsha_id, direction, condition_score, dignity_d1,
-             direction_impact, indication_tier, classical_citation
-      FROM ga_vastu_planet_direction_map
+      SELECT m.id, m.graha, m.ayanamsha_id, m.direction, m.condition_score, m.dignity_d1,
+             m.direction_impact, m.indication_tier, m.classical_citation,
+             COALESCE(r.direction_remedies, '[]'::jsonb) AS direction_remedies
+      FROM ga_vastu_planet_direction_map m
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(
+                 jsonb_build_object(
+                   'remedy_type', remedy_type,
+                   'remedy_description', remedy_description,
+                   'classical_citation', classical_citation
+                 ) ORDER BY remedy_type
+               ) AS direction_remedies
+        FROM bg_vastu_direction_remedials
+        WHERE direction = m.direction
+      ) r ON true
       WHERE ${where}
-      ORDER BY graha, ayanamsha_id
+      ORDER BY m.graha, m.ayanamsha_id
       LIMIT $${p}`
 
     try {
       const [rowsRes, countRes] = await Promise.all([
         query(sql, [...params, limit]),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ga_vastu_planet_direction_map WHERE ${where}`, params),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ga_vastu_planet_direction_map m WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
@@ -90,7 +117,12 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { graha, direction, ayanamsha_id, indication_tier, limit },
-          provenance: { tables: ['ga_vastu_planet_direction_map'], source: 'L1 Gaṇita vastu direction map; served chart-scoped.' },
+          provenance: {
+            tables: ['ga_vastu_planet_direction_map', 'bg_vastu_direction_remedials'],
+            source: 'L1 Gaṇita vastu direction map; served chart-scoped.',
+            note: 'direction_remedies (F-E11) is the L0 classical remedy set for the row’s own direction — an ' +
+              'empty array means no catalog remedy exists for that direction, never a missing join.',
+          },
         },
         is_error: false,
       }
