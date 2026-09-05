@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 29; #1947 ruled (740-749 granted), ga_medical F-A14 landed (#1953)
+last_updated: 2026-09-06 — C8 v2.3 cycle 30; ga_vastu F-A14 landed (#1955)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -23,8 +23,8 @@ your `nirmana-adjudication` issues → continue.
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
-  (adjudication #1947, Conductor ruling, cycle 29). Migration 740 is the first used in the new
-  range (`ga_medical` F-A14). 741–749 remain free.
+  (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical` F-A14, cycle 29) and 741
+  (`ga_vastu` F-A14, cycle 30) used. 742–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1163,6 +1163,47 @@ F-A14 for the remaining 11 assets (ga_nakshatra, ga_sensitive, ga_sensitive_degr
 ga_structural, ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_vastu,
 ga_prashna), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 30 (C8 v2.3) — ga_vastu's F-A14 contract (migration 741); a migration-collision grep bug and a mutation-test no-op, both caught before shipping
+
+**PR hygiene:** clean sweep. `#1928` still hasn't merged (`#1853` unchanged, same tracked run,
+`mergedAt: null` again this cycle). `#1892` (orchestrator UUID-cast bug blocking `ga_positions`
+re-dispatch) still open, unchanged. All prior L1 PRs (#1930 through #1953) confirmed `is:queued`
+or already merged off the front of the queue — no DIRTY, no RED, nothing CLEAN-but-unqueued.
+
+**Unit of work: F-A14 for `ga_vastu`** (migration 741, second used in the new 740-749 range).
+Dedicated table (`ga_vastu_planet_direction_map`), existing UNIQUE `(chart_id, ayanamsha_id,
+graha)` already exactly matching the natural key — no distinctness conjunct (D-CND-03 rule 4).
+
+Four conjuncts, all measured live and mutation-proved: (a) `indication_tier='traditional_vastu'`
+constant (writer's own spec-required tier, no row may read otherwise); (b) direction vocabulary —
+the eight classical Vastu compass points only; (c) `direction_impact` re-derived from the writer's
+own threshold formula (`compute_direction_impact`) against `ga_condition_composite.condition_score`
+for the same (chart, ayanamsha, graha) — cross-table, also fails on a missing partner row; (d)
+FORENSIC gate — Saturn `direction_impact='strengthened'` on the canonical chart across all 5
+ayanamshas (the writer's own build-time check carries no ayanamsha restriction either, unlike
+`ga_medical`'s lahiri-only scope). Confirmed this asset had ALREADY had its own "Sun debilitated in
+Capricorn" classical-astrology error removed in a prior pass (module docstring documents it
+explicitly — Sun debilitates in Libra, not Capricorn) — the third time this exact classical error
+has surfaced this campaign (F-E5 cycle 9, `ga_medical`; discovered-already-fixed here). Correctly
+did NOT re-encode a Sun gate in the new contract, since it was never a genuine FORENSIC anchor.
+
+Two self-caught process bugs this cycle, neither shipped:
+- The migration-collision check (`git ls-tree ... | grep -E "^74[0-9]_"`) returned empty even
+  though migration 740 (my own prior PR) is unambiguously present — `^` anchors to the full path
+  string start (`platform/migrations/740_...`), which never starts with "74". Fixed to
+  `migrations/74[0-9]_` (no anchor); re-confirmed only 740 in use, 741-749 free.
+- Conjunct (c)'s first mutation attempt set Sun's `direction_impact` to `'weakened'` — a no-op,
+  since Sun's real `condition_score=0.26` already correctly maps to `'weakened'`. Re-mutated to
+  `'strengthened'` (a genuine mismatch), which correctly flipped the check to `false`.
+
+No Python writer touched; `provenance_inventory --check` clean. 6 new textual-contract tests; full
+`tests/unit/migrations/` suite: 38 files, 180 passed / 91 skipped, no regressions.
+
+CYCLE 30 L1: landed `ga_vastu`'s F-A14 contract (PR #1955, migration 741) — next: continue F-A14
+for the remaining 10 assets (ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural,
+ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1186,12 +1227,14 @@ none accepted yet (blocked on #1736).
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
-| ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881) |
+| ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` NULL on 6;
-`ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
+Cross-cutting: **9/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-30: ga_dashas,
+ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu —
+stale "0/19" corrected here); `expected_volume_formula` NULL on 6; `ga_vichara` is
+`catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -1559,6 +1602,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   frontmatter-adjacent header rather than the asset table. `ga_medical`'s F-A14 contract is the
   first migration authored in the new range (740), confirming the ruling resolved cleanly with
   no further action needed beyond using the granted numbers.
+- **D-L1-52** — C8 v2.3 cycle 30: two self-caught process bugs on `ga_vastu`'s F-A14 contract
+  (migration 741), neither shipped. (1) The migration-collision check itself was broken: `git
+  ls-tree ... | grep -E "^74[0-9]_"` returned empty even with migration 740 unambiguously present,
+  because `^` anchors to the full path string start (`platform/migrations/740_...`), which never
+  begins with "74" — fixed to the unanchored `migrations/74[0-9]_`. (2) A mutation test on the
+  `direction_impact` cross-table conjunct was a silent no-op on its first attempt: mutating Sun's
+  value to `'weakened'` changed nothing, since `condition_score=0.26` already correctly maps to
+  `'weakened'` — caught by the mutation returning `true` (clean) instead of the expected `false`,
+  fixed by mutating to a genuinely wrong value (`'strengthened'`) instead. Both are the same
+  discipline as D-L1-46/D-L1-47/D-L1-48/D-L1-50: never trust a check's own "0 violations" or "clean
+  mutation" reading without confirming the check could have failed differently.
 
 ## Held items
 
@@ -1953,3 +2007,19 @@ L1 must satisfy rather than a feature it consumes.
   ga_medical's F-A14 contract (PR #1953) as the first migration in the newly-granted 740-749
   range -- next: continue F-A14 for the remaining 11 assets, or ga_positions re-dispatch once
   #1892 lands.
+- 2026-09-06T02:0xZ -- CYCLE 30 (C8 v2.3). PR hygiene clean sweep: all prior L1 PRs is:queued or
+  merged, #1928 still unmerged (#1853 unchanged, same tracked run), #1892 still open. Unit of
+  work: ga_vastu's F-A14 integrity_check_sql (PR #1955, migration 741 -- second used in the new
+  range). Dedicated table, existing UNIQUE already exact, no distinctness conjunct needed. Four
+  conjuncts: indication_tier constant, direction vocabulary (8 compass points), direction_impact
+  re-derived from the writer's threshold formula against ga_condition_composite.condition_score
+  (cross-table, also fails on missing partner), FORENSIC gate (Saturn->strengthened across all 5
+  ayanamshas, unlike ga_medical's lahiri-only scope) -- confirmed the writer's own prior removal
+  of a "Sun debilitated in Capricorn" classical error (the third recurrence of that exact error
+  this campaign) and correctly did not re-encode it. Two self-caught process bugs, neither
+  shipped: a migration-collision grep anchoring bug (^ anchored to full path, never matched;
+  fixed to unanchored migrations/74[0-9]_) and a mutation-test no-op (mutated Sun's
+  direction_impact to its own already-correct value; fixed by mutating to a genuine mismatch).
+  Corrected a stale "0/19 carry integrity_check_sql" cross-cutting line to 9/19. No writer
+  touched. CYCLE 30 L1: landed ga_vastu's F-A14 contract (PR #1955, migration 741) -- next:
+  continue F-A14 for the remaining 10 assets, or ga_positions re-dispatch once #1892 lands.
