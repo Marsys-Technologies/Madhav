@@ -2561,3 +2561,17 @@ actively processing; E-gate uncheckable, DB access down 76 cycles; nothing new) 
 queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
 remains deferred.
 
+`2026-09-05T~21:30Z` — L4 — **CYCLE 87 (v2.3) — `main` advanced by 1 (`#1882` merged), all 11
+own PRs' positions moved up accordingly; PR hygiene clean.**
+
+**PR hygiene:** all 11 own PRs genuinely queued, positions each advanced by exactly 1. No
+DIRTY, no RED.
+
+**Priorities 1-4:** one new `main` commit (`#1882`, L2) checked, not L4-relevant. E-gate still
+uncheckable, 77th consecutive cycle DB access down. No new adjudications name L4.
+
+CYCLE 87 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs genuinely queued and
+advancing; E-gate uncheckable, DB access down 77 cycles; one new commit checked, not
+L4-relevant) → next: watch queue positions continue advancing; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
