@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — #1856 fixed (PR #1861), D-L0-V risk resolving; merge queue frozen 3 consecutive cycles at 29-deep, not re-flagging (L4's D-CND-18/#1825 already tracks it)
+last_updated: 2026-09-05 — D-L0-W: PR #1829 (bg_doshas migration 692) MERGED to main — first real progress this resumption; not yet deployed to live DB, watching amjis-web's NIRMANA_DEPLOYED_SHA each cycle
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -44,7 +44,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_gochara_arcs | **no dispatch needed** | **Drafted rewrite LANDED (migration 694, PR #1836)**: stale bare-count + hardcoded per-body VALUES table replaced with gapless-tiling + achieved floor (33,933). Verified TRUE against live data as-is — can go straight to W4 accept on LIVE fingerprint, same as bg_doshas |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
-| bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
+| bg_doshas | **no dispatch needed** | **Migration 692 MERGED (D-L0-W, #1829)**, not yet deployed to live DB (check the `amjis-web` deployed SHA each cycle). Once applied: re-run toolkit → fresh W2 → W4 accept on LIVE fingerprint, no rebuild |
 | bg_vidhi_floors | rebuild_only | **Both open questions diagnosed, fully verified read-only.** Tiling false-positive FIXED (D-L0-M, PR #1832). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source is internally sound (14/409, 0 dangling FKs) — pending job-image redeploy + dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
@@ -471,6 +471,22 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   flagging: **check #1856's resolution status before attempting a real (non-dry-run) dispatch**,
   not just before the migrations merge.
 
+- **D-L0-W — #1829 MERGED (bg_doshas migration 692 is on `main`); queue is genuinely draining, not
+  permanently stalled.** After 3+ stuck cycles, `git log origin/main -- .../692_...sql` confirms the
+  merge commit (`3bfeaf284`); `#1832`/`#1836` remain queued but at earlier positions than before
+  (30-deep queue now includes newer PRs too, e.g. `#1838` still present) — the queue IS moving,
+  just slowly, exactly as L4's diagnostic implied. **Checked whether the migration has actually
+  APPLIED to the live DB — not yet**: live `integrity_check_sql` for `bg_doshas` still shows the OLD
+  buggy bare `FULL JOIN brahma_ontology` (not the corrected subquery-prefiltered version), and
+  `amjis-web`'s `NIRMANA_DEPLOYED_SHA` (`bd398f065`) is still 2 commits behind the current `main` tip
+  (`3bfeaf284`) — deploy lags merge by some margin, not instant. **NEXT, once deploy catches up**:
+  re-run `compute_registry_fingerprint.py`/`compute_analysis_digest.py` against the NOW-corrected
+  live row, submit fresh `asset_analysis_accepted`+`optimization_verdict_accepted`
+  (`verdict=examined_and_already_efficient`, per D-L0-S) via `l0_submit_evidence.sh --as executor`
+  citing whatever SHA is THEN deployed as `source_ref`, then dry-run + commit-dispatch via the real
+  (not local-patched) `dispatch_nirmana_campaign_wave.py` once #1838 also merges+deploys. This is
+  the first genuinely real, non-simulated step toward an actual L0 freeze this whole resumption.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -869,3 +885,14 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   and Conductor's own framing now reads "per-chart... with declared deps" specifically, which — since
   both target assets are `scope=global` — suggests it may never have applied to L0 at all. NEXT:
   keep polling; still nothing actionable until a merge lands.
+- 2026-09-05 — **Cycle 22 — first real merge landed.** PR hygiene: **`#1829` MERGED** (`3bfeaf284`,
+  15:19:43Z) — the queue drained past it after 3+ stuck cycles, confirming L4's "slow, not
+  permanently broken" diagnosis. `#1832`/`#1836` remain cleanly `is:queued` (30-deep queue, still
+  includes `#1838`); `#1828` clean, pending checks. Nothing to fix. **Checked deploy status (D-L0-W)
+  before assuming the fix is live**: it is NOT yet — live `integrity_check_sql` for `bg_doshas`
+  still reads the OLD buggy version, and `amjis-web`'s `NIRMANA_DEPLOYED_SHA` is 2 commits behind
+  the new main tip. Merge and deploy are separate steps with real lag between them; did not assume
+  otherwise. This is the first genuinely real progress toward an actual freeze this whole
+  resumption — recorded the exact next-steps sequence (re-run toolkit, fresh W2, real dispatch) once
+  deploy catches up. NEXT: check `amjis-web`'s deployed SHA each cycle; the moment it advances past
+  `3bfeaf284`, execute the real W2-resubmission + dispatch sequence for `bg_doshas`.
