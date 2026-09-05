@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-JJ: dispatched bg_compendium_index+bg_text_index (job-image blocker cleared). bg_text_index built genuinely but its evidence chain was lost to a multi-asset authorization tooling bug (now fixed); bg_compendium_index failed integrity_check_sql for real (33 chapter-rows short of pin, not yet root-caused). D-L0-II, D-L0-GG (PR #1910), D-L0-FF all still open/awaiting merge.
+last_updated: 2026-09-05 — bg_text_index solo retry (authorization tooling now fixed) skip_no_delta'd against its old receipt — now a 4th confirmed D-L0-FF instance (with bg_gochara_arcs, bg_doshas). Not retrying further until Conductor's #1899/#1901 lands. D-L0-II, D-L0-GG (PR #1910), D-L0-JJ (bg_compendium_index integrity failure) all still open.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -49,7 +49,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **Job-image blocker cleared; real dispatch (run `27fea532-...`) FAILED integrity_check_sql (D-L0-JJ).** Live counts: total=9538 (pin 9571, −33), `topic_id IS NULL`=7969 (matches pin exactly), `chapter_num IS NULL`=1569 (pin 1602, −33 — exact match to total shortfall). Topic-type rows correct; chapter-type rows missing exactly 33. Not yet root-caused writer-vs-check — writer is a full `WriterBase` subclass needing `ctx.config` to replay (unlike the standalone-function L0 writers diagnosed earlier), not yet replayed in isolation |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
-| bg_text_index | rebuild_only | **Job-image blocker cleared; genuine dispatch SUCCEEDED (run `27fea532-...`, disposition=build, fresh receipt) but its `accepted_rebuild_observed` chain was never submitted** — authorization for that run was rejected because it covered only `bg_compendium_index` (sibling in the same multi-asset dispatch), not both assets (D-L0-JJ, tooling bug in `authorize_build_run.sh`, now fixed to accept comma-separated asset lists). Needs a fresh isolated re-dispatch next cycle to complete the chain |
+| bg_text_index | rebuild_only | **Now caught by D-L0-FF (4th confirmed instance).** Genuine build (run `27fea532-...`) lost its evidence chain to the D-L0-JJ multi-asset authorization tooling bug (now fixed); solo retry (run `f3c762e6-...`, correctly authorized this time) `skip_no_delta`'d against the still-matching old receipt, so no fresh run/receipt pair exists. Blocked on Conductor's `#1899/#1901` (delta-skip receipt re-attribution) landing — do not retry again until then |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
 
 ## Decisions log
