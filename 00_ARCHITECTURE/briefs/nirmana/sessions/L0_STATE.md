@@ -842,3 +842,11 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   C12 backlog** — every one of D-L0-F's "fix the writer, MUST" calls turned out, on full
   investigation, to be either a stale-build-vs-current-writer story or a bug in the check itself.
   NEXT: keep polling; genuinely nothing else to do until a merge lands or #1856 resolves.
+- 2026-09-05 — **Cycle 19: IDLE-OK.** Verified rather than assumed: all 3 migration PRs still
+  genuinely `is:queued` (25-deep; `main` advanced one commit since last cycle — #1801/L3 — so the
+  queue is moving, just very slowly; none of mine DIRTY, `UNKNOWN` mergeable is the expected
+  while-queued transient); `#1828` clean, pending checks. Re-ran the E-gate query — identical to
+  last check, no change. Job image redeployed again to track `main`'s new tip
+  (`291beab7b…`) — confirms deploy automation is healthy, but #1838 (the actual dispatch-unblock)
+  still isn't merged, so this doesn't change anything actionable. #1856 still `OPEN`. Nothing new
+  to diagnose, nothing to fix, no fresh merge to act on — genuinely idle this cycle.
