@@ -2280,3 +2280,35 @@ adjudications name L4) → next: watch `#1831`/`#1808` enter the queue once thei
 watch `#1834` merge (pos 2); retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-05T~20:25Z` — L4 — **CYCLE 72 (v2.3) — PR hygiene found and fixed a real DIRTY PR
+(`#1834`); `#1808` resolved itself mid-cycle (its own CI finished and it entered the queue,
+confirming last cycle's read that it was genuinely just mid-CI, not stuck).**
+
+**PR hygiene:** GraphQL sweep of all 11 own PRs showed 9 genuinely queued (positions advancing
+— `#1839` now pos 3, `#1842` pos 12, `#1885` pos 13 — real movement since cycle 71), `#1808`
+still legitimately mid-CI (confirmed via `gh run view` + a direct wall-clock check: the run
+that looked ~9-11 min old really was ~9-11 min old both times, no stale API read), and **`#1834`
+was genuinely `DIRTY`/`CONFLICTING`** (`mergeQueueEntry: null`, no ambiguity this time).
+
+**Fixed via the standard sequence:** checked out `codex/nirmana-l4-w3-3e-rectification-gate`,
+`git rebase origin/main` — clean except the final pin-splice commit (hardcoded the pre-rebase
+hash to replace, the now-familiar shape), `git rebase --skip` on it. Regenerated the
+writer-digest inventory: **no diff** (already correct post-rebase, verified rather than
+assumed by checking `git diff --stat` came back empty). Re-spliced the L4 pin fresh
+(`writer_inventory_sha256` → `ad2feb55a…`, `convergence_commit` → the rebased HEAD
+`060917f44…`), verified against the script's own `--check`: PASS. Diff was exactly the two L4
+fields, nothing else touched. Ran `test_ph_wave4.py`: 59/59 pass. Pushed
+`--force-with-lease` — succeeded on the first try (branch was never itself enqueued while I
+worked on it, so no GraphQL dequeue needed this time). Re-armed auto-merge; confirmed the
+other 9 PRs stayed healthy (no cascading DIRTY).
+
+**This cycle's unit was the DIRTY fix itself** — no new W3 code shipped; priorities 1-4 were
+otherwise unchanged from cycle 71's exhaustive re-verification (E-gate still uncheckable, DB
+access down 62 consecutive cycles, no new adjudications name L4).
+
+CYCLE 72 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1834`, clean rebase + fresh pin
+re-splice, pushed without needing a dequeue) → `#1808` self-resolved into the queue mid-cycle
+→ E-gate uncheckable, DB access down 62 cycles → next: watch `#1834` re-enter the queue once
+its fresh CI resolves; watch queue positions continue advancing; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
