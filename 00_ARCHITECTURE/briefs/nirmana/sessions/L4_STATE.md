@@ -1795,3 +1795,14 @@ within normal timing; E-gate uncheckable, DB access down 20 cycles; no new capab
 or adjudications) → next: watch `#1857`'s merge; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~09:00Z` — L4 — **CYCLE 31 (v2.3) — `#1857` MERGED (ph_sodhana F-13 detector), the
+first of this session's own PRs to land since the queue-jam saga began. `#1854` now at position
+2, closest of my remaining PRs.** PR hygiene clean, all checked own PRs genuinely queued and
+advancing. DB access still down (21st consecutive cycle), no new capability landings or
+adjudications.
+
+CYCLE 31 L4: PR hygiene clean, `#1857` merged (first own-PR land this stretch), `#1854` now
+closest at position 2 → E-gate uncheckable, DB access down 21 cycles; no new capability
+landings or adjudications → next: watch `#1854`'s merge; retry E-gate/dispatch dry-run once DB
+access returns; watch `#1885`'s merge; F1 remains deferred.
+
