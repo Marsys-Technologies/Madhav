@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-T: dispatch dry-run confirms #1833 live + reveals a --reviewed-deployment-sha batching gotcha (multi-asset waves need aligned W2 resubmission); single-asset dispatch is the safer first attempt
+last_updated: 2026-09-05 — D-L0-U: FULL non-destructive dry-run dispatch succeeded for bg_doshas + bg_gochara_arcs (real manifest_digest/run_id, WP-6 warning matches C13 analysis); only real merges + W2 resubmission remain before an actual commit
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -428,6 +428,27 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   migrations will stale them anyway) but potentially for every other ready asset too, if dispatching
   them together in one wave. Single-asset (or same-source_ref-batch) dispatch remains simpler.
 
+- **D-L0-U — FULL dry-run validation succeeded for both target assets, end to end, non-destructively.**
+  Fixed last cycle's `--reviewed-deployment-sha` mismatch by using the asset's OWN existing W2
+  `source_ref` (`git:4f7a9cc872714c74111ca8ae38ad4257c462cd3e` — same commit for bg_doshas,
+  bg_gochara_arcs, and bg_compendium_index; all three W2-accepted together by a prior session,
+  confirmed valid via `git cat-file -t`) instead of today's deployed SHA. Re-ran the scratch-local
+  patched dispatch script (dry-run, no `--commit`) for **both bg_doshas and bg_gochara_arcs
+  individually — both fully succeeded**, no `RuntimeError`, producing a real `manifest_digest` +
+  `run_id` for each (`ac992519b9…`/`61f02e97…` for bg_doshas; `c42f73e1…`/`86f6dcbf…` for
+  bg_gochara_arcs). bg_doshas' run correctly printed the **WP-6 blast-radius warning**
+  (`CASCADE → reference_doshas, 79 rows`, depth 1) — matches D-L0-I's manual C13 analysis exactly,
+  confirming the script's own blast-radius detector agrees with this session's earlier hand-derived
+  finding. bg_gochara_arcs printed no warning (LEAF, as D-L0-I found). **Verified the dry run is
+  genuinely non-destructive**: `SELECT count(*) FROM build_runs WHERE id='<run_id>'` = 0 for the
+  bg_doshas run — nothing persisted despite a receipt being printed. This is now a complete,
+  successful, safe rehearsal of the entire path for both assets — the only things standing between
+  this and a REAL dispatch are (1) migrations 692/694 actually merging (which recomputes the
+  fingerprint against a corrected `integrity_check_sql` — meaning the CURRENT dry-run's specific
+  digests will change once that lands, but the MECHANISM is now proven), (2) #1838 merging for
+  real (this session used a local patch only), and (3) fresh W2 resubmission under the new fingerprint
+  (per D-L0-P/D-L0-T) before a real commit-dispatch.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -764,3 +785,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   the two migration-affected assets. NEXT: once #1838 merges for real, dispatch will need this
   batch-aligned resubmission step for whichever assets go together — single-asset dispatch is
   simpler and could be the first real attempt to de-risk the flow.
+- 2026-09-05 — **Cycle 16.** PR hygiene: transient ref-lock error on `git fetch` (retried, resolved —
+  another lane wrote to `refs/remotes/origin/main` mid-fetch, harmless), all 3 migration PRs still
+  genuinely `is:queued` (queue 22-deep now, but `main` DID advance twice more — #1791/L4 merged too
+  — confirms slow FIFO progress, not a full stall); `#1828` clean, pending checks. Nothing to fix.
+  **D-L0-U: fixed last cycle's `--reviewed-deployment-sha` mismatch and got a FULL, successful,
+  non-destructive dry-run dispatch for both bg_doshas and bg_gochara_arcs.** Used each asset's own
+  existing W2 `source_ref` commit (`4f7a9cc8…`, verified valid, shared by both plus
+  bg_compendium_index — all three W2-accepted together previously) instead of today's deployed SHA.
+  Both dry runs completed cleanly with real `manifest_digest`/`run_id` receipts; bg_doshas correctly
+  printed the WP-6 blast-radius warning matching D-L0-I's manual C13 finding exactly; verified via
+  direct DB check that nothing was persisted (`build_runs` has 0 matching rows) — genuinely
+  non-destructive. **This is now a complete, proven rehearsal of the entire dispatch mechanism for
+  both target assets** — only real merges (692/694, #1838) and a fresh W2 resubmission stand between
+  this and an actual commit. NEXT: keep polling the queue; nothing further to de-risk read-only —
+  the next real action is entirely gated on merges landing.
