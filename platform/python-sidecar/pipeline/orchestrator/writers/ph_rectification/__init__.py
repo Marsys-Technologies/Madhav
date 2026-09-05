@@ -46,6 +46,40 @@ _SIGN_INDEX = {
 }
 
 
+def _apply_discrimination_gate(flags: dict, win_margin) -> dict:
+    """F3 (L4_W1_ANALYSIS_BATCH_D.md §ph_rectification): `judgment_flags()` (shared
+    with L5 via services.mimamsa.lel_calibration -- its own docstring forbids
+    reshaping it without a coordinated migration + serve-layer change) computes
+    `load_bearing` as a pure function of event_count alone, before `best` (and
+    therefore `win_margin`) exists. That makes `load_bearing: true` reachable on a
+    fit that discriminates between ZERO candidates -- measured live: win_margin=0
+    on all 95 scored rows, calibration_state=calibrated, load_bearing=true.
+
+    `load_bearing` claims the empirical calibration is trustworthy enough to lean
+    on; a zero win_margin means every offset scored identically, so there is
+    nothing here TO lean on regardless of how many training events fed the count.
+    Availability (event_count) and discrimination (win_margin) are independent
+    properties -- this gates on the second without touching the shared function's
+    persisted-contract keys, entirely at this writer's own call site.
+
+    Mirrors the serving layer's own near-zero-win_margin corroborating signal
+    (query_phala_calibration.ts's `winMarginNonDiscriminating`), which already
+    flags this case at read time but cannot retroactively correct the persisted
+    `load_bearing` a caller reading judgment_flags directly (bypassing that
+    endpoint) would still see as true.
+    """
+    if flags.get("load_bearing") and (win_margin is None or win_margin == 0):
+        flags = dict(flags)
+        flags["load_bearing"] = False
+        flags["load_bearing_note"] = (
+            "load_bearing forced false: win_margin="
+            f"{win_margin!r} -- the fit does not discriminate between candidates, "
+            "so calibration_state=calibrated (sufficient event COUNT) does not mean "
+            "the empirical fit is trustworthy enough to lean on (§N.8)."
+        )
+    return flags
+
+
 def _load_calibration_min_events(conn) -> int:
     """Read the calibrated-state threshold from brahma_formula_constants; fall back
     to CALIBRATED_MIN_EVENTS. Mirrors the mi_pramana constant-read pattern — a
@@ -289,6 +323,9 @@ class PhRectificationWriter(WriterBase):
             best.offset_minutes,
             best.confidence_label,
         )
+        # F3: load_bearing was computed before win_margin existed (see
+        # _apply_discrimination_gate docstring) -- gate it now that it does.
+        flags = _apply_discrimination_gate(flags, best.win_margin)
 
         rows_inserted = 0
         id_by_offset_ayan: dict[tuple[int, str], str] = {}
