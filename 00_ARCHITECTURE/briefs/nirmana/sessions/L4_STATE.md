@@ -1109,3 +1109,72 @@ detector — for the next session that touches it to verify) → next: watch E-g
 capability landings; F1 remains the layer's one deferred code item; if this repeats next
 cycle, take up the ph_rectification detector-gap flagged above as the next real, bounded unit.
 
+---
+
+**C8 v2.3 takes effect here** (native-ratified 2026-09-05: bounded one-cycle-per-invocation,
+supervised by `run_fleet.sh`, supersedes the old eternal-loop charter §C8 in full — see
+`00_ARCHITECTURE/briefs/nirmana/sessions/supervisor/CYCLE_CONTRACT_C8_V23.md`). Cycle numbering
+restarts at 1 under the new contract.
+
+`2026-09-06T~02:10Z` — L4 — **CYCLE 1 (v2.3) — HOLD check clear → sync (`git fetch origin
+main`, main advanced with 30 new commits since last heartbeat, mostly other lanes) → PR HYGIENE
+found and fixed 3 real DIRTY PRs, all now re-armed → verified E-gate unchanged → investigated
+the `ph_rectification` detector-gap flagged last cycle and found the honest reason it's still
+open, not a fixable gap.**
+
+**PR hygiene (mandatory, done first, consumed most of this cycle):** `gh pr list --search
+"is:queued"` (the only truth) showed 8 of 11 own PRs genuinely queued; local `mergeStateStatus`
+disagreed with reality for 3 (`1808`, `1831`, `1834` — all `UNKNOWN`/`DIRTY`, none showing in
+`is:queued`). Confirmed real conflicts with `git merge-tree --write-tree` before touching
+anything (not trusting GitHub's stale cache) — all three conflicted on the shared generated
+governance files (`nirmana-writer-digests.json` / `nirmana-analysis-layer-pins.json`), the same
+class of conflict documented in every prior rebase this session: **main had moved under all
+three while they sat unqueued.**
+
+Rebased all three (`--skip` on the now-familiar stale pin-splice commits, regenerated fresh
+after), ran each PR's own test file to confirm the rebase didn't silently break anything
+(11 + 10 + 49 tests, all green), then hit the merge-queue-can't-force-push wall on **two of
+three** (`1808`, `1834` — GitHub's REST view said `UNKNOWN`/not-queued but they were actually
+still IN the queue under the hood). Used the now-established GraphQL `dequeuePullRequest`
+technique (query `pullRequest.id` + `mergeQueueEntry.id`, mutate on the **PR's own id**, not the
+entry id) to dequeue both before pushing. `1831` pushed clean on the first try (never entered
+queue). Re-armed auto-merge on all three; none in `is:queued` yet as of this cycle's close
+(seconds-old pushes, required checks still running — not a fault, the same "legitimately
+pending" pattern as `1870` in the prior cycle).
+
+**Re-ran the C10 E-gate batch query for L4** via the `mcp__postgres__query` tool (this session
+now has direct read-only DB access, unlike earlier in the session when hand-splicing was the
+only option) — confirmed unchanged: all 9 `ph_*` assets still `BLOCKED-ANCESTORS`, `ph_nimitta`
+still the least-blocked at 37/46. No dispatch opportunity.
+
+**Followed up on last cycle's flagged discrepancy** (whether `ph_rectification`'s
+discrimination-gate fix, PR #1834, has a corresponding `asset_registry.integrity_check_sql`
+invariant) with a live query rather than assuming either way: confirmed no migration was ever
+added (diff-checked #1834's own file list — writer + tests only, no migration file). Then
+queried `phala_rectification_best` directly rather than stopping at "no migration exists":
+`judgment_flags->>'load_bearing'` combined with `win_margin` shows the non-discriminating-fit
+defect **already gone on chart `1c826d5a` but still present on the canonical chart
+`482012f1-…`** — because **no rebuild has run since the fix landed** (E-gate still closed on
+`ph_rectification`'s own ancestors), so live data is still the pre-fix computation on the chart
+that matters. Also confirmed the *second* withheld invariant (`confidence_low`/`confidence_high`
+must be a valid probability band) is still genuinely red on both charts (`-0.2000` persists) —
+that finding was never claimed fixed and isn't.
+
+**Correctly declined to add the missing invariant this cycle**: migration 681's own discipline
+is "every detector was run live before this migration was written... refuse to install a red
+gate" (C12/§N.8) — installing the load-bearing invariant now, against data the fix hasn't
+actually touched yet, would be installing a gate that is red on the canonical chart for a reason
+that has nothing to do with a real defect. This is real prep work for the cycle **after**
+`ph_nimitta`'s ancestors clear and a rebuild actually runs — recorded here, not acted on
+prematurely.
+
+CYCLE 1 L4: PR hygiene — found and fixed 3 real DIRTY PRs (`1808`, `1831`, `1834`), all
+re-armed, 2 needed a GraphQL dequeue first → E-gate unchanged (`ph_nimitta` 37/46) → resolved
+last cycle's flagged discrepancy with a live query: the `ph_rectification` discrimination-gate
+fix is real but unverified on the canonical chart pending a rebuild that can't happen yet, and
+the sibling confidence-band defect is confirmed still genuinely open (not a stale claim) →
+correctly declined to add a detector against pre-fix data → next: confirm `1808`/`1831`/`1834`
+actually entered the merge queue; once `ph_nimitta`'s E-gate opens and a rebuild runs, add the
+load-bearing invariant to `asset_registry` for `ph_rectification` (verified-safe-to-install
+precondition now documented here).
+
