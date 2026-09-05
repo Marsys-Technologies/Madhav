@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_doshas integrity_check_sql bug found+fixed (D-L0-L); PR #1829 open, data already correct, no dispatch needed
+last_updated: 2026-09-05 — bg_vidhi_floors tiling check bug found+fixed (D-L0-M); PR #1832 open; 3 open PRs (#1828/#1829/#1832) all auto-merge armed, none queued yet
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,7 +41,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
-| bg_vidhi_floors | rebuild_only | `catalog_status=DRAFT` (bundle DRAFT→CURRENT with re-acceptance, D-CND-09); 11/286 vs 14/409, 7 intents don't tile |
+| bg_vidhi_floors | rebuild_only | **Tiling false-positive FIXED (D-L0-M, PR #1832)**: the 7 `_deepdive` gaps are the documented Ω8-band design (order 40+), not a defect — check corrected. **Still genuinely incomplete live** (11/14 intents, 286/409 items) + `catalog_status=DRAFT` (bundle DRAFT→CURRENT re-acceptance, D-CND-09) — this part is real, needs dispatch |
 | bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
 | bg_compendium_index | rebuild_only | wave 2; depends_on normalized; needs wave-1 frozen (E-gate) + own integrity check |
 | bg_rules | rebuild_only | wave 2; depends_on normalized |
@@ -156,6 +156,29 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   bg_vidhi_floors remains genuinely unverified). NEXT once #1829 merges: re-run W4 accept for
   bg_doshas on LIVE fingerprint (same #1816-confirmed mechanism as bg_parihara_rules) — this one
   does **not** need the job-image deploy at all.
+- **D-L0-M** — **bg_vidhi_floors tiling false-positive FIXED (partial verdict); migration 693 filed
+  (PR #1832), auto-merge armed.** The tiling assertion (`lo<>1 OR hi<>n OR distinct_orders<>n`)
+  assumes gapless `1..n` `item_order` per intent. Read the writer (`bg_vidhi_floors.py`, 14-intent
+  `FLOORS` list, 409 items — matches target exactly) directly: all 7 `_deepdive` intents have gaps
+  in item_order (e.g. `wealth_deepdive`: 40 items present, orders 1-38 then 40-44 — order 39
+  deliberately skipped). Cross-checked the canonical TS source of truth
+  (`platform/src/lib/vidhi/registry_data.ts`): confirmed **intentional, documented design** —
+  `omega8Band({ from: 40, ... })` reserves item_order 40+ as a fixed "Ω8 reachability band" appended
+  to each floor regardless of that floor's own item count (PARIŚODHANA B2 comment, right there in
+  the source). Not a numbering bug; the check's `hi<>n` conjunct is simply the wrong invariant.
+  Verified live: dropping `hi<>n` (keeping `lo=1` and `distinct_orders=n`, which are real
+  invariants) returns 0 tiling violations against current production data. **Only a partial
+  verdict**: `bg_vidhi_floors` is separately, genuinely incomplete live (11/14 intents, 286/409
+  items vs. the writer's own 14/409 — 3 intents entirely absent) and `catalog_status=DRAFT` — that
+  gap is real and untouched by this migration; still needs the DRAFT→CURRENT re-acceptance path
+  (D-CND-09) and a dispatch once the job-image deploys. **This closes the LAST of D-L0-F's four
+  "real data defect" calls as at-least-partially a check-not-data issue** — all four original C12
+  wave-1 findings (bg_yogas, bg_dasha_systems, bg_doshas, bg_vidhi_floors) have now had a
+  read-only-verified root cause distinct from "fix the writer, MUST" as originally called. NEXT: the
+  bg_vidhi_floors completeness gap (missing 3 intents + DRAFT status) is the one remaining open
+  question across all 5 originally-failing integrity checks — needs its own investigation (why are
+  3 intents missing live when the writer's source has all 14?) once time allows; otherwise continue
+  polling job-image deploy + #1828/#1829/#1832 queue status each cycle.
 
 ## Held items
 
@@ -293,3 +316,23 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   need the job-image deploy. NEXT: poll #1829/#1828 queue status; if still pending, continue the
   same read-only-writer-audit pattern on bg_vidhi_floors (last unverified D-L0-F "real defect" call)
   or bg_cohort/wave-2-3 (still blocked on job-image — re-check deploy each cycle).
+- 2026-09-05 — **Cycle 4.** PR hygiene: #1828/#1829 re-checked — neither `is:queued` yet (queue now
+  has #1825/#1820/#1818/#1808/#1790/#1777/#1766/#1767, not mine), neither DIRTY/RED, all checks
+  IN_PROGRESS/0 failures, auto-merge armed on both; nothing actionable. Job-image still stale
+  (unchanged). **bg_vidhi_floors — tiling false-positive found+fixed (D-L0-M), partial verdict.**
+  Read the writer directly (14 intents, 409 items in source — matches target); found genuine
+  item_order gaps in all 7 `_deepdive` intents, then cross-checked the canonical TS registry
+  (`registry_data.ts`) and confirmed the gaps are the documented, versioned "Ω8 reachability band"
+  design (`omega8Band({from: 40, ...})`), not a numbering defect. Migration 693 drops the check's
+  wrong `hi<>n` conjunct (keeping the real invariants `lo=1`/`distinct_orders=n`), verified in a
+  rolled-back transaction to return 0 tiling violations against live data. **PR #1832 opened**
+  (auto-merge armed) on its own branch, kept separate from #1828 (heartbeat) and #1829 (bg_doshas).
+  This closes the 4th and last of D-L0-F's original "real data defect" calls with a
+  root-cause-verified alternative diagnosis — **every one of the 5 originally-failing integrity
+  checks has now been read-only-audited**; only bg_vidhi_floors carries a genuine residual gap
+  (11/14 intents, 286/409 items live, catalog_status=DRAFT) that migration 693 does not resolve.
+  Three open PRs now (#1828, #1829, #1832), all auto-merge-armed, none queued yet — all pending the
+  same CI check backlog. NEXT: keep polling PR queue status + job-image deploy each cycle; if both
+  remain stuck, investigate bg_vidhi_floors' live 11/14-intent gap (why does live lack 3 whole
+  intents the writer's source defines?) as the next substantive unit, or bg_cohort once job-image
+  moves.
