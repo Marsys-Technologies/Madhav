@@ -451,6 +451,15 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:17Z (C8 v2.3 cycle 37) — **PR hygiene fix: #1844 ejected from queue, re-armed.**
+  It had been mid-merge-group-check last cycle; this cycle it was fully gone from the top-10
+  queue entries (not merged — `mergedAt: null`, no failing check anywhere in `gh pr checks`,
+  `mergeStateStatus: CLEAN`) — a normal batch-reshuffle ejection, not a real failure. Re-queued
+  via `gh pr merge 1844 --auto --squash`; confirmed back in with `isInMergeQueue: true`.
+  #1851 (my other tracked blocker) is now leading the queue at position 1, `AWAITING_CHECKS` —
+  worth watching closely next cycle since its merge unblocks the #1848 dispatch-guard fix.
+  #1826 unchanged (pending-checks-only, no red). #1848/#1856/#1869 all still OPEN, #1869 still
+  3 comments. No E-gate movement.
 - 2026-09-06T~04:12Z (C8 v2.3 cycle 36) — **#1844 is now genuinely mid-merge-group-check**
   (~3 min into `CI — Ganga Quality Gate`, other 2 top-level workflows already green) — the
   `entries(first:1)` GraphQL query transiently omitted its position-1 row while it's in this
