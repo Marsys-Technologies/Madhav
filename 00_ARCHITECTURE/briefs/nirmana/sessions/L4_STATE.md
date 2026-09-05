@@ -276,3 +276,118 @@ _(none — no L4 asset is E-gate-open; `ph_nimitta` has 37/46 ancestors unfrozen
   form after the ruling corrected my proposal, and proved the correction with a live probe. Filed
   two corrections against my own earlier work (W1's AC5 false-PASS claim; W1's dependency
   attributions). No slot claimed — nothing dispatchable.
+
+---
+
+## W3 LANE LOG (appended 2026-09-05 — heartbeat per the native's resume brief)
+
+Written while seven PRs were in flight; **all seven have since MERGED** — verified on `main`, not
+assumed:
+
+| PR | lane | outcome |
+|---|---|---|
+| **#1754** | W3-0 deterministic `anchor_id` (D-CND-04) + migration 681 | **MERGED**, applied live 05:35Z |
+| **#1763** | #1723 Part B bind-placeholder guard | **MERGED** |
+| **#1771** | #1739 seed-path severance | **MERGED** |
+| **#1773** | W3 state + two W1 corrections | **MERGED** |
+| **#1783** | W3-2a six sort inversions + 4 unearned `grounds_to` | **MERGED** |
+| **#1784** | C13/D-CND-15 blast-radius closure | **MERGED** |
+| **#1788** | W3-3a `ph_sankrama` — 250 rows recovered | **MERGED** |
+
+**Correcting my own earlier misreport:** I previously reported all PRs "queued with auto-merge"
+without verifying, and the native found three that appeared unqueued. The reading that misled me is
+now pinned down: once a PR is genuinely **enqueued**, `autoMergeRequest` reads *null* (`auto=OFF`) —
+the auto-merge request has been consumed by the queue entry. `auto=OFF` therefore means either
+"enqueued" or "stranded", and only `isInMergeQueue` distinguishes them. **The verification command is
+`gh api graphql … isInMergeQueue`, not `gh pr view --json autoMergeRequest`**, and both are checked
+every loop from now on.
+
+**The real stall was #1754**, and it was mine: my `ph_nimitta` edit left the checked-in writer-digest
+inventory stale, so the Governance Gates check went red and the PR never entered the queue. Fixed at
+root with the command the gate names (exactly one digest moved, of 122). When W3-3a changed
+`ph_sankrama.py`, the same gate was checked and regenerated **before** pushing rather than after CI
+said so.
+
+### Live-verified outcomes this lane
+
+- **Sort inversion (#1783):** canonical top-50 anchor page went from 45 minor + 5 moderate +
+  **0 of 3 major** → **all 3 major** included; the 10 critical anomalies moved from last to first.
+- **Domain map (#1788):** `phala_sankrama` 2,510 → **2,760** on the canonical chart (+250, exactly
+  `transition`'s 50 anchors × 5 cells) and **475 → 475 unchanged** on Abhinandan — a natural control
+  showing the fix bites only where the defect is.
+- **C13 closure:** 8 of 9 L4 writers delete from a table that is a CASCADE parent of nothing; no L4
+  delete cascades outside L4.
+
+### Holds (no dispatch of any kind from L4)
+
+D-CND-04 holds `ph_nimitta`; D-NATIVE-05 holds destructive dispatch campaign-wide; and independently
+`ph_nimitta` is 37/46 ancestors unfrozen. **No run slot claimed at any point this session.**
+
+---
+
+## RESUME LOG — 2026-09-05, lane restarted after dying ~00:40Z
+
+`2026-09-05T~11:20Z` — L4-W3 — **resumed; stock-take posted on #1713.**
+
+**Two assignments in my resume brief were already done** — the brief predates their merges, and I
+verified both on `main` rather than re-doing them:
+
+- **#1723 Part B** (bind-placeholder guard) — LANDED. `nirmanaDetectorSqlHasBindPlaceholder` is on
+  `main`, mutation-proven. No layer should now meet a bare `there is no parameter $1`.
+- **#1739** (seed-path severance) — LANDED, including a **third call site the ruling did not name**
+  (`brahma_pipeline._l4_phala`, inside a build path wrapped in `except Exception → non-fatal`).
+
+**Assignment 1 was narrower than the brief assumed, and I checked before building.** Migrations 680
++ 681 applied live at 05:35Z; the remap had already carried **all four cascade children** — 191/195
+deterministic, **0 dangling** across `phala_sankrama` 2,985 · `phala_pramana` 195 ·
+`phala_suddha_sodhana` 195 · `phala_sodhana` 138, plus the two no-FK referrers. The 3,513 rows the
+brief warns a parent-only remap would destroy were never at risk.
+
+**The one real gap:** `anchor_id` still defaulted to `gen_random_uuid()`, so the guarantee lived in
+one writer rather than in the table. **PR #1799** closes it with a `BEFORE INSERT` trigger (a column
+DEFAULT cannot reference other columns, so a deterministic default is not expressible) and drops the
+dead default. INSERT-only deliberately: recomputing on UPDATE would let an ordinary column edit
+change an anchor's identity and orphan every reference to it. It proves itself at deploy time —
+inserts without `anchor_id`, requires the derived identity back, re-inserts the same event tuple with
+a different grade and requires it to collapse, then rolls both probes back.
+
+**CAPABILITIES LANDED will be announced only after I verify #1799 live** — not on merge (C4
+execution-safe rule). Until then D-CND-04's hold correctly stands.
+
+### Position
+
+| # | assignment | state |
+|---|---|---|
+| 1 | deterministic `anchor_id` + remap | remap DONE live; **#1799** closes the default footgun |
+| 2 | #1789 DIRTY (my C9 memory) | **resolved here** — union of main's heartbeats + my lane log |
+| 3 | #1791 `ph_muhurta` DIRTY | next |
+| 4 | #1723 Part B | **DONE, merged** |
+| 5 | `phala_anchors.signal_id` no-FK disposition | owed |
+| 6 | #1739 severance | **DONE, merged** |
+| 7 | C13 re-verify after route changes | pending #1799 |
+
+**No dispatch, no slot claimed.** `ph_nimitta` is E-gate-blocked independently (37/46 ancestors
+unfrozen), D-CND-04 holds it, and D-NATIVE-05 holds destructive dispatch campaign-wide.
+
+`2026-09-05T~11:35Z` — L4-W3 — **all seven resume assignments addressed.** Pushed #1799 (D-CND-04
+completion), resolved and re-armed #1789 and #1791, shipped #1802 (`signal_id` disposition), filed
+#1803 (the cross-layer half I cannot decide alone) and #1805 (a real under-reporting bug in the
+Conductor's own `cascade_check.sql`). C13 re-verified with that tool: 4 cascade children, all
+in-layer, 3,513 rows — matching my hand closure in #1784 exactly. Blocked on: nothing. Next:
+announce CAPABILITIES LANDED once #1799 is live; then W3-3 writer work (`ph_nimitta` promise_lift /
+direction defaults).
+
+`2026-09-05T~11:50Z` — L4-W3 — **five PRs in flight, all armed and verified two ways** (#1789, #1791,
+#1799, #1802, #1808); none has a failing check — `BLOCKED` here is queue backlog, confirmed rather
+than assumed. Shipped this loop: #1799 (D-CND-04 completion), #1802 (`signal_id` disposition + its
+detector), #1808 (`ph_nimitta` — the 1.75× posterior lift from no evidence, and the hardcoded
+`elevated` direction). Filed #1803 (FK-vs-tolerate, cross-layer) and #1805 (`cascade_check.sql`
+under-reports no-FK referrers). Blocked on: nothing.
+
+**NEXT ACTION on relaunch:** (a) check whether #1799 has merged AND deployed; if so verify
+`phala_anchors.anchor_id` has no column default live and the trigger exists, then announce
+`## CAPABILITIES LANDED` — that lifts D-CND-04. (b) Continue W3-3: `ph_pratikara` (citation
+propagation + the degenerate `linked_anchor_id`), `ph_pramana` (the dead `life_event_match`
+detector), `ph_rectification` (`load_bearing` on a zero fit), `ph_phaladesa` (headline anchor
+ignores the purification verdict).
+
