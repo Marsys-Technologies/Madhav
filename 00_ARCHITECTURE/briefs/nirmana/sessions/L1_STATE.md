@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 24; ga_positions F-A14 integrity_check_sql landed (#1937)
+last_updated: 2026-09-06 — C8 v2.3 cycle 25; ga_panchanga F-A14 FORENSIC contract landed (#1939)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -963,6 +963,46 @@ contract (PR #1937, the DAG root) — self-caught a fencepost indexing bug via d
 rather than trusting an aggregate zero-violations reading — next: the remaining 15 assets'
 `integrity_check_sql`, or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 25 (C8 v2.3) — ga_panchanga's F-A14 contract: 4 of 31 categories, all FORENSIC-anchored
+
+**PR hygiene:** clean sweep — all pending/settling, #1853 re-confirmed the same tracked run/issue.
+
+**Unit of work: F-A14 for `ga_panchanga`**, scoped to 4 of its 31 fact_categories (measured
+live) — the ones whose `name` fact is one of CLAUDE.md's own seven FORENSIC birth anchors:
+`panchanga_tithi` (Shukla Tritiya), `panchanga_vara` (Ravivara), `panchanga_yoga` (Shiva),
+`panchanga_karana` (Garaja). Same honest-scoping discipline as `ga_strength` — the other 27
+categories are a separate future unit.
+
+Four conjuncts, each measured live and mutation-proved: (a) FORENSIC gate re-asserted at the
+data layer (canonical chart only) — this asset's own build-time `forensic_gate()` already
+enforces these four anchors before INSERT, but nothing had re-checked them against what actually
+landed; (b) tithi's paksha/number relationship, re-derived from the writer's own `tithi_num<=15`
+split; (c) null/empty guard on `name`.
+
+**Mutation testing caught a real scoping mistake before it shipped a false result** — twice in a
+row this campaign now (D-L1-44, D-L1-46), each a different failure shape. First attempt filtered
+mutations on `ayanamsha_id='lahiri_chitrapaksha'`; the injected corruption matched ZERO rows and
+every conjunct reported "clean" — not because the data was clean, but because the WHERE clause
+matched nothing at all in either the base exclusion or the replacement branch. Checked the actual
+live `ayanamsha_id` value for these categories directly rather than assuming a real ayanamsha
+applies, and found `'INVARIANT'` — panchanga elements are computed from the classical lunar
+calendar, genuinely ayanamsha-independent in this writer's model (distinct from `ga_strength`'s
+own `'INVARIANT'` convention for `required_rupa`, discovered independently in cycle 23 — the same
+sentinel value, reused by more than one writer for the same underlying reason: some fact is
+truly ayanamsha-invariant). Redid the mutation tests against the real value; all four conjuncts
+now confirmed genuinely mutation-provable.
+
+No distinctness conjunct: `chart_facts`' existing partial UNIQUE indexes already match this
+writer's own `ON CONFLICT` target exactly. Passes clean on live production. No Python writer
+touched; `provenance_inventory --check` confirmed no digest/pin regen needed. 6 new textual
+tests.
+
+CYCLE 25 L1: landed `ga_panchanga`'s F-A14 contract (PR #1939, 4 FORENSIC-anchored categories of
+31) — caught a mutation test silently matching nothing (not a real "clean" reading) before
+trusting it, found the actual `ayanamsha_id='INVARIANT'` convention this writer shares with
+`ga_strength`'s own use of the same sentinel — next: the remaining 14 assets'
+`integrity_check_sql`, or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1307,6 +1347,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   shipped. Same discipline as D-L1-44 (ga_vargas: don't trust a suspiciously-clean scope without
   checking why), applied to a different failure mode — a query that can silently match nothing
   at all rather than one that was simply too narrow.
+- **D-L1-47** — C8 v2.3 cycle 25: a THIRD instance of the same underlying discipline (D-L1-44,
+  D-L1-46) — `ga_panchanga`'s F-A14 mutation tests first assumed a real ayanamsha applies to
+  panchanga elements and matched zero rows in both the exclusion and replacement branches of the
+  CTE overlay, reporting a false "all conjuncts clean" that was actually "the mutation never
+  landed." Checked the real live `ayanamsha_id` value directly rather than trusting the clean
+  read, found `'INVARIANT'` — the SAME sentinel `ga_strength` uses for `required_rupa`
+  (discovered independently, two cycles apart, for two different writers) for the same
+  underlying reason: some fact is genuinely computed independent of which ayanamsha is active.
+  Worth naming as a recurring convention now that it's shown up twice: any chart_facts row this
+  campaign encounters under `ayanamsha_id='INVARIANT'` should be checked for this pattern before
+  assuming a real ayanamsha filter applies.
 
 ## Held items
 
@@ -1621,3 +1672,18 @@ L1 must satisfy rather than a feature it consumes.
   landed ga_positions's F-A14 contract (PR #1937), self-caught a fencepost bug via direct
   inspection rather than trusting an aggregate zero -- next: the remaining 15 assets'
   integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T01:1xZ -- CYCLE 25 (C8 v2.3). PR hygiene clean, #1853 re-confirmed same tracked
+  issue. Unit of work: ga_panchanga's F-A14 integrity_check_sql (PR #1939), scoped to 4 of 31
+  fact_categories -- the ones whose name fact is a CLAUDE.md FORENSIC anchor (Tithi=Shukla
+  Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja). Four conjuncts: FORENSIC gate re-asserted
+  at the data layer (canonical chart only), tithi paksha/number relationship re-derived from the
+  writer's own split, null/empty name guard. Third instance this campaign of the same discipline
+  (D-L1-44, D-L1-46): first mutation test assumed a real ayanamsha applied and matched ZERO rows
+  in both branches, reporting a false "all clean" that was actually "the mutation never landed."
+  Checked the real ayanamsha_id value directly, found 'INVARIANT' -- the SAME sentinel
+  ga_strength uses for required_rupa, discovered independently two cycles apart for two
+  different writers, for the same underlying reason. No writer touched, no digest/pin regen
+  needed. CYCLE 25 L1: landed ga_panchanga's F-A14 contract (PR #1939) -- caught a mutation test
+  silently matching nothing before trusting it, named the recurring ayanamsha_id='INVARIANT'
+  convention now that it's shown up twice -- next: the remaining 14 assets' integrity_check_sql,
+  or ga_positions re-dispatch once #1892 lands.
