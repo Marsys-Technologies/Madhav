@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~06:02Z (C8 v2.3 cycle 49) — **PR hygiene: rebased onto main's 51-commit advance**
+  (new tip `fda97f491`, #1855 merged). Force-pushed; #1826's checks reset fresh (none red).
+  Queue advancing: #1901 56→54, #1861 9→7, #1873 22→20, #1844 42→40. #1856 still OPEN. No
+  eligible dispatch yet — #1901 still 54 slots out.
 - 2026-09-06T~05:57Z (C8 v2.3 cycle 48) — **#1901 is CLEAN and now `is:queued` true** — its own
   CI finished, admitted to the merge queue at position 56 (of a deep queue). Will take a while
   to clear at the observed ~10-18 min/PR rate — nothing to dispatch yet, just watching. PR
