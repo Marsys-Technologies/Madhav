@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK, 3rd consecutive no-change cycle: queue still position 35. 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — IDLE-OK: queue advancing (position 35→33) but none of my 5 PRs merged yet; D-L0-FF/#1901 and structural blockers unchanged. 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1581,4 +1581,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK, 3rd consecutive no-change cycle.** Queue position 35, none of my 5 PRs
   merged, PR #1925's checks still pending (no reds). Nothing new to act on.
+
+- 2026-09-06 — **IDLE-OK.** Queue genuinely advancing (position 35→33), but none of my 5 PRs have
+  merged yet. D-L0-FF/#1901 still open, no new #1713 activity. Nothing new to act on.
 
