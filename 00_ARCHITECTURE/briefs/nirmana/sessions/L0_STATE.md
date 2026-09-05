@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — resumed; 29/40 frozen; 11 remaining; W4 EXECUTE + Conform corrections in flight
+last_updated: 2026-09-05 — bg_yogas writer verdict CLOSED (D-L0-J, no fix needed); still gated on job-image deploy
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -94,6 +94,32 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   path; then author the bundled D-CND-09 migration (yoga writer fix or derived-check correction +
   `bg_gochara_arcs` tiling+floor + `bg_vidhi_floors` DRAFT→CURRENT + `expected_volume_formula`) BEFORE
   re-acceptance; `bg_parihara_rules` W1/W2 in parallel (never gated).
+
+- **D-L0-J** — **bg_yogas writer verdict CLOSED: no code fix needed.** Resumed with the job-image
+  deploy still blocking dispatch (`d93d9d0a` deployed, confirmed live via
+  `gcloud run jobs describe brahma-build-pipeline-job` — still predates #1772's `ee8cf7d09`), so
+  instead of waiting idle, verified the open `extract_yogas_from_corpus` question **without needing
+  the pipeline job**: invoked the writer's own function directly against the live production DB
+  (read-only — no INSERT, no write path exercised) via a local psycopg2 script. Result: **exactly 85
+  distinct extracted yogas, all 85 with valid `_chunk_id_str` (0 no-chunk-id drops)**. Combined with
+  `YOGAS_CORE` (144) + `DETECTOR_YOGAS` (4) → **233 total, all canonical_ids unique (0 collisions)**.
+  This is an *exact* match to migration 630's pin (233×3 projections, 85 source-chunk links) — the
+  writer, run today, would produce precisely the frozen-manifest counts. The current live table
+  state (`catalog=233, ontology=229, reference=229, source_links=0` — re-verified this cycle) is
+  therefore confirmed **stale pre-migration-630 build data**, not a live defect: some earlier writer
+  version populated catalog to 233 without the uniform 3-way projection or the source-chunks link
+  table this contract requires. **No writer fix, no adjudication, no migration for bg_yogas.** The
+  only remaining blocker is dispatch itself (job-image deploy, tracked separately, unchanged).
+  Closes the D-L0-G → correction chain definitively — the earlier "extraction yields ≠85, held on
+  running the writer" hypothesis (ffeb5e2ea) is superseded: extraction yields exactly 85 today, and
+  confirming that never required a dispatch, only reading+invoking the function directly. **Also
+  noted:** `nrec` (the campaign evidence-submission helper, #1731) is NOT on `main` — PR #1731 was
+  closed as superseded per the coordination-issue tail; the old scratch tooling
+  (`nirmana_batch_runner.py` et al.) was lost to a `/private/tmp` wipe (system restart) and has not
+  been recreated this cycle since no dispatch was possible anyway. Working branch this cycle:
+  `feat/nirmana-l0-cycle-resume` off fresh `origin/main` (prior `feat/nirmana-l0-heartbeat-2` /
+  `feat/nirmana-l0-state-heartbeat` are stale side-branches, superseded by merged PR #1817 — safe to
+  ignore, not deleted).
 
 ## Held items
 
@@ -190,3 +216,16 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `nirmana_batch_runner.py` was the client-side defect — TO REMOVE so gochara/vidhi re-acceptances
   take the same live path). parihara freeze still needs ancestors (bg_doshas, bg_texts) frozen +
   job-image deploy. Heartbeat.
+- 2026-09-05 — **New cycle under C8 v2.3 (supervised cycles).** Synced: no NIRMANA_HOLD, no open L0
+  PRs (hygiene clean), #1816 confirmed CLOSED on GitHub. **Job-image still stale**
+  (`brahma-build-pipeline-job` deployed image = `d93d9d0a…`, re-checked live via `gcloud run jobs
+  describe` — unchanged, still predates #1772) so dispatch remains blocked for every one of the 10
+  remaining routed assets. Rather than idle, did the one thing that unblocks without needing
+  dispatch: **bg_yogas writer verdict (D-L0-J) — CLOSED, no fix needed** (see decisions log). Old
+  scratch evidence-tooling (`nirmana_batch_runner.py`, `nirmana_build_wave.py`) confirmed gone
+  (`/private/tmp` wipe); campaign's shared `nrec` helper also absent from `main` (#1731 superseded).
+  Switched to a clean branch `feat/nirmana-l0-cycle-resume` off `origin/main` for continued work
+  (old heartbeat branches are stale but harmless — their content already landed via #1817). NEXT:
+  poll job-image deploy each cycle; if still stale, continue unblocked deepening
+  (bg_dasha_systems `kp` gap, bg_doshas 658-violation categorization — both readable/verifiable
+  without dispatch, same pattern as D-L0-J).
