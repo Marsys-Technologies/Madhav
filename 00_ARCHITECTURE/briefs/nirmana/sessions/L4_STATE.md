@@ -57,7 +57,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
 | `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h** | wave 1 · 38/47 unfrozen | — | F-10 severity sort **shipped** (#1783, MERGED, earlier this session); F-14 leakage blind spot **shipped** (#1845); F-12/F-13 (NOW-tier, not MUST) remain |
-| `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
+| `ph_suddha_sodhana` | **changed** | W2 done → **W3-3i** | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; F-16 silent classify-clean **shipped** (#1849); `changed` remains for C12 registry NULLs |
 | `ph_pramana` | **changed** | W2 done → **W3-3g** | wave 3 · 45/54 unfrozen | — | 1/1 MUST **shipped** (F2 domain normalisation + `detector_unavailable`, #1842, incl. migration 684); needs a rerun once E-gate opens |
 | `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
 
@@ -734,4 +734,43 @@ earlier #1788; `ph_sodhana`'s sort half done via earlier #1783) → shipped #184
 F-14, LEAKAGE-FIREWALL NULL/empty blind spot) → next: `ph_suddha_sodhana` (untouched — F-16
 silent-clean-on-exception, or its own findings), `ph_pratikara`'s remaining 6 MUSTs, or F1's
 multi-registry MCP-wiring fix.
+
+`2026-09-05T~22:25Z` — L4 — **cycle: PR hygiene clean (queue still 16 deep, zero merges since
+last cycle — a Conductor-owned merge-queue root cause is already being tracked, #1825/#1833;
+not mine to fix) → W3-3i shipped, `ph_suddha_sodhana`'s F-16 — the last fully-untouched L4
+asset now has its headline finding closed.**
+
+**PR hygiene:** all seven of my own PRs checked individually — five genuinely `is:queued`
+(#1791/#1808/#1831/#1834/#1839), the two newest (#1842/#1845) legitimately `pending` CI at
+sane ages (9 min / 3 min, consistent with the ~8-12 min historical range). No RED, no DIRTY.
+Noted the queue backlog explicitly rather than reacting to it — it's shared campaign
+infrastructure (C5), already has an open Conductor PR addressing the root cause, and nothing
+in C8's priority order conditions new work on queue depth.
+
+**The unit:** `ph_suddha_sodhana._load_flags_grouped` wrapped its entire `phala_sodhana` query
+in `try/except -> logger.debug` — a read failure returned an empty flags dict, and
+`classify_cleanliness()` reads an empty flags dict as **every anchor 'clean'** (F-16,
+`L4_W1_ANALYSIS_BATCH_C.md` §2.4/N-5). Same shape, same file-comment lineage as the
+`ph_pratikara` "bug pattern" fixed earlier this session (F-173) — that writer's own comment
+now names it explicitly, and this sibling still had the identical defect. Fix: removed the
+`try/except`, matching `ph_pratikara._load_obstructions`'s bare-cursor fail-loud pattern
+exactly (`phala_sodhana` is a declared upstream dependency, always present by the time this
+runs — nothing legitimately optional here, unlike the `_load_bodha_synthesis`/`_load_lel`
+SAVEPOINT-guarded methods elsewhere in L4 that DO read genuinely-optional tables).
+
+1 new source-text anti-drift test (method body minus its own docstring contains no `except`).
+46/46 wave5 + `ph_sodhana_engine` tests pass. Governance gates handled proactively
+(six-for-six). **Shipped PR #1849**, auto-merge armed.
+
+**Layer-wide picture after this cycle:** `ph_suddha_sodhana` was the last of L4's nine assets
+with zero prior-session touch; it now has its one real finding closed. Remaining open work:
+`ph_pratikara` (6 of 7 MUSTs, incl. the layer's hard-floor citation fabrication — the biggest
+single remaining item), `ph_sodhana`'s two NOW-tier detector-integrity findings (F-12/F-13,
+not MUST), and `ph_phaladesa`'s F1 (zero MCP consumers — scoped, deferred, root cause located
+in `canonical_faces.json`).
+
+CYCLE L4: PR hygiene clean → shipped #1849 (`ph_suddha_sodhana` F-16, silent classify-clean on
+read failure closed) → next: `ph_pratikara`'s remaining MUSTs (starting with the hard-floor
+citation fabrication, F-3 — the largest single item left), or F1's multi-registry MCP-wiring
+fix.
 
