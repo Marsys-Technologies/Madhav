@@ -698,6 +698,55 @@ split stays reverted/deferred indefinitely (no live consumer needs it, per D-L1-
 until a real future L0 re-pin event -- next: continue `ga_dashas`'s F-A12/F-A13/F-A14, or
 re-dispatch `ga_positions` once #1892 lands.
 
+## CYCLE 19 (C8 v2.3) — a genuinely hygiene-heavy cycle: one DIRTY rebase, two independently-diagnosed REDs, both root-caused rather than papered over
+
+**PR hygiene consumed the full cycle** — three real defects, not one, surfaced once actually
+investigated rather than skimmed:
+
+1. **#1859 DIRTY → rebased.** Same conflict shape #1853 hit earlier this cycle: HEAD already
+   carried a newer L1 analysis pin than the commit `#1859`'s own branch tried to apply. Resolved
+   the `nirmana-writer-digests.json`/`nirmana-analysis-layer-pins.json` conflicts via
+   `checkout --ours` + fresh regen, same pattern as #1853.
+
+2. **#1881 genuinely RED** (`Unit Tests` — `vidhi_parity_gate.test.ts`'s "PASSES on a matched,
+   Ω8-complete registry" case, `expected 1 to be +0`). `conductor-2b` pre-diagnosed the shape
+   before I looked. Root cause: cycle 18's `KNOWN_TS_ONLY_PRIMITIVES` self-check asserted "the
+   allowlisted primitive must exist in whatever TS dump the gate is handed, or the entry is
+   stale" — false against this test's own hermetic 2-primitive fixture, which was never meant to
+   model `vastu_read` at all (§N.8: a detector that fires against unrelated input isn't a real
+   detector). Fixed by dropping that half of the self-check and keeping only the unconditionally
+   safe one: primitive present on BOTH sides ⇒ the documented gap has closed, allowlist is stale.
+   Never false-positives against a fixture that doesn't reference the primitive; still catches
+   the real gap closing once #1918 lands. All 3 induced-drift cases pass; real gate against
+   production TS/Python dumps still PASS (14/14 floor coverage).
+
+3. **#1859's OWN second RED, self-inflicted, found only by not trusting the rebase-conflict
+   auto-resolution.** Unlike #1853 (where I explicitly regenerated the L1 pin fresh after
+   `checkout --ours`), for #1859 I let the empty pin-advance commit auto-skip during
+   `rebase --continue` without checking whether HEAD's kept pin value still covered THIS PR's own
+   `ga_tajaka_writer.py` diff. It didn't — CI's Governance Gate correctly caught it (committed
+   `13fa5b524a…` vs live `54a5e62f29…`), failing both the Governance Gate and
+   `nirmana-analysis-receipts.test.ts`. Checked cross-layer import risk first (`ka_tithi_pravesha`
+   references `ga_tajaka` only in comments, no actual import — confirmed via grep before
+   regenerating), then regenerated `--layer L1` fresh at the current HEAD commit. Both failure
+   classes now pass locally (`--check` clean, all 9 receipt-spine tests green).
+
+All three pushed and re-armed; #1881 and #1859 both confirmed with `conductor-2b` in real time.
+#1853's own remaining CI red (Governance Gates + Unit Tests, same
+`nirmana-analysis-receipts.test.ts`) is confirmed **not** an L1 defect — it's L2's
+`bo_pratijna_v4_engine` pin drifting on its own schedule, the exact #1852 pattern, corroborated
+with Conductor rather than touched.
+
+Given the volume of genuine root-cause work the hygiene sweep alone required this cycle
+(three independent defects, one of them self-inflicted mid-cycle), no separate changed-asset
+unit was attempted — the bounded-unit-per-cycle discipline is satisfied by the hygiene sweep
+itself this time, per the same judgment call cycle 7 made.
+
+CYCLE 19 L1: fixed #1859 DIRTY (rebase) + #1881 RED (false-positive self-check root-caused and
+narrowed) + #1859's own second RED (self-inflicted missed pin regen, caught and fixed) — next:
+continue `ga_dashas`'s F-A12/F-A13/F-A14, or re-dispatch `ga_positions` once #1892 lands (still
+open as of this cycle).
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -985,6 +1034,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   every affected test against a fresh throwaway Postgres before pushing, filed #1918 to track the
   real follow-up rather than let it evaporate. D-L1-39 itself now reads as superseded, not deleted
   — the record of what happened and why it changed stays legible.
+- **D-L1-41** — C8 v2.3 cycle 19: fixed #1881's genuinely-RED self-check by narrowing it rather
+  than deleting it outright — kept the half of `KNOWN_TS_ONLY_PRIMITIVES`'s hygiene that can never
+  false-positive (primitive present on both TS and Python ⇒ stale allowlist entry) and dropped the
+  half that assumed every TS dump the gate is ever handed models `vastu_read` (false against
+  `vidhi_parity_gate.test.ts`'s own hermetic fixture). Separately caught and fixed a defect of my
+  own making mid-cycle: #1859's rebase-conflict resolution kept HEAD's already-current L1 pin via
+  `checkout --ours` without checking whether that value still covered #1859's *own* diff — it
+  didn't, and CI correctly caught it. Confirmed no cross-layer ripple (comment-only references in
+  `ka_tithi_pravesha`, no import) before regenerating. Treated the hygiene sweep itself as this
+  cycle's bounded unit given its depth (three independent root-caused defects), matching cycle 7's
+  precedent rather than also forcing a new changed-asset fix into the same cycle.
 
 ## Held items
 
@@ -1214,3 +1274,15 @@ L1 must satisfy rather than a feature it consumes.
   landed clean with the DB-seed gap tracked, not silently patched (#1918); #1909 stays deferred
   indefinitely -- next: ga_dashas's F-A12/F-A13/F-A14, or ga_positions re-dispatch once #1892
   lands.
+- 2026-09-05T18:1x-23:4xZ -- CYCLE 19 (C8 v2.3). PR hygiene consumed the whole cycle: #1859
+  DIRTY->rebased (same L1-pin conflict shape as #1853), #1881 genuinely RED
+  (vidhi_parity_gate.test.ts's happy-path case; narrowed the cycle-18 self-check to drop its
+  false-positive half, kept the safe half), and #1859's own second RED discovered only by not
+  trusting the rebase auto-resolution (kept HEAD's pin via checkout --ours without checking it
+  covered this PR's own diff -- it didn't; regenerated fresh after confirming no cross-layer
+  import). #1853's remaining CI red confirmed as L2's #1852 pin-drift pattern, not L1's. All three
+  fixes pushed, re-armed, confirmed with conductor-2b. No new changed-asset unit attempted this
+  cycle -- the hygiene sweep's depth (three independently root-caused defects) satisfies the
+  bounded-unit discipline, per cycle 7's precedent. CYCLE 19 L1: #1859 DIRTY fixed + #1881 RED
+  root-caused and narrowed + #1859's self-inflicted second RED caught and fixed -- next:
+  ga_dashas's F-A12/F-A13/F-A14, or ga_positions re-dispatch once #1892 lands (still open).
