@@ -2587,3 +2587,26 @@ CYCLE 88 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs unchanged/queue
 uncheckable, DB access down 78 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~21:40Z` — L4 — **CYCLE 89 (v2.3) — queue head (`#1825`, Conductor's own PR) checked
+carefully given 2 flat cycles + a 5-hour-stale `updatedAt`; confirmed genuinely processing, not
+stuck.**
+
+**PR hygiene:** all 11 own PRs unchanged/genuinely queued, no net `main` movement for a second
+cycle. Investigated more carefully than the usual queue-head glance because `#1825`'s own
+`updatedAt` read `16:10:23Z` against a current time of `21:14:12Z` — nearly 5 hours stale, a
+real amber flag distinct from the routine "estimatedTimeToMerge" check. Searched for its
+`gh-readonly-queue/main/pr-1825-*` branch directly (missed on the first `branches` API list,
+found via `gh run list --event merge_group`): a merge-group CI run for `#1825` started at
+`21:07:03Z`, `in_progress` — genuinely processing now, the `updatedAt` staleness was just the
+PR's own last direct-push timestamp, not evidence the queue stopped moving it.
+
+**Priorities 1-4:** no new `main` commits since last cycle, no new adjudications name L4.
+E-gate still uncheckable, 79th consecutive cycle DB access down.
+
+CYCLE 89 L4: PR hygiene — investigated a 5-hour-stale `updatedAt` on queue-head `#1825`
+(Conductor's, not mine) rather than assuming a jam; confirmed via `merge_group` run list it is
+genuinely mid-CI, not stuck → all 11 own PRs unchanged/queued, none DIRTY/RED → E-gate
+uncheckable, DB access down 79 cycles, no new adjudications name L4 → next: watch `#1825`
+clear and queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
