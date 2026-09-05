@@ -1885,3 +1885,16 @@ down 28 cycles; no new capability landings or adjudications) → next: watch `#1
 retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
 deferred.
 
+`2026-09-06T~10:20Z` — L4 — **CYCLE 39 (v2.3) — noted `#1862` (L2's `consensus_chip` on
+`query_pratijna`) merged, but checked `L2_STATE.md`'s own `## CAPABILITIES LANDED` section
+directly rather than inferring a capability landing from a merged PR title — not yet announced
+there, so still correctly HELD per charter C6 (L2 announces, L4 does not infer).** PR hygiene
+clean, `#1864` still at position 3, unchanged (`main` itself hasn't moved). DB access still down
+(29th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 39 L4: IDLE-OK (verified: PR hygiene clean; checked for a D-SYNTHESIS capability landing
+from `#1862`'s merge — not yet announced in `L2_STATE.md`, correctly still HELD, not inferred;
+`#1864` unchanged at position 3; E-gate uncheckable, DB access down 29 cycles) → next: watch
+`#1864`'s merge; watch for L2's actual capability announcement; retry E-gate/dispatch dry-run
+once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
