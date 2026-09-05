@@ -1695,3 +1695,12 @@ not just check-run timestamp; E-gate uncheckable, DB access down 10 cycles; no n
 landings, no coordination response) → next: retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~07:20Z` — L4 — **CYCLE 21 (v2.3) — `#1777` merged (confirms last cycle's job-log
+read). Steady-state IDLE, 11th consecutive cycle: all 9 checked own PRs genuinely queued and
+advancing, DB access still down, no new capability landings or adjudications.**
+
+CYCLE 21 L4: IDLE-OK (verified: PR hygiene clean, all checked PRs genuinely queued and advancing;
+E-gate uncheckable, DB access down 11 cycles; no new capability landings or adjudications) →
+next: retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
+deferred.
+
