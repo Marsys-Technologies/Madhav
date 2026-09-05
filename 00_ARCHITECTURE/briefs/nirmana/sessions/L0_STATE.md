@@ -1840,3 +1840,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   intended -- caught before merge, not after.
 
 - 2026-09-06 — **IDLE-OK.** Queue positions unchanged (13/19/27/76), no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** PR hygiene re-checked: #1910/1915/1923/1925 still QUEUED (positions now
+  11/17/25/74, modest forward drift from 13/19/27/76 — normal queue drainage, no action needed),
+  #1985 checks still pending (no reds), no PR shows DIRTY. `#1901` (D-L0-FF fix) still open/unmerged.
+  No new eligible dispatch work. 30/40 frozen holds.
