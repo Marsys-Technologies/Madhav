@@ -1861,3 +1861,16 @@ uncheckable, DB access down 26 cycles; no new capability landings or adjudicatio
 re-verify `#1854` next cycle (escalate if truly stuck); retry E-gate/dispatch dry-run once DB
 access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~10:00Z` — L4 — **CYCLE 37 (v2.3) — re-verified `#1854`'s two checks via job-log
+tail, not just timestamps: both show substantial genuine step completion (11+/6+ steps green
+each, currently on the last 2-3 steps of each job) — this is categorically different from
+`#1838`'s zero-step zombie, so NOT escalating as stuck. Will treat as a real stall only if it
+shows zero step movement.** `#1864` now at position 3. PR hygiene clean otherwise. DB access
+still down (27th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 37 L4: IDLE-OK (verified: PR hygiene clean; `#1854` re-verified via job-log step
+completion, not stuck — real progress, just on its last few steps; `#1864` near the front;
+E-gate uncheckable, DB access down 27 cycles; no new capability landings or adjudications) →
+next: watch `#1854`/`#1864`; retry E-gate/dispatch dry-run once DB access returns; watch
+`#1885`'s merge; F1 remains deferred.
+
