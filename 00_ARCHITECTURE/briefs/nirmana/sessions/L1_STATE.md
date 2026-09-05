@@ -1675,7 +1675,24 @@ This is a writer-level data-correctness fix, not a migration — the 4 already-b
 affected chart (1c826d5a) will carry the corrected value only after that chart's next rebuild;
 migration 746's F-A14 conjunct (a) will clear at that point, not before.
 
-CYCLE 41 L1: fixed F-A16 in `ga_yoga_writer.py` (PR #1979) — next: fix F-A15
+**End-of-cycle sweep caught a genuine RED on PR #1979 itself** (exactly the discipline the cycle
+contract requires — "check every open PR... fix any RED... before anything else" — surfaced here
+retroactively on the PR this cycle's own work just opened, not missed): `Governance Gates` failed
+because regenerating `nirmana-writer-digests.json` (required for any Python writer change) left
+the DERIVED per-layer pin (`nirmana-analysis-layer-pins.json`'s L1 entry, which embeds a
+`writer_inventory_sha256` over that same inventory) stale — a two-artifact dependency I forgot
+to chain through. Root-caused via the failed job's own log (`current inventory derives
+139783903915c5c67cf85ed02564e6a083d5152eaf2948a1f47a84d0a7aecf66`, exactly matching what the
+regeneration below produced), then fixed by regenerating **scoped to `--layer L1` only**
+(`nirmana_analysis_layer_pins.py`'s own documented reason: a whole-file regen would falsely
+restate every OTHER layer's `convergence_commit` — issue #1814) — confirmed via the script's own
+diff summary that only L1's `convergence_commit`/`writer_inventory_sha256` changed, all five other
+layers byte-for-byte untouched. Both `provenance_inventory --check` and
+`nirmana_analysis_layer_pins.py --check` pass locally now, matching what CI runs — never weakened
+the gate, fixed the actual missing regeneration step.
+
+CYCLE 41 L1: fixed F-A16 in `ga_yoga_writer.py` (PR #1979), then caught and fixed a genuine RED
+on that same PR (stale L1 analysis pin) during the end-of-cycle sweep — next: fix F-A15
 (`ga_structural`'s D9 vargottama re-derivation, the bigger of the two writer fixes — needs to
 cite `ga_vargas`' authority instead of re-deriving, touching a 7,900-line file), consider a
 follow-up F-A14 pass widening `ga_structural`/`ga_sade_sati` coverage, or `ga_positions`
@@ -2216,6 +2233,17 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   `origin/main` writer, confirmed the new test fails with the exact live defect value, then
   restored the fix and confirmed it passes — the same discipline this campaign has applied to
   every SQL migration conjunct, now applied to a Python unit test for the first time.
+- **D-L1-64** — C8 v2.3 cycle 41 (end-of-cycle PR hygiene sweep): PR #1979 (this cycle's own
+  F-A16 fix) came back genuinely RED on `Governance Gates`. Root-caused from the failed job's own
+  log rather than guessing: regenerating `nirmana-writer-digests.json` for the writer fix is a
+  two-artifact chain, not one — `nirmana-analysis-layer-pins.json`'s L1 entry embeds a
+  `writer_inventory_sha256` OVER that same inventory, and I'd only regenerated the first artifact.
+  Fixed by regenerating scoped to `--layer L1` (never a whole-file regen, which would falsely
+  restate every other layer's `convergence_commit` per issue #1814) and confirmed via the tool's
+  own diff summary that L0/L2/L3/L4/L5 stayed byte-for-byte untouched. This is exactly the "fix
+  root cause, never weaken the gate" instruction applied to a check surfaced by my OWN cycle's
+  work, not a pre-existing PR — the end-of-cycle sweep is not just for stale/dirty PRs from past
+  cycles, it catches regressions in the current cycle's own output too.
 
 ## Held items
 
@@ -2816,6 +2844,12 @@ L1 must satisfy rather than a feature it consumes.
   comment mentions). Noted but did not chase: ga_yoga/ga_structural/ga_sensitive_degree share an
   identical digest both before and after this change -- a pre-existing digest-tool quirk, not a
   regression. This is a writer fix, not a migration -- migration 746's conjunct (a) clears only
-  once the affected chart rebuilds. CYCLE 41 L1: fixed F-A16 (PR #1979) -- next: fix F-A15 (the
-  bigger ga_structural writer change), a follow-up F-A14 pass widening ga_structural/ga_sade_sati
-  coverage, or ga_positions re-dispatch once #1892 lands.
+  once the affected chart rebuilds. End-of-cycle sweep caught PR #1979 itself genuinely RED on
+  Governance Gates: regenerating nirmana-writer-digests.json left the DERIVED L1 analysis pin
+  (nirmana-analysis-layer-pins.json, which embeds a writer_inventory_sha256 over that same
+  inventory) stale -- root-caused from the failed job's log, fixed by regenerating scoped to
+  --layer L1 only, confirmed L0/L2/L3/L4/L5 untouched via the tool's own diff summary (D-L1-64).
+  Never weakened the gate -- fixed the actual missing regeneration step. CYCLE 41 L1: fixed F-A16
+  (PR #1979) and its own follow-on RED -- next: fix F-A15 (the bigger ga_structural writer
+  change), a follow-up F-A14 pass widening ga_structural/ga_sade_sati coverage, or ga_positions
+  re-dispatch once #1892 lands.
