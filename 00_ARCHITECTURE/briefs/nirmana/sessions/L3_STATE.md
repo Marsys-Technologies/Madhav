@@ -461,6 +461,28 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~13:4xZ — L3-W3 — IDLE-OK, but a real change: #1894 (migration 675,
+  N1's `kala_paddhati_profile.arbitration_role`/`precedence` columns) has MERGED.**
+  Immediately ran a full PR-hygiene sweep of all 30 other L3 PRs (rather than assuming
+  #1894's merge was harmless like earlier no-op merges) since it touches shared
+  registry/migration surface — none went DIRTY; #1894 didn't collide with anything the way
+  the `ka_sangam` generated-file family did. **Checked whether this actually unblocks N1's
+  next step (verdict-wiring into `kala_explain_get`) — it does NOT, yet**: merged is not
+  deployed. Queried production directly: `\d kala_paddhati_profile` shows no
+  `arbitration_role`/`precedence` columns; `_migrations_applied` has no `675` row. The
+  migration hasn't run through the deploy pipeline yet. #1921 (migration 677, the O-10 seed
+  data — the OTHER N1 verdict-wiring precondition) is still open/unmerged regardless, so
+  the step stays blocked either way for now, but this is real, measurable progress on one of
+  the two preconditions worth recording precisely rather than lumping in with "unchanged."
+  #1978 still `MERGEABLE`/0 failures, pending. #1903/#1958/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~13:3xZ — L3-W3 — IDLE-OK, still holding local: #1978 still MERGEABLE/0
+  failures, pending. All 30 prior L3 PRs still queued. Standing blockers unchanged.
+
+- `2026-09-06T~13:2xZ — L3-W3 — IDLE-OK, holding local: `#1978` (this cycle's own PR)
+  MERGEABLE/0 failures, still pending — the only one not yet in queue. All 30 prior L3 PRs
+  still genuinely queued. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~13:1xZ — L3-W3 — IDLE-OK: ALL 30 L3 PRs (including this cycle's own
   `#1976`) now genuinely `is:queued` — full house, nothing DIRTY/RED/unqueued-CLEAN
   anywhere.** Three DIRTY-PR fixes landed across this run (#1883, #1887, #1890 — all the
