@@ -458,6 +458,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~15:3xZ — L3-W4 — PR hygiene: #1846 was genuinely RED (Governance Gates),
+  fixed at root. `tests/test_nirmana_probe_release_smoke.py`'s happy-path test hardcoded
+  `seen_assets == ["bg_panchanga", "bg_ephemeris_engine"]`, predating that PR's own addition of
+  `ka_graha_sancara` to the release-smoke loop — a test I should have run before pushing
+  originally but didn't (my local CI-equivalent runs that cycle used `--ignore=
+  tests/test_nirmana_probe_release_smoke.py`, which hid exactly this). Caught the actual branch
+  mix-up too: made the fix on `codex/nirmana-l3-w4-resume` first by habit, realized mid-edit it
+  belonged on `codex/nirmana-l3-w4-graha-sancara-probe`, stashed with a labeled
+  `git stash push -u -m`, verified the SHA before `apply`+`drop` (never bare stash/pop), moved
+  it to the right branch. Not a weakening — the assertion still checks the exact full ordered
+  asset list, just the corrected 3-asset one. Full local suite re-run clean: 6384 passed, 0
+  failed. Pushed (`e7d7dc3f7`); CI re-running on #1846.
+  #1850 and #1801 remain genuinely `is:queued`, no action needed.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
 - `2026-09-05T~15:2xZ — L3-W3/bookkeeping — verify-before-redo caught stale tracking: checked
   M1's remainder (`ka_vighnakara._fetch_natal_lagna_lon` bare-`longitude` key;
   `ka_kshetra`'s `fact_category='lagna'` lookup) before starting it as "next unheld work" — both
