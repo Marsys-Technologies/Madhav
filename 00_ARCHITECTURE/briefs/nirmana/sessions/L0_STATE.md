@@ -1668,3 +1668,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 25, no merges, no new activity.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 25 for me, but head has moved on (now #1876), still healthy. No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** My position steady at 25 for 4 checks; verified queue head (#1876)
+  genuinely healthy — 25/26 real checks passed, "Governance Gates" still running (normal duration).
+  Not stuck. No merges of mine yet.
