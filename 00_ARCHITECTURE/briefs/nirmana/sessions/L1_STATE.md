@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 22; ga_vargas F-A14 integrity_check_sql landed (#1933)
+last_updated: 2026-09-06 — C8 v2.3 cycle 23; ga_strength F-A14 landed + stale route corrected (#1935)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -881,6 +881,48 @@ claim, found and precisely quantified a real F-A1 manifestation at the D1-sign g
 honestly red rather than working around it — next: `ga_strength`'s own `integrity_check_sql`
 (the last of the three F-A14 batch-A assets), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 23 (C8 v2.3) — one DIRTY rebase (learned lesson applied); ga_strength's F-A14 contract, and a stale-route correction discovered along the way
+
+**PR hygiene:** #1871 was DIRTY. Same rebase-conflict shape as before, resolved with the SAME
+discipline cycle 19's mistake taught — after `checkout --ours`, ran `--check` before trusting the
+kept pin rather than assuming it covered this PR's own diff. It didn't (confirmed stale: committed
+`13fa5b524a…` vs live `5ca2479f9c…`); regenerated `--layer L1` fresh after confirming no
+cross-layer import (`brahmagyan/l0_medical.py` references `ga_medical_writer.py` in a comment
+only). Everything else settled to `is:queued` clean by end of sweep.
+
+**Unit of work: F-A14 for `ga_strength`, scoped to `graha_shadbala_total` only.** Before writing
+anything, checked `ga_strength`'s actual target — `chart_facts`, shared across 26 distinct
+fact_categories (measured), not a dedicated table like `ga_dashas`/`ga_vargas` had. Rather than
+attempt all 26 in one cycle, scoped honestly to the one category central to this writer's own
+F-C1 finding and to `ga_dashas`' F-A12 enrichment.
+
+**Found and corrected a real staleness in this state file itself.** Before designing the
+contract, worried F-A14 might be entangled with F-C1 (the asset table's own "changed... MUST:
+ṣaḍbala selector still wrong" line) — an unresolved MUST finding would be the wrong thing to
+paper over with an integrity contract. Checked the AUTHORITATIVE source
+(`L1_W2_DECIDE_v1_0.md`) rather than trusting this file's own asset table, and found the W2
+DECIDE record already rules `ga_strength` `rebuild_only`: "Writer sound and honestly tiered.
+MUST F-C1 is serving-side" — the fix site (`deriveShadbalaWeakestGraha`) is
+`layers/L2_bodha/query_ucd.ts`, an L2 file, already fixed there. The asset table above (line
+~898) had never been updated past its original W1-proposal snapshot for this row — corrected in
+place this cycle. This means F-C1 was NEVER an open L1 "changed"-route MUST finding at all; it
+was already fully handed off and resolved, just not reflected in this table.
+
+Three conjuncts, each measured live and mutation-proved: (a) the writer's own ratio formula
+(`achieved_total / required_rupa`) re-derived directly — caught my own wrong assumption
+mid-authoring (a same-ayanamsha join produced 105 false mismatches before realizing
+`required_rupa` lives once per chart under the ayanamsha-independent `'INVARIANT'` pseudo-value,
+not once per ayanamsha); (b) `required_rupa`'s invariance holds as WRITTEN (exactly one row per
+chart+subject, not just intended); (c) range guard. No distinctness conjunct — `chart_facts`'
+existing partial UNIQUE indexes already match this writer's own `ON CONFLICT` target exactly
+(D-CND-03 rule 4).
+
+CYCLE 23 L1: fixed #1871 DIRTY (applying cycle 19's lesson correctly this time) + landed
+`ga_strength`'s F-A14 contract (PR #1935, scoped to `graha_shadbala_total`) + corrected a stale
+asset-table route label discovered while verifying F-A14 wasn't entangled with an unresolved
+MUST finding — next: the remaining 16 assets' `integrity_check_sql` (F-A14 continues
+campaign-wide, one or a few per cycle), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -895,7 +937,7 @@ none accepted yet (blocked on #1736).
 | ga_panchanga | 437 / 221 | **changed** | **MUST: `*_arambha_iso` stores the anga END (F-B24)** |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B) |
-| ga_strength | 13,621 / 11,936 | **changed** | **MUST: ṣaḍbala selector still wrong on 2 of 3 charts (F-C)** |
+| ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
 | ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C) |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1) |
@@ -1208,6 +1250,14 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   "a mismatch exists." Shipped the conjunct genuinely RED (migration 654) rather than scoping the
   failing rows out to present a clean pass — same discipline D-CND-03's L3 precedent and my own
   migration 653 both established.
+- **D-L1-45** — C8 v2.3 cycle 23: before designing `ga_strength`'s F-A14 contract, checked the
+  authoritative `L1_W2_DECIDE_v1_0.md` rather than trusting this state file's own asset table for
+  whether F-C1 was still an open MUST finding — found the table's "changed" label was stale (W2
+  had already ruled `rebuild_only`, the fix already landed in L2's `query_ucd.ts`). Corrected the
+  table in place rather than let a future cycle re-discover the same staleness or, worse, attempt
+  a redundant fix. General lesson: this state file is written by me every cycle and can itself go
+  stale exactly like any other artifact — verify against the authoritative decision record before
+  trusting a summary table, including one I maintain myself.
 
 ## Held items
 
@@ -1491,3 +1541,19 @@ L1 must satisfy rather than a feature it consumes.
   narrow mistake before it shipped a false "clean" claim, quantified and shipped a real F-A1
   manifestation honestly red -- next: ga_strength's own integrity_check_sql (last of the F-A14
   batch-A trio), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T00:5xZ -- CYCLE 23 (C8 v2.3). PR hygiene: #1871 DIRTY, fixed by applying cycle 19's
+  lesson correctly this time -- ran --check after checkout --ours instead of trusting the kept
+  pin, found it genuinely stale (13fa5b524a... vs live 5ca2479f9c...), regenerated fresh after
+  confirming no cross-layer import. Unit of work: ga_strength's F-A14 integrity_check_sql (PR
+  #1935), scoped to graha_shadbala_total only (chart_facts is shared across 26 fact_categories
+  this writer emits, measured live -- not a dedicated table like ga_dashas/ga_vargas). Before
+  designing it, verified F-C1 (the asset table's "shadbala selector" MUST finding) wasn't still
+  an open L1 defect -- checked the authoritative L1_W2_DECIDE_v1_0.md rather than trusting this
+  state file's own asset table, found W2 already ruled ga_strength rebuild_only with the fix
+  already landed in L2's query_ucd.ts. Corrected the stale asset-table row in place. Three
+  conjuncts: ratio formula (caught my own wrong same-ayanamsha-join assumption via 105 false
+  mismatches before finding required_rupa lives under ayanamsha_id='INVARIANT'), required_rupa
+  invariance, range guard. No writer touched, no digest/pin regen needed. CYCLE 23 L1: fixed
+  #1871 DIRTY (lesson correctly applied) + landed ga_strength's F-A14 contract (PR #1935) +
+  corrected a stale asset-table route label found while verifying no entanglement -- next: the
+  remaining 16 assets' integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
