@@ -386,7 +386,7 @@ All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`
 
 | tier | assets | unfrozen ancestors |
 |---|---|---|
-| T0 | `ga_positions` | **0 — conditions 1+2 OPEN; gate=OPEN-PENDING-PIN (cond 3: verify pins, claim slot, dispatch)** |
+| T0 | `ga_positions` | **0 — conditions 1+2+3 all clear; DISPATCHED cycle 13 (run 0940f6cb, #1892) — build_run FAILED on a shared orchestrator bug before the writer ran; no data touched; re-dispatch pending a fix** |
 | T1 | `ga_ayurdaya`✅ `ga_dashas` `ga_nakshatra`✅ `ga_panchanga` `ga_prashna`✅ `ga_sensitive`✅ `ga_sensitive_degree`✅ `ga_transit_anchors` `ga_vargas` | 1 |
 | T2 | `ga_strength`✅ | 2 |
 | T3 | `ga_condition` `ga_tajaka` | 3 |
@@ -432,6 +432,74 @@ This closes the last open MUST for `ga_vastu` (F-E12/F-E13/F-E14 were NOW-priori
 CYCLE 12 L1: landed `vastu_read` vidhi primitive (PR #1881, F-E10) — next: the prashna
 tool-naming disambiguation (DR-6, non-DB), remaining NOW-priority `ga_vastu`/`ga_tajaka` findings
 if no MUST work remains, or check #1838 for `ga_positions` dispatch viability.
+
+## CYCLE 13 (C8 v2.3) — `ga_positions` W4 DISPATCHED; hit and root-caused a shared orchestrator bug (#1892)
+
+**PR hygiene:** #1841 was CLEAN-but-unqueued (`is:queued` said no despite `gh pr merge --auto`
+claiming "already queued to merge" — the exact autoMergeRequest-lies trap the contract warns
+about); confirmed no conflict via `git merge-tree`, disabled+re-armed auto-merge, and it queued
+correctly (`is:queued` confirmed true with `--limit 100`; default page size had truncated the
+earlier check). All other L1 PRs (#1827/#1853/#1859/#1865/#1871/#1874/#1879) confirmed
+`is:queued`, nothing DIRTY/RED.
+
+**Unit of work: `ga_positions` dispatch — the highest-priority item since cycle 4.** `#1838`
+(the shared dispatcher schema-qualify fix) merged into `main` this cycle, clearing the last
+campaign-wide blocker. Full sequence:
+
+1. Re-verified all three E-gate conditions live (not assumed from cycle 4): `egate.sql` shows
+   `ga_positions` `OPEN-PENDING-PIN`, conditions 1+2 clear; `provenance_inventory --check` exit 0
+   (condition 3, writer-inventory pin not stale); re-ran `cascade_check.sql -v table=chart_facts`
+   and the scoped-count query — both **unchanged** from cycle 4's blast-radius statement (530
+   `chart_fact_identity` rows, `chart_facts_history` still 0 rows for the canonical chart).
+2. Confirmed 0/3 coordination slots occupied (L0's `bg_doshas` claim had completed) and posted
+   the SLOT CLAIM on #1713.
+3. Took a fresh on-demand Cloud SQL backup (`1788625056792`, confirmed SUCCESSFUL) before
+   touching anything.
+4. **Found a real gap in C4's "verify deployed, don't assume merge=deployed" discipline while
+   checking it**: the deployed pipeline job image (`3b208dbf…`) still predated `#1838` at dispatch
+   time; waited for the in-flight "Deploy to Cloud Run" run to complete and re-verified via
+   `git merge-base --is-ancestor` before proceeding.
+5. **Found and worked through a genuine defect class**: `ga_positions`' own W2 acceptance
+   (submitted cycle 2, `git:75ac19c6…`) had gone stale — not because `ga_positions` itself
+   changed, but because three *other* L1 writers' fixes this campaign (`ga_condition`/
+   `ga_tajaka`/`ga_medical`) each advanced the SAME shared per-layer `convergence_commit` the
+   dispatcher binds into every asset's digest. This is C2.3's documented "pin mismatch → delta
+   re-review" path working as designed — did the delta re-review: recomputed
+   `analysis_digest` against the **currently deployed** commit (imported
+   `canonicalNirmanaAssetAnalysisDigestForRegistryRow` directly, same discipline as cycle 2) and
+   resubmitted both `asset_analysis_accepted`/`optimization_verdict_accepted` fresh (both HTTP
+   201, after a couple of shared-executor-route 429s cleared on retry).
+6. **Found a second sharp edge**: the dispatcher recomputes writer digests/pins from **local
+   disk**, not from any commit pinned by `--reviewed-deployment-sha` — that flag only gates the
+   evidence `source_ref` comparison. Since local `main` had already advanced past the deployed
+   commit, had to temporarily overlay the two generated JSON files with their content **as of the
+   actually-deployed commit** (verified via `amjis-web`'s live `NIRMANA_DEPLOYED_SHA`) before the
+   dry-run/`--commit` would agree with the resubmitted evidence; restored the working tree
+   immediately after. Also found the manifest digest bakes in `--snapshot-ref`, so the dry-run
+   preview must be taken *with* the same snapshot-ref intended for `--commit`. Posted both
+   findings to #1713 for whoever dispatches next.
+7. **`--commit` succeeded**: `run_id 0940f6cb-88f6-4bfb-a74a-8634b30691e2`, execution
+   `brahma-build-pipeline-job-4pfjm`, snapshot `cloudsql-backup:1788625056792`.
+8. **The Cloud Run execution completed successfully, but the build itself failed** —
+   `asset_throughput` flipped `lit`→`error`. Root-caused rather than shrugged off: traced through
+   `runner.py`/`asset_runner.py`/`provenance.py` to `execute_run`'s `chart_id: str =
+   run["chart_id"]` — an unenforced type annotation over a psycopg3 `uuid` column read that
+   actually returns a native `uuid.UUID` object; it flows unchanged into
+   `compute_upstream_hash`'s `declared_deps is not None` branch (only reached by a **zero-dependency**
+   asset like `ga_positions`, L1's only DAG root) → `canonical_digest({"chart_id": chart_id,
+   ...})` → `provenance.py::_normalise` has no `uuid.UUID` branch → `json.dumps` throws exactly
+   the observed `TypeError`. **Verified no data was touched**: `chart_facts` still holds exactly
+   530 rows (430+100) for the canonical chart's positions categories, single `build_id`,
+   unchanged — the crash is in provenance capture, strictly before the writer runs. This is
+   FROZEN, Conductor-owned orchestrator code (`pipeline/orchestrator/`); filed **#1892** with the
+   full traced root cause and a suggested minimal fix rather than touching it myself.
+
+CYCLE 13 L1: `ga_positions` cleared the E-gate and dispatched for the first time this campaign
+(all three conditions, delta re-review, real `--commit`) — the build itself failed on a
+newly-discovered, now-root-caused shared orchestrator bug (#1892), not on anything L1-specific;
+no data was touched. Next: re-dispatch `ga_positions` once #1892 lands (or the L1-owned pin
+re-submission if the fix requires a fresh convergence-pin check), or continue changed-asset MUST
+work (`ga_dashas`, `ga_transit_anchors`) while waiting.
 
 ## Asset table (19 assets)
 
@@ -663,6 +731,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   is a documented no-floor-yet domain in `compiler.ts`, and minting a new domain/floor is a shared
   retrieval-plane change (affects every layer's primitives), not an L1 asset-file fix — recorded
   as the explicit disposition the finding's second option asked for, combined with the first.
+- **D-L1-35** — C8 v2.3 cycle 13: `ga_positions` dispatch (full account in CYCLE 13 above).
+  Did the W2 delta re-review (recomputed + resubmitted, not a no-op) rather than treating the
+  stale pin as blocking, per C2.3's own documented escape hatch. When the build failed, root-caused
+  to an exact line (`runner.py::execute_run`'s uncast `chart_id: str = run["chart_id"]`) instead of
+  retrying blindly or reporting an unexplained failure; verified data safety directly (530
+  `chart_facts` rows, single `build_id`, unchanged) before writing that claim down. Filed #1892
+  rather than patching `pipeline/orchestrator/` myself — FROZEN, Conductor-owned per C5/§N.2.
 
 ## Held items
 
@@ -817,3 +892,17 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 12 L1: landed vastu_read primitive (PR #1881, F-E10) -- next: prashna tool-naming
   disambiguation (DR-6), remaining NOW-priority findings, or check #1838 for ga_positions
   dispatch viability.
+- 2026-09-05T16:37Z -- CYCLE 13 (C8 v2.3). PR hygiene: #1841 was CLEAN-but-unqueued (the exact
+  autoMergeRequest-lies trap), fixed by disable+re-arm; all others confirmed queued. Unit of
+  work: ga_positions W4 dispatch -- #1838 merged, cleared the E-gate's cross-layer blocker.
+  Verified all three conditions live, confirmed 0/3 slots, fresh backup, deployed-image
+  verification, a delta re-review of ga_positions' own stale W2 acceptance (other L1 writers'
+  fixes had advanced the shared layer pin), and a dispatcher sharp edge (local-disk digest
+  reconstruction vs --reviewed-deployment-sha) worked around and posted to #1713. --commit
+  succeeded (run_id 0940f6cb) but the build_run failed on a genuine, now root-caused orchestrator
+  bug: execute_run's chart_id:str annotation over a psycopg3 UUID column never casts, crashing
+  provenance capture for ga_positions specifically because it's L1's only zero-dependency
+  (DAG-root) asset. No data touched (verified). Filed #1892 with the full traced root cause;
+  FROZEN Conductor-owned code, not touched myself. CYCLE 13 L1: ga_positions dispatched for the
+  first time this campaign, build failed on a shared bug (#1892), not an L1 defect -- next:
+  re-dispatch once #1892 lands, or continue changed-asset MUST work while waiting.
