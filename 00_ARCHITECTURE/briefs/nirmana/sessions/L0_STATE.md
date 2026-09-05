@@ -1655,3 +1655,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 27, no merges, no new activity.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 27, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** My own queue position steady at 27 for a few checks, but confirmed
+  genuinely healthy (not stuck): queue-head has moved on to #1877 (was #1875), 25/26 real checks
+  already passing. Position likely steady because new PRs keep entering near my slot at a similar
+  rate to entries ahead clearing. No merges of mine yet.
