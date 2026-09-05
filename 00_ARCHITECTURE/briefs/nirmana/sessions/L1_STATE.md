@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 25; ga_panchanga F-A14 FORENSIC contract landed (#1939)
+last_updated: 2026-09-06 — C8 v2.3 cycle 26; ga_condition F-A14 landed, F-C8 confirmed still live (#1941)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -1003,6 +1003,51 @@ trusting it, found the actual `ayanamsha_id='INVARIANT'` convention this writer 
 `ga_strength`'s own use of the same sentinel — next: the remaining 14 assets'
 `integrity_check_sql`, or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 26 (C8 v2.3) — ga_condition's F-A14 contract lands a real red for the still-unmerged F-C8 fix (PR #1853)
+
+**PR hygiene:** clean sweep, #1853 re-confirmed the same tracked run/issue.
+
+**Unit of work: F-A14 for `ga_condition`.** Dedicated table (`ga_condition_composite`), existing
+UNIQUE on (chart_id, ayanamsha_id, graha) — no distinctness conjunct needed.
+
+**Discovered mid-authoring that F-C8 (`varga_dignity_composite` NULL on 135/135 rows) is STILL
+live in production** — the cycle-6 fix I remembered making is real and correct, but it lives on
+PR #1853, which has been stuck for many cycles on the unrelated #1852 L2 pin-drift issue and has
+never actually merged. Did not assume the fix was already deployed from memory of having written
+it; diffed `origin/main` against #1853's branch directly and confirmed the exact bug is still
+present: `_compute_varga_composite`'s dignity-label fallback looks up the raw Title-Case
+`chart_divisionals` label directly in `DIGNITY_SCORES` (snake_case keys) and always misses, so
+the weighted average always has zero total weight and returns `None`.
+
+Wrote conjunct (a) as the CORRECT (post-#1853) formula, re-derived directly in SQL — routing the
+label through `_DIVISIONAL_DIGNITY_NORMALIZE` first, the SAME map F-A12 (cycle 20) used for an
+analogous `ga_dashas` bug. Verified it BOTH ways before shipping, not just on live data: ran it
+against today's production (135/135 mismatches, exactly matching the known bug) AND against a
+synthetic "already fixed" overlay where `varga_dignity_composite` was set to the correctly-
+recomputed value (0/135 mismatches) — proving this is a genuine detector of correctness, not a
+permanent-red placeholder that would stay red even after the real fix lands. It will go green
+automatically once #1853 merges and rebuilds.
+
+Two more conjuncts, also mutation-proved: `is_deeply_combust` implies `is_combust`; range guard
+on `dignity_score_d1`/`condition_score` using the writer's own documented 0.0-1.0 ranges (not the
+narrower currently-observed min/max, which would under-cover a valid future value). Considered
+and explicitly REJECTED a fourth candidate conjunct (graha_yuddha_with/result co-occurrence) after
+reading `_detect_graha_yuddha`'s own docstring and finding it cites a ratified native ruling
+(JL-027): winner determination is deliberately FLOORED to `None` pending a future Swiss Ephemeris
+latitude fact — the 10 rows where `graha_yuddha_with` is set and `graha_yuddha_result` is NULL are
+the correct, intended state, not a defect. Would have been a false finding contradicting an
+already-ratified decision had it shipped.
+
+No Python writer touched; `provenance_inventory --check` confirmed no digest/pin regen needed. 6
+new textual-contract tests.
+
+CYCLE 26 L1: landed `ga_condition`'s F-A14 contract (PR #1941) — found F-C8 is still genuinely
+live in production (not fixed from memory, verified by diffing against the stuck #1853 branch),
+shipped the correct formula as an honest red verified both directions, and caught a false-finding
+risk (graha_yuddha co-occurrence) by reading the code's own cited ruling before asserting
+anything — next: the remaining 13 assets' `integrity_check_sql`, or `ga_positions` re-dispatch
+once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1358,6 +1403,17 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   Worth naming as a recurring convention now that it's shown up twice: any chart_facts row this
   campaign encounters under `ayanamsha_id='INVARIANT'` should be checked for this pattern before
   assuming a real ayanamsha filter applies.
+- **D-L1-48** — C8 v2.3 cycle 26: did not trust memory of having already fixed F-C8 (cycle 6) —
+  diffed `origin/main` against the still-open #1853 directly and confirmed the bug is genuinely
+  live in production, not merely a stale asset-table label like D-L1-45's ga_strength finding.
+  Wrote `ga_condition`'s F-A14 varga_dignity_composite conjunct as the CORRECT post-fix formula
+  and verified it BOTH directions before shipping — red on live (pre-fix) data, green on a
+  synthetic post-fix overlay — so it is confirmed to be a real detector that will clear itself
+  once #1853 finally merges, not a placeholder that would stay red forever. Separately, read
+  `_detect_graha_yuddha`'s own docstring before writing a candidate co-occurrence conjunct on
+  `graha_yuddha_with`/`graha_yuddha_result`, and found it cites a ratified native ruling (JL-027)
+  that deliberately floors the result to `None` — dropped the conjunct rather than ship a false
+  finding contradicting an already-decided question.
 
 ## Held items
 
@@ -1686,4 +1742,22 @@ L1 must satisfy rather than a feature it consumes.
   needed. CYCLE 25 L1: landed ga_panchanga's F-A14 contract (PR #1939) -- caught a mutation test
   silently matching nothing before trusting it, named the recurring ayanamsha_id='INVARIANT'
   convention now that it's shown up twice -- next: the remaining 14 assets' integrity_check_sql,
+  or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T01:2xZ -- CYCLE 26 (C8 v2.3). PR hygiene clean, #1853 re-confirmed same tracked
+  issue. Unit of work: ga_condition's F-A14 integrity_check_sql (PR #1941). Dedicated table,
+  existing UNIQUE, no distinctness conjunct needed. Did NOT trust memory of having already fixed
+  F-C8 in cycle 6 -- diffed origin/main against the still-open #1853 directly and confirmed
+  varga_dignity_composite is genuinely NULL on all 135 rows in production today (the fix exists
+  on #1853 but hasn't merged, stuck on the unrelated #1852 L2 pin issue for many cycles). Wrote
+  conjunct (a) as the CORRECT post-#1853 formula and verified it both directions before shipping:
+  red on live data (135/135 mismatches, matching the bug), green on a synthetic post-fix overlay
+  (0/135) -- confirming it's a real detector, not a permanent-red placeholder. Two more conjuncts:
+  is_deeply_combust implies is_combust; range guard using the writer's documented 0-1 ranges.
+  Considered and rejected a fourth conjunct (graha_yuddha co-occurrence) after reading
+  _detect_graha_yuddha's docstring and finding it cites a ratified native ruling (JL-027) that
+  deliberately floors the result to None -- would have been a false finding against an
+  already-decided question. No writer touched, no digest/pin regen needed. CYCLE 26 L1: landed
+  ga_condition's F-A14 contract (PR #1941), confirmed F-C8 still genuinely live (not fixed from
+  memory), shipped the correct formula verified both directions, caught a false-finding risk by
+  reading the code's own cited ruling first -- next: the remaining 13 assets' integrity_check_sql,
   or ga_positions re-dispatch once #1892 lands.
