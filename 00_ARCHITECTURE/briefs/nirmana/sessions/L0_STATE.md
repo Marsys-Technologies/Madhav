@@ -1730,3 +1730,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Position steady at 17; verified queue head (#1884) healthy (25/26
   checks passed, one still running normally, started 21:19:37Z -- not another hang). No merges of
   mine yet.
+
+- 2026-09-06 — **IDLE-OK, watching for a possible repeat of D-L0-PP.** Queue head (#1884) is on
+  the same "pytest — pyjhora_adapter + pipeline" step that hung before, running since 21:19:52Z
+  (~9 min so far -- within/near the documented 285-422s normal range, not yet clearly abnormal).
+  Will re-check next cycle before reporting; not escalating prematurely. My own position steady
+  at 17, no merges yet.
