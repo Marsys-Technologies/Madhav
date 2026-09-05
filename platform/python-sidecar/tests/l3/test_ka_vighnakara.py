@@ -33,6 +33,17 @@ VALID_OBSTRUCTION_TYPES = {
 
 WRITER_PATH = Path(__file__).parent.parent.parent / "pipeline/orchestrator/writers/ka_vighnakara.py"
 
+# F-VIGHNA-6 (CR-87 contamination pattern): this constant used to live as a module-level
+# global inside the WRITER (ka_vighnakara.py), hardcoded to this one native's own Saturn
+# transits, even though it is genuinely unreachable in production (run() hard-raises
+# before ever calling _check_malefic_transit without a real swe module). Moved here —
+# the test module is exactly where test-only fixture data belongs — and injected
+# explicitly via _check_malefic_transit's `_test_proxy_windows` parameter below.
+_SATURN_PROXY_WINDOWS = [
+    (date(2025, 3, 1),  date(2027, 6, 30)),   # Saturn in Pisces (sade-sati close)
+    (date(2030, 4, 1),  date(2032, 6, 30)),   # Saturn in Gemini (3rd — upachaya/adversarial by proximity)
+]
+
 
 # --- severity() tests ---
 
@@ -58,40 +69,48 @@ def test_severity_severe():
 
 def test_malefic_transit_saturn_aq_in_window():
     # Window updated to Saturn/Gemini approx 2030-04-01..2032-06-30 (wave4 update)
-    result = _check_malefic_transit(date(2031, 6, 15))
+    result = _check_malefic_transit(date(2031, 6, 15), _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_saturn_aq_outside_window_before():
-    result = _check_malefic_transit(date(2028, 1, 1))
+    result = _check_malefic_transit(date(2028, 1, 1), _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is None
 
 
 def test_malefic_transit_saturn_aq_end_boundary():
     # 2032-07-01 is AFTER the window (end is 2032-06-30)
-    result = _check_malefic_transit(date(2032, 7, 1))
+    result = _check_malefic_transit(date(2032, 7, 1), _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is None
 
 
 def test_malefic_transit_saturn_aq_start_boundary():
     # 2030-04-01 is the START of the window (inclusive)
-    result = _check_malefic_transit(date(2030, 4, 1))
+    result = _check_malefic_transit(date(2030, 4, 1), _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_saturn_aq_end_inclusive():
     # 2032-06-30 is still IN the window (inclusive end)
-    result = _check_malefic_transit(date(2032, 6, 30))
+    result = _check_malefic_transit(date(2032, 6, 30), _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_accepts_string_date():
-    result = _check_malefic_transit('2031-06-15')
+    result = _check_malefic_transit('2031-06-15', _test_proxy_windows=_SATURN_PROXY_WINDOWS)
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
+
+
+def test_malefic_transit_no_proxy_windows_returns_none_without_swe():
+    """F-VIGHNA-6: without swe AND without test-injected proxy windows (the genuine
+    production shape — this parameter is never populated outside tests), the function
+    must return None rather than raising or fabricating a result."""
+    result = _check_malefic_transit(date(2031, 6, 15))
+    assert result is None
 
 
 # --- panchanga obstruction tests ---
@@ -211,6 +230,17 @@ def test_writer_contract_no_l2_writes():
     # Check for writes to bodha_ or ganita_ tables
     forbidden = re.findall(r'INSERT INTO (bodha_|ganita_)\w+|UPDATE (bodha_|ganita_)\w+', content)
     assert not forbidden, f"Found forbidden L2/L1 writes: {forbidden}"
+
+
+def test_writer_contract_no_hardcoded_native_transit_data():
+    """F-VIGHNA-6 (CR-87 contamination pattern): no native-specific hardcoded transit
+    window data may live in the writer module — that data belongs in the test module
+    that actually needs it (this file's own _SATURN_PROXY_WINDOWS)."""
+    with open(WRITER_PATH, 'r') as f:
+        content = f.read()
+    assert '_SATURN_PROXY_WINDOWS' not in content, (
+        "the proxy-window constant must live in the test module, not the writer"
+    )
 
 
 # --- SEVERITY_MAP ordering test ---
