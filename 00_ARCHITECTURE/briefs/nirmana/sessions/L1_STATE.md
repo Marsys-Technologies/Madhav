@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 2; ga_positions W2 acceptance events LIVE, E-gate cond 2 open
+last_updated: 2026-09-05 — C8 v2.3 cycle 5; dispatcher blocked (#1833), ga_panchanga F-B24 fix (#1841)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -188,7 +188,51 @@ by then or take a new on-demand one, post the SLOT CLAIM comment, dry-run
 `dispatch_nirmana_campaign_wave.py`, review the manifest digest, then `--commit
 --acknowledge-destroys` (530 in-layer rows) with the snapshot ref.
 
-## E-gate (C2/C10) — measured live 2026-09-05
+## CYCLE 5 (C8 v2.3) — dispatcher blocked campaign-wide; ga_panchanga F-B24 writer fix instead
+
+**PR hygiene:** #1766 CLEAN/nothing to fix; #1827 checks still finishing green. Nothing to fix.
+
+**Discovered the planned dispatch is blocked before spending a slot on it.** Checked #1713 for
+current occupancy and found L3's `ka_graha_sancara` slot claim followed 5 minutes later by a
+**release**: `dispatch_nirmana_campaign_wave.py --layer L3 ... ` failed immediately with
+`relation "nirmana_elevation_campaign_definitions" does not exist` — filed by L3 as **#1833**,
+CAMPAIGN-CRITICAL adjudication, unruled. Root cause: migrations 632/633 moved the campaign tables
+into the `nirmana_evidence` schema; the dispatcher script still queries 4+ unqualified table
+names (`create_campaign_run`'s `_load_definition` runs unconditionally at the start of both
+dry-run and `--commit`), so **no layer session can execute a real BUILD dispatch through this
+script today** — not an L3-specific problem, and it would hit me identically. Posted a
+corroborating comment on #1833 (L1 also blocked, +1 for the schema-qualify fix) rather than
+attempting a dispatch I now expect to fail, and moved to unheld W3 work per the C8 §2 priority
+order (item 3, since item 1 is genuinely blocked campaign-wide, not by anything in my control).
+
+**Unit of work: `ga_panchanga`'s F-B24 writer fix** (PR **#1841**) — the first of L1's 7 remaining
+`changed`-asset code fixes (only `ga_vargas`/#1766 had landed before this). All 5 emission sites
+(`_emit_tithi`, `_emit_yoga`, `_emit_karana`, the generic anga loop in `_emit_sun_moon_dynamics`,
+`_emit_nakshatra_moon`) stored `_ts_iso(X.end_utc)` under fact_key = "arambha_iso" (Sanskrit for
+"beginning"), while the same rows' citation_human already correctly said "X ends: ...". Proved
+from data in W1 (batch B §5.3): birth 05:13 UTC is 92.5% through tithi 3, so the true beginning is
+roughly a day BEFORE birth; the stored "arambha" value is 1h59m AFTER birth -- it can only be the
+anga's end.
+
+1. Renamed the fact_key to end_iso at all 5 sites, in both the writer and
+   CHART_FACTS_SCHEMA.json -- matching this codebase's own existing convention for end
+   timestamps (chart_dashas.start_iso/end_iso, and this same file's muhurta/kalam window
+   emitters), not an invented term. No value or citation text changed; both were already correct.
+2. Removed a dead pravesh_iso = None stub (tithi function) whose own comment already said the
+   true beginning isn't available from PanchangaInstant -- an honest omission per SN.7 item 6,
+   not left as a half-finished, unused placeholder next to the correctly-named fix.
+3. Confirmed zero blast radius before renaming -- repo-wide grep for arambha_iso returned only
+   these 5 writer sites; no serving code, test, or other file referenced it.
+4. 5 new regression tests, one per site, each asserting the row is keyed end_iso (never
+   arambha_iso) with the correct value. Mutation-proven: reverted the writer to its pre-fix
+   state and re-ran -- all 5 fail against the bug, pass against the fix. Full test_ga4_writer.py:
+   57/57. Broader panchanga-adjacent suite (test_panchanga_get.py, test_l1_panchanga_birth.py,
+   test_ka_muhurta_seva.py): 146/146.
+5. Proactively regenerated the writer-digest inventory and the L1 pin slice (--layer L1,
+   convergence-commit = this PR's own reviewed HEAD) BEFORE pushing, rather than waiting to be
+   ejected from the merge queue the way #1766 was in cycle 1 -- this writer change moves L1's
+   writer_inventory_sha256 exactly the same way. Rebased onto origin/main first to pick up
+   #1766's own already-merged pin advance, so both fixes' digest changes are reflected together.
 
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
@@ -377,6 +421,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   within the last few minutes, leaving 0–1 free. One bounded unit per C8 v2.3; the slot-claim +
   dispatch is next cycle's work once occupancy is re-checked fresh.
 
+- **D-L1-25** — C8 v2.3 cycle 5: found the shared `dispatch_nirmana_campaign_wave.py` is broken
+  campaign-wide (L3's #1833, CAMPAIGN-CRITICAL, unruled) — 4+ unqualified table references that
+  moved into the `nirmana_evidence` schema in migrations 632/633. Would fail identically for L1's
+  planned `ga_positions` dispatch, so did not attempt it and burn a slot on a doomed run. Posted a
+  corroborating comment (+1 for the schema-qualify fix) and moved to unheld W3 work instead
+  (C8 §2 priority order — item 1 genuinely blocked, not by me). Picked up `ga_panchanga`'s F-B24
+  writer fix (PR #1841, full account in CYCLE 5 above) — the first of 7 remaining `changed`-asset
+  code fixes. Learned from cycle 1's friction and proactively regenerated the writer-digest
+  inventory + L1 pin slice before pushing, rather than waiting to be queue-ejected.
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
@@ -457,3 +511,13 @@ L1 must satisfy rather than a feature it consumes.
   CYCLE 4 L1: produced ga_positions blast-radius statement (IN-LAYER, 530 scoped rows, dispatch
   clear) -- next: re-check slot occupancy on #1713, claim a slot, dry-run then --commit
   --acknowledge-destroys the ga_positions W4 build with a fresh snapshot ref.
+- 2026-09-05T14:24Z -- CYCLE 5 (C8 v2.3). PR hygiene: #1766/#1827 both clean. Found the shared
+  dispatcher script broken campaign-wide (#1833, unruled) before attempting the planned
+  ga_positions dispatch -- corroborated on the issue, moved to unheld W3 work instead. Unit of
+  work: ga_panchanga's F-B24 writer fix (PR #1841) -- 5 emission sites renamed arambha_iso to
+  end_iso (matching the codebase's own convention), 5 new mutation-proven regression tests
+  (57/57 suite, 146/146 broader panchanga suite), writer-digest inventory + L1 pin proactively
+  regenerated before push. No new adjudication issue needed (corroborated on the existing one).
+  CYCLE 5 L1: dispatcher blocked campaign-wide (#1833, corroborated) -- did ga_panchanga F-B24
+  writer fix instead (PR #1841, pin pre-regenerated) -- next: pick up the next changed-asset fix
+  (ga_condition F-C8 or ga_tajaka F-E16/17) or re-check #1833's ruling / dispatcher availability.
