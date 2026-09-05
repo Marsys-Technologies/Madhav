@@ -1741,3 +1741,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   (queue head now #1886) -- 2nd occurrence, 2nd natural resolution, no intervention needed either
   time. My position advanced 17->16. No merges of mine yet. All 5 PRs' checks green (spot-checked
   #1925: all pass).
+
+- 2026-09-06 — **IDLE-OK.** #1925 now queued but far back (position 90 -- queue has grown
+  significantly since earlier). All 5 of my PRs (1828/1910/1915/1923/1925) now genuinely queued.
+  #1969 (new heartbeat PR) checks still pending, no reds. No merges yet, no new coordination
+  activity.
