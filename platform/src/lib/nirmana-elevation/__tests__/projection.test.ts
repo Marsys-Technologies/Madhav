@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { canonicalNirmanaOptimizationVerdictDigest, canonicalNirmanaRebuildEvidenceDigest, type NirmanaElevationManifest } from '../definitions'
 import {
   deriveEligibleNextAssetIds,
+  deriveLayerActivityState,
+  projectAssetFrontier,
   projectAssetMilestones,
   projectCampaignStages,
+  projectCompletion,
   projectLayerWaveProgress,
   projectProgrammePosition,
+  projectProgrammePositionV21,
   summarizeStageGroupState,
   type CampaignEvent,
   type NirmanaLayerId,
@@ -810,5 +814,200 @@ describe('projectProgrammePosition', () => {
     const position = projectProgrammePosition({ currentStage: null, layerWaveProgress: {}, layerNames: {}, openWp: { wp_id: 'WP-3' } })
     expect(position.phase_id).toBe('O_WAVE')
     expect(position.label).toContain('WP-3')
+  })
+})
+
+describe('projectCompletion', () => {
+  it('sums earned/required only across assets with non-null milestones_required', () => {
+    const result = projectCompletion([
+      { milestones_earned: 3, milestones_required: 6 },
+      { milestones_earned: null, milestones_required: null },
+      { milestones_earned: 2, milestones_required: 4 },
+    ])
+    expect(result).toEqual({ earned: 5, required: 10, percent: 50 })
+  })
+
+  it('floors instead of rounding (199/200 must read 99, not 100)', () => {
+    const result = projectCompletion([{ milestones_earned: 199, milestones_required: 200 }])
+    expect(result.percent).toBe(99)
+  })
+
+  it('reports percent null when required is zero', () => {
+    const result = projectCompletion([{ milestones_earned: null, milestones_required: null }])
+    expect(result).toEqual({ earned: 0, required: 0, percent: null })
+  })
+})
+
+describe('projectAssetFrontier', () => {
+  const manifestAsset = (asset_id: string, layer: NirmanaLayerId, depends_on?: string[]) => ({ asset_id, layer, depends_on })
+
+  it('honors a linear dependency chain: only the asset whose sole ancestor is frozen is eligible', () => {
+    const manifestAssets = [
+      manifestAsset('a', 'L0'),
+      manifestAsset('b', 'L0', ['a']),
+      manifestAsset('c', 'L0', ['b']),
+    ]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(['a']),
+      decidedAssetIds: new Set(['a', 'b', 'c']),
+    })
+    expect(frontier.L0).toEqual(['b'])
+  })
+
+  it('requires every branch of a diamond dependency to be frozen', () => {
+    const manifestAssets = [
+      manifestAsset('a', 'L0'),
+      manifestAsset('b', 'L0', ['a']),
+      manifestAsset('c', 'L0', ['a']),
+      manifestAsset('d', 'L0', ['b', 'c']),
+    ]
+    const decidedAssetIds = new Set(['a', 'b', 'c', 'd'])
+    const partial = projectAssetFrontier({ manifestAssets, frozenAssetIds: new Set(['a', 'b']), decidedAssetIds })
+    expect(partial.L0).toEqual(['c'])
+    const complete = projectAssetFrontier({ manifestAssets, frozenAssetIds: new Set(['a', 'b', 'c']), decidedAssetIds })
+    expect(complete.L0).toEqual(['d'])
+  })
+
+  it('excludes an asset that has not been decided even when its ancestors are frozen', () => {
+    const manifestAssets = [manifestAsset('a', 'L0'), manifestAsset('b', 'L0', ['a'])]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(['a']),
+      decidedAssetIds: new Set(['a']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('b')
+  })
+
+  it('excludes an asset that is already frozen', () => {
+    const manifestAssets = [manifestAsset('a', 'L0'), manifestAsset('b', 'L0', ['a'])]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(['a', 'b']),
+      decidedAssetIds: new Set(['a', 'b']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('b')
+  })
+
+  it('excludes an asset whose ancestor is decided but not yet frozen', () => {
+    const manifestAssets = [manifestAsset('a', 'L0'), manifestAsset('b', 'L0', ['a'])]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['a', 'b']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('b')
+  })
+
+  it('honors a cross-layer ancestor: an L3 asset whose only ancestor is a frozen L0 asset is eligible', () => {
+    const manifestAssets = [
+      manifestAsset('root', 'L0'),
+      manifestAsset('mid_l1', 'L1'),
+      manifestAsset('mid_l2', 'L2'),
+      manifestAsset('leaf', 'L3', ['root']),
+    ]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(['root']),
+      decidedAssetIds: new Set(['root', 'mid_l1', 'mid_l2', 'leaf']),
+    })
+    expect(frontier.L3).toEqual(['leaf'])
+  })
+
+  it('returns deterministic sorted ids per layer', () => {
+    const manifestAssets = [
+      manifestAsset('zeta', 'L0'),
+      manifestAsset('alpha', 'L0'),
+    ]
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['zeta', 'alpha']),
+    })
+    expect(frontier.L0).toEqual(['alpha', 'zeta'])
+  })
+
+  it('excludes an asset with a dangling depends_on reference (id not in manifestAssets) instead of crashing', () => {
+    const manifestAssets = [manifestAsset('orphan', 'L0', ['ghost'])]
+    expect(() => projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['orphan']),
+    })).not.toThrow()
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['orphan']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('orphan')
+  })
+
+  it('excludes a self-referential depends_on asset instead of looping forever', () => {
+    const manifestAssets = [manifestAsset('loop', 'L0', ['loop'])]
+    expect(() => projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['loop']),
+    })).not.toThrow()
+    const frontier = projectAssetFrontier({
+      manifestAssets,
+      frozenAssetIds: new Set(),
+      decidedAssetIds: new Set(['loop']),
+    })
+    expect(frontier.L0 ?? []).not.toContain('loop')
+  })
+})
+
+describe('deriveLayerActivityState', () => {
+  it('is unknown when assetsTotal is null', () => {
+    expect(deriveLayerActivityState({ assetsTotal: null, frozen: 0, milestonesEarned: 0 })).toBe('unknown')
+  })
+
+  it('is completed when frozen equals assetsTotal', () => {
+    expect(deriveLayerActivityState({ assetsTotal: 5, frozen: 5, milestonesEarned: 30 })).toBe('completed')
+  })
+
+  it('is active when milestones have been earned but the layer is not fully frozen', () => {
+    expect(deriveLayerActivityState({ assetsTotal: 5, frozen: 2, milestonesEarned: 4 })).toBe('active')
+  })
+
+  it('is pending when nothing has been earned yet', () => {
+    expect(deriveLayerActivityState({ assetsTotal: 5, frozen: 0, milestonesEarned: 0 })).toBe('pending')
+  })
+
+  it('is pending, never a vacuously-true completed, when assetsTotal is a real zero', () => {
+    // frozen === assetsTotal (0 === 0) would otherwise read 'completed' with zero evidence
+    // that anything was ever actually elevated — the exact §N.8 vacuous-truth defect class.
+    expect(deriveLayerActivityState({ assetsTotal: 0, frozen: 0, milestonesEarned: 0 })).toBe('pending')
+  })
+})
+
+describe('projectProgrammePositionV21', () => {
+  it('reports overall percent and frozen/total counts', () => {
+    const position = projectProgrammePositionV21({
+      overall: { earned: 100, required: 294, percent: 34 },
+      frozenTotal: 29,
+      assetsTotal: 128,
+    })
+    expect(position).toBe('34% · 29/128 frozen')
+  })
+
+  it('renders an honest unknown marker, not a fabricated 0, when assetsTotal is null but percent is not', () => {
+    const position = projectProgrammePositionV21({
+      overall: { earned: 100, required: 294, percent: 34 },
+      frozenTotal: 29,
+      assetsTotal: null,
+    })
+    expect(position).not.toContain('/0 frozen')
+    expect(position).toBe('34% · 29/— frozen')
+  })
+
+  it('reports execution not yet evidenced when percent is null', () => {
+    const position = projectProgrammePositionV21({
+      overall: { earned: 0, required: 0, percent: null },
+      frozenTotal: 0,
+      assetsTotal: 128,
+    })
+    expect(position).toBe('Execution not yet evidenced')
   })
 })

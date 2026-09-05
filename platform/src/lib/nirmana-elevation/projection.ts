@@ -758,3 +758,99 @@ export function projectProgrammePosition(args: {
     label: currentStage ? `PHASE A · ${currentStage}` : 'PHASE A · Execution not yet evidenced',
   }
 }
+
+export interface CompletionCount { earned: number; required: number; percent: number | null }
+
+/**
+ * Sums earned/required across assets, excluding any asset whose milestones_required is null
+ * (an authoritatively-unknown obligation — an unresolved asset, or one outside the frozen
+ * manifest). Counting a null denominator as zero-of-N would fabricate the sum; per §N.8 an
+ * unknown must stay unknown, not silently read as complete or as zero progress.
+ */
+export function projectCompletion(
+  assets: { milestones_earned: number | null; milestones_required: number | null }[],
+): CompletionCount {
+  let earned = 0
+  let required = 0
+  for (const asset of assets) {
+    if (asset.milestones_required === null) continue
+    required += asset.milestones_required
+    earned += asset.milestones_earned ?? 0
+  }
+  return { earned, required, percent: required === 0 ? null : Math.floor((earned / required) * 100) }
+}
+
+/**
+ * Charter v2.1 asset-frontier pipelining (mirrors charter C10): an asset is eligible to execute
+ * once every one of its TRANSITIVE depends_on ancestors is frozen, regardless of which layer
+ * those ancestors live in. The prior dispatcher (#1730/#1737) instead demanded every asset in
+ * every lower layer be frozen — a cross-layer ancestor relationship (an L3 asset whose only
+ * ancestor is a frozen L0 asset) is normal and must be eligible under the correct semantics.
+ * Ancestor closure is memoized per call (shared across all assets processed) since the same
+ * upstream asset id typically recurs across many descendants in a 128-asset manifest. A
+ * defensive visited-set breaks any cycle (the manifest schema forbids them, but this must never
+ * hang the server).
+ */
+export function projectAssetFrontier(args: {
+  manifestAssets: { asset_id: string; layer: NirmanaLayerId; depends_on?: string[] }[]
+  frozenAssetIds: ReadonlySet<string>
+  decidedAssetIds: ReadonlySet<string>
+}): Partial<Record<NirmanaLayerId, string[]>> {
+  const byId = new Map(args.manifestAssets.map((asset) => [asset.asset_id, asset]))
+  const ancestorsCache = new Map<string, Set<string>>()
+
+  function transitiveAncestors(assetId: string, visiting: Set<string>): Set<string> {
+    const cached = ancestorsCache.get(assetId)
+    if (cached) return cached
+    if (visiting.has(assetId)) return new Set()
+    visiting.add(assetId)
+    const result = new Set<string>()
+    for (const dependencyId of byId.get(assetId)?.depends_on ?? []) {
+      result.add(dependencyId)
+      for (const ancestor of transitiveAncestors(dependencyId, visiting)) result.add(ancestor)
+    }
+    visiting.delete(assetId)
+    ancestorsCache.set(assetId, result)
+    return result
+  }
+
+  const byLayer = new Map<NirmanaLayerId, string[]>()
+  for (const asset of args.manifestAssets) {
+    if (args.frozenAssetIds.has(asset.asset_id) || !args.decidedAssetIds.has(asset.asset_id)) continue
+    const ancestors = transitiveAncestors(asset.asset_id, new Set())
+    if (![...ancestors].every((ancestorId) => args.frozenAssetIds.has(ancestorId))) continue
+    const bucket = byLayer.get(asset.layer) ?? []
+    bucket.push(asset.asset_id)
+    byLayer.set(asset.layer, bucket)
+  }
+
+  const result: Partial<Record<NirmanaLayerId, string[]>> = {}
+  for (const [layerId, assetIds] of byLayer) result[layerId] = [...assetIds].sort((left, right) => left.localeCompare(right))
+  return result
+}
+
+export function deriveLayerActivityState(args: {
+  assetsTotal: number | null
+  frozen: number
+  milestonesEarned: number
+}): 'completed' | 'active' | 'pending' | 'unknown' {
+  if (args.assetsTotal === null) return 'unknown'
+  // Final-review fix wave, opportunistic guard (same family as Fixes 2/3): assetsTotal === 0
+  // would otherwise fall through to `frozen === assetsTotal` (0 === 0) and read 'completed'
+  // on vacuous truth — zero assets were never actually elevated through anything. assetsTotal
+  // === 0 is real evidence (a known, non-null count), unlike the null case above, so this is
+  // 'pending' (nothing has happened, nothing is owed), not 'unknown'.
+  if (args.assetsTotal === 0) return 'pending'
+  if (args.frozen === args.assetsTotal) return 'completed'
+  if (args.milestonesEarned > 0) return 'active'
+  return 'pending'
+}
+
+export function projectProgrammePositionV21(args: {
+  overall: CompletionCount
+  frozenTotal: number
+  assetsTotal: number | null
+}): string {
+  if (args.overall.percent === null) return 'Execution not yet evidenced'
+  return `${args.overall.percent}% · ${args.frozenTotal}/${args.assetsTotal ?? '—'} frozen`
+}

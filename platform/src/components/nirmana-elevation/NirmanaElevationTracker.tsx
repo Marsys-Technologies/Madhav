@@ -30,6 +30,7 @@ const RELEVANT_SSE_EVENT_TYPES = [
   'asset.state_change',
   'nirmana.asset_frozen',
   'nirmana.definition_superseded',
+  'nirmana.evidence_accepted',
 ]
 
 type Props = {

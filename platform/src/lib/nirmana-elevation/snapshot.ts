@@ -13,16 +13,25 @@ import {
   type NirmanaRegistryContractRow,
 } from './definitions'
 import { buildNirmanaBaselineCandidate } from './monitor'
-import { POST_L5_STAGE_IDS, PRE_L0_STAGE_IDS, PROGRAMME_O_WAVE_WPS } from './programme'
+import {
+  POST_L5_STAGE_IDS,
+  PRE_L0_STAGE_IDS,
+  PROGRAMME_ARC_PHASES,
+  PROGRAMME_O_WAVE_WPS,
+  PROGRAMME_POST_WAVE_ADDENDA,
+} from './programme'
 import {
   canonicalizeCampaignStageTransitions,
   deriveEligibleNextAssetIds,
+  deriveLayerActivityState,
+  projectAssetFrontier,
   projectAssetMilestones,
   projectCampaignStages,
+  projectCompletion,
   projectLayerWaveProgress,
-  projectProgrammePosition,
+  projectProgrammePositionV21,
   summarizeStageGroupState,
-  type WaveProgressCount,
+  type CompletionCount,
 } from './projection'
 import type { NirmanaReleaseStatus } from './release'
 import {
@@ -541,6 +550,13 @@ const PUBLIC_AUDIT_EVENT_ENTITIES = {
 
 type PublicAuditEventType = keyof typeof PUBLIC_AUDIT_EVENT_ENTITIES
 
+/** The asset-scoped subset of the already-enumerated acceptance event types (Ruling R4/C10). */
+const ASSET_ACCEPTANCE_EVENT_TYPES = new Set<string>(
+  (Object.entries(PUBLIC_AUDIT_EVENT_ENTITIES) as Array<[string, string]>)
+    .filter(([, entityType]) => entityType === 'asset')
+    .map(([eventType]) => eventType),
+)
+
 function buildRunId(sourceRef: string): string | null {
   return BUILD_RUN_SOURCE_REF.exec(sourceRef)?.[1]?.toLowerCase() ?? null
 }
@@ -569,6 +585,27 @@ function orderedFrozenAssets(
   freezeReceiptTimesByAsset: Map<string, number[]>,
   stageEntryReceiptTimes: Map<NirmanaStageId, number>,
 ): { accepted: Set<string>; outOfOrder: Set<string> } {
+  // Controller ruling (final-review Fix 4): absence of a stage spine is not evidence of
+  // disorder. This gate exists to catch a freeze whose OWN layer's W6 ceremony receipt
+  // hasn't landed yet — v2.1 (native-ratified) decoupled asset-level work from those
+  // ceremonies entirely ("asset-level work is never held for the ceremony"). When there is
+  // NO stage-spine receipt anywhere in the ledger (the live production state re-confirmed
+  // 2026-09-05: 0 stage transitions, 30 assets frozen), `stageEntryReceiptTimes` is empty
+  // for every layer, and the loop below would read that as EVERY freeze being premature —
+  // asserting a defect with no detector behind it (CLAUDE.md §N.8). Accept freezes on their
+  // own lifecycle evidence instead. Where a spine DOES exist (even a partial one stopped
+  // short of some layer), the full ordering discipline below is unchanged — this is a narrow
+  // "the gate is not in force" condition, not a removal of the gate.
+  if (stageEntryReceiptTimes.size === 0) {
+    const accepted = new Set<string>()
+    for (const asset of manifestAssets) {
+      if (lifecycleFrozenAssetIds.has(asset.asset_id) && (freezeReceiptTimesByAsset.get(asset.asset_id)?.length ?? 0) > 0) {
+        accepted.add(asset.asset_id)
+      }
+    }
+    return { accepted, outOfOrder: new Set() }
+  }
+
   const accepted = new Set<string>()
   const outOfOrder = new Set<string>()
   let priorLayerComplete: boolean = true
@@ -749,16 +786,29 @@ function projectAudit(
   return { receipts, raw_ledger_refs }
 }
 
+type ProgrammeLayerInput = {
+  layer_id: NirmanaElevationSnapshotV2['layers'][number]['layer_id']
+  assets_total: number | null
+  frozen: number
+  completion: CompletionCount
+  activity_state: ReturnType<typeof deriveLayerActivityState>
+}
+
 /**
- * Derives the top-level v2 programme spine (O-wave + PHASE A/Z summaries + campaign
- * position label) from the already-projected stages and layers. Shared by the primary
- * projection and the source-unavailable fallback so both surfaces agree on how the
- * programme model is assembled from the same evidence-derived/repo-declared inputs.
+ * Derives the top-level v2 programme spine (overall completion + 4-phase arc + O-wave /
+ * PHASE A/Z summaries + campaign position label) from the already-projected stages and
+ * layers. Shared by the primary projection and the source-unavailable fallback so both
+ * surfaces agree on how the programme model is assembled from the same
+ * evidence-derived/repo-declared inputs.
  */
 function buildProgrammeSnapshot(
   stages: NirmanaElevationSnapshotV2['stages'],
-  layers: Array<{ layer_id: NirmanaElevationSnapshotV2['layers'][number]['layer_id']; layer_name: string; wave_progress: WaveProgressCount[] }>,
-  currentStage: NirmanaStageId | null,
+  layers: ProgrammeLayerInput[],
+  overall: CompletionCount,
+  frozenTotal: number,
+  assetsTotal: number | null,
+  conformDrift: NirmanaElevationSnapshotV2['programme']['conform_drift'],
+  excludedAssets: number | null,
 ): NirmanaElevationSnapshotV2['programme'] {
   const phaseAState = summarizeStageGroupState(stages, PRE_L0_STAGE_IDS)
   const phaseZState = summarizeStageGroupState(stages, POST_L5_STAGE_IDS)
@@ -766,29 +816,67 @@ function buildProgrammeSnapshot(
   // gated by Phase A (or any other) stage evidence (plan Ruling R2).
   const oWaveState: 'active' | 'completed' =
     PROGRAMME_O_WAVE_WPS.every((wp) => wp.status === 'merged') ? 'completed' : 'active'
-  // Prefer an in-progress WP over a not-started one — WP statuses are not guaranteed
-  // monotonic (e.g. WP-2 not_started while WP-3 is already in_progress), so "first
-  // non-merged" would misreport which WP is actually open.
-  const openWp = oWaveState === 'active'
-    ? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status === 'in_progress')
-      ?? PROGRAMME_O_WAVE_WPS.find((wp) => wp.status === 'not_started')
-      ?? null
-    : null
-  const layerWaveProgress = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.wave_progress]))
-  const layerNames = Object.fromEntries(layers.map((layer) => [layer.layer_id, layer.layer_name]))
-  const position = projectProgrammePosition({
-    currentStage,
-    layerWaveProgress,
-    layerNames,
-    openWp: openWp ? { wp_id: openWp.wp_id } : null,
+
+  // Ruling R2: layer + Phase Z arc states are derived purely from per-layer ledger evidence,
+  // never from the old locked/unlocked stage-spine machinery. `activity_state` is computed
+  // once per layer (Fix 1's `layers` assembly), never re-derived here.
+  const layerActivityStates = layers.map((layer) => layer.activity_state)
+  const allLayersCompleted = layerActivityStates.every((state) => state === 'completed')
+  const anyLayerActive = layerActivityStates.some((state) => state === 'active')
+  const anyLayerUnknown = layerActivityStates.some((state) => state === 'unknown')
+  // Fix 2 (§N.8): an unknown layer state (e.g. every layer's assets_total is null because
+  // the denominator isn't frozen) is honestly reported as 'unknown', never silently folded
+  // into 'pending' — 'pending' asserts "no layer has started," which is a claim about
+  // evidence that does not exist.
+  const layersArcState: 'completed' | 'active' | 'pending' | 'unknown' = anyLayerUnknown ? 'unknown'
+    : allLayersCompleted ? 'completed'
+      : anyLayerActive ? 'active' : 'pending'
+  // Fix 3 (§N.8): PHASE_Z used to be pinned 'active'/'pending' purely from whether all six
+  // layers are completed, so it could never read 'completed' even once the campaign's own
+  // real CLOSING/COMPLETE stage receipts existed (and could disagree with
+  // `programme.phase_z.state`, computed a few lines above from those same receipts, in the
+  // same page). Fold the real evidence in: reflect `phaseZState` when it carries a genuine
+  // signal, and fall back to the honest default otherwise.
+  const phaseZArcState: 'completed' | 'active' | 'in_progress' | 'pending' | 'unknown' =
+    phaseZState === 'completed' ? 'completed'
+      : phaseZState === 'active' ? 'active'
+        // 'blocked' has no direct arc-chip equivalent (ArcPhaseSchema has no 'blocked'
+        // state); 'in_progress' is the honest "real work has started but is stuck" signal.
+        : phaseZState === 'blocked' ? 'in_progress'
+          : phaseZState === 'unknown' ? 'unknown'
+            // 'locked'/'paused': no CLOSING/COMPLETE evidence exists yet — 'pending'.
+            : 'pending'
+
+  const arc = PROGRAMME_ARC_PHASES.map((phase) => ({
+    phase_id: phase.phase_id,
+    state: phase.phase_id === 'LAYERS' ? layersArcState
+      : phase.phase_id === 'PHASE_Z' ? phaseZArcState
+        // PHASE_A/O_WAVE are repo_declared and never null in practice; 'unknown' is the
+        // honest fallback (never an invented judgment) if that manifest invariant ever broke.
+        : phase.declared_state ?? ('unknown' as const),
+    provenance: phase.provenance,
+    note: phase.note,
+  }))
+
+  const asWpRow = (wp: (typeof PROGRAMME_O_WAVE_WPS)[number]) => ({
+    wp_id: wp.wp_id,
+    name: wp.name,
+    status: wp.status,
+    note: wp.note,
+    ...(wp.merged_pr ? { merged_pr: wp.merged_pr } : {}),
   })
 
   return {
-    position_label: position.label,
+    position_label: projectProgrammePositionV21({ overall, frozenTotal, assetsTotal }),
+    overall,
+    excluded_assets: excludedAssets,
+    arc,
+    conform_drift: conformDrift,
     o_wave: {
       provenance: 'repo_declared' as const,
       state: oWaveState,
-      wps: PROGRAMME_O_WAVE_WPS.map((wp) => ({ wp_id: wp.wp_id, name: wp.name, status: wp.status, note: wp.note })),
+      wps: PROGRAMME_O_WAVE_WPS.map(asWpRow),
+      addenda: PROGRAMME_POST_WAVE_ADDENDA.map(asWpRow),
     },
     phase_a: {
       provenance: 'evidence_derived' as const,
@@ -1220,6 +1308,28 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   // `execution_obligation: 'unresolved'` (see `projectAssetMilestones`) — either case is an
   // honest "unknown," never a fabricated 6-milestone default.
   const wavableAssets = assets.filter((asset) => asset.milestones_required !== null)
+  // "Decided" mirrors the frontier's own honesty convention (R4): a raw accepted receipt of
+  // this event type in the current definition cohort, not the fuller decision_accepted
+  // milestone-earn validation (which additionally requires binding to the current accepted
+  // analysis) — the frontier only needs to know a decision was accepted, not which one.
+  const decidedAssetIds = new Set(
+    campaignEvents
+      .filter((event) => event.entity_type === 'asset' && event.event_type === 'optimization_verdict_accepted')
+      .map((event) => event.entity_id),
+  )
+  const frontierByLayer = projectAssetFrontier({
+    manifestAssets: manifestAssets ?? [],
+    frozenAssetIds,
+    decidedAssetIds,
+  })
+  function layerLastEvidenceAt(layerId: (typeof LAYERS)[number][0]): string | null {
+    const timestamps = assets
+      .filter((asset) => asset.layer === layerId)
+      .flatMap((asset) => asset.milestones.map((milestone) => milestone.accepted_at))
+      .filter((value): value is string => value !== null)
+    return timestamps.length === 0 ? null
+      : timestamps.reduce((max, current) => (Date.parse(current) > Date.parse(max) ? current : max))
+  }
   const baseLayers = layerEvidence.map((layer) => {
     const layerManifest = manifestAssets?.filter((asset) => asset.layer === layer.layer_id) ?? []
     const waves = [...new Set(layerManifest.map((asset) => asset.wave_index).filter((value): value is number => value != null))]
@@ -1247,6 +1357,7 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
   const layers = baseLayers.map((layer) => {
     const layerStage = stages.find((stage) => stage.stage_id === layer.layer_id)!
     const isCurrent = layer.layer_id === current_layer
+    const completion = projectCompletion(wavableAssets.filter((asset) => asset.layer === layer.layer_id))
     return {
       ...layer,
       state: layerStage.state === 'completed' ? 'frozen' as const
@@ -1256,6 +1367,17 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
       required_gate: layerStage.required_gate,
       eligible_next_asset_ids: isCurrent ? eligibleNextAssetIds : [],
       wave_progress: projectLayerWaveProgress(wavableAssets, layer.layer_id),
+      completion,
+      frontier_ready: frontierByLayer[layer.layer_id] ?? [],
+      last_evidence_at: layerLastEvidenceAt(layer.layer_id),
+      // Fix 1: computed once, server-side, and put on the wire so client components never
+      // need a VALUE import of `deriveLayerActivityState` from `projection.ts` (which
+      // transitively pulls in `definitions.ts`'s `import 'server-only'`).
+      activity_state: deriveLayerActivityState({
+        assetsTotal: layer.assets_total,
+        frozen: layer.frozen,
+        milestonesEarned: completion.earned,
+      }),
     }
   })
   const active_runs = activeRuns.map((run) => {
@@ -1326,7 +1448,28 @@ export function projectNirmanaElevationSnapshot(raw: NirmanaElevationRawSources,
     current_wave,
   }
   const data_quality = { verdict: contradictions.length || gaps.length ? 'degraded' as const : 'reliable' as const, gaps, contradictions }
-  const programme = buildProgrammeSnapshot(stages, layers, currentStage)
+  const overall = projectCompletion(wavableAssets)
+  // Ruling R4/C10: null when no monitor observation exists at all; otherwise split the
+  // observation's own affected_asset_ids by whether the asset has ≥1 accepted receipt in the
+  // current definition cohort — receipt EXISTENCE only, never a claim that the specific
+  // contract edit was the sanctioned one.
+  const conformDrift = latestObservation ? (() => {
+    const affectedIds = programProjection.programSync.affected_asset_ids
+    const withReceipts = affectedIds.filter((assetId) => campaignEvents.some((event) =>
+      event.entity_type === 'asset' && event.entity_id === assetId && ASSET_ACCEPTANCE_EVENT_TYPES.has(event.event_type)))
+    return {
+      status_echo: programProjection.programSync.status,
+      affected: affectedIds.length,
+      with_accepted_receipts: withReceipts.length,
+      without_accepted_receipts: affectedIds.length - withReceipts.length,
+    }
+  })() : null
+  // Fix 5: how many manifest-frozen assets never got a milestone denominator (unresolved
+  // obligation) — null only when the manifest itself isn't frozen (no denominator to exclude
+  // anything from). `wavableAssets.length` is always <= `manifestAssets.length` because
+  // `milestones_required` is non-null only for assets that resolved against a manifest entry.
+  const excludedAssets = manifestAssets ? manifestAssets.length - wavableAssets.length : null
+  const programme = buildProgrammeSnapshot(stages, layers, overall, frozenAssetIds.size, manifestAssets?.length ?? null, conformDrift, excludedAssets)
   const generation = digest({
     campaign, progress, stages, layers, assets, active_runs, program_sync: programProjection.programSync,
     audit: { accepted_label_catalogue_revision: labelSelection.acceptedCatalogueRevision, release, sources, data_quality, receipts: audit.receipts, raw_ledger_refs: audit.raw_ledger_refs },
@@ -1358,6 +1501,10 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
       ?? `${layer.layer_id} assets frozen`,
     eligible_next_asset_ids: [],
     wave_progress: projectLayerWaveProgress([], layer.layer_id),
+    completion: projectCompletion([]),
+    frontier_ready: [] as string[],
+    last_evidence_at: null,
+    activity_state: deriveLayerActivityState({ assetsTotal: layer.assets_total, frozen: layer.frozen, milestonesEarned: 0 }),
   }))
   const sources = sourceIds.map((source_id) => ({
     source_id,
@@ -1386,7 +1533,7 @@ export function unavailableNirmanaElevationSnapshot(error: NirmanaElevationSourc
     supersession_eligible: false,
     supersession_blockers: ['source_unavailable'],
   }
-  const programme = buildProgrammeSnapshot(stages, layers, null)
+  const programme = buildProgrammeSnapshot(stages, layers, projectCompletion([]), 0, null, null, null)
   const generation = digest({ unavailable: error.sourceId, code: error.publicCode, stages, layers, sources, program_sync, data_quality, audit, programme })
   return NirmanaElevationSnapshotV2Schema.parse({
     schema_version: '2.0', generation, generated_at,

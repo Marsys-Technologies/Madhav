@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight, CircleHelp, LockKeyhole, PauseCircle, XCircle } from 'lucide-react'
 import { FoundationStage } from './FoundationStage'
-import { LayerStage } from './LayerStage'
+import { LayerCard } from './LayerCard'
+import { ProgrammeOverview } from './ProgrammeOverview'
 import { ProvenanceChip } from './ProvenanceChip'
 import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from '@/lib/nirmana-elevation/types'
 import type { NirmanaStageId } from '@/lib/nirmana-elevation/projection'
@@ -33,15 +34,8 @@ function countLabel(stage: NirmanaCampaignStage): string | null {
   return `${stage.earned} / ${stage.required}`
 }
 
-function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignStage; snapshot: NirmanaElevationSnapshotV2; onOpenAudit: (assetId: string) => void }) {
+function StageBody({ stage, snapshot }: { stage: NirmanaCampaignStage; snapshot: NirmanaElevationSnapshotV2 }) {
   if (stage.kind === 'census' || stage.kind === 'foundation') return <FoundationStage stage={stage} snapshot={snapshot} />
-
-  if (stage.kind === 'layer') {
-    const layer = snapshot.layers.find((candidate) => candidate.layer_id === stage.stage_id)
-    return layer
-      ? <LayerStage layer={layer} assets={snapshot.assets} onOpenAudit={onOpenAudit} waveProgress={layer.wave_progress} />
-      : <p className="text-sm text-brand-text-3">Layer projection unavailable.</p>
-  }
 
   return <div className="space-y-2 text-sm text-brand-text-2">
     <p>Required gate: {stage.required_gate}</p>
@@ -53,17 +47,25 @@ function StageBody({ stage, snapshot, onOpenAudit }: { stage: NirmanaCampaignSta
 /** Sentinel toggle keys for the two collapsed-history summary rows (plan Ruling R1). */
 type SpineGroupId = 'PHASE_A_GROUP' | 'PHASE_Z_GROUP'
 
-export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
+/**
+ * The pre-v2.1 sequential stage-machine rendering, preserved unchanged (same aria-expanded/
+ * aria-controls/keyboard toggle pattern, FoundationStage dispatch, PHASE A/Z collapsed-group
+ * summaries) inside a collapsed history drawer. Per plan Ruling R2, the per-layer L0-L5 rows
+ * this used to render are dropped here — that live per-layer state now lives exclusively in
+ * the six LayerCards above; `stages`/`projectCampaignStages` themselves stay untouched and
+ * still carry the full 13-stage record for W6-ceremony/audit use, this view just stops
+ * re-displaying the six layer rows a second time next to the cards that already show them.
+ */
+function StageMachineHistory({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 }) {
   const [expanded, setExpanded] = useState<Set<NirmanaStageId | SpineGroupId>>(() => {
     const currentStage = snapshot.campaign.current_stage
-    const initial = new Set<NirmanaStageId | SpineGroupId>(currentStage ? [currentStage] : ['L0'])
+    const initial = new Set<NirmanaStageId | SpineGroupId>()
     if (currentStage && PRE_L0_STAGE_IDS.includes(currentStage)) initial.add('PHASE_A_GROUP')
     if (currentStage && POST_L5_STAGE_IDS.includes(currentStage)) initial.add('PHASE_Z_GROUP')
     return initial
   })
   const stages = [...snapshot.stages].sort((left, right) => left.order - right.order)
   const phaseAStages = stages.filter((stage) => PRE_L0_STAGE_IDS.includes(stage.stage_id))
-  const layerStages = stages.filter((stage) => /^L[0-5]$/.test(stage.stage_id))
   const phaseZStages = stages.filter((stage) => POST_L5_STAGE_IDS.includes(stage.stage_id))
 
   const toggle = (stageId: NirmanaStageId | SpineGroupId) => {
@@ -92,12 +94,12 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
           <span className="mt-0.5 shrink-0">{open ? <ChevronDown aria-hidden="true" className="size-4 text-brand-gold-2" /> : <ChevronRight aria-hidden="true" className="size-4 text-brand-text-3" />}</span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`text-sm font-semibold ${isCurrent ? 'text-brand-gold-2' : 'text-brand-text-1'}`}>{name}</span><span className="flex items-center gap-1 text-xs text-brand-text-2">{statusIcon(stage.state)}{statusLabel(stage.state)}</span>{count && <span className="text-xs text-brand-text-3">{count}</span>}</span>
-            {!/^L[0-5]$/.test(stage.stage_id) && <span className="mt-1 block font-mono text-[10px] text-brand-text-3">Stage ID: {stage.stage_id}</span>}
+            <span className="mt-1 block font-mono text-[10px] text-brand-text-3">Stage ID: {stage.stage_id}</span>
             {stage.state === 'locked' && <span className="mt-1 block text-xs text-brand-text-3">Prerequisite: {stage.required_gate}</span>}
             {stage.state === 'blocked' && stage.blocked_reason && <span className="mt-1 block text-xs text-brand-err">Blocked: {stage.blocked_reason}</span>}
           </span>
         </button>
-        {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} onOpenAudit={onOpenAudit} /></div>}
+        {open && <div id={panelId} className="border-t border-brand-border px-3 py-3"><StageBody stage={stage} snapshot={snapshot} /></div>}
       </article>
       {!isLast && <div aria-hidden="true" className="ml-5 h-3 border-l border-brand-border" />}
     </li>
@@ -137,12 +139,12 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
     </li>
   }
 
-  return <section aria-labelledby="campaign-spine-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
-    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-      <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-gold-1">Sequential state machine</p><h2 id="campaign-spine-heading" className="text-lg font-semibold text-brand-text-1">Campaign spine</h2></div>
-      <p className="text-xs text-brand-text-3">Opening a stage is a local view preference, not execution state.</p>
-    </div>
-    <div className="space-y-4">
+  return <details className="rounded-xl border border-brand-border bg-brand-surface p-4">
+    <summary className="cursor-pointer text-sm font-semibold text-brand-text-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-1">
+      Stage-machine history (13-stage record + Phase A drawer)
+    </summary>
+    <p className="mt-2 text-xs text-brand-text-3">Opening a stage is a local view preference, not execution state. Per-layer state now lives in the six layer cards above; this record retains the full stage-transition history for governance and freeze-ceremony use.</p>
+    <div className="mt-3 space-y-4">
       <section aria-label="Phase A">
         <ol className="space-y-0" aria-label="Phase A stages">
           {renderGroupRow({ groupId: 'PHASE_A_GROUP', title: 'PHASE A', state: snapshot.programme.phase_a.state, memberStages: phaseAStages })}
@@ -164,16 +166,40 @@ export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: 
           </li>
         </ol>
       </section>
-      <section aria-label="Layers">
-        <ol className="space-y-0" aria-label="Nirmāṇa campaign stages">
-          {layerStages.map((stage, index) => renderStageItem(stage, index === layerStages.length - 1))}
-        </ol>
-      </section>
       <section aria-label="Phase Z">
         <ol className="space-y-0" aria-label="Phase Z stages">
           {renderGroupRow({ groupId: 'PHASE_Z_GROUP', title: 'PHASE Z', state: snapshot.programme.phase_z.state, memberStages: phaseZStages })}
         </ol>
       </section>
     </div>
+  </details>
+}
+
+export function CampaignSpine({ snapshot, onOpenAudit = () => {} }: { snapshot: NirmanaElevationSnapshotV2; onOpenAudit?: (assetId: string) => void }) {
+  // Same fallback the pre-v2.1 spine used: default to L0 when no current stage is evidenced,
+  // otherwise open whichever layer is currently governed as "current" (a display default —
+  // nothing here gates or locks any other layer; all six cards always render, per Ruling R2).
+  const currentStage = snapshot.campaign.current_stage
+  const defaultOpenLayerId = currentStage && /^L[0-5]$/.test(currentStage) ? currentStage : 'L0'
+
+  return <section aria-labelledby="campaign-spine-heading" className="space-y-4">
+    <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-gold-1">Nirmāṇa campaign</p><h2 id="campaign-spine-heading" className="text-lg font-semibold text-brand-text-1">Campaign spine</h2></div>
+
+    <ProgrammeOverview snapshot={snapshot} />
+
+    <section aria-labelledby="layer-cards-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
+      <div className="mb-3"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-gold-1">All six layers run concurrently — nothing here is locked</p><h3 id="layer-cards-heading" className="text-sm font-semibold text-brand-text-1">Layers</h3></div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {snapshot.layers.map((layer) => <LayerCard
+          key={layer.layer_id}
+          layer={layer}
+          assets={snapshot.assets}
+          onOpenAudit={onOpenAudit}
+          defaultOpen={layer.layer_id === defaultOpenLayerId}
+        />)}
+      </div>
+    </section>
+
+    <StageMachineHistory snapshot={snapshot} />
   </section>
 }

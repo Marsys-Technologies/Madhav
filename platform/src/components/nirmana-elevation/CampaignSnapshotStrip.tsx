@@ -14,6 +14,18 @@ const PROGRAM_SYNC_COPY: Record<ProgramSyncStatus, string> = {
   source_unavailable: 'Source unavailable',
 }
 
+/**
+ * R4: the classifier's alarming statuses always escalate the drift banner to warn tone.
+ * `conform_drift.status_echo` is a plain `z.string()` in the schema (an echo of whatever the
+ * classifier said at capture time, not itself typed as `ProgramSyncStatus`) — the `satisfies`
+ * below keeps these three literals checked against the live enum (a renamed/removed status
+ * value becomes a compile error here) while the Set itself stays a `ReadonlySet<string>`, so
+ * checking it against `status_echo` needs no unsound `as ProgramSyncStatus` cast at the call site.
+ */
+const ALARMING_SYNC_STATUSES: ReadonlySet<string> = new Set(
+  ['plan_adaptation_required', 'source_unavailable', 'release_attention'] satisfies ProgramSyncStatus[],
+)
+
 const PROGRAM_SYNC_DETAIL: Record<ProgramSyncStatus, string> = {
   unknown: 'No synchronization observation is available.',
   baseline_missing: 'No accepted frozen program denominator is available.',
@@ -71,7 +83,12 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
     && denominatorStageAccepted
     ? `${snapshot.progress.assets_frozen} / ${snapshot.progress.assets_total}`
     : snapshot.progress.denominator_status === 'frozen'
-      ? 'Accepted denominator unavailable'
+      // Fix 6: this metric reports the pre-v2.1 stage-machine's own DENOMINATOR_FROZEN
+      // ceremony acceptance — a different fact from the v2.1 asset-milestone bar
+      // (ProgrammeOverview's "N% · X of 128 assets frozen") that now renders just above it
+      // on the same page. Worded to make that explicit rather than reading as though the
+      // new bar's own figure were unavailable.
+      ? 'Stage-machine denominator ceremony: not accepted'
       : 'Reconciling — no percentage'
   const caveats = [...snapshot.data_quality.gaps, ...snapshot.data_quality.contradictions]
   const monitor = snapshot.sources.find((source) => source.source_id === 'program_monitor')
@@ -80,6 +97,11 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
   const programNeedsAttention = staleProgramObservation
     || !['baseline_missing', 'in_sync'].includes(snapshot.program_sync.status)
   const programUnavailable = snapshot.program_sync.status === 'source_unavailable'
+  const conformDrift = snapshot.programme.conform_drift
+  const conformDriftWarn = conformDrift !== null && (
+    conformDrift.without_accepted_receipts > 0
+    || ALARMING_SYNC_STATUSES.has(conformDrift.status_echo)
+  )
 
   return <section aria-labelledby="campaign-snapshot-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">
     <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-brand-border pb-3">
@@ -133,5 +155,18 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
       </aside>
     )}
     {snapshot.data_quality.verdict === 'unknown' && <p className="sr-only"><CircleHelp aria-hidden="true" /> Evidence quality is unknown.</p>}
+
+    {conformDrift && (
+      <aside
+        role={conformDriftWarn ? 'alert' : 'status'}
+        aria-live={conformDriftWarn ? 'assertive' : 'polite'}
+        className={`mt-3 flex gap-2 rounded-lg border px-3 py-2 text-sm text-brand-text-2 ${conformDriftWarn ? 'border-brand-warn/50 bg-brand-warn/10' : 'border-brand-border bg-brand-bg'}`}
+      >
+        {conformDriftWarn
+          ? <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-warn" />
+          : <Radio aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-text-3" />}
+        <p className="text-brand-text-1">{conformDrift.affected} registry contracts differ from the T0 baseline — {conformDrift.with_accepted_receipts} under active elevation with accepted receipts, {conformDrift.without_accepted_receipts} unexplained.</p>
+      </aside>
+    )}
   </section>
 }
