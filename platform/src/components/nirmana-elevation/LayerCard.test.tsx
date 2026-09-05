@@ -89,6 +89,34 @@ describe('LayerCard', () => {
     expect(onOpenAudit).toHaveBeenCalledWith('ka_smriti')
   })
 
+  it('never shows the raw pre-v2.1 sequential state ("Locked") in the expanded body of a non-current layer', () => {
+    // L3 is not the fixture's current layer (L0 is), so `layer.state` — the pre-v2.1
+    // single-current-layer sequential value LayerStage would otherwise render raw — is
+    // 'locked' here. Expanding L3's card is exactly the interaction that used to leak that
+    // word back into the v2.1 concurrent programme view.
+    const snapshot = snapshotFixture()
+    const l3 = layer(snapshot, 'L3')
+    expect(l3.state).toBe('locked')
+
+    render(<LayerCard layer={l3} assets={snapshot.assets} onOpenAudit={vi.fn()} />)
+    const toggle = screen.getByRole('button', { name: /^L3 · Kala/ })
+    fireEvent.click(toggle)
+
+    const panelId = toggle.getAttribute('aria-controls')
+    const panel = panelId ? document.getElementById(panelId) : null
+    if (!panel) throw new Error("L3's expanded panel is missing.")
+    // L3's own wave is legitimately sequence-locked within the layer (a real, different,
+    // per-WAVE concept this fix does not touch), and both its collapsed `<summary>` ("Wave 0 ·
+    // locked · 1 asset") and WaveLane's own per-wave state `<p>` legitimately say "locked" too —
+    // so this targets the *exact* element the old raw per-LAYER state rendered as
+    // (`<p className="capitalize">{layer.state}</p>`, no other classes) rather than any
+    // substring/word match that would false-positive on that unrelated, still-present text.
+    expect(within(panel).queryByText((content, element) => (
+      element?.tagName === 'P' && element.className === 'capitalize' && content.trim().toLowerCase() === 'locked'
+    ))).not.toBeInTheDocument()
+    expect(within(panel).queryByText(/required gate/i)).not.toBeInTheDocument()
+  })
+
   it('opens by default when defaultOpen is set, and shows the always-visible WaveProgressBar without needing to expand', () => {
     const snapshot = snapshotFixture()
     const l0 = layer(snapshot, 'L0')

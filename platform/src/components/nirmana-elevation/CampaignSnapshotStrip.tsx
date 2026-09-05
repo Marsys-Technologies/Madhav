@@ -14,8 +14,17 @@ const PROGRAM_SYNC_COPY: Record<ProgramSyncStatus, string> = {
   source_unavailable: 'Source unavailable',
 }
 
-/** R4: the classifier's alarming statuses always escalate the drift banner to warn tone. */
-const ALARMING_SYNC_STATUSES = new Set<ProgramSyncStatus>(['plan_adaptation_required', 'source_unavailable', 'release_attention'])
+/**
+ * R4: the classifier's alarming statuses always escalate the drift banner to warn tone.
+ * `conform_drift.status_echo` is a plain `z.string()` in the schema (an echo of whatever the
+ * classifier said at capture time, not itself typed as `ProgramSyncStatus`) — the `satisfies`
+ * below keeps these three literals checked against the live enum (a renamed/removed status
+ * value becomes a compile error here) while the Set itself stays a `ReadonlySet<string>`, so
+ * checking it against `status_echo` needs no unsound `as ProgramSyncStatus` cast at the call site.
+ */
+const ALARMING_SYNC_STATUSES: ReadonlySet<string> = new Set(
+  ['plan_adaptation_required', 'source_unavailable', 'release_attention'] satisfies ProgramSyncStatus[],
+)
 
 const PROGRAM_SYNC_DETAIL: Record<ProgramSyncStatus, string> = {
   unknown: 'No synchronization observation is available.',
@@ -86,7 +95,7 @@ export function CampaignSnapshotStrip({ snapshot }: { snapshot: NirmanaElevation
   const conformDrift = snapshot.programme.conform_drift
   const conformDriftWarn = conformDrift !== null && (
     conformDrift.without_accepted_receipts > 0
-    || ALARMING_SYNC_STATUSES.has(conformDrift.status_echo as ProgramSyncStatus)
+    || ALARMING_SYNC_STATUSES.has(conformDrift.status_echo)
   )
 
   return <section aria-labelledby="campaign-snapshot-heading" className="rounded-xl border border-brand-border bg-brand-surface p-4">

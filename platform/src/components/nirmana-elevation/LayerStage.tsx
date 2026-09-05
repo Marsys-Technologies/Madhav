@@ -4,13 +4,22 @@ import { WaveLane } from './WaveLane'
 import { WaveProgressBar } from './WaveProgressBar'
 import { assetCompactLabel } from './vocab'
 
-export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveProgressBar = true }: {
+export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveProgressBar = true, showRawState = true }: {
   layer: NirmanaElevationSnapshotV2['layers'][number]
   assets: NirmanaElevationSnapshotV2['assets']
   onOpenAudit: (assetId: string) => void
   waveProgress: WaveProgressCount[]
   /** LayerCard already renders this bar in its always-visible summary; set false there to avoid a duplicate. */
   showWaveProgressBar?: boolean
+  /**
+   * `layer.state` is the pre-v2.1 sequential-spine value (`open`/`locked`/`blocked`/…, per
+   * `snapshot.ts`'s single-`current_layer` assignment) — it is NOT the v2.1 `completed | active |
+   * pending | unknown` state LayerCard's own badge already shows. Rendering it (plus its
+   * "Required gate" companion line) inside a LayerCard would reintroduce the literal word
+   * "Locked" for every non-current layer, exactly the sequential framing Ruling R2 retires. Set
+   * false there; default stays true for any other, non-LayerCard caller.
+   */
+  showRawState?: boolean
 }) {
   const waves = [...layer.waves].sort((left, right) => left.wave_index - right.wave_index)
   const total = layer.assets_total
@@ -19,10 +28,10 @@ export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveP
     : `${layer.frozen} / ${total} assets frozen`
 
   return <div className="space-y-3">
-    <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-brand-text-2">
+    {showRawState && <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-brand-text-2">
       <p>Required gate: {layer.required_gate}</p>
       <p className="capitalize">{layer.state === 'unknown' ? 'No layer evidence yet' : layer.state}</p>
-    </div>
+    </div>}
     {showWaveProgressBar && <WaveProgressBar waveProgress={waveProgress} />}
     <div>
       <div

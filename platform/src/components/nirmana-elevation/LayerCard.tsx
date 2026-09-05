@@ -109,7 +109,7 @@ export function LayerCard({ layer, assets, onOpenAudit, defaultOpen = false }: {
     </div>
 
     {open && <div id={panelId} className="border-t border-brand-border px-4 py-4">
-      <LayerStage layer={layer} assets={assets} onOpenAudit={onOpenAudit} waveProgress={layer.wave_progress} showWaveProgressBar={false} />
+      <LayerStage layer={layer} assets={assets} onOpenAudit={onOpenAudit} waveProgress={layer.wave_progress} showWaveProgressBar={false} showRawState={false} />
     </div>}
   </article>
 }
