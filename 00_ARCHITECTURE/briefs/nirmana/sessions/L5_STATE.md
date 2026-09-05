@@ -11,7 +11,7 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W3` — W1 (15/15) and W2 (15/15 routed) COMPLETE. **Three PRs open, all auto-merge
+**Position:** `L5-W3` — RESUMED 2026-09-05 after the lane died ~00:37Z. W1 ✅ 15/15 · W2 ✅ 15/15 routed · W3 in flight · W4 gated.
 armed:** #1745 (docs: W1+W2+audit+state), #1768 (migration 690, registry accuracy), #1769 (writer
 honesty fixes: 9 raises + 2 fabricated-value repairs). W3 batch 2 (integrity contracts) in flight.
 **W4 blocked on #1715/PR #1736** (receipt spine — now CLEAN and ready to merge) **and #1723**
@@ -315,3 +315,82 @@ on the registry's numbers.
   serving-plane honesty sweep, narration/label fixes) — none blocked by #1719, which gates W4 only.
 - 2026-09-05 — F-L5-G surfaced and routed to the two owning W1 subagents (no duplication).
 - 2026-09-05 — L5-W1 opened; 4 read-only analysis subagents dispatched over the 15 assets.
+
+
+---
+
+## RESUMED LOOP — 2026-09-05 (post-death), §R1 stock-take done
+
+**Merged while the lane was down (4 of my PRs):** #1745 (W1+W2 docs), #1768 (migration 690),
+#1769 (writer honesty fixes), #1786 (serving plane; density contracts 0/16 → 15/15).
+**#1787 was GRANTED** — the `compute_spine_bundle.ts` filter change was approved and landed with
+#1786.
+
+**Rulings/infrastructure I had missed:** C13 (destruction travels to descendants), WP-6 (#1781),
+D-CND-09/16/17, and L4's #1754.
+
+### Done this loop
+
+- **#1790 rebased, re-armed.** Its conflict was in the *generated* `nirmana-writer-digests.json`.
+  Resolved by **re-deriving** it from the writer sources rather than hand-picking a hunk, then
+  verified it differs from `main` in exactly one writer (`mi_pariksha`) — the only writer that PR
+  touches. 563 passed.
+- **#1785 extended to use the FREE REGISTRY WINDOW (D-CND-09)** and re-armed. Its `UNSTABLE` was
+  diagnosed and is **not my migration**: a `pg_type_typname_nsp_index` duplicate-key race between
+  concurrent test files creating `brahma_mimamsa_prediction_ledger` in the throwaway Postgres. My
+  migration creates nothing.
+  - **catalog_status:** L5 was the **only layer still entirely DRAFT** (bodha 22/22 CURRENT,
+    ganita 19/19, brahmagyan 39/40, kala 21/23, phala 8/9, mimamsa **0/15**) — and the cockpit
+    *filters* on that column, so my whole layer has been invisible to the operator. 13 promoted to
+    CURRENT on evidence; **`mi_seva` and `mi_abhilekha` deliberately STAY DRAFT** with the reason
+    recorded in `english_description` per migration 642's precedent — their *producers do not exist
+    in any language anywhere in the repo*, which is genuine immaturity, not staleness.
+  - **10 remaining `expected_volume_formula`s.** Four exactly derivable and each verified live
+    first: `mi_bhavisya` = |phala_anchors| (195=195, 1:1) · `mi_kula` = families+controls (11+4=15)
+    · `mi_bhara` = classes+1 (6+1=7) · `mi_pariksha` attribution = 5×distinct(match,signal)
+    (1425=1425). Six honestly EXOGENOUS.
+
+### C13 blast radius — L5's is genuinely EMPTY, and that is now measured
+
+Ran the `cascade_check.sql` closure over **all 27 L5 write-target tables**:
+- **Zero CASCADE children from any of them.** L5 is the terminal layer; no L5 rebuild destroys
+  another layer's rows.
+- **Inbound:** no campaign-layer table cascades into L5 either. The only CASCADE reaching my
+  tables is from `profiles` (user deletion) — out of campaign scope.
+
+### No-FK dispositions (owed under C13) — the two tables need OPPOSITE answers
+
+Type split confirmed: **L5 is the only layer storing `signal_id` as `text`** (9 uuid tables across
+L2/L3/L4; the two populated text columns are both mine).
+
+- **`mimamsa_attribution`** — 1,425 rows, **all uuid-shaped, all 1,425 resolve** to
+  `bodha_msr_signals`. → convert `text`→`uuid` and add a real FK, **`ON DELETE RESTRICT`** (an
+  attribution row is calibration evidence; a loud refusal beats a silent cascade). **Sequenced
+  behind L2's deterministic `signal_id`** — an FK over non-deterministic ids would block their
+  legitimate rebuilds.
+- **`mimamsa_load_bearing`** — 9 rows, **0 uuid-shaped, 0 resolve**. It holds `fam_*` values and
+  **all 9 resolve to `mimamsa_signal_families.family_id`**. It is a **mis-named column** (W1
+  finding C-F-19), not a broken reference. An FK to signals here would encode a relationship that
+  does not exist. Its detector already ships in migration 691.
+
+### The finding of this loop — L4's anchor identity COLLIDES
+
+L4's #1754 **did land** (§R6's status line is wrong: it judged by the column default, which is
+still `gen_random_uuid()`, but the writer now supplies the id via the IMMUTABLE Postgres function
+`phala_anchor_identity()` from migration 680, so the default never fires).
+
+**But 191 of 195 anchors match their own identity — and the 4 that don't are two PAIRS that each
+collapse to a single id.** Within each pair every field of the identity tuple is identical; they
+differ only in `convergence_id`/`bhavishya_id`/`signal_id` — exactly the surrogate keys L4
+deliberately excluded (correctly) because they renumber on an L3 rebuild. On the next
+`ph_nimitta` rebuild, `ON CONFLICT (anchor_id) DO NOTHING` **silently drops 2 of 195**, and **all
+4 are referenced by live L5 predictions**. Reported on #1732.
+
+**H-L5-02 therefore STAYS HELD** — not because the capability is missing, but because rebuilding
+L5 on a colliding identity would bake it into my prediction ids.
+
+## Heartbeat
+
+- 2026-09-05T~01:15Z — L5-W3 — #1790 + #1785 rebased/re-armed; C13 closure measured (empty);
+  no-FK dispositions determined; L4 anchor-identity collision found and reported — blocked on:
+  nothing (W4 gated by holds, W3 continues).
