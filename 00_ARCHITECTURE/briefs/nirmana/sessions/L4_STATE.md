@@ -1323,3 +1323,33 @@ not the actual queue-depth cause) → E-gate unchanged → no new priority-1/2/3
 beyond the diagnostic report itself → next: watch whether the 4 stuck PRs' `mergeQueueEntry`
 finally advances; watch `L2_STATE.md` capability landings; F1 remains deferred.
 
+`2026-09-06T~03:55Z` — L4 — **CYCLE 6 (v2.3) — `main` still had not moved (same `e54ae9acb` head
+across 3 full cycles now); found the actual concrete stall this time, not just a symptom.**
+
+**Queried the merge queue directly** (`repository.mergeQueue(branch:"main").entries` via
+GraphQL, since individual PR fields are the already-confirmed-unreliable ones) instead of
+re-checking my own PRs' fields again. Found **`#1838` (Conductor's own dispatch-script fix) sits
+at queue position 1 in state `AWAITING_CHECKS`**, with `createdAt` == `updatedAt`
+(`2026-09-05T14:14:04Z`, ~2 hours stale) and an **empty** `statusCheckRollup` — not failed
+checks, checks that appear to have **never started**. Since merge queues process head-first,
+this one stuck entry blocks all 30 queued PRs behind it, including 5 of mine (positions
+5/38/39/41/44 — `1842`/`1808`/`1831`/`1834`/`1839`).
+
+**Reported to #1713 with the exact position/PR/timestamp evidence**, explicitly not attempting
+to dequeue `#1838` myself (not my PR; C5 puts merge-queue mechanics in Conductor's hands) so
+whoever has queue-admin reach can act directly rather than re-diagnosing. Also noted this
+explains why Conductor's own 15:20Z "not stalled, throughput is real" fleet-status read as true
+at the time but is now stale — the stall appears to have started after that snapshot, at the
+front of the queue specifically, a different failure shape than D-CND-18's already-known
+pin-staleness pattern (which is distributed across many PRs, not a single head-of-queue jam).
+
+E-gate re-verified unchanged (`ph_nimitta` 37/46). No PR of my own needed a fix this cycle —
+all sit correctly queued behind the jam, nothing to rebase or re-arm until it clears.
+
+CYCLE 6 L4: PR hygiene — confirmed all 5 stuck PRs are correctly queued (not DIRTY/RED), the
+real blocker is `#1838` sitting at merge-queue position 1 in `AWAITING_CHECKS` with checks that
+never started (~2hrs stale), diagnosed via direct `mergeQueue.entries` GraphQL query and reported
+to #1713 with exact evidence rather than re-touching my own already-healthy PRs → E-gate
+unchanged → next: watch whether `#1838` clears (my own PRs need no further action until then);
+watch `L2_STATE.md` capability landings; F1 remains deferred.
+
