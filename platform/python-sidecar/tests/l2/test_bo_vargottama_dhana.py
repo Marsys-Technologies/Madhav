@@ -61,6 +61,25 @@ def test_vargottama_fires_only_for_true_graha():
     assert rows[0]["valence"] == "benefic"
 
 
+def test_vargottama_amplification_column_is_null_not_zero():
+    """D5/§N.7 item 3: a vargottama_amplification-class row's OWN eponymous
+    column must not read 0.0 (looks like a measured "no amplification" on
+    the exact row whose entire reason for existing is that amplification
+    fired). The real amplification is ratified to enter computed_salience
+    via class_prior alone (DR-6/DIS.019) -- this asserts the honest NULL,
+    not a re-derivation of the salience value itself."""
+    vargottama_facts = {"MER": {"is_vargottama": True, "fact_id": "fmer"}}
+    positions = {"MER": _pos(house=10, sign="Capricorn", fact_id="mer")}
+    rows = build_vargottama_rows(
+        chart_id="482012f1-710e-4a25-994a-93821f5871aa",
+        ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+        vargottama_facts=vargottama_facts, positions=positions,
+        now="2026-07-16T00:00:00+00:00",
+    )
+    assert len(rows) == 1
+    assert rows[0]["vargottama_amplification"] is None
+
+
 def test_vargottama_no_rows_when_none_true():
     vargottama_facts = {"SUN": {"is_vargottama": False, "fact_id": "f1"}}
     rows = build_vargottama_rows(
