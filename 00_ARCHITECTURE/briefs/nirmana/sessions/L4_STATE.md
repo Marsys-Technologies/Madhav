@@ -774,3 +774,39 @@ read failure closed) → next: `ph_pratikara`'s remaining MUSTs (starting with t
 citation fabrication, F-3 — the largest single item left), or F1's multi-registry MCP-wiring
 fix.
 
+`2026-09-05T~22:50Z` — L4 — **cycle: this WAS the PR hygiene step — #1808 was ejected from the
+merge queue by a merge-group-only failure invisible at PR-level, root-caused and fixed using
+Conductor's own diagnosis.**
+
+Queue depth had grown to 22 with zero merges across two consecutive cycles — checked whether
+this was systemic (it is; #1825 "merge-queue root cause" is a live Conductor PR) before
+assuming it was safe to ignore. **It was not fully safe to ignore**: Conductor's #1825 body
+names **my own #1808** as one of five PRs (#1777/#1767/#1766/#1808/#1790, spanning L1/L2/L4/L5)
+whose merge-group Governance Gates run started failing on the Nirmana analysis-layer pin check
+*after* their branch-level checks last went green — landed via #1815, mid-queue. Confirmed by
+reading #1808's own PR comments: Conductor had already posted per-PR fix instructions there.
+
+**Followed the posted instructions exactly, verified each step rather than trusting the
+comment blindly:** rebased #1808 onto `origin/main` (clean), confirmed the pin gate now fails
+`--check` for the reason stated, regenerated + spliced the L4 pin the same offline way as every
+other pin fix this session, verified `--check` PASS. **One real complication the instructions
+didn't cover:** pushing the rebased branch failed — `git push` was rejected with "A pull
+request for this branch has been added to a merge queue... dequeue the associated pull request"
+(the branch had re-entered the queue between my earlier checks and now, on its stale content).
+`gh pr merge --disable-auto` also refused with "already queued to merge" — the `gh` CLI has no
+dequeue subcommand. **Worked around via the GitHub GraphQL API directly**:
+`dequeuePullRequest(input: {id: <PR node ID>})` (not the mergeQueueEntry ID, which the mutation
+rejects) removed it from the queue; then the force-with-lease push succeeded and `gh pr merge
+--auto` re-armed it cleanly. Recording the exact mutation here since this affects four other
+open PRs across three other lanes, and the fix pattern (rebase → regenerate pin → dequeue via
+GraphQL if push is rejected → push → re-arm) is now proven, not theoretical.
+
+**This cycle's unit was the hygiene fix itself** — no new W3-3 code shipped this cycle; the
+dequeue-then-push sequence for a queued branch was a genuine unknown requiring investigation,
+not a mechanical re-queue. #1808 now rebuilding CI on the corrected pin.
+
+CYCLE L4: PR hygiene — #1808 was silently failing its merge-GROUP (not PR-level) checks on a
+gate that landed mid-queue; rebased, regenerated the pin per Conductor's posted instructions,
+worked around a GraphQL-only dequeue requirement to push the fix, re-armed → next: watch #1808
+merge, then `ph_pratikara`'s remaining MUSTs or F1's multi-registry fix.
+
