@@ -1889,3 +1889,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Third flat read (positions still 9/15/23/72, queue head still #1904,
   Governance Gates now ~9.5min in_progress — still under the 30min hang threshold). No DIRTY, no
   RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1904 merged, main advanced to `e2e6c9113`, positions dropped by 2
+  (7/13/21/70). New queue head #1767 (L2 shadbala selector fix) just entered CI (~1min in). Noted
+  `#1901` (D-L0-FF fix, Conductor's) flipped `mergeStateStatus` to CLEAN — not mine to queue, just
+  tracking for when its fix lands. No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen
+  holds.
