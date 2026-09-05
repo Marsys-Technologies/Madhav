@@ -60,6 +60,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 6 | 2026-09-05T05:05Z | L2-W3 | **RESUMED after ~4h50m dead.** Stock-take posted on #1713. Read D-NATIVE-05 (#1770) + charter C13 in full. **PR hygiene was the damage**: 6 open, 5 DIRTY, 1 armed — #1777 (the `NO ACTION`→`CASCADE` correction that is now D-CND-16's own evidence) sat unlanded 5h. Rebased + re-armed #1777, #1755, #1760; #1775 superseded by #1780, both replaced by this branch. Next: deterministic `signal_id` (D-NATIVE-05 action 8, coordinating with L5), `bodha_triangulation.signal_ids[]` disposition, C13 blast-radius on all 22 routes |
 | 7 | 2026-09-05T05:55Z | L2-W3 | All 6 PRs rebased/armed or closed (#1775, #1780 superseded by #1798). **Assignment 2 measured and filed as #1804**: strict D-CND-11 would collapse 48 groups of distinct signals; `fact_id` embeds `build_id` so `constituent_facts_array` is build-varying. **Assignment 3 shown to be the SAME defect** — triangulation orphans are caused by non-deterministic `signal_id`; detector deliberately NOT shipped yet (would be red on both healthy charts today — C12). Found `bodha_triangulation` counted by no asset's count_sql |
 | 8 | 2026-09-05T06:40Z | L2-W3 | **#1804 RULED — D-CND-11 amended, my tuple granted.** Shipped migration 660 (deterministic `signal_id`, `bodha_n5_lineage_report()`, `bo_sangati` count_sql) in **PR #1818**, armed. Verified live: 150,150 rows / 150,150 distinct identities across all three charts. Deliberately did NOT set `bo_laksana.integrity_check_sql` — both candidates red today, C12. **Hit a shared-`git stash` collision across worktrees** — recovered, foreign content preserved, hazard filed on #1713 |
+| 9 | 2026-09-05T07:20Z | L2-W3 | **C8 v2.3 cycle contract now in force — fresh-process bounded cycles.** Step 1 PR hygiene on all open L2 PRs: **#1777, #1767** were CLEAN but un-queued → queued, verified via `is:queued`. **#1820** was DIRTY (stale base) → rebuilt clean onto current `origin/main`, re-queued. **#1818** was BLOCKED/RED: found and fixed a real migration-number collision (660 claimed twice — my `l2_bodha_signal_identity` vs. the already-merged `nirmana_l2_registry_accuracy`), renumbered to 661, then re-pinned L2's `nirmana-analysis-layer-pins.json` slice (writer content in `bo_laksana.py` had moved the hash) — receipt_count/non_writer_assets confirmed unchanged via direct read query against the frozen manifest, `writer_inventory_sha256` re-derived locally with the generator's own algorithm (DB unreachable from this shell for the full regenerate path). Verified: migration guard PASS, provenance-inventory PASS, full Governance Gates pytest suite 6384 passed / 0 failed, tsc clean, `--check` PASS. Pushed, re-armed. **Found and acted on #1819** (TWO L2 SESSIONS ruling, D-CND-24/25): acknowledged as the RESUMED L2 identity (this state file's lineage), confirmed no dispatch occurred, confirmed #1755 already CLOSED (not by me, not mine to touch) |
 
 ## ASSET TABLE (22)
 
@@ -287,6 +288,29 @@ NULL-not-`'{}'` convention exists to prevent.
   it, verified `bo_laksana.py` genuinely carries both concerns (6 rollup + 5 identity additions),
   and kept them together with an honest message rather than attempt hunk surgery on a HELD monster
   writer — but I nearly shipped a commit that misdescribed its own contents.
+- **D-L2-022** (2026-09-05T07:15Z) — **#1819 ruled (D-CND-24/25): two live L2 sessions, split by
+  work-item.** The Conductor's own push-only liveness check misreported this lane DEAD at 57
+  minutes quiet; the native re-pasted in good faith; a second L2 process began at ~06:00Z. Ruling:
+  the ORIGINAL session sees #1755/#1767/#1777/#1818 to merge then stands down; the RESUMED session
+  (this state file's lineage — I continued from loop 8's content) owns `L2_STATE.md`, all new W3
+  work, and **sole dispatch authority** from now. Acknowledged on #1819. No build has been
+  dispatched under this identity. `#1755` was already CLOSED (not merged, not by me) before I saw
+  the ruling — left untouched, not mine to reopen or replay.
+- **D-L2-023** (2026-09-05T07:15Z) — **Migration 660 collision on #1818, fixed by renumbering, not
+  by re-deriving the collision detector's target.** `660_l2_bodha_signal_identity.sql` (this
+  branch) and `660_nirmana_l2_registry_accuracy.sql` (merged to `main` via #1752 after this branch
+  was cut) both claimed 660. Renumbered mine to 661 (free in my 660–669 range; no other file or
+  code referenced the old filename/number — checked before renaming). Consequence: `bo_laksana.py`'s
+  writer content also changed in this PR (signal_id + rollups), which is a *separate, legitimate*
+  reason `nirmana-analysis-layer-pins.json`'s L2 slice went stale — re-pinned with `--layer L2`
+  semantics (only `convergence_commit` and `writer_inventory_sha256` move; `receipt_count` and
+  `non_writer_assets` independently confirmed unchanged at 22/`[]` via a direct read-only query
+  against the frozen manifest, since `DATABASE_URL` is not configured in this worktree shell and
+  the generator's DB-backed regenerate path was unavailable). `writer_inventory_sha256` was
+  re-derived locally with the generator's own documented algorithm (sha256 of the sorted,
+  unescaped, no-space JSON encoding of the `bo_*` slice) rather than hand-picked, and `--check`
+  confirmed the result independently. Precedent: `d9a350a7f` (L1's ga_vargas re-pin) pins
+  `convergence_commit` to the branch's own reviewed HEAD; followed the same convention.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
