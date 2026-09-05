@@ -42,7 +42,11 @@ repeatable, and wrong every single time.
 So the rule now splits:
   * a query that reduces to one row MUST pin fact_key (the brief's literal
     conjunction -- and the ~90 false positives never had a LIMIT 1, so this
-    branch costs none of them);
+    branch costs none of them). `fact_key` counts as pinned when it appears in a
+    filter OR in a `DISTINCT ON (...)` key list: `DISTINCT ON (fact_subject,
+    fact_key)` returns one row PER fact_key and so cannot conflate two key
+    populations at all. The first draft of this tightening missed that and turned
+    `main` red on `bo_laksana.py:992`, a correct query (issue #1794);
   * a query that does not reduce keeps the original calibrated disjunction.
 
 The same fix opened the second hole: TS SQL template literals were never
@@ -226,6 +230,13 @@ _RE_FACT_KEY_FILTER = re.compile(r"\bfact_key\s*(=|==|\bIN\b|\bLIKE\b)", re.IGNO
 _RE_ORDER_BY = re.compile(r"\bORDER\s+BY\b", re.IGNORECASE)
 _RE_LIMIT_1 = re.compile(r"\bLIMIT\s+1\b", re.IGNORECASE)
 _RE_DISTINCT_ON = re.compile(r"\bDISTINCT\s+ON\s*\(", re.IGNORECASE)
+# DISTINCT ON whose KEY LIST names fact_key. This is a fact_key pin, not merely a
+# reduction: `DISTINCT ON (fact_subject, fact_key)` returns one row PER fact_key,
+# so it cannot conflate two key populations the way an unpinned ORDER BY ... LIMIT 1
+# can. Missing this distinction is what turned main red (issue #1794).
+_RE_DISTINCT_ON_KEYED = re.compile(
+    r"\bDISTINCT\s+ON\s*\([^)]*\bfact_key\b[^)]*\)", re.IGNORECASE
+)
 
 
 def _is_unsafe_sql_block(sql: str) -> bool:
@@ -264,7 +275,11 @@ def _is_unsafe_sql_block(sql: str) -> bool:
         return False
     if not _RE_FACT_CATEGORY_FILTER.search(sql):
         return False
-    has_fact_key = bool(_RE_FACT_KEY_FILTER.search(sql))
+    # `fact_key` is pinned either by a filter (fact_key = ...) or by appearing in a
+    # DISTINCT ON key list -- both make which row is returned unambiguous per key.
+    has_fact_key = bool(_RE_FACT_KEY_FILTER.search(sql)) or bool(
+        _RE_DISTINCT_ON_KEYED.search(sql)
+    )
     has_order_limit = bool(_RE_ORDER_BY.search(sql)) and bool(_RE_LIMIT_1.search(sql))
     has_distinct_on = bool(_RE_DISTINCT_ON.search(sql))
     reduces_to_one_row = has_order_limit or has_distinct_on
