@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:27Z (cross-session note, not a full cycle) — **conductor-2b pinged: #1899 fixed,
+  shipped as PR #1901** (re-attributes an unchanged receipt's `build_id` on delta-skip; verified
+  against my exact repro in a rolled-back test transaction). Confirmed live: #1901 exists,
+  references #1899, `autoMergeRequest` armed, still OPEN — not yet queued as of this check.
+  Replied confirming and that the next C8 cycle will watch for its merge and retry `mi_vistara`
+  (and `mi_jivanaghatana` once #1861 also lands). No state-affecting action taken beyond this
+  note; not incrementing the cycle counter since this wasn't a supervisor-triggered cycle.
 - 2026-09-06T~05:25Z (C8 v2.3 cycle 42) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. Queue positions fully unchanged since
   last cycle (#1861=11, #1873=24, #1844=44); main tip unchanged. #1856/#1869 still OPEN,
