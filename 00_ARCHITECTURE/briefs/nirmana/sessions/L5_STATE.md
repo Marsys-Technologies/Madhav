@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~06:28Z (C8 v2.3 cycle 54) — **PR hygiene: #1846 finally merged**, rebased onto
+  main's 56-commit advance (new tip `a734f34a0`). Force-pushed; #1826's checks reset fresh
+  (none red). Queue advancing: #1861 7→6, #1873 20→19, #1844 39→38, #1901 53→52. #1856 still
+  OPEN. No eligible dispatch yet.
 - 2026-09-06T~06:23Z (C8 v2.3 cycle 53) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 pending-checks-only, no red. #1846 (position 1, 4th cycle) at ~11 min
   — job-level check confirms only `Governance Gates` still running, everything else in its
