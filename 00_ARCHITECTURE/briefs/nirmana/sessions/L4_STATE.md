@@ -1544,3 +1544,28 @@ symptom match; E-gate still uncheckable, no DB access; no new capability landing
 adjudication) → next: same as last cycle — retry E-gate + dispatch dry-run once DB access
 returns; watch `#1885`; F1 remains deferred.
 
+`2026-09-06T~05:45Z` — L4 — **CYCLE 11 (v2.3) — `#1843` merged (my `estimatedTimeToMerge`-based
+"not a jam" read from last cycle was correct), queue advancing again. PR hygiene found and fixed
+2 real DIRTY PRs this cycle (`#1845` ph_sodhana, `#1849` ph_suddha_sodhana), same rebase +
+GraphQL cross-check sequence as every prior DIRTY fix this session.**
+
+Both confirmed DIRTY (not ambiguous — `mergeStateStatus: DIRTY`, `mergeQueueEntry: null`, both
+agreeing this time). Rebased each independently onto fresh `origin/main`, `--skip`ped the stale
+pin-splice commit on both (writer-digest already correct post-rebase in both cases, no diff —
+only the pin needed re-deriving), ran `test_ph_wave5.py` for each (45/45 green both times — the
+two PRs share that test file but are independent branches, no cross-PR conflict), pushed clean
+(neither was still queued underneath), re-armed both. Final sweep: all 12 own PRs healthy, no
+DIRTY/RED remaining; `#1885` confirmed genuinely queued (position 45) despite showing `CLEAN`
+with no `autoMergeRequest` — the same "null means genuinely enqueued" pattern documented earlier
+this session, verified via `mergeQueueEntry` rather than assumed from the CLEAN label alone.
+
+DB access still down (`postgres` MCP tool absent via `ToolSearch`, checked again) — E-gate
+remains uncheckable this cycle. Given hygiene fixes are themselves a real, bounded unit (2 DIRTY
+PRs found and repaired), did not force a substitute prep item on top.
+
+CYCLE 11 L4: PR hygiene — found and fixed 2 real DIRTY PRs (`#1845`, `#1849`), both rebased,
+governance-regenerated, tested, re-armed → confirmed `#1843`'s merge validates last cycle's
+no-jam read → `#1885` confirmed genuinely queued (position 45) despite ambiguous top-level
+fields → E-gate still uncheckable, DB access down → next: retry E-gate/dispatch dry-run once DB
+access returns; watch `#1885`'s actual merge; F1 remains deferred.
+
