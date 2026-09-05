@@ -1898,3 +1898,15 @@ from `#1862`'s merge — not yet announced in `L2_STATE.md`, correctly still HEL
 `#1864`'s merge; watch for L2's actual capability announcement; retry E-gate/dispatch dry-run
 once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~10:30Z` — L4 — **CYCLE 40 (v2.3) — `#1860` merged. `#1864` now at position 2, `#1885`
+at position 29 (both advancing well). Still no D-SYNTHESIS capability announcement in
+`L2_STATE.md`.** PR hygiene clean, all 11 checked own PRs genuinely queued despite `is:queued`
+search missing all of them this cycle (index lag, confirmed via `mergeQueueEntry`). DB access
+still down (30th consecutive cycle), no new adjudications.
+
+CYCLE 40 L4: IDLE-OK (verified: PR hygiene clean via GraphQL cross-check — search missed all 11
+own PRs but every one has a live `mergeQueueEntry`; `#1864` now position 2; E-gate uncheckable,
+DB access down 30 cycles; no new capability landings or adjudications) → next: watch `#1864`'s
+merge; retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
+deferred.
+
