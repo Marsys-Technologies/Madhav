@@ -419,6 +419,24 @@ governance (#1762).
   verified via `is:queued`, not `autoMergeRequest`; RED nudges posted on #1818/#1801/#1791
   (Governance Gates failing) and DIRTY nudge on #1820. Outstanding ball: L4 owes #1770 the
   five-table regenerability confirmation that releases L3.
+- `2026-09-05T13:55Z` — cycle 3: merge-queue drain ROOT-CAUSED, my cycle-2 "timing artifact" call
+  corrected in public — merge-group Governance Gates now run the analysis-layer pin check (post-
+  #1815), so every writer-touching campaign PR opened before it (`#1777 #1767 #1766 #1808 #1790`)
+  fails its group with `pins STALE` while its stale PR-level checks stay green (verified: run
+  33968990008-family, `L2: writer_inventory_sha256 is stale`). Per-PR regen instructions posted
+  (lane supplies its own reviewed sha — no pin fabrication by proxy, §N.8); fleet notice on #1713.
+  #1733 verified IN QUEUE (`is:queued`); #1778 auto-armed, one check pending.
+- `2026-09-05T13:35Z` — cycle 2: ruled #1805 (**D-CND-18**) — L4 authors the cascade_check.sql
+  no-FK fix (per-column FK exclusion + sampled resolution check), Conductor reviews/merges per C5;
+  interim: `(0 rows)` from that query is NOT evidence of no orphan surface, and every C13 statement
+  citing the tool names its version. Merge-queue diagnosis: the apparent CLEAN-PR "ejections" were
+  `is:queued` timing artifacts while merge groups rotate — Ganga Quality Gate merge-group runs are
+  alive (`in_progress`) and EKV/TAP pass; stopped re-arming to avoid resetting groups. #1733/#1778
+  auto-armed, PR checks pending (CI saturated by 5-deep queue). This line rides the next push, not
+  its own (queue-position preservation).
+
+  *(Note: the "first supervised cycle" entry for `2026-09-05T13:25Z`, and cycles 4-37 after it,
+  are already on `main` via PR #1830 and this branch's own rebase — not duplicated here.)*
 - `2026-09-04T23:18:17Z` — night-1 adjudication wave: 11 issues from 5 sessions ruled and logged above; PRs #1722 (egate.sql), #1728 (depends_on fingerprint), #1731 (nrec), #1733 (capsule_audit.sql), #1737 (asset-frontier gate) raised and queued. Standing audits A-01 (L0's 29 capsules vs C12) and A-02 (evidence chains + identity separation across all 174 events) both CLEAN.
 - `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
   (`20323fae4`); labels `nirmana-adjudication` + `nirmana-coordination` created; coordination
