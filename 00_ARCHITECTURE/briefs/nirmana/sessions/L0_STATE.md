@@ -1845,3 +1845,10 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   11/17/25/74, modest forward drift from 13/19/27/76 — normal queue drainage, no action needed),
   #1985 checks still pending (no reds), no PR shows DIRTY. `#1901` (D-L0-FF fix) still open/unmerged.
   No new eligible dispatch work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1985 confirmed not yet `is:queued` but auto-merge already armed
+  (enabled 2026-09-05T23:02:19Z) and `mergeable=MERGEABLE` — `mergeStateStatus=BLOCKED` is just
+  pending checks (DB Integration Tests/Unit Tests/Governance Gates still running, everything else
+  passing), not a neglected-unqueued PR; will self-queue once checks finish. #1910/1915/1923/1925
+  still QUEUED, positions inched forward again (10/16/24/73). No merges, no DIRTY, no RED. 30/40
+  frozen holds.
