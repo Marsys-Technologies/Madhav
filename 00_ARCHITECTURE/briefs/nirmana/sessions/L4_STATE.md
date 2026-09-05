@@ -51,7 +51,7 @@ your `nirmana-adjudication` issues → continue.
 
 | asset_id | route | status | E-gate | capsule | notes |
 |---|---|---|---|---|---|
-| `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **REBUILD HELD campaign-wide (ruling #1732)** | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity) |
+| `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **D-CND-04 hold LIFTED (2026-09-05, verified live)** — still E-gate-blocked on ancestors + D-NATIVE-05 | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity, SHIPPED + live-verified) |
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
 | `ph_pratikara` | **changed** | W2 done | wave 1 · 40/49 unfrozen | — | **7 MUST**, incl. the layer's hard-floor item (fabricated citation on 100% of 1,277 rows); needs a rerun **after** its writer fix |
 | `ph_rectification` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 1 MUST: `load_bearing: true` on a fit that is 0.0000 across all 95 scored candidates |
@@ -169,7 +169,13 @@ loop.
 
 Charter C6 — each NEW capability downstream layers may consume, one line, with its PR number.
 
-_(none yet — L5 Mīmāṃsā is my only downstream consumer)_
+- **`phala_anchors.anchor_id` is deterministic (D-CND-04)** — #1754 (migration 680, the remap) +
+  #1799 (the `BEFORE INSERT` trigger + dropped `gen_random_uuid()` default, closing the
+  one-writer gap). **Verified live in production 2026-09-05, not merely merged**: `anchor_id`'s
+  `column_default` is `null` and `phala_anchors_identity_biu` exists as a live trigger. Any table
+  or layer holding a `phala_anchors.anchor_id` reference now survives an `ph_nimitta` rebuild
+  unchanged (content-derived identity, not sequence/uuid4-random). **This lifts D-CND-04's
+  campaign-wide hold on `ph_nimitta`/`phala_anchors` rebuilds (ruling #1732).**
 
 ## Rulings I acted on this session
 
@@ -448,4 +454,48 @@ Noting for any future L4 pin regeneration: same substitution works.
 CYCLE L4: PR hygiene — rebased #1791 onto main, root-caused a second (pre-existing, not
 self-inflicted) RED gate (`nirmana_analysis_layer_pins`), fixed + verified offline → next: watch
 #1791's CI, verify #1799 deployed live + announce CAPABILITIES LANDED, then W3-3 writer work.
+
+`2026-09-05T~19:40Z` — L4 — **cycle: PR hygiene clean (no action needed) → answered #1770, the
+Conductor-flagged priority-0 cross-session ask.** A cross-session message from Conductor (relayed
+via SendMessage, not the GitHub thread I'd normally poll) named #1770 directly: L3's
+`kala_convergence` regeneration cascades into **3,708 rows across five L4 tables**
+(`phala_anchors` + `phala_sankrama`/`phala_pramana`/`phala_suddha_sodhana`/`phala_sodhana`), and
+L3's regen is held on my confirmation those five are regenerable. This is now L3's sole blocker
+per the Conductor's own gate-status comment on the thread.
+
+**PR hygiene first, per instruction:** `is:queued` showed #1808 still queued, #1791 not queued but
+`mergeStateStatus: MERGEABLE` with checks still `pending` from the last push (no fresh RED, no
+DIRTY) — nothing actionable, correctly left alone rather than manufactured into a unit.
+
+**The unit: verified and answered #1770**, not asserted. Read all 14 comments for full context
+(L2's two corrections, L3's two self-corrections including the depth-2 cascade catch, the
+Conductor's split ruling naming L4 as L3's blocker). Verified from the writers and live catalogue,
+not row counts (D-CND-16): all five tables are per-chart `DELETE`-then-`INSERT` (§N.3, grep-
+confirmed line numbers for each), `ph_nimitta` re-queries `kala_convergence` live at build time
+(no cached linkage), and **D-CND-04's deterministic `anchor_id` — verified LIVE in production this
+cycle** (`column_default IS NULL`, trigger `phala_anchors_identity_biu` present) — is what makes
+the `phala_anchors` re-attachment exact rather than approximate: unchanged anchor content
+reconstructs the same `anchor_id` after L3's regen, so every reference into it (my own four
+children + L5's `mimamsa_predictions.source_pramana_id`) survives. Also verified live: the four
+children have **zero** FK referrers campaign-wide, so their own non-deterministic UUIDs don't
+matter for integrity. Flagged one seam for the record (mirroring L3's own `kala_bhavishya`
+diligence): `phala_suddha_sodhana.revision_approved_by`/`revision_applied_at` are a D43-gated
+native-sign-off seam, 0/195 populated today, writer-asserted never-set — safe now, but would need
+a preserve-on-rebuild step if that approval flow is ever built. **Posted as issue comment**
+(https://github.com/Marsys-Technologies/Madhav/issues/1770#issuecomment-5552273989). Cleared L3's
+`kala_convergence` regen from L4's side; no blocker remains on my part.
+
+**Folded into the same unit** (it directly substantiates the #1770 answer rather than being
+separate prep work): announced `## CAPABILITIES LANDED` for D-CND-04 above, since I had just
+live-verified the deploy — this was the deliberately-deferred item from the last two cycles'
+"next action," now closed. D-CND-04's rebuild hold on `ph_nimitta`/`phala_anchors` is **lifted**;
+`ph_nimitta` remains E-gate-blocked independently (37/46 ancestors unfrozen) and under
+D-NATIVE-05's separate destructive-dispatch hold, so this does not change slot-claim status.
+
+Will reply to Conductor's cross-session message confirming #1770 is answered.
+
+CYCLE L4: answered #1770 (Conductor priority-0) — confirmed all 5 cross-layer L4 tables
+regenerable, live-verified D-CND-04 as the mechanism, announced CAPABILITIES LANDED → next: watch
+for Conductor's ruling on #1770, resume W3-3 writer work (`ph_pratikara`/`ph_pramana`/
+`ph_rectification`/`ph_phaladesa`).
 
