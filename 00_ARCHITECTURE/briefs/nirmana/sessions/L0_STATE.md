@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_yogas writer verdict CLOSED (D-L0-J, no fix needed); still gated on job-image deploy
+last_updated: 2026-09-05 — bg_doshas integrity_check_sql bug found+fixed (D-L0-L); PR #1829 open, data already correct, no dispatch needed
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -40,7 +40,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_gochara_arcs | rebuild_only | count pin stale (33,933 vs 34,553; Rahu/Ketu −310 each; **tiles perfectly**). Verdict: correct check → tiling invariant + derived/floored volume (C12) |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
-| bg_doshas | rebuild_only | 658 FULL-JOIN violations — catalog/ontology/reference canonical_ids misaligned |
+| bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
 | bg_vidhi_floors | rebuild_only | `catalog_status=DRAFT` (bundle DRAFT→CURRENT with re-acceptance, D-CND-09); 11/286 vs 14/409, 7 intents don't tile |
 | bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
 | bg_compendium_index | rebuild_only | wave 2; depends_on normalized; needs wave-1 frozen (E-gate) + own integrity check |
@@ -135,6 +135,27 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `reference_dasha_systems` is pre-reconciliation stale data, same story as bg_yogas. **No writer
   fix, no adjudication, no migration for bg_dasha_systems.** Blocked only on job-image deploy
   (unchanged, re-checked this cycle: still `d93d9d0a…`, still predates #1772).
+
+- **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
+  auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
+  are entirely an artifact of the check's own SQL: `FULL JOIN brahma_ontology ON
+  entity_class='dosha' AND canonical_id=...` puts the entity_class filter in the ON clause instead
+  of pre-filtering. `brahma_ontology` is shared across all 16 L0 entity classes (737 rows total —
+  yoga=229, concept=136, dosha=79, karaka=77, domain=45, ...); FULL OUTER JOIN semantics mean an
+  ON-clause filter on one side does NOT exclude that side's non-matching rows, so all 658 non-dosha
+  rows leak in as spurious `catalog.canonical_id IS NULL` violations. Verified live (read-only):
+  raw join (no WHERE) = 737 = 79 real + 658 leaked; `count(*) WHERE entity_class != 'dosha'` = 658,
+  exact match. **The data itself is already fully correct**: catalog/ontology/reference all exactly
+  79 rows, all 79 canonical_ids aligned (corrected join → 0 violations), and **all three
+  content-hash pins already match production byte-for-byte** — this asset could be accepted on its
+  LIVE fingerprint right now with no rebuild, once the check is fixed. Fix (subquery pre-filter on
+  `brahma_ontology` before the join) verified in a rolled-back transaction: full composed check
+  (unchanged otherwise) evaluates `TRUE` against current production data as-is. **This reclassifies
+  a 3rd of D-L0-F's four "real data defect" calls as stale-check-not-defect** (bg_gochara_arcs was
+  already known; now bg_yogas D-L0-J, bg_dasha_systems D-L0-K, bg_doshas D-L0-L — only
+  bg_vidhi_floors remains genuinely unverified). NEXT once #1829 merges: re-run W4 accept for
+  bg_doshas on LIVE fingerprint (same #1816-confirmed mechanism as bg_parihara_rules) — this one
+  does **not** need the job-image deploy at all.
 
 ## Held items
 
@@ -258,3 +279,17 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   bg_vidhi_floors (DRAFT status + tiling) remain unverified — NEXT: same read-only-writer-audit
   pattern on bg_doshas (`l0_doshas.py` or equivalent), since it's the next unheld/unverified item
   and requires no dispatch.
+- 2026-09-05 — **Cycle 3.** PR hygiene: #1828 re-checked, still not `is:queued` (queue currently has
+  #1820/#1808/#1778/#1777/#1767, not mine) but still not DIRTY/RED either — same 3 checks
+  IN_PROGRESS, 0 failures, auto-merge armed; nothing actionable. **bg_doshas — found the check itself
+  is buggy, not the data (D-L0-L).** This is a bigger find than D-L0-J/K: bg_doshas' data was
+  *already fully correct* (79/79/79, all hashes matching production byte-for-byte) — the "658
+  violations" were a FULL-JOIN ON-clause scoping bug leaking 658 unrelated `brahma_ontology` rows
+  (other entity classes) into the count. Authored + rolled-back-transaction-verified **migration
+  692**, opened **PR #1829** (auto-merge armed) on its own branch `fix/nirmana-l0-bg-doshas-join-scope`
+  (kept separate from the state-only `feat/nirmana-l0-cycle-resume` branch/PR #1828 — code fix vs.
+  heartbeat, per hygiene). Once #1829 merges, bg_doshas can be **W4-accepted immediately on its LIVE
+  fingerprint with no rebuild dispatch at all** — the one asset in the remaining 10 that doesn't
+  need the job-image deploy. NEXT: poll #1829/#1828 queue status; if still pending, continue the
+  same read-only-writer-audit pattern on bg_vidhi_floors (last unverified D-L0-F "real defect" call)
+  or bg_cohort/wave-2-3 (still blocked on job-image — re-check deploy each cycle).
