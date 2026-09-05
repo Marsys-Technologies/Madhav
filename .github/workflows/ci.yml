@@ -318,7 +318,16 @@ jobs:
             -c "SELECT to_regclass('public.brahma_mimamsa_prediction_ledger') AS ledger;"
 
       - name: SAMĪKṢĀ DB-integration suites (skip themselves without the env vars above)
-        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose
+        # --no-file-parallelism (#1973): at least 6 test files independently apply the same
+        # idempotent CREATE TABLE IF NOT EXISTS DDL (conversation_messages; migration 588 for
+        # pariprashna_samiksha_digest_journal) against this one shared throwaway Postgres, each
+        # in its own beforeAll. Postgres's IF NOT EXISTS is only safe against a STABLE object --
+        # two sessions racing to CREATE the same brand-new table can both pass the existence
+        # check and collide on pg_type's own catalog insert (duplicate key on
+        # pg_type_typname_nsp_index), which is exactly the two live occurrences #1973 reported
+        # on two unrelated tables. Serializing file execution removes the race without touching
+        # any test file's DDL (which may have quietly drifted between the ~6 copies).
+        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose --no-file-parallelism
 
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained
