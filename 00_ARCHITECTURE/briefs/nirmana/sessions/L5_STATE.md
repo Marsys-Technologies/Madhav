@@ -451,6 +451,18 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~00:45Z (C8 v2.3 cycle 20) — **IDLE-OK, verified — honoring last cycle's own
+  commitment not to re-nudge without new information.** PR hygiene: #1844 confirmed queued;
+  #1826 checks-pending only. #1851/#1861 unchanged (still `autoMergeRequest=null`,
+  `mergeStateStatus=UNKNOWN`); my nudge on #1713 is still the latest comment there, no Conductor
+  response yet. #1873 now also shows `autoMergeRequest=null` (was armed two cycles ago) —
+  noted, not re-nudged, since it's the same stalled pattern already covered in the existing
+  nudge comment and nothing new would be said by repeating it. #1869 still 3 comments. No new
+  E-gate movement. main's tip unchanged since last cycle too (`1557dd283`) — genuinely quiet,
+  not just L5's own corner of the campaign.
+  **Next cycle: same checks; re-nudge only if something NEW surfaces** (e.g. a Conductor comment
+  that doesn't actually resolve it, or the stall extending long enough to warrant a different
+  kind of escalation) — not on a fixed schedule.
 - 2026-09-06T~00:30Z (C8 v2.3 cycle 19) — **Not idle this time: found #1851/#1861 fully green
   but genuinely stalled (not just checks-pending), nudged on #1713.** PR hygiene: #1844 confirmed
   already queued; #1826 checks-pending only. Looked one level deeper than the usual "still OPEN"
