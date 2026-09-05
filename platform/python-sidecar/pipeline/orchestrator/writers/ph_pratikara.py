@@ -25,6 +25,42 @@ from services.ph_pratikara.engine import (
 logger = logging.getLogger(__name__)
 
 
+def _windows_overlap(a_start, a_end, b_start, b_end) -> bool:
+    """True if [a_start, a_end] and [b_start, b_end] overlap. Missing bounds on
+    either side are treated as non-restrictive (unknown, not "excludes everything")."""
+    if a_start and b_end and a_start > b_end:
+        return False
+    if a_end and b_start and a_end < b_start:
+        return False
+    return True
+
+
+def _select_anchor(anchors_by_domain: dict, domain, obs_start, obs_end):
+    """F-3.4: pick the influenceable anchor this obstruction's own domain actually
+    names, not the first anchor found across all domains regardless of relevance.
+
+    `anchors_by_domain[domain]` is already ordered by magnitude priority (pivotal >
+    major > moderate > minor -- see _load_influenceable_anchors). Within that domain,
+    prefer an anchor whose window overlaps the obstruction's; if none overlaps (or
+    either window is unknown), fall back to the domain's highest-magnitude anchor --
+    still domain-relevant, just not window-corroborated.
+
+    No domain, or no influenceable anchor in that domain: honest (None, None).
+    linked_anchor_id is nullable with ON DELETE SET NULL specifically for this case
+    (F-3.4 point 3) -- a plausible-looking wrong anchor is worse than an honest gap.
+    """
+    if not domain:
+        return None, None
+    candidates = anchors_by_domain.get(domain) or []
+    if not candidates:
+        return None, None
+    for a in candidates:
+        if _windows_overlap(obs_start, obs_end, a.get('window_start'), a.get('window_end')):
+            return str(a['anchor_id']), a.get('magnitude', 'moderate')
+    a = candidates[0]
+    return str(a['anchor_id']), a.get('magnitude', 'moderate')
+
+
 def _safe_float(value, default: float, *, field: str, row_id) -> float:
     """
     Coerce a possibly-TEXT numeric column to float; never raises.
@@ -88,15 +124,14 @@ class PhPratikaraWriter(WriterBase):
                 obs_start  = obs.get('window_start')
                 obs_end    = obs.get('window_end')
                 obs_type   = str(obs.get('obstruction_type') or '')
+                obs_domain = obs.get('convergence_domain')
 
-                # Find the highest-magnitude influenceable anchor in any domain
-                linked_anchor_id = None
-                anchor_magnitude = None
-                for domain_anchors in anchors_by_domain.values():
-                    for a in domain_anchors:
-                        if linked_anchor_id is None:
-                            linked_anchor_id = str(a['anchor_id'])
-                            anchor_magnitude = a.get('magnitude', 'moderate')
+                # F-3.4: domain-matched (+ window-overlap-preferred) anchor selection.
+                # An honest (None, None) when this obstruction's domain has no
+                # influenceable anchor -- not the first anchor found anywhere.
+                linked_anchor_id, anchor_magnitude = _select_anchor(
+                    anchors_by_domain, obs_domain, obs_start, obs_end,
+                )
 
                 # Prescription lookup: by graha if available; by obstruction_type if not; then jupiter generic
                 prescriptions = []
@@ -184,6 +219,7 @@ class PhPratikaraWriter(WriterBase):
                     o.obstruction_detail,
                     c.window_start,
                     c.window_end,
+                    c.domain AS convergence_domain,
                     c.constituent_factors->>'planet' AS afflicting_graha
                 FROM kala_obstruction o
                 LEFT JOIN kala_convergence c ON o.convergence_id = c.convergence_id
@@ -199,7 +235,7 @@ class PhPratikaraWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
-                SELECT anchor_id, domain, magnitude, malleability
+                SELECT anchor_id, domain, magnitude, malleability, window_start, window_end
                 FROM phala_anchors
                 WHERE chart_id = %s AND malleability = 'influenceable'
                 ORDER BY CASE magnitude
