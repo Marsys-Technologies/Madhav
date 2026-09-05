@@ -2698,3 +2698,24 @@ clean, all 11 own PRs genuinely queued and advancing; E-gate uncheckable, DB acc
 cycles; nothing new) → next: watch queue positions continue advancing; retry E-gate/dispatch
 dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~22:15Z` — L4 — **CYCLE 96 (v2.3) — PR hygiene found and fixed a real DIRTY PR
+(`#1842`); `#1885` is now the queue head — meaningful progress toward the front of the
+queue.**
+
+**PR hygiene:** GraphQL sweep showed `#1842` (`ph_pramana` domain-normalize) as
+`CONFLICTING`/`DIRTY` — unambiguous. Fixed via the standard sequence: `git rebase origin/main`
+— clean except the final pin-splice commit, `--skip`ped it. Regenerated the writer-digest
+inventory: **no diff**. Re-spliced the L4 pin fresh (`writer_inventory_sha256` →
+`fdd36034c5…`, `convergence_commit` → the rebased HEAD `57ff6d313…`), verified `--check` PASS,
+diff exactly the two L4 fields. Ran `test_ph_wave6.py`: 32/32 pass. Pushed
+`--force-with-lease` clean (no dequeue needed). Re-armed auto-merge; swept the other 10 own PRs
+afterward, none cascaded into DIRTY.
+
+**This cycle's unit was the DIRTY fix itself.** Priorities 1-4 otherwise unchanged: E-gate
+still uncheckable, 86th consecutive cycle DB access down.
+
+CYCLE 96 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1842`, clean rebase + fresh pin
+re-splice, pushed without needing a dequeue) → `#1885` now the queue head, other 9 own PRs
+confirmed healthy → E-gate uncheckable, DB access down 86 cycles → next: watch `#1885`/`#1842`
+merge; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
