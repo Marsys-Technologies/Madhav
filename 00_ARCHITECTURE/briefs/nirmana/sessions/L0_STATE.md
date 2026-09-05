@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-X: is:queued PR checks were silently capped at 30 results (real queue is 36); always pass --limit 100 now. Deploy still one commit short of #1829's fix landing live.
+last_updated: 2026-09-05 — D-L0-Y: bg_doshas migration is LIVE (evaluates TRUE); fresh W2 evidence REAL-SUBMITTED and accepted (both 201) — first real production write this resumption. Next: verifier-side integrity_verified+asset_frozen (needs its own schema investigation first).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -44,7 +44,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_gochara_arcs | **no dispatch needed** | **Drafted rewrite LANDED (migration 694, PR #1836)**: stale bare-count + hardcoded per-body VALUES table replaced with gapless-tiling + achieved floor (33,933). Verified TRUE against live data as-is — can go straight to W4 accept on LIVE fingerprint, same as bg_doshas |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
-| bg_doshas | **no dispatch needed** | **Migration 692 MERGED (D-L0-W, #1829)**, not yet deployed to live DB (check the `amjis-web` deployed SHA each cycle). Once applied: re-run toolkit → fresh W2 → W4 accept on LIVE fingerprint, no rebuild |
+| bg_doshas | **no dispatch needed** | **Check is LIVE + evaluates TRUE (D-L0-Y). Fresh W2 REAL-SUBMITTED (both 201).** Next: verifier-side `integrity_verified`+`asset_frozen` (needs its own schema investigation first, per D-L0-Y) |
 | bg_vidhi_floors | rebuild_only | **Both open questions diagnosed, fully verified read-only.** Tiling false-positive FIXED (D-L0-M, PR #1832). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source is internally sound (14/409, 0 dangling FKs) — pending job-image redeploy + dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
@@ -500,6 +500,33 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   ejection every time the real queue exceeds 30. No PR was harmed; `#1829` (already merged this
   session) proves the queue mechanism itself always worked correctly.
 
+- **D-L0-Y — MIGRATION 692 IS LIVE; bg_doshas' W2 was REAL-SUBMITTED and ACCEPTED (both 201).** The
+  migration applies via a deploy-time step decoupled from `amjis-web`'s own container rollout (its
+  `NIRMANA_DEPLOYED_SHA`, `3b208dbfa…`, is still one commit behind my `#1829` merge commit, yet the
+  DB check text is already corrected — confirms migrations apply on their own faster cadence, not
+  gated on the app container catching up). Verified live: `integrity_check_sql` now reads the
+  subquery-prefiltered version and **evaluates `TRUE` against production data** (executed dynamically
+  via `DO $$ ... EXECUTE check_sql INTO result $$`, not just inspected as text). Re-ran the toolkit
+  against the fresh row: new `registry_fingerprint_sha256=cf02b44f8c16ea2f2cd0a313d6d45108599b62757
+  9a01e9e8c058bbeecb1e1e5`, new `analysis_digest=6dcd11f8e1260d8cefce364d250447bbf32aee3695fe7b9320
+  7e9cf216fff08e` (differs from the frozen manifest's `073def4a…`/prior W2, as expected — the check
+  text itself changed, so the fingerprint legitimately moved; the LIVE-fingerprint-not-frozen
+  binding is what #1816 already established). Built the two `record_evidence` bodies exactly per the
+  traced schema, `--dry-run`'d through `l0_submit_evidence.sh` first, then **submitted for real**:
+  `asset_analysis_accepted` (201 created) and `optimization_verdict_accepted`
+  (`verdict=examined_and_already_efficient`, 201 created), both signed by the executor identity,
+  both citing `source_ref=git:3b208dbfadbbae4fd35a9ce5c89868a2fbb5abe5` (the actually-deployed SHA
+  at submission time). Confirmed both rows landed in `nirmana_evidence.nirmana_elevation_campaign_
+  events` with the new fingerprint (old events retained as history — evidence is append-only, as
+  documented). **This is the first genuinely real (non-dry-run, non-simulated) production write this
+  whole resumption**, and it fully round-trip-validates the entire D-L0-P toolkit: the server
+  independently recomputed and matched both values before accepting either event. **NEXT (deferred,
+  needs its own careful investigation before acting)**: bg_doshas' W2 is fresh, but freezing still
+  needs `integrity_verified` + `asset_frozen` events under the VERIFIER identity, following genuine
+  independent re-derivation (not just re-asserting the same claim) — read `requireIntegrityProvenance`/
+  `requireFreezeProvenance` in `definitions.ts` for their exact evidence-payload contract before
+  attempting either, same discipline as was applied to the W2 schema before this submission.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -938,3 +965,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   default 30-result page while the real queue is 36 deep. Fixed my own process: **use `--limit 100`
   on every `is:queued` check going forward.** No PR was actually affected. Deploy unchanged since
   last cycle (`3b208dbfa`, still one commit short); `#1828` clean. Nothing else new.
+- 2026-09-05 — **Cycle 28 — first real production write this resumption.** PR hygiene: all still
+  queued/unmerged (`#1832`, `#1836`, `#1838`, with the corrected `--limit 100`), `#1828` clean,
+  nothing to fix. **Checked the live check and it had flipped to the corrected version** — verified
+  it *executes* to `TRUE`, not just eyeballed the text. **D-L0-Y: re-ran the full toolkit against
+  the fresh live row, built and dry-ran the two `record_evidence` bodies, then submitted both for
+  real** — `asset_analysis_accepted` and `optimization_verdict_accepted` for `bg_doshas`, both HTTP
+  201, both confirmed landed in the DB with the new fingerprint. The server independently
+  recomputed and matched both values before accepting — full round-trip validation of the D-L0-P
+  toolkit built over the last ~10 cycles. This is the first genuinely real (non-dry-run) write to
+  production this whole resumption. NEXT: bg_doshas' W2 is fresh, but freezing needs
+  `integrity_verified`+`asset_frozen` under the verifier identity — read their exact
+  evidence-payload schemas (`requireIntegrityProvenance`/`requireFreezeProvenance` in
+  `definitions.ts`) before attempting, same care as was given to the W2 schema before this
+  submission. Also worth doing: repeat this exact sequence for `bg_gochara_arcs` once its migration
+  (694/#1836) similarly lands live.
