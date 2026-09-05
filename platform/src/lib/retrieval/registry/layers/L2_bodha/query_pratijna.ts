@@ -28,6 +28,59 @@ import { query } from '@/lib/db/client'
 
 const MAX_LIMIT = 50
 
+// N-24 (D-SYNTHESIS: singular verdict voice). varga_confirmation is the only real
+// cross-system consensus substrate this layer has today (bo_pratijna's G10/SAMPURTI
+// L0e cross-ayanamsha check) — but it's served as raw JSONB, so every caller has to
+// re-derive the same one-line verdict from consensus_dignity/unanimous/dissent
+// themselves. consensusChip() computes that verdict once, server-side, as a terse
+// presentation string — never stored, never re-derives the underlying consensus
+// (reads consensus_dignity/unanimous/dissent verbatim from what the writer already
+// computed; §N.7 item 1).
+//
+// Two shapes currently coexist in bodha_pratijna.varga_confirmation, both live in
+// production: the current writer's consensus object (has consensus_dignity/
+// unanimous/dissent/per_system — 135/135 rows on the rebuilt canonical chart) and an
+// older single-ayanamsha raw divisional reading (dignity_state/varga_sign/band, no
+// consensus_dignity key — 110 rows on charts bo_pratijna hasn't rebuilt since). This
+// function type-guards on consensus_dignity specifically and returns null for
+// anything else, including the raw shape — an honest "no chip" rather than
+// misreading an unrelated field into a fabricated verdict.
+interface VargaConfirmationConsensus {
+  consensus_dignity: string | null
+  unanimous?: boolean
+  dissent?: unknown[]
+  per_system?: Record<string, unknown>
+}
+
+function isConsensusShape(vc: unknown): vc is VargaConfirmationConsensus {
+  return (
+    typeof vc === 'object' &&
+    vc !== null &&
+    'consensus_dignity' in vc &&
+    'per_system' in vc
+  )
+}
+
+function consensusChip(raw: unknown): string | null {
+  // JSONB columns come back parsed by node-postgres' default type parser (no
+  // custom parser is registered for JSONB in db/client.ts, so pg's own
+  // JSON.parse-based default applies) -- but accept a pre-serialized string
+  // too, defensively, rather than assume one shape and silently drop rows if
+  // that assumption is ever wrong.
+  let vc: unknown = raw
+  if (typeof vc === 'string') {
+    try { vc = JSON.parse(vc) } catch { return null }
+  }
+  if (!isConsensusShape(vc) || vc.consensus_dignity == null) return null
+  const total = vc.per_system ? Object.keys(vc.per_system).length : 0
+  if (total === 0) return null
+  const dissentCount = Array.isArray(vc.dissent) ? vc.dissent.length : 0
+  const agree = total - dissentCount
+  return vc.unanimous
+    ? `${agree}/${total} agree: ${vc.consensus_dignity}`
+    : `${agree}/${total} agree: ${vc.consensus_dignity} (${dissentCount} dissent)`
+}
+
 export const queryPratijnaCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_pratijna',
   type:  'tool',
@@ -124,16 +177,25 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
       const no_evidence_qualification = noEvidenceCount > 0
         ? `${noEvidenceCount} of ${rowsRes.rows.length} row(s) have status 'no_evidence' — under the v4.0 engine this means no karyatva registry entry exists for that event class (a defensive case; it should not occur for any of the 27 standard classes). Their grade is NULL (not scored). They are served honestly (R6, R8) but should not be treated as assessed verdicts.`
         : null
+      // N-24 (D-SYNTHESIS: singular verdict voice) — attach the terse consensus verdict
+      // per row, computed here rather than stored (§N.7 item 1: reads consensus_dignity/
+      // unanimous/dissent verbatim from what the writer already computed, never
+      // re-derives). null on rows whose varga_confirmation has no divisional for this
+      // class, or predates the current writer's consensus shape (see consensusChip doc).
+      const rows = (rowsRes.rows as Array<Record<string, unknown>>).map((r) => ({
+        ...r,
+        consensus_chip: consensusChip(r['varga_confirmation']),
+      }))
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
-          count: rowsRes.rows.length,
+          rows,
+          count: rows.length,
           total_matching,
-          more_available: offset + rowsRes.rows.length < total_matching,
+          more_available: offset + rows.length < total_matching,
           no_evidence_qualification,
           filters: { ayanamsha_id, status, event_class_id, limit, offset },
-          reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above. varga_confirmation (G10): cross-ayanamsha consensus over the 5 L1-computed ayanamshas; per_system gives each system\'s varga_sign+dignity; consensus_dignity+unanimous+dissent summarise agreement; NULL when the class has no divisional in its KaryatvaMap.',
+          reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above. varga_confirmation (G10): cross-ayanamsha consensus over the 5 L1-computed ayanamshas; per_system gives each system\'s varga_sign+dignity; consensus_dignity+unanimous+dissent summarise agreement; NULL when the class has no divisional in its KaryatvaMap. consensus_chip: a terse pre-rendered summary of the same consensus ("N/5 agree: <dignity_state>"), null when varga_confirmation is null or predates the current writer\'s consensus shape (older per-ayanamsha rows on charts not yet rebuilt with this writer).',
           provenance: { tables: ['bodha_pratijna'], source: 'L2 Bodha pratijna ledger; served chart-scoped, budgeted.' },
         },
         is_error: false,
