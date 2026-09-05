@@ -1978,3 +1978,13 @@ look frozen even when checks restarted; E-gate uncheckable, DB access down 36 cy
 capability landings or adjudications) → next: watch `#1864`/`#1866`; retry E-gate/dispatch
 dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~11:40Z` — L4 — **CYCLE 47 (v2.3) — `#1866` merged, `#1864`'s checks completed and
+it entered the queue (confirms last cycle's job-log-based read yet again). `#1870` now at
+position 5.** PR hygiene clean, all 10 checked own PRs genuinely queued and advancing. DB
+access still down (37th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 47 L4: IDLE-OK (verified: PR hygiene clean, `#1864` queued clean — validates the job-log
+diagnostic again, `#1870` near the front; E-gate uncheckable, DB access down 37 cycles; no new
+capability landings or adjudications) → next: watch `#1870`'s merge; retry E-gate/dispatch
+dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
