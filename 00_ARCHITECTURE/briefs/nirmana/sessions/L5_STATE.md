@@ -451,6 +451,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~02:45Z (C8 v2.3 cycle 27) — **Routine cycle, positions unchanged but confirmed
+  healthy.** PR hygiene: #1844 ejected/re-armed again (same normal pattern); #1826 checks-
+  pending only. Queue positions for #1844/#1851/#1861/#1873 flat at 5/8/20/33 (unchanged from
+  last cycle) — checked WHY before assuming stuck: #1841 (now position 1) started its
+  merge-group run at 16:06:41Z, only ~6 min elapsed at check time, well inside the established
+  15-18 min normal range. Not a stall. #1869 unchanged, no `chart_grants` response. No new
+  E-gate movement.
 - 2026-09-06T~02:30Z (C8 v2.3 cycle 26) — **Routine cycle: #1838 confirmed merged (last
   cycle's read correct), #1844 ejected/re-armed again as the now-understood normal batch
   pattern, all four L5 PRs advanced 3 positions each** (#1844 8→5, #1851 11→8, #1861 23→20,
