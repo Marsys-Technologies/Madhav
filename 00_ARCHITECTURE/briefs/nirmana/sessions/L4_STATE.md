@@ -2685,3 +2685,16 @@ fields; E-gate uncheckable, DB access down 84 cycles; nothing new) → next: wat
 positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-05T~22:10Z` — L4 — **CYCLE 95 (v2.3) — `#1884` merged, confirming last cycle's
+diagnosis; `main` advanced by 1, all 11 own PRs' positions moved up accordingly.**
+
+**PR hygiene:** all 11 own PRs genuinely queued and advancing. No DIRTY, no RED.
+
+**Priorities 1-4:** no new L4-relevant `main` commits, no new adjudications name L4. E-gate
+still uncheckable, 85th consecutive cycle DB access down.
+
+CYCLE 95 L4: IDLE-OK (verified: `#1884` merged confirming last cycle's diagnosis; PR hygiene
+clean, all 11 own PRs genuinely queued and advancing; E-gate uncheckable, DB access down 85
+cycles; nothing new) → next: watch queue positions continue advancing; retry E-gate/dispatch
+dry-run once DB access returns; F1 remains deferred.
+
