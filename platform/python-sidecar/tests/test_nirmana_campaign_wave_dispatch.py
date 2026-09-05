@@ -707,21 +707,125 @@ def test_triggered_by_is_wave_scoped_without_a_subset_and_asset_scoped_with_one(
     assert two_asset_scoped == f"{wave_scoped}:assets-bg_formula_constants,bg_reference"
 
 
-def test_derives_strict_prior_layer_and_wave_freeze_prerequisites() -> None:
+def test_derives_egate_ancestor_closure_not_strict_layer_wave_sequencing() -> None:
+    """Charter C2 condition 1: the gate is the transitive depends_on closure.
+
+    This test replaces test_derives_strict_prior_layer_and_wave_freeze_prerequisites,
+    which asserted the pre-v2.1 rule -- every asset of every lower-ranked layer plus
+    every earlier wave of the same layer, dependency edges never consulted. That rule
+    was correct for the sequential topology it was written for and is wrong for the
+    ratified one: under it, no layer session could dispatch anything at all.
+
+    The fixture shows the difference exactly. `bg_text_index` is wave 1 and depends on
+    `bg_reference` alone. The old rule demanded all three wave-0 assets frozen; the
+    E-gate demands the one it actually depends on.
+    """
     module = _load_dispatch_module()
     assert module is not None
     definition = _definition_manifest()
 
+    # No dependencies -> nothing gates it, regardless of layer or wave.
     assert module.campaign_prerequisite_asset_ids(
         definition_manifest=definition,
         layer="L0",
         wave_index=0,
+        dispatch_asset_ids=["bg_reference"],
     ) == []
+
+    # The behavioural difference, stated as an assertion: one real ancestor, not the
+    # two unrelated wave-0 assets the strict rule would also have demanded.
     assert module.campaign_prerequisite_asset_ids(
         definition_manifest=definition,
         layer="L0",
         wave_index=1,
-    ) == ["bg_reference", "bg_formula_constants", "bg_panchanga"]
+        dispatch_asset_ids=["bg_text_index"],
+    ) == ["bg_reference"]
+    assert "bg_formula_constants" not in module.campaign_prerequisite_asset_ids(
+        definition_manifest=definition,
+        layer="L0",
+        wave_index=1,
+        dispatch_asset_ids=["bg_text_index"],
+    )
+
+
+def test_egate_closure_is_transitive_excludes_self_and_dedupes() -> None:
+    module = _load_dispatch_module()
+    assert module is not None
+    definition = _definition_manifest()
+    # a -> b -> c, plus a second dispatched asset sharing ancestor c.
+    definition["assets"] = [
+        {**definition["assets"][0], "asset_id": "x_c", "depends_on": []},
+        {**definition["assets"][0], "asset_id": "x_b", "depends_on": ["x_c"]},
+        {**definition["assets"][0], "asset_id": "x_a", "depends_on": ["x_b"]},
+        {**definition["assets"][0], "asset_id": "x_d", "depends_on": ["x_c"]},
+    ]
+
+    # Transitive: dispatching x_a requires x_b AND x_c, not just x_b.
+    assert module.campaign_prerequisite_asset_ids(
+        definition_manifest=definition, layer="L0", wave_index=0,
+        dispatch_asset_ids=["x_a"],
+    ) == ["x_b", "x_c"]
+
+    # Shared ancestor appears once; a co-dispatched asset never gates its sibling.
+    assert module.campaign_prerequisite_asset_ids(
+        definition_manifest=definition, layer="L0", wave_index=0,
+        dispatch_asset_ids=["x_a", "x_d"],
+    ) == ["x_b", "x_c"]
+
+    # An asset is never its own prerequisite.
+    assert "x_b" not in module.campaign_prerequisite_asset_ids(
+        definition_manifest=definition, layer="L0", wave_index=0,
+        dispatch_asset_ids=["x_b", "x_a"],
+    )
+
+
+def test_egate_closure_fails_closed_on_bad_manifest_data() -> None:
+    """Fail-closed on data, never hang and never silently narrow the gate."""
+    module = _load_dispatch_module()
+    assert module is not None
+
+    cyclic = _definition_manifest()
+    cyclic["assets"] = [
+        {**cyclic["assets"][0], "asset_id": "y_a", "depends_on": ["y_b"]},
+        {**cyclic["assets"][0], "asset_id": "y_b", "depends_on": ["y_a"]},
+    ]
+    # Terminates rather than looping; the cycle partner still gates.
+    assert module.campaign_prerequisite_asset_ids(
+        definition_manifest=cyclic, layer="L0", wave_index=0,
+        dispatch_asset_ids=["y_a"],
+    ) == ["y_b"]
+
+    dangling = _definition_manifest()
+    dangling["assets"] = [
+        {**dangling["assets"][0], "asset_id": "z_a", "depends_on": ["z_missing"]},
+    ]
+    with pytest.raises(ValueError, match="dangling depends_on"):
+        module.campaign_prerequisite_asset_ids(
+            definition_manifest=dangling, layer="L0", wave_index=0,
+            dispatch_asset_ids=["z_a"],
+        )
+
+    unknown = _definition_manifest()
+    with pytest.raises(ValueError, match="not in the frozen definition"):
+        module.campaign_prerequisite_asset_ids(
+            definition_manifest=unknown, layer="L0", wave_index=0,
+            dispatch_asset_ids=["bg_not_a_real_asset"],
+        )
+
+
+def test_concurrent_campaign_run_cap_matches_the_ratified_charter_budget() -> None:
+    """Charter C5 publishes three slots; the tool must permit three, not one.
+
+    The guard was previously an unconditional `if active:` -- any run in flight
+    anywhere refused the dispatch -- which made slots 2 and 3 of the published ledger
+    unreachable, so the second session to claim a slot would fail after posting a
+    valid claim. This pins the cap to the ratified number so a future edit that
+    silently reverts it to 1 (or raises it without re-measuring connection headroom)
+    fails here.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    assert module.MAX_CONCURRENT_CAMPAIGN_RUNS == 3
 
 
 def test_binds_snapshot_reference_into_previewed_runner_manifest() -> None:
