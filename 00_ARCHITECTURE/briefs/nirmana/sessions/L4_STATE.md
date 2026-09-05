@@ -1210,3 +1210,44 @@ mis-recorded as open when #1870 shipped it two cycles ago) → next: verify cycl
 actually reached `is:queued`; watch E-gate / L2 capability landings; F1 remains the layer's one
 deferred code item.
 
+`2026-09-06T~02:55Z` — L4 — **CYCLE 3 (v2.3) — PR hygiene found and fixed a 4th real DIRTY PR
+(`1839`) that `is:queued` had silently dropped between cycles; the other three re-armed last
+cycle are legitimately still pending or now confirmed queued.**
+
+**`1839` (`ph_phaladesa` top-anchor) had left the merge queue with `autoMergeRequest: null` and
+`mergeStateStatus: UNKNOWN`** — looked, at a glance, like a batch ejection with nothing wrong
+(33/33 checks non-failing). Did not trust that glance: `git merge-tree --write-tree
+origin/main <branch>` showed a real conflict on the shared generated pin file — the same class
+of drift as every prior DIRTY fix this session (main moved under it while it sat unqueued).
+Fixed with the now-standard sequence: rebase, `--skip` the stale pin-splice commit, regenerate
+the writer-digest (no diff — already correct), re-splice the L4 pin offline, ran the asset's own
+test file (38/38 `test_ph_wave7.py`), pushed. Push was rejected — `1839` was, despite
+`autoMergeRequest: null`, **still an active merge-queue entry** (`mergeQueueEntry.id` resolved on
+the first GraphQL query) — dequeued via the established `dequeuePullRequest(id: <PR's own
+id>)` mutation, then pushed clean and re-armed.
+
+**Worth flagging as a real gap in the session's own "`is:queued` is the only truth" heuristic**:
+`1839` did not appear in the `is:queued` search this cycle, yet had a live `mergeQueueEntry`
+underneath — so the search can lag or miss an entry the GraphQL API still sees. The corrective
+action stays the same either way (rebase + dequeue + repush), but the *detection* step should
+check `mergeQueueEntry` via GraphQL when a PR looks ambiguously non-queued, not stop at the
+`is:queued` search result alone. Recording this so a future cycle (mine or another lane's) does
+not treat a single missing `is:queued` hit as proof nothing is queued.
+
+**`1831` showed the mirror case**: `mergeStateStatus: CLEAN`, `autoMergeRequest: null`, not in
+`is:queued` — looked like CLEAN-but-unqueued (contract's own named case), but `gh pr merge 1831
+--auto` replied `"already queued to merge"`. This is the documented-since-earlier-in-the-session
+behavior (autoMergeRequest reads null once genuinely enqueued) working exactly as expected, not
+a new problem — no action was needed, confirmed rather than assumed.
+
+Re-verified all 11 own PRs after: none DIRTY, none RED; the handful still `UNKNOWN`/`BLOCKED`
+are checks in flight, consistent with every other healthy PR in this session. E-gate re-checked,
+unchanged (`ph_nimitta` 37/46).
+
+CYCLE 3 L4: PR hygiene found and fixed a 4th real DIRTY PR (`1839`, `is:queued` had silently
+missed its live merge-queue entry — flagged as a detection-method gap, not just a one-off fix)
+→ confirmed `1831` was a false alarm (documented null-autoMergeRequest-means-queued behavior) →
+E-gate unchanged → no new priority-1/2/3 unit available this cycle beyond the hygiene fix itself
+→ next: when checking PR hygiene, verify an ambiguous PR's `mergeQueueEntry` via GraphQL before
+concluding it needs re-arming, not just the `is:queued` search result.
+
