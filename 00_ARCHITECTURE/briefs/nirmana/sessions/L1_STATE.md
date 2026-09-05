@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 42; F-A15 fixed at the writer level (#1981)
+last_updated: 2026-09-06 — C8 v2.3 cycle 43; ga_sade_sati F-A14 widened to 6/15 (#1987)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -24,7 +24,7 @@ your `nirmana-adjudication` issues → continue.
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
   #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
-  cycle 40) used. 752–759 remain free.
+  cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43) used. 753–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1760,6 +1760,55 @@ defects (F-A15, F-A16) are now closed. Next: a follow-up F-A14 pass widening `ga
 (1/57 categories) or `ga_sade_sati` (2/15 categories) coverage, or `ga_positions` re-dispatch once
 #1892 lands.
 
+## CYCLE 43 (C8 v2.3) — ga_sade_sati's F-A14 contract widened to 6/15 categories (PR #1987, migration 752)
+
+**PR hygiene:** all 29/29 prior L1 PRs confirmed `is:queued` except two, both correctly left as-is:
+**#1853** (`ga_condition` F-C8) was genuinely RED again on the recurring #1852 L2-pin-staleness
+class (third occurrence — `bo_pratijna`'s `writer_inventory_sha256` stale relative to a since-
+merged L2 writer change on `main`). Confirmed this was the LATEST check on the PR's current HEAD
+(not stale CI) before posting evidence to #1852 and messaging `l2-3f` directly; per the
+D-L1-28/D-L1-31 precedent, did not touch the branch myself. **#1981** (last cycle's F-A15 fix) was
+freshly opened, still mid-CI, not yet queued — normal, not stuck. #1928/#1892 unchanged.
+
+**Unit of work: widened `ga_sade_sati`'s F-A14 integrity contract from 2/15 to 6/15 categories**
+(PR **#1987**, migration 752 — first used in the 752-759 range). Migration 748 (cycle 37) covered
+`sade_sati_cycle`/`sade_sati_phase_quarter` only; this pass adds the four Dhaiya-family categories
+(`dhaiya_period`, `kantaka_shani_period`, `ashtama_shani_period`, `ardha_ashtama_shani_period` —
+Saturn's 4H/8H transits from natal Moon, `ga_sade_sati_writer.py`'s `_emit_dhaiya_rows`).
+
+Read the writer's `_emit_dhaiya_rows` closely first: `dhaiya_period`, the house-specific category
+(`kantaka_shani_period`/`ashtama_shani_period`), and (for house 4/8) `ardha_ashtama_shani_period`
+are all emitted from the SAME `entry_dt`/`exit_dt` pair under a shared `subj` — separately stored
+rows, so a genuine cross-category consistency check is meaningful, not a tautology. Four new
+conjuncts: (d) `dhaiya_period` temporal ordering, (e) `dhaiya_period.duration_days` re-derivation
+(mirrors migration 748's own conjuncts b/c style), (f) the three sibling categories'
+`period_start_iso`/`period_end_iso` agree with `dhaiya_period`'s own value for the same subject
+(670 rows checked, 0 violations), (g) `kantaka_shani_period`/`ashtama_shani_period`'s
+`duration_days`/`saturn_sign` also agree (`ardha_ashtama_shani_period` correctly excluded — it
+stores neither field). All four verified live clean, then individually mutation-tested.
+
+**`integrity_check_sql` is a single `UPDATE ... SET` column, not additive SQL** — carried migration
+748's three original conjuncts forward verbatim inside the new full-replacement value, rather than
+just appending the new ones (which would have silently regressed 748's own coverage to zero once
+752 applies after it in migration order).
+
+**Mutation-testing note:** the first attempt used the established CTE-overlay pattern (shadowing
+`chart_facts` with a `UNION ALL`-patched relation), but it proved disproportionately slow against
+this table's full cross-chart row count — a background run was killed after it failed to complete.
+Switched to a real transactional `UPDATE` + `ROLLBACK` against production instead (uses the real
+indexed table rather than an unindexed materialized overlay) — all four new conjuncts correctly
+returned `false` against their targeted corruption, and production was confirmed byte-identical
+after each rollback. No writer touched — `provenance_inventory --check` stays clean, no digest/pin
+regen needed. Full `platform/tests/unit/migrations/` suite: 187 passed / 91 skipped (39 files).
+
+CYCLE 43 L1: widened `ga_sade_sati`'s F-A14 contract to 6/15 categories (PR #1987, migration 752)
+— next: continue widening `ga_sade_sati` (9 categories remain: `sade_sati_phase`,
+`sade_sati_modifier_overlay`, `sade_sati_saturn_retrograde_subset`,
+`sade_sati_cancellation_check`, `sade_sati_concurrent_dasha_overlay`,
+`sade_sati_downstream_cross_reference`, `janma_shani_period`, `vishakha_shani_period`,
+`anumukha_shani_period`) or `ga_structural` (56 categories remain), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1779,7 +1828,7 @@ none accepted yet (blocked on #1736).
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
-| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968) |
+| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql (#1968, widened #1987 cycle 43 — 6/15 categories: sade_sati_cycle, sade_sati_phase_quarter, dhaiya_period, kantaka_shani_period, ashtama_shani_period, ardha_ashtama_shani_period) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
@@ -2323,6 +2372,21 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   it proved disproportionately slow (33% after 10+ min wall-clock) for a bounded cycle — the
   directly-relevant verification (175+105+601 tests, matching the pre-change baseline) already
   matches this campaign's established bar.
+
+- **D-L1-66** — C8 v2.3 cycle 43: widened `ga_sade_sati`'s F-A14 contract (migration 752,
+  PR #1987) from 2/15 to 6/15 categories, adding the Dhaiya family (`dhaiya_period`,
+  `kantaka_shani_period`, `ashtama_shani_period`, `ardha_ashtama_shani_period`). Since
+  `integrity_check_sql` is a single `UPDATE ... SET` column, carried migration 748's three
+  original conjuncts forward verbatim rather than just appending the new ones — appending alone
+  would have silently regressed 748's own coverage to zero once 752 applies. Also re-confirmed
+  (third time this campaign, cycle 43) that `#1853`'s recurring RED is the SAME #1852 L2-pin class
+  as cycles 7/15/19 — escalated via issue comment + direct message to `l2-3f`, did not touch the
+  branch myself, per the standing D-L1-28/D-L1-31 precedent. Also: the established CTE-overlay
+  mutation-test pattern proved disproportionately slow against `chart_facts`' full cross-chart row
+  count (an unindexed materialized `UNION ALL` shadow relation self-joined by the detector SQL) —
+  switched to a real transactional `UPDATE` + `ROLLBACK` against production instead, which uses
+  the real indexed table and completed in seconds; worth remembering for any future migration
+  whose conjuncts self-join `chart_facts` more than once.
 
 ## Held items
 
@@ -2948,3 +3012,23 @@ L1 must satisfy rather than a feature it consumes.
   conjunct (b) clears once the 2 affected charts rebuild. CYCLE 42 L1: fixed F-A15 (PR #1981) --
   both F-A14-discovered writer defects (F-A15, F-A16) now closed -- next: a follow-up F-A14 pass
   widening ga_structural/ga_sade_sati coverage, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T04:3xZ -- CYCLE 43 (C8 v2.3). PR hygiene: #1853 genuinely RED again on the recurring
+  #1852 L2-pin class (third occurrence) -- confirmed live on current HEAD, escalated via issue
+  comment + direct message to l2-3f, did not touch the branch (D-L1-28/D-L1-31 precedent). #1981
+  (last cycle's fix) legitimately mid-CI, not stuck. All other 27 L1 PRs confirmed is:queued.
+  #1928/#1892 unchanged. Unit of work: widened ga_sade_sati's F-A14 contract from 2/15 to 6/15
+  categories (PR #1987, migration 752, first used in 752-759) -- added the Dhaiya family
+  (dhaiya_period, kantaka_shani_period, ashtama_shani_period, ardha_ashtama_shani_period), all
+  emitted from the same entry_dt/exit_dt pair under a shared subj per ga_sade_sati_writer.py's
+  _emit_dhaiya_rows -- a genuine cross-category consistency check, not a tautology. Since
+  integrity_check_sql is a single UPDATE...SET column, carried migration 748's three original
+  conjuncts forward verbatim inside the new full-replacement value rather than just appending
+  the new four (appending alone would have silently regressed 748's own coverage to zero once 752
+  applies after it). All four new conjuncts verified live clean, then individually mutation-tested
+  -- switched from the established CTE-overlay pattern (proved disproportionately slow against
+  chart_facts' full cross-chart row count; killed a hung background run) to a real transactional
+  UPDATE+ROLLBACK against production, which completed in seconds using the real indexed table.
+  No writer touched. Full platform/tests/unit/migrations/ suite: 187 passed / 91 skipped (39
+  files). CYCLE 43 L1: widened ga_sade_sati's F-A14 contract to 6/15 categories (PR #1987,
+  migration 752) -- next: continue widening ga_sade_sati (9 categories remain) or ga_structural
+  (56 categories remain), or ga_positions re-dispatch once #1892 lands.
