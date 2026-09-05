@@ -131,3 +131,11 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   projection drop → verdict writer under-production (fix writer, MUST). State file (PR #1800) updated
   + pushed. NEXT: read `extract_yogas_from_corpus`, then bundled D-CND-09 migration; bg_parihara_rules
   W1/W2. Blocked on: nothing for the writer-read/analysis work; job-image deploy only for dispatch.
+- 2026-09-05 — **bg_parihara_rules W1/W2 DONE (D-L0-H).** Route **rebuild_only**; volume 449 = 61
+  (bg_parihara_rules) + 329 (bg_muhurta_activity_rules) + 59 (bg_muhurta_factor_census), floor exact;
+  integrity = migration 644 content-hash (passes). **C13 blast-radius EMPTY** (catalogue-verified: 0
+  cascade children, 0 FK referrers on all 3 owned tables, no boundary crossed) — self-contained
+  destruction, snapshot prudent not mandatory. `expected_volume_formula` NULL but covered by the
+  content digest (D-CND-01). **Freeze BLOCKED** on manifest fingerprint drift (migration 644 populated
+  integrity_check_sql after the un-supersedable 09-01 freeze) → **adjudication #1816** filed, rec
+  Option 1 (bind on immutable pins only). NEXT: yoga writer read → bundled D-CND-09 migration.
