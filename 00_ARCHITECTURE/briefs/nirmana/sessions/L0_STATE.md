@@ -1908,3 +1908,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Fourth flat read (positions still 7/13/21/70, queue head still #1767,
   ~9.8min in_progress — still under the 30min hang threshold). No DIRTY, no RED. 30/40 frozen
   holds.
+
+- 2026-09-06 — **IDLE-OK.** Fifth flat read (positions still 7/13/21/70), but #1767's all 26 real
+  check-runs now `completed` (22 success, 4 skipped-by-design) — should merge imminently, same
+  pattern as #1906. Shortened next wakeup to catch the expected position drop. No DIRTY, no RED.
+  30/40 frozen holds.
