@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+from decimal import Decimal
 import time
 from datetime import date
 from typing import Any
@@ -498,7 +499,24 @@ class MiPramanaWriter(WriterBase):
         for cr in cal_rows:
             score = float(cr["composite_score"])
             verdict = cr["composite_verdict"]
-            lo = math.floor(score / bin_size) * bin_size
+            # A-F-34 (L5-W3): binning used `math.floor(score / bin_size)`, which
+            # is wrong at EVERY exact tenth whose IEEE-754 quotient falls just
+            # under the integer.  Measured:
+            #     0.6 / 0.1 -> 5.999999999999999  -> floor 5 -> bin [0.5,0.6)
+            #     0.7 / 0.1 -> 6.999999999999999  -> floor 6 -> bin [0.6,0.7)
+            #     0.3 / 0.1 -> 2.9999999999999996 -> floor 2 -> bin [0.2,0.3)
+            # so a score of exactly 0.3, 0.6 or 0.7 was filed into a half-open
+            # bin that EXCLUDES its own value.  Found live: reliability strata
+            # [0.5,0.6) and [0.6,0.7) stored n=18/7 where the calibration rows
+            # recompute to 17/8, because one row scoring exactly 0.6 sat in the
+            # wrong bin.  §N.7 item 1 -- a derived value that does not reproduce
+            # from its own stated formula.
+            #
+            # Decimal on the string form avoids the representation error
+            # entirely: Decimal('0.6') / Decimal('0.1') is exactly 6.
+            bin_index = int(Decimal(str(score)) / Decimal(str(bin_size)))
+            bin_index = max(0, min(9, bin_index))   # clamp: score is [0,1]
+            lo = bin_index * bin_size
             hi = lo + bin_size
             key = f"[{round(lo,1)},{round(hi,1)})"
             bins.setdefault(key, []).append((score, verdict == "CONFIRMED"))
