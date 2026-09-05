@@ -57,7 +57,7 @@ def test_release_smoke_executes_both_full_contracts_and_binds_candidate(
     monkeypatch.setattr(smoke.urllib.request, "urlopen", fake_urlopen)
 
     assert smoke.main() == 0
-    assert seen_assets == ["bg_panchanga", "bg_ephemeris_engine"]
+    assert seen_assets == ["bg_panchanga", "bg_ephemeris_engine", "ka_graha_sancara"]
 
 
 def test_release_smoke_rejects_green_with_a_failed_check(monkeypatch: pytest.MonkeyPatch):

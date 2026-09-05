@@ -86,6 +86,8 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
         return _probe_panchanga_engine(probe_spec)
     elif probe_type == "ephemeris_engine":
         return _probe_ephemeris_engine(probe_spec)
+    elif probe_type == "graha_sancara_forensic":
+        return _probe_graha_sancara(probe_spec)
     else:
         return {"status": "down", "message": f"unknown probe_type: {probe_type}", "checks": []}
 
@@ -519,5 +521,123 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         _add_check(checks, failures, "sidereal_mean_node_rahu_invariant", False,
                    f"MEAN_NODE check failed: {exc}", error=str(exc))
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_graha_sancara probe ────────────────────────────────────────────────────
+
+# NIRMĀṆA L3-W4 — an INDEPENDENT probe, not a reuse of
+# pipeline/orchestrator/writers/ka_graha_sancara.py's own self-test (implementer
+# != certifier, same discipline as the two probes above). Both call the same
+# single canonical `services.ka_graha_sancara.engine.get_ephemeris` surface,
+# but this one is invoked fresh from the Nirmana probe route, independent of
+# whatever the writer already self-reported into `selftest_detail`.
+#
+# `force_live=True` is load-bearing: it is the ONLY path that answers a
+# birth-INSTANT question (PATH-A/`ephemeris_daily` is day-grade, computed at
+# 12:00 UT, and yields the wrong sign for this exact anchor — see L3-W3 M3 /
+# `ka_graha_sancara.py`'s own `forensic_moon_sign` check comment). It is also
+# what keeps this probe DB-free (skips PATH-A's `db_conn` read entirely), same
+# class of guarantee as the two probes above ("in-process Python library, no
+# network endpoint" — module docstring).
+_GRAHA_SANCARA_EXPECTED_GRAHAS = frozenset(
+    {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
+)
+
+
+def _validated_graha_sancara_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import datetime
+
+    required = {"forensic_birth_instant", "forensic_ayanamsha", "forensic_expected_moon_sign"}
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_instant = probe_spec["forensic_birth_instant"]
+    if not isinstance(raw_instant, str):
+        raise ValueError("forensic_birth_instant must be an ISO-8601 string")
+    try:
+        instant = datetime.fromisoformat(raw_instant)
+    except ValueError as exc:
+        raise ValueError("forensic_birth_instant must be valid ISO-8601") from exc
+    if instant.tzinfo is not None:
+        raise ValueError("forensic_birth_instant must be local wall time without an embedded offset")
+
+    ayanamsha = probe_spec["forensic_ayanamsha"]
+    if ayanamsha != "lahiri":
+        raise ValueError("forensic_ayanamsha must be 'lahiri' (engine's live-compute path supports only lahiri)")
+
+    expected_moon_sign = probe_spec["forensic_expected_moon_sign"]
+    if not isinstance(expected_moon_sign, str) or not expected_moon_sign.strip():
+        raise ValueError("forensic_expected_moon_sign must be a non-empty string")
+
+    return {"instant": instant, "ayanamsha": ayanamsha, "expected_moon_sign": expected_moon_sign}
+
+
+def _probe_graha_sancara(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_graha_sancara_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid graha_sancara health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from services.ka_graha_sancara.engine import get_ephemeris  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                   f"import failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 2 + 3: birth-instant FORENSIC compute, independent of PATH-A/db_conn.
+    try:
+        from services.ka_graha_sancara.engine import get_ephemeris
+        result = get_ephemeris(
+            dt=config["instant"], ayanamsha=config["ayanamsha"], db_conn=None, force_live=True,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_moon_sign", False,
+                   f"ephemeris computation failed: {exc}", error=str(exc))
+        _add_check(checks, failures, "nine_grahas_present", False,
+                   "ephemeris computation failed, no grahas to check")
+        return _aggregate(checks, failures)
+
+    moon = result.grahas.get("Moon")
+    moon_sign = moon.sign if moon is not None else None
+    moon_ok = moon_sign == config["expected_moon_sign"]
+    _add_check(
+        checks, failures, "forensic_moon_sign", moon_ok,
+        f"Moon sign={moon_sign!r}, expected {config['expected_moon_sign']!r} "
+        f"at {config['instant'].isoformat()} ({config['ayanamsha']}, force_live)",
+        moon_sign=moon_sign, expected_moon_sign=config["expected_moon_sign"],
+        source=result.source,
+    )
+
+    # Check 3: same 9-graha/non-null-speed completeness the writer's own
+    # selftest asserts (L3-W3 M3 context) — free from the same result object,
+    # independently re-derived here rather than trusted from the writer.
+    graha_names = set(result.grahas.keys())
+    missing_grahas = sorted(_GRAHA_SANCARA_EXPECTED_GRAHAS - graha_names)
+    null_speeds = sorted(name for name, gs in result.grahas.items() if gs.speed_dps is None)
+    nine_ok = not missing_grahas and not null_speeds
+    _add_check(
+        checks, failures, "nine_grahas_present", nine_ok,
+        f"missing={missing_grahas}, null_speeds={null_speeds}" if not nine_ok else "",
+        missing_grahas=missing_grahas, null_speeds=null_speeds, graha_count=len(graha_names),
+    )
 
     return _aggregate(checks, failures)

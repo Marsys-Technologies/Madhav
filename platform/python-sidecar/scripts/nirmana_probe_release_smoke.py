@@ -102,7 +102,7 @@ def main() -> int:
     expected_revision = _required_env("NIRMANA_PROBE_EXPECTED_REVISION")
     contracts = json.loads(CONTRACTS_PATH.read_text(encoding="utf-8"))
 
-    for asset_id in ("bg_panchanga", "bg_ephemeris_engine"):
+    for asset_id in ("bg_panchanga", "bg_ephemeris_engine", "ka_graha_sancara"):
         health_probe = contracts.get(asset_id)
         if not isinstance(health_probe, dict):
             raise RuntimeError(f"full release contract is missing for {asset_id}")

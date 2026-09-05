@@ -27,5 +27,11 @@
       "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2"
     },
     "note": "JD = 1984-02-05 10:43 IST = 05:13 UTC. Sun in Makara; mean-node Rahu in Vrishabha under sidereal Lahiri."
+  },
+  "ka_graha_sancara": {
+    "probe_type": "graha_sancara_forensic",
+    "forensic_birth_instant": "1984-02-05T10:43:00",
+    "forensic_ayanamsha": "lahiri",
+    "forensic_expected_moon_sign": "Aquarius"
   }
 }
