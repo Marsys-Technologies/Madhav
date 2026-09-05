@@ -420,3 +420,32 @@ check; #1808 now genuinely queued. No slot claimed — `ph_nimitta` still E-gate
 CYCLE L4: fixed RED PR #1791 (stale test after own honesty fix) + queued CLEAN PR #1808 → next:
 verify #1799 deployed live, announce CAPABILITIES LANDED, then W3-3 writer work.
 
+`2026-09-05T~19:25Z` — L4 — **cycle: PR HYGIENE, second RED found on #1791 after the first fix
+landed.** Rebase revealed a NEW governance gate (`nirmana_analysis_layer_pins --check`, added on
+`main` by another lane after this PR branch diverged — 21 commits behind): L4's committed
+`writer_inventory_sha256` in `nirmana-analysis-layer-pins.json` was stale because this PR's writer
+change (prior commit `d3d26ea1a`) had already regenerated `nirmana-writer-digests.json` but never
+propagated to the downstream pin — a gap in the *original* PR, not a new defect from my test fix.
+
+Root-caused, not weakened: rebased `codex/nirmana-l4-w3-3b-muhurta` onto `origin/main` (clean, no
+conflicts) to pick up the new pins file and gate; independently confirmed via read-only DB query
+that L4's frozen-manifest cohort is unchanged (9 assets, all writers, `non_writer_assets: []`);
+hand-computed the new `writer_inventory_sha256` (`0707fbdb…`) from `nirmana-writer-digests.json`
+using the exact algorithm in `nirmana_analysis_layer_pins.py::layer_inventory_sha256`; spliced only
+L4's `writer_inventory_sha256` + `convergence_commit` (→ `d3d26ea1a…`, the commit whose writer
+inventory this now pins) into the committed file, every other layer's record carried through
+byte-for-byte per the script's own #1814 per-layer-splice discipline. **Verified against the
+script's own `--check` (no DB needed): PASS** — not just asserted; this is what makes the hand-
+splice trustworthy rather than a hand-edit the script is specifically designed to catch. Local
+tests re-run post-rebase: 65/65 pass. Pushed `c95df0529` (force-with-lease, expected after a
+rebase of my own feature branch — not main, not a shared branch). CI re-running.
+
+**No DATABASE_URL is available in this worktree** for the script's own regeneration path
+(`load_frozen_manifest_assets()` needs it); the read-only MCP postgres tool substituted for the
+manifest read, and the script's `--check` mode substituted for proof the hand-splice is correct.
+Noting for any future L4 pin regeneration: same substitution works.
+
+CYCLE L4: PR hygiene — rebased #1791 onto main, root-caused a second (pre-existing, not
+self-inflicted) RED gate (`nirmana_analysis_layer_pins`), fixed + verified offline → next: watch
+#1791's CI, verify #1799 deployed live + announce CAPABILITIES LANDED, then W3-3 writer work.
+
