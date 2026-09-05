@@ -126,6 +126,55 @@ before an actual W6 submission repeats it.
   P7-adjacent action taken, and it was a Conductor-granted, ruling-scoped removal, not new P7
   construction.
 
+## 3a. Anchors-consumption map (C8.5 prep: land HELD items within hours, not days)
+
+Traced real consumers of `phala_anchors` (ph_nimitta's table) and `ph_phaladesa` across the
+codebase, so that when L2's D-SYNTHESIS/D-SALIENCE capabilities announce under `## CAPABILITIES
+LANDED` on `main`, the exact file + field to touch is already known rather than re-discovered
+under time pressure.
+
+**Real MCP-layer consumers of `phala_anchors` today** (grep-verified, not assumed):
+- `phala_predictive_anchors_get` (`register_p1_aliases.ts`) — the real, working consumer: calls
+  `marsys://tool/L4/query_predictive_anchors`, already carries `posterior_provenance`
+  (base_rate_source + honest cardinality-null) and a defensive `empty_reason`/`known_gap` floor
+  (EL-41/B-1 fix, already shipped, unrelated to this session).
+- `phala_event_anchors.ts` — direct-sidecar-HTTP variant (`phala_anchors_get`), a functionally
+  distinct alias from the one above (documented naming collision in `register_p1_aliases.ts`'s
+  own comment, not something this session introduced or needs to fix).
+- `phala_outlook.ts` (PH-4-5, `phala_outlook_get`) — composite bundle pulling `anchors` alongside
+  `mitigations`/`rectification`/`auspicious_windows`; budget-trimmed via the shared
+  `response_budget.ts` trimmer (`minKeep: 10` on `anchors`).
+- `phala_mitigation_map.ts`, `register_p1_synthesis.ts` (Mahā-Brief fructification-timing pull),
+  `mimamsa_outcome.ts` (L5 outcome recording keyed to `anchor_id`) — all real, working reads.
+- Downstream at L5: `mi_adhilepa`, `mi_bhavisya`, `mi_kula`, `mi_pariksha` all read
+  `phala_anchors` directly as sidecar-side writer inputs (not MCP-layer).
+
+**This sharpens F1's scope, rather than changing its status**: F1 names `ph_phaladesa`'s
+`query_domain_result`/`query_falsifiers` specifically as zero-consumer — confirmed still true —
+but `phala_anchors` (`ph_nimitta`) itself is NOT under-consumed; it has real, already-fixed MCP
+wiring. Worth recording so a future reader doesn't conflate "L4 has an MCP-wiring gap" (true,
+scoped to `ph_phaladesa`) with "L4's anchors are unreachable" (false).
+
+**Where D-SALIENCE's `tail_watch` plugs in, concretely**: `phala_outlook.ts`'s own docstring
+contract (lines 5-19) lists the exact response shape — `anchors`/`mitigations`/`rectification`/
+`auspicious_windows`/`summary_confidence`/`provenance_envelope`. Grepped the full file: no
+`tail_watch` field exists today, confirming L2's own `L2_W1_ANALYSIS_v1_0.md` finding
+("`tail_watch` does not exist anywhere in the codebase") from the L4 side too. When L2 ships it,
+the natural landing spot is a new top-level `tail_watch` array in this same response contract,
+trimmed by the same `response_budget.ts` section-list `phalaOutlookSections()` already uses for
+`anchors`/`mitigations` (add a `hardFloor`-eligible entry per §N.6, since a `tail_watch` row is
+by definition low-salience-but-high-consequence — exactly the class §N.6 item 2 says a budget
+trim must protect first, not drop first).
+
+**Where D-SYNTHESIS's agreement/citation line plugs in**: `register_p1_synthesis.ts`'s Mahā-Brief
+assembly (`synth_chart_brief_get`, ~line 835) is the one cross-domain surface in this file that
+already pulls `phala_anchors` for fructification timing (`synthesis_maha_brief`). Correction
+before over-claiming: the `grounding: { fact_ids: [], citations: [], grounding_score: null }`
+shape (line 153) belongs to `envelope()`, a **generic wrapper shared by 8 different tools in this
+file**, not an L4-specific placeholder — so it is a real, already-existing field name to populate
+once L2's grounding capability lands, but landing it touches whatever populates `envelope()`'s
+`content` for the Mahā-Brief's phala-anchors slice specifically, not a bespoke L4 field.
+
 ## 4. Cost actuals (measured, not forecast)
 
 See `L4_STATE.md` "Cost ledger" for the full per-lane breakdown. Summary: bootstrap + W1 fan-out

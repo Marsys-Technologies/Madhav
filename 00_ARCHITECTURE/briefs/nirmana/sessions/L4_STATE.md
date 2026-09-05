@@ -1251,3 +1251,40 @@ E-gate unchanged → no new priority-1/2/3 unit available this cycle beyond the 
 → next: when checking PR hygiene, verify an ambiguous PR's `mergeQueueEntry` via GraphQL before
 concluding it needs re-arming, not just the `is:queued` search result.
 
+`2026-09-06T~03:15Z` — L4 — **CYCLE 4 (v2.3) — PR hygiene applied last cycle's own lesson (batch
+GraphQL `mergeQueueEntry` check on every PR the `is:queued` search missed) and it paid off
+immediately: 4 of the "not-in-search" PRs (`1808`, `1842`, `1834`, `1831`) turned out already
+genuinely queued, saving a redundant rebase-and-dequeue cycle on each. `1839` was legitimately
+still on its own pre-queue checks (`IN_PROGRESS`, not RED). E-gate re-verified unchanged
+(`ph_nimitta` 37/46). Priorities 1-4 exhausted again (L2's D-SYNTHESIS/D-SALIENCE confirmed
+still not landed via a direct read of `L2_STATE.md`'s own `## CAPABILITIES LANDED` section —
+"none yet"), so did the founding prompt's remaining named prep option: deepened the
+anchors-consumption analysis.**
+
+**What this added, concretely** (all grep-verified against the real codebase, not assumed): a
+new §3a in `L4_W6_CLOSE_REPORT_v1_0.md` mapping every real MCP-layer and L5-writer consumer of
+`phala_anchors` (`phala_predictive_anchors_get`, `phala_event_anchors.ts`, `phala_outlook.ts`,
+`phala_mitigation_map.ts`, `register_p1_synthesis.ts`'s Mahā-Brief pull, `mimamsa_outcome.ts`,
+plus L5's `mi_adhilepa`/`mi_bhavisya`/`mi_kula`/`mi_pariksha` writers) and, separately, the two
+concrete landing spots for L2's HELD capabilities once they ship: `phala_outlook.ts`'s response
+contract for `tail_watch` (confirmed absent today, matching L2's own analysis doc), and
+`register_p1_synthesis.ts`'s shared `envelope()` `grounding` field for D-SYNTHESIS (confirmed
+generic — shared by 8 tools in that file, not L4-specific, corrected in the doc before
+overclaiming it was a bespoke L4 hook).
+
+**A useful side-finding, recorded not acted on**: this trace sharpens F1's actual scope. F1 says
+"L4 has zero MCP consumers" for `query_domain_result`/`query_falsifiers` (`ph_phaladesa`) —
+still true — but `phala_anchors` (`ph_nimitta`) itself is well-consumed with already-fixed
+provenance wiring (`phala_predictive_anchors_get`'s EL-41/B-1 empty_reason floor). Worth stating
+explicitly so a future reader doesn't over-generalize F1 into "L4's anchors are unreachable,"
+which is false.
+
+CYCLE 4 L4: PR hygiene — GraphQL `mergeQueueEntry` cross-check (adopted from last cycle's own
+flagged lesson) confirmed 4 PRs were already safely queued despite missing `is:queued`, avoiding
+redundant rework → E-gate unchanged → L2 capability-landing check confirmed still none →
+deepened the anchors-consumption analysis (§3a of the close report): mapped every real consumer
+of `phala_anchors`, named the concrete landing spots for `tail_watch`/D-SYNTHESIS once L2 ships,
+and sharpened F1's scope (anchors are NOT under-consumed; only `ph_phaladesa`'s two capabilities
+are) → next: watch `L2_STATE.md`'s `## CAPABILITIES LANDED` section each cycle; F1 remains the
+layer's one deferred code item.
+
