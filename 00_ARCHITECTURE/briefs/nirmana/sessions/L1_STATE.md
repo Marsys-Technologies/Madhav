@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 1; PR hygiene (pin regen) done, W3 continuing
+last_updated: 2026-09-05 — C8 v2.3 cycle 2; ga_positions W2 acceptance events LIVE, E-gate cond 2 open
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -56,6 +56,49 @@ GraphQL `dequeuePullRequest` the stale queue entry before GitHub would accept th
 auto-merge; `mergeStateStatus: BLOCKED` (checks re-running on the new commit) as of this write —
 next cycle re-verifies with `is:queued` per the charter's exact-claim requirement.
 
+## CYCLE 2 (C8 v2.3) — canary W2 acceptance events LIVE
+
+**PR hygiene first (per contract):** re-verified #1766 and #1827 with `is:queued` — neither queued
+yet, but neither RED nor DIRTY either; both `mergeStateStatus: BLOCKED` with checks still running
+(all green so far on #1766: TypeScript/DB-integration/governance gates all `pass`, only 2-3 slow
+jobs still `pending`). Nothing actionable — not stuck, just mid-flight. Left as-is for next cycle
+to re-verify.
+
+**The unit of work: proved the W2 acceptance-event submission mechanism end-to-end on the canary,
+`ga_positions`.** The hold from #1715 cleared last cycle (its three PRs merged), but nothing had
+actually exercised the executor HTTP path for L1 yet. Rather than batch-submitting all 19 assets
+blind, did exactly what the charter's own canary discipline asks (W4's "prove the cross-layer gate
+on ga_positions first" — the same principle applies here one step earlier):
+
+1. Computed `registry_fingerprint_sha256` + `analysis_digest` for `ga_positions` using the REAL
+   deployed code, not a reimplementation — imported `canonicalRegistryContractDigest`,
+   `registryContractFingerprintInput`, `canonicalNirmanaAssetAnalysisDigestForRegistryRow` directly
+   from `definitions.ts` via a throwaway `tsx` script (never committed, deleted after use),
+   querying the live registry+frozen-manifest join myself with a plain `pg.Client` rather than
+   pulling in the module's writer-pool machinery. Verified first that the deployed Cloud Run
+   revision's `commit-sha` label (`75ac19c66…`) has byte-identical `definitions.ts` +
+   both generated pin/digest files to current `origin/main` (diff empty), so this local
+   computation is provably what production would compute too — not a guess.
+2. Minted an executor-scoped OIDC token (`amjis-nirmana-executor@…`, `--include-email` — the
+   documented trap in CAMPAIGN_STATE.md that produces a silent-403 if omitted) and probed the route
+   with an intentionally invalid body first: **HTTP 400** (proves auth passed; a 403 would have
+   meant it hadn't) before ever sending real data.
+3. Submitted `asset_analysis_accepted` then `optimization_verdict_accepted` for `ga_positions`
+   (route `rebuild_only` → verdict `examined_and_already_efficient`, action `no_change`,
+   `output_contract: digest_identical` — the writer needs no code change, only the registry-only
+   fixes already landed in #1756). Both **HTTP 201 created**.
+4. Re-ran the E-gate batch query: `ga_positions` now reads `w2_analysis=t w2_verdict=t gate=OPEN-PENDING-PIN`
+   — first-ever L1 asset to clear E-gate condition 2. **The mechanism works.**
+
+**Decided against batching the remaining 18 in this same cycle** (D-L1-22) — one bounded unit per
+the C8 v2.3 contract, and the verdict payload for each of the other 18 needs its own accurate
+`evidence_refs`/`summary` drawn from `L1_W2_DECIDE_v1_0.md` §2, not a copy-paste of the canary's.
+Next cycle: batch the remaining 10 `rebuild_only` assets first (same `examined_and_already_efficient`
+shape, low risk of payload error), then the 8 `changed` assets (need `verdict: correct` /
+`optimize_and_correct` and a `correctness_change` output_contract, one per asset's actual MUST
+finding), then `ga_prashna` last (still `rebuild_only`/`examined_and_already_efficient` — the R-1
+dormancy is a registry `data_disposition` field, not a different verdict category).
+
 ## E-gate (C2/C10) — measured live 2026-09-05
 
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
@@ -63,7 +106,7 @@ All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`
 
 | tier | assets | unfrozen ancestors |
 |---|---|---|
-| T0 | `ga_positions` | **0 — condition 1 OPEN** |
+| T0 | `ga_positions` | **0 — conditions 1+2 OPEN; gate=OPEN-PENDING-PIN (cond 3: verify pins, claim slot, dispatch)** |
 | T1 | `ga_ayurdaya` `ga_dashas` `ga_nakshatra` `ga_panchanga` `ga_prashna` `ga_sensitive` `ga_sensitive_degree` `ga_transit_anchors` `ga_vargas` | 1 |
 | T2 | `ga_strength` | 2 |
 | T3 | `ga_condition` `ga_tajaka` | 3 |
@@ -213,10 +256,20 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   proxy process spawned. Required a GraphQL `dequeuePullRequest` before the protected-branch rule
   would accept the rebase+pin-regen force-push.
 
+- **D-L1-22** — C8 v2.3 cycle 2: proved the W2 acceptance-event mechanism on the canary
+  (`ga_positions`) before batching all 19 (full account in the CYCLE 2 section above).
+  `asset_analysis_accepted` + `optimization_verdict_accepted` both HTTP 201; E-gate condition 2 now
+  reads true for `ga_positions` (`gate=OPEN-PENDING-PIN`). Used my own gcloud identity's
+  `serviceAccountTokenCreator` grant on `amjis-nirmana-executor@...` — the native-provisioned,
+  campaign-sanctioned path per CAMPAIGN_STATE.md's P3 credential resolution, no new IAM, no key
+  file. `registry_fingerprint_sha256`/`analysis_digest` computed with the real TypeScript functions
+  (imported, not reimplemented) to guarantee byte-for-byte agreement with the server's own
+  independent recomputation.
+
 ## Held items
 
-- **All W2 acceptance events** — held on PR #1736 merging + deploying (ruling on #1715, explicit).
-  Route *decisions* are not held and are proceeding.
+- ~~All W2 acceptance events~~ — **hold CLEARED** (#1736/#1740/#1756 all merged). Mechanism proven
+  live on the canary `ga_positions` (D-L1-22); remaining 18 assets are unheld work for next cycle.
 - **All W5 `integrity_verified`** — held on L4's #1723 Part B (detector placeholder guard) landing.
 - ~~Status-vocabulary normalization~~ — **no longer held; dropped from scope** per D-L1-15.
 - No upstream C6 capability holds: L0 declared none.
@@ -263,3 +316,12 @@ L1 must satisfy rather than a feature it consumes.
   dispatch this cycle — that is next cycle's priority-1 item once #1766's checks confirm queued.
   No new adjudication issue needed. `CYCLE 1 L1: fixed #1766's stale pin (dequeue+regen+re-arm) →
   next: verify #1766 is:queued, then act on the now-clear W2 acceptance-event hold / check E-gate`.
+- 2026-09-05T13:53Z — **CYCLE 2 (C8 v2.3).** PR hygiene: #1766/#1827 both still BLOCKED (checks
+  in flight, all green so far) — not RED/DIRTY, nothing to fix, left for next cycle to re-verify
+  `is:queued`. Unit of work: proved the W2 acceptance-event mechanism end-to-end on the canary
+  `ga_positions` — `asset_analysis_accepted` + `optimization_verdict_accepted` both HTTP 201 via
+  the executor OIDC route; E-gate now reads `w2_analysis=t w2_verdict=t gate=OPEN-PENDING-PIN` for
+  `ga_positions`, the first L1 asset to clear condition 2. No new adjudication issue needed.
+  `CYCLE 2 L1: proved W2 acceptance-event mechanism on canary ga_positions (both events HTTP 201,
+  E-gate cond 2 now open) → next: batch remaining 18 assets' W2 acceptance events, then claim a run
+  slot and dispatch ga_positions W4`.
