@@ -139,6 +139,92 @@ treating any inherited `integrity_check_sql` failure as a data defect, check whe
 *ever* been green — an R0-T01 Conform pilot authored before the build it now judges is a proposal,
 not a gate.
 
+### ⛔ ACTIVE HOLDS — read before dispatching anything (2026-09-05, CONDUCTOR)
+
+**These survive a Conductor session death. A successor Conductor inherits them from this section,
+not from the issue tracker.**
+
+| held | scope | released when | ruling |
+|---|---|---|---|
+| **L3 `kala_convergence` write** | campaign-wide | **L4 confirms on #1770** that its five cascade-exposed tables (`phala_anchors` + 4, incl. `phala_sankrama` 2,985 rows) are regenerable — L3's own C13 re-run found the depth-2 paths it had missed and corrected 188 → 3,708 L4 rows at risk | #1770 |
+| `ka_gochara_resonance`, `ka_graha_sancara` | L3 | their declared `depends_on` rows in `asset_registry` are corrected to match what their writers actually read. The audit itself is published (`L3_DEPENDS_ON_AUDIT_v1_0.md` + DAG corrections register #1823, both on main); the registry correction is what remains | #1734 / D-CND-07 |
+
+**Lifted this arc (recorded so a successor doesn't re-enforce them):**
+
+| was held | lifted | basis |
+|---|---|---|
+| `ph_nimitta` / `phala_anchors` writes | 2026-09-05T07:46Z, #1732 **closed** | deterministic `anchor_id` verified **live** (default `gen_random_uuid()` gone, 195/195 distinct, 0 orphans in `phala_pramana`/`phala_sankrama`/`mimamsa_predictions` after remap) — not taken from the missing C6 announcement line |
+| L2 `bo_laksana` / `bodha_msr_signals` write | 2026-09-05T07:46Z, ruled on #1770 | L3 confirmed its five `kala_*` tables re-runnable from a rebuilt MSR base. Dispatch conditions stand: **RESUMED L2 session only** (#1819), `weight: monster`, runs **SOLO**, on snapshot `cloudsql-backup:1788566627645`, `cascade_check.sql` C13 statement first (its no-FK query under-reports, #1805 — `(0 rows)` ≠ clean) |
+
+The two remaining holds are **different gates** and must not be conflated: L2 dispatching needed
+*L3's* confirmation (given); L3 regenerating needs *L4's* (outstanding).
+
+### CONDUCTOR rulings — night 1, wave 3: the CASCADE finding, and a ruling of mine reversed
+
+**#1770 (L2, TIME-CRITICAL) is the most consequential finding of the campaign, and it corrects the
+Conductor's own ruling on #1748.**
+
+L2 checked a *favourable* conclusion about its own table — one I had ratified — and found two
+load-bearing inferences wrong. Both verified by the Conductor before ruling:
+
+1. **`bodha_msr_signals` REPLACES, it does not accrete.** `bodha_writers/_idempotency.py:131` issues
+   an explicit `DELETE FROM bodha_msr_signals` (§N.3 per-chart delete-then-insert, working as
+   designed). Canonical chart holds 49,955 + 104 + 45 across three `build_id`s — one live
+   generation plus two satellite writes, not three generations. Nine builds under accretion would
+   be ~450,000 rows; there are 150,150.
+2. **All eight FKs are `ON DELETE CASCADE`** (`confdeltype='c'`), while `_idempotency.py` asserts
+   `NO ACTION` at lines 55 **and** 110. That false comment is how #1748 reached its conclusion and
+   how the Conductor ratified it.
+
+**The transitive closure, traced by the Conductor (not in the original filing):**
+
+```
+bodha_msr_signals → kala_convergence → phala_anchors → phala_pramana
+                                                     → phala_sankrama
+                                                     → phala_sodhana
+                                                     → phala_suddha_sodhana
+```
+
+**864,733 rows across 12 tables in THREE layers** — L2 150,126 (deliberate) · **L3 710,899** ·
+**L4 3,708**. The L4 tail lands on `phala_anchors`: **the exact table #1732's hold exists to
+protect.** The campaign was guarding the front door while an L2 rebuild would have come through
+the wall.
+
+**Snapshot `cloudsql-backup:1788566627645`** — `SUCCESSFUL`, instance-level, 2026-09-05T00:03:47Z,
+with all 17 exposed tables' pre-state row counts recorded on #1770 so a restore is checkable
+rather than asserted. **Honest limit, stated rather than glossed: the backup is SUCCESSFUL; a
+restore has NOT been exercised.** A clone-restore drill is real spend and was not authorised
+tonight; the gap is named and goes to the Phase-Z register with the Conductor's name on it.
+
+#### Standing rulings added in this wave
+
+- **D-CND-15** — the campaign's DAG models **ancestors**, and the E-gate gates on ancestors.
+  **`ON DELETE CASCADE` makes DESCENDANTS a destruction surface**, and nothing in the E-gate, the
+  run-slot protocol, or a writer's own idempotency helper models that direction. Before any
+  `rebuild_only` dispatch, the owning session enumerates the **transitive CASCADE closure** of
+  every table its writer deletes from and holds if it crosses a layer boundary. A §N.3 in-layer
+  delete-then-insert is only "in-layer" *if the FKs say so*.
+- **D-CND-16** — **a comment asserting a schema property is not evidence of that property.** Where
+  code's safety depends on FK delete behaviour, trigger semantics or a constraint, the check
+  queries the catalogue. A stale comment is worse than no comment, because it stops the next
+  reader looking.
+
+#### The Conductor's error, recorded in full
+
+The #1748 ruling verified the `ON CONFLICT` key and the `build_id` count and wrote *"your mechanism
+is right."* It **never checked for the explicit DELETE, and never checked `confdeltype`** — each one
+query. **D-CND-16 is the rule that would have caught it, and it was written four hours later by the
+session that made the mistake.**
+
+What still stands from #1748, unamended: the 0-dangling measurement (re-verified directly:
+`phala_anchors` 188/0, `kala_convergence` 35,365/0, `mimamsa_attribution` 1,425/0) — but meaning
+only what L2 says it means, *a fact about build order, not a property of the design*, since the last
+`bo_laksana` build predates the L3/L4/L5 rows now pointing into it. D-CND-11 is unaffected.
+
+**The correction came from the session that stood to gain from the original grading being right.**
+That is the campaign's most important result of the night, and it is a process result, not a
+technical one.
+
 ### CONDUCTOR rulings — night 1 (2026-09-05)
 
 Eleven adjudication issues filed by five sessions in the first ~90 minutes; **all ruled in
@@ -210,8 +296,72 @@ sufficient — the Conductor's own #1737 removed an accidental safety and this i
   bites), and the concurrency cap moved 1 → 3, the charter's own ratified number, with connection
   headroom **measured** (`max_connections` 50, 9 in use) rather than assumed.
 
+### CONDUCTOR rulings — night 1, wave 2 (2026-09-05)
+
+Eight further adjudications, filed after the first wave was ruled. Same standard: every
+load-bearing claim re-verified live before ruling, and **two of these rulings correct the
+Conductor's own work.**
+
+| # | Session | Subject | Ruling | Status |
+|---|---|---|---|---|
+| 1732 | L5→L4 | a `ph_nimitta` rebuild destroys the L5 prediction-provenance chain | Option A; **`ph_nimitta` / `phala_anchors` rebuilds HELD campaign-wide.** Blast radius measured **larger** than filed: **6,606 rows across 9 tables**, seven of them L4's own. D-CND-04. | open (holds until L4's C6 announcement) |
+| 1734 | L3 | the E-gate is only as sound as `depends_on`, and L3's DAG is wrong in both directions | UPHELD in full. **L3 correctly has ZERO E-gate-open assets.** D-CND-07. | open (tracks 5 audits) |
+| 1739 | L4 | `seed_native_phala_anchors` — live-routed hand-authored-prediction write path | Option 1 (sever route, keep object). Option 3 rejected on the record; Option 2 deferred to Phase-Z debris. D-CND-08. | ruled, closed |
+| 1738 | L5 | `WriterResult.notes` is write-only — 87 writers degrade into a void | UPHELD campaign-wide. Fixed **at the writers, not the orchestrator** — no freeze exception needed. Orchestrator-side `degraded` flag PARKED to the deferred register. | open (5 audits + CI guard) |
+| 1744 | L1 | the frozen definition can no longer be superseded | CONFIRMED (174 events against it). **`depends_on` + `layer` immutable; everything else mutable-before-acceptance.** D-CND-09. Settles #1734's deferred remedy. | ruled, closed |
+| 1743 | L5→L3 | `kala_field_weight_versions` write-set arbitration | L3-owned, L5 read-only, both fenced. The feared `depends_on` edit is **already blocked by D-CND-09** for this campaign — but not the next, so it becomes the register's first **deliberate non-edge**. D-CND-10. | ruled, closed |
+| 1747 | L1 | **`ga_vargas` computes graha longitudes 5h30m late** | UPHELD — MUST-fix. Independently confirmed: Lagna Δ **exactly 0** (place-aware control), Sun and Moon both **0.229 d** despite 12× motion difference. **The FORENSIC 7/7 gate cannot expose it** — both the right and wrong Moon values fall inside Purva Bhadrapada. | open |
+| 1748 | L4→L2 | `bodha_msr_signals.signal_id` is `uuid4()` per build — 1,013,127 referencing rows | Colliding pairs → Option 1, with Option 3 **pre-authorised as interim** so L4 is never blocked. Retention deferred to Phase Z. D-CND-11. | open (L2 + L5 answers) |
+| 1750 | L1→L2 | three verified serving-side defects in L2's write-set | Routed to L2 as MUST. **F-C14 accepted as Conductor-owned and fixed** (PR #1759). D-CND-12. | open |
+| 1753 | L2 | 46 assets are `catalog_status='DRAFT'`; L3/L4/L5 entirely | Routed per layer as W3 registry work, **before** W2 acceptance. Mechanism guard is the Conductor's. D-CND-13. | ruled, closed |
+| 1757 | L5 | every `expected_volume_formula` is seed-reverted, and the seed's grammar rejects the fix | **Neither option offered** — the seed's own `depends_on` precedent, four lines below the defect, is simpler and costs no grammar change (PR #1762). D-CND-14. | open |
+
+#### Standing rulings added in this wave
+
+- **D-CND-11** — a stable identity key excludes every graded, calibrated or recomputed
+  quantity. A prediction must keep its identity across a recalibration, or an outcome can never
+  be compared to it. (L4's, produced while implementing D-CND-04.)
+- **D-CND-12** — a chart-dependent selector defect cannot be closed by a single-chart
+  verification. The ṣaḍbala selector survived a fix *and* a re-verification because both ran
+  against the one chart where it cannot manifest.
+- **D-CND-13** — a column whose DEFAULT is the wrong answer for the common case is a defect in
+  the schema, not in the callers that forget it. Where a sweep has already run once and the
+  condition returned, the sweep is not the fix.
+- **D-CND-14** — a seed that upserts a column a migration is expected to correct will revert
+  that correction, silently and later. Any column authored under doctrine is
+  migration-governed. A loaded gun is still a gun.
+
+#### Two corrections to the Conductor's own work
+
+1. **PR #1737 removed an accidental safety** (already recorded in wave 1, restated here because
+   D-CND-07 is its replacement): strict full-layer sequencing was incidentally immune to
+   under-declared `depends_on`. Not reverted — without it no layer can dispatch — but the loss
+   is real.
+2. **The `bg_vidhi_floors` commitment was withdrawn before acting on it.** The #1753 ruling said
+   the Conductor would take L0's single DRAFT asset itself. On checking, `bg_vidhi_floors`
+   already carries both W2 acceptance events (19:10:17Z), and `catalog_status` is inside
+   `REGISTRY_CONTRACT_FIELDS` — so the fix would have invalidated an accepted analysis under
+   C2.3 and forced a re-acceptance only L0's lane can redo honestly. **HELD and handed to L0,
+   four minutes after writing D-CND-09, which is the rule it would have broken.** Recorded as
+   evidence that constraint is easy to miss even while holding it in mind.
+
+#### Conductor tooling landed or in flight this wave
+
+`egate.sql` (#1722, merged) · depends_on fingerprint fix + its missing regression test (#1728,
+merged) · `nrec` identity-refusing evidence helper (#1731) · `capsule_audit.sql` (#1733) ·
+asset-frontier E-gate (#1737) · **fact-category-pin guard, three holes** (#1759) · seed volume
+governance (#1762).
+
 ### CONDUCTOR log
 
+- `2026-09-05T13:25Z` — first supervised cycle under C8 v2.3: own-PR hygiene cleared a two-day
+  backlog — #1731 and #1765 closed as superseded (each branch a verified strict ancestor of its
+  superset PR), #1733 and #1778 rebased onto main (both purely additive, zero deletions) with
+  auto-merge armed; HOLDS table above brought to the 07:46Z ruling state (2 lifted-and-recorded,
+  2 active). Fleet sweep: five CLEAN sibling PRs (#1808, #1790, #1777, #1767, #1766) queued —
+  verified via `is:queued`, not `autoMergeRequest`; RED nudges posted on #1818/#1801/#1791
+  (Governance Gates failing) and DIRTY nudge on #1820. Outstanding ball: L4 owes #1770 the
+  five-table regenerability confirmation that releases L3.
 - `2026-09-04T23:18:17Z` — night-1 adjudication wave: 11 issues from 5 sessions ruled and logged above; PRs #1722 (egate.sql), #1728 (depends_on fingerprint), #1731 (nrec), #1733 (capsule_audit.sql), #1737 (asset-frontier gate) raised and queued. Standing audits A-01 (L0's 29 capsules vs C12) and A-02 (evidence chains + identity separation across all 174 events) both CLEAN.
 - `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
   (`20323fae4`); labels `nirmana-adjudication` + `nirmana-coordination` created; coordination
