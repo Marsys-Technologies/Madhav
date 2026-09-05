@@ -15,11 +15,10 @@ worktree: ~/nirmana-s/l5
 stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
 15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
 recovered W5/runbook) **+ #1790 fixed/queued** (verified `is:queued`), **#1826 state PR in
-flight** (checks pending). **W4: `mi_vistara` is fully gate-eligible.** Both C2.2 acceptance
-events (`asset_analysis_accepted` + `optimization_verdict_accepted`) are RECORDED LIVE and
-independently re-verified — the first W2-acceptance evidence any `mi_*` asset has ever had. Live
-`egate.sql` now reads `mi_vistara: w2_analysis=t, w2_verdict=t, gate=OPEN-PENDING-PIN`. **Next:
-claim a run slot on #1713, dry-run + `--commit` dispatch per the canary runbook.** W4 gated only
+flight** (checks pending). **CANARY 1 (`mi_vistara`) DISPATCHED AND COMPLETE:** `run_id=
+e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`, 18.29s, verified live in job logs +
+DB (`asset_throughput.state='lit'`, first-ever `mi_*` provenance receipt). **W5 (mechanical
+checks + capsule) still owed — fresh-context verifier only, not me.** W4 gated only
 on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity
 collision, still live). `lel_events` and `mi_jivanaghatana` remain dispatchable behind
 `mi_vistara`.
@@ -398,6 +397,40 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~20:25Z (C8 v2.3 cycle 5) — **CANARY 1 DISPATCHED AND VERIFIED COMPLETE —
+  `mi_vistara` build ran end-to-end for the first time this campaign.** PR hygiene first: #1790
+  confirmed queued; #1826 checks-pending, nothing broken. Took a fresh on-demand Cloud SQL backup
+  (`gcloud sql backups create --instance=amjis-postgres`, id `1788617073802`, confirmed
+  `SUCCESSFUL`) for the hard-floor snapshot-ref requirement. Claimed a run slot on #1713 (0/3
+  occupied — verified live via `build_runs` query, not trusted from a stale ledger comment).
+  **Three real gaps found and worked around while following the canary runbook** (all now
+  corrected in `l5_scripts/L5_W4_CANARY_RUNBOOK.md`, not in the shared dispatcher — that's
+  Conductor-owned per C5, flagged on #1713 instead):
+  1. `dispatch_nirmana_campaign_wave.py` queries `nirmana_elevation_campaign_definitions`
+     unqualified; needed `DATABASE_URL` with `?options=-c%20search_path%3Dnirmana_evidence%2Cpublic`
+     appended (default `amjis_app` search_path is `$user, public`).
+  2. `--reviewed-deployment-sha` is required for **every** layer post-#1715/#1718, not just L0 as
+     the original runbook draft claimed — must exactly match the `git:<sha>` used as `source_ref`
+     on the two W2 evidence events.
+  3. `--snapshot-ref` is a hashed input to the manifest digest — had to re-run the dry run WITH
+     `--snapshot-ref` before trusting its digest as `--expected-manifest-digest`, or `--commit`
+     rejects with "runner manifest no longer matches the reviewed dry-run preview".
+  Dry run verified rollback-only both times (`SELECT id FROM build_runs WHERE id=...` → 0 rows
+  before commit). Committed dispatch: `run_id=e45e343b-f9cd-4167-aeb5-061cab5ef6b2`, execution
+  `brahma-build-pipeline-job-zv9gd`, **completed successfully in 18.29s**. Verified against the
+  JOB LOGS directly (not just DB, per the runbook's own instruction):
+  `[mi_vistara] export ledger ready — 0 existing export records` →
+  `[orchestrator] asset mi_vistara complete — 0 rows`. Cross-checked live:
+  `asset_throughput.state='lit', rows_written=0`; `build_run_assets.state='complete'`; **first
+  `mi_*` row ever in `asset_provenance_receipts`** (`receipt_state='unknown'` — honest for a
+  zero-row write, nothing to fingerprint the output against, not a defect). Released the slot on
+  #1713 with the full account. Updated `L5_W4_CANARY_RUNBOOK.md` in place with the three
+  corrections and a `§RESULT` section so canaries 2/3 (`lel_events`, `mi_jivanaghatana`) don't
+  rediscover the same gaps. **W5 deliberately NOT done this cycle** — implementer ≠ certifier is
+  structural; a fresh-context verifier subagent must run the mechanical checks and mint the
+  capsule. **Next cycle: dispatch a verifier subagent for `mi_vistara`'s W5**, then move to
+  canary 2 (`lel_events` — not build-dispatchable, needs a reconciliation + clear-protection
+  proof instead per the runbook).
 - 2026-09-05T~20:10Z (C8 v2.3 cycle 4) — **`mi_vistara`'s `optimization_verdict_accepted`
   recorded live — E-gate condition 2 fully satisfied for canary 1.** PR hygiene first: #1790
   confirmed in `is:queued` (fixed last cycle, no further action); #1826 still checks-pending

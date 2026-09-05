@@ -2,7 +2,7 @@
 artifact: L5_W4_CANARY_RUNBOOK.md
 canonical_id: NIRMANA_L5_W4_CANARY_RUNBOOK
 version: "1.0"
-status: READY — prepared while W4 is gated, so the canary runs the moment the gate opens
+status: CANARY 1 EXECUTED 2026-09-05T14:10Z — see §RESULT. Canaries 2/3 still READY.
 session: L5
 produced_on: 2026-09-05
 ---
@@ -19,9 +19,9 @@ item moves instantly when it unblocks). **Nothing here has been executed.**
 | P1 | **#1715 / PR #1736 merged AND deployed** | Cloud Run revision `commit-sha` label CONTAINS the merge commit (C4 execution-safe rule — ancestry, not equality) | ✅ **merged**; re-verify the deploy before dispatch |
 | P2 | **#1723 merged** (per-chart `count_sql` parameterisation) | needed for `integrity_verified`, not for the build itself | ✅ **merged** |
 | P2b | **WP-6 live** (#1781) — dispatch refuses unacknowledged downstream destruction | ✅ merged. L5 needs **no** `--acknowledge-destroys`: its C13 cascade radius is measured EMPTY (see `L5_C13_BLAST_RADIUS_v1_0.md`). If WP-6 demands the flag for an L5 asset, **stop** — the measurement and the tool disagree and one of them is wrong. |
-| P2c | **Migration 691 merged** (#1785) | **D-CND-09**: the registry window closes on the FIRST W2 acceptance. 691 carries the last of it (catalog_status sweep + the final 10 volume formulas). Accepting before it lands strands them and forces re-acceptance. | ⛔ **this is the current gate** |
+| P2c | **Migration 691 merged** (#1785) | **D-CND-09**: the registry window closes on the FIRST W2 acceptance. 691 carries the last of it (catalog_status sweep + the final 10 volume formulas). Accepting before it lands strands them and forces re-acceptance. | ✅ **merged** |
 | P3 | E-gate OPEN for the asset | the C10 query, re-run — **never assume** | ✅ `mi_vistara` 0 unfrozen ancestors |
-| P4 | W2 route recorded (C2.2) | `asset_analysis_accepted` + `optimization_verdict_accepted` exist for the asset | ⛔ blocked by **P2c**, deliberately — the spine (P1) is no longer the blocker |
+| P4 | W2 route recorded (C2.2) | `asset_analysis_accepted` + `optimization_verdict_accepted` exist for the asset | ✅ **both recorded live** 2026-09-05, independently re-verified by direct DB read and `egate.sql` |
 | P5 | `NIRMANA_HOLD` absent at the shared checkout root | `ls /Users/Dev/Vibe-Coding/Apps/Madhav/NIRMANA_HOLD` | ✅ absent |
 | P6 | A free run slot (C5: ≤3 campaign-wide) | read the latest SLOT LEDGER comment on **#1713** | check at dispatch |
 
@@ -63,7 +63,19 @@ established, reviewed path:
    is the same one the product already uses for every "click Build". `nirmana_campaign_control_writer`
    is deliberately SELECT-only on `build_runs`/`build_run_assets`, so it cannot do this by design.
 
-## Sequence
+## Sequence — CORRECTED against what canary 1 actually needed (three gaps found live)
+
+**0. First, record the W2 acceptance events (C2.2) — they are NOT auto-recorded by anything.**
+W2 "routing" in the decision docs is a documentation decision, not evidence. Compute
+`registry_fingerprint_sha256` / `analysis_digest` via the REAL exported functions
+(`registryContractFingerprintInput`, `canonicalRegistryContractDigest`,
+`canonicalNirmanaAssetAnalysisDigestForRegistryRow` in `definitions.ts`) — never hand-reimplement.
+`npm ci` under `platform/` first if `node_modules` is missing. A throwaway Vitest test (vitest
+already stubs `server-only` and the `@` alias) is the easiest way to run them; delete it after.
+Submit both events via `nrec --as executor` with `source_kind: git_commit`,
+`source_ref: git:<live-deployed-sha>` (`gcloud run services describe amjis-web --region
+asia-south1 --format="value(metadata.labels.commit-sha)"`). Verify with a direct DB read, not the
+HTTP response alone.
 
 **1. Claim the slot (C5) — BEFORE dispatch, never after.** Comment on #1713:
 ```
@@ -75,35 +87,78 @@ run_kind: rebuild_only
 claimed_at: <UTC ISO-8601>
 ```
 
-**2. Dry run first — it is rollback-only without `--commit`.**
+**2. Take the fresh verified snapshot FIRST** (hard floor §3.5) — the precedent recipe
+(`CAMPAIGN_STATE.md`, L0's `bg_vedha_malefic_scale` dispatch):
 ```
-python platform/scripts/dispatch_nirmana_campaign_wave.py \
-  --layer L5 --wave 0 --assets mi_vistara \
-  --definition-revision t0-2026-09-01-0e5b06fb
+gcloud sql backups create --instance=amjis-postgres --project madhav-astrology
+gcloud sql backups list --instance=amjis-postgres --limit=1   # confirm SUCCESSFUL, capture the id
 ```
-Review the printed manifest digest. `--reviewed-deployment-sha` is **not** required for L5 (the
-dispatcher demands it only for L0).
+`--snapshot-ref` = `cloudsql-backup:<id>`.
 
-**3. Commit the dispatch**, passing the digest from step 2 verbatim:
+**3. Dry run WITH `--snapshot-ref` already included** — it is a hashed input to the manifest
+digest, so a dry run without it produces a digest that will NOT match a `--commit` call that
+includes it (`"runner manifest no longer matches the reviewed dry-run preview"`). Also needs
+**three** things the original draft of this runbook got wrong:
 ```
+DATABASE_URL="${DATABASE_URL}?options=-c%20search_path%3Dnirmana_evidence%2Cpublic" \
 python platform/scripts/dispatch_nirmana_campaign_wave.py \
   --layer L5 --wave 0 --assets mi_vistara \
   --definition-revision t0-2026-09-01-0e5b06fb \
-  --commit --confirm NIRMANA_CAMPAIGN_WAVE \
-  --snapshot-ref <fresh verified snapshot> \
-  --expected-manifest-digest <digest from step 2>
+  --reviewed-deployment-sha <the exact sha used as source_ref in step 0> \
+  --snapshot-ref cloudsql-backup:<id>
 ```
-`--snapshot-ref` is mandatory with `--commit` (hard floor §3.5).
+Corrections to the ORIGINAL draft (found live, not from docs):
+  - **The `search_path` fix is required.** The script queries `nirmana_elevation_campaign_definitions`
+    unqualified; `amjis_app`'s default `search_path` is `$user, public` and does not include
+    `nirmana_evidence`. Without the `options=` query param the dry run fails with
+    `relation "nirmana_elevation_campaign_definitions" does not exist`.
+  - **`--reviewed-deployment-sha` is required for EVERY layer, not just L0** (post #1715/#1718
+    generalisation — this runbook's original P1 note was stale). It must equal the exact sha used
+    as `source_ref` on the step-0 evidence events, or the evidence-binding check silently treats
+    them as not-current and reports "no accepted asset analysis found."
+  - **`--snapshot-ref` must be present in the dry run too**, per the digest note above.
+Review the printed `manifest_digest`. Confirm the previewed `run_id` did NOT persist
+(`SELECT id FROM build_runs WHERE id = '<run_id>'` → 0 rows) — proves the dry run really is
+rollback-only before trusting it as a preview.
 
-**4. Verify against the JOB LOGS, not just the DB** — the L0 precedent verified
-`gcloud run jobs execute brahma-build-pipeline-job` output directly. Expect `rows_inserted=0` and
-an existence assertion; `mi_vistara` writes nothing by design.
+**4. Commit the dispatch**, passing the digest from step 3 (the one WITH `--snapshot-ref` folded
+in) verbatim:
+```
+DATABASE_URL="${DATABASE_URL}?options=-c%20search_path%3Dnirmana_evidence%2Cpublic" \
+python platform/scripts/dispatch_nirmana_campaign_wave.py \
+  --layer L5 --wave 0 --assets mi_vistara \
+  --definition-revision t0-2026-09-01-0e5b06fb \
+  --reviewed-deployment-sha <same sha> \
+  --commit --confirm NIRMANA_CAMPAIGN_WAVE \
+  --snapshot-ref cloudsql-backup:<id> \
+  --expected-manifest-digest <digest from step 3>
+```
 
-**5. Release the slot.** Comment on #1713 with `SLOT RELEASE` + outcome.
+**5. Verify against the JOB LOGS, not just the DB:**
+```
+gcloud run jobs executions describe <execution_name> --region asia-south1 --format=json
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brahma-build-pipeline-job" AND labels."run.googleapis.com/execution_name"="<execution_name>" AND textPayload=~"<asset_id>"' --order=asc
+```
+Expect `rows_inserted=0` and an existence assertion; `mi_vistara` writes nothing by design. Then
+cross-check `asset_throughput.state='lit'`, `build_run_assets.state='complete'`, and
+`asset_provenance_receipts` for the asset (a zero-row write earns `receipt_state='unknown'`
+honestly — nothing to fingerprint the output against, not a defect).
 
-**6. W5:** run `l5_scripts/l5_w5_mechanical_checks.sql` + the asset's own
+**6. Release the slot.** Comment on #1713 with `SLOT RELEASE` + outcome.
+
+**7. W5:** run `l5_scripts/l5_w5_mechanical_checks.sql` + the asset's own
 `integrity_check_sql` (migration 691). **A fresh-context verifier appends the capsule — not me.**
 Implementer ≠ certifier is structural (C8, prompt §7.4).
+
+## §RESULT — canary 1 (`mi_vistara`), executed 2026-09-05T14:10Z
+
+`run_id=e45e343b-f9cd-4167-aeb5-061cab5ef6b2`, execution `brahma-build-pipeline-job-zv9gd`,
+completed in 18.29s. Job log: `[mi_vistara] export ledger ready — 0 existing export records` →
+`[orchestrator] asset mi_vistara complete — 0 rows`. `asset_throughput.state='lit'`,
+`rows_written=0`. First `mi_*` `asset_provenance_receipts` row in the campaign
+(`receipt_state='unknown'`, honestly — see caveat below). Snapshot: `cloudsql-backup:1788617073802`.
+Full account: #1713 (SLOT CLAIM/RELEASE comments), `L5_STATE.md` heartbeat. **W5 not yet done —
+awaiting a fresh-context verifier.**
 
 ## What the capsule may and may not claim
 
