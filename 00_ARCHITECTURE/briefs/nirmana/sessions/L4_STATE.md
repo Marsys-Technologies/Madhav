@@ -2719,3 +2719,19 @@ re-splice, pushed without needing a dequeue) → `#1885` now the queue head, oth
 confirmed healthy → E-gate uncheckable, DB access down 86 cycles → next: watch `#1885`/`#1842`
 merge; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~22:20Z` — L4 — **CYCLE 97 (v2.3) — `main` advanced (`#1886`, L2, merged
+independently of `#1885`'s own still-open queue-head slot); `#1842` legitimately mid-CI on
+last cycle's fresh push.**
+
+**PR hygiene:** 9 own PRs unchanged/genuinely queued; `#1885` still `OPEN`/queue position 1
+(not yet resolved); `#1842`'s checks confirmed genuinely in-flight from the fresh push. No
+DIRTY, no RED.
+
+**Priorities 1-4:** one new `main` commit (`#1886`, L2) checked, not L4-relevant. E-gate still
+uncheckable, 87th consecutive cycle DB access down. No new adjudications name L4.
+
+CYCLE 97 L4: IDLE-OK (verified: PR hygiene clean, `#1842` legitimately mid-CI, `#1885` still
+resolving at queue head; E-gate uncheckable, DB access down 87 cycles; one new commit checked,
+not L4-relevant) → next: watch `#1885`/`#1842` merge; retry E-gate/dispatch dry-run once DB
+access returns; F1 remains deferred.
+
