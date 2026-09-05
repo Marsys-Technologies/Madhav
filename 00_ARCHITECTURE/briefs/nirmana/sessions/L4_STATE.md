@@ -377,3 +377,17 @@ in-layer, 3,513 rows — matching my hand closure in #1784 exactly. Blocked on: 
 announce CAPABILITIES LANDED once #1799 is live; then W3-3 writer work (`ph_nimitta` promise_lift /
 direction defaults).
 
+`2026-09-05T~11:50Z` — L4-W3 — **five PRs in flight, all armed and verified two ways** (#1789, #1791,
+#1799, #1802, #1808); none has a failing check — `BLOCKED` here is queue backlog, confirmed rather
+than assumed. Shipped this loop: #1799 (D-CND-04 completion), #1802 (`signal_id` disposition + its
+detector), #1808 (`ph_nimitta` — the 1.75× posterior lift from no evidence, and the hardcoded
+`elevated` direction). Filed #1803 (FK-vs-tolerate, cross-layer) and #1805 (`cascade_check.sql`
+under-reports no-FK referrers). Blocked on: nothing.
+
+**NEXT ACTION on relaunch:** (a) check whether #1799 has merged AND deployed; if so verify
+`phala_anchors.anchor_id` has no column default live and the trigger exists, then announce
+`## CAPABILITIES LANDED` — that lifts D-CND-04. (b) Continue W3-3: `ph_pratikara` (citation
+propagation + the degenerate `linked_anchor_id`), `ph_pramana` (the dead `life_event_match`
+detector), `ph_rectification` (`load_bearing` on a zero fit), `ph_phaladesa` (headline anchor
+ignores the purification verdict).
+
