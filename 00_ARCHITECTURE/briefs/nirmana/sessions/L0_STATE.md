@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-P triple-confirmed via the Conductor's own dispatch-script functions + existing W2 event fingerprints; queue moving slowly (22→19), #1838 at position 7
+last_updated: 2026-09-05 — D-L0-S: full dispatch-script flow read + specified; entire path to a real L0 freeze now fully known, purely waiting on #1838 in a stalled 19-deep queue
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -374,6 +374,32 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   not a from-nothing W2 acceptance. Confidence in the whole toolkit is now very high (3-way
   cross-validated, not just inspection).
 
+- **D-L0-S — read `dispatch_nirmana_campaign_wave.py`'s full CLI/commit flow; the exact next-steps
+  sequence for bg_doshas/bg_gochara_arcs is now fully specified.** CLI: dry-run first (no
+  `--commit`) to get a manifest-digest preview, then `--commit --confirm NIRMANA_CAMPAIGN_WAVE
+  --snapshot-ref <ref> --expected-manifest-digest <preview> [--acknowledge-destroys]` — this single
+  script call does BOTH `create_campaign_run` and (if `--commit`) `dispatch_campaign_run`
+  atomically, so the old tooling's separate "authorize-then-force-execute-within-~20s" race (D-L0-B)
+  **does not apply to this replacement script** — one invocation handles both. `--layer L0`
+  requires `--reviewed-deployment-sha` (or `NIRMANA_DEPLOYED_SHA` env), matching the `amjis-web`
+  deploy gate already found (D-L0-P). **Confirmed the script validates W2 pin-freshness itself**
+  (`_registry_evidence_bindings`, ~line 311-414): it filters accepted `asset_analysis_accepted`/
+  `optimization_verdict_accepted` rows to ones whose `registry_fingerprint_sha256` equals the
+  CURRENT live fingerprint, and raises `RuntimeError("accepted asset analysis does not match the
+  current live registry contract for {asset_id}")` if none match — i.e. **dispatch will itself
+  detect and refuse a stale W2 acceptance**, exactly as D-L0-P's cycle-13 finding anticipated.
+  Verdict also gets checked: must be in `optimize|correct|optimize_and_correct|
+  examined_and_already_efficient` (`BUILD_AUTHORIZING_VERDICTS`) and match the analysis's digest.
+  **Judgment call for the eventual resubmission**: bg_doshas/bg_gochara_arcs' writers never
+  changed — only each asset's OWN `integrity_check_sql` (a registry/governance field) did — so
+  `examined_and_already_efficient` (proposal `action=no_change`, `output_contract=digest_identical`)
+  is the better fit than `correct` (which implies the WRITER's own output changed). **Full sequence
+  once 692/694 merge**: (1) re-run `compute_registry_fingerprint.py`/`compute_analysis_digest.py`
+  against fresh live data, (2) submit fresh `asset_analysis_accepted` + `optimization_verdict_accepted`
+  (verdict=`examined_and_already_efficient`) via `l0_submit_evidence.sh --as executor`, (3) dry-run
+  then commit-dispatch via `dispatch_nirmana_campaign_wave.py`. Nothing structurally unknown remains
+  in the whole path from here to a real, verified L0 freeze.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -678,3 +704,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   prior session against the current (pre-migration) fingerprint; the moment 692/694 merge, those
   acceptances go stale and need exactly the delta-resubmission the toolkit was built for. NEXT:
   #1838 (7th in a 19-deep queue) is the next thing to watch; once it merges, dispatch is fully live.
+- 2026-09-05 — **Cycle 14.** PR hygiene: all 4 PRs unchanged since last cycle (still `is:queued`
+  for the 3 migrations, queue still 19-deep, no new merges landed — genuinely stalled, not just
+  slow); `#1828` clean, pending checks. Nothing to fix; nothing new to escalate (already flagged
+  the stall last cycle, no need to repeat). Checked #1713: Conductor active, found+fixed a SECOND
+  dispatch-script bug (#1848/#1851 — a duplicate-execution guard permanently blocked re-authorizing
+  an asset's first uncoordinated build) — relevant background, not an L0 blocker directly. **Read
+  the rest of `dispatch_nirmana_campaign_wave.py` (D-L0-S)**: full CLI flow (dry-run → commit, one
+  atomic invocation unlike the old lost tooling's race-prone two-step), and confirmed it
+  **self-validates W2 pin-freshness** (raises if no accepted analysis matches the current live
+  fingerprint) — exactly the stale-detection D-L0-P's cycle-13 finding anticipated. Worked out the
+  right `verdict` value for the eventual resubmission: `examined_and_already_efficient` (writer
+  itself never changed, only the registry's own `integrity_check_sql`), not `correct`. **The entire
+  path from here to a real L0 freeze is now fully specified, nothing structurally unknown remains** —
+  just waiting on #1838 in the queue. NEXT: keep polling; if the queue stays stuck multiple more
+  cycles with zero movement, consider whether a second coordination note is warranted (once is an
+  observation, repeating it every cycle would be noise).
