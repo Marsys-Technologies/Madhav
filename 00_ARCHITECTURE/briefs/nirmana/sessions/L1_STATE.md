@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — C8 v2.3 cycle 7; #1853 parked pending L2 (#1852 ruled), ga_tajaka F-E16 fix (#1859)
+last_updated: 2026-09-05 — C8 v2.3 cycle 8; get_yoga_firings F-D1/F-D2 serving fix (#1865)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -285,6 +285,31 @@ been the wrong fix. Checked for cross-layer import risk BEFORE regenerating dige
 clean, no coupling. 3 new tests, mutation-proven (deleted the helper: import error). Broader
 `tajaka` suite 7/7; orchestrator conformance suite 34/34.
 
+## CYCLE 8 (C8 v2.3) — get_yoga_firings F-D1/F-D2 serving-side fix; #1853 still parked
+
+**PR hygiene:** #1841 queued (good). #1859/#1827 both pending-green, nothing to fix. #1853
+correctly left untouched (waiting on L2's push, per D-L1-28 ruling). `#1838` (dispatcher fix)
+still open/not merged -- ga_positions dispatch remains blocked on it, not by me.
+
+**Unit of work: `get_yoga_firings.ts`'s F-D1/F-D2 fix** (PR **#1865**) -- L1's first pure
+serving-layer (TypeScript) fix this campaign, distinct from the Python writer fixes so far.
+`ga_yoga`'s W2 route is `rebuild_only` (writer sound); both MUST findings are explicitly
+serving-side per `L1_W2_DECIDE_v1_0.md` §2 row 15.
+
+1. **F-D1**: `brahma_yoga_catalog.classical_citations` is populated 233/233 but never joined
+   onto `get_yoga_firings`'s response. Verified `ga_yoga_writer.py:1210-1213` FIRST — the
+   existing `citation_ref`/`citation_human` are DELIBERATELY the strength-derivation citation,
+   not a defect to "fix" by changing them; added a LEFT JOIN exposing a NEW
+   `catalog_classical_citations` field alongside the unchanged existing ones.
+2. **F-D2**: `density_contract.paginated: true` with no `offset` input made rows 51-63 (of 63
+   live) permanently unreachable. Added `offset`, threaded through SQL, corrected
+   `more_available` (was `total_matching > rows.length`, silently wrong once offset > 0).
+3. Checked both live callers (`register_d8_assess_domain.ts`, `register_d9_judgment.ts`)
+   before shipping — both read specific named fields, neither passes `offset`, so this is
+   purely additive with zero behavior change for them.
+4. 10 new tests (no test file existed for this tool before), mutation-proven (5/6 fail against
+   the revert). `tsc`/`eslint` clean. Broader L1_ganita retrieval suite: 92/92.
+
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
 `bg_panchanga`, `bg_prashna_rules`, `bg_reference`), so L1 is gated only on its own DAG.
 
@@ -502,6 +527,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
 - **D-L1-29** — Picked up `ga_tajaka`'s F-E16 fix (PR #1859, full account in CYCLE 7 above) while
   #1853 waits on L2. Checked for cross-layer import risk *before* touching anything this time
   (lesson from #1852): `ga_tajaka_writer.py` has exactly one importer, in-layer — clean.
+- **D-L1-30** — C8 v2.3 cycle 8: `get_yoga_firings.ts`'s F-D1/F-D2 fix (PR #1865, full account in
+  CYCLE 8 above) — L1's first pure serving-layer TypeScript fix this campaign. Verified the
+  writer's own documented design intent (`ga_yoga_writer.py:1210-1213`) BEFORE treating
+  `citation_ref` as a defect — it is deliberately the strength-derivation citation, not a
+  misplaced classical one; added the classical citation as a NEW field via JOIN instead of
+  changing existing behavior. Checked both live callers for backward compatibility before
+  shipping.
 
 ## Held items
 
@@ -614,3 +646,11 @@ L1 must satisfy rather than a feature it consumes.
   this time. CYCLE 7 L1: #1853 parked pending L2's pin push (ruled) -- landed ga_tajaka F-E16 fix
   instead (PR #1859) -- next: pick up ga_yoga F-D1/D2 or ga_medical F-E5, or check #1853/#1838
   status once notified.
+- 2026-09-05T15:18Z -- CYCLE 8 (C8 v2.3). PR hygiene clean (#1841 queued, #1859/#1827
+  pending-green, #1853 correctly left parked). Unit of work: get_yoga_firings.ts's F-D1/F-D2 fix
+  (PR #1865) -- L1's first pure serving-layer TS fix this campaign. Joined
+  brahma_yoga_catalog.classical_citations (verified the writer's existing citation_ref is
+  deliberate strength-derivation, not a defect, before touching anything); added offset paging.
+  10 new tests, mutation-proven, backward-compat checked against both live callers. CYCLE 8 L1:
+  landed get_yoga_firings F-D1/F-D2 serving fix (PR #1865) -- next: ga_medical F-E5 or ga_vastu
+  F-E10/E11, or check #1838/#1853 status once notified.
