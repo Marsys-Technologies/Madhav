@@ -3137,3 +3137,24 @@ CYCLE 125 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queu
 uncheckable, DB access down 115 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~00:45Z` — L4 — **CYCLE 126 (v2.3) — fourth flat cycle prompted a deeper check
+than usual (merge-group checks for `#1900` had shown fully completed ~12 min earlier with
+`main` still unmoved) — `#1900` merged during the investigation itself, confirming it was a
+slow-but-normal completion, not a jam.**
+
+**PR hygiene:** while investigating, confirmed `#1900`'s own PR-level checks were 100% green
+(39/39, none pending/failing) and its merge-group run had completed successfully — the
+`AWAITING_CHECKS` state outlasting a completed merge-group check by ~12 min was the one
+genuinely ambiguous signal this session has seen since the `#1825` staleness flag. Re-fetched
+`origin/main` mid-investigation and found `#1900` had merged (`9ee5ea61e`) — resolved before
+any action was needed. All 10 own PRs genuinely queued and advancing afterward, none DIRTY/RED.
+
+**Priorities 1-4:** no new adjudications name L4. E-gate still uncheckable, 116th consecutive
+cycle DB access down.
+
+CYCLE 126 L4: IDLE-OK (verified: PR hygiene clean, investigated an ambiguous extended
+`AWAITING_CHECKS` state on `#1900` — resolved as a slow-but-normal completion, merged during
+the check itself, not a jam; all 10 own PRs genuinely queued and advancing; E-gate
+uncheckable, DB access down 116 cycles) → next: watch queue positions continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
