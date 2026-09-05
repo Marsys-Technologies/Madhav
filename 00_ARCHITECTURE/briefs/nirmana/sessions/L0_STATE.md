@@ -1793,3 +1793,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 81, no merges, no new activity.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 81, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue head (#1896) on same pytest step, ~11 min in -- consistent with
+  the now-established pattern of this step routinely taking longer than its documented range but
+  resolving naturally (4th occurrence). Not escalating. Position steady at 81, no merges yet.
