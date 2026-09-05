@@ -55,8 +55,8 @@ your `nirmana-adjudication` issues → continue.
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
 | `ph_pratikara` | **changed** | W2 done → **W3-3d** | wave 1 · 40/49 unfrozen | — | 7 MUST; **1/7 shipped** (F-3.4 degenerate-anchor, #1831); 6 remain incl. the hard-floor citation fabrication; needs a rerun **after** all fixes land |
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
-| `ph_sankrama` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: 250 rows (10%) destroyed by a stale domain map; `trajectory` constant from an `or 0.0` |
-| `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
+| `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
+| `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h** | wave 1 · 38/47 unfrozen | — | F-10 severity sort **shipped** (#1783, MERGED, earlier this session); F-14 leakage blind spot **shipped** (#1845); F-12/F-13 (NOW-tier, not MUST) remain |
 | `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
 | `ph_pramana` | **changed** | W2 done → **W3-3g** | wave 3 · 45/54 unfrozen | — | 1/1 MUST **shipped** (F2 domain normalisation + `detector_unavailable`, #1842, incl. migration 684); needs a rerun once E-gate opens |
 | `ph_phaladesa` | **changed** | W2 done → **W3-3f** | wave 4 · 46/55 unfrozen | — | 1/2 MUST shipped (F-4.2 headline-anchor ranking, #1839); **F1 zero-MCP-consumers remains** — cross-registry wiring, deliberately not attempted as one bounded unit |
@@ -695,4 +695,43 @@ CYCLE L4: PR hygiene clean → shipped #1842 (`ph_pramana` F2, domain vocabulary
 `detector_unavailable` disposition, migration 684) → next: watch #1842's migration apply +
 merges generally, then `ph_pratikara`'s remaining MUSTs, `ph_sankrama`/`ph_sodhana`/
 `ph_suddha_sodhana`, or F1's proper multi-registry fix.
+
+`2026-09-05T~22:00Z` — L4 — **cycle: PR hygiene clean (queue is 16 deep — 6 of my own PRs all
+queued/legitimately-pending, none RED/DIRTY, nothing to act on) → discovered two stale
+asset-table rows before picking new work → shipped W3-3h (`ph_sodhana` F-14).**
+
+**Scoping this cycle's "next" list surfaced a documentation gap, not new code:** before
+picking between `ph_sankrama`/`ph_sodhana`/`ph_suddha_sodhana`, checked what was actually
+still open (D-CND-16: derive, don't restate a table). `git log --all` found **both were
+already fully addressed earlier this session**, before the current strict one-unit-per-cycle
+discipline began, and the asset table simply never got updated:
+- **`ph_sankrama`'s both MUSTs** (stale domain map destroying 250 rows; fabricated `trajectory`
+  on all 2,985 rows) — fixed and MERGED in #1788, verified via `git log origin/main`.
+- **`ph_sodhana`'s severity-inverting sort** (the sort half of its listed MUST, F-10) — fixed
+  and MERGED in #1783 (`query_anomaly_flags` AND `query_remedy_program`'s `obstruction_severity`
+  inversion, both — confirmed by reading the actual diff, not the commit title alone).
+
+Corrected both rows in the asset table above rather than silently noting it — a wrong "not yet
+done" is as much a defect in this file as a wrong "done" would be.
+
+**The remaining real work on `ph_sodhana`** (F-12/F-13/F-14 from `L4_W1_ANALYSIS_BATCH_C.md`
+§1.5) is tagged **NOW, not MUST**, in the underlying findings table — the state file's "1 MUST"
+summary had conflated the sort fix (genuinely MUST, now done) with these three. Picked **F-14**
+(smallest, cleanest, most self-contained of the three) as this cycle's unit: `detect_layer_leakage`
+checked `if basis and basis != 'structural_not_yet_empirical'` — the truthy short-circuit on
+`basis` meant a NULL/empty `confidence_basis` (exactly the failure mode the LEAKAGE-FIREWALL
+exists to catch — a writer that omits the field) tripped nothing. **Verified live before
+shipping**, not assumed: `confidence_basis` is the canonical string on 100% of both charts'
+anchors today, so the fix closes a blind spot for future writer bugs without changing any
+current build's output. 2 new tests; 46/46 wave5 tests pass. Governance gates handled
+proactively (five-for-five). **Shipped PR #1845**, auto-merge armed.
+
+`ph_sodhana` now has **0 of its genuine MUST findings remaining**; F-12/F-13 (NOW-tier) are
+real but lower-priority, left for a future cycle or the campaign's post-freeze backlog.
+
+CYCLE L4: PR hygiene clean → corrected two stale asset-table rows (`ph_sankrama` fully done via
+earlier #1788; `ph_sodhana`'s sort half done via earlier #1783) → shipped #1845 (`ph_sodhana`
+F-14, LEAKAGE-FIREWALL NULL/empty blind spot) → next: `ph_suddha_sodhana` (untouched — F-16
+silent-clean-on-exception, or its own findings), `ph_pratikara`'s remaining 6 MUSTs, or F1's
+multi-registry MCP-wiring fix.
 
