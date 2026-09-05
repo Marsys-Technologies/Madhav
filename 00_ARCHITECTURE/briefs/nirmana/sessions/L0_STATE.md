@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — bg_vidhi_floors intent/item gap diagnosed (D-L0-N); all 5 original integrity failures now fully verdicted; #1829 confirmed genuinely queued
+last_updated: 2026-09-05 — bg_gochara_arcs D-CND-01 rewrite landed (D-L0-O, PR #1836); 3 assets now W4-acceptable with zero dispatch once PRs merge
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -37,7 +37,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only | count pin stale (33,933 vs 34,553; Rahu/Ketu −310 each; **tiles perfectly**). Verdict: correct check → tiling invariant + derived/floored volume (C12) |
+| bg_gochara_arcs | **no dispatch needed** | **Drafted rewrite LANDED (migration 694, PR #1836)**: stale bare-count + hardcoded per-body VALUES table replaced with gapless-tiling + achieved floor (33,933). Verified TRUE against live data as-is — can go straight to W4 accept on LIVE fingerprint, same as bg_doshas |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | **no dispatch needed** | **VERDICT CLOSED (D-L0-L): check bug, not data.** Data already 79/79/79, hashes already match; the "658 violations" were 658 leaked non-dosha `brahma_ontology` rows (ON-clause filter bug in a FULL JOIN, not an ON-clause+WHERE prefilter). Migration 692 fixes the check; PR #1829 open. Once merged, this asset can go straight to W4 accept on the LIVE fingerprint — no rebuild |
@@ -203,6 +203,22 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   too, not only bg_cohort's dependency-satisfaction. **No further writer/migration work identified
   for bg_vidhi_floors** — remaining path is: migration 693 merges → job-image redeploys with current
   HEAD → dispatch → verify actual yield matches 14/409 → DRAFT→CURRENT re-acceptance (D-CND-09).
+- **D-L0-O** — **bg_gochara_arcs: landed the drafted D-CND-01 rewrite (migration 694, PR #1836,
+  auto-merge armed).** The draft (`sessions/drafts/bg_gochara_arcs_integrity_rewrite.sql`, written
+  a prior cycle, held pending #1816) only needed its `<ACHIEVED>` placeholder filled — #1816 is now
+  CLOSED (D-L0-H confirmed the server binds to LIVE fingerprint, no gate change), so nothing further
+  blocked landing it. Filled `<ACHIEVED>=33933` from a fresh live count, re-verified ALL of it live
+  before writing (not just trusting the old draft): all 9 bodies tile perfectly (`lo=0, hi=n-1,
+  distinct_idx=n`, summing to exactly 33933), all 5 kept structural invariants hold, and the full
+  composed rewritten check evaluates `TRUE` in a rolled-back transaction against current production
+  data. Old check's stale per-body VALUES table (Rahu 13544/Ketu 13553 vs live 13234/13243 — the
+  exact −310-each already diagnosed) and bare total dropped for gapless-tiling + an achieved-count
+  floor (`target_floor` 34553→33933, §N.4). **This is the 3rd asset (after bg_doshas D-L0-L, and
+  half of bg_vidhi_floors D-L0-M) that can go straight to W4 accept on its LIVE fingerprint with NO
+  dispatch at all** once its migration merges. Combined with D-L0-J/K/N, **all 5 of the original C12
+  wave-1 findings now have a landed-or-verified check/writer disposition** — none required an actual
+  writer code fix; the "fix the writer, MUST" calls in D-L0-F were, on full read-only investigation,
+  uniformly wrong.
 
 ## Held items
 
@@ -382,3 +398,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   fresh dispatch once the job-image moves. NEXT: nothing further to diagnose read-only on the
   original 5 — keep polling PR queue status + job-image deploy each cycle; if job-image moves,
   bg_cohort/bg_yogas/bg_dasha_systems/bg_vidhi_floors all become dispatch-eligible in one sweep.
+- 2026-09-05 — **Cycle 6.** PR hygiene: #1829 flipped `UNKNOWN`→still `OPEN`/not merged after main
+  advanced (611d66e38..eb35945bc) — checked `is:queued` first per contract: still genuinely queued,
+  not a fault, `UNKNOWN` is just async recompute lag after a base-branch move. #1828/#1832 both
+  `MERGEABLE` (not DIRTY), 0 failures, auto-merge armed; nothing to fix. **Landed the drafted
+  bg_gochara_arcs rewrite (D-L0-O) — migration 694, PR #1836, auto-merge armed.** The draft from an
+  earlier cycle only needed its `<ACHIEVED>` placeholder filled now that #1816 (the reason it was
+  held) is closed; re-verified everything live before writing rather than trusting the old draft's
+  numbers. **This is now 3 assets (bg_doshas, bg_gochara_arcs, and the tiling half of
+  bg_vidhi_floors) that can go straight to W4-accept on their LIVE fingerprint with zero dispatch**
+  once their migrations merge — a real acceleration path independent of the job-image blocker.
+  Four open PRs now (#1828, #1829 queued, #1832, #1836), three still pending checks. NEXT: once
+  #1829/#1832/#1836 merge, actually RUN the W4 accept step for bg_doshas/bg_gochara_arcs (need a
+  submission mechanism — `nrec` is gone from main, so either hand-roll the `gcloud`+`curl`
+  identity-split call the old `nirmana_batch_runner.py` used, or re-author a minimal local
+  equivalent) — this is now the highest-value next unit, since it doesn't wait on the job-image at
+  all.
