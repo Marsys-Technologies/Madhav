@@ -203,6 +203,37 @@ class TestDerivePhaladeskForChart:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# TOP-ANCHOR SELECTION (L4_W1_ANALYSIS_BATCH_C.md §4.2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTopAnchorSelectionPrefersClean:
+    """confidence_high alone systematically promoted the anchors ph_sodhana/
+    ph_suddha_sodhana already flagged -- confidence_high is exactly the field
+    ph_sodhana found inflated on 90/139 anchors. Measured live before the fix:
+    6 of 7 canonical-chart domains led with a flagged (staged_revision) top
+    anchor. The query must rank a 'clean' cleanliness_status ahead of any
+    flagged one before breaking ties by confidence_high, per domain."""
+
+    def test_order_by_ranks_clean_before_confidence(self):
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_phaladesa.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        order_by_start = src.index('ORDER BY pa.domain,')
+        order_by_clause = src[order_by_start:src.index('"""', order_by_start)]
+        assert "cleanliness_status" in order_by_clause
+        assert "'clean'" in order_by_clause
+        clean_case_pos = order_by_clause.index("cleanliness_status")
+        confidence_pos = order_by_clause.index("pa.confidence_high DESC")
+        assert clean_case_pos < confidence_pos, (
+            "cleanliness must be ranked before confidence_high in the ORDER BY, "
+            "not the other way round -- that was the F-4.2 defect"
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ANTI-DRIFT
 # ══════════════════════════════════════════════════════════════════════════════
 
