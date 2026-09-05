@@ -1710,3 +1710,13 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Position steady at 20; verified queue head (#1825) healthy (25/26
   checks passed, Governance Gates still running normally). No merges of mine yet.
+
+- 2026-09-06 — **D-L0-PP: found and reported a genuine merge-queue-wide CI hang.** Position-1
+  (#1825, Conductor doc-only PR) has had its `pytest — pyjhora_adapter + pipeline` step
+  `in_progress` since 21:07:27Z, unmoved across 5 consecutive checks (well over an hour real
+  time), while every other job/step in the same run completed within ~35s. The suite's own
+  documented historical timing is 285-422s -- this is 20x+ that, on a doc-only PR, so it's a hang
+  not workload. No `timeout-minutes` set anywhere in `ci.yml` for this job, so it inherits GitHub
+  Actions' 360-min default -- meaning up to ~6h before this self-resolves without intervention.
+  Not something I can fix (no Actions-cancel access, not an L0 asset) -- reported to #1713 with
+  the exact run/job IDs for whoever has admin access. My own queue position: still 20.
