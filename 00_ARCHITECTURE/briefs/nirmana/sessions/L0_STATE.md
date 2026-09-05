@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-AA: #1838 merged, first real dispatch executed for bg_doshas (data confirmed correct), missed the build_run_authorized window, retry blocked by #1848's still-open duplicate-guard bug pending #1851.
+last_updated: 2026-09-05 — D-L0-BB: bg_gochara_arcs migration LIVE, fresh W2 real-submitted (both 201). Both bg_doshas + bg_gochara_arcs are W2-fresh, data-correct, waiting only on #1851 for a clean dispatch+authorize retry.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,7 +41,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only (D-L0-Z corrected) | **Drafted rewrite LANDED (migration 694, PR #1836)**, not yet merged (queued). Data already correct — a dispatch would idempotently rewrite the same rows — but freeze still requires an actual `accepted_rebuild_observed` receipt (D-L0-Z), so dispatch via #1838 is still required |
+| bg_gochara_arcs | rebuild_only | **Migration LIVE + TRUE; fresh W2 real-submitted (D-L0-BB, both 201).** Same as bg_doshas: needs a real dispatch + immediate `build_run_authorized` for the freeze chain, gated on #1851 for a clean retry (LEAF asset, no cascade) |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | rebuild_only | **REAL DISPATCH DONE (D-L0-AA), data confirmed correct, but unauthorized** — `build_run_authorized` window missed, retry blocked by #1848's still-open duplicate-guard bug (needs #1851). Next: retry dispatch+immediate-authorization once #1851 merges |
@@ -577,6 +577,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   NOT matched against any specific computed value, so any deterministic sha256 works) BEFORE
   dispatching, so only the fresh `run_id` needs to be substituted in and fired immediately — no
   reading schema code with the clock already running next time.
+
+- **D-L0-BB — bg_gochara_arcs migration (694) is LIVE; fresh W2 real-submitted and accepted (both
+  201), same D-L0-Y treatment.** Verified live check executes to `TRUE` (`target_floor=33933`
+  confirms deploy caught up). Re-ran the toolkit against the fresh row + the unchanged frozen
+  manifest asset: new `registry_fingerprint_sha256=c9388e04…`, new `analysis_digest=2d95e591…`
+  (both differ from the stale 2026-09-04 W2, as expected — same story as `bg_doshas`). Built,
+  dry-ran, then real-submitted both `record_evidence` bodies (`verdict=examined_and_already_
+  efficient`, citing the current deployed SHA `e54ae9ac…` as `source_ref`) — both HTTP 201,
+  confirmed landed with the new fingerprint. **Remember D-L0-Z**: this is W2-fresh, not
+  freeze-ready — `bg_gochara_arcs` (a LEAF asset, no cascade per D-L0-I) still needs a real
+  dispatch + immediate `build_run_authorized` to produce `accepted_rebuild_observed`, same as
+  `bg_doshas`, and is subject to the same #1848/#1851 duplicate-guard block once #1851 merges (or
+  possibly not, if #1851 lands before I dispatch this one — worth checking freshly each cycle).
 
 ## Held items
 
@@ -1119,3 +1132,14 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   key, source_ref template, a valid-format `authorization_sha256` — confirmed it isn't matched
   against any specific value, just shape-checked) so only the fresh `run_id` needs substituting
   before firing, beating the ~20s window this time.
+- 2026-09-05 — **Cycle 38 — bg_gochara_arcs migration LIVE, real W2 submitted (D-L0-BB).** PR
+  hygiene: `#1828` clean pending own checks; `#1851` (duplicate-guard fix, the dispatch-retry
+  blocker) still `is:queued`, not yet merged. Nothing to fix. **`bg_gochara_arcs` migration (694)
+  confirmed deployed** (`target_floor=33933`, check executes `TRUE` live) — repeated the exact
+  D-L0-Y sequence: fresh toolkit computation, dry-run, real submission of both W2 events, both
+  HTTP 201, confirmed landed with the new fingerprint. Both `bg_doshas` and `bg_gochara_arcs` are
+  now W2-fresh and data-verified-correct, waiting only on #1851 for a clean dispatch+authorize
+  retry. NEXT: keep polling #1851; when it merges, dispatch both (bg_gochara_arcs first — it's a
+  LEAF asset with no cascade, lower-risk than bg_doshas' CASCADE, good for re-proving the
+  authorization-window technique before repeating it on bg_doshas) with the authorization payload
+  pre-built per last cycle's lesson.
