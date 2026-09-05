@@ -461,6 +461,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ (c) — L3-W3 — IDLE-OK: full re-verification this time, not just the
+  4 PR blockers.** Re-ran `egate.sql` fresh for L3 — `unfrozen_ancestors` counts identical
+  to every prior run this session (e.g. `ka_avadhi`=20, `ka_kota_chakra`=1, `ka_kshetra`=25
+  — no L0/L1/L2 freeze progress). Checked #1960 for new comments (still exactly 1, the
+  ruling) and #1713 for anything new relevant to L3 (last comment unchanged, the tracker-
+  rework heads-up). #1903/#1958/#1894/#1921 and sidecar traffic also re-checked, unchanged.
+  PR hygiene clean (26/27 queued; #1961's checks IN_PROGRESS ~2min, not stuck).
+  **Next action unchanged.**
+
 - `2026-09-06T~11:0xZ (b) — L3-W3 — IDLE-OK: re-checked #1903/#1958/#1894/#1921 and the
   sidecar traffic split fresh — all unchanged from the immediately-prior cycle (only ~90s
   of real wall-clock elapsed between supervisor invocations this round). PR hygiene clean
