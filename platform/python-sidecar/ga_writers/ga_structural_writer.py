@@ -1367,8 +1367,17 @@ def _build_shadbala_extension_rows(
     """
     rows: list[dict[str, Any]] = []
 
-    # Vargottama: planet in same sign in D1 and D9
-    # Amplification factor per BPHS (traditionally ~1.25× effective strength)
+    # Vargottama: planet in same sign in D1 and D9.
+    # Amplification factor per BPHS (traditionally ~1.25× effective strength).
+    #
+    # F-A15 fix: this used to re-derive vargottama itself, via an inline navamsha-
+    # degree formula (a hardcoded navamsha_starts sign-cycling table + float
+    # arithmetic) that is INDEPENDENT of ga_vargas' own D9 computation. That
+    # disagreed with ga_vargas' authoritative chart_divisionals.varga_vargottama_flag
+    # on 4/105 live rows (2 non-canonical charts, surya_siddhanta_classical/raman
+    # ayanamshas) — a §N.5 violation (an L1 asset re-deriving instead of citing
+    # another L1 asset's own authority; ga_vargas is already a declared depends_on
+    # for ga_structural). Now READS ga_vargas' own D9 determination directly.
     for g_name in CLASSICAL_GRAHAS:
         g_data = None
         for g in chart_output.get("grahas", []):
@@ -1378,34 +1387,44 @@ def _build_shadbala_extension_rows(
         if g_data is None:
             continue
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        # Check vargottama from divisional data if available
-        # Simplified: derive from position (longitude within same sign in navamsha)
-        long_deg = float(g_data.get("longitude", 0.0))
-        sign_num = int(g_data.get("sign_id", 1))
-        degree_in_sign = long_deg % 30.0
-        # Navamsha: each 30° sign divided into 9 parts of 3°20' each (3.333°)
-        navamsha_pada = int(degree_in_sign / 3.333333)
-        # Navamsha sign: each of 12 signs contributes 9 navamshas cycling through Aries→Pisces
-        # Starting navamsha lord depends on sign type (fire=Aries, earth=Capricorn, air=Libra, water=Cancer)
-        navamsha_starts = {
-            1: 1, 2: 10, 3: 7, 4: 4, 5: 1, 6: 10,
-            7: 7, 8: 4, 9: 1, 10: 10, 11: 7, 12: 4
-        }
-        nav_sign_num = ((navamsha_starts.get(sign_num, 1) - 1 + navamsha_pada) % 12) + 1
-        is_vargottama = (nav_sign_num == sign_num)
-        # Amplification factor: 1.25 if vargottama, 1.0 otherwise
-        amp_factor = 1.25 if is_vargottama else 1.0
+
+        is_vargottama, constituent_id = (
+            _get_d9_vargottama_flag(conn, chart_id, ayanamsha_id, g_name)
+            if conn is not None else (None, None)
+        )
+
+        if is_vargottama is None:
+            # ga_vargas' own D9 vargottama_flag row is not yet reachable for this
+            # (chart, ayanamsha, graha) — honest floor, never guessed (§N.8/B.10).
+            amp_factor = None
+            status_text = "unavailable"
+            citation_human = (
+                f"{g_name} vargottama amplification factor: unavailable — "
+                f"ga_vargas' D9 varga_vargottama_flag row not yet built for "
+                f"({ayanamsha_id})."
+            )
+        else:
+            amp_factor = 1.25 if is_vargottama else 1.0
+            status_text = "vargottama" if is_vargottama else "non-vargottama"
+            citation_human = (
+                f"{g_name} vargottama amplification factor: {amp_factor:.2f} "
+                f"({status_text}, per ga_vargas' D9 chart_divisionals.varga_vargottama_flag, "
+                f"§N.5) ({ayanamsha_id})."
+            )
 
         rows.append(_base_row(
             "graha_vargottama_amplification_factor", subject, "amplification_factor",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=amp_factor,
+            value_text=status_text,
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.vargottama/{eng_ver}",
-            citation_human=(
-                f"{g_name} vargottama amplification factor: {amp_factor:.2f} "
-                f"({'vargottama' if is_vargottama else 'non-vargottama'}) ({ayanamsha_id})."
-            ),
+            source=f"chart_divisionals.varga_vargottama_flag/{eng_ver}",
+            value_jsonb={
+                "source_table": "chart_divisionals",
+                "source_category": "varga_vargottama_flag",
+                "constituent_fact_id": constituent_id,
+            } if constituent_id else None,
+            citation_human=citation_human,
         ))
 
     # graha_saptavargaja_bala_component (V): AGGREGATED score from GA6.
@@ -1925,6 +1944,53 @@ def _get_saptavargaja_components(
             "relation": value_text,
         })
     return out
+
+
+def _get_d9_vargottama_flag(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    graha: str,
+) -> tuple[bool | None, str | None]:
+    """Read this graha's D9 vargottama determination from ga_vargas' own
+    authoritative chart_divisionals row (fact_category='varga_vargottama_flag',
+    varga='D9') — never re-derived here (§N.5; ga_vargas is already a declared
+    depends_on for ga_structural).
+
+    F-A15: graha_vargottama_amplification_factor used to re-derive vargottama
+    via its own inline navamsha-degree formula, independent of ga_vargas' own
+    D9 computation — disagreeing on 4/105 live rows. This function replaces
+    that re-derivation with a direct read of the authority.
+
+    Returns (vargottama, constituent_fact_id) — vargottama is None when
+    ga_vargas' D9 row is not yet reachable for this (chart, ayanamsha, graha),
+    an honest floor (never guessed True/False, B.10/§N.8), not (False, None).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text, vargottama, build_id
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_vargottama_flag' AND varga = 'D9'
+                 AND graha = %s""",
+            (chart_id, ayanamsha_id, graha),
+        )
+        fetched = cur.fetchall()
+
+    if not fetched:
+        return None, None
+
+    builds = {row[2] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_d9_vargottama_flag: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, graha={graha}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    row_id, vargottama, _build = fetched[0]
+    return bool(vargottama), row_id
 
 
 def _get_shodasavarga_components(
