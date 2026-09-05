@@ -456,6 +456,167 @@ def _select_frozen_build_assets(
     return selected
 
 
+# ---------------------------------------------------------------------------
+# WP-6 BLAST RADIUS (native directive D-NATIVE-05; charter C13)
+#
+# The campaign's DAG models ANCESTORS, and the E-gate gates on ancestors. Nothing
+# modelled the other direction until a `bo_laksana` MSR rebuild -- ordinary,
+# planned, `rebuild_only` work -- was found to cascade-delete 710,899 rows across
+# five L3 tables and orphan ~151,777 more, reaching `phala_anchors`, the table a
+# separate campaign-wide hold exists to protect (issues #1770, #1732, #1748).
+#
+# The native's framing, which is the whole specification:
+#
+#     "bo_laksana had no idea those tables existed; no writer should be able to
+#      not-know again."
+#
+# So this is not advisory. A committed dispatch REFUSES unless the operator has
+# both a snapshot and an explicit acknowledgement naming what will be destroyed.
+#
+# Note what this does NOT do: it does not decide whether destruction is
+# acceptable. That is a W2 route decision and an adjudication matter. It makes
+# destruction IMPOSSIBLE TO NOT-KNOW ABOUT, which is the failure that occurred.
+# ---------------------------------------------------------------------------
+
+# Referencing columns that carry NO foreign key. These ORPHAN rather than cascade,
+# which is the harder failure to detect -- a stale pointer still RESOLVES, so
+# nothing reads false (§N.8). They cannot be discovered from pg_constraint by
+# definition, so they are enumerated here and each owes a disposition to its
+# owning layer (D-NATIVE-05 action 7): a real FK with an intended delete rule, or
+# documented orphan-tolerance WITH a detector. Silent orphaning is worse than
+# loud cascade.
+NO_FK_REFERRERS: dict[str, tuple[tuple[str, str], ...]] = {
+    "bodha_msr_signals": (
+        ("kala_activation_predicates", "signal_id"),   # L3
+        ("mimamsa_attribution", "signal_id"),          # L5
+        ("mimamsa_load_bearing", "signal_id"),         # L5
+        ("phala_anchors", "signal_id"),                # L4
+        ("bodha_triangulation", "signal_ids"),         # L2 (array column)
+    ),
+}
+
+_LAYER_BY_TABLE_PREFIX = (
+    ("brahma_", "L0"), ("bg_", "L0"),
+    ("chart_", "L1"), ("ga_", "L1"),
+    ("bodha_", "L2"),
+    ("kala_", "L3"),
+    ("phala_", "L4"),
+    ("mimamsa_", "L5"), ("lel_", "L5"),
+)
+
+
+def _layer_of_table(table: str) -> str:
+    for prefix, layer in _LAYER_BY_TABLE_PREFIX:
+        if table.startswith(prefix):
+            return layer
+    return "?"
+
+
+def blast_radius(cur: Any, tables: Sequence[str]) -> dict[str, Any]:
+    """Enumerate everything a delete from `tables` would destroy or orphan.
+
+    Returns {"cascade": [...], "orphan": [...], "destroys_rows": bool,
+             "cross_layer": bool}. Read-only.
+
+    The cascade walk is TRANSITIVE and that is load-bearing: the defect that
+    prompted this reached `phala_anchors` at depth 2 and four more phala_* tables
+    at depth 3, via `kala_convergence`. A depth-1 check would have reported the
+    L3 damage and missed the L4 damage entirely.
+    """
+    if not tables:
+        return {"cascade": [], "orphan": [], "destroys_rows": False, "cross_layer": False}
+
+    cur.execute(
+        """
+        WITH RECURSIVE fk AS (
+          SELECT confrelid::regclass::text AS parent, conrelid::regclass::text AS child
+            FROM pg_constraint
+           WHERE contype = 'f' AND confdeltype = 'c'
+             AND conrelid::regclass::text !~ '__ssv_'
+        ), chain AS (
+          SELECT f.child, f.parent AS root, 1 AS depth, ARRAY[f.parent, f.child] AS path
+            FROM fk f WHERE f.parent = ANY(%s)
+          UNION ALL
+          SELECT f.child, c.root, c.depth + 1, c.path || f.child
+            FROM chain c JOIN fk f ON f.parent = c.child
+           WHERE c.depth < 8 AND NOT f.child = ANY(c.path)
+        )
+        SELECT DISTINCT ON (child) child, root, depth, path
+          FROM chain ORDER BY child, depth
+        """,
+        (list(tables),),
+    )
+    cascade_rows = cur.fetchall()
+
+    cascade: list[dict[str, Any]] = []
+    for row in cascade_rows:
+        child = row["child"]
+        # count(*) via a parameterised identifier is not expressible, and `child`
+        # comes from pg_constraint (never from user input), so format() on a
+        # catalogue-sourced identifier is safe here. quote_ident keeps it honest.
+        cur.execute("SELECT quote_ident(%s) AS q", (child,))
+        cur.execute(f"SELECT count(*) AS n FROM {cur.fetchone()['q']}")
+        cascade.append(
+            {
+                "table": child,
+                "layer": _layer_of_table(child),
+                "depth": row["depth"],
+                "path": " -> ".join(row["path"]),
+                "live_rows": int(cur.fetchone()["n"]),
+            }
+        )
+
+    orphan: list[dict[str, Any]] = []
+    for table in tables:
+        for ref_table, ref_col in NO_FK_REFERRERS.get(table, ()):  # type: ignore[arg-type]
+            cur.execute(
+                "SELECT to_regclass(%s) IS NOT NULL AS present", (ref_table,)
+            )
+            if not cur.fetchone()["present"]:
+                continue
+            cur.execute("SELECT quote_ident(%s) AS q", (ref_table,))
+            cur.execute(f"SELECT count(*) AS n FROM {cur.fetchone()['q']}")
+            orphan.append(
+                {
+                    "table": ref_table,
+                    "column": ref_col,
+                    "layer": _layer_of_table(ref_table),
+                    "live_rows": int(cur.fetchone()["n"]),
+                    "references": table,
+                }
+            )
+
+    own_layers = {_layer_of_table(t) for t in tables}
+    cross_layer = any(
+        entry["layer"] not in own_layers and entry["layer"] != "?"
+        for entry in (*cascade, *orphan)
+    )
+    destroys = any(e["live_rows"] > 0 for e in cascade) or any(
+        e["live_rows"] > 0 for e in orphan
+    )
+    return {
+        "cascade": cascade,
+        "orphan": orphan,
+        "destroys_rows": destroys,
+        "cross_layer": cross_layer,
+    }
+
+
+def format_blast_radius(report: Mapping[str, Any]) -> str:
+    lines: list[str] = []
+    for e in sorted(report["cascade"], key=lambda r: (-r["live_rows"], r["table"])):
+        lines.append(
+            f"    CASCADE  {e['layer']:>2}  {e['live_rows']:>9,} rows  "
+            f"{e['table']}  (depth {e['depth']}: {e['path']})"
+        )
+    for e in sorted(report["orphan"], key=lambda r: (-r["live_rows"], r["table"])):
+        lines.append(
+            f"    ORPHAN   {e['layer']:>2}  {e['live_rows']:>9,} rows  "
+            f"{e['table']}.{e['column']}  (no FK -- will NOT cascade, will dangle)"
+        )
+    return "\n".join(lines) if lines else "    (none)"
+
+
 def campaign_prerequisite_asset_ids(
     *,
     definition_manifest: Mapping[str, Any],
@@ -750,6 +911,7 @@ def create_campaign_run(
     expected_manifest_digest: str | None = None,
     reviewed_deployment_sha: str | None = None,
     requested_asset_ids: frozenset[str] | None = None,
+    acknowledge_destroys: bool = False,
 ) -> dict[str, Any]:
     if commit and not snapshot_ref:
         raise ValueError("committed campaign wave requires a recovery snapshot reference")
@@ -886,6 +1048,39 @@ def create_campaign_run(
                 "concurrent build-run cap reached; campaign wave refused "
                 f"({len(active)} active, cap {MAX_CONCURRENT_CAMPAIGN_RUNS}). "
                 "Release a run slot on the coordination issue before retrying."
+            )
+
+        # ---- WP-6 BLAST RADIUS (D-NATIVE-05 / charter C13) ------------------
+        # Enumerate what this dispatch DESTROYS downstream, and refuse to commit
+        # unless the operator has acknowledged it. Deliberately runs for dry runs
+        # too: the preview is where an operator should first learn the cost, not
+        # the commit.
+        target_tables = sorted(
+            {str(c["target_table"]) for c in candidates if c.get("target_table")}
+        )
+        radius = blast_radius(cur, target_tables)
+        if radius["cascade"] or radius["orphan"]:
+            print(
+                "\nWP-6 BLAST RADIUS -- this dispatch destroys downstream data:\n"
+                + format_blast_radius(radius),
+                file=sys.stderr,
+            )
+        if commit and radius["destroys_rows"] and not acknowledge_destroys:
+            raise RuntimeError(
+                "WP-6 refused: this dispatch would destroy or orphan downstream rows "
+                "the run has not acknowledged.\n"
+                + format_blast_radius(radius)
+                + "\n\nBefore proceeding (charter C13 -- hard floor, not discretion):\n"
+                "  1. take a FRESH VERIFIED snapshot covering every table above;\n"
+                "  2. confirm with each owning layer that its data is regenerable;\n"
+                "  3. re-run with --acknowledge-destroys.\n"
+                + (
+                    "  THIS CROSSES A LAYER BOUNDARY: another session owns rows listed "
+                    "above. File an adjudication issue and obtain an ordering ruling "
+                    "before acknowledging.\n"
+                    if radius["cross_layer"]
+                    else ""
+                )
             )
 
         cur.execute(
@@ -1087,6 +1282,16 @@ def main() -> int:
     )
     parser.add_argument("--confirm", help=f"Required with --commit: {CONFIRMATION}")
     parser.add_argument(
+        "--acknowledge-destroys",
+        action="store_true",
+        help=(
+            "Required with --commit when the dispatch would cascade-delete or orphan "
+            "downstream rows (WP-6 / charter C13). Acknowledges the printed blast "
+            "radius. Take a fresh verified snapshot FIRST -- this flag asserts you "
+            "have one; it does not create one."
+        ),
+    )
+    parser.add_argument(
         "--assets",
         help=(
             "Optional comma-separated asset_id subset of the frozen wave to dispatch "
@@ -1133,6 +1338,7 @@ def main() -> int:
             expected_manifest_digest=args.expected_manifest_digest,
             reviewed_deployment_sha=args.reviewed_deployment_sha,
             requested_asset_ids=requested_asset_ids,
+            acknowledge_destroys=args.acknowledge_destroys,
         )
     except Exception as exc:
         print(f"ERROR: campaign wave run not created: {exc}", file=sys.stderr)

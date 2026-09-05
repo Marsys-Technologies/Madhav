@@ -1002,3 +1002,135 @@ def test_live_registry_fingerprint_is_insensitive_to_depends_on_array_order() ->
     assert module._live_registry_fingerprint(
         ordered, campaign_layer="L3"
     ) == module._live_registry_fingerprint(shuffled, campaign_layer="L3")
+
+
+class _FakeBlastCursor:
+    """Minimal cursor standing in for the WP-6 catalogue + count queries."""
+
+    def __init__(self, cascade_rows, counts, present=True):
+        self._cascade_rows = cascade_rows
+        self._counts = counts
+        self._present = present
+        self._next = None
+
+    def execute(self, sql, params=None):
+        text = " ".join(sql.split())
+        if "WITH RECURSIVE fk" in text:
+            self._rows = list(self._cascade_rows)
+            self._next = "rows"
+        elif text.startswith("SELECT quote_ident"):
+            self._next = ("quote", params[0])
+        elif text.startswith("SELECT to_regclass"):
+            self._next = ("present", params[0])
+        elif "count(*)" in text:
+            ident = text.split("FROM ")[-1].strip()
+            self._next = ("count", ident)
+        else:  # pragma: no cover - defensive
+            raise AssertionError(f"unexpected SQL: {text}")
+
+    def fetchall(self):
+        assert self._next == "rows"
+        return self._rows
+
+    def fetchone(self):
+        kind, value = self._next
+        if kind == "quote":
+            return {"q": value}
+        if kind == "present":
+            return {"present": self._present}
+        return {"n": self._counts.get(value, 0)}
+
+
+def test_wp6_blast_radius_flags_cross_layer_cascade_and_no_fk_orphans() -> None:
+    """WP-6 must see BOTH destruction modes, and see them transitively.
+
+    The defect that prompted this (issues #1770/#1748) reached `phala_anchors` at
+    CASCADE depth 2 and four more phala_* tables at depth 3, via kala_convergence.
+    A depth-1 check would have reported the L3 damage and missed the L4 damage
+    entirely -- so transitivity is asserted here, not assumed.
+
+    The no-FK referrers are the other half: they ORPHAN rather than cascade, which
+    is the harder failure to detect because a stale pointer still RESOLVES and
+    nothing reads false (§N.8).
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+
+    cur = _FakeBlastCursor(
+        cascade_rows=[
+            {"child": "kala_activation", "root": "bodha_msr_signals", "depth": 1,
+             "path": ["bodha_msr_signals", "kala_activation"]},
+            {"child": "phala_anchors", "root": "bodha_msr_signals", "depth": 2,
+             "path": ["bodha_msr_signals", "kala_convergence", "phala_anchors"]},
+        ],
+        counts={"kala_activation": 672551, "phala_anchors": 195,
+                "kala_activation_predicates": 150150, "mimamsa_attribution": 1425,
+                "mimamsa_load_bearing": 9, "bodha_triangulation": 405},
+    )
+    report = module.blast_radius(cur, ["bodha_msr_signals"])
+
+    assert report["destroys_rows"] is True
+    assert report["cross_layer"] is True, "L2 deleting L3/L4 rows must read cross-layer"
+
+    cascade = {e["table"]: e for e in report["cascade"]}
+    assert cascade["kala_activation"]["layer"] == "L3"
+    assert cascade["phala_anchors"]["layer"] == "L4"
+    assert cascade["phala_anchors"]["depth"] == 2, "transitive reach must survive"
+
+    orphaned = {e["table"] for e in report["orphan"]}
+    assert "kala_activation_predicates" in orphaned
+    assert "mimamsa_attribution" in orphaned
+
+    rendered = module.format_blast_radius(report)
+    assert "CASCADE" in rendered and "ORPHAN" in rendered
+    assert "will NOT cascade" in rendered
+
+
+def test_wp6_blast_radius_is_quiet_for_a_leaf_table() -> None:
+    """No downstream rows must mean no refusal -- a gate that always fires is noise."""
+    module = _load_dispatch_module()
+    assert module is not None
+
+    cur = _FakeBlastCursor(cascade_rows=[], counts={})
+    report = module.blast_radius(cur, ["bg_reference"])
+    assert report["cascade"] == [] and report["orphan"] == []
+    assert report["destroys_rows"] is False
+    assert report["cross_layer"] is False
+    assert module.format_blast_radius(report).strip() == "(none)"
+
+
+def test_wp6_in_layer_cascade_is_not_flagged_cross_layer() -> None:
+    """L4 replacing its own phala_* rows is deliberate, not a boundary crossing."""
+    module = _load_dispatch_module()
+    assert module is not None
+
+    cur = _FakeBlastCursor(
+        cascade_rows=[
+            {"child": "phala_sankrama", "root": "phala_anchors", "depth": 1,
+             "path": ["phala_anchors", "phala_sankrama"]},
+        ],
+        counts={"phala_sankrama": 2985},
+    )
+    report = module.blast_radius(cur, ["phala_anchors"])
+    assert report["destroys_rows"] is True
+    assert report["cross_layer"] is False
+
+
+def test_wp6_no_fk_referrers_cover_the_documented_orphan_set() -> None:
+    """The no-FK set cannot be derived from pg_constraint, so it is pinned here.
+
+    Each entry owes a disposition to its owning layer (D-NATIVE-05 action 7):
+    a real FK with an intended delete rule, or documented orphan-tolerance WITH a
+    detector. Removing one from this map silently re-hides an orphan surface, so
+    the membership is asserted rather than left to review.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    referrers = {t for t, _c in module.NO_FK_REFERRERS["bodha_msr_signals"]}
+    assert referrers == {
+        "kala_activation_predicates",
+        "mimamsa_attribution",
+        "mimamsa_load_bearing",
+        "phala_anchors",
+        "bodha_triangulation",
+    }
