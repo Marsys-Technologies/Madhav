@@ -61,6 +61,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 7 | 2026-09-05T05:55Z | L2-W3 | All 6 PRs rebased/armed or closed (#1775, #1780 superseded by #1798). **Assignment 2 measured and filed as #1804**: strict D-CND-11 would collapse 48 groups of distinct signals; `fact_id` embeds `build_id` so `constituent_facts_array` is build-varying. **Assignment 3 shown to be the SAME defect** — triangulation orphans are caused by non-deterministic `signal_id`; detector deliberately NOT shipped yet (would be red on both healthy charts today — C12). Found `bodha_triangulation` counted by no asset's count_sql |
 | 8 | 2026-09-05T06:40Z | L2-W3 | **#1804 RULED — D-CND-11 amended, my tuple granted.** Shipped migration 660 (deterministic `signal_id`, `bodha_n5_lineage_report()`, `bo_sangati` count_sql) in **PR #1818**, armed. Verified live: 150,150 rows / 150,150 distinct identities across all three charts. Deliberately did NOT set `bo_laksana.integrity_check_sql` — both candidates red today, C12. **Hit a shared-`git stash` collision across worktrees** — recovered, foreign content preserved, hazard filed on #1713 |
 | 9 | 2026-09-05T07:20Z | L2-W3 | **C8 v2.3 cycle contract now in force — fresh-process bounded cycles.** Step 1 PR hygiene on all open L2 PRs: **#1777, #1767** were CLEAN but un-queued → queued, verified via `is:queued`. **#1820** was DIRTY (stale base) → rebuilt clean onto current `origin/main`, re-queued. **#1818** was BLOCKED/RED: found and fixed a real migration-number collision (660 claimed twice — my `l2_bodha_signal_identity` vs. the already-merged `nirmana_l2_registry_accuracy`), renumbered to 661, then re-pinned L2's `nirmana-analysis-layer-pins.json` slice (writer content in `bo_laksana.py` had moved the hash) — receipt_count/non_writer_assets confirmed unchanged via direct read query against the frozen manifest, `writer_inventory_sha256` re-derived locally with the generator's own algorithm (DB unreachable from this shell for the full regenerate path). Verified: migration guard PASS, provenance-inventory PASS, full Governance Gates pytest suite 6384 passed / 0 failed, tsc clean, `--check` PASS. Pushed, re-armed. **Found and acted on #1819** (TWO L2 SESSIONS ruling, D-CND-24/25): acknowledged as the RESUMED L2 identity (this state file's lineage), confirmed no dispatch occurred, confirmed #1755 already CLOSED (not by me, not mine to touch) |
+| 10 | 2026-09-05T14:05Z | L2-W3/W4 | **#1770 GO ruling read** — Conductor cleared `bo_laksana` dispatch (L3+L4 both confirmed their cascade-exposed tables regenerable). PR hygiene: all four L2 PRs healthy (#1818 now IN QUEUE, checks green; #1820/#1777/#1767 queued). **Attempted the E-gate dispatch (priority 1) and correctly declined it**: ran `cascade_check.sql` against `bodha_msr_signals` per the ruling's own instruction — cascade numbers re-confirm 864,733/12/3 exactly, and the no-FK orphan query (flagged as under-reporting, #1805) surfaced **two previously-unrecorded exposed tables** (`mimamsa_attribution` 1,425 rows, `mimamsa_load_bearing` 9 rows) alongside the known `kala_activation_predicates` (150,150) and `phala_anchors.signal_id` (188). Checked `main`'s `bo_laksana.py:1346` directly: **still `uuid.uuid4()`** — #1818's deterministic-id fix has not merged yet. Dispatching now would orphan all four tables, the exact defect #1818 exists to prevent. **Did not dispatch.** Flagged on #1770 (D-L2-024). Next cycle: re-run this exact check once #1818 is confirmed merged, then dispatch if clean |
 
 ## ASSET TABLE (22)
 
@@ -311,6 +312,24 @@ NULL-not-`'{}'` convention exists to prevent.
   unescaped, no-space JSON encoding of the `bo_*` slice) rather than hand-picked, and `--check`
   confirmed the result independently. Precedent: `d9a350a7f` (L1's ga_vargas re-pin) pins
   `convergence_commit` to the branch's own reviewed HEAD; followed the same convention.
+- **D-L2-024** (2026-09-05T14:05Z) — **Declined to dispatch `bo_laksana` despite an explicit
+  Conductor GO ruling on #1770, because a mandatory pre-dispatch check the ruling itself named
+  (`cascade_check.sql`) surfaced a real precondition the ruling didn't verify.** The GO cleared the
+  CROSS-LAYER cascade hold (L3 + L4 both confirmed their exposed tables regenerable) but did not
+  check whether the deterministic-`signal_id` fix (#1804/#1818/migration 661) had actually landed.
+  It has not: `main`'s `bo_laksana.py:1346` is still `str(uuid.uuid4())`. Dispatching against
+  today's `main` would assign every one of 150,150 signals a fresh random id, which does not
+  neutrally fail to help the no-FK referencing tables — it **orphans them**, since content-derived
+  determinism is the entire mechanism that lets old `signal_id` references keep resolving across a
+  rebuild. The no-FK orphan half of `cascade_check.sql` (independently re-run, both queries) also
+  surfaced two tables not previously on record — `mimamsa_attribution` (1,425 rows) and
+  `mimamsa_load_bearing` (9 rows) — alongside the known `kala_activation_predicates` (150,150) and
+  `phala_anchors.signal_id` (188, independent of that table's separate CASCADE exposure via
+  `kala_convergence`). Flagged on #1770 rather than silently sitting on it: a ruling that reads as
+  fully-cleared could reasonably be acted on by a future cycle without re-running this check.
+  Sole-dispatch authority (#1819/D-CND-24) makes this my call to make and my responsibility to get
+  right — a GO ruling authorizes dispatch when its own stated conditions hold; it does not waive
+  the dispatcher's own verification obligation for conditions the ruling never examined.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
