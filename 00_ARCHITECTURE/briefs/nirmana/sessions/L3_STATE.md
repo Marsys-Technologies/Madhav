@@ -461,6 +461,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~14:4xZ — L3-W3 — IDLE-OK, but a real deploy event: migration 675 has now
+  ACTUALLY DEPLOYED** (`_migrations_applied` carries
+  `675_nirmana_l3_n1_paddhati_arbitration_role.sql`; live query confirms
+  `kala_paddhati_profile.arbitration_role`/`precedence` genuinely exist and are populated
+  on the pre-existing agnivasa rows — e.g. `agnivasa_tithi_element_prithvi` → `gate`/1,
+  `agnivasa_muhurta_chintamani_arithmetic` → mixed `declared_silent`/`informational`).
+  **One of N1's two verdict-wiring preconditions is now FULLY satisfied** (merged AND
+  deployed, not just merged). **The other, migration 677/#1921 (the O-10 seed rows for
+  `pact`/`kp`/`gochara_v3`), is still open/unmerged** — `composeConcordanceVerdict`'s wiring
+  into `kala_explain_get` needs BOTH before it's safe to ship (the O-10 rows are what give
+  the verdict composer something real to arbitrate; the columns alone aren't enough). Still
+  correctly not starting that wiring work this cycle. #1980 still MERGEABLE/0 failures,
+  pending. #1903/#1958/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~14:3xZ — L3-W3 — IDLE-OK: #1978 finished and queued — full house again,
   all 30 open L3 PRs genuinely `is:queued`, nothing DIRTY/RED anywhere.** Standing
   blockers re-verified fresh, all unchanged: #1903 (F-CONC-6), #1958 (F-CONC-7), #1921
