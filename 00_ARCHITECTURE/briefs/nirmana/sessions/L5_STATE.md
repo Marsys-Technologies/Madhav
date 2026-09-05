@@ -11,11 +11,14 @@ worktree: ~/nirmana-s/l5
 
 # L5 — Mīmāṃsā session state
 
-**Position:** `L5-W3` — RESUMED 2026-09-05 after the lane died ~00:37Z. W1 ✅ 15/15 · W2 ✅ 15/15 routed · W3 in flight · W4 gated.
-armed:** #1745 (docs: W1+W2+audit+state), #1768 (migration 690, registry accuracy), #1769 (writer
-honesty fixes: 9 raises + 2 fabricated-value repairs). W3 batch 2 (integrity contracts) in flight.
-**W4 blocked on #1715/PR #1736** (receipt spine — now CLEAN and ready to merge) **and #1723**
-(per-chart detector).
+**Position:** `L5-W3 COMPLETE` — RESUMED 2026-09-05 after the lane died ~00:37Z, then a second
+stale-worktree recovery this cycle (see heartbeat). W1 ✅ 15/15 · W2 ✅ 15/15 routed · **W3 ✅
+complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811 recovered W5/runbook)
+**+ #1790 queued this cycle** (mi_pariksha idempotency scar). W4 gated only on holds: #1732 for
+`mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live). The receipt spine (#1736)
+and per-chart detector (#1723) that used to gate W4 have **both merged** — see
+`L5_W6_CLOSE_REPORT_v1_0.md` §6 for the current, honest gate statement (a sequencing choice, not
+a block). Three canaries (`mi_vistara`, `lel_events`, `mi_jivanaghatana`) are dispatchable NOW.
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -391,6 +394,31 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~19:15Z (C8 v2.3 cycle) — **Worktree recovery.** On resume, `~/nirmana-s/l5` (branch
+  `codex/nirmana-l5-w3-serving`) was found hard-stale: HEAD (`9963a73f7`, the W3-3 serving-plane
+  commit) was already merged to `origin/main` as `36bb07744`/#1786 long ago, and 117 files sat
+  staged-but-uncommitted on top of it reflecting an even OLDER, since-superseded design (the old
+  `nirmana-analysis-layer-pins.json` generator, which main has since replaced with the L0-only
+  receipts approach). Confirmed via `git diff --cached origin/main` that the staged content added
+  nothing origin/main didn't already have (net: origin/main is strictly ahead). Backed up the tip
+  to ref `codex/nirmana-l5-w3-serving-STALE-BACKUP` (recoverable if this read proves wrong), then
+  `git reset --hard origin/main`. Worktree is now clean and current. **Root cause note for the
+  Conductor/fleet ops:** this matches the "lane death" pattern already recorded in this file
+  (00:37Z) — a session died mid-work leaving local commits/staged diffs that never reached origin,
+  and a *different* invocation of this lane subsequently did the real recovery+W3 work
+  (#1806/#1809/#1811/#1812, all confirmed merged on `origin/main`) from a fresh worktree state
+  while this stale one sat untouched. No data was lost — all real L5 W3 content is on `main`.
+  Re-read the current `L5_W6_CLOSE_REPORT_v1_0.md` (0.6-DRAFT) and this file's own "RESUMED LOOP"
+  section for full current state: **W1 15/15, W2 15/15 routed, W3 complete (6 PRs), W4 gated on
+  nothing but L5's own sequencing choice (migration 691, merged) + holds on #1732 for
+  `mi_bhavisya`/`mi_pramana`.**
+- 2026-09-05T~19:20Z — **Step 1 PR hygiene (C8 v2.3):** only one L5-owned PR was open —
+  **#1790** (`mi_pariksha` §N.3 idempotency scar), CLEAN but not queued, no auto-merge armed.
+  Queued it (`gh pr merge 1790 --auto --squash`) and verified membership with
+  `gh pr list --search "is:queued"` (present). This is this cycle's bounded unit. Next cycle:
+  re-verify #1790 merged, then move to W4 canary dispatch (`mi_vistara` first — 0.287s, zero deps)
+  per the close report's §6 sequencing note, using the recovered runbook
+  `l5_scripts/L5_W4_CANARY_RUNBOOK.md`.
 - 2026-09-05T~01:15Z — L5-W3 — #1790 + #1785 rebased/re-armed; C13 closure measured (empty);
   no-FK dispositions determined; L4 anchor-identity collision found and reported — blocked on:
   nothing (W4 gated by holds, W3 continues).
