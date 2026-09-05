@@ -1783,3 +1783,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue head still #1894, same pytest step now ~11 min in -- getting
   close to concerning but not yet clearly abnormal (first hang was 30+ min before reported). Will
   escalate next check if still unresolved. Position steady at 83, no merges yet.
+
+- 2026-09-06 — **IDLE-OK, watched hang resolved (3rd time).** Queue head moved from #1894 to
+  #1896 -- 3rd occurrence, 3rd natural resolution, still no intervention needed. Position advanced
+  83->81. No merges of mine yet. Resuming normal 30-min pace.
