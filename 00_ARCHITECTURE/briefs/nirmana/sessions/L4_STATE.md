@@ -53,7 +53,7 @@ your `nirmana-adjudication` issues → continue.
 |---|---|---|---|---|---|
 | `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **D-CND-04 hold LIFTED (2026-09-05, verified live)** — still E-gate-blocked on ancestors + D-NATIVE-05 | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity, SHIPPED + live-verified) |
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
-| `ph_pratikara` | **changed** | W2 done → **W3-3j** | wave 1 · 40/49 unfrozen | — | 7 MUST findings, but F-7/F-8 were duplicates of F-3.4 (resolved by #1831) — real count was 5 unique; **now 3/5 shipped** (F-3.4 #1831, F-3/F-4/F-5 hard-floor citation #1854); F-2 (rerun, blocked on E-gate) + F-6 (grounding_tier/classical_sources_array columns, deferred) remain |
+| `ph_pratikara` | **changed** | W2 done → **W3-3l** | wave 1 · 40/49 unfrozen | — | real MUST count was 5 unique (F-7/F-8 were F-3.4 duplicates); **4/5 shipped** (F-3.4 #1831, F-3/F-4/F-5 #1854, F-6-partial source_id #1864); only F-2 (rerun, blocked on E-gate) remains — F-6's other half (estimated_time/phase_duration) verified live to have no real data, correctly not attempted |
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
 | `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h/W3-3k** | wave 1 · 38/47 unfrozen | — | F-10 sort **shipped** (#1783, MERGED); F-14 leakage blind spot **shipped** (#1845); F-13 ceiling-inputs detector **shipped** (#1857); only F-12 (narration/falsy-zero, NOW-tier) remains |
@@ -942,4 +942,46 @@ consequence of #1791 finally merging; rebased via `--skip` on the stale pin comm
 hand-resolving JSON, re-verified both test suites, recomputed the pin fresh, re-armed → next:
 `ph_pratikara`'s F-6 or F1's multi-registry MCP-wiring fix, watching for more DIRTY fallout as
 the queue continues to drain.
+
+`2026-09-06T~00:35Z` — L4 — **cycle: PR hygiene clean (all nine own PRs healthy — the earlier
+DIRTY was the only casualty of #1791's merge) → W3-3l shipped, `ph_pratikara`'s F-6 —
+partial, and honestly scoped down after live re-verification found half the finding's own
+claim didn't hold.**
+
+**PR hygiene:** #1808/#1831/#1834/#1839/#1842/#1845/#1849 all `UNKNOWN` (genuinely queued);
+#1854/#1857 legitimately `BLOCKED`-pending-CI at sane ages (3 min / 7.5 min). No new DIRTY.
+Confirmed the earlier `gh pr list` reading of "only 7 PRs" last cycle-open was my own
+default-`--limit 30` misread, not a real state change — re-verified with `--limit 100` before
+trusting it; corrected the record rather than letting a wrong headcount stand.
+
+**The unit: F-6, deliberately scoped down from its own text.** Before writing any code,
+re-verified F-6's two named claims live rather than trusting the finding doc verbatim
+(D-CND-16 — the same discipline that caught the F-7/F-8 double-count two cycles ago): `bo_upaya`
+holds real chapter-level citations (true — `classical_sources_jsonb.source_id` populated
+135/135, all three charts) **but** `estimated_time_minutes_daily`/`phase_duration_days` are
+**100% NULL on all three charts**, including the damaged one. The finding's claim about the
+second pair was wrong (stale, or written against different data) — propagating a column that
+holds nothing is not a fix, so that half is correctly NOT attempted, recorded as a finding
+correction rather than silently dropped.
+
+Implemented the real half: `source_id` (e.g. `'BPHS'`) is now a first-class column on
+`phala_mitigation`, migration 687 (additive, self-tested). **Deliberately did not touch the
+existing citation-selection block** that #1854 (F-3, still open) also modifies — used a
+separate, independent `next()` scan for `source_id` instead of refactoring the shared logic,
+trading a small amount of redundancy for near-zero merge-conflict surface against a sibling PR
+touching the same function. Honest `None` when nothing carries a `source_id`, mirroring F-3's
+own pattern for `classical_citation`.
+
+3 new tests; 62/62 wave4 tests pass. Governance gates handled proactively (nine-for-nine, base
+freshly current). **Shipped PR #1864**, auto-merge armed.
+
+`ph_pratikara` now has **4 of its 5 real MUST findings shipped**; only F-2 (the rerun itself,
+blocked on E-gate — 37/46 ancestors still unfrozen) remains, and that is dispatch work, not
+code work.
+
+CYCLE L4: PR hygiene clean (verified the "7 PRs" reading last cycle was my own list-limit
+misread, not a real change) → shipped #1864 (`ph_pratikara` F-6, `source_id` propagated;
+correctly declined the finding's other half after live-verifying it has no real data behind
+it) → next: `ph_pratikara` is now down to just its E-gate-blocked rerun; F1's multi-registry
+MCP-wiring fix is the layer's last genuinely open code item.
 
