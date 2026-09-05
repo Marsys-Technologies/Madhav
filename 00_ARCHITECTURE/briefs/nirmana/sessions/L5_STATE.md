@@ -14,30 +14,25 @@ worktree: ~/nirmana-s/l5
 **Position:** `L5-W4 IN FLIGHT` — RESUMED 2026-09-05 after the lane died ~00:37Z, then a second
 stale-worktree recovery, then a merge-queue pin-gate fix (see heartbeat). W1 ✅ 15/15 · W2 ✅
 15/15 routed · **W3 ✅ complete, 6 PRs merged** (#1745, #1768, #1769, #1786, #1785 mig-691, #1811
-recovered W5/runbook) **+ #1790 fixed/queued** (verified `is:queued`), **#1826 state PR in
-flight** (checks pending). **CANARY 1 (`mi_vistara`) BUILD COMPLETE, CAPSULE IN PROGRESS:**
-`run_id=e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`, 18.29s, verified live in job
-logs + DB. Cross-layer finding filed as **#1840** (`accepted_rebuild_observed`/`asset_frozen`
-structurally unreachable for every non-L0 asset — `asset_output_digest_specs` had 0 non-`bg_*`
-rows). **Migration 692 authored, applied, and live-verified** — `mi_vistara`'s own spec is now
-the first non-L0 entry (`nrec`/server-function digests independently cross-checked); PR
-**#1844 queued** (`migration-guard` PASS — spec_sha256 independently re-derived and matches
-exactly; ON CONFLICT target matches the real PK; columns cross-checked against three independent
-sources). **Real remaining gap found while tracing
-the full validator** (`requireAcceptedRebuildProvenance`/`requireBuildRunAuthorizationProvenance`
-in `definitions.ts`): `accepted_rebuild_observed` also needs a **`build_run_authorized`** event
-(source_kind `campaign_authorization`, entity_type `build_run`) submitted **BEFORE** the run
-starts (`build_runs.state='planned'`, `started_at IS NULL`) — my existing `e45e343b` run has
-neither that event nor a `receipt_state='proven'` receipt (the receipt predates the spec), so it
-cannot retroactively satisfy the chain. **A genuine ~23s window exists** between
-`build_runs.created_at` and `started_at` (measured on `e45e343b`: 14:09:42.233Z →
-14:10:05.152Z) — enough to script `build_run_authorized` immediately after the dispatch script
-returns its `run_id`, before the job actually starts. Next cycle: re-dispatch `mi_vistara`
-(now that its spec exists) with `build_run_authorized` submitted in that window, then
-`accepted_rebuild_observed`. W5 mechanical checks/capsule remain fresh-context-verifier-only
-regardless. W4 gated only on holds for two OTHER assets: #1732 for `mi_bhavisya`/`mi_pramana`
-(L4 anchor-identity collision, still live). `lel_events` and `mi_jivanaghatana` remain
-dispatchable behind `mi_vistara`.
+recovered W5/runbook) **+ #1790 MERGED**, **#1826 + #1844 both queued/checks-pending**.
+**CANARY 1 (`mi_vistara`) BUILD COMPLETE, CAPSULE PERMANENTLY BLOCKED under the current frozen
+definition — see #1848.** `run_id=e45e343b-…`, execution `brahma-build-pipeline-job-zv9gd`,
+18.29s, verified live in job logs + DB. Two cross-layer findings filed this session:
+**#1840** (`accepted_rebuild_observed`/`asset_frozen` structurally unreachable for every non-L0
+asset — `asset_output_digest_specs` had 0 non-`bg_*` rows; **fixed for `mi_vistara` via migration
+692**, applied + live-verified + `migration-guard` PASS, PR #1844 queued) and **#1848**
+(`create_campaign_run`'s duplicate-execution guard has no state filter and no bypass — ANY prior
+`build_runs` row with the same `triggered_by`, `completed` or not, blocks forever; live-reproduced
+that `mi_vistara`'s own already-completed canary-1 run now permanently prevents it from ever
+getting the `build_run_authorized`-then-dispatch sequence `accepted_rebuild_observed` requires,
+under this one frozen `definition_revision`). Confirmed live (dry-run, no side effects) that
+bundling with a second ready asset clears the guard — **L5's practical path: once
+`mi_jivanaghatana` or another asset is genuinely W2-accepted, dispatch it bundled with
+`mi_vistara`** to get a fresh `triggered_by`, submitting `build_run_authorized` in the real
+~20s Cloud-Run-cold-start window immediately after `--commit` returns (measured on `e45e343b`:
+`created_at` 14:09:42.233Z → `started_at` 14:10:05.152Z). W5 mechanical checks/capsule remain
+fresh-context-verifier-only regardless of any of this. W4 gated only on holds for two OTHER
+assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -413,6 +408,35 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~21:20Z (C8 v2.3 cycle 8) — **Filed #1848: the dispatch script's duplicate-run
+  guard permanently blocks re-authorizing an asset's own already-completed build.** PR hygiene
+  first: **#1790 MERGED** (14:35:01Z — `gh pr merge --auto` had claimed "already queued" while
+  GraphQL `isInMergeQueue: false` said otherwise, confirming the contract's warning that
+  `autoMergeRequest`/CLI status text lies; `is:queued`/GraphQL is the only truth, and by the time
+  I finished checking it had genuinely merged); #1826/#1844 both checks-pending, nothing broken.
+  Also noted **Conductor fixed #1833** (L3's independent finding: the same `search_path`
+  unqualified-table bug I'd been working around with a DATABASE_URL query param) properly, by
+  schema-qualifying the SQL in the shared script (PR #1838, queued) — better than my workaround,
+  no action needed from me once it merges. Conductor also **ruled on #1840** (D-CND-27,
+  campaign-wide notice posted) confirming my Option A recommendation.
+  Went to execute the planned next step (re-dispatch `mi_vistara`, submit `build_run_authorized`
+  in the ~20s window) and the dry-run failed immediately: `"a run already exists for this frozen
+  campaign wave; duplicate execution refused"`. Traced `create_campaign_run`'s guard
+  (`dispatch_nirmana_campaign_wave.py:1101-1109`) — `SELECT ... WHERE triggered_by=%s` has **no
+  state filter, no bypass flag**; my own already-`completed` canary-1 run occupies the only
+  `triggered_by` mi_vistara can ever have under the one frozen `definition_revision`, forever.
+  Confirmed live (dry-run only, `--assets mi_vistara,mi_kula`) that bundling with a second asset
+  produces a different `triggered_by` and clears the guard cleanly (failed later for an unrelated,
+  expected reason — `mi_kula` isn't W2-accepted). Filed with full evidence, four options (A:
+  accept the loss for `mi_vistara`; B: narrow the guard to genuinely in-flight runs — recommended,
+  not implementing myself, shared Conductor-owned tooling; C: bundle-dispatch workaround once a
+  second asset is ready — L5's own practical path; D: document the
+  dispatch-then-immediately-`nrec` pattern campaign-wide regardless, so this is never hit again).
+  **Next cycle: check whether `mi_jivanaghatana`'s W3 registry corrections (volume-formula fixes)
+  have landed** — if so, it may be genuinely W2-acceptable now, which would make it the pairing
+  partner for `mi_vistara`'s bundle-dispatch (Option C). If not yet ready, work `lel_events`
+  (canary 2 — a disposition/reconciliation proof, not a build dispatch, so untouched by any of
+  this) instead.
 - 2026-09-05T~21:00Z (C8 v2.3 cycle 7) — **Migration 692 authored, applied, live-verified,
   guard-reviewed PASS — `mi_vistara`'s `output_digest_spec` exists (first non-L0 entry).** PR
   hygiene first: #1790 still queued; #1826 checks-pending, nothing broken. Read
