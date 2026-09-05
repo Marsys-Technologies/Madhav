@@ -534,16 +534,44 @@ def _c_panchanga_quality(
 def _c13_school_consensus_score(
     signature_class: str,
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C13: school_consensus (U3 pass-2, post-U4) — 7-school inter-tradition agreement.
     Score = schools_agreeing / 7.0.  Floor 0.0, ceiling 1.0.
-    Domain inference: signature_class → domain (e.g. 'CAREER_PEAK' → 'CAREER').
-    Sourced from convergence_scores.schools_agreeing (populated by school-consensus build).
-    Returns 0.0 when school_consensus_by_domain is empty (pre-U4 safe default).
+
+    Returns **honest None when the term could not be evaluated at all** — distinct
+    from 0.0, which means "evaluated, and the schools disagree completely".
+
+    NIRMĀṆA L3-W3 (F-SANGAM-6, §N.8, §N.7 item 6). This used to return 0.0 for
+    every failure mode. Two independent defects, both measured live, neither
+    fixed here:
+
+      1. `ctx.school_consensus_by_domain` is never populated — the writer's own
+         comment says so verbatim ("pre-U4 default — not yet built; stays
+         empty"). The U4 school-consensus build simply does not exist yet.
+
+      2. Even once U4 lands, the domain-inference step below cannot work as
+         written: it maps `signature_class` prefixes to life-domain buckets
+         (CAREER / HEALTH / RELATIONSHIP / SPIRITUAL / PSYCHOLOGICAL), but
+         `signature_class` is a SIGNAL-TYPE taxonomy, not a life-domain one —
+         the live `kala_activation_predicates_signature_class_check` CHECK
+         vocabulary is `{YOGA, DOSHA, DIGNITY, DISPOSITOR_RELATIONAL,
+         SENSITIVE_POINT, CONJUNCTION_ASPECT, SUBSYSTEM, CLASSIFY_RESIDUAL}` —
+         measured live, 0 of these ever starts with any of the five hardcoded
+         prefixes. There is no honest way to derive "which life domain does a
+         DOSHA or a YOGA belong to" from the signal-type field alone; guessing
+         one to make the mechanism activate would be exactly the invented
+         judgment §N.7 item 6 forbids. This is a genuine open design question
+         for whoever builds U4 — not a gap this fix can close by inventing a
+         mapping.
+
+    Both defects mean the term is DROPPED from the saturating product (via the
+    caller's `if c13 is not None` guard), not scored zero — a real "the schools
+    disagree completely" 0.0 would look identical to "this was never
+    evaluated" otherwise, which is precisely the §N.8 defect this fix removes.
     """
     if not ctx.school_consensus_by_domain:
-        return 0.0
+        return None
     # Map signature_class prefix to domain
     domain: Optional[str] = None
     for prefix, mapped in (
@@ -557,7 +585,7 @@ def _c13_school_consensus_score(
             domain = mapped
             break
     if domain is None:
-        return 0.0
+        return None
     n_of_7 = ctx.school_consensus_by_domain.get(domain, 0)
     return min(1.0, max(0.0, n_of_7 / 7.0))
 
@@ -1103,7 +1131,7 @@ def mode_a_search(
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
-            'school_consensus':             c13,
+            **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -1134,7 +1162,10 @@ def mode_a_search(
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
-                'c13_school_consensus': round(c13, 4),
+                **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
+                   {'c13_school_consensus_unavailable':
+                    'no U4 school-consensus data yet AND signature_class is a signal-type '
+                    'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 # Newly wired currents
                 'c_cross_dasha_agreement': round(c_cross, 4),
                 'c_benefic_dristi': round(c_dristi, 4),
@@ -1289,7 +1320,7 @@ def mode_b_sweep(
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
-            'school_consensus':             c13,
+            **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -1319,7 +1350,10 @@ def mode_b_sweep(
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
-                'c13_school_consensus': round(c13, 4),
+                **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
+                   {'c13_school_consensus_unavailable':
+                    'no U4 school-consensus data yet AND signature_class is a signal-type '
+                    'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
