@@ -2668,3 +2668,20 @@ actively processing; E-gate uncheckable, DB access down 83 cycles; nothing new) 
 queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
 remains deferred.
 
+`2026-09-05T~22:05Z` — L4 — **CYCLE 94 (v2.3) — third flat cycle on queue positions; verified
+via `merge_group` run list rather than trusting the unchanged `estimatedTimeToMerge` display —
+a NEW merge-group run for `#1884` had actually started (`21:19:34Z`) since the last check,
+genuinely in progress at ~9 min. The static queue-entry fields (position,
+`estimatedTimeToMerge`) don't refresh live; only the run list shows real activity.**
+
+**PR hygiene:** all 11 own PRs unchanged/genuinely queued for a third cycle. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 84th consecutive cycle DB access down.
+
+CYCLE 94 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs unchanged/queued; a fresh
+merge-group run confirms the queue is genuinely still processing despite static display
+fields; E-gate uncheckable, DB access down 84 cycles; nothing new) → next: watch queue
+positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
