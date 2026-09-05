@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — W3 in flight; 4 PRs open incl. the campaign critical path
+last_updated: 2026-09-05 — C8 v2.3 cycle 1; PR hygiene (pin regen) done, W3 continuing
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -35,14 +35,26 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-**L1-W3 IMPLEMENT — in flight.** W1 + W2 COMPLETE. W1 complete (19/19). `L1_W2_DECIDE_v1_0.md` published:
-8 `changed` / 11 `rebuild_only` / 0 `verified_reuse`, all 139 findings triaged.
-W3 IMPLEMENT next; **no W2 acceptance event written** (held on #1736 per ruling).
+**L1-W3 IMPLEMENT — in flight, under C8 v2.3 supervised-cycle model.** W1 + W2 COMPLETE (19/19
+routed). #1736 (evidence-spine generalisation), #1740 (W1+W2 docs), #1756 (W3 registry truth) all
+**MERGED** since the last heartbeat — the W2 acceptance-event hold (#1715) is now clear to act on
+next cycle. Only one L1 PR remains open: **#1766** (ga_vargas birth-instant + delete-grain fix).
 
-**Critical-path assignment in flight:** PR **#1736** — the evidence-spine generalisation, authored
-by L1 per the Conductor's ruling on #1715. It unblocks E-gate condition 2 for **88 assets across
-L1–L5**, not just L1. No L1 W2 *acceptance event* may be written until it is merged and deployed
-(ruling, explicit); W1/W2 *analysis and decisions* are unaffected and continue.
+**Cycle 1 (this session, first under C8 v2.3):** PR #1766 was CLEAN and un-queued at cycle start;
+armed auto-merge, then Conductor's fleet-wide diagnosis (issue #1713, 13:32Z) surfaced that it had
+actually already been ejected from the merge queue by a NEW merge-group gate (Nirmana analysis-
+layer pin check, landed via #1815 after this PR's branch checks last ran) — `ga_vargas_writer.py`
+changed in this PR, so L1's `writer_inventory_sha256` in the committed pin file went stale. Fixed
+per Conductor's posted instructions: rebased onto origin/main, regenerated **only L1's slice**
+(`--layer L1 --convergence-commit b71ee4af` — this branch's own reviewed HEAD; L0/L2/L3/L4/L5
+untouched byte-for-byte), which required a real Postgres connection for `load_frozen_manifest_assets()` —
+reused the **already-running shared cloud-sql-proxy** on `127.0.0.1:5433` (did not spawn a
+redundant one; attempted spawn correctly failed on port-in-use and left nothing behind) with the
+`amjis-pipeline-db-url` secret (read-only manifest lookup, no write path touched). Had to
+GraphQL `dequeuePullRequest` the stale queue entry before GitHub would accept the force-push
+(protected-branch rule blocks pushing to a branch currently in the merge queue). Re-armed
+auto-merge; `mergeStateStatus: BLOCKED` (checks re-running on the new commit) as of this write —
+next cycle re-verifies with `is:queued` per the charter's exact-claim requirement.
 
 ## E-gate (C2/C10) — measured live 2026-09-05
 
@@ -191,6 +203,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   multiplier saturating at 1.15 for 12/12 houses because SARVA bindus (23–34) feed BHINNA bands
   (0–8), and the formula-version label. All three re-verified by me before filing.
 
+- **D-L1-21** — C8 v2.3 cycle 1 PR hygiene: #1766 ejected from the merge queue by the new
+  cross-layer pin gate (#1815) because this PR's own writer change (`ga_vargas_writer.py`) moved
+  L1's `writer_inventory_sha256`. Fixed via `--layer L1` regeneration (Conductor-authored generator,
+  #1814 per-layer mode) rather than whole-file regen, which would have falsely restated
+  L2–L5's `convergence_commit` as reviewed by me. Used the campaign's already-provisioned
+  `amjis-pipeline-db-url` read secret through the shared cloud-sql-proxy already running on this
+  machine (127.0.0.1:5433) — read-only manifest lookup only, no write-path credential use, no new
+  proxy process spawned. Required a GraphQL `dequeuePullRequest` before the protected-branch rule
+  would accept the rebase+pin-regen force-push.
+
 ## Held items
 
 - **All W2 acceptance events** — held on PR #1736 merging + deploying (ruling on #1715, explicit).
@@ -234,3 +256,10 @@ L1 must satisfy rather than a feature it consumes.
   merge), #1740 (W1+W2 docs), #1756 (registry truth), #1766 (ga_vargas instant). **No slot
   claimed** — nothing is dispatchable while C2 cond 2 is shut, and holding a slot idle is
   forbidden (C5).
+- 2026-09-05T13:42Z — **CYCLE 1 (C8 v2.3).** Confirmed no `NIRMANA_HOLD`. Found #1736/#1740/#1756
+  already MERGED (the W2-acceptance hold is now clear). Only open L1 PR was #1766: rebased,
+  regenerated the L1-only analysis pin (stale from this PR's own `ga_vargas_writer.py` change,
+  per the new #1815 merge-group gate), dequeued/force-pushed/re-armed auto-merge. No E-gate
+  dispatch this cycle — that is next cycle's priority-1 item once #1766's checks confirm queued.
+  No new adjudication issue needed. `CYCLE 1 L1: fixed #1766's stale pin (dequeue+regen+re-arm) →
+  next: verify #1766 is:queued, then act on the now-clear W2 acceptance-event hold / check E-gate`.
