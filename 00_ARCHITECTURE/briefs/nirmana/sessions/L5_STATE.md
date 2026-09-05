@@ -346,6 +346,12 @@ on the registry's numbers.
   975 refs before any L5 rebuild** rather than assume they still resolve.
 - **H-L5-04 — `mi_bhara` registry correction** → **#1743** (CD-5, L3 ack). Fallback if held: route
   `probe` and re-decide.
+- **H-L5-06 — `mi_vistara`'s `accepted_rebuild_observed`** → **#1899** (Conductor-owned, sixth
+  structural finding this session, live-reproduced 2026-09-05). Delta-skip (`_skip_no_delta`)
+  fires on any re-dispatch with unchanged upstream content, skipping the writer and leaving no
+  fresh `asset_provenance_receipts` row tied to the authorized run's `build_id`; the campaign
+  dispatch script has no `--force` bypass. Blocks `mi_jivanaghatana` too, once #1861 lands and a
+  retry is attempted — same mechanism will very likely recur there.
 
 ## Capability-delta list (charter C6) — published 2026-09-05
 
@@ -451,6 +457,37 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:10Z (C8 v2.3 cycle 40) — **Real work: #1848's fix landed, retried `mi_vistara`
+  dispatch, found and filed a NEW structural blocker (#1899), sixth this session.** #1851
+  merged 16:52:52Z; rebased onto it and confirmed the guard's fix is exactly as expected
+  (blocks only `state IN (planned,running,paused)`, not completed). Fresh Cloud SQL snapshot
+  taken (collided with another lane's concurrent on-demand backup already `RUNNING` — waited it
+  out rather than fight for a slot: `cloudsql-backup:1788627280698`). Claimed the #1713 slot,
+  dry-ran clean (rollback verified), **committed dispatch #1** (`run_id=1b5c7197-…`) — writer
+  executed for real (mi_vistara's first-ever build under this campaign), produced a genuine
+  `proven` receipt, but missed the `build_run_authorized` ~20s window while looking up unfamiliar
+  schema (`run.state` was already `completed` by the time I had the payload built). **Dispatch
+  #2** (`run_id=b93b4497-…`) hit a genuine multi-lane race first try (`build_runs_one_active_per_
+  chart_idx` collision against a concurrent L0 run on the same shared chart — not my bug, just
+  contention; retried once the L0 run cleared) then succeeded: `build_run_authorized` landed
+  genuinely inside the window this time (HTTP 201, verified `started_at IS NULL` at submit time).
+  **But then found the real defect**: the orchestrator's delta-skip gate (`_skip_no_delta`,
+  O-wave WP-2) fired on run #2 since nothing upstream had changed in the 3 minutes since run #1
+  — `disposition=skip_no_delta`, writer never invoked, no fresh receipt created for `b93b4497-…`.
+  `requireAcceptedRebuildProvenance` requires `receipt.build_id = run.id` exactly — so neither
+  run alone satisfies both the authorization-window requirement AND the fresh-receipt
+  requirement, and this isn't timing luck, it's structural: delta-skip will fire on essentially
+  every re-dispatch of stable content, and the campaign dispatch script has no `--force` bypass
+  to the internal `asset_runner.py` one that exists. **Filed #1899** with full live evidence
+  (both run_ids, digests, dispositions) and three ranked options (re-stamp receipt build_id on
+  skip_no_delta — recommended; thread `--force` through the dispatch script; relax the validator
+  join). Released the #1713 slot with full outcome. Not a workaround-and-move-on — real
+  infrastructure was exercised twice, a real gap was found and evidenced, not guessed.
+  **mi_vistara remains blocked pending #1899's ruling** — same posture as #1848/#1856/#1869
+  before their fixes landed. PR hygiene: #1826 now fully CLEAN and `is:queued` (all checks
+  passed this cycle); #1844 still queued at position 46 (unmoved — queue depth means slow
+  climb). Cross-session note: `conductor-2b` pinged mid-cycle confirming #1851's merge and that
+  #1861 is healthy-but-queued — consistent with my own direct observation, no new information.
 - 2026-09-06T~04:27Z (C8 v2.3 cycle 39) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true (position 46, unchanged); #1826 pending-checks-only, no red. #1851 still at
   position 1, `AWAITING_CHECKS`, now ~8 min into its check — within the normal 15-18 min
