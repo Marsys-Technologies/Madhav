@@ -4,11 +4,13 @@ import { WaveLane } from './WaveLane'
 import { WaveProgressBar } from './WaveProgressBar'
 import { assetCompactLabel } from './vocab'
 
-export function LayerStage({ layer, assets, onOpenAudit, waveProgress }: {
+export function LayerStage({ layer, assets, onOpenAudit, waveProgress, showWaveProgressBar = true }: {
   layer: NirmanaElevationSnapshotV2['layers'][number]
   assets: NirmanaElevationSnapshotV2['assets']
   onOpenAudit: (assetId: string) => void
   waveProgress: WaveProgressCount[]
+  /** LayerCard already renders this bar in its always-visible summary; set false there to avoid a duplicate. */
+  showWaveProgressBar?: boolean
 }) {
   const waves = [...layer.waves].sort((left, right) => left.wave_index - right.wave_index)
   const total = layer.assets_total
@@ -21,7 +23,7 @@ export function LayerStage({ layer, assets, onOpenAudit, waveProgress }: {
       <p>Required gate: {layer.required_gate}</p>
       <p className="capitalize">{layer.state === 'unknown' ? 'No layer evidence yet' : layer.state}</p>
     </div>
-    <WaveProgressBar waveProgress={waveProgress} />
+    {showWaveProgressBar && <WaveProgressBar waveProgress={waveProgress} />}
     <div>
       <div
         role="progressbar"

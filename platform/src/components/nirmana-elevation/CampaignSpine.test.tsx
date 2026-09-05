@@ -20,6 +20,11 @@ function CampaignSurface({ snapshot }: { snapshot: NirmanaElevationSnapshotV2 })
   </main>
 }
 
+/** Opens the collapsed "Stage-machine history" `<details>` so its preserved legacy rows become reachable by `.toBeVisible()` assertions (jest-dom treats non-summary content of a closed `<details>` as invisible). */
+function openHistory() {
+  fireEvent.click(screen.getByText('Stage-machine history (13-stage record + Phase A drawer)'))
+}
+
 describe('CampaignSpine', () => {
   it('renders the executive truth, current stage, and every governed stage in sequence', () => {
     // `programme.position_label` is now the sole source for the position chip (Step 5); its
@@ -35,8 +40,12 @@ describe('CampaignSpine', () => {
     expect(screen.getByText('Unknown — monitor not observed')).toBeVisible()
     expect(screen.getByRole('button', { name: /L0 · Brahmagyan/i })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /L1 · Ganita/i })).toHaveAttribute('aria-expanded', 'false')
-    // PHASE A and PHASE Z fold their member stages behind a collapsed summary row (v2 programme
-    // grouping) — expand both before counting every individually-rendered stage button.
+    // The full 13-stage record now lives inside the collapsed history drawer (Ruling R2 —
+    // per-layer state moved to the six always-visible LayerCards). Open the drawer, then
+    // PHASE A and PHASE Z's own collapsed summary rows, before counting every
+    // individually-rendered stage button — this also implicitly covers the six LayerCard
+    // toggle buttons, since their names ("L0 · Brahmagyan", …) match the same `L[0-5]` pattern.
+    openHistory()
     fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
     fireEvent.click(screen.getByRole('button', { name: /^PHASE Z/i }))
     expect(screen.getAllByRole('button', { name: /BOOTSTRAP|T0_CENSUS|PLAN_FROZEN|DENOMINATOR_FROZEN|F0_FOUNDATION|L[0-5]|CLOSING|COMPLETE/ })).toHaveLength(13)
@@ -69,6 +78,7 @@ describe('CampaignSpine', () => {
     foundation.required = 5
 
     render(<CampaignSurface snapshot={snapshot} />)
+    openHistory()
     fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     expect(screen.getByRole('button', { name: /F0 · Foundation readiness/i })).toBeVisible()
@@ -96,6 +106,7 @@ describe('CampaignSpine', () => {
 
   it('uses human plan labels for T0 and F0 while retaining exact stage ids as secondary metadata', () => {
     render(<CampaignSurface snapshot={snapshotFixture()} />)
+    openHistory()
     fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     expect(screen.getByRole('button', { name: /T0 · Asset and DAG census/i })).toBeVisible()
@@ -322,6 +333,7 @@ describe('CampaignSpine', () => {
     }
 
     render(<CampaignSurface snapshot={snapshot} />)
+    openHistory()
     fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
 
     const foundationButton = screen.getByRole('button', { name: /F0_FOUNDATION/i })
@@ -329,20 +341,31 @@ describe('CampaignSpine', () => {
     foundationButton.focus()
     fireEvent.keyDown(foundationButton, { key: 'Enter' })
     expect(foundationButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Asset and DAG census')).toBeVisible()
-    expect(screen.getByText(/Unknown — acceptance checkpoints are not recorded/i)).toBeVisible()
-    expect(screen.queryByText(/%/)).not.toBeInTheDocument()
+
+    // The overall bar and six LayerCards legitimately render real percentages elsewhere on the
+    // page now — this assertion's actual job (per its name) is that THIS specific unknown-data
+    // panel never fabricates one of its own, so it is scoped to F0_FOUNDATION's own panel.
+    const panelId = foundationButton.getAttribute('aria-controls')
+    const panel = panelId ? document.getElementById(panelId) : null
+    if (!panel) throw new Error("F0_FOUNDATION's expanded panel is missing.")
+    expect(within(panel).getByText('Asset and DAG census')).toBeVisible()
+    expect(within(panel).getByText(/Unknown — acceptance checkpoints are not recorded/i)).toBeVisible()
+    expect(within(panel).queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('renders the O-Wave declared row and provenance chips beside the collapsed Phase A/Z summaries', () => {
+  it('renders the O-Wave declared row (all WPs merged) and provenance chips beside the collapsed Phase A/Z summaries', () => {
     const snapshot = snapshotFixture()
 
     render(<CampaignSurface snapshot={snapshot} />)
+    openHistory()
 
     expect(screen.getByRole('heading', { name: 'O-WAVE' })).toBeVisible()
     const oWaveSection = screen.getByRole('heading', { name: 'O-WAVE' }).closest('article')
     if (!oWaveSection) throw new Error('O-Wave section is missing.')
+    expect(snapshot.programme.o_wave.wps.length).toBeGreaterThan(0)
     for (const wp of snapshot.programme.o_wave.wps) {
+      // Ruling R3: the O-wave race is over — all three WPs are stable, merged history.
+      expect(wp.status).toBe('merged')
       expect(within(oWaveSection).getByText(`${wp.name}: ${wp.status}`)).toBeVisible()
     }
     expect(within(oWaveSection).getByText('Repo-declared')).toBeVisible()
@@ -353,7 +376,44 @@ describe('CampaignSpine', () => {
     expect(within(phaseZButton).getByText('Evidence-derived')).toBeVisible()
   })
 
-  it("keeps L0's row rendered exactly as before, now receiving its sub-wave progress", () => {
+  it('keeps the sequential stage-machine record inside a collapsed-by-default history drawer that opens to the preserved legacy rows', () => {
+    const snapshot = snapshotFixture()
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    const summary = screen.getByText('Stage-machine history (13-stage record + Phase A drawer)')
+    expect(summary.closest('details')).not.toHaveAttribute('open')
+    // Closed by default: the legacy per-stage record is not the first thing a viewer sees —
+    // the overall bar and six concurrent layer cards are (Ruling R2).
+    expect(screen.queryByRole('button', { name: /^PHASE A/i })).not.toBeVisible()
+
+    openHistory()
+
+    expect(summary.closest('details')).toHaveAttribute('open')
+    fireEvent.click(screen.getByRole('button', { name: /^PHASE A/i }))
+    expect(screen.getByRole('button', { name: /BOOTSTRAP/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /T0 · Asset and DAG census/i })).toBeVisible()
+  })
+
+  it('renders all six layer cards concurrently, never labeling a layer as locked', () => {
+    const snapshot = snapshotFixture()
+
+    render(<CampaignSurface snapshot={snapshot} />)
+
+    expect(snapshot.layers.map((layer) => layer.layer_id)).toEqual(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'])
+    for (const layer of snapshot.layers) {
+      const toggle = screen.getByRole('button', { name: new RegExp(`^${layer.layer_id} · ${layer.layer_name}`) })
+      expect(toggle).toBeVisible()
+      // Scope to the toggle button itself (header + state badge) rather than the whole card —
+      // an expanded card's body reuses the legacy "Asset state legend" (Frozen/Active/…/Locked/
+      // Unknown), which legitimately describes per-ASSET states and would otherwise collide.
+      const badge = within(toggle).getByText(/^(Completed|Active|Pending|Unknown)$/)
+      expect(badge).toBeVisible()
+      expect(within(toggle).queryByText('Locked')).not.toBeInTheDocument()
+    }
+  })
+
+  it("keeps L0's programme sub-wave progress visible on its always-shown card summary, defaulting open", () => {
     const snapshot = snapshotFixture()
     const l0Layer = snapshot.layers.find((layer) => layer.layer_id === 'L0')
     if (!l0Layer) throw new Error('Fixture must include L0.')
@@ -362,13 +422,14 @@ describe('CampaignSpine', () => {
 
     const l0Button = screen.getByRole('button', { name: /L0 · Brahmagyan/i })
     expect(l0Button).toHaveAttribute('aria-expanded', 'true')
-    const panelId = l0Button.getAttribute('aria-controls')
-    const l0Panel = panelId ? document.getElementById(panelId) : null
-    if (!l0Panel) throw new Error("L0's expanded panel is missing.")
-    expect(within(l0Panel).getByLabelText(/programme sub-wave progress/i)).toBeVisible()
+    const card = l0Button.closest('article')
+    if (!card) throw new Error("L0's card is missing.")
+    // The WaveProgressBar is part of LayerCard's always-visible summary now (not gated behind
+    // expansion) — every layer's cumulative sub-wave breakdown is visible at a glance.
+    const subWaveProgress = within(card).getByLabelText(/programme sub-wave progress/i)
     for (const wave of l0Layer.wave_progress) {
-      expect(within(l0Panel).getByText(wave.wave_id)).toBeVisible()
-      expect(within(l0Panel).getByText(wave.label)).toBeVisible()
+      expect(within(subWaveProgress).getByText(wave.wave_id)).toBeVisible()
+      expect(within(subWaveProgress).getByText(wave.label)).toBeVisible()
     }
   })
 })
