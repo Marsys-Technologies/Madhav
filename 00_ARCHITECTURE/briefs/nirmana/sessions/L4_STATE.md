@@ -2545,3 +2545,19 @@ CYCLE 85 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs unchanged/queue
 uncheckable, DB access down 75 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-05T~21:25Z` — L4 — **CYCLE 86 (v2.3) — genuinely IDLE; queue head (`#1882`, not mine)
+checked directly given 3 flat cycles, confirmed actively processing not stalled.**
+
+**PR hygiene:** all 11 own PRs unchanged/genuinely queued, no net `main` movement across three
+cycles now. `mergeQueue(branch:"main")` head `#1882` is `AWAITING_CHECKS`, ~14 min estimated —
+actively processing, consistent with the short real wall-clock gap between cycles, not campaign
+infrastructure trouble.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 76th consecutive cycle DB access down.
+
+CYCLE 86 L4: IDLE-OK (verified: PR hygiene clean, all 11 own PRs unchanged/queued; queue head
+actively processing; E-gate uncheckable, DB access down 76 cycles; nothing new) → next: watch
+queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
+remains deferred.
+
