@@ -3,6 +3,13 @@ artifact: SESSION_CHARTER_V21.md
 canonical_id: NIRMANA_V21_SESSION_CHARTER
 version: "2.1"
 status: NATIVE-RATIFIED — binding on every v2.1 parallel session
+amended: >
+  2026-09-05, D-NATIVE-05 (native direct ruling on issue #1770): C13 "Destruction travels to
+  descendants" added. The DAG models ancestors and the E-gate is necessary but NOT sufficient;
+  every W2 route decision now carries a downstream blast-radius statement, rebuild_only is not
+  safe-by-default for an asset with populated descendants, and a fresh verified snapshot before
+  any row-destroying dispatch is hard floor rather than discretion. Enforced by WP-6 in the
+  shared dispatcher. Nothing else in this charter changed.
 produced_on: 2026-09-05
 authorized_by: >
   Native, 2026-09-05: Asset-Frontier Pipelining (v2.1) approved as layer-clustered parallel
@@ -190,3 +197,43 @@ Discovered in L0 wave 1; binding campaign-wide because every layer's Conform wor
 - **Service dependencies** (`asset_kind='service'`) are satisfied for dependency-assert purposes
   by a current GREEN probe / `service_health` — that is what "lit" means for a service
   (freeze-exception §3.5 addendum, native-granted 2026-09-05). Record the addendum in state.
+
+## C13 — Destruction travels to descendants (D-NATIVE-05, native-ruled 2026-09-05)
+
+The DAG models ancestors; **the E-gate is necessary and NOT sufficient.** Every W2 route
+decision must include a downstream **blast-radius statement**: cascade children, no-FK
+referrers, live row counts. `rebuild_only` is **NOT** "safe by default" for any asset with
+populated descendants. Before any dispatch that destroys rows: **fresh verified snapshot,
+always** — hard floor, not discretion.
+
+**Why this exists.** An L2 `bo_laksana` MSR rebuild — ordinary, planned, `rebuild_only` work —
+cascade-deletes **710,899 rows across five L3 tables** and orphans **~151,777 more**, reaching
+`phala_anchors`, the table a separate campaign-wide hold exists to protect. Nothing in the
+E-gate, the run-slot protocol, or the writer's own idempotency helper modelled that direction,
+and the helper's docstring asserted `NO ACTION` where the schema says `CASCADE`. It was caught
+because three sessions cross-checked each other, not because anything detected it.
+
+**How to produce the blast-radius statement.** Query the catalogue — never a code comment
+(a comment asserting a schema property is not evidence of that property):
+
+```sql
+-- transitive CASCADE closure; run per target table
+psql "$DATABASE_URL" -v table=<your table> -f platform/scripts/nirmana/cascade_check.sql
+```
+
+Then state, in your W2 route: every cascade child with its layer and live row count, every
+no-FK referrer (these **orphan** rather than cascade — the harder failure, since a stale
+pointer still resolves and nothing reads false), and whether any of it crosses a layer
+boundary. **If it crosses a boundary, the dispatch is HELD**: file an adjudication issue
+naming the owning layers and obtain an ordering ruling, and the owning layer must confirm its
+data is regenerable *before* the snapshot is spent.
+
+**Enforcement.** WP-6 in the shared dispatcher enumerates the radius and **refuses a committed
+dispatch** that would destroy or orphan rows without `--acknowledge-destroys`. The flag asserts
+you hold a fresh verified snapshot; **it does not create one.** WP-6 makes destruction
+impossible to not-know about — it does not decide whether destruction is acceptable, which
+remains a W2 route decision and an adjudication matter.
+
+**No-FK referrers get dispositions, not cascades:** either a real FK with an intended delete
+rule, or documented orphan-tolerance **with a detector**. *Silent orphaning is worse than loud
+cascade.*
