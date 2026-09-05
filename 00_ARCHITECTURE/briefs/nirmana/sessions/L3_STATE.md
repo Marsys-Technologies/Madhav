@@ -458,6 +458,27 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~16:0xZ — L3-W4 — #1801 MERGED (finally cleared queue). PR hygiene this cycle
+  surfaced a real housekeeping gap: my own state-branch discipline had a hole. Every prior
+  cycle's heartbeat entry landed as a LOCAL-ONLY commit on `codex/nirmana-l3-w4-resume` because
+  that branch stayed queued the whole session — 7 commits of pure state-file history piled up
+  unpushed. Once #1801 merged, the branch unlocked and the push succeeded, but a
+  `git diff origin/main...codex/nirmana-l3-w4-resume` check (before assuming anything, per
+  habit) showed the branch's checked-in generated pin files
+  (`nirmana-writer-digests.json`, `nirmana-analysis-layer-pins.json`) are now stale relative to
+  everything else merged since — confirmed the actual CODE files (`ka_bhavishya_lekha.py`,
+  `ka_sangam` engine, the U3 test fixes, etc.) are byte-identical to what's already on `main`
+  (a squash-merge history artifact, not real pending work; verified via direct content diff,
+  not the three-dot notation, before concluding that). So: opened **PR #1863** from a FRESH
+  branch off current `main`, carrying only the current `L3_STATE.md` content — the one file that
+  genuinely needed to land. `codex/nirmana-l3-w4-resume` is retired as my state-file home base
+  from here; `codex/nirmana-l3-state-sync` (or its successor once #1863 merges) is the new one.
+  **Lesson for future cycles:** don't let state-file commits stack up unpushed across a whole
+  session on one queued branch — land them on their own small PR promptly, the same discipline
+  as code.
+  PR hygiene: #1846/#1858/#1850/#1860 all still cleanly queued/pending, nothing to fix.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
 - `2026-09-05T~15:5xZ — L3-W3 — N6 closed: PR #1860 dispositions all 8 Kāla `__ssv_*` rollback
   shadow tables per the full W1 evidence (`L3_W1_ANALYSIS_BATCH_D.md`) — 7 dropped (723.4 MiB
   reclaimed: `kala_activation`/`taranga`/`convergence`/`obstruction`/`darshana`/`jivana_parva`/
