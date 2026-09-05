@@ -55,7 +55,8 @@ ancestor (`ga_positions`) and is the designated canary.
 | 1 | 2026-09-04T22:30Z | L2-W1 | worktree created; charter + plan 4/5 read; 22-asset roster pulled from frozen definition; first census run; 5 read-only W1 subagents dispatched |
 | 2 | 2026-09-04T23:20Z | L2-W2 | all 5 W1 lanes returned; `L2_W1_ANALYSIS_v1_0.md` + `L2_W2_DECIDE_v1_0.md` written; 3 adjudications filed (#1716 tooling, #1720 system_convergence_count, #1726 sruti/verse-addressability); PR #1717 (state bootstrap) in queue |
 | 3 | 2026-09-05T00:10Z | L2-W3 | five W3 PRs open (#1741 salience truth, #1752 registry accuracy + CI guard, #1755 tail-lane percentile, #1760 tail_watch trim-proofing, #1767 L1-handoff fixes); rulings received on all three of my adjudications; cross-layer DRAFT finding filed (#1753) |
-| 4 | 2026-09-05T00:45Z | L2-W3 | **W4 HELD** -- verified L4's #1748 and found its grading wrong in the dangerous direction: a `bo_laksana` rebuild CASCADE-deletes 710,899 L3 rows. Filed #1770 TIME-CRITICAL. Replied to #1748 and #1750. Migration 661 (corroboration null-out, D-CND-06 pairing) authored |
+| 4 | 2026-09-05T00:45Z | L2-W3 | **W4 HELD** -- verified L4's #1748 and found its grading wrong in the dangerous direction: a `bo_laksana` rebuild CASCADE-deletes 710,899 L3 rows. Filed #1770 TIME-CRITICAL. Replied to #1748 and #1750 |
+| 5 | 2026-09-05T01:15Z | L2-W3 | #1770 RULED: upheld, blast radius re-measured at **864,733 rows / 12 tables / 3 layers** (the `kala_convergence -> phala_anchors -> phala_*` leg I missed), **campaign-wide HOLD** issued, **D-CND-15** recorded. Shipped the owed docstring fix (#1777). Three more W3 PRs: #1776 tail population, #1779 umbrella density. **#1741 MERGED** -- first L2 batch on main. Corroborated L5's seed-revert finding (#1757) |
 
 ## ASSET TABLE (22)
 
@@ -124,6 +125,9 @@ Routes assigned in W2. `--` = not yet ruled.
 
 | PR | what | W2 items |
 |---|---|---|
+| #1776 | **tail population** -- `buildTailWatch`: rare-class leaders (51 verified live) + the `low_salience_high_consequence` anomalies that had three independent reasons never to reach a caller | N-14 (population), N-15 |
+| #1777 | **the comment was the defect** -- `_idempotency.py` said `NO ACTION`; every FK is `CASCADE`. Owed under #1770 item 2 | D-CND-15 |
+| #1779 | **four umbrellas earn their density contracts** -- hand-authored `density_contract` + a real `empty_reason` + the tail, with a test that checks the CLAIM rather than the field | N-17 |
 | #1741 | **salience truth** -- bind 6 computed-but-never-written columns; AV scale fix at the feed; argala reinstated; vargottama from L1; honest NULLs for cancellation/neechabhanga; corroboration fabrication removed; dead shadow tables deleted | M-01, M-02, M-04, M-08, N-01..N-06 |
 | #1752 | **registry accuracy** -- `catalog_status` sweep (9), `target_table` (2), `sort_order` collisions (2), `expected_volume_formula` (2 wrong cleared, 6 derived) + a **static CI guard** so the DRAFT bug cannot return | M-09, M-11, N-20, N-21 |
 | #1755 | **tail-lane percentile** -- one shared `salience_rank` module; the five satellite writers now set `salience_pctl_in_class`, so the six rarest classes stop shipping NULL on the column the tail predicate ranks on | N-16 |
@@ -288,7 +292,18 @@ post-insert UPDATE of one scalar salience column over ~28K rows took **600 s+** 
 
 ## HELD ITEMS
 
-- **`bo_laksana` W4 dispatch -- HELD on adjudication #1770 (TIME-CRITICAL).** Not a capability
+- **`bo_laksana` W4 dispatch -- HELD. RULED 2026-09-05: upheld and made CAMPAIGN-WIDE policy.**
+  The Conductor traced the closure one hop further than I did and found the leg I missed:
+  `kala_convergence` is itself a CASCADE parent of `phala_anchors`, which cascades to
+  `phala_pramana` / `phala_sankrama` / `phala_sodhana` / `phala_suddha_sodhana`. **True blast
+  radius: 864,733 rows across 12 tables in three layers** -- including the very table D-CND-04
+  holds `ph_nimitta` rebuilds to protect. My own finding would have failed D-CND-15's own rule:
+  I enumerated `pg_constraint` at depth 1 and stopped, and "transitive" is the load-bearing word.
+  Hold lifts only when a fresh snapshot of the 12 tables is confirmed **restorable**, not merely
+  taken. Ruled order: L2's MSR rebuild goes FIRST, L3 re-runs after as scheduled work.
+  **Route correction owed to W6:** L2-W2 routed `bo_laksana` as `changed` believing its rebuild
+  was in-layer. The route stands; the belief about its blast radius did not.
+  *(original finding, retained)* -- Not a capability
   hold (C6) and not an E-gate hold (C2): a hard-floor hold. Verifying L4's #1748 against my own
   table showed its grading wrong in the direction that matters. `bodha_msr_signals` REPLACES
   (explicit `DELETE` in `replace_prior_msr_for_chart`; the canonical chart's three `build_id`s
@@ -309,8 +324,17 @@ post-insert UPDATE of one scalar salience column over ~28K rows took **600 s+** 
 Expected publications: consensus columns populated - grounding fields populated - `tail_watch`
 shipped - adjudication table live.
 
-- *(none yet on `main` -- the five W3 PRs are in the merge queue. Each is announced here the
-  moment it merges, per C6.)*
+- **2026-09-05 -- `bo_laksana` salience writer corrected (PR #1741, MERGED).** Stated honestly,
+  because C6 is about what a consumer may rely on: this lands the **writer**, not the data. The
+  six previously-unwritten columns (`class_prior`, `salience_inputs_complete`,
+  `present_but_enfeebled`, `bala_gate`, `functional_context_score`, `verification_rescale`) are
+  now bound into the INSERT; the AV multiplier reads the correct bhinna feed; argala is live in
+  the formula; vargottama reads its L1 authority; cancellation and neechabhanga store honest
+  NULLs; the corroboration-count fabrication is gone. **None of it reaches stored data until
+  `bo_laksana` re-runs, and that rebuild is HELD campaign-wide under #1770.** A downstream layer
+  should not begin consuming corrected salience values yet -- only the guarantee that the next
+  rebuild produces them.
+- *(the other eight W3 PRs are in the merge queue; each is announced here the moment it merges)*
 
 **Ruled definition, to be carried here verbatim when the grounding lane lands (#1726 condition 3):**
 `sruti` means **text-direct at the finest granularity the corpus supports** -- NOT verse-direct.
