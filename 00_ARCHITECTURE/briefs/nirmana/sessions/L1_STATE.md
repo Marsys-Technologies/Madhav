@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 43; ga_sade_sati F-A14 widened to 6/15 (#1987)
+last_updated: 2026-09-06 — C8 v2.3 cycle 43; ga_sade_sati F-A14 widened to 6/15 (#1987); DIRTY #1898 fixed
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -1809,6 +1809,21 @@ CYCLE 43 L1: widened `ga_sade_sati`'s F-A14 contract to 6/15 categories (PR #198
 `anumukha_shani_period`) or `ga_structural` (56 categories remain), or `ga_positions`
 re-dispatch once #1892 lands.
 
+**Post-PR-open hygiene sweep found a real DIRTY PR, fixed:** `#1898` (`ga_positions` fact_id
+stability fix, dates to cycle 14) showed `mergeStateStatus: DIRTY` — rebased onto current
+`origin/main` (a 44-commit gap; main advanced through the whole F-A14 campaign since). The rebase
+hit two conflicts, both in generated artifacts: `nirmana-writer-digests.json` (resolved by taking
+the base and regenerating fresh afterward, not hand-merging a derived file) and a stale L2 re-pin
+commit the branch itself carried (`4f4ad6ecb`, authored against a since-superseded main baseline)
+— skipped it via `git rebase --skip` rather than force it through, since replaying it verbatim
+would misrepresent what L2 actually reviewed against the current tree. Regenerated the writer-digest
+inventory fresh (11 entries changed, all real writer changes landed on main since cycle 14, not a
+regression from this fix) and the `--layer L1` pin (only `convergence_commit` changed, confirmed via
+the tool's own diff summary). Running the full `--check` afterward surfaced a **fourth occurrence**
+of the #1852 L2-pin-staleness class (same `bo_pratijna` transitive path) — posted to #1852 and
+messaged `l2-3f` directly, did not touch L2's pin, exact same disposition as `#1853`. #1898 is now
+DIRTY→clean on L1's own side but will show the same L2-staleness RED until L2 re-derives their pin.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2387,6 +2402,19 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   switched to a real transactional `UPDATE` + `ROLLBACK` against production instead, which uses
   the real indexed table and completed in seconds; worth remembering for any future migration
   whose conjuncts self-join `chart_facts` more than once.
+- **D-L1-67** — C8 v2.3 cycle 43 (end-of-cycle sweep): fixed a genuine DIRTY PR, `#1898`
+  (`ga_positions` fact_id stability fix, cycle 14 — a 44-commit gap behind `main`). Rebased;
+  resolved a conflict in `nirmana-writer-digests.json` by taking the base and regenerating fresh
+  rather than hand-merging a derived file; skipped (`git rebase --skip`) the branch's own stale L2
+  re-pin commit rather than force it through a conflict resolution that would misrepresent what L2
+  actually reviewed against the current tree. Regenerated the writer-digest inventory (11 entries
+  changed, confirmed all real writer changes landed on main since cycle 14) and the `--layer L1`
+  pin. The post-rebase `--check` surfaced a **fourth** occurrence of the #1852 L2-pin class (same
+  `bo_pratijna` transitive path) — posted to #1852, messaged `l2-3f`, did not touch L2's pin,
+  identical disposition to `#1853`. `l2-3f` acknowledged both mid-cycle: the actual root fix
+  (PR #1928, severing the transitive import entirely) is still queued on their side; once it
+  lands, future rebases stop hitting this class. They'll push the one-off re-pins on #1853/#1898
+  directly next cycle.
 
 ## Held items
 
@@ -3029,6 +3057,13 @@ L1 must satisfy rather than a feature it consumes.
   chart_facts' full cross-chart row count; killed a hung background run) to a real transactional
   UPDATE+ROLLBACK against production, which completed in seconds using the real indexed table.
   No writer touched. Full platform/tests/unit/migrations/ suite: 187 passed / 91 skipped (39
-  files). CYCLE 43 L1: widened ga_sade_sati's F-A14 contract to 6/15 categories (PR #1987,
-  migration 752) -- next: continue widening ga_sade_sati (9 categories remain) or ga_structural
-  (56 categories remain), or ga_positions re-dispatch once #1892 lands.
+  files). End-of-cycle sweep found and fixed a genuine DIRTY PR: #1898 (ga_positions fact_id
+  fix, cycle 14, 44 commits behind main). Rebased; resolved a writer-digest.json conflict by
+  taking base + regenerating fresh, skipped the branch's own stale L2 re-pin commit rather than
+  force it through. Regenerated writer-digest inventory (11 entries, all real upstream changes)
+  + --layer L1 pin. Surfaced a FOURTH #1852 occurrence (bo_pratijna) -- posted to #1852, messaged
+  l2-3f, did not touch L2's pin. l2-3f acknowledged: root fix PR #1928 still queued on their side;
+  they'll push one-off re-pins on #1853/#1898 directly next cycle. CYCLE 43 L1: widened
+  ga_sade_sati's F-A14 contract to 6/15 categories (PR #1987, migration 752) + fixed DIRTY #1898
+  -- next: continue widening ga_sade_sati (9 categories remain) or ga_structural (56 categories
+  remain), or ga_positions re-dispatch once #1892 lands.
