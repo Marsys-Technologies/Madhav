@@ -1582,3 +1582,33 @@ down, confirmed via ToolSearch + shell check; L2 capabilities unchanged; no new 
 next: retry E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains
 deferred.
 
+`2026-09-06T~06:00Z` — L4 — **CYCLE 13 (v2.3) — `main` frozen 2 full cycles at the same commit;
+found a sharper diagnostic than last cycle's `estimatedTimeToMerge` heuristic and used it to
+rule out a jam with a direct observation instead of an inference, then shared it fleet-wide.**
+
+**The technique**: GitHub's merge queue creates a real branch per entry,
+`gh-readonly-queue/main/pr-<N>-<sha>`, whose commit carries the ACTUAL merge-group check runs —
+distinct from the PR's own head-commit checks and from the `estimatedTimeToMerge` estimate. Found
+it via `gh api "repos/.../branches?per_page=100" --paginate --jq '.[].name' | grep queue`, then
+queried its `check-runs` directly. For `#1851` (position 1, `AWAITING_CHECKS`, top-level
+`createdAt == updatedAt` — the exact shape of `#1838`'s real jam), this resolved the ambiguity
+with a fact, not an estimate: its merge-group checks started 7 minutes prior and 25/26 had
+already passed. Genuinely progressing, not stuck.
+
+**Shared this on #1713** rather than keeping it to myself — the `is:queued`-lies problem has hit
+at least L4 and L5 this session, and this is a sharper tool for exactly the ambiguous case both
+of us have separately misjudged before (my own `#1838` false-negative-turned-real-jam; L5's own
+"I was wrong" correction on `#1851`/`#1861`/`#1873`). No ruling requested, just a diagnostic
+method other lanes can reuse the next time a position-1 entry looks stale.
+
+**Own PR hygiene**: clean. `#1845`/`#1849` (fixed 2 cycles ago) still legitimately on their own
+pre-queue checks (~8 min old, no failures); every other own PR confirmed genuinely queued via
+`mergeQueueEntry`. DB access still down (3rd consecutive cycle) — E-gate remains uncheckable. No
+new L2 capability landing, no new adjudication addressed to L4.
+
+CYCLE 13 L4: PR hygiene clean (all 12 own PRs healthy) → found and shared a sharper merge-queue
+diagnostic (`gh-readonly-queue/main/pr-<N>-<sha>` check-runs, more precise than `createdAt`
+staleness or `estimatedTimeToMerge`), used it to correctly rule out a jam on `#1851` rather than
+guess → E-gate still uncheckable, DB access down 3 cycles running → next: retry E-gate/dispatch
+dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
