@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~05:20Z (C8 v2.3 cycle 41) — **PR hygiene: rebased onto main's 42-commit advance**
+  (new tip `ae7ed2bd9`, #1850 merged). Force-pushed; this reset #1826's checks to a fresh
+  `pending` run (all 15, none red — just re-running post-rebase) and #1844 stayed `is:queued`
+  true throughout, now at position 44 (was 46, small climb). #1861→11, #1873→24. #1856/#1869
+  still OPEN, unchanged. **#1899 (filed last cycle) has 0 comments yet** — too early to expect a
+  ruling. No eligible dispatch (both `mi_vistara`/`mi_jivanaghatana` blocked pending #1899;
+  `mi_jivanaghatana` additionally still blocked on #1856), no unheld W3 item.
 - 2026-09-06T~05:10Z (C8 v2.3 cycle 40) — **Real work: #1848's fix landed, retried `mi_vistara`
   dispatch, found and filed a NEW structural blocker (#1899), sixth this session.** #1851
   merged 16:52:52Z; rebased onto it and confirmed the guard's fix is exactly as expected
