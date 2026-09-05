@@ -444,6 +444,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~23:30Z (C8 v2.3 cycle 15) — **IDLE-OK, verified.** PR hygiene: #1844 confirmed
+  queued; #1826 checks-pending only, nothing broken. Checked all four fronts before concluding
+  idle: (1) `#1851`/`#1861` (Conductor fixes for #1848/#1856) — both still OPEN, not merged; (2)
+  `#1869` — 0 comments, no ruling yet; (3) live E-gate re-run for L5 (`egate.sql -v layer=L5`) —
+  no new asset opened; `mi_kula` still blocked on exactly the same 3 L0 ancestors
+  (`bg_dasha_systems, bg_rules, bg_yogas`) as at session start (caught and self-corrected a bug
+  in my own ad-hoc query first, which had wrongly suggested several assets were down to 1
+  unfrozen ancestor — a missing layer filter on the recursive CTE's base case broke the
+  recursion past the first hop; re-ran the canonical `egate.sql` instead of trusting my own
+  shortcut); (4) my other open adjudication issues (#1738, #1757, #1807) — all stale since early
+  session, no new comments. Four independent structural blockers (#1840 partially fixed by me,
+  #1848, #1856, #1869) stand between L5 and any further terminal-acceptance progress, all
+  outside L5's own authority to resolve further. Manufacturing a low-value action here would be
+  the exact theater C8 forbids.
 - 2026-09-05T~23:15Z (C8 v2.3 cycle 14) — **The W5 verifier's report landed: a fourth real
   structural finding, filed as #1869; also updated the close report draft (0.6→0.7-DRAFT) while
   waiting on the subagent.** PR hygiene first: #1844 confirmed queued via GraphQL; #1826
