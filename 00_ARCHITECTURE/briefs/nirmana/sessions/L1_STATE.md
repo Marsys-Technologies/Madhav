@@ -566,6 +566,44 @@ yogini natal-condition fix (PR #1900, F-A11) — next: re-dispatch `ga_positions
 lands, or continue `ga_dashas`'s remaining MUST findings (F-A9 floor correction, F-A10 scope_cap
 sentinel, F-A12 dignity divergence, F-A13 undeclared DAG edge, F-A14 integrity_check_sql).
 
+## CYCLE 16 (C8 v2.3) — ga_dashas scope-cap sentinel vocab gap (F-A10, PR #1908); found and respected an L0 frozen-capsule boundary (#1909)
+
+**PR hygiene:** all clean/pending-green, nothing DIRTY/RED. Verified #1898's L2 pin fix
+and #1902 (L2's separate cross-layer PR touching `ga_structural_writer.py`'s comment)
+were both handled correctly by their own authors — nothing needed from me.
+
+**Unit of work: F-A10** — both `chart_dashas` scope-cap sentinel rows stamp
+`verification_pass_status='scope_cap_sentinel'`, absent from the table's CHECK
+constraint; confirmed live, 0 `system_id='scope_cap'` rows on all three built charts.
+Migration 652 admits the value for the KP row (its `level_n=4` already satisfies
+`cd_level_n_max4`); the Prana row still can't land (`level_n=5`, SD-DASHA-1, a
+semantic question already correctly reserved for the native by a prior session — left
+untouched). Migration dry-run + mutation-tested against production: the self-check
+queries `pg_get_constraintdef` live rather than restating its own assumption.
+
+**Found a real L0 boundary and respected it rather than pushing through.**
+`brahmagyan/verification_vocab.py`'s `RESTRICTED_TABLE_VOCAB` mirrors chart_dashas
+and chart_divisionals' CHECK vocab as ONE shared set — migration 652 makes them
+diverge, so the mirror needs a per-table split. Built and fully tested that split
+(424 tests green, zero behavior change for every current caller, verified by
+import-site grep). Reverted it before shipping: regenerating the writer-digest
+inventory for that change moves `bg_kp_sublord_division` (L0) and five `bo_*`
+writers (L2), and `nirmana_analysis_layer_pins.py --layer L1` itself refused to
+regenerate ANYTHING once it detected L0's frozen inputs had drifted — its own
+message: "would invalidate 29 already-frozen L0 capsules." That is a materially
+bigger stake than the routine `bo_pratijna` coupling (#1852, a single still-in-progress
+asset); did not treat it the same way. Documented the residual honestly in the
+writer's own docstring, filed **#1909** for whoever has authority over L0's frozen
+pin to decide, and messaged `l0-ea` directly (FYI only, no action requested).
+Confirmed the DB-level fix itself does not depend on the mirror at all — nothing in
+`ga_dashas_writer.py` calls `assert_legal()` for chart_dashas today.
+
+CYCLE 16 L1: landed the scope-cap sentinel migration (PR #1908, F-A10) and drew a
+clean boundary around L0's frozen-capsule pin rather than forcing a regeneration
+through it — next: re-dispatch `ga_positions` once #1892 lands, or continue
+`ga_dashas`'s remaining MUST findings (F-A12 dignity divergence, F-A13 undeclared
+DAG edge) or F-A14 (integrity_check_sql).
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -817,6 +855,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   genuinely RED on `#1852`'s coupling this cycle — held the line on not fixing L2's pin myself a
   third time, escalated with CI evidence + direct message to `l2-3f` (found via `ListAgents`), got
   a fast independent-verification-backed fix back.
+- **D-L1-38** — C8 v2.3 cycle 16: `ga_dashas`'s F-A10 scope-cap sentinel fix (migration
+  652, PR #1908, full account in CYCLE 16 above). Built and fully tested a correct,
+  necessary companion fix (`verification_vocab.py`'s per-table split) then DELIBERATELY
+  reverted it before shipping on discovering the write-digest ripple would trip
+  `nirmana_analysis_layer_pins.py`'s own L0 frozen-capsule safety refusal — a
+  qualitatively bigger stake (29 frozen capsules) than the routine `bo_pratijna`
+  coupling this session has handled several times already. Shipped the DB-level fix
+  alone (verified it does not depend on the mirror), documented the residual honestly
+  in the writer's own docstring, and filed #1909 rather than deciding a 29-capsule
+  invalidation was mine to make unilaterally.
 
 ## Held items
 
@@ -1006,3 +1054,17 @@ L1 must satisfy rather than a feature it consumes.
   overall. CYCLE 15 L1: recovered #1898 from RED (L2's issue, not mine) and landed the yogini
   natal fix (PR #1900, F-A11) -- next: re-dispatch ga_positions once #1892 lands, or continue
   ga_dashas's remaining MUST findings (F-A9/F-A10/F-A12/F-A13/F-A14).
+- 2026-09-05T17:29Z -- CYCLE 16 (C8 v2.3). PR hygiene clean. Discovered F-A9 (ga_dashas floor
+  correction) was already fixed by a prior session (migration 650) -- only its own comment string
+  was stale, not touched (too small to be worth its own unit). Unit of work: F-A10's scope-cap
+  sentinel fix (migration 652, PR #1908) -- both sentinel rows stamped a
+  verification_pass_status literal absent from chart_dashas' CHECK constraint; fixed for the KP
+  row (level_n=4), left the Prana row alone (level_n=5, SD-DASHA-1, already correctly reserved
+  for the native by a prior session). Built and tested a companion fix to L0's shared
+  verification_vocab.py, then deliberately reverted it on discovering it would trip
+  nirmana_analysis_layer_pins.py's own refusal to regenerate past L0's frozen-capsule pin (29
+  capsules at stake) -- shipped the DB fix alone, filed #1909 for the mirror gap rather than
+  forcing a decision that wasn't mine to make. CYCLE 16 L1: landed migration 652 (F-A10) and drew
+  a clean boundary around L0's frozen pin (#1909) -- next: re-dispatch ga_positions once #1892
+  lands, or continue ga_dashas's F-A12 (dignity divergence) / F-A13 (undeclared DAG edge) / F-A14
+  (integrity_check_sql).
