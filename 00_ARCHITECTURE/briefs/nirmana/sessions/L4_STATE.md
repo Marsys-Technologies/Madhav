@@ -53,7 +53,7 @@ your `nirmana-adjudication` issues → continue.
 |---|---|---|---|---|---|
 | `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **D-CND-04 hold LIFTED (2026-09-05, verified live)** — still E-gate-blocked on ancestors + D-NATIVE-05 | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity, SHIPPED + live-verified) |
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
-| `ph_pratikara` | **changed** | W2 done | wave 1 · 40/49 unfrozen | — | **7 MUST**, incl. the layer's hard-floor item (fabricated citation on 100% of 1,277 rows); needs a rerun **after** its writer fix |
+| `ph_pratikara` | **changed** | W2 done → **W3-3d** | wave 1 · 40/49 unfrozen | — | 7 MUST; **1/7 shipped** (F-3.4 degenerate-anchor, #1831); 6 remain incl. the hard-floor citation fabrication; needs a rerun **after** all fixes land |
 | `ph_rectification` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 1 MUST: `load_bearing: true` on a fit that is 0.0000 across all 95 scored candidates |
 | `ph_sankrama` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: 250 rows (10%) destroyed by a stale domain map; `trajectory` constant from an `or 0.0` |
 | `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
@@ -498,4 +498,51 @@ CYCLE L4: answered #1770 (Conductor priority-0) — confirmed all 5 cross-layer 
 regenerable, live-verified D-CND-04 as the mechanism, announced CAPABILITIES LANDED → next: watch
 for Conductor's ruling on #1770, resume W3-3 writer work (`ph_pratikara`/`ph_pramana`/
 `ph_rectification`/`ph_phaladesa`).
+
+`2026-09-05T~20:05Z` — L4 — **cycle: PR hygiene clean → W3-3d shipped, `ph_pratikara` F-3.4
+(degenerate anchor selection).**
+
+**PR hygiene:** `is:queued` showed #1808 still queued; #1791 not queued but `mergeStateStatus:
+MERGEABLE` with checks genuinely still `pending` (same in-progress run as last cycle, ~9 min in —
+consistent with the suite's historical ~8 min runtime). No RED, no DIRTY — correctly left alone.
+
+**The unit:** fixed F-3.4 from `L4_W1_ANALYSIS_BATCH_C.md` §3.4 — `ph_pratikara.py:92-99` picked
+"the first influenceable anchor found across ALL domains" and used it for every obstruction in the
+chart (measured: all 536 CANON rows → one career anchor out of 107 influenceable candidates across
+4 domains). Root cause: the writer already LEFT JOINed `kala_convergence` for window+graha but
+never selected `.domain`, so nothing was available to match on. Fix: select
+`c.domain AS convergence_domain`, add window bounds to the anchor load, and replace the "first
+anchor wins" loop with `_select_anchor()` — domain-scoped, window-overlap-preferred, honest
+`(None, None)` when the obstruction's own domain has no influenceable anchor (§N.7 item 6: no
+guess in place of "I don't know"; the column is nullable with `ON DELETE SET NULL` for exactly
+this).
+
+**Verified the domain vocabularies actually align** before trusting the match (`phala_anchors.domain`
+vs `kala_convergence.domain` — both use career/character/health/relationship/spirituality/wealth)
+and **measured the real impact** via read-only query rather than assuming: of 536 canonical-chart
+obstructions, only 24 (`career` domain) have an influenceable anchor to link to at all — the other
+512 now correctly get `NULL` instead of the wrong `career` anchor. Large behavioural swing, and the
+right one: 32 CANON anchors (all `major`/`moderate`) are `semi_influenceable` and were never
+eligible candidates in the first place, so most obstructions genuinely have nothing to link to
+today. 11 new unit tests (`test_ph_pratikara_anchor_selection.py`); 58/58 existing wave4 tests
+still pass.
+
+**Governance gates handled proactively this time**, applying the lesson from the last two cycles:
+regenerated `nirmana-writer-digests.json` (ph_pratikara only moved) via
+`provenance_inventory --output`, then hand-spliced+verified the L4 `nirmana-analysis-layer-pins.json`
+record against the script's own offline `--check` **before** pushing, not after CI caught it.
+Branched fresh off `origin/main` (not off the heartbeat branch, which carries unrelated state-file
+history) — `codex/nirmana-l4-w3-3d-pratikara-anchor`. **Shipped PR #1831**, auto-merge armed.
+
+6 of `ph_pratikara`'s 7 MUST findings remain: the hard-floor citation fabrication (§3.5 — needs a
+schema decision on `grounding_tier`/`classical_sources_array`/nullable `classical_citation`, larger
+than one bounded unit), the empty-programme rerun (§3.3 — code already fixed upstream in
+`5f097e738`, just needs a rebuild once E-gate opens), the severity-sort inversion + vocabulary
+drift + inconsistent unknown-severity defaults (§3.6), and the idempotency-key/rows_inserted
+honesty gap (§3.7).
+
+CYCLE L4: PR hygiene clean → shipped #1831 (`ph_pratikara` F-3.4, domain-matched anchor selection,
+512/536 obstructions now honestly NULL instead of one wrong constant anchor) → next: watch #1791
+CI + #1831 merge, then continue `ph_pratikara`'s remaining MUSTs or move to `ph_pramana`/
+`ph_rectification`/`ph_phaladesa`.
 
