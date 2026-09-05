@@ -150,3 +150,13 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   content digest (D-CND-01). **Freeze BLOCKED** on manifest fingerprint drift (migration 644 populated
   integrity_check_sql after the un-supersedable 09-01 freeze) → **adjudication #1816** filed, rec
   Option 1 (bind on immutable pins only). NEXT: yoga writer read → bundled D-CND-09 migration.
+- 2026-09-05 — **CORRECTION to the bg_yogas root cause (correct rather than leave standing).** Read
+  `l0_yogas.py:2214` — `all_yogas = YOGAS_CORE + DETECTOR_YOGAS + extracted`, and the loop projects
+  ALL (incl. the 4 detector) into catalog+ontology+reference uniformly (writer's own post-check at
+  :2334 expects all three = len(all_yogas)). So the current writer already projects the 4 detector
+  yogas; the `233/229/229` is **stale old-build data** (my force-rebuild rolled back on the integrity
+  failure). **Real current defect: `extract_yogas_from_corpus` yields ≠85**, so len(all_yogas)≠233 and
+  source_chunks≠85 both fall out of one cause. Confirming the exact live yield needs the writer to RUN
+  (dispatch), which is gated on the #1772 job-image deploy — so the bg_yogas *verdict* (fix extraction
+  vs correct the derived count) is HELD on being able to run it. Moving to unblocked work
+  (`bg_gochara_arcs` tiling+floor rewrite — verdict already complete) rather than idle.
