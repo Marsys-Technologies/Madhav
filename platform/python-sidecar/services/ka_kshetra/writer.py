@@ -1651,11 +1651,31 @@ class KaKshetraWriter(WriterBase):
         sign: Optional[int] = None
         try:
             with conn.cursor() as cur:
+                # NIRMĀṆA L3-W3 (§N.5, §N.7 item 2), found by the L3 `depends_on` audit.
+                #
+                # This asked for `fact_category = 'lagna'`, which does not exist — measured live,
+                # 0 rows on every chart, for that category AND for the plausible alternative
+                # `lagna_position`. The lookup therefore always failed, and the `except` below
+                # logs a warning and leaves `sign = None`, which silently disables the rarity
+                # axis for every chart. The real fact is `LAGNA` / `longitude_sidereal` under
+                # `fact_category = 'graha_position'`.
+                #
+                # `fact_subject` is now pinned too: the original query filtered on `fact_key`
+                # alone, so even with the right category it would have matched any body's
+                # longitude and bucketed THAT into a lagna sign.
+                #
+                # The `ORDER BY ayanamsha_id LIMIT 1` is deliberately KEPT AS IT WAS rather than
+                # repointed at a canonical ayanamsha. It resolves to `krishnamurti` (12.5280°).
+                # All five ayanamshas fall in sign 1 for this chart (12.43–15.39°), so the choice
+                # does not change today's answer — but it is a real convention question about
+                # which population the rarity axis compares against, and picking one inside a
+                # bug-fix would be an undisclosed change of meaning. Flagged, not silently altered.
                 cur.execute(
                     """SELECT fact_value_num FROM chart_facts
-                        WHERE chart_id = %s AND fact_category = 'lagna'
-                          AND fact_key = 'longitude'
-                        ORDER BY ayanamsha_id
+                        WHERE chart_id = %s AND fact_category = 'graha_position'
+                          AND fact_subject = 'LAGNA'
+                          AND fact_key = 'longitude_sidereal'
+                        ORDER BY ayanamsha_id, fact_id
                         LIMIT 1""",
                     (self._chart_id,))
                 rows = S4._rows(cur)
