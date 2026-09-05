@@ -124,8 +124,25 @@ class TestDeriveMuhurtaRecord:
         return MuhurtaContext(**defaults)
 
     def test_all_fields_populated(self):
+        # Default ctx carries tarabala_chandrabala_source='placeholder_no_ephemeris' (JL-016
+        # honest default), which correctly withholds window_quality_verdict -- see
+        # test_ph_muhurta_verdict_honesty.py. Every OTHER field is still populated.
         from services.ph_muhurta.engine import derive_muhurta_record
         rec = derive_muhurta_record(self._ctx())
+        assert rec.composite_quality is not None
+        assert rec.window_quality_verdict is None
+        assert rec.chart_personalization_score is not None
+        assert rec.personalization_graha == 'saturn'
+        assert rec.derivation_ledger_jsonb
+
+    def test_all_fields_populated_with_a_real_moon_strength_lookup(self):
+        # With a genuine transit-Moon lookup (not the placeholder), the verdict grades too.
+        from services.ph_muhurta.engine import derive_muhurta_record
+        rec = derive_muhurta_record(self._ctx(
+            tarabala_score=0.9,
+            chandrabala_score=0.9,
+            tarabala_chandrabala_source='panchang_engine_live',
+        ))
         assert rec.composite_quality is not None
         assert rec.window_quality_verdict is not None
         assert rec.chart_personalization_score is not None
