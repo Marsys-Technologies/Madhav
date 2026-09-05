@@ -458,6 +458,36 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~16:2xZ — L3-W3 — N3 partially closed: PR #1868. The four "built-but-unplugged"
+  quality overlays each have a DIFFERENT per-asset disposition in my own W1 analysis, not one
+  blanket answer: `ka_moorti_nirnaya` → **WIRE** (F-MOORTI-2's own recommendation, ~1 day
+  estimated incl. ablation evidence — genuinely too large for one bounded cycle, DEFERRED,
+  not forgotten); `ka_sudarshana_varsha` (F-SUD-3), `ka_tithi_pravesha` (F-TITHI-1/2), and
+  `ka_kota_chakra` (implicit via F-KOTA-3's vocabulary landmine) → **RECORD**. Checked whether
+  "record... in the registry" (my own W1 phrasing) meant a literal DB write: `asset_registry.
+  data_disposition` is a data-RETENTION enum (`RETAINED_AS_CAPITAL`/`SUPERSEDED_IN_PLACE`/
+  `DROPPABLE`) — none of those values honestly describes "not admitted to any scoring path,"
+  so forcing one in would be exactly the §N.7 item 6 "invented judgment for a field it wasn't
+  designed for" defect. Correct RECORD mechanism is this decision log, matching how N7
+  (`ka_taranga` SPLIT) was already closed.
+  What I actually fixed (the two CONCRETE, cheap, real defects the RECORD-disposition assets'
+  own findings flagged): (1) F-KOTA-3 — `w25_kota_chakra.RING_MODIFIERS` used
+  `"madhya"`/`"pragara"`, which do not exist in `bg_kota_chakra_rings.ring_name` or its CHECK
+  constraint (real vocabulary: `durgantara`/`prakara`) — wiring as originally written would have
+  silently mapped 59.4% of rows to `"none"`. Fixed in the module + its own test suite + 2 YAML
+  registries. (2) sudarshana's `data_source` said the non-existent `kala_sudarshana` in 3 files;
+  corrected to `kala_sudarshana_varsha`. Both are documentation-adjacent (dead code paths,
+  neither mechanism is invoked from `engine.py`) but real — a future admission ruling for
+  either would otherwise inherit the wrong vocabulary/table name. Mutation-proved (kota vocab
+  regression turns 3/20 tests red); full `services/gochara_v3` suite 480 passed, same 4
+  pre-existing unrelated failures reproduced on a clean stash before concluding they predate
+  this change.
+  **N3 status: moorti's WIRE decision remains open** (tracked here, not silently dropped) —
+  the rest of N3 is now closed. `ka_tithi_pravesha`'s D-7 (L4 cross-layer hand-off claim) was
+  already flagged in F-TITHI-1 as L4's item, not re-litigated here.
+  PR hygiene: #1846/#1850/#1858/#1860/#1863 all still cleanly queued/pending.
+  **Next action unchanged:** once #1846 goes green and deploys, dispatch `ka_graha_sancara`'s
+  probe for real.
 - `2026-09-05T~16:0xZ — L3-W4 — #1801 MERGED (finally cleared queue). PR hygiene this cycle
   surfaced a real housekeeping gap: my own state-branch discipline had a hole. Every prior
   cycle's heartbeat entry landed as a LOCAL-ONLY commit on `codex/nirmana-l3-w4-resume` because
