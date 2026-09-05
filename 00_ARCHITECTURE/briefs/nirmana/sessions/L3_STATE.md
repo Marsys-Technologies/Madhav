@@ -378,6 +378,39 @@ discover it. Nothing here is consumable until it appears under **LANDED** with a
 |---|---|---|
 | **L2** | populated consensus / salience columns | the temporal-confidence multiplier wiring only. Everything else in the L3 mandate is upstream-independent — confirmed against the mandate item by item, not assumed. |
 
+## MSR re-run plan (assignment 2 — sequenced after `bo_laksana` freezes)
+
+**Every row of all six MSR-linked L3 tables carries a `signal_id` — 100%, measured.** So this is a
+full regeneration of those six, not a partial one. It is planned work from a corrected base, not
+damage, and it is priced below rather than discovered later.
+
+| # | asset | target | rows today | measured cost / chart | note |
+|---:|---|---|---:|---|---|
+| 1 | `ka_yojaka` | `kala_activation_predicates` | 150,150 | unmeasured (registry says 36 s — registry estimates at L3 have been wrong by up to 96×, so this is not a number I will quote as if measured) | must precede 2 and 3 — both consume its predicates |
+| 2 | `ka_kalasutra` | `kala_activation` | 672,551 | **486.9 s p50** | 14.8× the registry's 33 s |
+| 3 | `ka_sangam` | `kala_convergence` | 35,365 | **≈2,251 s for the spine** (sangam → vighnakara → darshana → bhavishya) | **HELD** — cascade radius reaches 3,708 L4 rows (C13, §1 of the blast-radius doc) |
+| 4 | `ka_vighnakara` | `kala_obstruction` | 1,283 | in the spine figure | cascade child of 3; also orphans 1,277 L4 `phala_mitigation` rows |
+| 5 | `ka_kala_darshana` | `kala_darshana` | 1,500 | in the spine figure | cascade child of 3 |
+| 6 | `ka_bhavishya_lekha` | `kala_bhavishya` | 200 | in the spine figure | see the outcome-seam caveat below |
+| — | `ka_kshetra` | `kala_field` | 8.6 M native | **22,685 s = 6 h 18 m** (native), 16,210 s (Abhinandan) | reads MSR; **monster, solo slot always**; orphans 2.3 M rows of its own `kala_field_*` family |
+
+**Total for one chart, excluding `ka_kshetra`: ≈ 2,738 s ≈ 46 min.** With `ka_kshetra`:
+**≈ 7 h 5 min.** Two charts roughly doubles it. The registry's own estimates imply ~9 minutes for
+the non-monster set; that figure is wrong and should not be used for scheduling.
+
+**Ordering constraints, from the DAG and from C13:**
+1. `bo_laksana` freezes → 2. `ka_yojaka` → 3. `ka_kalasutra` → 4. **`ka_sangam` only after L4
+confirms `phala_anchors` regenerability and the Conductor rules the ordering** → 5. the rest of the
+spine follows `ka_sangam` mechanically. `ka_kshetra` is independent of the spine and takes a solo
+slot whenever one is free after `bo_laksana`.
+
+**One caveat that is not a cost:** `kala_bhavishya` carries `outcome_recorded` / `outcome_notes`,
+which the writer includes in its own INSERT payload after a full per-chart DELETE, with no
+read-back. Measured today: 200/200 `false`, 0 notes — **so nothing is lost by this re-run.** But it
+is P7's falsifiability seam, and the first outcome ever recorded would be destroyed by the next
+ordinary rebuild, silently. It needs a preserve-on-rebuild step or a documented disposition
+*before* outcomes start being recorded. Carried as an L3-W3 item, not folded into this re-run.
+
 ## Cost ledger
 
 Wall-clock + tokens per asset; the CONDUCTOR rolls this into the root campaign cost section at
