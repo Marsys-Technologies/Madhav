@@ -48,6 +48,8 @@ your `nirmana-adjudication` issues → continue.
 | **M11** | `service_health` written and read by nothing; `ka_graha_sancara` computed a verdict into a variable and discarded it, so it was `state='lit'` while `unhealthy`. Three writers now raise | 7 tests incl. a shape guard; removing one raise turns its test red |
 | **M4** | `ka_avadhi`'s `lord_condition_fact_refs` `[]` on **100.00%** of rows — three independent L1 mismatches (Title-case vs `JUP`/`RAH_MEAN`, no `fact_category` pin, 5 of 7 `fact_key`s nonexistent). Fixed through the L0 SSoT `norm_graha`, not a local map | 12 tests; 8 refs per lord live, up from 0 |
 | **M9** | `conv_score or 0.5` — falsy-coalescing rewrote **793 computed zeros** into a favourable neutral; measured 0 NULLs, so the default only ever mangled real data | 3 tests; restoring `or 0.5` turns 2 red |
+| **M5** | the century grid was the **native's**, for every chart — the second chart was materialised from 1984-02-05, **13 months before that native was born**. Now resolved per chart via `resolve_birth_date`, and it RAISES rather than defaulting | 5 tests; 10 test files now supply `birth_params` rather than the writer keeping a fallback for their benefit |
+| **M3** | `ka_graha_sancara`'s two defects, assigned to me by the #1734 ruling: positional `row[0]` against a `dict_row` connection (the literal `KeyError: 0` in `selftest_detail`), and a FORENSIC birth-instant anchor asked of a 12:00-UT daily table | 5 tests; **and the mock that hid defect 1 for 19/19 green runs was returning tuples — now dicts, matching `dict_row`** |
 
 Full `python-sidecar` suite after these: **6,135 passed, 0 failures.** `platform` + `platform-mcp`
 `tsc`: 0 errors. `L3_kala` 107 passed; `kala_views` + `kala_ritual_resonance` 214 passed.
@@ -57,9 +59,37 @@ subagents; 3 authored by me including the **v1-corpus guard**, which is now the 
 detector of loss for that irreplaceable corpus since migration 588 removed its triggers) ·
 the full both-directions `depends_on` audit that D-CND-07 now requires.
 
-**Not started:** M5 (century `BIRTH_YEAR=1984`), M6 (`ka_gochara` count_sql), M12 (54 orphan
-`era_slice_key` rows), M3 (`ka_graha_sancara`'s two defects), M10, migration 670, N1 (the Temporal
+**Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
+rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
+`ka_kshetra` pinning `fact_category='lagna'` where the real category is `lagna_position`),
+migration 670 (19 contracts + volume formulas + floors + 10 DRAFT→CURRENT), N1 (the Temporal
 Concordance Contract), N2–N12.
+
+### New findings raised during W3 (added to the ledger, not silently absorbed)
+
+- **F-L3-11 (two epoch anomalies, DELIBERATELY NOT FIXED).** Found while implementing M5.
+  (a) `BIRTH_JD = 2445736.5` disagrees with its own comment by a day — the true JD for
+  1984-02-05 00:00 UT is **2445735.5**; 2445736.5 is 1984-02-06. (b) It disagrees with its own
+  engine by a further half day (`gochara_v3/resolution_hierarchy.py` uses `_EPOCH_JD = 2440588.0`,
+  noon-based). Each moves **every window in the century**, so choosing a convention inside an
+  unrelated fix would be exactly the quiet astronomical change this campaign exists to eliminate.
+  `_birth_jd()` reproduces the writer's existing value **exactly**, so the native's grid does not
+  shift by a day; both anomalies are recorded at the constant itself.
+- **F-L3-12 (cascade exposure — L2's #1770, verified against my own tables).** All five FKs from
+  `bodha_msr_signals` into L3 are **`ON DELETE CASCADE`**, so an ordinary L2 `bo_laksana` rebuild
+  silently destroys **710,899 L3 rows** (`kala_activation` 672,551 · `kala_convergence` 35,365 ·
+  `kala_darshana` 1,500 · `kala_obstruction` 1,283 · `kala_bhavishya` 200) and dangles a further
+  **150,150** in `kala_activation_predicates`, which carries no FK at all. `_idempotency.py:55`
+  asserts "FKs are NO ACTION" directly above the code whose safety depends on the opposite.
+  **L3 has committed unconditionally not to dispatch anything until this is ruled**, and has
+  offered to take and verify the snapshot itself, since the exposed data is L3's.
+  L3's position: **L2 rebuilds first.** Those 710,899 rows descend from a `convergence_score`
+  written on four incommensurable scales where the least-evidenced mode captured every served
+  surface — regenerating them from a corrected base is better than preserving them.
+- **F-L3-13 (doctrine, offered to the register).** The E-gate reasons about what an asset *needs*,
+  never about what *needs it*. `depends_on` has no inverse anywhere in the campaign's machinery —
+  not the gate, not the slot protocol, not the plan. A DELETE travels those edges backwards and
+  nothing reads them that way. #1734 is the same shape one level up.
 **Bootstrap facts established live (not assumed):**
 - Worktree `~/nirmana-s/l3` created from `origin/main` = `20323fae4`. Branch `codex/nirmana-l3-w1-analysis`.
 - `NIRMANA_HOLD` absent at the shared checkout root — standing authorization confirmed (C3).
@@ -329,6 +359,7 @@ your layer close.
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
+- `2026-09-05T…Z — L3-W3 — 7 MUSTs landed (M3,M4,M5,M7,M8,M9,M11), each mutation-proved; depends_on audit published (36 hidden / 17 false edges) with a correction to my own earlier claim to the Conductor; verified L2's cascade finding against my own tables (710,899 rows) and committed to hold; 16/19 integrity contracts authored.`
 - `2026-09-05T…Z — L3-W2/W3 — W1 closed 23/23 (index published); W2 closed 23/23 routed + 12 MUST / 12 NOW / 8 NEVER triaged; ka_taranga SPLIT decided with falsifiers; first two D-CND-03 contracts authored AND mutation-proved live (ka_kota_chakra 4/4 conjuncts fail on injected corruption). W3 open.`
 - `2026-09-05T…Z — L3-W1 — batches A/B/C/D landed (E outstanding); verified the v1-corpus alert down to its real residuals; verified ka_gochara_resonance's 5 undeclared edges from writer SQL and filed #1734 — L3 has no honest canary, reported rather than manufactured.`
 - `2026-09-05T…Z — L3-W1 — rulings absorbed (#1721 GRANTED/PR #1728; D-CND-03 binding; #1715 Option A — no W2 acceptance until it deploys); #1724 withdrawn as duplicate with acceptance recorded; constraint reconnaissance done for the 19 owed contracts; per-loop gate poll scripted; #1730 remains the open W4 blocker.`
