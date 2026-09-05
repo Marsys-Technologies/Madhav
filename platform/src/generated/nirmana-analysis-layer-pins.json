@@ -37,10 +37,10 @@
     },
     "L4": {
       "asset_prefix": "ph_",
-      "convergence_commit": "d3d26ea1a4e943b4c8fe4b996ec5b9c1de165014",
+      "convergence_commit": "d7cd104b3939a6c19e386d947e7cf32de9cf1f9a",
       "non_writer_assets": [],
       "receipt_count": 9,
-      "writer_inventory_sha256": "0707fbdba9ed83cddb1fb1bddd8bc0674ee837d1159c131411a2fff26237d84b"
+      "writer_inventory_sha256": "8149c0538e676a91428d1e2d3faf3caa7131f7d71d390fd2bce698346b3c6337"
     },
     "L5": {
       "asset_prefix": "mi_",

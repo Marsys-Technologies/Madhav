@@ -32,6 +32,7 @@ __all__ = [
     'detect_ledger_gap',
     'detect_layer_leakage',
     'detect_confidence_degenerate',
+    'detect_ceiling_inputs_degenerate',
     'derive_sodhana_flags',
 ]
 
@@ -326,6 +327,65 @@ def detect_confidence_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]
     )
 
 
+def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]:
+    """
+    F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b), §N.8): detect_confidence_degenerate
+    guards confidence_high's variance -- but confidence_high can vary for reasons
+    unrelated to the G-LADDER ceiling (it has 10 distinct values on the canonical
+    chart today and correctly passes that check) WHILE the ceiling's own two
+    inputs -- dasha_consensus_count and ayanamsha_robustness -- are simultaneously
+    a chart-wide constant (measured: exactly one (0, 3) pair across all 139
+    anchors). That is the live instance detect_confidence_degenerate exists to
+    catch, on a different axis it never looks at -- a detector that watches a
+    proxy of the claim, not the claim itself.
+
+    This is the rewrite-floor-clean addition, not a replacement: it fires on a
+    real corruption class (ceiling inputs frozen chart-wide) the sibling detector
+    structurally cannot see, and does not touch that detector's own behaviour.
+    """
+    n_values = [a.dasha_consensus_count for a in ctx.anchors if a.dasha_consensus_count is not None]
+    rob_values = [a.ayanamsha_robustness for a in ctx.anchors if a.ayanamsha_robustness is not None]
+    if len(n_values) < _DEGENERATE_MIN_ANCHORS or len(rob_values) < _DEGENERATE_MIN_ANCHORS:
+        return None
+
+    n_distinct = set(n_values)
+    rob_distinct = set(rob_values)
+    if len(n_distinct) > 1 or len(rob_distinct) > 1:
+        return None
+
+    anchor = ctx.anchors[0]
+    n_const = next(iter(n_distinct))
+    rob_const = next(iter(rob_distinct))
+    return SodhanaRecord(
+        anchor_id=anchor.anchor_id,
+        anomaly_type='ceiling_inputs_degenerate',
+        anomaly_severity='major',
+        detected_field='dasha_consensus_count,ayanamsha_robustness',
+        expected_value_text='dasha_consensus_count and ayanamsha_robustness varying per anchor '
+                             '(the G-LADDER ceiling is meant to be a per-anchor calibration)',
+        observed_value_text=f'dasha_consensus_count={n_const}, ayanamsha_robustness={rob_const} '
+                             f'constant across all {len(n_values)} anchors',
+        leakage_class=None,
+        recommendation_text=(
+            'The G-LADDER confidence ceiling (_g_ladder_ceiling) is computed from '
+            'dasha_consensus_count and ayanamsha_robustness -- both are numerically '
+            'identical across every anchor in this chart, so the "per-anchor calibration" '
+            'confidence_inflation checks against is actually one chart-wide constant. '
+            'confidence_inflation and confidence_degenerate can both stay clean while this '
+            'holds, because neither examines these two inputs directly -- investigate '
+            'ph_nimitta._build_ctx (or wherever these two fields are sourced) before '
+            'treating any confidence_inflation clean bill of health as meaningful.'
+        ),
+        derivation_ledger_jsonb={
+            'chart_id': str(ctx.chart_id),
+            'anchor_count': len(n_values),
+            'constant_dasha_consensus_count': n_const,
+            'constant_ayanamsha_robustness': rob_const,
+        },
+        source_citation=f'ph_sodhana/ceiling_inputs_degenerate/{ctx.chart_id}',
+    )
+
+
 def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
     """
     Run all detectors over every anchor. Returns list of SodhanaRecords.
@@ -352,10 +412,14 @@ def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
                 else:
                     records.append(rec)
 
-    # Chart-wide detector (operates over all anchors at once, not per-anchor)
+    # Chart-wide detectors (operate over all anchors at once, not per-anchor)
     degenerate_rec = detect_confidence_degenerate(ctx)
     if degenerate_rec is not None:
         records.append(degenerate_rec)
+
+    ceiling_degenerate_rec = detect_ceiling_inputs_degenerate(ctx)
+    if ceiling_degenerate_rec is not None:
+        records.append(ceiling_degenerate_rec)
 
     # LEAKAGE-FIREWALL: halt before any insert
     if leakage_found:
