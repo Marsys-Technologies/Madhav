@@ -648,7 +648,24 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
             (m.signal_headline_text ILIKE '%dignity%neutral%') AS neutral_dignity_downranked,
             ${markerExpr(abstentionParam)} AS abstention_marker_pattern,
             ${markerExpr(catalogParam)} AS catalog_only_marker_pattern,
-            (m.computed_salience * COALESCE(a.orb_strength, 0.5) *
+            -- NIRMĀṆA L3-W3 (§N.7 item 6). This was COALESCE(a.orb_strength, 0.5).
+            --
+            -- kala_activation.orb_strength is NULL on 669,964 of 672,551 rows (99.6%), so that
+            -- default fired on almost every row of a RANKING score. And 0.5 is not neutral:
+            -- where orb_strength is actually present it ranges 0.700-1.000 with a mean of 0.986,
+            -- so the substituted value sits BELOW the entire observed range. The effect was a
+            -- systematic penalty for the absence of data — the 0.4% of rows that happen to carry
+            -- an orb outranked the rest largely because they carry one at all.
+            --
+            -- The factor is now DROPPED when unavailable rather than invented, which is this
+            -- codebase's established convention for an absent term (cf. kala_ritual_resonance:
+            -- "DROPPED from the product and the product renormalised over the factors actually
+            -- present — never zero-filled"). orb_strength_available is emitted alongside so a
+            -- caller can tell a score computed WITH the orb term from one computed without it;
+            -- the two are not strictly comparable, and the flag is what makes that visible
+            -- instead of silent (§N.6 — density signalling is data, not narration).
+            (a.orb_strength IS NOT NULL) AS orb_strength_available,
+            (m.computed_salience * COALESCE(a.orb_strength, 1.0) *
               (CASE WHEN m.signal_headline_text ILIKE '%dignity%neutral%' THEN 0.3 ELSE 1.0 END)
             ) AS priority_score
           FROM bodha_msr_signals m

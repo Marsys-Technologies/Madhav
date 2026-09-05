@@ -62,12 +62,25 @@ corpus since migration 588 removed its triggers. **One contract already returns 
 positive:** `ka_bhavishya_lekha`'s degeneracy conjunct fires because all 100 projections on the
 canonical chart share one `peak_date`, proven two-valued against the second chart.
 
-**Next action on resume:** the last two contracts land → author **migration 670** (19
-`integrity_check_sql` + `expected_volume_formula`/`_inputs` + achieved-count `target_floor` +
-`ka_gochara`'s `count_sql` correction (M6) + 10 `DRAFT`→`CURRENT`, holding `ka_graha_sancara` at
-DRAFT until M3 deploys). Then N1, the Temporal Concordance Contract, for which W1 established the
-evidence base: 34 engines, a 10-cell overlap matrix, one existing arbiter, and `ka_sangam` already
-~60% of the way there.
+**W3 DELIVERED (PR #1792, migration 670):** all 19 D-CND-03 contracts installed, each executed
+live and **mutation-proved**; 19 achieved-count floors; 3 derived volume formulas (the rest honestly
+floor-only rather than curve-fitted); M6's `count_sql` correction; 10 of 11 DRAFT→CURRENT with
+`ka_graha_sancara` deliberately held. Dry-run applied and rolled back against production: 19/19
+contracts, 19 floors, 1 DRAFT remaining as intended. **Five contracts return `false` — true
+positives, shipped honest** (see F-L3-14).
+
+**Next action on resume:** **N1, the Temporal Concordance Contract** — the layer's headline
+mandate and the largest remaining item. W1 established the whole evidence base for it: 34 temporal
+engines catalogued with question/table/granularity/range, a 10-cell overlap matrix, exactly one
+arbiter in existence (`kala_gochara_authority`), both seed authority tables dumped and explained,
+and `ka_sangam` already ~60% of the arbiter (12 weighted currents, a necessary/supporting split, an
+independence discount, persisted per-window testimony). What is missing is nameable: a stance
+vocabulary (today a dissent and an absent engine are both `0.0`), testimony on Modes C/D, and
+**N2, score commensurability**, which is a strict precondition — a verdict comparing four
+incommensurable scales is theatre. Serving attachment named precisely: `explain.ts:571`, beside
+`weakest_link`, with `school_voices[]` becoming `engine_testimony[]`.
+
+Also open: M12 (54 orphan `era_slice_key` rows), N3–N7, N10–N12.
 
 **Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
 rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
@@ -96,6 +109,14 @@ Concordance Contract), N2–N12.
   L3's position: **L2 rebuilds first.** Those 710,899 rows descend from a `convergence_score`
   written on four incommensurable scales where the least-evidenced mode captured every served
   surface — regenerating them from a corrected base is better than preserving them.
+- **F-L3-14 (five contracts red — true positives, shipped honest).** `ka_avadhi`, `ka_yojaka`,
+  `ka_kalasutra`, `ka_gochara_v3_century_materialize`, `ka_bhavishya_lekha`. Installing a contract
+  that passes over known-bad data would be the gate-weakening the hard floor forbids, so they went
+  in red. **Four of the five localise to chart `cb73cd3d`**, which the fan-out evidence shows is
+  cascade-damaged (0.021 activations per predicate against 6.699 and 6.694 on the healthy charts,
+  with the FK-less predicate table intact). Filed **#1793** asking for that chart's formal
+  disposition, because floors, volume derivations and contracts across every layer all depend on
+  whether it is a peer — and a layer session should not settle that alone.
 - **F-L3-13 (doctrine, offered to the register).** The E-gate reasons about what an asset *needs*,
   never about what *needs it*. `depends_on` has no inverse anywhere in the campaign's machinery —
   not the gate, not the slot protocol, not the plan. A DELETE travels those edges backwards and
@@ -357,6 +378,58 @@ discover it. Nothing here is consumable until it appears under **LANDED** with a
 |---|---|---|
 | **L2** | populated consensus / salience columns | the temporal-confidence multiplier wiring only. Everything else in the L3 mandate is upstream-independent — confirmed against the mandate item by item, not assumed. |
 
+## Red contracts — HELD, not failed (assignment 4, D-CND-17)
+
+Migration 670 shipped **19 integrity contracts, 5 of them red.** They stay red. *Scoping a detector
+to the charts that pass is the definition of weakening it* — that line is now campaign precedent,
+and I am not going to be the one to break it on my own assets.
+
+| asset | why red | status |
+|---|---|---|
+| `ka_avadhi` | `lord_condition_fact_refs` empty on 100% of rows (writer fixed in #1751 M4 — red until a rebuild lands) + 3,087 unresolvable pratijna ids on `cb73cd3d` | **HELD from `integrity_verified`** |
+| `ka_yojaka` | 49,730 stale signal refs — **already orphaned**, on `cb73cd3d`; 27,681 undatable predicates with no reason | **HELD** |
+| `ka_kalasutra` | 56 windows citing an L1 period that no longer contains them; 49,730 predicates with zero activations, from the cascade that gutted `cb73cd3d` | **HELD** |
+| `ka_gochara_v3_century_materialize` | 5 red conjuncts incl. pre-birth windows (writer fixed in #1751 M5 — red until a rebuild lands) | **HELD** |
+| `ka_bhavishya_lekha` | degeneracy detector: all 100 projections share one `peak_date`, proven two-valued against the second chart | **HELD** |
+
+**Four of the five localise to `cb73cd3d`, now formally DAMAGED (D-CND-17).** Under that ruling a
+detector going red on that chart is *working*, and those assets are held from `integrity_verified`
+rather than counted as failures. Two of the five (`ka_avadhi`, `ka_gochara_v3_century_materialize`)
+have their writers already fixed and merged, so they go green on a rebuild, not on a code change.
+
+## MSR re-run plan (assignment 2 — sequenced after `bo_laksana` freezes)
+
+**Every row of all six MSR-linked L3 tables carries a `signal_id` — 100%, measured.** So this is a
+full regeneration of those six, not a partial one. It is planned work from a corrected base, not
+damage, and it is priced below rather than discovered later.
+
+| # | asset | target | rows today | measured cost / chart | note |
+|---:|---|---|---:|---|---|
+| 1 | `ka_yojaka` | `kala_activation_predicates` | 150,150 | unmeasured (registry says 36 s — registry estimates at L3 have been wrong by up to 96×, so this is not a number I will quote as if measured) | must precede 2 and 3 — both consume its predicates |
+| 2 | `ka_kalasutra` | `kala_activation` | 672,551 | **486.9 s p50** | 14.8× the registry's 33 s |
+| 3 | `ka_sangam` | `kala_convergence` | 35,365 | **≈2,251 s for the spine** (sangam → vighnakara → darshana → bhavishya) | **HELD** — cascade radius reaches 3,708 L4 rows (C13, §1 of the blast-radius doc) |
+| 4 | `ka_vighnakara` | `kala_obstruction` | 1,283 | in the spine figure | cascade child of 3; also orphans 1,277 L4 `phala_mitigation` rows |
+| 5 | `ka_kala_darshana` | `kala_darshana` | 1,500 | in the spine figure | cascade child of 3 |
+| 6 | `ka_bhavishya_lekha` | `kala_bhavishya` | 200 | in the spine figure | see the outcome-seam caveat below |
+| — | `ka_kshetra` | `kala_field` | 8.6 M native | **22,685 s = 6 h 18 m** (native), 16,210 s (Abhinandan) | reads MSR; **monster, solo slot always**; orphans 2.3 M rows of its own `kala_field_*` family |
+
+**Total for one chart, excluding `ka_kshetra`: ≈ 2,738 s ≈ 46 min.** With `ka_kshetra`:
+**≈ 7 h 5 min.** Two charts roughly doubles it. The registry's own estimates imply ~9 minutes for
+the non-monster set; that figure is wrong and should not be used for scheduling.
+
+**Ordering constraints, from the DAG and from C13:**
+1. `bo_laksana` freezes → 2. `ka_yojaka` → 3. `ka_kalasutra` → 4. **`ka_sangam` only after L4
+confirms `phala_anchors` regenerability and the Conductor rules the ordering** → 5. the rest of the
+spine follows `ka_sangam` mechanically. `ka_kshetra` is independent of the spine and takes a solo
+slot whenever one is free after `bo_laksana`.
+
+**One caveat that is not a cost:** `kala_bhavishya` carries `outcome_recorded` / `outcome_notes`,
+which the writer includes in its own INSERT payload after a full per-chart DELETE, with no
+read-back. Measured today: 200/200 `false`, 0 notes — **so nothing is lost by this re-run.** But it
+is P7's falsifiability seam, and the first outcome ever recorded would be destroyed by the next
+ordinary rebuild, silently. It needs a preserve-on-rebuild step or a documented disposition
+*before* outcomes start being recorded. Carried as an L3-W3 item, not folded into this re-run.
+
 ## Cost ledger
 
 Wall-clock + tokens per asset; the CONDUCTOR rolls this into the root campaign cost section at
@@ -366,6 +439,27 @@ your layer close.
 |---|---|---|---|
 
 ## Heartbeat
+
+- `2026-09-05T~13:4xZ — L3-W3 — PR hygiene (C8 Step 1): PR #1801 (my own branch,
+  codex/nirmana-l3-w4-resume) was RED on "Governance Gates (drift/schema/edge/
+  native-literal/py-sidecar)" — heartbeat had wrongly implied it was queued/armed
+  when it was actually BLOCKED, unqueued (is:queued verified empty). Root cause:
+  test_u3_convergence_currents.py's TestAshtakavarga was never updated after N4b
+  (c7_ashtakavarga_potency → honest None, HELD pending #1810) landed on this same
+  branch — 7 stale assertions expected the old bindus/8.0 formula or 0.0 instead
+  of None. Fixed AT ROOT (not weakened): rewrote the 5 TestAshtakavarga tests +
+  1 TestEnrichmentContextEmptySafe assertion to lock in the held-null contract,
+  added a new test proving a None c7 is DROPPED from the saturating product
+  (matches omitting the key) rather than coalesced to 0.0. Mutation-proved:
+  patching the function back to a fabricated formula turns all 7 red. Verified
+  locally: targeted file 56/56 pass; full CI-equivalent suite (tests/ +
+  bodha_writers + orchestrator, -m "not integration") 6391 passed / 0 failed /
+  89 skipped — matches the pre-existing baseline shape. Committed 507ddba74,
+  pushed. Auto-merge still armed (enabledAt unchanged). — blocked on: nothing;
+  next action: verify the re-run Governance Gates check goes green and confirm
+  `is:queued` next cycle before starting new W3/W4 work (C8 Step 1 discipline).
+- `2026-09-05T~08:0xZ — L3-W3 — post-resume loop 2: N4a/N4b (two 100%-zero ka_sangam terms → honest null; c7's fix HELD on the Āries-lagna frame question, #1810), N12 (a below-range 0.5 invented into a ranking score on 99.6% of rows), kala_bhavishya's P7 outcome seam preserved across rebuild, L3 analysis pin re-generated (#1814 filed on the generator's all-layers coupling) — blocked on: nothing; #1801 queued and armed; spine merged but NOT deployed so W2 acceptance still impossible.`
+- `2026-09-05T~07:2xZ — L3-W3 — resumed after lane death; §R1 stock-take posted; #1770 answered (all five re-runnable) then CORRECTED upward (3,708 L4 rows, not 188); C13 blast-radius 23/23 published; two no-FK dispositions; MSR re-run sequenced and priced; N4a panchanga honest-null landed — blocked on: nothing, W3 continues.`
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 

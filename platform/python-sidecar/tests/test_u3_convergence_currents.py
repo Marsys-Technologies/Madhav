@@ -208,35 +208,60 @@ class TestVedhaVeto:
 # ── C7 ashtakavarga_transit_potency ─────────────────────────────────────────
 
 class TestAshtakavarga:
-    def test_high_bindus_raise_score(self, dignity, orb_s, base_supporting):
+    """
+    NIRMĀṆA L3-W3 N4b: c7 is HELD at an honest `None` — dropped from the
+    saturating product, not scored zero — pending the L1 frame ruling on
+    #1810 (is ashtakavarga_bindu's HOUSE_<N> a house or a rāśi?). Conductor
+    ENDORSED this as D-CND-21: a partial fix that silences the visible
+    failure while leaving the frame question open would be worse than the
+    untouched defect. These tests lock in the held-null behaviour so it
+    cannot regress into a plausible-looking fabricated number before #1810
+    resolves; they must be revisited (not just loosened) once L1 answers.
+    """
+    def test_high_bindus_still_returns_none_pending_frame_ruling(self, empty_ctx):
+        from services.ka_sangam.engine import _c7_ashtakavarga_potency, EnrichmentContext
+        ctx_high = EnrichmentContext(ashtakavarga_bindu={'Jupiter': {1: 7}})
+        assert _c7_ashtakavarga_potency('Jupiter', 1, ctx_high) is None
+
+    def test_dropped_term_matches_omitted_key(self, dignity, orb_s, base_supporting):
+        """A None c7 must be DROPPED from the saturating product (§N.7 item 6),
+        identical to omitting the key entirely — never coalesced to a real 0.0."""
         from services.ka_sangam.engine import (
-            convergence_score, _c7_ashtakavarga_potency, EnrichmentContext
+            convergence_score, _c7_ashtakavarga_potency, EnrichmentContext,
         )
         nec = [dignity, orb_s, 1.0]
-        ctx_low  = EnrichmentContext(ashtakavarga_bindu={'Jupiter': {1: 2}})
-        ctx_high = EnrichmentContext(ashtakavarga_bindu={'Jupiter': {1: 7}})
-        c7_low  = _c7_ashtakavarga_potency('Jupiter', 1, ctx_low)
-        c7_high = _c7_ashtakavarga_potency('Jupiter', 1, ctx_high)
-        score_low  = convergence_score(nec, dict(base_supporting, ashtakavarga_transit_potency=c7_low))
-        score_high = convergence_score(nec, dict(base_supporting, ashtakavarga_transit_potency=c7_high))
-        assert score_high > score_low
+        ctx = EnrichmentContext(ashtakavarga_bindu={'Jupiter': {1: 7}})
+        c7 = _c7_ashtakavarga_potency('Jupiter', 1, ctx)
+        assert c7 is None
+        rest = {k: v for k, v in base_supporting.items() if k != 'ashtakavarga_transit_potency'}
+        supporting_with_key_dropped = dict(rest)
+        assert 'ashtakavarga_transit_potency' not in supporting_with_key_dropped
+        # The writer's own pattern (engine.py:1092/1278): only include the key when
+        # c7 is not None. With c7 always None today, that means never including it.
+        supporting_as_writer_would_build_it = {
+            **rest,
+            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
+        }
+        assert convergence_score(nec, supporting_as_writer_would_build_it) == pytest.approx(
+            convergence_score(nec, supporting_with_key_dropped)
+        )
 
-    def test_zero_bindus_returns_zero(self, empty_ctx):
+    def test_zero_bindus_returns_none(self, empty_ctx):
         from services.ka_sangam.engine import _c7_ashtakavarga_potency
-        assert _c7_ashtakavarga_potency('Jupiter', 1, empty_ctx) == pytest.approx(0.0)
+        assert _c7_ashtakavarga_potency('Jupiter', 1, empty_ctx) is None
 
-    @pytest.mark.parametrize("bindus,expected", [
-        (0, 0.0), (4, 0.5), (8, 1.0),
-    ])
-    def test_bindu_to_score_formula(self, bindus, expected):
+    @pytest.mark.parametrize("bindus", [0, 4, 8])
+    def test_no_bindu_count_produces_a_score(self, bindus):
+        """Formerly asserted a linear bindus/8.0 formula; that formula is unreachable
+        code today (see the function's docstring) — it must stay unreachable until
+        #1810 rules, not silently start firing again."""
         from services.ka_sangam.engine import _c7_ashtakavarga_potency, EnrichmentContext
         ctx = EnrichmentContext(ashtakavarga_bindu={'Jupiter': {1: bindus}})
-        result = _c7_ashtakavarga_potency('Jupiter', 1, ctx)
-        assert result == pytest.approx(expected, rel=0.01)
+        assert _c7_ashtakavarga_potency('Jupiter', 1, ctx) is None
 
-    def test_no_transit_sign_returns_zero(self, empty_ctx):
+    def test_no_transit_sign_returns_none(self, empty_ctx):
         from services.ka_sangam.engine import _c7_ashtakavarga_potency
-        assert _c7_ashtakavarga_potency('Jupiter', None, empty_ctx) == pytest.approx(0.0)
+        assert _c7_ashtakavarga_potency('Jupiter', None, empty_ctx) is None
 
 
 # ── C12 tajika_annual_reinforcement ─────────────────────────────────────────
@@ -291,7 +316,7 @@ class TestEnrichmentContextEmptySafe:
             _c11_vedha_factor, _c12_tajika_score,
         )
         ctx = EnrichmentContext.empty()
-        assert _c7_ashtakavarga_potency('Jupiter', 1, ctx) == pytest.approx(0.0)
+        assert _c7_ashtakavarga_potency('Jupiter', 1, ctx) is None  # held-null (N4b), not a crash
         assert _c11_vedha_factor('Jupiter', 1, ctx) == pytest.approx(1.0)
         assert _c12_tajika_score(date(2026, 1, 1), 'Jupiter', ctx) == pytest.approx(0.0)
 

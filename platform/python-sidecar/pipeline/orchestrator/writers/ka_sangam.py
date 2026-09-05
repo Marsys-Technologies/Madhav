@@ -907,6 +907,12 @@ class KaSangamWriter(WriterBase):
                     # Mode A/B always do
                     'transit': mode in ('A', 'B'),
                     # Newly wired currents
+                    # L3-W3 (§N.8): `panchanga` now means "pāñcāṅga was consulted AND supported
+                    # this window". When the term could not be evaluated at all the key is absent
+                    # (see engine._c_panchanga_quality), and this stays False — an unevaluated term
+                    # must not count as independent support either. What changes is that the ROW
+                    # now records WHY, via c_panchanga_quality_unavailable, instead of carrying a
+                    # 0.0 that read as a real unsupportive score on 4,729 of 4,729 Mode A/B rows.
                     'panchanga': bool(cf.get('c_panchanga_quality', 0) > 0.0),
                     'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
                     'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
