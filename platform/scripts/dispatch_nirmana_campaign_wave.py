@@ -11,7 +11,6 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import subprocess
 import sys
 import uuid
@@ -79,11 +78,11 @@ WRITER_DIGESTS_PATH = (
     / "generated"
     / "nirmana-writer-digests.json"
 )
-L0_ANALYSIS_RECEIPTS_PATH = (
+ANALYSIS_LAYER_PINS_PATH = (
     Path(__file__).resolve().parents[1]
     / "src"
     / "generated"
-    / "nirmana-l0-analysis-receipts.ts"
+    / "nirmana-analysis-layer-pins.json"
 )
 
 
@@ -129,65 +128,66 @@ def _valid_git_commit_sha(value: object) -> bool:
     )
 
 
-def _load_l0_canonical_receipt_contract() -> dict[str, str]:
-    """Read the checked-in L0 receipt grounding contract or fail closed.
+def _load_layer_receipt_pin(layer: str) -> dict[str, Any]:
+    """Read the checked-in receipt grounding pin for one layer, or fail closed.
 
-    The TypeScript receipt module is the existing canonical source used when
-    evidence is accepted.  This dispatcher deliberately reads its exported
-    pins rather than duplicating them, so a changed writer inventory cannot
-    authorize a rebuild until the receipt convergence is explicitly reviewed.
+    Reads the generated pin record the TypeScript receipt module also consumes,
+    so a changed writer inventory cannot authorize a rebuild until that layer's
+    convergence is explicitly reviewed.
+
+    This used to regex-scrape `export const NIRMANA_L0_... = '...' as const` out
+    of the TypeScript source.  Both sides now read the same generated JSON: one
+    source of truth, no parser to drift, and the record is regenerable
+    (`scripts/generate/nirmana_analysis_layer_pins.py`).
     """
     try:
-        source = L0_ANALYSIS_RECEIPTS_PATH.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise RuntimeError("canonical L0 analysis receipt contract is unavailable") from exc
-
-    def exported_sha(name: str) -> str:
-        match = re.search(
-            rf"export const {name} = '([0-9a-f]{{64}})' as const",
-            source,
-        )
-        if match is None:
-            raise RuntimeError(f"canonical L0 analysis receipt contract is invalid: {name}")
-        return match.group(1)
-
-    match = re.search(
-        r"export const NIRMANA_L0_CONVERGENCE_COMMIT = '([0-9a-f]{40})' as const",
-        source,
-    )
-    if match is None:
-        raise RuntimeError("canonical L0 analysis receipt contract is invalid: convergence commit")
-    return {
-        "convergence_commit": match.group(1),
-        "writer_inventory_sha256": exported_sha(
-            "NIRMANA_L0_WRITER_INVENTORY_SHA256"
-        ),
-    }
+        record = json.loads(ANALYSIS_LAYER_PINS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("canonical analysis receipt pin record is unavailable") from exc
+    pin = (record.get("layers") or {}).get(layer)
+    if not isinstance(pin, Mapping):
+        raise RuntimeError(f"canonical analysis receipt pin is missing for {layer}")
+    if not _valid_git_commit_sha(pin.get("convergence_commit")):
+        raise RuntimeError(f"canonical analysis receipt pin for {layer} has an invalid convergence commit")
+    if not _valid_sha256(pin.get("writer_inventory_sha256")):
+        raise RuntimeError(f"canonical analysis receipt pin for {layer} has an invalid inventory aggregate")
+    if not isinstance(pin.get("asset_prefix"), str) or not pin["asset_prefix"]:
+        raise RuntimeError(f"canonical analysis receipt pin for {layer} has no asset prefix")
+    return dict(pin)
 
 
-def _validated_l0_writer_inventory(
+def _validated_layer_writer_inventory(
     writer_digests: Mapping[str, str],
     *,
+    layer: str,
+    asset_prefix: str,
     expected_aggregate: str,
 ) -> dict[str, str]:
-    """Require the complete current L0 inventory to equal the receipt pin."""
-    l0_inventory = {
+    """Require the complete current inventory FOR THIS LAYER to equal its pin.
+
+    Per-layer, deliberately: a global aggregate would mean any layer's writer
+    fix invalidates every other layer's accepted analyses (adjudication #1715,
+    ruling requirement 1).
+    """
+    layer_inventory = {
         asset_id: digest
         for asset_id, digest in writer_digests.items()
-        if isinstance(asset_id, str) and asset_id.startswith("bg_")
+        if isinstance(asset_id, str) and asset_id.startswith(asset_prefix)
     }
-    if not l0_inventory or any(not _valid_sha256(digest) for digest in l0_inventory.values()):
-        raise RuntimeError("current L0 writer inventory is incomplete or invalid")
-    aggregate = _sha256_json(l0_inventory, ensure_ascii=True)
+    if not layer_inventory or any(not _valid_sha256(digest) for digest in layer_inventory.values()):
+        raise RuntimeError(f"current {layer} writer inventory is incomplete or invalid")
+    aggregate = _sha256_json(layer_inventory, ensure_ascii=True)
     if aggregate != expected_aggregate:
         raise RuntimeError(
-            "current L0 writer inventory does not match the reviewed canonical receipt convergence"
+            f"current {layer} writer inventory does not match the reviewed canonical "
+            "receipt convergence"
         )
-    return l0_inventory
+    return layer_inventory
 
 
-def _canonical_l0_analysis_digest(
+def _canonical_analysis_digest(
     *,
+    layer: str,
     frozen_manifest_asset: Mapping[str, Any],
     current_registry_contract: Mapping[str, Any],
     writer_digest: str,
@@ -195,15 +195,15 @@ def _canonical_l0_analysis_digest(
 ) -> str:
     """Match canonicalNirmanaAssetAnalysisDigestForRegistryRow exactly."""
     asset_id = frozen_manifest_asset.get("asset_id")
-    if not isinstance(asset_id, str) or frozen_manifest_asset.get("layer") != "L0":
-        raise RuntimeError("canonical L0 analysis receipt has an invalid frozen asset")
+    if not isinstance(asset_id, str) or frozen_manifest_asset.get("layer") != layer:
+        raise RuntimeError(f"canonical {layer} analysis receipt has an invalid frozen asset")
     return _sha256_json(
         {
             "schema_version": "nirmana-asset-analysis-receipt/v1",
             "base": {
                 "schema_version": "nirmana-asset-analysis-receipt-base/v1",
                 "asset_id": asset_id,
-                "layer": "L0",
+                "layer": layer,
                 "writer_digest_sha256": writer_digest,
                 "grounding": {
                     "convergence_commit": convergence_commit,
@@ -218,34 +218,46 @@ def _canonical_l0_analysis_digest(
     )
 
 
-def _current_l0_analysis_receipt_digests(
+def _current_analysis_receipt_digests(
     *,
+    layer: str,
     selected_assets: Sequence[Mapping[str, Any]],
     candidates_by_id: Mapping[str, Mapping[str, Any]],
     writer_digests: Mapping[str, str],
 ) -> tuple[dict[str, str], str]:
-    """Reconstruct L0 evidence receipts from current code and live contracts."""
-    contract = _load_l0_canonical_receipt_contract()
-    l0_inventory = _validated_l0_writer_inventory(
+    """Reconstruct this layer's evidence receipts from current code + live contracts.
+
+    Was L0-only, and the call site was gated on `layer == "L0"` (adjudication
+    #1718).  For L1-L5 that left C2 condition 3 uncovered: `REGISTRY_CONTRACT_FIELDS`
+    carries no writer digest, so a W3 writer edit landing after W2 acceptance
+    left the analysis reading "current" while the build dispatched against an
+    analysis of different code -- an unearned green in the CLAUDE.md §N.8 sense.
+    Reconstructing per layer closes that for all six.
+    """
+    pin = _load_layer_receipt_pin(layer)
+    layer_inventory = _validated_layer_writer_inventory(
         writer_digests,
-        expected_aggregate=contract["writer_inventory_sha256"],
+        layer=layer,
+        asset_prefix=pin["asset_prefix"],
+        expected_aggregate=pin["writer_inventory_sha256"],
     )
     digests: dict[str, str] = {}
     for frozen_asset in selected_assets:
         asset_id = frozen_asset.get("asset_id")
         if not isinstance(asset_id, str):
-            raise RuntimeError("frozen L0 wave contains an invalid asset ID")
+            raise RuntimeError(f"frozen {layer} wave contains an invalid asset ID")
         candidate = candidates_by_id.get(asset_id)
-        writer_digest = l0_inventory.get(asset_id)
+        writer_digest = layer_inventory.get(asset_id)
         if candidate is None or writer_digest is None:
             raise RuntimeError(
-                f"canonical L0 analysis receipt is unavailable for {asset_id}"
+                f"canonical {layer} analysis receipt is unavailable for {asset_id}"
             )
-        digests[asset_id] = _canonical_l0_analysis_digest(
+        digests[asset_id] = _canonical_analysis_digest(
+            layer=layer,
             frozen_manifest_asset=frozen_asset,
             current_registry_contract={
                 "asset_id": asset_id,
-                "layer": "L0",
+                "layer": layer,
                 # Sort to match the canonical server computation
                 # (registryContractFingerprintInput sorts depends_on); an
                 # unsorted multi-dependency list here diverges from the digest
@@ -254,9 +266,9 @@ def _current_l0_analysis_receipt_digests(
                 "registry_contract": _live_registry_contract(candidate),
             },
             writer_digest=writer_digest,
-            convergence_commit=contract["convergence_commit"],
+            convergence_commit=pin["convergence_commit"],
         )
-    return digests, contract["convergence_commit"]
+    return digests, pin["convergence_commit"]
 
 
 def _live_registry_contract(candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -967,15 +979,18 @@ def create_campaign_run(
             for asset_id in asset_ids
         }
         writer_digests = _load_writer_digests()
-        canonical_analysis_digests: Mapping[str, str] | None = None
-        if layer == "L0":
-            canonical_analysis_digests, _convergence_commit = (
-                _current_l0_analysis_receipt_digests(
-                    selected_assets=selected,
-                    candidates_by_id=candidate_by_id,
-                    writer_digests=writer_digests,
-                )
+        # Every layer, not just L0 (adjudication #1718, folded into #1715's
+        # ruling): reconstructing the canonical analysis digest from CURRENT
+        # code is what makes a post-acceptance writer edit detectable.
+        canonical_analysis_digests: Mapping[str, str] | None
+        canonical_analysis_digests, _convergence_commit = (
+            _current_analysis_receipt_digests(
+                layer=layer,
+                selected_assets=selected,
+                candidates_by_id=candidate_by_id,
+                writer_digests=writer_digests,
             )
+        )
 
         required_evidence_types = (
             "asset_analysis_accepted",

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { getNirmanaCampaignControlWriterPool } from './campaign-control-writer'
-import { getNirmanaL0AnalysisReceiptBase } from '@/generated/nirmana-l0-analysis-receipts'
+import { getNirmanaAnalysisReceiptBase } from '@/generated/nirmana-analysis-receipts'
 import { getNirmanaEvidenceIngressPool } from './evidence-ingress'
 import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from './release'
 import { NIRMANA_STAGE_IDS } from './vocab'
@@ -1113,7 +1113,10 @@ const NirmanaAssetAnalysisReceiptSchema = z.object({
   base: z.object({
     schema_version: z.literal('nirmana-asset-analysis-receipt-base/v1'),
     asset_id: z.string().min(1),
-    layer: z.literal('L0'),
+    // Was z.literal('L0'). Generalised per adjudication #1715: the spine is
+    // layer-generic, and the LAYER IS STILL BOUND -- it is part of the hashed
+    // receipt, so an L1 base can never satisfy an L2 claim.
+    layer: LayerSchema,
     writer_digest_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
     grounding: z.object({
       convergence_commit: z.string().regex(/^[a-f0-9]{40}$/),
@@ -1143,13 +1146,17 @@ export function canonicalNirmanaAssetAnalysisDigestForRegistryRow(
   registryRow: NirmanaRegistryContractRow,
   frozenManifestAsset: unknown,
 ): string {
-  const receiptBase = getNirmanaL0AnalysisReceiptBase(assetId)
-  if (!receiptBase) {
-    throw new NirmanaElevationEvidenceValidationError(`No deployed L0 analysis receipt base exists for ${assetId}.`)
-  }
   const manifestAsset = ManifestAssetSchema.parse(frozenManifestAsset)
-  if (manifestAsset.asset_id !== assetId || manifestAsset.layer !== 'L0') {
+  // The layer comes from the frozen manifest and is cross-checked against the
+  // live registry row. Previously only `=== 'L0'` was asserted, so the two
+  // could disagree unnoticed; requiring agreement is a strengthening, and it is
+  // what lets the receipt lookup be layer-addressed rather than id-addressed.
+  if (manifestAsset.asset_id !== assetId || manifestAsset.layer !== registryLayers[registryRow.layer]) {
     throw new NirmanaElevationEvidenceValidationError(`Frozen manifest asset ${assetId} does not match its deployed analysis receipt base.`)
+  }
+  const receiptBase = getNirmanaAnalysisReceiptBase(assetId, manifestAsset.layer)
+  if (!receiptBase) {
+    throw new NirmanaElevationEvidenceValidationError(`No deployed ${manifestAsset.layer} analysis receipt base exists for ${assetId}.`)
   }
   return canonicalNirmanaAssetAnalysisReceiptDigest({
     schema_version: 'nirmana-asset-analysis-receipt/v1',
@@ -1224,8 +1231,16 @@ async function loadCurrentAssetAnalysisContext(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
 ): Promise<CurrentAssetAnalysisContext> {
-  const receiptBase = getNirmanaL0AnalysisReceiptBase(input.entity_id)
-  if (!receiptBase || input.layer !== 'L0') {
+  // Was gated on `input.layer !== 'L0'`, which made every non-L0 terminal event
+  // structurally unreachable (adjudication #1715). The gate that MATTERS is
+  // kept and is now the only one: a receipt base must exist for this asset IN
+  // THIS LAYER, so a layer whose writer inventory has drifted off its pin still
+  // fails closed -- per layer, not globally.
+  const parsedLayer = LayerSchema.safeParse(input.layer)
+  const receiptBase = parsedLayer.success
+    ? getNirmanaAnalysisReceiptBase(input.entity_id, parsedLayer.data)
+    : undefined
+  if (!receiptBase) {
     throw new NirmanaElevationEvidenceValidationError('Evidence requires a reconstructable deployed analysis receipt for the frozen asset.')
   }
   const registry = await client.query<NirmanaRegistryContractRow & { frozen_manifest_asset: unknown }>(

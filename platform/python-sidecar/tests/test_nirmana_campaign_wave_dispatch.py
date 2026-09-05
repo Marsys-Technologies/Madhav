@@ -102,6 +102,26 @@ def _candidate(asset: dict, *, has_cowriters: bool = False) -> dict:
     }
 
 
+LAYER_PREFIXES = {"L0": "bg_", "L1": "ga_", "L2": "bo_", "L3": "ka_", "L4": "ph_", "L5": "mi_"}
+
+
+def _layer_pins(convergence_sha: str, inventory_sha: str, *, layer: str = "L0") -> dict:
+    """A pin record shaped like the generated one, with `layer` carrying the fixture values."""
+    return {
+        "version": "nirmana-analysis-layer-pins/v1",
+        "layers": {
+            name: {
+                "asset_prefix": prefix,
+                "convergence_commit": convergence_sha if name == layer else "0" * 40,
+                "writer_inventory_sha256": inventory_sha if name == layer else "0" * 64,
+                "receipt_count": 2,
+                "non_writer_assets": [],
+            }
+            for name, prefix in LAYER_PREFIXES.items()
+        },
+    }
+
+
 def _digest(value: object) -> str:
     encoded = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
@@ -481,20 +501,15 @@ def test_l0_dispatch_receipt_binding_accepts_current_deployment_and_excludes_his
     writer_digests = {"bg_reference": "a" * 64, "bg_formula_constants": "b" * 64}
     convergence_sha = "c" * 40
     deployed_sha = "d" * 40
-    receipts_path = tmp_path / "nirmana-l0-analysis-receipts.ts"
-    receipts_path.write_text(
-        "\n".join(
-            [
-                f"export const NIRMANA_L0_CONVERGENCE_COMMIT = '{convergence_sha}' as const",
-                "export const NIRMANA_L0_WRITER_INVENTORY_SHA256 = "
-                f"'{_digest(writer_digests)}' as const",
-            ]
-        ),
+    pins_path = tmp_path / "nirmana-analysis-layer-pins.json"
+    pins_path.write_text(
+        json.dumps(_layer_pins(convergence_sha, _digest(writer_digests))),
         encoding="utf-8",
     )
-    monkeypatch.setattr(module, "L0_ANALYSIS_RECEIPTS_PATH", receipts_path)
+    monkeypatch.setattr(module, "ANALYSIS_LAYER_PINS_PATH", pins_path)
 
-    receipt_digests, receipt_convergence_sha = module._current_l0_analysis_receipt_digests(
+    receipt_digests, receipt_convergence_sha = module._current_analysis_receipt_digests(
+        layer="L0",
         selected_assets=selected,
         candidates_by_id=candidates,
         writer_digests=writer_digests,
@@ -546,7 +561,8 @@ def test_l0_dispatch_receipt_binding_accepts_current_deployment_and_excludes_his
 
     drifted_digests = {**writer_digests, "bg_reference": "d" * 64}
     with pytest.raises(RuntimeError, match="writer inventory.*convergence"):
-        module._current_l0_analysis_receipt_digests(
+        module._current_analysis_receipt_digests(
+            layer="L0",
             selected_assets=selected,
             candidates_by_id=candidates,
             writer_digests=drifted_digests,
@@ -1134,3 +1150,82 @@ def test_wp6_no_fk_referrers_cover_the_documented_orphan_set() -> None:
         "phala_anchors",
         "bodha_triangulation",
     }
+def test_non_l0_dispatch_reconstructs_receipts_and_fails_closed_per_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """L1 (and by construction L2-L5) get the same reconstruction L0 always had.
+
+    Before adjudication #1715/#1718 the call site was gated on `layer == "L0"`,
+    so for five of six layers a writer edit landing after W2 acceptance was
+    undetectable: the analysis still read "current" while the build dispatched
+    against an analysis of different code. This test fails without that fix --
+    `_current_analysis_receipt_digests` did not accept a layer at all.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    convergence_sha = "a" * 40
+    selected = [
+        {
+            "asset_id": "ga_positions",
+            "layer": "L1",
+            "wave_index": 0,
+            "execution_obligation": "build",
+            "depends_on": [],
+            "registry_contract": _contract(sort_order=1, target_table="chart_facts"),
+            "registry_fingerprint_sha256": "3" * 64,
+        },
+    ]
+    candidates = {"ga_positions": _candidate(selected[0])}
+    writer_digests = {"ga_positions": "b" * 64, "bg_reference": "c" * 64}
+    inventory_sha = _digest({"ga_positions": "b" * 64})
+
+    pins_path = tmp_path / "nirmana-analysis-layer-pins.json"
+    pins = _layer_pins(convergence_sha, inventory_sha, layer="L1")
+    pins["layers"]["L1"]["receipt_count"] = 1
+    pins_path.write_text(json.dumps(pins), encoding="utf-8")
+    monkeypatch.setattr(module, "ANALYSIS_LAYER_PINS_PATH", pins_path)
+
+    digests, pinned_sha = module._current_analysis_receipt_digests(
+        layer="L1",
+        selected_assets=selected,
+        candidates_by_id=candidates,
+        writer_digests=writer_digests,
+    )
+    assert pinned_sha == convergence_sha
+    assert set(digests) == {"ga_positions"}
+    assert len(digests["ga_positions"]) == 64
+
+    # The layer is BOUND into the digest: the same asset claimed under another
+    # layer must not reconstruct to the same value.
+    assert digests["ga_positions"] != module._canonical_analysis_digest(
+        layer="L2",
+        frozen_manifest_asset={**selected[0], "layer": "L2"},
+        current_registry_contract={
+            "asset_id": "ga_positions",
+            "layer": "L2",
+            "depends_on": [],
+            "registry_contract": module._live_registry_contract(candidates["ga_positions"]),
+        },
+        writer_digest="b" * 64,
+        convergence_commit=convergence_sha,
+    )
+
+    # Fail closed PER LAYER: an L1 writer edit invalidates L1 and nothing else.
+    drifted = {**writer_digests, "ga_positions": "d" * 64}
+    with pytest.raises(RuntimeError, match="L1 writer inventory.*convergence"):
+        module._current_analysis_receipt_digests(
+            layer="L1",
+            selected_assets=selected,
+            candidates_by_id=candidates,
+            writer_digests=drifted,
+        )
+    # ... while an unrelated L0 edit leaves L1's reconstruction intact.
+    untouched = {**writer_digests, "bg_reference": "e" * 64}
+    still_valid, _ = module._current_analysis_receipt_digests(
+        layer="L1",
+        selected_assets=selected,
+        candidates_by_id=candidates,
+        writer_digests=untouched,
+    )
+    assert still_valid == digests

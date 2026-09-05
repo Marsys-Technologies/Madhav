@@ -7,23 +7,24 @@ vi.mock('server-only', () => ({}))
 // Keep the route's lifecycle fixtures executable when this checkout lacks the
 // generated convergence inventory.  Only the definitions lookup is pinned;
 // generated-inventory coverage remains tested independently.
-vi.mock('@/generated/nirmana-l0-analysis-receipts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/generated/nirmana-l0-analysis-receipts')>()
+vi.mock('@/generated/nirmana-analysis-receipts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/generated/nirmana-analysis-receipts')>()
   return {
     ...actual,
-    getNirmanaL0AnalysisReceiptBase: (assetId: string) => assetId.startsWith('bg_')
-      ? {
-          schema_version: 'nirmana-asset-analysis-receipt-base/v1' as const,
-          asset_id: assetId,
-          layer: 'L0' as const,
-          writer_digest_sha256: assetId === 'bg_prashna_rules' ? '1'.repeat(64) : null,
-          grounding: {
-            convergence_commit: actual.NIRMANA_L0_CONVERGENCE_COMMIT,
-            frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
-            writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
-          },
-        }
-      : undefined,
+    getNirmanaAnalysisReceiptBase: (assetId: string, layer: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5') =>
+      layer === 'L0' && assetId.startsWith('bg_')
+        ? {
+            schema_version: 'nirmana-asset-analysis-receipt-base/v1' as const,
+            asset_id: assetId,
+            layer: 'L0' as const,
+            writer_digest_sha256: assetId === 'bg_prashna_rules' ? '1'.repeat(64) : null,
+            grounding: {
+              convergence_commit: actual.NIRMANA_ANALYSIS_LAYER_PINS.L0.convergence_commit,
+              frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
+              writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
+            },
+          }
+        : undefined,
   }
 })
 
