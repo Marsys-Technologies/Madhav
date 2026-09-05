@@ -461,6 +461,46 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ — L3-W3 — prep unit (priority 5, nothing higher eligible): pre-wrote
+  `ka_graha_sancara`'s W4 probe-dispatch procedure, precomputed and ready to fire the moment
+  `amjis-sidecar`'s traffic cutover catches up to #1846.** Re-checked all four standing PR
+  blockers fresh (no change: #1903/#1958/#1894/#1921 all still `OPEN`/`mergedAt: null`) and
+  the sidecar traffic split (still `80a9cd71e105`, still pre-#1846) before picking this as
+  the cycle's unit — priorities 1-4 all confirmed still exhausted, so this is a genuine
+  prep item, not a stall.
+  **Read `routers/nirmana_probe.py` in full to nail down the actual dispatch mechanism**
+  (never previously documented precisely in this state file — only the evidence-command
+  route was): probe execution is a SEPARATE authenticated surface
+  (`POST /probe` on the sidecar itself, `X-API-Key` against `PYTHON_SIDECAR_API_KEY`, not
+  the `/api/admin/internal/nirmana-elevation-executor` route used for W2's acceptance
+  events — that route only handles `record_definition`/`freeze_definition`/
+  `supersede_definition`/`record_label_catalogue`/`accept_baseline_candidate`/
+  `record_evidence`, confirmed by reading its full source, no probe-execution branch
+  exists there). The real two-step dispatch, once unblocked:
+  1. `POST https://<sidecar>/probe` with `{"asset_id": "ka_graha_sancara",
+     "probe_contract_sha256": "<below>", "health_probe": <below>}`, authenticated via
+     `X-API-Key: $PYTHON_SIDECAR_API_KEY` (a secret this session has not yet checked
+     access to — first thing to verify next time this is picked up, not assumed now).
+  2. Record the result via `record_evidence` (`source_kind='server_reconstructed'`,
+     `event_type=probe_accepted`) through the executor route, impersonating the VERIFIER
+     principal (`amjis-nirmana-verifier@...`, not the executor principal — confirmed from
+     `requiredPrincipalFor()`'s own routing logic: `server_reconstructed` source_kind goes
+     to the verifier SA, everything else to the executor SA).
+  **Precomputed the exact request body now, from LIVE `asset_registry.health_probe`** (read-
+  only, no risk): `{"probe_type": "graha_sancara_forensic", "forensic_ayanamsha": "lahiri",
+  "forensic_birth_instant": "1984-02-05T10:43:00", "forensic_expected_moon_sign": "Aquarius"}`.
+  Ran the server's own `jcs.canonicalize({"health_probe": ...})` + sha256 locally (not a
+  reimplementation guess) → **`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6`**
+  — matches byte-for-byte the digest this session independently verified against a real
+  `node -e` run several cycles ago (F-L3-15 close), confirming the contract hasn't drifted
+  since. Did NOT attempt to fire this for real — the sidecar doesn't yet serve the
+  `graha_sancara_forensic` probe type at its traffic-receiving revision, so any live attempt
+  would just fail; this is pre-work only, correctly not confused with dispatch itself.
+  **Next action:** once sidecar traffic includes #1846 (re-check each cycle), verify
+  `PYTHON_SIDECAR_API_KEY` access, fire the `/probe` call with the payload above, then the
+  `record_evidence` follow-up as the verifier SA — this prep removes everything except the
+  actual HTTP calls from that future cycle's critical path.
+
 - `2026-09-06T~10:3xZ — L3-W3 — IDLE-OK cycle (verified, nothing eligible found).**
   **#1960 ruled — cross-session confirmation received AND independently re-verified against
   the issue itself (not trusted from the message alone):** Conductor's ruling reads exactly
