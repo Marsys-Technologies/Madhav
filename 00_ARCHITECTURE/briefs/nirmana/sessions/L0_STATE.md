@@ -1885,3 +1885,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   `812731a22`, queue head still #1904). Governance Gates check now ~7min in_progress — still well
   under the D-L0-PP hang threshold (30+min), just routine CI duration. No DIRTY, no RED, no new
   eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 9/15/23/72, queue head still #1904,
+  Governance Gates now ~9.5min in_progress — still under the 30min hang threshold). No DIRTY, no
+  RED. 30/40 frozen holds.
