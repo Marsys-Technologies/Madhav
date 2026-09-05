@@ -13,6 +13,11 @@ export interface AssetStats {
   actual_rows: number | null
   volume: number | null          // alias for actual_rows (canonical name)
   size_bytes: number | null
+  // True when size_sql is chart-scoped (binds $1) and therefore an ESTIMATE — Postgres has
+  // no cheap way to measure one chart's exact physical bytes out of a shared table, so a
+  // scoped size_sql computes a proportional-share estimate rather than a real measurement
+  // (adjudication #1956). Undefined/false means size_bytes is the whole relation's exact size.
+  size_is_estimate?: boolean
   last_updated: string
   error: string | null
   // 'dataplane' = Cloud SQL proxy / connection-level failure (transient).
@@ -147,8 +152,11 @@ async function fetchAllCounts(
       const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
       let size_bytes: number | null = null
+      let size_is_estimate = false
       if (asset.size_sql) {
-        const sizeResult = await query<{ size: string }>(asset.size_sql)
+        size_is_estimate = /\$1/.test(asset.size_sql)
+        const sizeParams = size_is_estimate ? [chartId] : []
+        const sizeResult = await query<{ size: string }>(asset.size_sql, sizeParams)
         const raw = sizeResult.rows[0]?.size
         size_bytes = raw != null ? parseInt(raw, 10) : null
       }
@@ -158,6 +166,7 @@ async function fetchAllCounts(
         actual_rows,
         volume: actual_rows,
         size_bytes,
+        size_is_estimate,
         last_updated: now,
         error: null,
         state: 'dormant' as const,
