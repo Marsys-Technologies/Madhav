@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — All 3 migration PRs (692/693/694) now merged to main; none deployed yet. #1838 (dispatch script) is the one remaining real blocker for every asset's actual freeze (D-L0-Z).
+last_updated: 2026-09-05 — bg_vidhi_floors' tiling migration (693) is LIVE and verified correct in production (full check still honestly FALSE on the real completeness gap). bg_gochara_arcs (694) not deployed yet. #1838 remains the real blocker.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1044,3 +1044,13 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `bg_gochara_arcs` gets the same real-W2-resubmission treatment as `bg_doshas` (D-L0-Y) — but per
   D-L0-Z, remember that still isn't sufficient for an actual freeze without `#1838` + a real
   dispatch.
+- 2026-09-05 — **Cycle 33.** PR hygiene: `#1828` clean pending checks, still not queued yet (own
+  checks not done); `#1838` confirmed still genuinely queued. Nothing to fix. **`bg_vidhi_floors`
+  migration (693) is now LIVE** — verified the tiling sub-clause alone evaluates `TRUE` against
+  production (`lo=1`/`distinct_orders=n` hold for all present intents, confirming the fix works
+  exactly as designed); the FULL check still correctly reads `FALSE`, entirely due to the genuine
+  `count(*)=14`/`409` completeness gap (D-L0-N) — expected, not a problem. Did not resubmit W2 for
+  this asset yet: unlike `bg_doshas`, it isn't otherwise freeze-ready (still needs the intent/item
+  gap resolved via dispatch), so a fresh W2 now would just go stale again once that dispatch
+  happens — better to refresh W2 once, after the data catches up too. `bg_gochara_arcs` migration
+  (694) still not deployed. NEXT: keep polling #1838 and the bg_gochara_arcs deploy.
