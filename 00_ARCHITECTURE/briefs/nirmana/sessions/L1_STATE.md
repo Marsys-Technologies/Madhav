@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 39; ga_ayurdaya F-A14 landed (#1975), 750-759 range in use
+last_updated: 2026-09-06 — C8 v2.3 cycle 40; ga_prashna F-A14 landed (#1977) — all 19 assets now have a first F-A14 pass
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -23,8 +23,8 @@ your `nirmana-adjudication` issues → continue.
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659 (exhausted cycle 27) → 740–749 (exhausted cycle 38, adjudication
-  #1947) → **750–759 granted** (adjudication #1972, Conductor ruling, cycle 38 same-session —
-  ruled same day as filed). 750 (`ga_ayurdaya`, cycle 39) used. 751–759 remain free.
+  #1947) → 750–759 granted (adjudication #1972). 750 (`ga_ayurdaya`, cycle 39), 751 (`ga_prashna`,
+  cycle 40) used. 752–759 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1589,6 +1589,47 @@ next: continue F-A14 for the remaining 1 untouched asset (`ga_prashna`), conside
 on `ga_structural`/`ga_sade_sati` (partial coverage) or fixing F-A15/F-A16 in their writers, or
 `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 40 (C8 v2.3) — ga_prashna's F-A14 contract (migration 751); ALL 19 L1 assets now have a first F-A14 pass
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/
+#1963/#1964/#1965/#1967/#1968/#1971 confirmed genuinely `is:queued`. #1827/#1975 still
+legitimately CI-pending from last cycle's fresh pushes, auto-merge armed, not DIRTY/RED.
+
+**Unit of work: F-A14 for `ga_prashna`** (migration 751, second used in the 750-759 range). Two
+dedicated tables (`ga_prashna_lagna`, `ga_prashna_judgment`), both already carrying a UNIQUE
+matching their own natural key — no distinctness conjunct. `ga_prashna_judgment` is genuinely
+empty on every built chart today (dormant disposition, R-1 — the facility is live-mounted but no
+prashna question has ever been asked against a built chart); deliberately shipped ZERO conjuncts
+scoped to it rather than invent an untestable one — an unmutation-provable conjunct on zero live
+rows would itself be exactly the unearned-signal defect §N.8 forbids, the same discipline in the
+opposite direction from F-A15/F-A16 (there, a real defect was shipped RED rather than hidden;
+here, an *absence of data* is honestly left unchecked rather than papered over with a
+vacuously-true placeholder).
+
+Three conjuncts, all scoped to `ga_prashna_lagna` (5 live rows — the same 5 the W1 finding
+already documented, on one non-canonical orphaned chart), all measured live and mutation-proved:
+(a) `lagna_rashi` must be one of the twelve classical signs; (b) `lagna_degree`, when stored,
+must be a genuine degree-within-sign value (0-30); (c) every row must reference a real
+`prashna_charts` registration (referential integrity, mirroring the writer's own build-time
+lookup step).
+
+**Milestone: this closes out the F-A14 campaign's first pass over all 19 L1 assets** — every
+asset now carries a real `integrity_check_sql`, though `ga_structural` (1/57 categories) and
+`ga_sade_sati` (2/15 categories) remain intentionally partial and are candidates for a future
+follow-up pass, and F-A15/F-A16 (the two genuine defects discovered along the way) remain
+open writer-level fixes for whenever the campaign turns to them.
+
+No Python writer touched; `provenance_inventory --check` clean. 5 new textual-contract tests
+(caught and fixed a line-wrap regex bug in my own test file — the same class as cycles 33/35);
+full `tests/unit/migrations/` suite: 39 files, 185 passed / 91 skipped, no regressions.
+
+CYCLE 40 L1: landed `ga_prashna`'s F-A14 contract (PR #1977, migration 751) — **all 19 L1 assets
+now have a first F-A14 integrity contract.** Next: choose among (a) a follow-up F-A14 pass
+widening `ga_structural`/`ga_sade_sati` coverage, (b) fixing F-A15 (`ga_structural`'s D9
+vargottama re-derivation) or F-A16 (`ga_yoga`'s unearned formula-version label) in their actual
+writers, or (c) `ga_positions` re-dispatch once #1892 lands — whichever is highest-priority per
+the contract when this state file is next read.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1614,13 +1655,14 @@ none accepted yet (blocked on #1736).
 | ga_medical | 45 / 45 | **changed** | **MUST: build-fatal gate passes for a wrong reason (F-E)** |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
-| ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
+| ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E); F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only — ga_prashna_judgment genuinely empty) |
 
-Cross-cutting: **18/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-39: ga_dashas,
-ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
-ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
-other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial, 2/15 categories],
-ga_transit_anchors, ga_ayurdaya; only `ga_prashna` remains fully untouched); `expected_volume_formula`
+Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
+21-40)**: ga_dashas, ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka,
+ga_medical, ga_vastu, ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial,
+1/57 categories — the other 56 remain a future pass], ga_yoga, ga_vichara, ga_sade_sati [partial,
+2/15 categories], ga_transit_anchors, ga_ayurdaya, ga_prashna [scoped to ga_prashna_lagna only —
+ga_prashna_judgment is genuinely empty on every built chart]. `expected_volume_formula`
 NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
@@ -2099,6 +2141,16 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   found three genuinely strong internal-consistency conjuncts (classification-threshold
   re-derivation, cross-row totals-JSONB agreement, per-graha-sum arithmetic) without needing a
   cross-asset authority check this time.
+- **D-L1-62** — C8 v2.3 cycle 40: `ga_prashna` closes out the F-A14 campaign's first pass over
+  all 19 L1 assets. Deliberately shipped ZERO conjuncts on `ga_prashna_judgment` (genuinely 0 rows
+  on every built chart, dormant disposition R-1) rather than invent a vacuously-true placeholder
+  that couldn't be mutation-proved — an untestable "clean" reading on a table with no data would
+  itself be an unearned signal (§N.8), the same doctrine as F-A15/F-A16 but applied to an
+  *absence* of a check rather than a too-narrow one. All three real conjuncts scope to
+  `ga_prashna_lagna` instead, which does carry live rows. This is the honest complement to the
+  "ship the correct check even if it reads red" precedent (F-C8/F-A15/F-A16): sometimes the
+  honest move is to ship NO check for a genuinely-untestable claim, not a red one and not a green
+  one either.
 
 ## Held items
 
@@ -2665,4 +2717,19 @@ L1 must satisfy rather than a feature it consumes.
   finding. No writer touched. CYCLE 39 L1: landed ga_ayurdaya's F-A14 contract (PR #1975,
   migration 750) -- next: continue F-A14 for the last untouched asset (ga_prashna), consider
   follow-up passes on ga_structural/ga_sade_sati (partial) or fixing F-A15/F-A16, or ga_positions
+  re-dispatch once #1892 lands.
+- 2026-09-06T03:4xZ -- CYCLE 40 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963/#1964/#1965/#1967/#1968/#1971 confirmed genuinely is:queued; #1827/#1975
+  still legitimately CI-pending, auto-merge armed, not DIRTY/RED. Unit of work: ga_prashna's F-A14
+  integrity_check_sql (PR #1977, migration 751 -- second used in the new range). Two dedicated
+  tables, both UNIQUE-exact, no distinctness conjunct. ga_prashna_judgment genuinely empty on
+  every built chart (dormant disposition R-1) -- deliberately shipped ZERO conjuncts on it rather
+  than an untestable placeholder that couldn't be mutation-proved (an honest absence-of-check,
+  not a red or green one, per D-L1-62). Three conjuncts, all on ga_prashna_lagna's 5 live rows:
+  lagna_rashi domain (12 signs), lagna_degree range (0-30), and a real referential-integrity
+  check against prashna_charts. Caught and fixed a line-wrap regex bug in my own test file (same
+  class as cycles 33/35). No writer touched. THIS CLOSES THE F-A14 CAMPAIGN'S FIRST PASS: all 19
+  L1 assets now carry a real integrity_check_sql. CYCLE 40 L1: landed ga_prashna's F-A14 contract
+  (PR #1977, migration 751) -- next: choose among a follow-up F-A14 pass widening
+  ga_structural/ga_sade_sati coverage, fixing F-A15/F-A16 in their actual writers, or ga_positions
   re-dispatch once #1892 lands.
