@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK: queue advanced to position 27, still none of my 5 PRs merged. 30/40 frozen holds.
+last_updated: 2026-09-06 — MILESTONE: PR #1828 merged (first PR merge this campaign resumption). Remaining PRs progressing well: #1910 (migration 700) at position 13, #1915 at 19, #1923 (migration 701) at 27, #1925 (migration 702) at 76. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1818,3 +1818,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **My own PR #1828 is now at queue position 1!** 25/26 checks passed, one still
   running normally. Should merge soon. Position for #1925 still 78 (separate PR, further back).
+
+- 2026-09-06 — **MILESTONE: first PR merge of this campaign resumption.** `#1828` (bg_yogas writer
+  verdict CLOSED, D-L0-J heartbeat) merged to `main` at 22:57:23Z. Posted to #1713. Remaining PRs:
+  `#1910` (migration 700) position 13, `#1915` position 19, `#1923` (migration 701) position 27,
+  `#1925` (migration 702) position 76 -- all progressing well.
