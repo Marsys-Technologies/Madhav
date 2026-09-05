@@ -143,6 +143,51 @@ evidence against a not-yet-deployed writer fix would bind the analysis to a `sou
 that isn't actually running in production yet, which `assertNirmanaGitCommitMatchesDeployment`
 would reject anyway (source_ref must equal `NIRMANA_DEPLOYED_SHA`).
 
+## CYCLE 4 (C8 v2.3) — `ga_positions` blast-radius statement (C13/D-NATIVE-05)
+
+**PR hygiene:** #1766 and #1827 both clean — nothing to fix (checked `is:queued`/checks before
+starting; no change since cycle 3's note beyond checks finishing).
+
+**Unit of work: produced the C13 blast-radius statement for `ga_positions`/`chart_facts`** —
+mandatory before any dispatch per D-NATIVE-05 ("no session dispatches any build whose asset has
+populated downstream tables... check it yourself") and C13 ("every W2 route decision must include
+a downstream blast-radius statement"). `ga_positions` is `OPEN-PENDING-PIN` on the E-gate (both
+conditions 1+2 clear since cycle 2) but nothing had actually cleared it for W4 dispatch yet.
+
+1. **Cascade closure** (`cascade_check.sql -v table=chart_facts`): one child,
+   `chart_fact_identity` (L1, **IN-LAYER**) — no cross-layer cascade, no adjudication needed.
+2. **No-FK referrer**: `chart_facts_history` (`fact_id` text column, no FK) — but it is a genuine
+   append-only audit/change-log table (`operation`/`old_value`/`new_value`/`build_id` columns) whose
+   PURPOSE is to outlive the current-state rows it describes, and it holds **0 rows for the
+   canonical chart** right now. Not a real orphan risk today; recorded as an honest "populated: no"
+   rather than assumed safe from the table's name alone.
+3. **Scoped the real number, not the naive table-wide one.** The raw cascade query reports
+   `chart_fact_identity` as 270,471 rows *campaign-wide*; that is not what a `ga_positions` rebuild
+   for this chart touches. Verified `ga_positions_writer.py`'s actual delete scope
+   (`_idempotency.py`'s `replace_prior_chart_facts`: `WHERE chart_id = %s AND fact_category =
+   ANY(%s) AND ayanamsha_id = ANY(%s)`, never a bare table truncate) and the writer's real
+   `fact_category` set (`graha_position`, `graha_sign_attributes`). Measured directly: **530
+   `chart_fact_identity` rows** (`chart_fact_identity_fact_id_fkey ... ON DELETE CASCADE`, PK =
+   `fact_id`, a 1:1 parse-decoration companion row per fact) would cascade-delete-then-immediately-
+   reinsert for chart `482012f1`'s positions categories — the writer's own in-layer replacement of
+   its own companion rows, not third-party data.
+4. **Verdict: dispatch is CLEAR.** No cross-layer boundary crossed, no adjudication issue needed.
+   D-NATIVE-05's hold was scoped to "until WP-6 is live" — confirmed live (Conductor's 05:01Z
+   broadcast + C13's own text describing it as already enforcing, not "building now") — so the
+   governing rule for this dispatch is the standing C13 discipline (blast-radius statement + fresh
+   snapshot + `--acknowledge-destroys` when anything would be destroyed), not the blanket hold.
+
+**Decided NOT to also claim a slot and dispatch in this same cycle** (D-L1-24) — checked the
+coordination issue (#1713) live rather than assuming: **L3 claimed a slot for `ka_graha_sancara`
+and L5 claimed one for `mi_vistara`, both within the last few minutes** (14:06–14:07Z), so at most
+1 of 3 slots is free right now (and the day-old ledger note says treat L0 as potentially occupying
+one too — effectively 0–1 free for L1–L5). Claiming the actual dispatch is next cycle's unit:
+confirm a free slot on the ledger, reuse L5's just-taken fresh snapshot
+(`cloudsql-backup:1788617073802`, confirmed SUCCESSFUL 2026-09-05T14:04:33Z) if still fresh enough
+by then or take a new on-demand one, post the SLOT CLAIM comment, dry-run
+`dispatch_nirmana_campaign_wave.py`, review the manifest digest, then `--commit
+--acknowledge-destroys` (530 in-layer rows) with the snapshot ref.
+
 ## E-gate (C2/C10) — measured live 2026-09-05
 
 All five L0 ancestors of L1 are already `asset_frozen` (`bg_kp_sublord_division`, `bg_nakshatra`,
@@ -323,6 +368,15 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   until #1766 merges and deploys (`assertNirmanaGitCommitMatchesDeployment` requires `source_ref`
   to equal the currently-deployed commit).
 
+- **D-L1-24** — C8 v2.3 cycle 4: produced `ga_positions`' C13/D-NATIVE-05 blast-radius statement
+  (full account in the CYCLE 4 section above) — cascade closure IN-LAYER only (`chart_fact_identity`,
+  530 rows scoped to this chart's positions categories, verified against the writer's actual delete
+  SQL rather than the naive table-wide cascade-check count), no-FK referrer (`chart_facts_history`)
+  genuinely empty for this chart. Dispatch is clear; no adjudication needed. Deliberately did NOT
+  also claim a slot/dispatch this cycle — checked #1713 live and found L3 + L5 had claimed slots
+  within the last few minutes, leaving 0–1 free. One bounded unit per C8 v2.3; the slot-claim +
+  dispatch is next cycle's work once occupancy is re-checked fresh.
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
@@ -394,3 +448,12 @@ L1 must satisfy rather than a feature it consumes.
   W2 acceptance events (20/20 HTTP 201, E-gate cond 2 now clear for 11/19 L1 assets) → next: claim
   a run slot and dispatch ga_positions through W4 (the only asset with BOTH E-gate conditions open
   right now), or wait on #1766 merge to unlock the 8 changed assets' acceptance events`.
+- 2026-09-05T14:09Z — **CYCLE 4 (C8 v2.3).** PR hygiene: #1766/#1827 both clean, nothing to fix.
+  Unit of work: produced ga_positions' C13/D-NATIVE-05 blast-radius statement -- cascade closure
+  is IN-LAYER only (chart_fact_identity, scoped-measured 530 rows, not the naive 270,471
+  table-wide count), no-FK referrer (chart_facts_history) genuinely empty for this chart.
+  Dispatch verdict: CLEAR, no adjudication needed. Did not also dispatch this cycle -- #1713 shows
+  L3 and L5 both claimed slots in the last few minutes, 0-1 free; one bounded unit per cycle.
+  CYCLE 4 L1: produced ga_positions blast-radius statement (IN-LAYER, 530 scoped rows, dispatch
+  clear) -- next: re-check slot occupancy on #1713, claim a slot, dry-run then --commit
+  --acknowledge-destroys the ga_positions W4 build with a fresh snapshot ref.
