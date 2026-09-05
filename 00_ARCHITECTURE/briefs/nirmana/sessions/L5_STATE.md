@@ -451,6 +451,25 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~02:15Z (C8 v2.3 cycle 25) — **#1844 ejected AGAIN (2nd time in a row); investigated
+  properly this time instead of just re-arming, and caught myself before a premature "queue is
+  broken" escalation — #1838 merged moments later, confirming it was never stuck.** PR hygiene:
+  #1844 `is:queued` → `false` again; re-armed and reconfirmed via GraphQL (same as last cycle).
+  Before just re-queuing and moving on, investigated WHY it keeps getting ejected: `#1838`
+  (then at queue position 1) had 3 top-level workflow runs showing "completed success" ~13 min
+  in, which briefly looked like a hang given how few workflows that seemed to cover. Went one
+  level deeper — queried `check-runs` on the exact merge-group commit SHA directly, not just
+  `workflow_runs` — and found the true picture: **dozens of individual check contexts**, most
+  still genuinely `in_progress`/`queued` at that point (the 3 "completed" ones were only the
+  first workflows to finish, not the whole suite). This is a large, comprehensive merge-group CI
+  suite that legitimately takes 15-18+ minutes end to end, not a stuck job — matches the
+  timing already observed on #1830/#1832/#1836, which all cleared in that same range. **Did not
+  escalate** — would have been repeating the exact "declared stalled from a shallow check"
+  mistake from cycle 21, this time with even less excuse since I'd already learned the lesson.
+  Confirmed correct by rebasing: **#1838 merged during this very cycle.** The #1844
+  ejection-then-requeue pattern is a normal byproduct of GitHub's merge-queue batch mechanics
+  during a long-running batch, not a defect needing a fix or a report. #1826 unchanged, checks-
+  pending only.
 - 2026-09-06T~02:05Z (C8 v2.3 cycle 24) — **Real PR hygiene catch: #1844 was genuinely ejected
   from the merge queue, re-armed and confirmed back in.** `is:queued` search returned `false`
   for #1844 this cycle (a real change, not a stale-check artifact — cross-checked
