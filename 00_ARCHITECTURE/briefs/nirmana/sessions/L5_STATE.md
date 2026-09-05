@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~14:15Z (C8 v2.3 cycle 141) — **PR hygiene: found and fixed a real
+  CLEAN-but-unqueued case on #1844.** Rebased onto main's 143-commit advance (new tip
+  `0e7b477ff`, #1885 merged); post-push #1844 dropped out of `is:queued` while showing
+  `mergeStateStatus: CLEAN` — checked `autoMergeRequest` directly and found it `false` (not
+  armed at all, unlike the earlier dequeue/re-arm pattern). Re-armed via
+  `gh pr merge 1844 --auto --squash`; confirmed back in via `isInMergeQueue: true`, landed at
+  the back (position 91, expected). #1901→13, #1861→34 (both advanced well). #1826 fresh
+  checks post-rebase, none red yet (still running). #1856/#1869 unchanged.
 - 2026-09-06T~14:05Z (C8 v2.3 cycle 140) — **PR hygiene RED recurrence, root-caused, adjudication
   filed.** #1826's `DB Integration Tests` job failed a SECOND time (2 hours after the first,
   same PR, same job) — this time colliding on `conversation_messages` (was
