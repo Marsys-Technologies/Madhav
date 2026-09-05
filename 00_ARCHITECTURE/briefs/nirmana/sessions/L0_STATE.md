@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — MILESTONE: PR #1828 merged (first PR merge this campaign resumption). Remaining PRs progressing well: #1910 (migration 700) at position 13, #1915 at 19, #1923 (migration 701) at 27, #1925 (migration 702) at 76. 30/40 frozen holds.
+last_updated: 2026-09-06 — Caught and fixed a DIRTY PR (#1969) before it could merge and delete other layers' files (a stale-branch-point artifact, not a real conflict) — closed it, replaced with clean single-commit #1985. #1910/1915/1923/1925 confirmed unaffected, still queued normally. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1823,3 +1823,18 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   verdict CLOSED, D-L0-J heartbeat) merged to `main` at 22:57:23Z. Posted to #1713. Remaining PRs:
   `#1910` (migration 700) position 13, `#1915` position 19, `#1923` (migration 701) position 27,
   `#1925` (migration 702) position 76 -- all progressing well.
+
+- 2026-09-06 — **PR hygiene catch: DIRTY PR fixed before it could do damage.** `#1969` (this
+  branch's own heartbeat-history PR) showed `mergeStateStatus: DIRTY`. Investigated properly
+  rather than blind-rebase: `git diff origin/main feat/nirmana-l0-cycle-resume-6 --stat` revealed
+  the diff would have DELETED `L2_STATE.md`, three migrations (675/714/715), and edits to
+  `cascade_check.sql` -- none of them mine. Root cause: the branch was cut from an OLDER point of
+  `main` (before those files existed), so a full-branch merge/rebase would drag along their
+  apparent "removal." A 33-commit rebase kept hitting the same conflict on every commit (all
+  touched the same append-only `L0_STATE.md`), so instead: created a fresh branch off current
+  `origin/main`, cherry-picked ONLY the file (`git checkout <old-branch> -- L0_STATE.md`), verified
+  the resulting diff touched exactly that one file (561 insertions, 12 deletions, nothing else),
+  committed, opened `#1985` as the clean replacement, armed auto-merge, then closed `#1969` with an
+  explanation pointing to `#1985`. Confirmed `#1910`/`#1915`/`#1923`/`#1925` (separate PRs/branches)
+  were never at risk. This is exactly the "fix any DIRTY (rebase)" contract clause working as
+  intended -- caught before merge, not after.
