@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK: queue still position 31, no PRs merged. 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — IDLE-OK: queue advanced to position 30, no PRs merged. 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1618,3 +1618,5 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges. Self-pacing next wakeup again.
 
 - 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 30, still no PRs of mine merged.
