@@ -49,7 +49,7 @@
         "lel_events"
       ],
       "receipt_count": 15,
-      "writer_inventory_sha256": "9e856a03c9b0ae467d014a5151992d8b9fdeb4a1ce2a7d71b727192a8fe69d3f"
+      "writer_inventory_sha256": "ea465326c6d5114baf6f56dc765a6b38dccb3849c0376a6e78d7417d88cff35b"
     }
   },
   "version": "nirmana-analysis-layer-pins/v1"
