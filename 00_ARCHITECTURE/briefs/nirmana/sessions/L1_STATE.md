@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 33; ga_sensitive_degree F-A14 landed (#1963)
+last_updated: 2026-09-06 — C8 v2.3 cycle 34; ga_structural F-A14 landed, F-A15 discovered (#1964)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -25,7 +25,7 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
   (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
   cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32), 744
-  (`ga_sensitive_degree`, cycle 33) used. 745–749 remain free.
+  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34) used. 746–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1340,6 +1340,52 @@ CYCLE 33 L1: landed `ga_sensitive_degree`'s F-A14 contract (PR #1963, migration 
 continue F-A14 for the remaining 7 assets (ga_structural, ga_yoga, ga_vichara, ga_sade_sati,
 ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 34 (C8 v2.3) — ga_structural's F-A14 contract (migration 745); discovers F-A15, a genuinely-red §N.5 violation shipped honestly rather than avoided
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962
+confirmed genuinely `is:queued`. #1827/#1963 still legitimately CI-pending from last cycle's fresh
+pushes, auto-merge armed, not DIRTY/RED. Nothing to fix.
+
+**Unit of work: F-A14 for `ga_structural`** (migration 745, sixth used in the new 740-749 range).
+This is L1's largest asset by far: `ga_structural_writer.py` is ~7,900 lines covering 57 distinct
+`fact_category`s (per `fact_category_ownership`) across 16 shodasha vargas — argala matrices,
+aspect systems (Parashari/Jaimini/Tajik), dispositor chains, avastha states, karakatva, and more.
+Scoped this bounded first pass to ONE category: `graha_vargottama_amplification_factor`.
+
+Two conjuncts: (a) the amplification factor's domain — the writer's own comment states it is
+"1.25 if vargottama, 1.0 otherwise", no third value legitimate (clean, 0 violations); (b) a
+cross-authority check against `ga_vargas`' own D9 `varga_vargottama_flag` (chart_divisionals,
+§N.5) — while building this, found it **genuinely disagrees on 4/105 live rows** (2 non-canonical
+charts, `surya_siddhanta_classical`/`raman` ayanamshas).
+
+Investigated rather than assumed a formula bug on my own side: `ga_structural`'s
+`_build_shadbala_extension_rows` computes vargottama via its OWN inline re-derivation — a hardcoded
+`navamsha_starts` sign-cycling table plus float degree arithmetic, explicitly commented
+"Simplified: derive from position" — entirely independent of `ga_vargas`' own D9 computation
+(the actual divisional-chart authority, `chart_divisionals.varga_vargottama_flag`). This is a NEW
+§N.5 violation (re-deriving instead of citing the authority), shape-identical to F-A1's original
+discovery ("three L1 assets declare ga_positions and then re-derive positions") but for a different
+asset pair. Filed as **F-A15** (next free F-A number after F-A14).
+
+Followed the F-C8 precedent exactly (cycle 26, migration 658): shipped the CORRECT
+authority-respecting conjunct rather than a narrower one that would avoid catching this — it reads
+genuinely RED today. Verified it is a real detector, not a permanently-broken placeholder, via a
+synthetic post-fix overlay (recomputing `amplification_factor` directly from `ga_vargas`' own D9
+flag) that clears cleanly. Did NOT attempt to fix `ga_structural_writer.py` itself in this cycle —
+making the writer cite the authority instead of re-deriving is a larger, separate unit of work
+(the writer is ~7,900 lines; a change here needs its own careful validation against the other 56
+categories it also touches).
+
+No Python writer touched; `provenance_inventory --check` clean. 6 new textual-contract tests
+(asserting the F-A15 documentation survives, not silently narrowed away); full
+`tests/unit/migrations/` suite: 39 files, 186 passed / 91 skipped, no regressions.
+
+CYCLE 34 L1: landed `ga_structural`'s F-A14 contract (PR #1964, migration 745), discovered and
+documented F-A15 rather than shipping a check narrow enough to hide it — next: continue F-A14 for
+the remaining 6 assets (ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya,
+ga_prashna), consider a future pass fixing F-A15 in `ga_structural_writer.py` itself, or
+`ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1355,7 +1401,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C) |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); **NEW: F-A15 — graha_vargottama_amplification_factor re-derives D9 vargottama instead of citing ga_vargas' authority, 4/105 rows disagree (§N.5)** |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1) |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D) |
@@ -1367,10 +1413,11 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **12/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-33: ga_dashas,
+Cross-cutting: **13/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-34: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
-ga_nakshatra, ga_sensitive, ga_sensitive_degree); `expected_volume_formula` NULL on 6; `ga_vichara`
-is `catalog_status=DRAFT` with 8,249 live rows.
+ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
+other 56 remain a future pass]); `expected_volume_formula` NULL on 6; `ga_vichara` is
+`catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
 
@@ -1785,6 +1832,19 @@ is `catalog_status=DRAFT` with 8,249 live rows.
   row match", but "does the comparison operator's sign convention hold for every value the formula
   can produce" — a formula that looks structurally identical to an already-verified sibling is not
   itself verified until mutation-tested on its own.
+- **D-L1-56** — C8 v2.3 cycle 34: discovered **F-A15** while authoring `ga_structural`'s F-A14
+  contract — `graha_vargottama_amplification_factor` re-derives D9 vargottama via its own inline
+  formula rather than citing `ga_vargas`' authoritative `varga_vargottama_flag` (§N.5), disagreeing
+  on 4/105 live rows (2 non-canonical charts). Followed the F-C8 precedent (D-L1-48, cycle 26)
+  exactly: shipped the CORRECT, authority-respecting conjunct rather than a narrower check that
+  would silently avoid catching it, verified as a genuine (not permanently-broken) detector via a
+  synthetic post-fix overlay that clears cleanly, and did NOT attempt the writer fix itself in the
+  same cycle — `ga_structural_writer.py` is ~7,900 lines touching 56 other categories, and a
+  change there needs its own dedicated validation pass, not a same-cycle side effect of an
+  integrity-contract migration. Also scoped this asset's whole F-A14 pass to just 1 of its 57
+  owned `fact_category`s (the largest asset by far, ~15x more categories than `ga_sensitive`'s
+  already-bounded 18-category-family pass) — the remaining 56 are a future pass, not silently
+  dropped.
 
 ## Held items
 
@@ -2244,3 +2304,20 @@ L1 must satisfy rather than a feature it consumes.
   SQL comment) -- fixed to assert each conjunct's specific shape instead. No writer touched.
   CYCLE 33 L1: landed ga_sensitive_degree's F-A14 contract (PR #1963, migration 744) -- next:
   continue F-A14 for the remaining 7 assets, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T02:4xZ -- CYCLE 34 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962 confirmed genuinely is:queued; #1827/#1963 still legitimately CI-pending, auto-
+  merge armed, not DIRTY/RED. Unit of work: ga_structural's F-A14 integrity_check_sql (PR #1964,
+  migration 745 -- sixth used in the new range), scoped to 1 of this asset's 57 owned
+  fact_categories (graha_vargottama_amplification_factor) -- ga_structural_writer.py is ~7,900
+  lines, by far L1's largest writer. Two conjuncts: amplification_factor domain (1.0 or 1.25 only,
+  clean), and a cross-authority check against ga_vargas' own D9 varga_vargottama_flag (sec.N.5).
+  The second conjunct discovered a NEW genuine defect, filed as F-A15: ga_structural re-derives D9
+  vargottama via its own inline formula (hardcoded navamsha table + float arithmetic, its own
+  comment: "Simplified: derive from position") instead of citing ga_vargas' authority, disagreeing
+  on 4/105 live rows (2 non-canonical charts). Followed the F-C8 precedent (D-L1-48, cycle 26)
+  exactly: shipped the correct conjunct RED rather than narrow it to hide the finding, verified as
+  a genuine detector via a synthetic post-fix overlay that clears cleanly. Did not attempt the
+  writer fix itself this cycle (out of scope, needs its own validation pass across the other 56
+  categories). No writer touched. CYCLE 34 L1: landed ga_structural's F-A14 contract (PR #1964,
+  migration 745), discovered and documented F-A15 -- next: continue F-A14 for the remaining 6
+  assets, consider fixing F-A15 in a future pass, or ga_positions re-dispatch once #1892 lands.
