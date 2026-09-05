@@ -131,6 +131,17 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   projection drop → verdict writer under-production (fix writer, MUST). State file (PR #1800) updated
   + pushed. NEXT: read `extract_yogas_from_corpus`, then bundled D-CND-09 migration; bg_parihara_rules
   W1/W2. Blocked on: nothing for the writer-read/analysis work; job-image deploy only for dispatch.
+- 2026-09-05 — **bg_yogas 4-missing-yogas ROOT CAUSE confirmed (refines D-L0-G).** The 4
+  (`dhana_yoga_house_lords`, `raja_yoga_kendra_trikona`, `sarasvati_yoga`, `vipareeta_raja_yoga`) exist
+  in `brahma_yoga_catalog` (233) but in NO `brahma_ontology` row (any entity_class — verified empty),
+  so not a global-uniqueness collision. They are the test's "4 detector-registry identities": added to
+  the catalog by a separate path while the projection loop (`l0_yogas.py:2234-2313`) iterates only the
+  229 core+corpus `all_yogas`, so ontology/reference stay 229. Design (contract test) intends all
+  233×3. **Fix: include the 4 detector identities in the ontology+reference projection** (MUST). The
+  `source_chunks 0 vs 85` conjunct is separate: never green on original data → needs tracing whether
+  `extract_yogas_from_corpus` should yield the 85 (fix) or the achievable count is <85 (correct the
+  conjunct with derivation). NEXT: locate the detector-registry catalog path; implement projection fix
+  + a test; then bundle into the D-CND-09 migration. Dispatch still blocked on job-image deploy of #1772.
 - 2026-09-05 — **bg_parihara_rules W1/W2 DONE (D-L0-H).** Route **rebuild_only**; volume 449 = 61
   (bg_parihara_rules) + 329 (bg_muhurta_activity_rules) + 59 (bg_muhurta_factor_census), floor exact;
   integrity = migration 644 content-hash (passes). **C13 blast-radius EMPTY** (catalogue-verified: 0
