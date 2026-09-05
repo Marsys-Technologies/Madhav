@@ -37,7 +37,7 @@ class CdlmCell:
     contradicting_pairs_count:  int = 0
     cgm_bridge_edge_seeds:      list[dict] = field(default_factory=list)
     predicted_activation_windows: list[dict] = field(default_factory=list)
-    evolution_gradient_score:   float = 0.0
+    evolution_gradient_score:   float | None = None
 
 
 @dataclass
@@ -62,7 +62,7 @@ class SankramaRecord:
     relationship_type:      str   # 'contagion' | 'conflict'
     linkage_strength:       float
     asymmetry_score:        float
-    trajectory:             str   # 'strengthening' | 'stable' | 'weakening'
+    trajectory:             str | None  # 'strengthening' | 'stable' | 'weakening' | None (gradient unknown)
     bridge_path_jsonb:      dict
     mechanism_text:         str
     source_window_start:    Optional[date]
@@ -132,8 +132,22 @@ def classify_relationship(contradicting_pairs_count: int) -> str:
     return 'conflict' if contradicting_pairs_count > 0 else 'contagion'
 
 
-def _trajectory(evolution_gradient: float) -> str:
-    """SK4: map gradient score to trajectory label."""
+def _trajectory(evolution_gradient: float | None) -> str | None:
+    """SK4: map gradient score to trajectory label, or None when it is unknown.
+
+    §N.7 item 6 -- an honest null beats an invented judgment. The caller used to coerce a
+    missing gradient with `or 0.0`, which lands in the `else` branch below and emits
+    'stable': a favourable-sounding verdict on evidence that does not exist. The upstream
+    L2 column (bodha_cdlm_cells.cell_evolution_gradient_score) is 100% NULL on every chart,
+    so that was not an edge case -- it was the only branch reachable, and all 2,985 rows
+    claimed a trajectory nothing had measured.
+
+    Returning None keeps the two real branches available for when L2 populates the column,
+    and lets the serving layer say "not known" instead of "stable". The DB column is
+    nullable, so the honest value is expressible.
+    """
+    if evolution_gradient is None:
+        return None
     if evolution_gradient > 0.1:
         return 'strengthening'
     elif evolution_gradient < -0.1:
