@@ -1838,3 +1838,13 @@ tested, re-armed → E-gate uncheckable, DB access down 24 cycles; no new capabi
 adjudications → next: watch `#1854`'s re-queue; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~09:40Z` — L4 — **CYCLE 35 (v2.3) — `#1854` legitimately still on its fresh
+pre-queue checks (~3.5 min old, no failures), no action needed. `#1864` now at position 4.
+Steady-state IDLE, 25th consecutive cycle:** PR hygiene clean otherwise, DB access still down,
+no new capability landings or adjudications.
+
+CYCLE 35 L4: IDLE-OK (verified: PR hygiene clean, `#1854` legitimately pre-queue-checking,
+`#1864` near the front; E-gate uncheckable, DB access down 25 cycles; no new capability landings
+or adjudications) → next: watch `#1854`/`#1864` progress; retry E-gate/dispatch dry-run once DB
+access returns; watch `#1885`'s merge; F1 remains deferred.
+
