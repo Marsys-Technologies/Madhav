@@ -1766,3 +1766,13 @@ progress, not confirmed stuck, will re-check next cycle; E-gate uncheckable, DB 
 cycles; no new capability landings or adjudications) → next: re-verify `#1846`'s progress; retry
 E-gate/dispatch dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~08:30Z` — L4 — **CYCLE 28 (v2.3) — `#1846` merged (confirms last cycle's job-log
+read was correct, not stuck). `#1857` now at merge-queue position 1 — closest to landing yet.**
+PR hygiene clean, all 11 checked own PRs genuinely queued and advancing. DB access still down
+(18th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 28 L4: IDLE-OK (verified: PR hygiene clean, `#1846`'s merge validates last cycle's
+diagnostic, `#1857` now at position 1; E-gate uncheckable, DB access down 18 cycles; no new
+capability landings or adjudications) → next: watch `#1857`'s merge; retry E-gate/dispatch
+dry-run once DB access returns; watch `#1885`'s merge; F1 remains deferred.
+
