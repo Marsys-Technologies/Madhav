@@ -67,8 +67,9 @@ class EnrichmentContext:
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
         Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
         Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
-    vedha_rules: list of dicts with keys {graha, transit_to_house, vedha_house}
-        Sourced from bg_transit_rules WHERE rule_type='vedha'.
+    vedha_rules: list of dicts with keys {graha, window_start, window_end}
+        Sourced from kala_vedha_gochara WHERE vedha_kind='house_vedha', pinned to
+        ayanamsha_id='lahiri_chitrapaksha'.
     tajika_year_lords: list of dicts with keys
         {varsha_year, varshesha, muntha, varsha_start, varsha_end}
         Sourced from l1_tajik_varsha_year_lords for the current chart, pinned to
@@ -247,37 +248,50 @@ def _c10_station_score(
 
 def _c11_vedha_factor(
     planet: str,
-    transit_house: Optional[int],
+    peak_date: Optional[Any],
     ctx: EnrichmentContext,
 ) -> float:
     """
     C11: vedha_cancellation — NECESSARY-SIDE modulator (not supporting).
-    Returns 0.0 when a vedha rule fully cancels this planet's transit,
-    0.5 when the vedha planet is present in the vedha house (partial),
-    1.0 (neutral) when no vedha applies (no cancellation).
+    Returns 0.3 when peak_date falls inside a real house-vedha window for
+    this planet, 1.0 (neutral) when no vedha applies (no cancellation).
 
     Enters necessary_conditions as (1 - 0.0) = 1.0 (no vedha) or lower.
-    Classical source: Phaladeepika Ch.26 Gochara Vedha.
+    Classical source: BPHS Ch.29 Gochara Phala (house vedha), matching
+    kala_vedha_gochara's own classical_citation.
 
-    CR-102 (2nd bug, T-6 fix): `bg_transit_rules.graha` is seeded lowercase
-    ("saturn", "jupiter", ...; see brahmagyan/l0_transit.py) while callers in
-    this module pass capitalized planet names ("Saturn", "Jupiter", ... —
-    see `_resolve_transit_planet`). The comparison below is case-normalized
-    so a real fetched vedha rule is never missed on case alone. `transit_house`
-    itself must ALSO be in the correct house-FROM-MOON reference frame — see
-    `_house_from_moon` below and its callers in mode_a_search/mode_b_sweep
-    (the CR-102 primary bug: both call sites used to pass the transiting
-    planet's raw rasi sign number here instead).
+    NIRMĀṆA L3-W3 (F-SANGAM-5, §N.8). This used to take an abstract
+    `transit_house` (a house-FROM-MOON number, CR-102) and match it against
+    house-rule tuples fetched from `bg_transit_rules WHERE rule_type='vedha'`
+    — a filter value that does not exist on that table, so this factor was
+    permanently 1.0 (neutral) on every window, on every chart: the
+    NECESSARY-side veto never fired at all. `kala_vedha_gochara` (the real,
+    populated, per-chart source) instead stores precomputed
+    [window_start, window_end) DATE ranges per graha where house-vedha
+    genuinely applies — an abstract house number is no longer the right
+    question; "does this transit's peak fall inside one of this planet's
+    real vedha windows" is. Fixed by switching to date-range containment
+    matching, the same pattern already used for C12 (_c12_tajika_score).
+
+    Case-normalized comparison retained defensively (kala_vedha_gochara.graha
+    is stored Title-case today, matching `_resolve_transit_planet`'s output,
+    but a case mismatch must never silently drop a real vedha window).
     """
-    if not ctx.vedha_rules or transit_house is None:
+    if not ctx.vedha_rules or peak_date is None:
         return 1.0  # no data → no vedha → neutral (1.0)
     planet_norm = (planet or '').strip().lower()
     for rule in ctx.vedha_rules:
         rule_planet = rule.get('graha') or rule.get('planet')
-        to_house = rule.get('transit_to_house') or rule.get('to_house')
-        vedha_h = rule.get('vedha_house')
         rule_planet_norm = (rule_planet or '').strip().lower()
-        if rule_planet_norm == planet_norm and to_house == transit_house and vedha_h:
+        if rule_planet_norm != planet_norm:
+            continue
+        window_start = rule.get('window_start')
+        window_end = rule.get('window_end')
+        if window_start is None or window_end is None:
+            continue
+        start_date = window_start.date() if hasattr(window_start, 'date') else window_start
+        end_date = window_end.date() if hasattr(window_end, 'date') else window_end
+        if start_date <= peak_date <= end_date:
             return 0.3  # vedha present → strongly damp
     return 1.0
 
@@ -1157,14 +1171,16 @@ def mode_a_search(
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
-        # C11 vedha: NECESSARY side, not supporting.
-        # CR-102 fix: transit_house must be house-FROM-MOON, not the raw rasi
-        # sign number (see _house_from_moon docstring). Falls back to the old
-        # (bugged) sign-number behavior only when moon_sign wasn't supplied.
+        # C11 vedha: NECESSARY side, not supporting. F-SANGAM-5 (L3-W3): now
+        # date-range matching on peak_dt against kala_vedha_gochara windows —
+        # no longer an abstract house number, so transit_house/_house_from_moon
+        # below are DEAD as of this fix (kept computed, not deleted, to avoid
+        # widening this fix's blast radius into moon_sign_idx/CR-102's other
+        # consumers — flagged as a follow-up cleanup, not silently left unexplained).
         transit_house = _house_from_moon(transit_sign, moon_sign_idx)
         if transit_house is None:
             transit_house = transit_sign
-        vedha_factor  = _c11_vedha_factor(planet, transit_house, ctx)
+        vedha_factor  = _c11_vedha_factor(planet, peak_dt, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
@@ -1379,10 +1395,12 @@ def mode_b_sweep(
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
         # CR-102 fix (see mode_a_search's identical fix + _house_from_moon docstring).
+        # F-SANGAM-5 (L3-W3): transit_house is now DEAD below — see mode_a_search's
+        # matching comment; kept computed, not deleted, same follow-up-cleanup reason.
         transit_house = _house_from_moon(transit_sign, moon_sign_idx)
         if transit_house is None:
             transit_house = transit_sign
-        vedha_factor = _c11_vedha_factor(planet, transit_house, ctx)
+        vedha_factor = _c11_vedha_factor(planet, peak_dt, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
