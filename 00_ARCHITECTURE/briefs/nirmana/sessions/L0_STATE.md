@@ -1164,3 +1164,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `--dry-run` with a fake UUID — resolves to executor identity, produces valid JSON. NEXT: keep
   polling #1851; when it merges, the retry is now purely mechanical (dispatch → capture run_id →
   `authorize_build_run.sh` → done), no more schema lookups eating into the window.
+- 2026-09-05 — **Cycle 40: IDLE-OK.** PR hygiene: `#1828` clean, still pending own checks;
+  `#1851` still cleanly `is:queued`, not merged. Nothing to fix. #1713: L1 confirmed our
+  `bg_doshas` run completed and 0/3 slots occupied — no new info for L0. Nothing else changed.
