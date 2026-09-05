@@ -451,6 +451,28 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-05T~14:5xZ — L3-W4/W3 — correction absorbed, held item confirmed STILL held (not
+  a new action, but load-bearing): re-checked `L2_STATE.md` on `origin/main` before touching the
+  MSR re-run (conductor-2b's earlier cross-session "your kala_convergence hold is LIFTED"
+  message, acted on nowhere yet, is now SUPERSEDED). The Conductor traced the FK closure one hop
+  further than either L2 or I had: `kala_convergence` → `phala_anchors` → `phala_pramana`/
+  `phala_sankrama`/`phala_sodhana`/`phala_suddha_sodhana` — **true blast radius 864,733 rows /
+  12 tables / 3 layers**, not the 3,708/5-table figure L4 confirmed against. **Ruled order:
+  L2's MSR rebuild goes FIRST (gated on a confirmed-RESTORABLE snapshot of all 12 tables, not
+  merely taken); L3's re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) follows AFTER, as
+  scheduled work — still not mine to start.** `build_runs` independently confirms no `bo_laksana`
+  run has landed today (last entry 2026-08-10). Recording this so a future cycle doesn't
+  re-trigger the MSR chain off the stale "lifted" message — the hold is real and current;
+  verify `L2_STATE.md`'s HELD ITEMS section fresh each time before touching this, don't trust a
+  cached cross-session note.
+  PR hygiene: #1846 still pending CI (no failures yet, not actionable); #1801 still `is:queued`.
+  Also noted `codex/nirmana-conductor-dispatch-schema-fix` (#1838, queued) — the Conductor's fix
+  for my #1833 filing, independently reproducing my exact finding (ka_graha_sancara's dry run
+  now correctly reaches "no build obligation" instead of the schema error) — nothing for me to
+  do there, Conductor-owned.
+  **Next action:** with the MSR chain genuinely blocked and #1846 not yet deployed, this cycle's
+  unit picks up unheld, independent W3 backlog instead (M12 orphan `era_slice_key` rows / M1's
+  two zero-row fact reads) — see below.
 - `2026-09-05T~14:4xZ — L3-W4 — F-L3-15 closed: ka_graha_sancara.health_probe authored and
   PR'd. PR hygiene: #1801 still genuinely `is:queued`, nothing actionable (also picked up 5
   more campaign PRs queuing around it — unrelated lanes). This unit's own branch: switched to a
