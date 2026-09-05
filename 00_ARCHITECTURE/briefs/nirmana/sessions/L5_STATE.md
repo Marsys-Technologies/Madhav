@@ -451,6 +451,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~04:07Z (C8 v2.3 cycle 35, part 2) — **Real movement.** #1843 merged (main's tip
+  is now `6be9f5302`, 36 commits ahead of the last-observed tip across the shared queue — other
+  lanes' merges too, not just mine). Rebased+pushed onto it. **#1844 (my own migration-692 PR)
+  is now at merge queue position 1, `AWAITING_CHECKS`** — first time any of my own PRs has led
+  the queue. #1851 advanced to 4, #1861 to 16, #1873 to 29. Watching #1844's checks next cycle;
+  once it merges, `mi_vistara`'s output_digest_spec is live and one more piece of #1840 clears
+  (still need #1851 merged too, for the dispatch duplicate-guard fix, before a rebuild retry).
 - 2026-09-06T~04:05Z (C8 v2.3 cycle 35) — **IDLE-OK, verified.** PR hygiene: #1844 still
   `is:queued` true; #1826 still pending-checks-only (new run, no red). Front-of-queue #1843
   (position 1, L2) has all 3 top-level merge-group workflows now `completed success` — should
