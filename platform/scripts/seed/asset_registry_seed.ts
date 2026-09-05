@@ -3287,9 +3287,36 @@ export const ASSET_REGISTRY_UPSERT_SQL = `INSERT INTO asset_registry (
   -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
   -- irreversible by the seed; only an explicit native-authorized migration
   -- can reverse it.
-  catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
-                        THEN asset_registry.catalog_status
-                        ELSE EXCLUDED.catalog_status END,
+  --
+  -- CURRENT guard (NIRMANA issue #1807, same defect class as #1757/PR #1762).
+  -- A DRAFT->CURRENT sweep is migration-governed campaign work, and the seed
+  -- must not revert it. Measured 2026-09-05: the seed literals disagreed with
+  -- production for 45 assets across L0/L2/L3/L4, so a routine runSeed() would
+  -- have silently returned four layers' already-merged sweeps to DRAFT -- and
+  -- the Nirmana cockpit filters on this column, so those assets would simply
+  -- vanish from the operator surface with nothing failing.
+  --
+  -- This is the SAME shape the RETIRED guard below already solves, and the
+  -- same shape migration 294 swept once by hand only for the condition to
+  -- return (D-CND-13: a column whose DEFAULT is the wrong answer for the
+  -- common case is a defect in the schema, not in the callers that forget it).
+  -- PR #1762 made the volume fields migration-governed for exactly this
+  -- reason and did not cover catalog_status; this closes that gap.
+  --
+  -- A CURRENT row therefore stays CURRENT. RETIRED stays RETIRED. Only a
+  -- genuinely new row takes the seed's literal, and only a migration can move
+  -- a row backwards.
+  catalog_status = CASE
+                     WHEN asset_registry.catalog_status = 'RETIRED'
+                       THEN asset_registry.catalog_status
+                     WHEN asset_registry.catalog_status = 'CURRENT'
+                       THEN asset_registry.catalog_status
+                     ELSE EXCLUDED.catalog_status END,
+  -- is_active is deliberately NOT extended to the CURRENT case. RETIRED
+  -- implies is_active=false, so preserving it there is part of the same
+  -- one-way transition; is_active is otherwise a field the seed legitimately
+  -- owns and no campaign migration corrects. Guarding it here would freeze a
+  -- column to fix a different one.
   is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
                    THEN asset_registry.is_active
                    ELSE EXCLUDED.is_active END,
