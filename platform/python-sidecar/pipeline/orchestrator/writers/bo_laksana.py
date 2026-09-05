@@ -1343,7 +1343,9 @@ def _load_vichara_divergence_signals(
             "benefic" if (value_num is not None and float(value_num) > 0) else "neutral"
         )
         signals.append({
-            "signal_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_signal_ids()
+            # before any write; see #1804. Never reaches the database.
+            "signal_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": ayanamsha_id,
             "build_id": build_id,
@@ -2403,7 +2405,8 @@ def _build_signal_row(
 
     return {
         # Identity
-        "signal_id":                                str(uuid.uuid4()),
+        # Placeholder only -- derived in _batch_insert (#1804).
+        "signal_id":                                None,
         "chart_id":                                 chart_id,
         "ayanamsha_id":                             aya,
         "build_id":                                 build_id,
@@ -2877,7 +2880,8 @@ def _build_navamsha_cross_check_signals(
         computed_salience = round(salience_base, 6)
 
         row: dict = {
-            "signal_id":                                str(uuid.uuid4()),
+            # Placeholder only -- derived in _batch_insert (#1804).
+            "signal_id":                                None,
             "chart_id":                                 chart_id,
             "ayanamsha_id":                             ayanamsha_id,
             "build_id":                                 build_id,
@@ -3078,8 +3082,90 @@ DO NOTHING
 _BATCH_SIZE = 200
 
 
+def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
+    """Replace each row's signal_id with its DERIVED identity. Returns the collapse count.
+
+    Nirmāṇa #1804 (D-NATIVE-05 action 8; D-CND-11 as amended there).
+    signal_id was randomly generated at three emit sites, so every rebuild minted
+    fresh identities for the same signals. (Described rather than quoted: the
+    guard in test_bo_laksana_signal_identity.py greps this file lexically for a
+    random-id call beside `signal_id`, and cannot tell prose from an emit site --
+    the same reason main's `bo_laksana` comment describes the old
+    corroboration-count expression instead of reproducing it.) That is the
+    mechanism behind the orphaning D-NATIVE-05 §5 assigns dispositions for:
+    bodha_triangulation holds 143 dangling references today because the array
+    kept ids a later run replaced.
+
+    The identity is computed by `bodha_signal_identity()` in migration 660 —
+    **the single source of truth** — and never reimplemented here. That is
+    deliberate and it is L4's pattern from #1754: a Python copy of the algorithm
+    is free to drift from the SQL one, and a drifted identity function is
+    indistinguishable from no identity function at all.
+
+    It is assigned back onto the row dicts rather than computed inside the INSERT
+    because the dicts outlive the insert: `bo_laksana` issues post-insert UPDATEs
+    keyed on `row["signal_id"]` (see the ratification and valence passes below).
+    Had the database derived one identity while Python held a uuid4, those updates
+    would have matched **zero rows, silently** — manufacturing the exact orphan
+    class this change exists to remove.
+
+    One round-trip for the whole substep, not one per batch.
+    """
+    if not rows:
+        return 0
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "signal_type_id": row.get("signal_type_id"),
+            "varga_id": row.get("varga_id"),
+            "configuration_jsonb": row.get("configuration_jsonb"),
+        }
+        for index, row in enumerate(rows)
+    ]
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT (e->>'i')::int AS i,
+                   bodha_signal_identity(
+                     (e->>'chart_id')::uuid,
+                     e->>'ayanamsha_id',
+                     e->>'signal_type_id',
+                     e->>'varga_id',
+                     e->'configuration_jsonb'
+                   )::text AS sid
+              FROM jsonb_array_elements(%s::jsonb) AS e
+            """,
+            [json.dumps(payload, default=str)],
+        )
+        for index, sid in cur.fetchall():
+            rows[index]["signal_id"] = sid
+
+    # §N.8: report the collapse honestly rather than assume none. Two rows sharing
+    # a derived identity ARE the same signal by the #1804 definition, so collapsing
+    # them is correct — hiding it is not. Measured at migration time the tuple is
+    # exactly unique (150,150 rows / 150,150 identities across all three charts),
+    # so a non-zero count here is new information and worth a loud line.
+    distinct_ids = len({row["signal_id"] for row in rows})
+    collapsed = len(rows) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_laksana: %d of %d signal rows collapsed onto an existing deterministic "
+            "identity (same signal by the #1804 definition). Expected 0 — the identity "
+            "tuple measured exactly unique on all three charts at migration 660.",
+            collapsed, len(rows),
+        )
+    return collapsed
+
+
 def _batch_insert(conn: Any, rows: list[dict]) -> int:
     """Batch insert using executemany (one round-trip per batch). Transaction owned by orchestrator — no commit here."""
+    # #1804: derive every signal_id before anything is written. Placed here, at the
+    # single insert path, rather than at the three emit sites -- the emit sites can
+    # multiply, this cannot be bypassed, and a row that reaches the database with a
+    # uuid4 is precisely the defect.
+    assign_deterministic_signal_ids(conn, rows)
     inserted = 0
     with conn.cursor() as cur:
         for i in range(0, len(rows), _BATCH_SIZE):
@@ -3620,6 +3706,119 @@ def _fetch_graha_centrality(conn: Any, chart_id: str, ayanamsha_id: str) -> dict
     return {str(r["node_subject"]): r for r in rows}
 
 
+
+# ── NIRMĀṆA L2-W3 (D-SYNTHESIS): the three cross-system rollups ───────────────
+#
+# WHY THESE LIVE IN THE RERANK PASS AND NOT IN bo_laksana ITSELF
+#
+# All three were 100% NULL on 150,150 production rows, bound as literal `None` at
+# every write site. Populating them in bo_laksana is impossible, not merely awkward,
+# and the reason is DAG order:
+#
+#   * `contradicts_signals_array` denormalises `bodha_contradictions`, which is written
+#     by bo_karanajala (sort_order 3) — AFTER bo_laksana (1). At bo_laksana's own build
+#     time the source table holds the PREVIOUS generation's rows or nothing at all.
+#   * `system_convergence_count` and `cross_system_consensus_count` are computed over
+#     the COMPLETE signal set for a (chart, ayanamsha). Six satellite writers
+#     (sort_order 19-23) insert into bodha_msr_signals after bo_laksana, so a count
+#     taken at bo_laksana time would silently omit their 149 rows — and those are the
+#     rarest classes, i.e. the ones a convergence count is most interesting about.
+#
+# bo_laksana_rerank (sort_order 24, moved there by migration 660 so it follows every
+# MSR writer) is the only point in the DAG where the complete signal set and its
+# downstream contradiction rows both exist. That the migration moved it for a
+# different reason — it UPDATEs rows the satellites INSERT — and the reason turns out
+# to be the same one, is worth noting rather than treating as luck.
+#
+# COST NOTE: the two subject-derived columns are written by ONE combined UPDATE rather
+# than two. This table's 20 indexes (3 GIN) make any UPDATE a full-row rewrite —
+# bo_laksana.py's own percentile note records 600s+ for one scalar column over ~28K
+# rows — so two statements would pay that cost twice for the same rows.
+
+_SYNTHESIS_ROLLUP_SQL = """
+WITH sig AS (
+  SELECT s.signal_id, s.signal_tradition, cf.fact_subject
+    FROM bodha_msr_signals s
+    JOIN chart_facts cf
+      ON cf.fact_id = ANY(s.constituent_facts_array)
+     AND cf.chart_id = s.chart_id
+     AND cf.ayanamsha_id = s.ayanamsha_id
+   WHERE s.chart_id = %(chart_id)s AND s.ayanamsha_id = %(aya)s
+), subj AS (
+  SELECT fact_subject, count(DISTINCT signal_tradition) AS n_trad
+    FROM sig GROUP BY 1
+), pairs AS (
+  SELECT DISTINCT a.signal_id, b.signal_id AS other_id
+    FROM sig a JOIN sig b USING (fact_subject)
+   WHERE b.signal_id <> a.signal_id
+), conv AS (
+  SELECT signal_id, count(*)::int AS n FROM pairs GROUP BY 1
+), cons AS (
+  SELECT sig.signal_id, max(subj.n_trad)::int AS n_trad
+    FROM sig JOIN subj USING (fact_subject) GROUP BY 1
+)
+UPDATE bodha_msr_signals m
+   SET system_convergence_count     = COALESCE(conv.n, 0),
+       cross_system_consensus_count = cons.n_trad
+  FROM cons LEFT JOIN conv USING (signal_id)
+ WHERE m.signal_id = cons.signal_id
+   AND m.chart_id = %(chart_id)s AND m.ayanamsha_id = %(aya)s
+"""
+
+_CONTRADICTS_SQL = """
+WITH pairs AS (
+  SELECT signal_a_id AS sid, signal_b_id AS other FROM bodha_contradictions
+   WHERE chart_id = %(chart_id)s AND ayanamsha_id = %(aya)s
+  UNION ALL
+  SELECT signal_b_id, signal_a_id FROM bodha_contradictions
+   WHERE chart_id = %(chart_id)s AND ayanamsha_id = %(aya)s
+), agg AS (
+  SELECT sid, array_agg(DISTINCT other) AS arr FROM pairs GROUP BY sid
+)
+UPDATE bodha_msr_signals m
+   SET contradicts_signals_array = agg.arr
+  FROM agg
+ WHERE m.signal_id = agg.sid
+   AND m.chart_id = %(chart_id)s AND m.ayanamsha_id = %(aya)s
+"""
+
+
+def _populate_synthesis_rollups(conn: Any, chart_id: str, ayanamsha: str) -> tuple[int, int]:
+    """Populate the three D-SYNTHESIS cross-system columns for one ayanamsha.
+
+    Returns (rows_with_convergence_and_consensus, rows_with_contradictions).
+
+    THE STORAGE CONTRACT, which is three-way and deliberately so:
+
+      * a signal whose constituent facts resolve AND that shares a fact_subject with
+        another signal  -> the measured count;
+      * a signal whose facts resolve and that shares no subject  -> `0`. A MEASURED
+        zero: this signal genuinely stands alone in the chart, which is real
+        information about it;
+      * a signal with NO resolvable constituent facts  -> left NULL, untouched. Nothing
+        was checked, so nothing is claimed.
+
+    Collapsing the last two into a single `0` is the defect the campaign's standing
+    NULL-not-empty convention exists to prevent (ruling #1720): a reader could not tell
+    "this signal converges with nothing" from "this signal's facts could not be
+    resolved". The UPDATE joins through `cons`, which only contains signals with
+    resolvable facts, so the third population is never touched rather than being
+    explicitly skipped — the honest outcome falls out of the join.
+
+    `contradicts_signals_array` is likewise left NULL, never `'{}'`, on
+    non-participating rows. bo_upaya probes this column and reads an empty array as a
+    MEASURED "no contradictions found", which would silently enable a term that has no
+    evidence behind it (bo_upaya.py's own source_available check).
+    """
+    params = {"chart_id": chart_id, "aya": ayanamsha}
+    with conn.cursor() as cur:
+        cur.execute(_SYNTHESIS_ROLLUP_SQL, params)
+        rollup_rows = cur.rowcount or 0
+        cur.execute(_CONTRADICTS_SQL, params)
+        contradiction_rows = cur.rowcount or 0
+    return rollup_rows, contradiction_rows
+
+
 @register("bo_laksana_rerank")
 class BoLaksanaRerankWriter(WriterBase):
     """Post-CGM structural re-rank pass (CR-84) + PARK-#4 valence pickup.
@@ -3638,8 +3837,16 @@ class BoLaksanaRerankWriter(WriterBase):
         total_rerank = 0
         total_park4_reclaimed = 0
         total_park4_remaining = 0
+        total_rollup = 0
+        total_contradicts = 0
 
         for ayanamsha in CANONICAL_AYANAMSHAS:
+            # NIRMĀṆA L2-W3 (D-SYNTHESIS, ruling #1720). See the block above this class
+            # for why these three columns can only be computed here.
+            rollup_n, contradicts_n = _populate_synthesis_rollups(conn, chart_id, ayanamsha)
+            total_rollup += rollup_n
+            total_contradicts += contradicts_n
+
             centrality_by_graha = _fetch_graha_centrality(conn, chart_id, ayanamsha)
 
             # ── CR-84: structural_role from real CGM centrality ──────────────
@@ -3753,6 +3960,8 @@ class BoLaksanaRerankWriter(WriterBase):
             notes=(
                 f"structural_role_updated={total_rerank};"
                 f"park4_reclaimed={total_park4_reclaimed};"
-                f"park4_still_keyword_heuristic={total_park4_remaining}"
+                f"park4_still_keyword_heuristic={total_park4_remaining};"
+                f"synthesis_rollup_rows={total_rollup};"
+                f"contradicts_array_rows={total_contradicts}"
             ),
         )
