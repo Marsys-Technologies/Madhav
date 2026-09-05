@@ -451,6 +451,15 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~01:15Z (C8 v2.3 cycle 22) — **IDLE-OK, verified — and the correction from last
+  cycle is confirmed accurate: `main` advanced (#1836 merged), queue positions for all of
+  #1844/#1851/#1861/#1873 moved forward by exactly one each** (9→8, 12→11, 24→23, 37→36),
+  re-checked via the correct `mergeQueue` GraphQL query this time. PR hygiene: #1844 still
+  queued; #1826 checks-pending only. #1869 still 3 comments, no `chart_grants` response. No new
+  E-gate movement. Nothing actionable — the queue is healthy and doing exactly what a 40-deep,
+  ~10-min-per-PR serial queue should do; my position in it is a wait, not a defect.
+  **Next cycle: same mergeQueue position check** — steady forward movement each cycle is the
+  healthy signal; only worth acting on if positions stop advancing or #1869 gets a response.
 - 2026-09-06T~01:00Z (C8 v2.3 cycle 21) — **Corrected my own prior nudge: #1851/#1861/#1873
   were never actually stalled — they're properly queued (positions 12/24/37 of 40), just behind
   a genuinely slow, actively-processing 40-deep merge queue.** PR hygiene: #1844 confirmed
