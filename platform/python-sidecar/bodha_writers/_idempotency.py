@@ -52,7 +52,40 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
         return 0
     deleted = 0
     for cid in _distinct(rows, "chart_id"):
-        # Delete all child tables referencing these signals first (FKs are NO ACTION).
+        # ⚠ EVERY FK onto bodha_msr_signals IS `ON DELETE CASCADE` — NOT `NO ACTION`.
+        #
+        # This comment previously said "FKs are NO ACTION". It was false, and it is the
+        # single line that propagated a campaign-wide misreading: adjudication #1748
+        # concluded from it that no rebuild hold was warranted, and that conclusion was
+        # ratified before #1770 checked pg_constraint directly. Verified:
+        # `SELECT conrelid::regclass, confdeltype FROM pg_constraint
+        #   WHERE contype='f' AND confrelid='bodha_msr_signals'::regclass`
+        # returns confdeltype='c' (CASCADE) for all eight.
+        #
+        # The explicit deletes below cover only this layer's OWN children
+        # (bodha_signal_embeddings, bodha_contradictions). Everything else Postgres
+        # removes silently, and the closure crosses two more layers:
+        #
+        #   bodha_msr_signals → kala_activation      672,551   (L3)
+        #                     → kala_convergence      35,365   (L3) → phala_anchors (L4)
+        #                                                              → phala_pramana
+        #                                                              → phala_sankrama
+        #                                                              → phala_sodhana
+        #                                                              → phala_suddha_sodhana
+        #                     → kala_darshana          1,500   (L3)
+        #                     → kala_obstruction       1,283   (L3)
+        #                     → kala_bhavishya           200   (L3)
+        #
+        # Measured transitive blast radius of one MSR rebuild: 864,733 rows across 12
+        # tables in three layers, including phala_anchors — the prediction-provenance
+        # table D-CND-04 holds ph_nimitta rebuilds to protect. An L2 rebuild reaches it
+        # through the wall while that hold guards the front door.
+        #
+        # D-CND-15 (standing, #1770): before any rebuild_only dispatch, the owning
+        # session must enumerate the transitive CASCADE closure of every table its
+        # writer deletes from, and HOLD if it crosses a layer boundary. A §N.3
+        # delete-then-insert is "in-layer" only if the FKs say so. Here they said the
+        # opposite of this comment.
         child_scope = (
             "SELECT signal_id FROM bodha_msr_signals"
             " WHERE chart_id = %s AND signal_type_id = ANY(%s) AND ayanamsha_id = ANY(%s)"
@@ -106,9 +139,22 @@ def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str,
             "owned_signal_type_classes allowlist — refusing to fall back to a "
             "blanket delete (see D-1.5b bo_sudarshana data-loss postmortem)."
         )
-    # Delete all child tables referencing bodha_msr_signals first (all FKs are
-    # NO ACTION), scoped to signal_id via the same owned-classes subquery so
-    # child rows belonging to OTHER writers' signals are never touched either.
+    # Scoped to signal_id via the same owned-classes subquery so child rows belonging
+    # to OTHER writers' signals are never touched either.
+    #
+    # ⚠ These two explicit deletes are NOT the whole story, and the comment that used to
+    # stand here said they were. It read "all FKs are NO ACTION". Every FK onto
+    # bodha_msr_signals is `ON DELETE CASCADE` (pg_constraint.confdeltype='c', all
+    # eight). See the full closure and its measured row counts at the sibling warning in
+    # replace_prior_msr_signals above: one MSR rebuild removes 864,733 rows across 12
+    # tables in three layers, only 150,126 of which are deleted by the statements below.
+    # The rest Postgres removes without a word.
+    #
+    # A comment asserting the opposite of the schema, directly above code whose safety
+    # depends on it, is how adjudication #1748 concluded that no rebuild hold was
+    # warranted — and how that conclusion came to be ratified. Corrected under #1770.
+    # D-CND-15 applies: enumerate the transitive CASCADE closure before any rebuild
+    # dispatch, and hold if it crosses a layer boundary.
     child_scope = (
         "SELECT signal_id FROM bodha_msr_signals"
         " WHERE chart_id = %s AND ayanamsha_id = %s AND signal_type_class = ANY(%s)"
