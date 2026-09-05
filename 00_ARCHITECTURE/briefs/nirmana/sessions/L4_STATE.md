@@ -54,7 +54,7 @@ your `nirmana-adjudication` issues → continue.
 | `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **D-CND-04 hold LIFTED (2026-09-05, verified live)** — still E-gate-blocked on ancestors + D-NATIVE-05 | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity, SHIPPED + live-verified) |
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
 | `ph_pratikara` | **changed** | W2 done → **W3-3d** | wave 1 · 40/49 unfrozen | — | 7 MUST; **1/7 shipped** (F-3.4 degenerate-anchor, #1831); 6 remain incl. the hard-floor citation fabrication; needs a rerun **after** all fixes land |
-| `ph_rectification` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 1 MUST: `load_bearing: true` on a fit that is 0.0000 across all 95 scored candidates |
+| `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: 250 rows (10%) destroyed by a stale domain map; `trajectory` constant from an `or 0.0` |
 | `ph_sodhana` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | detector-integrity defects + a severity-inverting sort that returns **critical last** |
 | `ph_suddha_sodhana` | **changed** | W2 done | wave 2 · 39/48 unfrozen | — | the layer's cleanest asset; `changed` for C12 + a silent classify-clean path |
@@ -545,4 +545,56 @@ CYCLE L4: PR hygiene clean → shipped #1831 (`ph_pratikara` F-3.4, domain-match
 512/536 obstructions now honestly NULL instead of one wrong constant anchor) → next: watch #1791
 CI + #1831 merge, then continue `ph_pratikara`'s remaining MUSTs or move to `ph_pramana`/
 `ph_rectification`/`ph_phaladesa`.
+
+`2026-09-05T~20:35Z` — L4 — **cycle: PR hygiene (re-queued a dropped-from-queue PR) → W3-3e
+shipped, `ph_rectification`'s sole MUST (F3 discrimination gate) — fully closes this asset's W2
+findings.**
+
+**PR hygiene:** `is:queued` showed #1791 now genuinely queued (CLEAN, made it through CI); #1808
+had **dropped out of the queue** with no error of its own (`mergeStateStatus: CLEAN`, not
+`is:queued` — a sibling PR merging ahead likely invalidated its queue slot) — re-armed with
+`gh pr merge --auto`, confirmed back in `is:queued`. #1831 was legitimately `pending` CI (no
+RED/DIRTY) — left alone correctly.
+
+**The unit:** fixed F3 — `judgment_flags()` (`services/mimamsa/lel_calibration.py`, **shared with
+L5**, docstring explicitly forbids reshaping without a coordinated migration) computes
+`load_bearing` as a pure function of `event_count` alone, before `win_margin` exists (that only
+appears once `best` is selected, downstream of the `judgment_flags()` call). Measured:
+`win_margin=0.0000` on all 95 canonical-chart rows, `calibration_state='calibrated'`,
+`load_bearing=true`. Fixed entirely at **this writer's own call site**
+(`_apply_discrimination_gate()`), not inside the shared module — respects the "shared surface, be
+careful" instinct without needing an adjudication issue, since the change is additive-only at a
+private call site and touches zero shared code.
+
+**Traced the defect to its structural root, not just the symptom** — `score_candidate()` only ever
+computes a non-null score when `lagna_stable=True`, which by construction means the candidate's
+sign equals the reference (offset-0) sign for every ayanamsha; so every *scored* candidate for a
+given ayanamsha shares one lagna sign and therefore one identical match count. **`win_margin` is
+mathematically exactly 0 whenever more than one candidate is scored** — this is not a fixture
+artifact or a transient data issue, it is the current scoring method's own "deliberately uniform"
+design (the engine's own docstring names the real fix as K-6/later scope). This means
+`load_bearing` will correctly read `False` under the current method until that later work lands —
+confirmed by *trying* to build a "genuinely discriminating" counter-fixture and finding it's not
+constructible with the current stub/engine (documented in the PR).
+
+**Caught and fixed a second pre-existing test casualty** (same pattern as the ph_muhurta cycle):
+`test_calibrated_chart_yields_calibration_state_calibrated`'s synthetic fixture hits the exact same
+structural non-discrimination (verified by hand-running the fixture's own scoring inputs through
+the engine directly before touching the test) — its `load_bearing is True` assertion was the same
+naive claim the production bug embodied, not a case my gate wrongly zeroed. Updated to assert the
+honest post-fix value with a comment explaining why, not weakened.
+
+7 new unit tests for `_apply_discrimination_gate`; 87/87 rectification + lel_calibration tests
+pass; **re-ran L5's `mi_darshana`/`mi_adhilepa` test suites** to confirm the shared module I didn't
+touch is genuinely unaffected (37/37 pass). Governance gates handled proactively again: writer
+digest + L4 analysis-layer pin regenerated and offline-verified before pushing. **Shipped PR
+#1834**, auto-merge armed.
+
+`ph_rectification` now has **0 of 1 W2 MUST findings remaining** — same terminal state as
+`ph_nimitta`'s D-CND-04 work, awaiting only its E-gate-gated rerun.
+
+CYCLE L4: PR hygiene (re-armed dropped #1808) → shipped #1834 (`ph_rectification` F3, `load_bearing`
+now correctly False given the current scoring method's structural non-discrimination — traced to
+root cause, not patched around) → next: watch #1834/#1791/#1808/#1831 merge, then `ph_pramana`/
+`ph_phaladesa` or `ph_pratikara`'s remaining MUSTs.
 
