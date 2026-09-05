@@ -985,3 +985,41 @@ correctly declined the finding's other half after live-verifying it has no real 
 it) → next: `ph_pratikara` is now down to just its E-gate-blocked rerun; F1's multi-registry
 MCP-wiring fix is the layer's last genuinely open code item.
 
+`2026-09-06T~00:55Z` — L4 — **cycle: PR hygiene clean (all ten own PRs healthy — #1854's
+`UNSTABLE` was just one still-completing non-required check, verified queued) → this cycle's
+unit was C8.5 productive-wait prep, after a real, bounded investigation of F1 concluded it
+should NOT be attempted autonomously right now.**
+
+**Gave F1 one more real look before deferring a fourth time**, rather than repeating the same
+surface-level "too big" judgment: traced the actual generation chain. Found
+`canonical_faces.test.ts` hard-asserts `canonical ∪ deprecated == 145` — a fixed count. That
+means `canonical_faces.json` is a **derived census of tools that already exist**, not a place
+to declare new ones ahead of building them; simply adding
+`phala_domain_result_get`/`phala_falsifiers_get` there would fail that test outright, not
+mechanically wire anything. The real first step is a brand-new
+`platform-mcp/src/tools/*.ts` handler (~300-400 lines, matching one of two coexisting
+conventions in this codebase — `callPlatformPrimitive` vs. direct sidecar HTTP — that needs
+establishing) plus `server.ts` registration, with the census/projections regenerating
+downstream of that, not ahead of it.
+
+**Decided, with reasons, not to attempt it**: this environment has no way to build or run the
+MCP server to verify a new tool actually works end-to-end — every other fix this session was
+verified via direct SQL + unit tests, a discipline this task cannot get. Recorded the full
+trace in the close-report scaffold below so whichever session (mine, with different
+capability, or a native review) picks this up next starts from the answer, not from scratch.
+
+**Since priorities 1–4 were genuinely exhausted** (no E-gate asset; no completed run awaiting
+W5; no unheld W3 item left that's both real and safely scoped; W1/W2 long done) — not skipped
+— did the ONE permitted prep item: **drafted `L4_W6_CLOSE_REPORT_v1_0.md`**, per the founding
+prompt's own C8.5 guidance for the smallest layer. Filled every section the plan's §4 W6
+template requires (assets/routes, findings triage ledger, pillar movement per the five
+doctrines, cost actuals, backlog) from real, already-verified session data — nothing asserted
+ahead of evidence, explicitly marked SCAFFOLD/DRAFT since W4/W5/W6 haven't run. Consolidates
+all 15 L4 PRs shipped this session into one findings ledger for the first time.
+
+CYCLE L4: PR hygiene clean → investigated F1 further, confirmed with a concrete reason (no
+build/run verification capability here) it should wait for a session or reviewer that has one
+→ drafted `L4_W6_CLOSE_REPORT_v1_0.md` scaffold (the one permitted prep item, priorities 1-4
+exhausted) → next: watch for E-gate opening on `ph_nimitta`, watch for L2's D-SYNTHESIS/
+D-SALIENCE capabilities landing, or take up F-12 (`ph_sodhana`, smallest remaining item).
+
