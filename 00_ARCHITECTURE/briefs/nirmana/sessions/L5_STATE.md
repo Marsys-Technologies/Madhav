@@ -451,6 +451,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~03:00Z (C8 v2.3 cycle 28) — **Routine cycle, queue healthy.** #1841 confirmed
+  merged. PR hygiene: #1844 ejected/re-armed (normal pattern); #1826 checks-pending only.
+  All four L5 PRs advanced again (#1844 5→3, #1851 8→6, #1861 20→18, #1873 33→31). #1869
+  unchanged, no `chart_grants` response. No new E-gate movement.
 - 2026-09-06T~02:45Z (C8 v2.3 cycle 27) — **Routine cycle, positions unchanged but confirmed
   healthy.** PR hygiene: #1844 ejected/re-armed again (same normal pattern); #1826 checks-
   pending only. Queue positions for #1844/#1851/#1861/#1873 flat at 5/8/20/33 (unchanged from
