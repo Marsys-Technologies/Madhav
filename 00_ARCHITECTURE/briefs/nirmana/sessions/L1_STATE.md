@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 41; F-A16 fixed at the writer level (#1979)
+last_updated: 2026-09-06 — C8 v2.3 cycle 42; F-A15 fixed at the writer level (#1981)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -1698,6 +1698,68 @@ cite `ga_vargas`' authority instead of re-deriving, touching a 7,900-line file),
 follow-up F-A14 pass widening `ga_structural`/`ga_sade_sati` coverage, or `ga_positions`
 re-dispatch once #1892 lands.
 
+## CYCLE 42 (C8 v2.3) — F-A15 fixed at the writer level (PR #1981); second of the two F-A14-discovered writer defects
+
+**PR hygiene:** clean sweep. `#1928`/`#1853`/`#1892` unchanged. All prior L1 PRs confirmed
+genuinely `is:queued` (29/29, including #1827/#1979). Nothing DIRTY/RED/CLEAN-but-unqueued.
+
+**Unit of work: fix F-A15** (`ga_structural_writer.py`) — the second and larger of the two genuine
+defects the F-A14 campaign root-caused (cycle 34), picked next per last cycle's own closing note.
+
+`graha_vargottama_amplification_factor` computed D9 vargottama itself via an inline
+navamsha-degree formula (a hardcoded `navamsha_starts` sign-cycling table + float arithmetic),
+independent of `ga_vargas`' own D9 computation — a §N.5 violation even though `ga_vargas` is
+already a declared `depends_on` for `ga_structural`. That formula disagreed with `ga_vargas`'
+authoritative `chart_divisionals.varga_vargottama_flag` on 4/105 live rows (2 non-canonical charts,
+surya_siddhanta_classical/raman ayanamshas) — exactly the migration-745 conjunct (b) finding.
+
+Added `_get_d9_vargottama_flag(conn, chart_id, ayanamsha_id, graha)`, reading `chart_divisionals`
+directly (`fact_category='varga_vargottama_flag'`, `varga='D9'`, keyed by the first-class `graha`
+column) instead of re-deriving. Mirrors the sibling `_get_saptavargaja_components` pattern exactly:
+raises on a build_id-plurality violation (the migration-218 one-canonical-build invariant), and
+returns `(None, None)` — an honest floor, never a guessed `True`/`False` — when `ga_vargas`' D9 row
+for this `(chart, ayanamsha, graha)` isn't yet reachable (§N.8/B.10). The amplification-factor row
+now stores `fact_value_num=None`/`fact_value_text="unavailable"` in that case rather than silently
+defaulting to non-vargottama. No DAG edge change needed.
+
+Fixing this exposed 8 pre-existing test failures in `tests/test_ga8_writer.py`, all one root
+cause: `TestF61SaptavargajaScoreMaterialized`'s fake `_Conn`/`_Cur` returned the same fixed fixture
+rows for ANY `.execute()` call regardless of SQL text, so the new earlier vargottama query received
+GA6-shaped rows meant for a different query. Made the fake cursor query-aware (empty result for the
+vargottama-flag query specifically) and fixed one test's `conn.calls[0]` index assumption to search
+calls by SQL content instead of position. Rewrote `test_vargottama_factor_is_1_0_or_1_25` against a
+real conn fixture (`_VargottamaConn`/`_VargottamaCur`) parameterized per-graha, asserting both 1.0
+and 1.25 genuinely appear (proves the real read path, not just no-crash); added a new
+`test_vargottama_factor_is_honest_none_without_conn` for the honest-null floor.
+
+Verified: `tests/test_ga8_writer.py` 175 passed (was 166 passed/8 failed before these fixes).
+`tests/test_lane1_ga_structural_modularization.py` + `tests/l5/test_mi_adhilepa_b7.py` 105 passed,
+unchanged. Full `ga_writers/` + `pipeline/orchestrator/writers/__tests__/` suites: 601 passed, 1
+skipped, matching the pre-change baseline exactly. Attempted a broader sanity pass across the
+entire `tests/` directory too; killed it partway through when it proved disproportionately slow
+(33% progress after 10+ minutes wall-clock, heavily DB-bound) for a bounded cycle — the directly-
+relevant verification above already matches this campaign's established bar (the same scope F-A16
+was verified at, cycle 41).
+
+Checked cross-layer import risk before regenerating the stale writer-digest inventory: grepped
+every real (non-comment) import of `ga_structural_writer` — all internal to L1 (`ga_yoga_writer.py`'s
+lazy `_load_varga_positions` import, the orchestrator wrapper `ga_structural.py`, `build_runner.py`,
+and L1's own tests). Regenerated `nirmana-writer-digests.json`, then (learning from D-L1-64, in the
+same cycle this time rather than as a follow-up RED-fix) immediately regenerated the derived
+`--layer L1` analysis pin on this branch's writer-fix commit sha, confirmed via the tool's own diff
+summary that only L1's two fields changed, and verified both `provenance_inventory --check` and
+`nirmana_analysis_layer_pins.py --check` pass locally BEFORE pushing. `ga_ayurdaya`/
+`ga_sensitive_degree`/`ga_yoga` digests moved too — the same pre-existing transitive-import-following
+quirk noted in cycle 41, confirmed present again, still not investigated (out of scope).
+
+This is a writer-level data-correctness fix, not a migration — migration 745's conjunct (b) will
+clear once the 2 affected charts next rebuild.
+
+CYCLE 42 L1: fixed F-A15 in `ga_structural_writer.py` (PR #1981) — both F-A14-discovered writer
+defects (F-A15, F-A16) are now closed. Next: a follow-up F-A14 pass widening `ga_structural`
+(1/57 categories) or `ga_sade_sati` (2/15 categories) coverage, or `ga_positions` re-dispatch once
+#1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1713,7 +1775,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); **NEW: F-A15 — graha_vargottama_amplification_factor re-derives D9 vargottama instead of citing ga_vargas' authority, 4/105 rows disagree (§N.5)** |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); F-A15 **FIXED at the writer level (#1981, cycle 42)** — graha_vargottama_amplification_factor now reads ga_vargas' D9 varga_vargottama_flag instead of re-deriving; migration 745's conjunct (b) will clear once the 2 affected charts rebuild |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -2244,6 +2306,23 @@ NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with 8,249 live rows.
   root cause, never weaken the gate" instruction applied to a check surfaced by my OWN cycle's
   work, not a pre-existing PR — the end-of-cycle sweep is not just for stale/dirty PRs from past
   cycles, it catches regressions in the current cycle's own output too.
+
+- **D-L1-65** — C8 v2.3 cycle 42: fixed **F-A15** at the writer level (`ga_structural_writer.py`) —
+  the second and larger of the two F-A14-discovered defects (F-A16 was the first, D-L1-63/64).
+  `graha_vargottama_amplification_factor` re-derived D9 vargottama via its own inline
+  navamsha-degree formula instead of citing `ga_vargas`' authoritative
+  `chart_divisionals.varga_vargottama_flag` (§N.5 — `ga_vargas` is already a declared `depends_on`).
+  New `_get_d9_vargottama_flag` helper reads the authority directly, mirroring the sibling
+  `_get_saptavargaja_components` pattern (build_id-plurality guard; honest `(None, None)` floor,
+  never a guessed value, when the D9 row isn't yet reachable — §N.8/B.10). Fixed 8 resulting test
+  failures in `test_ga8_writer.py`, all one root cause: a fake `_Conn`/`_Cur` that returned the same
+  fixture rows for any query regardless of SQL text, blind to the new earlier vargottama query.
+  Learned from D-L1-64: regenerated BOTH the writer-digest inventory AND the derived `--layer L1`
+  analysis pin in the same cycle, before pushing, rather than discovering the two-artifact chain
+  gap via a RED again. Deliberately killed an in-progress full-`tests/`-directory sanity run when
+  it proved disproportionately slow (33% after 10+ min wall-clock) for a bounded cycle — the
+  directly-relevant verification (175+105+601 tests, matching the pre-change baseline) already
+  matches this campaign's established bar.
 
 ## Held items
 
@@ -2853,3 +2932,19 @@ L1 must satisfy rather than a feature it consumes.
   (PR #1979) and its own follow-on RED -- next: fix F-A15 (the bigger ga_structural writer
   change), a follow-up F-A14 pass widening ga_structural/ga_sade_sati coverage, or ga_positions
   re-dispatch once #1892 lands.
+- 2026-09-06T04:2xZ -- CYCLE 42 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged; all
+  prior L1 PRs (29/29) confirmed genuinely is:queued. Unit of work: fixed F-A15 at the writer level
+  (PR #1981) -- the second and larger of the two F-A14-discovered defects. ga_structural's
+  graha_vargottama_amplification_factor re-derived D9 vargottama via its own inline navamsha-degree
+  formula instead of citing ga_vargas' authoritative chart_divisionals.varga_vargottama_flag
+  (sec.N.5), disagreeing on 4/105 live rows. Added _get_d9_vargottama_flag, mirroring the sibling
+  _get_saptavargaja_components pattern (build_id-plurality guard, honest None floor per sec.N.8).
+  Fixed 8 resulting test failures in test_ga8_writer.py (one root cause: a fake conn/cursor blind
+  to which SQL query it was answering). Learned from D-L1-64: regenerated both the writer-digest
+  inventory and the derived --layer L1 analysis pin in the same cycle, before pushing. Killed a
+  disproportionately slow full-tests/-directory sanity run (33% after 10+ min) rather than let it
+  block a bounded cycle -- the directly-relevant suites (175+105+601 tests) already matched this
+  campaign's established verification bar. No migration -- writer-only fix; migration 745's
+  conjunct (b) clears once the 2 affected charts rebuild. CYCLE 42 L1: fixed F-A15 (PR #1981) --
+  both F-A14-discovered writer defects (F-A15, F-A16) now closed -- next: a follow-up F-A14 pass
+  widening ga_structural/ga_sade_sati coverage, or ga_positions re-dispatch once #1892 lands.
