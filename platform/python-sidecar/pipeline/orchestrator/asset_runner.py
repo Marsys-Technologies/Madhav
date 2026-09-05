@@ -73,8 +73,9 @@ def deps_unsatisfied(
         return []
     cur.execute(
         """
-        SELECT dep.asset_id, t.state, f.freshness_state
+        SELECT dep.asset_id, reg.asset_kind, t.state, f.freshness_state
         FROM unnest(%s::text[]) AS dep(asset_id)
+        LEFT JOIN asset_registry reg ON reg.asset_id = dep.asset_id
         LEFT JOIN LATERAL (
             SELECT state FROM asset_throughput at
             WHERE at.asset_id = dep.asset_id
@@ -98,6 +99,15 @@ def deps_unsatisfied(
         freshness = d["freshness_state"]
         if state not in ("lit", "service_ok"):
             bad.append(f"{d['asset_id']}({state or 'absent'})")
+        elif d["asset_kind"] == "service":
+            # A service dependency has no data table and therefore no
+            # data-freshness receipt; its readiness IS a current GREEN probe,
+            # surfaced as state='service_ok' (P0 established probe-as-detector;
+            # the frozen manifest assigns services probe obligations). Requiring
+            # a data-freshness 'fresh' receipt of a service is a category error --
+            # 'service_ok' is what "lit" means for a service. (D-VR-DATA-CORRECTNESS
+            # §3.5 service-dependency exception.)
+            continue
         elif freshness != "fresh":
             bad.append(f"{d['asset_id']}(receipt:{freshness or 'absent'})")
     return bad

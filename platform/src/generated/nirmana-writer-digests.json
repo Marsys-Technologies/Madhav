@@ -1,5 +1,5 @@
 {
-  "probe_digest": "d8f73dee907e7d44fd5ac327343dfa109fbb47a18bb779603795dbac53c652c8",
+  "probe_digest": "2dbfb3e36584eab64166287904dd6e0902038ec2cc6f2669bdb08b6c6949219d",
   "version": "nirmana-writer-digest-inventory/v1",
   "writers": {
     "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
