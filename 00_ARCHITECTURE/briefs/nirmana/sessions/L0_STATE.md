@@ -1924,3 +1924,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 1 (4/10/18/67) though main HEAD unchanged (still
   `8d35be284`) — likely a queue reordering/removal ahead of mine, not a merge I need to track by
   SHA. No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions unchanged (4/10/18/67). Confirmed last cycle's reordering
+  theory: #1907 (previous queue head) dropped out of the merge queue back to `CLEAN`/`OPEN` (not L0's
+  — an L2 integrity-check PR), not a merge — explains the position drop without a main-HEAD change.
+  New head #1908, ~3min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
