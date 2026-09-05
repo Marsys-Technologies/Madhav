@@ -85,6 +85,13 @@ export const queryVedhaGocharaCapability: CapabilityDescriptor = {
     },
     as_of: { type: 'string', description: "Date (YYYY-MM-DD) to mark as 'current' (default: today)." },
     limit: { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
+    current_only: {
+      type: 'boolean',
+      description:
+        'When true, restrict the result to rows whose window contains `as_of` — i.e. apply the '
+        + 'currency filter in SQL, BEFORE the row cap, instead of leaving the caller to filter a '
+        + 'capped page afterwards. Default false (unchanged paging behaviour for existing callers).',
+    },
   },
 
   required_inputs: ['chart_id'],
@@ -110,12 +117,18 @@ export const queryVedhaGocharaCapability: CapabilityDescriptor = {
     const graha = args['graha'] ? String(args['graha']) : null
     const as_of = args['as_of'] ? String(args['as_of']) : new Date().toISOString().slice(0, 10)
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+    const current_only = args['current_only'] === true
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
     if (vedha_kind) { filters.push(`vedha_kind = $${p++}`); params.push(vedha_kind) }
     if (graha) { filters.push(`graha = $${p++}`); params.push(graha) }
+    // Currency filter applied in SQL, BEFORE the row cap. Without it, a caller wanting only the
+    // current rows receives the first `limit` rows by the ORDER BY and filters them afterwards, so
+    // a chart with more rows than the cap silently loses current ones — indistinguishable from a
+    // genuine absence. `truncated` below closes that gap (§N.8).
+    if (current_only) { filters.push(`window_start <= $${p}::date AND window_end >= $${p}::date`) }
     const where = filters.join(' AND ')
 
     // WP-1.5 F-DATE-TZ discipline: window_start/window_end are DATE columns — to_char
@@ -136,7 +149,7 @@ export const queryVedhaGocharaCapability: CapabilityDescriptor = {
     try {
       const [rowsRes, countRes] = await Promise.all([
         query(sql, [...params, as_of, limit]),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_vedha_gochara WHERE ${where}`, params),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_vedha_gochara WHERE ${where}`, current_only ? [...params, as_of] : params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
@@ -147,6 +160,9 @@ export const queryVedhaGocharaCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          // Explicit truncation signal so a consumer can never report a short or empty result as a
+          // substantive absence when the real cause is the row cap (§N.8).
+          truncated: total_matching > rowsRes.rows.length,
           filters: { vedha_kind: vedha_kind ?? 'all', graha: graha ?? 'all', as_of, limit },
           provenance: {
             tables: [

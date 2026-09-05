@@ -35,8 +35,71 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-`L3-W3` — W1 COMPLETE (23/23, `L3_W1_ANALYSIS_INDEX_v1_0.md` + 5 batch files) · W2 COMPLETE (23/23 routed, `L3_W2_DECIDE_v1_0.md`) · W3 OPEN.
+`L3-W3` — W1 COMPLETE (23/23) · W2 COMPLETE (23/23 routed) · **W3 IN FLIGHT**.
 
+### W3 progress
+
+**Landed on `codex/nirmana-l3-w3-serving-honesty` (PR #1751), each with mutation-proved tests:**
+
+| finding | what | verification |
+|---|---|---|
+| **M7** | the honest-empty that pagination was faking — currency filter pushed into SQL ahead of the row cap on all three horizon capabilities; explicit `truncated`; `now.ts` reports truncation as a distinct cause | 12 tests; reverting the filter + flag turns 2 red |
+| **M8** | the field that was never empty — a hardcoded "ka_kshetra has written no rows" over 31,350 live rows; corrected to the true blocker (**no registry capability exists over any `kala_field*` table at all**) | 3 tests; one pre-existing assertion that pinned the false claim retargeted, not weakened |
+| **M11** | `service_health` written and read by nothing; `ka_graha_sancara` computed a verdict into a variable and discarded it, so it was `state='lit'` while `unhealthy`. Three writers now raise | 7 tests incl. a shape guard; removing one raise turns its test red |
+| **M4** | `ka_avadhi`'s `lord_condition_fact_refs` `[]` on **100.00%** of rows — three independent L1 mismatches (Title-case vs `JUP`/`RAH_MEAN`, no `fact_category` pin, 5 of 7 `fact_key`s nonexistent). Fixed through the L0 SSoT `norm_graha`, not a local map | 12 tests; 8 refs per lord live, up from 0 |
+| **M9** | `conv_score or 0.5` — falsy-coalescing rewrote **793 computed zeros** into a favourable neutral; measured 0 NULLs, so the default only ever mangled real data | 3 tests; restoring `or 0.5` turns 2 red |
+| **M5** | the century grid was the **native's**, for every chart — the second chart was materialised from 1984-02-05, **13 months before that native was born**. Now resolved per chart via `resolve_birth_date`, and it RAISES rather than defaulting | 5 tests; 10 test files now supply `birth_params` rather than the writer keeping a fallback for their benefit |
+| **M3** | `ka_graha_sancara`'s two defects, assigned to me by the #1734 ruling: positional `row[0]` against a `dict_row` connection (the literal `KeyError: 0` in `selftest_detail`), and a FORENSIC birth-instant anchor asked of a 12:00-UT daily table | 5 tests; **and the mock that hid defect 1 for 19/19 green runs was returning tuples — now dicts, matching `dict_row`** |
+
+Full `python-sidecar` suite after these: **6,135 passed, 0 failures.** `platform` + `platform-mcp`
+`tsc`: 0 errors. `L3_kala` 107 passed; `kala_views` + `kala_ritual_resonance` 214 passed.
+
+**In flight:** the last 2 of 19 D-CND-03 integrity contracts (`ka_kshetra`, the century
+materializer — 17 authored and mutation-proved, staged in `~/nirmana-s/.l3-tools/contracts/`, four
+files each: contract, mutation proof, volume derivation, live evidence). Three are mine, including
+the **v1-corpus guard**, which is now the only in-database detector of loss for that irreplaceable
+corpus since migration 588 removed its triggers. **One contract already returns `f` — a true
+positive:** `ka_bhavishya_lekha`'s degeneracy conjunct fires because all 100 projections on the
+canonical chart share one `peak_date`, proven two-valued against the second chart.
+
+**Next action on resume:** the last two contracts land → author **migration 670** (19
+`integrity_check_sql` + `expected_volume_formula`/`_inputs` + achieved-count `target_floor` +
+`ka_gochara`'s `count_sql` correction (M6) + 10 `DRAFT`→`CURRENT`, holding `ka_graha_sancara` at
+DRAFT until M3 deploys). Then N1, the Temporal Concordance Contract, for which W1 established the
+evidence base: 34 engines, a 10-cell overlap matrix, one existing arbiter, and `ka_sangam` already
+~60% of the way there.
+
+**Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
+rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
+`ka_kshetra` pinning `fact_category='lagna'` where the real category is `lagna_position`),
+migration 670 (19 contracts + volume formulas + floors + 10 DRAFT→CURRENT), N1 (the Temporal
+Concordance Contract), N2–N12.
+
+### New findings raised during W3 (added to the ledger, not silently absorbed)
+
+- **F-L3-11 (two epoch anomalies, DELIBERATELY NOT FIXED).** Found while implementing M5.
+  (a) `BIRTH_JD = 2445736.5` disagrees with its own comment by a day — the true JD for
+  1984-02-05 00:00 UT is **2445735.5**; 2445736.5 is 1984-02-06. (b) It disagrees with its own
+  engine by a further half day (`gochara_v3/resolution_hierarchy.py` uses `_EPOCH_JD = 2440588.0`,
+  noon-based). Each moves **every window in the century**, so choosing a convention inside an
+  unrelated fix would be exactly the quiet astronomical change this campaign exists to eliminate.
+  `_birth_jd()` reproduces the writer's existing value **exactly**, so the native's grid does not
+  shift by a day; both anomalies are recorded at the constant itself.
+- **F-L3-12 (cascade exposure — L2's #1770, verified against my own tables).** All five FKs from
+  `bodha_msr_signals` into L3 are **`ON DELETE CASCADE`**, so an ordinary L2 `bo_laksana` rebuild
+  silently destroys **710,899 L3 rows** (`kala_activation` 672,551 · `kala_convergence` 35,365 ·
+  `kala_darshana` 1,500 · `kala_obstruction` 1,283 · `kala_bhavishya` 200) and dangles a further
+  **150,150** in `kala_activation_predicates`, which carries no FK at all. `_idempotency.py:55`
+  asserts "FKs are NO ACTION" directly above the code whose safety depends on the opposite.
+  **L3 has committed unconditionally not to dispatch anything until this is ruled**, and has
+  offered to take and verify the snapshot itself, since the exposed data is L3's.
+  L3's position: **L2 rebuilds first.** Those 710,899 rows descend from a `convergence_score`
+  written on four incommensurable scales where the least-evidenced mode captured every served
+  surface — regenerating them from a corrected base is better than preserving them.
+- **F-L3-13 (doctrine, offered to the register).** The E-gate reasons about what an asset *needs*,
+  never about what *needs it*. `depends_on` has no inverse anywhere in the campaign's machinery —
+  not the gate, not the slot protocol, not the plan. A DELETE travels those edges backwards and
+  nothing reads them that way. #1734 is the same shape one level up.
 **Bootstrap facts established live (not assumed):**
 - Worktree `~/nirmana-s/l3` created from `origin/main` = `20323fae4`. Branch `codex/nirmana-l3-w1-analysis`.
 - `NIRMANA_HOLD` absent at the shared checkout root — standing authorization confirmed (C3).
@@ -230,8 +293,14 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 - **F-L3-4 (NOW)** — All 23 L3 assets have `expected_volume_formula` NULL and
   `expected_volume_inputs` NULL; 0 have a non-zero `target_floor`. C12 names the NULL itself the
   defect. Volume expectations must be DERIVED or set as achieved-count floors (§N.4) in W3.
-- **F-L3-5 (observation, feeds W2)** — All 6 artifact-kind assets are `catalog_status='DRAFT'`.
-  Batch E is establishing whether DRAFT is honest or stale.
+- **F-L3-5 (NOW)** — **11 L3 assets are `catalog_status='DRAFT'`: 7 artifact + 4 service** (measured
+  2026-09-05; corrects an earlier note here that said "6 artifact-kind", which was Batch E's subset
+  mistaken for the layer's total). Matches L2's independent campaign-wide count on **#1753**, which
+  finds L3, L4 and L5 DRAFT in their entirety while `CLAUDE.md` §E records all three as
+  CLOSED/SEALED, and traces the mechanism to `asset_registry.catalog_status DEFAULT 'DRAFT'` plus
+  24 migrations that omit the column. The cockpit filters on it (migration 294's own root-cause
+  note). **L3's decision: flip 10, hold `ka_graha_sancara` at DRAFT until M3 lands** — promoting a
+  service that is genuinely broken would be precisely the unearned signal §N.8 forbids.
 - **F-L3-6 (MUST, filed #1730, OPEN)** — The shared dispatcher enforces pre-v2.1 strict layer/wave
   sequencing (`campaign_prerequisite_asset_ids`, hard `raise` at line 770), not C2's asset frontier.
   An L3 wave-0 dispatch demands **all 81 L0+L1+L2 assets frozen (52 unfrozen)**, while
@@ -239,56 +308,25 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
   conflicts in the same neighbourhood: a campaign-wide **single**-active-run lock (line 797) against
   C5's ≤3, and a one-shot-per-wave guard (line 806) upstream of C8's `force=true`. L4 filed the same
   finding independently as #1725.
-- **F-L3-7 (NOW, raw material gathered)** — Constraint reconnaissance for the 19 D-CND-03 contracts.
-  **8 L3 target tables already carry a DB-enforced natural-key UNIQUE** (`gochara_resonance_map`
-  chart+event_class+target_type+target_ref · `kala_avadhi` chart+system+level+period_start ·
-  `kala_field` chart+event_class+segment_index · `kala_kota_chakra` and `kala_moorti_nirnaya`
-  chart+ayanamsha+graha+window_start · `kala_sudarshana_varsha` chart+ayanamsha+varsha_year ·
-  `kala_taranga` chart+month+scope_kind+scope_id · `kala_tithi_pravesha` chart+ayanamsha+
-  pravesha_year · `kala_vedha_gochara` chart+ayanamsha+vedha_kind+graha+window_start). For those a
-  distinctness invariant is **redundant with the constraint** and would fail C12's rewrite-floor
-  test — their contracts must assert something the constraint cannot (contiguity, tiling,
-  cross-table consistency, range/NULL guards).
-  **9 tables have only a surrogate `id` PK and no natural key**: `kala_activation`,
-  `kala_activation_predicates`, `kala_bhavishya`, `kala_convergence`, `kala_darshana`,
-  `kala_gochara_windows`, `kala_gochara_windows_v2`, `kala_jivana_parva`, `kala_obstruction`. For
-  those a natural-key distinctness invariant **is** load-bearing: it is the only thing that would
-  detect cross-build accretion, which §N.3 (per-chart delete-then-insert) forbids but nothing
-  currently checks. `kala_activation` is the one to watch — 671K rows, no natural key.
-- **F-L3-9 (SAFETY — investigated, alert DOWNGRADED on evidence; standing caution stands).**
-  Batch A raised a hard-floor alert: the protection triggers on `kala_gochara_windows` are gone, so
-  a generation-blind DELETE could destroy the irreplaceable v1 gochara corpus. **I verified every
-  factual claim and they are all true — but the conclusion is not.** The triggers were removed
-  **deliberately, by native instruction (2026-08-23), in `platform/migrations/588_remove_asset_build_protection.sql`**,
-  because the guard was keyed on `asset_id='ka_gochara'` while the writer that actually produces
-  gen-3.0 rows is `ka_gochara_v3_century_materialize` — it could not distinguish a legitimate write
-  from a destructive one and left that writer permanently BUILD-PROTECTED (its Defect D-02). The
-  migration replaced the guard with a full logical snapshot, and **that snapshot is real**:
-  `00_ARCHITECTURE/control/snapshots/20260823_pre_protection_removal/gochara_corpus_and_protection.dump`,
-  **16,214,137 bytes — byte-for-byte the size the migration records** — and `pg_restore -l` reads a
-  valid TOC containing `TABLE DATA public.kala_gochara_windows`, `build_protected_assets`, and the
-  id sequence. So the hard floor's condition (no destructive op on irreplaceable data *without a
-  fresh verified snapshot*) is **satisfied, not violated**. Recorded as a downgrade rather than
-  silently dropped, because a session that re-reads Batch A alone would re-raise it.
-  **Three genuine residuals do stand, and they are mine to carry into W2:**
-  1. Live v1 corpus measured at **38,287 rows across 3 charts** — native `482012f1` 16,297 ·
-     Abhinandan `1c826d5a` 19,323 · **`cb73cd3d` 2,667**. The in-database table snapshot
-     `kala_gochara_windows_archive_20260805` covers only the first two (35,620 rows), verified
-     **id-set-md5-identical per chart** to live. The third chart's 2,667 rows are in the .dump but
-     **not** in the fast in-database recovery path. (Correction to Batch A: `cb73cd3d` is **not** a
-     deleted chart — it is still present in `charts`, measured.)
-  2. The .dump is **git-ignored and untracked** (`git check-ignore` matched) — the sole recovery
-     path for an unregenerable corpus exists only on this machine's disk. Pre-existing and
-     native-accepted; naming it, not fixing it unilaterally.
-  3. Migration 588's own closing line is a ready-made W3 design: *"If protection is ever reinstated,
-     key it on (table, generation) rather than asset_id, so it cannot again block the writer it is
-     meant to protect."* A correctly-keyed guard does not have the property the native objected to.
-     **But reinstating anything the native removed by instruction is not a call I make** — W2 will
-     carry it as an adjudication, not as an L3 decision.
-  **Binding on my own W4 (session prompt, SNAPSHOT RULE ABSOLUTE):** take and verify a fresh
-  snapshot before any dispatch that could write to `kala_gochara_windows`, and never dispatch
-  `ka_gochara_sweep` — its `@register` was removed at retirement, so the build system cannot
-  regenerate those rows at all; the sweep would be a ~30h per-chart re-run if the dump were lost.
+- **F-L3-7 (NOW, raw material gathered — CORRECTED 2026-09-05)** — Constraint reconnaissance for
+  the 19 D-CND-03 contracts. **My first pass was wrong and I am recording the correction rather
+  than quietly restating it:** I queried `pg_constraint` only, which misses natural keys
+  implemented as UNIQUE **indexes**. A W3 contract-authoring subagent caught it. Re-measured
+  against `pg_index`, the genuinely keyless L3 tables are only **four**, not nine:
+  `kala_convergence` (`ka_sangam`), `kala_obstruction` (`ka_vighnakara`), `kala_bhavishya`
+  (`ka_bhavishya_lekha`), and — effectively — `kala_darshana` (`ka_kala_darshana`), which carries
+  only a **partial** unique index (`WHERE convergence_id IS NOT NULL`), so every NULL-`convergence_id`
+  row is unconstrained and accretion can hide there specifically.
+  Five assets I had briefed as keyless in fact have real natural keys and were re-briefed mid-flight:
+  `kala_activation` (chart, signal, ayanamsha, source_citation) · `kala_activation_predicates`
+  (chart, signal, ayanamsha) · `kala_gochara_windows` and `kala_gochara_windows_v2` (chart,
+  event_class, window_start, peak_date, milestone, resolution, **generation**) · `kala_jivana_parva`
+  (chart, parva_index).
+  **The doctrine consequence is unchanged and is why the correction mattered:** where the DB already
+  enforces the key, a distinctness conjunct **cannot fail** and so fails C12's rewrite-floor test —
+  such contracts must assert what the index cannot (tiling/contiguity, cross-table agreement with
+  the upstream L0/L1 fact, per-group cardinality, range/NULL guards). Where it does not, distinctness
+  is the only detector of the cross-build accretion §N.3 forbids.
 - **F-L3-8 (NOW)** — `natural_key_partition` is NULL on all 23 L3 assets. Not L3-specific (L1 0/19,
   L2 0/22, L4 0/9, L5 0/15 — only L0 populates it, 21/40), so this is a campaign-wide pattern rather
   than an L3 omission; recorded here so W2 rules on it deliberately rather than by silence.
@@ -331,6 +369,7 @@ your layer close.
 
 One line per loop: `<UTC ISO-8601> — <position> — <what you are doing>`.
 
+- `2026-09-05T…Z — L3-W3 — 7 MUSTs landed (M3,M4,M5,M7,M8,M9,M11), each mutation-proved; depends_on audit published (36 hidden / 17 false edges) with a correction to my own earlier claim to the Conductor; verified L2's cascade finding against my own tables (710,899 rows) and committed to hold; 16/19 integrity contracts authored.`
 - `2026-09-05T…Z — L3-W2/W3 — W1 closed 23/23 (index published); W2 closed 23/23 routed + 12 MUST / 12 NOW / 8 NEVER triaged; ka_taranga SPLIT decided with falsifiers; first two D-CND-03 contracts authored AND mutation-proved live (ka_kota_chakra 4/4 conjuncts fail on injected corruption). W3 open.`
 - `2026-09-05T…Z — L3-W1 — batches A/B/C/D landed (E outstanding); verified the v1-corpus alert down to its real residuals; verified ka_gochara_resonance's 5 undeclared edges from writer SQL and filed #1734 — L3 has no honest canary, reported rather than manufactured.`
 - `2026-09-05T…Z — L3-W1 — rulings absorbed (#1721 GRANTED/PR #1728; D-CND-03 binding; #1715 Option A — no W2 acceptance until it deploys); #1724 withdrawn as duplicate with acceptance recorded; constraint reconnaissance done for the 19 owed contracts; per-loop gate poll scripted; #1730 remains the open W4 blocker.`

@@ -110,13 +110,22 @@ def _build_writer_class():
 
             if not ok:
                 logger.error("[ka_tulana writer] self-test FAILED: %s", detail)
-            else:
-                logger.info("[ka_tulana writer] self-test PASSED")
+                # NIRMĀṆA L3-W3 M11 (§N.8): a returned WriterResult is treated as SUCCESS by
+                # the orchestrator regardless of its notes, so a degraded self-test used to leave
+                # the asset promoted to 'lit' while asset_registry.service_health said otherwise —
+                # a green build signal with no detector behind it. Raising is the only path that
+                # reaches mark_asset_error. This mirrors ka_muhurta_seva, which already did it
+                # correctly and documents why.
+                raise RuntimeError(
+                    f"ka_tulana self-test failed (service_health=degraded): {detail[:400]}"
+                )
+
+            logger.info("[ka_tulana writer] self-test PASSED")
 
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
-                notes=f"service_health={'healthy' if ok else 'degraded'}; {detail[:200]}",
+                notes=f"service_health=healthy; {detail[:200]}",
             )
 
     return KaTulanaWriter

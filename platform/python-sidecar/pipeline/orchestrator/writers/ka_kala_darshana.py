@@ -1,6 +1,10 @@
 """ka_kala_darshana writer — display-ready temporal view synthesizer."""
 import json
+import logging
+
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+
+logger = logging.getLogger(__name__)
 
 @register('ka_kala_darshana')
 class KaKalaDarshanaWriter(WriterBase):
@@ -69,8 +73,28 @@ class KaKalaDarshanaWriter(WriterBase):
             # Get obstructions for this window
             obstructions = obs_by_conv.get(conv_id, [])
 
-            # Compute effective score
-            effective = _compute_effective_score(conv_score or 0.5, obstructions)
+            # Compute effective score.
+            #
+            # NIRMĀṆA L3-W3 finding M9 (§N.7 item 6). This was `conv_score or 0.5`, which is
+            # falsy-coalescing, not null-coalescing: a **computed zero** — an honest "these
+            # systems do not converge here" — was silently rewritten to 0.5, a middling
+            # favourable-sounding value nothing computed. Measured live at the time of the fix:
+            # `kala_convergence` holds **793 rows with convergence_score = 0** and **zero NULLs**,
+            # so every firing of that default was mangling a real zero, and the NULL case it was
+            # ostensibly written for has never occurred.
+            #
+            # A genuine NULL is handled explicitly and LOUDLY rather than silently defaulted: the
+            # substitution is still an invention, so if it ever fires it must be visible. §N.7
+            # item 6 — an honest null beats an invented judgment.
+            if conv_score is None:
+                logger.warning(
+                    "[ka_kala_darshana] convergence_id=%s has NULL convergence_score; "
+                    "substituting the 0.5 neutral. This path had never fired as of L3-W3 "
+                    "(793 zeros, 0 NULLs measured) — investigate before trusting the row.",
+                    conv_id,
+                )
+                conv_score = 0.5
+            effective = _compute_effective_score(conv_score, obstructions)
 
             # Compute net label
             label = _compute_net_label(effective, obstructions)

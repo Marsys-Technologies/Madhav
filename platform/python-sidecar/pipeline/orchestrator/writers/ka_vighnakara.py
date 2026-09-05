@@ -371,14 +371,30 @@ class KaVighnakaraWriter(WriterBase):
         return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
 
     def _fetch_natal_lagna_lon(self, conn, chart_id: str) -> Optional[float]:
-        """Fetch natal lagna degree from chart_facts (fact_subject='LAGNA', fact_key='longitude')."""
+        """Fetch the natal lagna degree from chart_facts.
+
+        NIRMĀṆA L3-W3 (§N.5, §N.7 item 2), found by the L3 `depends_on` audit. This asked for
+        `fact_key='longitude'`, which **does not exist** — measured live, the query returned 0 rows
+        on every chart, and the writer then proceeded with `natal_lagna_lon=None` silently, because
+        the only failure path here is a `logger.debug`. The real fact is `longitude_sidereal` under
+        `fact_category='graha_position'` (value 12.4311° for the canonical chart).
+
+        Three corrections, not one:
+          * the key (`longitude` → `longitude_sidereal`);
+          * a `fact_category` pin — selecting on `fact_key` alone is the §N.7 item-2 defect class,
+            and `fact_subject='LAGNA'` genuinely appears under a dozen other categories here;
+          * a total `ORDER BY` so the `LIMIT 1` is deterministic rather than arbitrary.
+        """
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     SELECT fact_value_num FROM chart_facts
-                    WHERE chart_id = %s AND fact_subject = 'LAGNA'
-                      AND fact_key = 'longitude' AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    WHERE chart_id = %s AND fact_category = 'graha_position'
+                      AND fact_subject = 'LAGNA'
+                      AND fact_key = 'longitude_sidereal'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    ORDER BY fact_id
                     LIMIT 1
                     """,
                     (chart_id,),

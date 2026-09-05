@@ -140,12 +140,25 @@ class _FakeConn:
         raise AssertionError("writer called close() — forbidden by §N.2")
 
 
+# L3-W3 M5: the century grid is now resolved from the birth epoch of the chart being built
+# (the hardcoded BIRTH_JD/BIRTH_YEAR anchored every chart on the native's 1984, so the second
+# canonical chart was materialised 13 months before that native was born). The writer refuses
+# rather than defaulting when no birth date resolves, so these fixtures must supply what the
+# orchestrator supplies in production: ctx.config['birth_params']. The value below is the
+# native's own birth, so every existing assertion about g3_1984_* slices holds unchanged.
+_NATIVE_BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00"}
+
+
 def _ctx(conn, **extra_config) -> ContextSpec:
     return ContextSpec(
         asset_id=ASSET_ID,
         build_id="test-build-w34",
         db_conn=conn,
-        config={"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", **extra_config},
+        config={
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "birth_params": _NATIVE_BIRTH_PARAMS,
+            **extra_config,
+        },
     )
 
 
@@ -1505,7 +1518,10 @@ def test_dry_run_reports_hierarchy_tier_counts_and_writes_nothing(monkeypatch):
     conn = _FakeConn(_returning_id_responder(targets=targets, stored_fp=None))
     ctx = ContextSpec(
         asset_id=ASSET_ID, build_id="test-build-w34", db_conn=conn,
-        config={"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+        config={
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "birth_params": _NATIVE_BIRTH_PARAMS,
+        },
         dry_run=True,
     )
 

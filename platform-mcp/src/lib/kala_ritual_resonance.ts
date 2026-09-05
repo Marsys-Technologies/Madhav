@@ -16,7 +16,7 @@
  * | structural_resonance| brahma_activity_ontology.significators ×      | honest_empty NAMING which of the three legs was missing |
  * |                     | brahma_remedy_corpus.deity/planet ×           | |
  * |                     | bodha_rm_resonances (THIS chart)              | |
- * | temporal_intensity  | the field's λ — kala_field_windows            | not_computed (field empty — ka_kshetra has written no rows; the N_e critical path) |
+ * | temporal_intensity  | the field's λ — kala_field_windows            | not_computed (no serving capability exists over kala_field*; the field itself IS populated — L3-W3 M8) |
  * | election_quality    | the lattice + adjudicateCandidates' ledger    | honest_empty |
  * | rarity              | cohort-scored scarcity via bg_cohort          | not_computed if the cohort asset is dormant |
  *
@@ -482,12 +482,32 @@ export function scoreStructuralResonance(
 // The remaining three factors
 // ══════════════════════════════════════════════════════════════════════════════
 
-/** The N_e blocker, stated once. */
+/**
+ * The N_e blocker, stated once.
+ *
+ * NIRMĀṆA L3-W3 finding M8 (§N.8): this constant previously read "field empty — ka_kshetra
+ * has written no rows". **That claim was false**, and nothing in the code could ever have made it
+ * read otherwise — `scoreTemporalIntensity` took no arguments, so no execution path consulted the
+ * field at all. Measured live at the time of correction: `kala_field_windows` holds **31,350 rows
+ * for the canonical chart** and 7,650 for the second chart.
+ *
+ * The real blocker is one layer over: **no serving capability exists over any `kala_field*` table.**
+ * `ka_kshetra` is the campaign's largest asset (~11M rows in `kala_field`) and has no registry
+ * capability, so there is no path by which this scorer could reach λ even though λ is there. The
+ * factor therefore stays `not_computed` — which remains the correct verdict — but for the reason
+ * that is true rather than one that was invented and unfalsifiable.
+ *
+ * Wiring it is real work and is deliberately NOT done here: it needs a capability over
+ * `kala_field_windows` AND a defensible rite-domain → `event_class` mapping AND a normalisation of
+ * `lambda_peak` (observed magnitudes ~1e-05) into a [0,1] factor. Inventing any of those three at
+ * serve time is exactly the "invented intensity" this constant already warns against.
+ */
 export const TEMPORAL_INTENSITY_UNAVAILABLE_REASON =
-  'not_computed (field empty — ka_kshetra has written no rows; see the N_e critical path). The ' +
-  "field's λ for the rite's domain is this factor's only honest source; a substitute would be an " +
-  'invented intensity. The factor is DROPPED from the product and the product renormalised over ' +
-  'the factors actually present — never zero-filled.'
+  'not_computed (no serving path). The field\'s λ for the rite\'s domain is this factor\'s only ' +
+  'honest source, and no registry capability exists over any kala_field* table — so λ cannot be ' +
+  'reached from here, whether or not the field is populated (it is: see L3-W3 M8). A substitute ' +
+  'would be an invented intensity. The factor is DROPPED from the product and the product ' +
+  'renormalised over the factors actually present — never zero-filled.'
 
 export function scoreTemporalIntensity(): ScoredFactor {
   return {

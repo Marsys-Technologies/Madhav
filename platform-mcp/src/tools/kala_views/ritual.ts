@@ -778,9 +778,15 @@ export async function handleKalaRitualGet(
     coverage.push(
       notInCorpusCoverage(
         'temporal_intensity_field_lambda',
-        "the field's λ for the rite's domain needs kala_field_windows, which ka_kshetra has written " +
-          'no rows to (the N_e critical path). The factor is DROPPED from the score product and the ' +
-          'product renormalised over present factors — never imputed, never zero-filled.',
+        // NIRMĀṆA L3-W3 M8 (§N.8): this previously said ka_kshetra "has written no rows" to
+        // kala_field_windows. Measured live, it has written 31,350 for the canonical chart. The
+        // real blocker is that no registry capability exists over any kala_field* table, so λ is
+        // unreachable from the serving plane regardless of how populated the field is.
+        "the field's λ for the rite's domain needs kala_field_windows, and no registry capability " +
+          'exists over any kala_field* table — so λ cannot be reached from the serving plane. The ' +
+          'field itself IS populated; this is a missing serving path, not missing data. The factor ' +
+          'is DROPPED from the score product and the product renormalised over present factors — ' +
+          'never imputed, never zero-filled.',
       ),
     )
   }
