@@ -903,3 +903,10 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   the queue is genuinely draining, not stalled — "steady merges every cycle... deepest the queue
   has been all campaign" — consistent with what this lane observed with #1829. Nothing new to
   diagnose or act on; deploy lag is the only remaining wait.
+- 2026-09-05 — **Cycle 24: IDLE-OK.** PR hygiene: `#1832`/`#1836`/`#1838` all still unmerged/queued
+  (30-deep queue); `#1828` clean, pending checks; nothing to fix. Deploy unchanged (`bd398f065`),
+  live `bg_doshas` check still old. Mid-cycle: **conductor-2b independently re-verified the
+  job-image/#1772 chain and pinged directly** — replied confirming D-L0-R already covers it and
+  that #1838/deploy-lag are the actual current gates; conductor-2b acknowledged and offered to flag
+  when #1838 merges. No state-file-worthy new information from that exchange (already fully
+  recorded). Nothing else changed this cycle.
