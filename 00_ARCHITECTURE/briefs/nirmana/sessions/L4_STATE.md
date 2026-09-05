@@ -53,7 +53,7 @@ your `nirmana-adjudication` issues → continue.
 |---|---|---|---|---|---|
 | `ph_nimitta` | **changed** | W2 done → **W3-0** | wave 0 · 37/46 unfrozen · **D-CND-04 hold LIFTED (2026-09-05, verified live)** — still E-gate-blocked on ancestors + D-NATIVE-05 | — | the layer root + my canary; 8 MUST + **M-31** (deterministic identity, SHIPPED + live-verified) |
 | `ph_muhurta` | **changed** | W2 done | wave 1 · 38/47 unfrozen | — | 2 MUST: the verdict can only ever read `mediocre`; `rows_written` over-reports by the collision count |
-| `ph_pratikara` | **changed** | W2 done → **W3-3d** | wave 1 · 40/49 unfrozen | — | 7 MUST; **1/7 shipped** (F-3.4 degenerate-anchor, #1831); 6 remain incl. the hard-floor citation fabrication; needs a rerun **after** all fixes land |
+| `ph_pratikara` | **changed** | W2 done → **W3-3j** | wave 1 · 40/49 unfrozen | — | 7 MUST findings, but F-7/F-8 were duplicates of F-3.4 (resolved by #1831) — real count was 5 unique; **now 3/5 shipped** (F-3.4 #1831, F-3/F-4/F-5 hard-floor citation #1854); F-2 (rerun, blocked on E-gate) + F-6 (grounding_tier/classical_sources_array columns, deferred) remain |
 | `ph_rectification` | **changed** | W2 done → **W3-3e** | wave 1 · 38/47 unfrozen | — | 1/1 MUST **shipped** (F3 discrimination gate, #1834); needs a rerun once E-gate opens |
 | `ph_sankrama` | **changed** | W2 done → **W3-3a** | wave 1 · 38/47 unfrozen | — | 2/2 MUST **shipped earlier this session** (#1788, MERGED) — stale row corrected 2026-09-05T~22:00Z; needs a rerun once E-gate opens |
 | `ph_sodhana` | **changed** | W2 done → **W3-2a/W3-3h** | wave 1 · 38/47 unfrozen | — | F-10 severity sort **shipped** (#1783, MERGED, earlier this session); F-14 leakage blind spot **shipped** (#1845); F-12/F-13 (NOW-tier, not MUST) remain |
@@ -809,4 +809,50 @@ CYCLE L4: PR hygiene — #1808 was silently failing its merge-GROUP (not PR-leve
 gate that landed mid-queue; rebased, regenerated the pin per Conductor's posted instructions,
 worked around a GraphQL-only dequeue requirement to push the fix, re-armed → next: watch #1808
 merge, then `ph_pratikara`'s remaining MUSTs or F1's multi-registry fix.
+
+`2026-09-05T~23:15Z` — L4 — **cycle: PR hygiene clean (#1808's pin fix rebuilding, no RED
+anywhere) → W3-3j shipped, `ph_pratikara`'s hard-floor citation fabrication (F-3/F-4/F-5) —
+the layer's most severe single defect closed.**
+
+**Recounted `ph_pratikara`'s finding list before picking a unit, rather than trusting the
+"6 remain" note verbatim:** F-7 ("linked_anchor_id is a single constant... 536 rows → 1 anchor
+from 107 candidates") and F-8 (the resulting domain-filter dead zone) turned out to be the
+**same defect** already fixed by #1831's F-3.4 domain-matched anchor selection — the finding
+table cross-referenced it under a different number in a different batch doc, and my own state
+file never connected the two. Real remaining count was 5, not 6; corrected in the table above.
+
+**The unit: F-3 (hard-floor) + F-4 + F-5**, taken together because F-4 turned out to need
+**zero** code changes — investigated the TS serving layer BEFORE assuming a 3-file fix was
+required, and found `kala_upaya_diagnosis.ts`'s `assignEfficacyTier()` already keys
+`classically_attested` off `citation !== null`, correctly, with its own F-118 design-contract
+comment already documenting the exact defect shape. It was only ever wrong because
+`classical_citation` could never actually be null. F-5's `phala_mitigation_map.ts` had a
+different, genuinely-broken check: `!classical_citation && !source_citation` — `source_citation`
+is an internal, always-populated provenance string, so the AND could never be true; the code's
+own comment one line above even says "NOT the fictional source_citation" and then uses it
+anyway. Fixed to key on `classical_citation` alone, extracted into a pure `filterUncited()` for
+direct unit testing (this file had zero prior test coverage — added its first test file).
+
+**F-3 itself**: `classical_citation NOT NULL` with the engine's `next(..., default=<fabricated
+BPHS string>)` fallback — measured live at 100% of 1,277 rows on the invented string. Migration
+685 makes the column nullable (self-tests the actual NULL acceptance, matching the C12
+discipline already used for #684); the engine now returns `None` honestly. Once F-3 ships, F-4
+self-corrects with no further code — a rare case where fixing the root cause fixes a
+downstream-looking symptom for free.
+
+**Scoped down from the fuller F-6 (add `grounding_tier`/`classical_sources_array`/`source_id`
+columns + propagate `bo_upaya`'s real citations) deliberately** — that's additive schema +
+propagation work, valuable but separable from the hard-floor fix itself, and keeping this PR to
+"stop fabricating" (subtract a lie) rather than also "add new grounding infrastructure" (add a
+feature) kept it a clean, reviewable, single-concern unit. Left as ph_pratikara's one remaining
+code-level item.
+
+4 new Python tests + 6 new TS tests (first test coverage `phala_mitigation_map.ts` has ever
+had); 61/61 wave4 + 6/6 TS tests pass; `tsc` clean on both changed files. Governance gates
+handled proactively (seven-for-seven). **Shipped PR #1854**, auto-merge armed.
+
+CYCLE L4: PR hygiene clean → shipped #1854 (`ph_pratikara` F-3/F-4/F-5, hard-floor citation
+fabrication closed — F-4 needed zero code once F-3's root cause was fixed) → corrected a
+double-counted finding (F-7/F-8 were F-3.4 under another name) → next: `ph_pratikara`'s F-6
+(grounding_tier columns + bo_upaya propagation) or F1's multi-registry MCP-wiring fix.
 
