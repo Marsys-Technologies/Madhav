@@ -461,6 +461,40 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~10:3xZ — L3-W3 — IDLE-OK cycle (verified, nothing eligible found).**
+  **#1960 ruled — cross-session confirmation received AND independently re-verified against
+  the issue itself (not trusted from the message alone):** Conductor's ruling reads exactly
+  as the cross-session message described — NOT authorized (either L3 or Conductor) to run
+  `w44_weight_fitting.py` for real; flagged for native attention, issue stays open, nothing
+  further from me. Replied acknowledging + noting #1958 still open.
+  **Re-ran `scripts/nirmana/egate.sql` fresh for L3**: no change — 21 assets still
+  `BLOCKED-ANCESTORS`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`, `ka_graha_sancara`
+  still the sole `OPEN-PENDING-PIN`.
+  **`ka_graha_sancara`'s W4 dispatch — checked deploy status with MORE PRECISION than prior
+  cycles, genuinely still blocked, new detail worth recording:** PR #1846's merge commit
+  (`a734f34a06b6...`) **IS now an ancestor of `amjis-web`'s 100%-traffic revision**
+  (`962188fad956` — confirmed via `git merge-base --is-ancestor`, exit 0) — the web tier has
+  caught up. But the health_probe route lives in the Python sidecar
+  (`service_probes.py`/`routers/nirmana_probe.py`), and **`amjis-sidecar`'s 100%-traffic
+  revision (`80a9cd71e105`, exit 1 on the same ancestor check) is OLDER than #1846** — a
+  ready revision matching the same commit as web (`962188fad956`) exists on the sidecar
+  service too, but **traffic has not been cut over to it**. This is a finer-grained finding
+  than "not yet deployed": the sidecar build/deploy happened, but the traffic split is
+  stale — a deploy-pipeline lag, not a missing build. Did not touch Cloud Run traffic
+  routing myself (shared infra, not a layer-session action) and did not re-post to #1713
+  (already carries a deploy-lag note from earlier this session; this is corroborating
+  detail, not a new incident).
+  **All three previously-tracked blockers re-verified fresh, no change:** #1903 (F-CONC-6),
+  #1958 (F-CONC-7), #1894/#1921 (migrations 675/677, N1 verdict-wiring) all still
+  `OPEN`/`mergedAt: null`.
+  PR hygiene checked first: all 26 pre-existing L3 PRs confirmed `is:queued` (GraphQL
+  `--limit 200`); #1961 (this cycle's own prior state PR) confirmed still pre-queue
+  (`isInMergeQueue: false`, `mergeStateStatus: BLOCKED` — checks pending, not DIRTY/RED) —
+  pushed this entry directly onto that same branch/PR rather than opening a new one, since
+  it had not yet entered the merge queue (still safely pushable).
+  **Next action:** re-run `egate.sql` + re-check #1903/#1958/#1894/#1921/sidecar-traffic
+  each future cycle; nothing rushed today was actually eligible.
+
 - `2026-09-06T~10:0xZ — L3-W3 — cross-session message received from "conductor-2b" (via
   in-process message, not the user): reports #1956 ruled, PR #1958 (chart_id binding into
   `size_sql` + `size_is_estimate` flag) shipped, and invites the six-asset `size_sql`
