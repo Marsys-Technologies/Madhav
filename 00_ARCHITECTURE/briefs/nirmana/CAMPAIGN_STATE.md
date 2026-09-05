@@ -354,6 +354,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-05T13:25Z` — first supervised cycle under C8 v2.3: own-PR hygiene cleared a two-day
+  backlog — #1731 and #1765 closed as superseded (each branch a verified strict ancestor of its
+  superset PR), #1733 and #1778 rebased onto main (both purely additive, zero deletions) with
+  auto-merge armed; HOLDS table above brought to the 07:46Z ruling state (2 lifted-and-recorded,
+  2 active). Fleet sweep: five CLEAN sibling PRs (#1808, #1790, #1777, #1767, #1766) queued —
+  verified via `is:queued`, not `autoMergeRequest`; RED nudges posted on #1818/#1801/#1791
+  (Governance Gates failing) and DIRTY nudge on #1820. Outstanding ball: L4 owes #1770 the
+  five-table regenerability confirmation that releases L3.
 - `2026-09-04T23:18:17Z` — night-1 adjudication wave: 11 issues from 5 sessions ruled and logged above; PRs #1722 (egate.sql), #1728 (depends_on fingerprint), #1731 (nrec), #1733 (capsule_audit.sql), #1737 (asset-frontier gate) raised and queued. Standing audits A-01 (L0's 29 capsules vs C12) and A-02 (evidence chains + identity separation across all 174 events) both CLEAN.
 - `2026-09-04T22:44:41Z` — bootstrap: worktree `~/nirmana-s/conductor` created from `origin/main`
   (`20323fae4`); labels `nirmana-adjudication` + `nirmana-coordination` created; coordination
