@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 21; ga_dashas F-A14 integrity_check_sql landed (#1930)
+last_updated: 2026-09-06 — C8 v2.3 cycle 22; ga_vargas F-A14 integrity_check_sql landed (#1933)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -841,6 +841,46 @@ and fixed a real bug in my own first-draft conjunct before it shipped — next: 
 `ga_strength`'s own `integrity_check_sql` (same F-A14 finding, separate assets, separate units),
 or re-dispatch `ga_positions` once #1892 lands.
 
+## CYCLE 22 (C8 v2.3) — ga_vargas's F-A14 integrity_check_sql (PR #1933) — shipped a genuine RED conjunct rather than suppress it
+
+**PR hygiene:** clean; #1853's red re-verified as the identical already-tracked run/issue (#1852),
+not re-diagnosed. Everything else queued or settling.
+
+**Unit of work: F-A14 for `ga_vargas`.** `chart_divisionals_unique_idx` is already a real DB
+UNIQUE (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) — confirmed via
+`pg_indexes`, not assumed from the W1 finding's prose — so no distinctness conjunct was added
+(D-CND-03 rule 4); that index is itself part of F-A1(b)'s separately-tracked defect (missing
+`fact_subject`), not re-encoded here as if it passed.
+
+Four conjuncts, each measured live and mutation-proved:
+1. sign/sign_number mapping consistency (nothing DB-enforces it).
+2. Vargottama correctness, re-derived from the writer's own `_compute_vargottama` definition
+   against the real `varga_position` rows — not a restated literal.
+3. **§N.5 D1 authority vs `chart_facts.graha_position` — genuinely RED today, on 4 rows, and left
+   that way on purpose.** My first pass at verifying this conjunct (scoped to
+   `lahiri_chitrapaksha` only, matching a habit from the ga_dashas work) found 0 mismatches and
+   nearly got shipped as a clean check. Re-ran across ALL 5 ayanamshas × all 3 charts before
+   trusting that — found 4 real mismatches on `raman` and `surya_siddhanta_classical`. Traced one
+   to full precision rather than stopping at "found a mismatch": chart 482012f1/raman Moon's
+   `chart_divisionals` D1 sign (Pisces) vs `chart_facts` (Aquarius) is an exact 2.717° offset —
+   matching F-A1's own already-measured Moon offset ("+2.7169°") to three decimal places. This is
+   F-A1's known "computed for the wrong instant" defect, now precisely quantified at the D1-sign
+   grain for the first time, not a new finding — and the conjunct was shipped RED rather than
+   scoped to exclude the rows that fail it, matching migration 653's and the L3 batch's own
+   precedent.
+4. Identity range guard (no CHECK covers chart_id/graha/ayanamsha_id/varga/fact_category/fact_key
+   at all).
+
+No Python writer touched; `provenance_inventory --check` confirmed clean. 6 new textual tests,
+one of which specifically forbids a future edit from silently excluding chart `482012f1` or
+ayanamsha `raman` to make the conjunct pass quietly instead of leaving it red until the rebuild.
+
+CYCLE 22 L1: landed `ga_vargas`'s F-A14 integrity contract (PR #1933) — caught my own scope-too-
+narrow mistake (checking one ayanamsha instead of all five) before shipping a false "all clean"
+claim, found and precisely quantified a real F-A1 manifestation at the D1-sign grain, shipped it
+honestly red rather than working around it — next: `ga_strength`'s own `integrity_check_sql`
+(the last of the three F-A14 batch-A assets), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1158,6 +1198,16 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   independent conjuncts, re-verified. Scoped the MD-tiling conjunct to exclude `mudda` only after
   tracing WHY its periods don't calendar-tile (real ephemeris solar-return instants, not
   classical fixed arithmetic) rather than just observing the anomaly and excluding it blind.
+- **D-L1-44** — C8 v2.3 cycle 22: caught my own scope mistake before it shipped a false claim —
+  ga_vargas' §N.5 D1-authority conjunct first checked only `lahiri_chitrapaksha` (matching a habit
+  formed during the ga_dashas F-A14 work, where checking one ayanamsha happened to be sufficient)
+  and found 0 mismatches; re-ran across all 5 ayanamshas × all 3 charts before trusting that as
+  "clean," per the discipline of never narrowing scope without checking whether the narrowing
+  itself hides something. Found 4 real mismatches and traced one to exact precision (2.717°
+  offset, matching F-A1's own measured Moon offset to three decimals) rather than stopping at
+  "a mismatch exists." Shipped the conjunct genuinely RED (migration 654) rather than scoping the
+  failing rows out to present a clean pass — same discipline D-CND-03's L3 precedent and my own
+  migration 653 both established.
 
 ## Held items
 
@@ -1427,3 +1477,17 @@ L1 must satisfy rather than a feature it consumes.
   L1: landed ga_dashas's F-A14 integrity contract (PR #1930), self-caught and fixed a real
   conjunct bug via mutation testing before it shipped -- next: ga_vargas or ga_strength's own
   integrity_check_sql, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T00:3xZ -- CYCLE 22 (C8 v2.3). PR hygiene clean, #1853 re-confirmed same tracked
+  issue. Unit of work: ga_vargas's F-A14 integrity_check_sql (PR #1933). chart_divisionals_unique_idx
+  confirmed a real DB UNIQUE via pg_indexes (not assumed), so no distinctness conjunct added
+  (D-CND-03 rule 4). Four conjuncts: sign/sign_number mapping, vargottama correctness (re-derived
+  from the writer's own _compute_vargottama definition), §N.5 D1 authority vs chart_facts, range
+  guard. Caught my own mistake before shipping a false clean claim: first checked the D1-authority
+  conjunct on lahiri_chitrapaksha only (0 mismatches), re-ran across all 5 ayanamshas x 3 charts
+  before trusting it and found 4 real mismatches -- traced one to exact precision (2.717 deg
+  offset matching F-A1's own measured Moon offset to three decimals). Shipped the conjunct
+  genuinely RED rather than scoping the failing rows out. No writer touched, no digest/pin regen
+  needed. CYCLE 22 L1: landed ga_vargas's F-A14 integrity contract (PR #1933), caught a scope-too-
+  narrow mistake before it shipped a false "clean" claim, quantified and shipped a real F-A1
+  manifestation honestly red -- next: ga_strength's own integrity_check_sql (last of the F-A14
+  batch-A trio), or ga_positions re-dispatch once #1892 lands.
