@@ -41,15 +41,19 @@ into a `json.dumps()` call with no `uuid.UUID` case in `_normalise()` — filed 
 orchestrator internals). This is the THIRD structural blocker found this session (#1840 data,
 #1848 guard logic, #1856 a genuine crash bug) — every one is now a real, independently-verified,
 well-evidenced campaign-wide finding, not a workaround-and-move-on. **#1848 already has a
-Conductor fix in flight** (PR #1851, Option B exactly as recommended, not yet merged). **Canary
-2 (`lel_events`) reconciliation done**: found and removed a self-labeled test-fixture row
-(`"D-4a Lane A-4 append-hook live demonstration"`, 2026-07-19) that had been sitting in
-production `life_events` since before this campaign, propagated into `mimamsa_event_provenance`
-and an unregistered `brahma_prospective_ledger` "matched prediction" row — all three deleted in
-one FK-respecting transaction after a fresh snapshot, both real `integrity_check_sql`s
-re-verified `true` non-vacuously afterward (63 real rows). `lel_events`' own W2+disposition
-evidence (`source_accepted`) not yet submitted — that's the next real step, now on a genuinely
-clean corpus. W5 mechanical checks/capsule
+Conductor fix in flight** (PR #1851, Option B exactly as recommended, not yet merged). **CANARY 2
+(`lel_events`) FULLY TERMINAL-ACCEPTANCE COMPLETE — the campaign's first-ever `source_accepted`
+event.** Reconciliation found and removed a self-labeled test-fixture row (`"D-4a Lane A-4
+append-hook live demonstration"`, 2026-07-19) that had been sitting in production `life_events`
+since before this campaign, propagated into `mimamsa_event_provenance` and an unregistered
+`brahma_prospective_ledger` "matched prediction" row — all three deleted in one FK-respecting
+transaction after a fresh snapshot, both real `integrity_check_sql`s re-verified `true`
+non-vacuously afterward (63 real rows). All three evidence events then submitted and
+independently re-verified live: `asset_analysis_accepted`, `optimization_verdict_accepted`
+(verdict `non_build_disposition`), `source_accepted` (`disposition_digest` derived, not
+arbitrary). `capsule_audit.sql`'s own completeness view confirms `w2_analysis=t, w2_verdict=t,
+terminal_acceptance=t` — only `integrity_verified` (verifier-only, W5) stands between here and
+`asset_frozen`. W5 mechanical checks/capsule
 remain fresh-context-verifier-only regardless. W4 gated only on holds for two OTHER assets: #1732 for
 `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
@@ -427,6 +431,31 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~22:35Z (C8 v2.3 cycle 12) — **`lel_events` (canary 2) fully terminal-acceptance
+  complete — the campaign's first-ever `source_accepted` event.** PR hygiene first: #1844
+  CLEAN-but-unqueued, re-armed, confirmed `isInMergeQueue: true` via GraphQL (not just the CLI's
+  "already queued" text); #1826 checks-pending only, nothing broken. Noted deploy had moved again
+  (`amjis-web-01885-2pg`, `291beab7b…`) — re-checked fresh before every submission rather than
+  reusing a stale sha, avoiding the transient-409 pattern from two cycles ago. Computed
+  `lel_events`' `registry_fingerprint_sha256`/`analysis_digest` via the real server functions
+  (same verified pattern throughout this session — `has_writer=false` so the receipt base carries
+  `writer_digest_sha256: null`, matching its `non_writer_assets` listing in the layer pins).
+  Submitted all three events in sequence, each independently re-verified via direct DB read before
+  moving to the next: (1) `asset_analysis_accepted`; (2) `optimization_verdict_accepted` — verdict
+  `non_build_disposition` (schema-mapped to `action: formal_disposition`,
+  `output_contract: not_applicable`), summary grounded in the two things actually confirmed this
+  session (the `assetClearSpec.ts` `null` clear-protection, and this cycle's own reconciliation
+  cleanup) rather than anything unverified; (3) `source_accepted` — `disposition_digest` derived
+  as `sha256({asset_id, disposition, registry_fingerprint_sha256, analysis_digest})`, same
+  derived-not-arbitrary discipline as `authorization_sha256` two cycles ago. Confirmed via
+  `capsule_audit.sql`'s own §1 completeness query: `w2_analysis=t, w2_verdict=t,
+  terminal_acceptance=t` — only `integrity_verified` (verifier-only) stands between `lel_events`
+  and `asset_frozen`.
+  **Next cycle: dispatch a fresh-context verifier subagent** — `lel_events` and `mi_vistara` both
+  now have real, complete, independently-verifiable work sitting ready for W5 (mechanical checks
+  + `integrity_verified`), and implementer ≠ certifier means that has to be someone other than me.
+  This is now the highest-value next unit: two real terminal-acceptance-complete assets waiting
+  on the one step only a fresh-context verifier can honestly do.
 - 2026-09-05T~22:20Z (C8 v2.3 cycle 11) — **`lel_events` (canary 2) reconciliation: found and
   removed a real production-data contamination — a demo/test fixture sitting in `life_events`
   since 2026-07-19.** PR hygiene first: #1844 CLEAN-but-unqueued, re-armed and confirmed queued
