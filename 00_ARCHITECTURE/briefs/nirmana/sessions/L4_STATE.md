@@ -2238,3 +2238,45 @@ access down 60 cycles; no new capability landings or adjudications → next: wat
 `#1808`'s re-queue; watch `#1834`'s merge; retry E-gate/dispatch dry-run once DB access returns;
 watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~15:45Z` — L4 — **CYCLE 71 (v2.3) — genuinely IDLE, verified rather than assumed;
+`#1831`/`#1808` back to normal (their CI was still legitimately running, not stuck).**
+
+**PR hygiene:** re-derived the own-PR list fresh from `gh pr list --author "@me"` filtered to
+L4 titles/branches (the raw `--author "@me"` list is fleet-wide — all seven lanes share one GH
+identity — so filtering by `l4`/`phala`/`ph_` in title or branch is the correct method, not
+`--label`). All 11 own open PRs checked via GraphQL `mergeQueueEntry`: 9 genuinely queued
+(`#1885` pos15, `#1870` pos68, `#1864` pos60, `#1854` pos48, `#1849` pos19, `#1845` pos21,
+`#1842` pos14, `#1839` pos5, `#1834` pos2). `#1831`/`#1808` showed `mergeQueueEntry: null`,
+`mergeStateStatus: BLOCKED`, `autoMergeRequest` armed — looked like the CLEAN-but-unqueued
+case, but checked before acting: both PRs' `Governance Gates` and `Build Check` runs were
+genuinely `IN_PROGRESS`, started ~9 min prior (not stale — confirmed via `gh run view`, which
+also reported "triggered ~9 minutes ago," consistent with the wall clock, not a cached read).
+Auto-merge is armed on both; once their checks resolve, GitHub enqueues them automatically. No
+action needed — correctly left alone rather than manufacturing a re-arm on a PR whose checks
+simply hadn't finished.
+
+**Priorities 1-4, re-verified in order rather than copied from last cycle:** (1) E-gate —
+`ToolSearch` for `mcp__postgres__query` still returns no match, no `DATABASE_URL` in
+`platform/.env.local` either; direct `psql` attempt confirmed nothing to connect to. 61st
+consecutive cycle DB access has been down. (2) No completed run awaiting W5 — no dispatch has
+run this session. (3) Unheld W3 item — re-read the full W3 lane log rather than trusting last
+cycle's "next" pointer verbatim: every asset's MUST/real findings are shipped (`ph_sodhana` and
+`ph_suddha_sodhana` fully clean; `ph_pratikara` down to its E-gate-blocked rerun only;
+`ph_rectification`/`ph_pramana`/`ph_muhurta`/`ph_nimitta` clean; `ph_phaladesa`'s F-4.2 shipped,
+F1 correctly deferred with a documented, unchanged reason — no MCP build/run capability in this
+environment). (4) W1/W2 — long done. Also re-checked `#1770`: **CLOSED on L4's side** —
+Conductor's own comment confirms "L4's answer is in... clean confirmation," lifting L3's hold;
+nothing further owed here. Checked `origin/main`'s last 20 commits for any new L4-owned work
+item slipping in: none. Checked for new `nirmana-adjudication` issues naming L4: none.
+
+**No priority-5 prep gap found either** — both prep docs (`L4_W5_VERIFICATION_v1_0.md`,
+`L4_W6_CLOSE_REPORT_v1_0.md`) were already current as of cycle 2's staleness fix, and nothing
+this cycle's re-verification surfaced needs correcting in them.
+
+CYCLE 71 L4: IDLE-OK (verified: PR hygiene clean, 9/11 own PRs genuinely queued + 2 legitimately
+mid-CI with auto-merge armed, none DIRTY/RED; E-gate uncheckable, DB access down 61 cycles;
+`#1770` confirmed closed on L4's side; no unheld W3 item remains real+unshipped; no new
+adjudications name L4) → next: watch `#1831`/`#1808` enter the queue once their CI resolves;
+watch `#1834` merge (pos 2); retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
