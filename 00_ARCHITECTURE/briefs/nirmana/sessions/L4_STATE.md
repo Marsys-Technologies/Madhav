@@ -1353,3 +1353,67 @@ to #1713 with exact evidence rather than re-touching my own already-healthy PRs 
 unchanged → next: watch whether `#1838` clears (my own PRs need no further action until then);
 watch `L2_STATE.md` capability landings; F1 remains deferred.
 
+`2026-09-06T~04:35Z` — L4 — **CYCLE 7 (v2.3) — `#1838` cleared (main advanced to `1e30cd76b`),
+the queue is flowing again (my PRs' positions dropped by 3 across the fleet). PR hygiene clean,
+nothing to rebase/dequeue this cycle. The cycle's real work: found and shipped a real,
+already-authorized fix on a shared Conductor-owned tool — issue #1805's ruling, sitting unread
+since my earlier-session filing, granted "author it, I merge" (C5) plus named a THIRD bug the
+Conductor found verifying my analysis.**
+
+**Read #1805 in full** (both ruling comments) rather than treating "no new priority-1-4 item"
+as license to default straight to prep — an open, already-ruled, high-value adjudication I filed
+is exactly what C3's escalation protocol exists to surface, and it had gone unactioned since the
+ruling landed. Terms: per-column FK exclusion, type-and-shape scan + live resolution check,
+honest header on the sampling's probabilistic scope, the known-truth regression case embedded as
+a comment, plus fold in a third bug (ON DELETE SET NULL children invisible to the existing
+CASCADE query — `phala_mitigation`/`phala_muhurta`, 1,277 + 183 rows silently nulled on a
+`phala_anchors` rebuild, a provenance-erasure mutation distinct from destruction).
+
+**Hit a real performance wall building the fix, caught before shipping, not after**: the naive
+type-and-shape candidate scan is ~2,553 id-shaped columns across this schema; probing each from
+a psql-client round trip (via the file's existing `query_to_xml` idiom) hung past 120s and was
+killed. Rewrote as one server-side PL/pgSQL loop (`DO $$ ... FOR cand IN EXECUTE ... $$`, a
+session-local `TEMP TABLE` scratch space `DROPPED ON COMMIT`) — still read-only against every
+real campaign table, updated the file's own header to say so honestly.
+
+**Caught a second, subtler bug in my own draft before shipping**: `phala_anchors.anchor_id` is
+`uuid`, but `mimamsa_predictions.source_pramana_id` (one of the two known-truth referrers) is
+`text` — a real type mismatch this campaign's mixed id storage produces. A strict
+type-bucket-match candidate filter would have MISSED the exact referrer the ruling requires
+finding; fixed by casting both sides to `text` in the resolution check instead of requiring exact
+type equality. Caught by live-testing against production before finalizing, not assumed.
+
+**Caught a third bug in my own draft, also before shipping**: psql's `:'table'` variable
+interpolation does not reliably reach inside a dollar-quoted `DO $$...$$` body across psql
+versions, and PL/pgSQL's own `:=` syntax makes relying on it there doubly fragile. Routed the
+target table through a `TEMP TABLE` row instead of interpolating it into the block — the DO
+body now contains zero psql-variable tokens.
+
+**Verification honesty**: my only DB access here is a read-only connection (confirmed:
+`CREATE TEMP TABLE` in the DO block itself fails with "cannot execute ... in a read-only
+transaction" when I tried to test it directly). Verified every underlying SQL fragment
+independently as plain SELECTs against production instead — candidate scan, per-column FK
+exclusion (spot-checked `phala_muhurta.linked_anchor_id` excluded / `fructification_anchor` not),
+resolution-check arithmetic (195/195, 13/13 accepted; `fructification_anchor` 0/21 correctly
+rejected), full-count numbers (195, 13 — exact match to the ruling), and the new SET NULL query
+(1,277, 183 — exact match). Could NOT verify the DO block's own end-to-end execution in this
+environment — said so explicitly on the PR and asked Conductor to confirm via real psql before
+merging, rather than claiming a green I couldn't earn (§N.8).
+
+**Shipped PR #1885** on the Conductor-granted branch `codex/nirmana-l4-cascade-check-fix`
+(off fresh `origin/main`, not through the merge queue — per the ruling's own terms, Conductor
+reviews and merges this one directly). Tagged Conductor on #1805 with the verification summary
+and the one open gap.
+
+E-gate re-verified unchanged (`ph_nimitta` 37/46).
+
+CYCLE 7 L4: PR hygiene clean (`#1838` cleared, queue flowing, my PRs advanced 3 positions, no
+rebase needed) → found and shipped a real, already-ruled, unactioned adjudication (#1805 →
+#1885): rewrote `cascade_check.sql`'s no-FK scan from name-equality to type-and-shape + live
+resolution, added the Conductor's third-bug SET NULL section, caught and fixed two of my own
+draft bugs before shipping (a uuid/text type mismatch that would have missed the exact known
+referrer; a psql-variable-in-dollar-quote fragility) and one performance wall (2,553-candidate
+client-side scan rewritten as a server-side loop) → honestly flagged the one thing I could not
+verify (DO block end-to-end) rather than claim it → next: watch #1885 for Conductor's merge +
+DO-block confirmation; E-gate / L2 capability landings; F1 remains deferred.
+
