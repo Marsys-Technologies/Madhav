@@ -910,3 +910,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   that #1838/deploy-lag are the actual current gates; conductor-2b acknowledged and offered to flag
   when #1838 merges. No state-file-worthy new information from that exchange (already fully
   recorded). Nothing else changed this cycle.
+- 2026-09-05 — **Cycle 25: IDLE-OK.** One more merge landed (`#1830`, docs, `a14e94575`) but none
+  of mine/`#1838`; all still cleanly `is:queued` (30-deep), `#1828` clean pending checks, nothing to
+  fix. Deploy still unchanged (`bd398f065`), live `bg_doshas` check still old. Genuinely idle.
