@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 30; ga_vastu F-A14 landed (#1955)
+last_updated: 2026-09-06 — C8 v2.3 cycle 31; ga_nakshatra F-A14 landed (#1959)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -23,8 +23,8 @@ your `nirmana-adjudication` issues → continue.
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
-  (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical` F-A14, cycle 29) and 741
-  (`ga_vastu` F-A14, cycle 30) used. 742–749 remain free.
+  (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
+  cycle 30), 742 (`ga_nakshatra`, cycle 31) used. 743–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1204,6 +1204,50 @@ for the remaining 10 assets (ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga
 ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions`
 re-dispatch once #1892 lands.
 
+## CYCLE 31 (C8 v2.3) — ga_nakshatra's F-A14 contract (migration 742), the first shared-table asset with its own real second-pass detector
+
+**PR hygiene:** clean sweep. `#1928` still hasn't merged (`#1853` unchanged, same tracked run,
+`mergedAt: null` again). `#1892` still open, unchanged. All prior L1 PRs confirmed `is:queued` or
+already merged — #1955 (`ga_vastu`) and #1827 (state) were mid-CI from the previous cycle's fresh
+pushes (a few checks still `IN_PROGRESS`, `mergeStateStatus: UNKNOWN`), not DIRTY or RED — both
+already carry armed auto-merge and will self-queue once checks finish. No action needed beyond
+confirming that, per the same "don't trust the stale field, only `is:queued` speaks" discipline.
+
+**Unit of work: F-A14 for `ga_nakshatra`** (migration 742, third used in the new 740-749 range).
+Shared table (`chart_facts`, scoped to 16 fact_categories) — no distinctness conjunct (chart_facts'
+own partial UNIQUE already exactly matches the natural key).
+
+Four conjuncts, all measured live and mutation-proved: (a) FORENSIC gate — Moon must be in Purva
+Bhadrapada (nakshatra_id=25) for the canonical chart, across all 5 ayanamshas, re-asserting the
+writer's own build-time `_forensic_gate`; (b) `verification_pass_status` honesty (§N.7 item 4 /
+§N.8) — a `two_pass_verified`/`divergent_flagged` status may appear ONLY on the exact four
+(fact_category, fact_key) pairs a real detector runs for. Found this asset has TWO independent real
+second-pass detectors, not one: the writer's own `_nakshatra_pada_verdicts` re-derivation
+(`graha_nakshatra_join.nakshatra_id_ref`, `graha_pada_join.pada_number_ref`) AND the KP
+significator emitter's separate `two_pass_verdict` cross-check against `bg_kp_sublord_division`
+(`kp_planet_significations.star_lord`/`sub_lord`) — confirmed live that exactly these four pairs
+carry a verified status today, nothing else across the 16 categories does; (c) `nakshatra_id_ref`
+re-derived from the same subject's `longitude_sidereal` fact via the 27-fold division formula
+(cross-table against `ga_positions`, §N.5) — 150/150 rows matched live; (d) cross-ayanamsha
+sentinel internal consistency — a `stable_nakshatra_id` row (emitted only when all 5 ayanamshas
+agree) implies its `nak_5ay_consistency` sibling reads the unanimous "5/5".
+
+Live investigation nearly produced a false-positive finding on (b): a naive "only the two
+attribution-row keys may carry a verified status" conjunct would have flagged 180 genuinely correct
+`kp_planet_significations` rows (90 `star_lord` + 90 `sub_lord`, all `two_pass_verified`) as a
+violation. Read `ga_kp_significators.py` before shipping and confirmed this emitter runs its OWN
+`two_pass_verdict` check and legitimately sets the status on the row itself (the exact exception the
+writer's own code comment documents) — widened the allowlist to the correct four pairs rather than
+ship a false red.
+
+No Python writer touched; `provenance_inventory --check` clean. 7 new textual-contract tests; full
+`tests/unit/migrations/` suite: 38 files, 181 passed / 91 skipped, no regressions.
+
+CYCLE 31 L1: landed `ga_nakshatra`'s F-A14 contract (PR #1959, migration 742) — next: continue
+F-A14 for the remaining 9 assets (ga_sensitive, ga_sensitive_degree, ga_structural, ga_yoga,
+ga_vichara, ga_sade_sati, ga_transit_anchors, ga_ayurdaya, ga_prashna), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1214,7 +1258,7 @@ none accepted yet (blocked on #1736).
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary |
 | ga_vargas | 23,542 / 22,092 | **changed** | **MUST: longitudes computed for the wrong instant (F-A)** |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A) |
-| ga_nakshatra | 2,847 / 1,802 | rebuild_only | `ganita_nakshatra_get` does not serve it (F-B18) |
+| ga_nakshatra | 2,847 / 1,802 | rebuild_only | `ganita_nakshatra_get` does not serve it (F-B18); F-A14 integrity_check_sql (#1959) |
 | ga_panchanga | 437 / 221 | **changed** | **MUST: `*_arambha_iso` stores the anga END (F-B24)** |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B) |
@@ -1231,10 +1275,10 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **9/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-30: ga_dashas,
-ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu —
-stale "0/19" corrected here); `expected_volume_formula` NULL on 6; `ga_vichara` is
-`catalog_status=DRAFT` with 8,249 live rows.
+Cross-cutting: **10/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-31: ga_dashas,
+ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
+ga_nakshatra); `expected_volume_formula` NULL on 6; `ga_vichara` is `catalog_status=DRAFT` with
+8,249 live rows.
 
 ## Decisions log
 
@@ -1613,6 +1657,17 @@ stale "0/19" corrected here); `expected_volume_formula` NULL on 6; `ga_vichara` 
   fixed by mutating to a genuinely wrong value (`'strengthened'`) instead. Both are the same
   discipline as D-L1-46/D-L1-47/D-L1-48/D-L1-50: never trust a check's own "0 violations" or "clean
   mutation" reading without confirming the check could have failed differently.
+- **D-L1-53** — C8 v2.3 cycle 31: `ga_nakshatra` has TWO independent real
+  `verification_pass_status` detectors, not the single second-pass pattern seen on every prior
+  F-A14 asset. Before shipping the verification-honesty conjunct, read `ga_kp_significators.py`
+  and confirmed its `kp_planet_significations.star_lord`/`sub_lord` rows carry their own genuine
+  `two_pass_verdict` cross-check against `bg_kp_sublord_division` — legitimately outside the
+  writer's own `_ATTRIBUTION_ROWS` allowlist, per an explicit code comment documenting the
+  exception. A naive conjunct scoped to only the two attribution-row keys would have flagged 180
+  correct live rows (90 `star_lord` + 90 `sub_lord`) as a false violation. Widened the allowlist to
+  the correct four (fact_category, fact_key) pairs instead of shipping the narrower, wrong check —
+  same discipline as D-L1-48 (`ga_condition`'s graha_yuddha docstring) and D-L1-52: read the
+  writer's own documented exception before asserting an absence.
 
 ## Held items
 
@@ -2023,3 +2078,19 @@ L1 must satisfy rather than a feature it consumes.
   Corrected a stale "0/19 carry integrity_check_sql" cross-cutting line to 9/19. No writer
   touched. CYCLE 30 L1: landed ga_vastu's F-A14 contract (PR #1955, migration 741) -- next:
   continue F-A14 for the remaining 10 assets, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T02:1xZ -- CYCLE 31 (C8 v2.3). PR hygiene clean sweep: all prior L1 PRs is:queued or
+  merged; #1955/#1827 mid-CI from last cycle's fresh pushes (IN_PROGRESS checks, not DIRTY/RED,
+  auto-merge already armed); #1928 still unmerged (#1853 unchanged); #1892 still open. Unit of
+  work: ga_nakshatra's F-A14 integrity_check_sql (PR #1959, migration 742 -- third used in the new
+  range). Shared table (chart_facts, 16 fact_categories), no distinctness conjunct. Four
+  conjuncts: FORENSIC gate (Moon->Purva Bhadrapada id=25, all 5 ayanamshas), verification-status
+  honesty (two_pass_verified/divergent_flagged confined to exactly the pairs a real detector
+  covers), nakshatra_id_ref re-derived from longitude_sidereal via the 27-fold division formula
+  (cross-table, §N.5), cross-ayanamsha stable_nakshatra_id implies its 5ay_consistency sibling
+  reads "5/5". Read ga_kp_significators.py before shipping the verification-honesty conjunct and
+  found a SECOND real detector (kp_planet_significations.star_lord/sub_lord's own two_pass_verdict
+  cross-check against bg_kp_sublord_division) beyond the writer's primary second-pass re-derivation
+  -- a naive two-pair allowlist would have flagged 180 correct live rows; widened to the correct
+  four pairs instead. No writer touched. CYCLE 31 L1: landed ga_nakshatra's F-A14 contract (PR
+  #1959, migration 742) -- next: continue F-A14 for the remaining 9 assets, or ga_positions
+  re-dispatch once #1892 lands.
