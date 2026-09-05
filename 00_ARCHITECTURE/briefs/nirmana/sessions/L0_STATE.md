@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-Y: bg_doshas migration is LIVE (evaluates TRUE); fresh W2 evidence REAL-SUBMITTED and accepted (both 201) — first real production write this resumption. Next: verifier-side integrity_verified+asset_frozen (needs its own schema investigation first).
+last_updated: 2026-09-05 — PR #1832 (bg_vidhi_floors tiling fix) MERGED — 2 of 3 migration PRs now landed; not yet applied to live DB. bg_doshas real W2 accepted last cycle; next is verifier-side integrity_verified+asset_frozen schema investigation.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -45,7 +45,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | **no dispatch needed** | **Check is LIVE + evaluates TRUE (D-L0-Y). Fresh W2 REAL-SUBMITTED (both 201).** Next: verifier-side `integrity_verified`+`asset_frozen` (needs its own schema investigation first, per D-L0-Y) |
-| bg_vidhi_floors | rebuild_only | **Both open questions diagnosed, fully verified read-only.** Tiling false-positive FIXED (D-L0-M, PR #1832). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source is internally sound (14/409, 0 dangling FKs) — pending job-image redeploy + dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) |
+| bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
 | bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
@@ -980,3 +980,15 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `definitions.ts`) before attempting, same care as was given to the W2 schema before this
   submission. Also worth doing: repeat this exact sequence for `bg_gochara_arcs` once its migration
   (694/#1836) similarly lands live.
+- 2026-09-05 — **Cycle 29 — 2nd migration PR merged.** PR hygiene: **`#1832` MERGED**
+  (`1557dd28`, 15:41:56Z, bg_vidhi_floors tiling fix) — 2 of my 3 migration PRs now landed; `#1836`/
+  `#1838`/`#1828` all confirmed cleanly `is:queued`/pending (`--limit 100`), nothing to fix.
+  **Checked deploy status before assuming it's live** — same discipline as D-L0-Y: live
+  `integrity_check_sql` for `bg_vidhi_floors` still contains the old bare `hi<>n` clause, so #1832
+  hasn't applied to the DB yet either (caught and corrected an initial false-positive grep of my
+  own — `grep -c "distinct_orders<>n$"` matched the OLD text too since both old and new end the
+  same way; the real differentiator is presence/absence of `hi<>n`). NEXT: watch for #1832's
+  migration (693) to apply; once it does, this only fixes the tiling false-positive — the genuine
+  11/14-intent completeness gap (D-L0-N) still needs #1838 + dispatch, so `bg_vidhi_floors` won't be
+  freezable purely from this migration the way `bg_doshas` was. Also watch #1836 (bg_gochara_arcs)
+  for its own merge.
