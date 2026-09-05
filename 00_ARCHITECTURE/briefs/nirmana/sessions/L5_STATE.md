@@ -451,6 +451,19 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~02:05Z (C8 v2.3 cycle 24) — **Real PR hygiene catch: #1844 was genuinely ejected
+  from the merge queue, re-armed and confirmed back in.** `is:queued` search returned `false`
+  for #1844 this cycle (a real change, not a stale-check artifact — cross-checked
+  `mergeStateStatus`/`mergeable` both `UNKNOWN`, consistent with a real ejection, not just an
+  index lag). `gh pr checks` still showed the same old, fully-passing PR-level check run
+  (unchanged job IDs from hours ago) — CLEAN, just genuinely unqueued, matching the contract's
+  own "CLEAN + not queued → queue it now" case exactly. Re-armed with `gh pr merge --auto`,
+  confirmed back in the queue via GraphQL (`isInMergeQueue: true`), landed at the same position 8
+  it had before — consistent with a batch-level ejection (another PR in the same merge-group
+  batch likely failed, ejecting the whole batch) rather than anything wrong with #1844 itself.
+  #1826 checks-pending only, nothing broken. #1838 still at position 1 `AWAITING_CHECKS` — now
+  ~10+ min into its check, getting toward the upper end of the range observed so far but not yet
+  clearly stuck; worth watching next cycle rather than acting on now. #1869 unchanged.
 - 2026-09-06T~01:20Z (C8 v2.3 cycle 23) — **IDLE-OK, verified.** PR hygiene: #1844 confirmed
   queued (position 8, unchanged); #1826 checks-pending only. Positions for #1844/#1851/#1861/
   #1873 unchanged from last cycle (8/11/23/36) — but confirmed this is NOT a stall: #1838 (now
