@@ -58,6 +58,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 4 | 2026-09-05T00:45Z | L2-W3 | **W4 HELD** -- verified L4's #1748 and found its grading wrong in the dangerous direction: a `bo_laksana` rebuild CASCADE-deletes 710,899 L3 rows. Filed #1770 TIME-CRITICAL. Replied to #1748 and #1750 |
 | 5 | 2026-09-05T01:15Z | L2-W3 | #1770 RULED: upheld, blast radius re-measured at **864,733 rows / 12 tables / 3 layers** (the `kala_convergence -> phala_anchors -> phala_*` leg I missed), **campaign-wide HOLD** issued, **D-CND-15** recorded. Shipped the owed docstring fix (#1777). Three more W3 PRs: #1776 tail population, #1779 umbrella density. **#1741 MERGED** -- first L2 batch on main. Corroborated L5's seed-revert finding (#1757) |
 | 6 | 2026-09-05T05:05Z | L2-W3 | **RESUMED after ~4h50m dead.** Stock-take posted on #1713. Read D-NATIVE-05 (#1770) + charter C13 in full. **PR hygiene was the damage**: 6 open, 5 DIRTY, 1 armed — #1777 (the `NO ACTION`→`CASCADE` correction that is now D-CND-16's own evidence) sat unlanded 5h. Rebased + re-armed #1777, #1755, #1760; #1775 superseded by #1780, both replaced by this branch. Next: deterministic `signal_id` (D-NATIVE-05 action 8, coordinating with L5), `bodha_triangulation.signal_ids[]` disposition, C13 blast-radius on all 22 routes |
+| 7 | 2026-09-05T05:55Z | L2-W3 | All 6 PRs rebased/armed or closed (#1775, #1780 superseded by #1798). **Assignment 2 measured and filed as #1804**: strict D-CND-11 would collapse 48 groups of distinct signals; `fact_id` embeds `build_id` so `constituent_facts_array` is build-varying. **Assignment 3 shown to be the SAME defect** — triangulation orphans are caused by non-deterministic `signal_id`; detector deliberately NOT shipped yet (would be red on both healthy charts today — C12). Found `bodha_triangulation` counted by no asset's count_sql |
 
 ## ASSET TABLE (22)
 
@@ -231,6 +232,35 @@ NULL-not-`'{}'` convention exists to prevent.
   not mine to lift on inference. Flagged on #1713 and **proceeding as though the hold stands**,
   working every non-dispatch item. If it is in fact live, `bo_laksana` still needs the §4 snapshot
   mandate, L3's re-runnability confirmation on #1770, and a `weight: monster` solo slot.
+
+- **D-L2-015** (2026-09-05T05:50Z) — **Assignment 2 (deterministic `signal_id`) filed as #1804 rather
+  than decided unilaterally, with the measurement that makes it a real conflict rather than a
+  preference.** `(chart_id, ayanamsha_id, signal_type_id, varga_id, configuration_jsonb)` is
+  **exactly unique** (50,104/50,104). Every tuple that satisfies a *strict* reading of D-CND-11
+  (excluding the recomputed `fact_value_num`) is NOT unique — and characterising the 79 colliding
+  groups showed **48 differ only by the fact value and ZERO are true duplicates**, so collapsing on
+  the strict tuple would silently merge genuinely distinct signals. That is data loss dressed as
+  deduplication, and it is why I would not just pick one.
+- **D-L2-016** (2026-09-05T05:50Z) — **`constituent_facts_array` is unusable in any identity key.**
+  L1's `_fact_id` hashes `build_id` into the fact id (`ga_positions_writer.py:92-95`), so every fact
+  gets a new id on every L1 rebuild. A `signal_id` derived from it would *look* deterministic — it
+  is a hash — while being no more stable than `uuid4()` across the one boundary that matters.
+  Second-order and flagged upstream: §N.5's requirement that `constituent_facts_array` resolve to
+  `chart_facts.fact_id` currently holds at **99.93%** (71,918/71,967), but **any L1 rebuild dangles
+  all of them until `bo_laksana` re-runs** — and L1 is rebuilding while `bo_laksana` is HELD.
+- **D-L2-017** (2026-09-05T05:55Z) — **Assignment 3 is not a separate disposition; it is assignment
+  2's symptom.** `bodha_triangulation` has **zero** foreign keys (catalogue-verified, D-CND-16) and
+  143 dangling refs — on the two HEALTHY charts, **zero** on the damaged one, so not a D-CND-17
+  artefact. Mechanism proven by build ids: triangulation is from one build, signals span three, and
+  `bo_laksana` mints fresh `uuid4()`s each run. **Deliberately did NOT ship the detector**: a strict
+  zero-orphan `integrity_check_sql` would be red on both healthy charts the day it landed, and C12
+  is explicit that a check which has never been green is a proposal, not a gate — while a threshold
+  chosen to match today's 143 asserts nothing. Correct sequence recorded on #1770: rule #1804 →
+  deterministic ids → rebuild → measure the true floor → *then* ship the detector.
+- **D-L2-018** (2026-09-05T05:55Z) — **`bodha_triangulation` is counted by no asset.** `bo_sangati`
+  writes it (`bo_sangati.py:122,448`) but its `count_sql` counts only `bodha_cdlm_cells`, so 405
+  rows and 276,086 references are invisible to the cockpit (§N.4). Unblocked by the identity ruling
+  and lands in migration 660.
 
 ## FINDINGS LEDGER (W1, measured -- not yet triaged)
 
