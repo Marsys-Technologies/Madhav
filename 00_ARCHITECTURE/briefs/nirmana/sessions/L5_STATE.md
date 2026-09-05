@@ -451,6 +451,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~03:35Z (C8 v2.3 cycle 31) — **Routine cycle, #1835 still at position 1 (4th
+  cycle), now ~9 min into its check — inside the 18-min watch threshold, not escalating yet.**
+  PR hygiene: #1844 ejected/re-armed (normal pattern); #1826 checks-pending only. Positions
+  unchanged (3/6/18/31). #1869 unchanged. No new E-gate movement.
 - 2026-09-06T~03:25Z (C8 v2.3 cycle 30) — **Routine cycle, #1835 still at position 1 (3rd
   cycle), now ~6.6 min into its check — still inside the normal 15-18 min window, not yet
   worth escalating.** PR hygiene: #1844 ejected/re-armed (normal pattern); #1826 checks-pending
