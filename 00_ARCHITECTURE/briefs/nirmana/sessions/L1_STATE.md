@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — W2 DECIDE complete; PR #1736 open (campaign critical path)
+last_updated: 2026-09-05 — W3 in flight; 4 PRs open incl. the campaign critical path
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -35,7 +35,7 @@ your `nirmana-adjudication` issues → continue.
 
 ## Position
 
-**L1-W2 DECIDE — COMPLETE.** W1 complete (19/19). `L1_W2_DECIDE_v1_0.md` published:
+**L1-W3 IMPLEMENT — in flight.** W1 + W2 COMPLETE. W1 complete (19/19). `L1_W2_DECIDE_v1_0.md` published:
 8 `changed` / 11 `rebuild_only` / 0 `verified_reuse`, all 139 findings triaged.
 W3 IMPLEMENT next; **no W2 acceptance event written** (held on #1736 per ruling).
 
@@ -156,6 +156,41 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   cosmetic-backlog, not as blocked work — the Conductor was explicit that L1 should hold nothing
   for it.
 
+- **D-L1-16** — W3 batch 1 (**PR #1756**, migration 650): registry truth — 3 `count_sql`
+  completions (categories written AND served but counted by nobody), 11 floors set to the measured
+  minimum across all three built charts, 2 `target_table`, `ga_vichara` DRAFT→CURRENT, and
+  `ga_prashna`'s R-1 dormancy made machine-readable. Dry-run against production inside
+  BEGIN/ROLLBACK before shipping. Floors deliberately NOT set for the 6 assets whose routed fix can
+  still change their count — a test asserts that, so a later edit cannot quietly fill them in.
+- **D-L1-17** — **Found and fixed a defect I had just introduced, plus a pre-existing one.** L5's
+  #1757 revealed the seed *executes* `expected_volume_formula`. My first draft used
+  `ROWS_PER_AYANAMSHA` / `DIRECTIONS` / `BHAVA_CUSPS` — all outside the seed's 16-name
+  `ALLOWED_VARS`, so it would have hard-failed `runSeed`. Rewrote as `<literal> * AYANAMSHAS`
+  (inside the grammar, and evaluating to the true live count). Auditing all 128 assets against that
+  grammar then found **three formulas on `main` that already break `runSeed`**: `ga_vichara` (mine,
+  fixed), `bg_kp_sublord_division` (L0) and `bo_pratijna` (L2) — reported on #1757, not touched.
+- **D-L1-18** — W3 batch 2 (**PR #1766**): `ga_vargas` computed every graha for an instant 5h30m
+  after birth. PyJHora's own docstring states the two-JD convention; the writer passed the local-time
+  JD to `sidereal_longitude`, which requires UTC. **Verified against the L1 authority before writing
+  the fix**: `jd_ut - tz/24` reproduces `chart_facts` Sun 291.9626 and Moon 327.0552 EXACTLY.
+  Scope checked not assumed — `ga_dashas` uses the same primitive but converts correctly, and no
+  other `ga_writer` builds a JD this way. Four tests, two mutation-proven. F-A2/F-A3 deliberately
+  deferred to W3 batch 3 (they need a migration) so `ga_vargas` rebuilds once, not twice.
+- **D-L1-19** — #1744 ruled (D-CND-09): `depends_on` and `layer` immutable, everything else mutable
+  before acceptance; sequential single-asset dispatch **granted** for the `ga_dashas`/`ga_vargas`
+  race, as two separate slot claims. Posted L1's **11 DAG corrections in both-directions form** to
+  #1734 for the Phase-Z register, with per-row verification status — 4 re-derived from writer source
+  by me, the rest carried from W1 with `file:line`. Register note added: three L1 assets declare
+  `ga_positions` and then re-derive positions, which is §N.5 inverted *within* L1 — and is exactly
+  how `ga_vargas` came to hold a different D1 from the authority it declares a dependency on.
+- **D-L1-20** — #1729 ruled: delivered the 13-member weight proposal, arguing the rescale table's
+  **shape** is wrong as well as its numbers (5 statuses describe the absence of a value and should
+  be EXCLUDED from salience, not weighted). #1750 opened to hand L2 three verified serving-side
+  defects in its own write-set — the ṣaḍbala selector (still wrong on 2 of 3 charts; the 2026-07-28
+  fix and its re-verification were both run on the only chart where it cannot manifest), the AV
+  multiplier saturating at 1.15 for 12/12 houses because SARVA bindus (23–34) feed BHINNA bands
+  (0–8), and the formula-version label. All three re-verified by me before filing.
+
 ## Held items
 
 - **All W2 acceptance events** — held on PR #1736 merging + deploying (ruling on #1715, explicit).
@@ -185,12 +220,17 @@ L1 must satisfy rather than a feature it consumes.
 | item | wall-clock | notes |
 |---|---|---|
 | bootstrap + grounding + 3 blocker analyses | ~35 min | E-gate, floors, pins all measured live |
+| W2 DECIDE (19 routes, 139 findings) | ~20 min | incl. 2 further cross-layer findings |
+| W3 batch 1 — registry truth (#1756) | ~35 min | incl. production dry-run + mutation-tested guards |
+| W3 batch 2 — ga_vargas instant (#1766) | ~25 min | incl. live proof against the L1 authority |
 | W1 ANALYZE (19 assets, 5 parallel subagents) | ~21 min wall / ~1.2M subagent tokens | fully parallel |
 | PR #1736 (campaign critical path) | ~45 min | incl. generator, tests, live 6-layer acceptance |
 
 ## Heartbeat
 
-- 2026-09-05 — **W1 + W2 COMPLETE.** PR #1736 (critical path, in review) + #1740 (W1 docs) open.
+- 2026-09-05 — **W1 + W2 COMPLETE; W3 in flight.** PR #1736 (critical path, in review) + #1740 (W1 docs) open.
   Issues: #1715 ruled→authoring, #1729 ruled→weights delivered, #1744 + #1747 filed, #1727 closed as
-  dup of #1723. W3 IMPLEMENT next. **No slot claimed** — nothing is dispatchable while C2 cond 2 is
-  shut, and holding a slot idle is forbidden (C5).
+  dup of #1723; #1744 ruled and closed. PRs open: **#1736** (critical path, awaiting Conductor
+  merge), #1740 (W1+W2 docs), #1756 (registry truth), #1766 (ga_vargas instant). **No slot
+  claimed** — nothing is dispatchable while C2 cond 2 is shut, and holding a slot idle is
+  forbidden (C5).
