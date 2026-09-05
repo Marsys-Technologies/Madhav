@@ -2212,3 +2212,29 @@ unchanged at position 2; E-gate uncheckable, DB access down 59 cycles; no new ca
 landings or adjudications) → next: watch `#1831`'s merge; retry E-gate/dispatch dry-run once DB
 access returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~15:30Z` — L4 — **CYCLE 70 (v2.3) — `#1875` merged. PR hygiene found and fixed TWO
+real DIRTY PRs this cycle: `#1831` (ejected right at the front again — the same PR fixed back in
+cycle 21, re-ejected after cycling through the queue) and `#1808` (also confirmed unambiguous).
+Both rebased, governance regenerated, tested, re-armed via the standard sequence.**
+
+**Caught and corrected a real mistake in my own work mid-cycle** (D-CND-16 discipline applied to
+myself, not just upstream findings): after fixing `#1808`, the branch switch to return to the
+heartbeat branch was blocked by an uncommitted change to `nirmana-writer-digests.json` — my own
+prior commit's message had claimed "writer-digest inventory already correct post-rebase (no
+diff)" when the tool output I'd just seen clearly showed a 1-line diff (`ph_nimitta`'s hash
+changed); I'd only staged the pin file, not the digest, leaving the pushed pin computed from a
+hash the pushed digest file didn't actually contain — a real, if narrow, inconsistency that
+would have failed `--check` for anyone pulling that exact commit. Fixed with a follow-up commit
+adding the omitted file; verified `--check` passes clean against the combined pushed state
+before moving on, rather than assuming the first commit was fine because it had "worked before."
+
+All other own PRs confirmed genuinely queued and advancing (`#1834` now at position 2). DB
+access still down (60th consecutive cycle), no new capability landings or adjudications.
+
+CYCLE 70 L4: PR hygiene — `#1875` merged, found and fixed 2 real DIRTY PRs (`#1831`, `#1808`),
+caught and corrected my own commit error mid-fix (omitted a real digest change, pushed pin/digest
+briefly inconsistent, fixed with a follow-up commit before moving on) → E-gate uncheckable, DB
+access down 60 cycles; no new capability landings or adjudications → next: watch `#1831`'s and
+`#1808`'s re-queue; watch `#1834`'s merge; retry E-gate/dispatch dry-run once DB access returns;
+watch `#1885`'s merge; F1 remains deferred.
+
