@@ -633,6 +633,71 @@ CYCLE 17 L1: unparked #1881 per D-CND-30 (F-E10, `vastu_read` vidhi primitive) -
 `verification_vocab.py` split (same ruling, same mechanism, needs #1881 merged first), or
 re-dispatch `ga_positions` once #1892 lands, or continue `ga_dashas`'s F-A12/F-A13/F-A14.
 
+## CYCLE 18 (C8 v2.3) — #1881's DB-integration RED; found a real prod integrity-check landmine, escalated rather than guessed
+
+**PR hygiene:** #1881 showed a NEW failure after cycle 17's fix ("DB Integration Tests
+(SAMĪKṢĀ, throwaway Postgres)"). `conductor-2b` independently root-caused and pre-diagnosed it
+before I even looked: a THIRD hardcoded copy of the vidhi primitive count (distinct from the
+parity gate and `L0_FROZEN_PINS`, both already fixed), in
+`nirmana_l0_wave0_remaining_integrity_contract.test.ts:229` — re-runs the real writer script
+live and hardcoded `toHaveLength(60)`.
+
+**Unit of work: verified and fixed the test literal, then found something bigger while
+verifying rather than trusting the fix in isolation.** Spun up a real throwaway Postgres locally
+(`initdb`/`pg_ctl`, no docker needed) to actually RUN this DB-backed test rather than
+hand-wave a textual fix — 5/6 tests passed after updating `60`→`61` (`target_floor` literals
+elsewhere in the same file correctly left alone per Conductor's own note: floors are aspirational
+per §N.4, a different concept). The 6th test failure was NOT a stale literal: migration 628
+(already applied, frozen) set `bg_vidhi_primitives.integrity_check_sql` to an EXACT
+`count(*) = 60 AND sha256(content) = '41463a2b…'` check — not a floor-style `>=`. Once
+`vastu_read` ships and the writer rebuilds with 61 rows, this check genuinely regresses in
+production — a real §N.8 finding, not a test artifact. Verified the correct replacement values
+(count=61, hash `0f8bb8ee…`) by running the ACTUAL check SQL against the live throwaway Postgres,
+not a hand-computed Python approximation (the two disagreed on a first attempt — Postgres's own
+`jsonb_build_array(...)::text` serialization isn't byte-identical to `json.dumps`, confirming the
+verify-don't-approximate discipline mattered here specifically).
+
+Migration 628 itself cannot be touched (§N.4, already applied). Fixing the live check requires a
+NEW migration doing `UPDATE asset_registry SET integrity_check_sql = <corrected> WHERE
+asset_id='bg_vidhi_primitives'` — but this touches an L0 asset's own live registry row, a
+materially different kind of change than the source-file edits D-CND-30 already named. Rather
+than assume the existing ruling stretches to cover it, or guess whose migration-number range it
+belongs in, messaged `conductor-2b` with the fully-verified finding and proposed fix, asking
+explicitly before acting. Shipped the test-literal fix alone (unambiguously mine, no production
+touch); left #1881 correctly red pending the answer rather than force a scope decision that
+wasn't clearly mine.
+
+**D-CND-30 REVERSED, then fully resolved.** While the above was in flight, Conductor found a
+THIRD failure on #1881 (`nirmana-analysis-receipts.test.ts`'s "L0 preservation" test, a dedicated
+regression guard) and, on investigating it, found that adjudication #1715's own ruling (the one
+that generalized the receipt spine to all six layers) explicitly reserved this exact scenario:
+requirement 3 states L0's pinned constants stay byte-identical, and "if the generalisation cannot
+preserve L0's existing bases exactly, stop and re-file — that would be a different and much
+larger question." D-CND-30 had been ruled without knowing this precedent existed; Conductor
+reversed it on finding it — a live regression test existed specifically to catch exactly this.
+Told to hold #1881/#1909 exactly where they were pending an alternative unblock path. Acknowledged
+and stopped immediately — pushed/touched nothing further until the correction landed.
+
+Conductor's alternative, once posted: revert `bg_vidhi_primitives.py`'s `PRIMITIVE_ROWS` addition,
+the `L0_FROZEN_PINS` re-derivation, and the migration-628 test's `60`→`61` change entirely; keep
+`registry_data.ts`'s TS-side `vastu_read` (the actual planner-facing fix); add an explicit,
+reviewed `KNOWN_TS_ONLY_PRIMITIVES` allowlist to `check_vidhi_registry_parity.mjs` naming
+`vastu_read` as a documented, tracked gap rather than silent drift. Executed exactly that:
+`git reset --hard` to the pre-fixup commit, rebuilt the allowlist with bidirectional self-checks
+(catches the entry going stale in EITHER direction — the primitive disappearing from TS, or
+Python growing to match it), re-verified everything against a fresh throwaway Postgres (all 6
+migration-628 tests pass again now that the writer's row count is back to 60 — my own
+`integrity_check_sql` finding turned out to be moot once the writer reverted, confirmed
+independently as strong evidence the reversal was correct) and `nirmana-analysis-receipts.test.ts`.
+Filed **#1918** to track minting the actual DB row whenever a future, separately-authorized L0
+re-pin event happens. Pushed, re-armed #1881; Conductor confirmed clean fleet-wide.
+
+CYCLE 18 L1: net effect — #1881 (F-E10) landed with the TS-side fix live and the DB-seed mirror
+gap explicitly tracked (#1918) rather than silently patched around; #1909's `verification_vocab.py`
+split stays reverted/deferred indefinitely (no live consumer needs it, per D-L1-38's own finding)
+until a real future L0 re-pin event -- next: continue `ga_dashas`'s F-A12/F-A13/F-A14, or
+re-dispatch `ga_positions` once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -901,7 +966,25 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   refusal independent of `L0_FROZEN_PINS`'s value — verified this by testing, not assumed — and
   hand-edited the committed JSON pin file directly rather than fighting the tool's guard rails.
   Sequenced #1881 before #1909's still-pending vocab.py split specifically to avoid a
-  self-inflicted conflict on the same shared constant.
+  self-inflicted conflict on the same shared constant. **SUPERSEDED cycle 18: D-CND-30 itself was
+  reversed by Conductor** on discovering adjudication #1715's requirement 3 explicitly reserved
+  this exact scenario (L0's pinned constants must stay byte-identical; a dedicated regression
+  test — `nirmana-analysis-receipts.test.ts` — existed specifically to catch a future session
+  moving them). Not something I could have caught myself (the reversal came from Conductor
+  re-reading #1715's own text after a third CI failure surfaced), but recording it here so this
+  entry isn't read as still-current guidance.
+- **D-L1-40** — C8 v2.3 cycle 18: held #1881/#1909 immediately and without pushback the moment
+  Conductor flagged the D-CND-30 reversal, even though it meant my own prior cycle's committed
+  work (D-L1-39) was now wrong. Continued the independent, unrelated half of the investigation
+  that stayed valid regardless (the test-literal fix, and fully verifying the separate
+  `integrity_check_sql` landmine against a real throwaway Postgres before escalating it) rather
+  than stopping all forward motion. Once Conductor posted the alternative (revert the writer
+  content, keep TS-side, allowlist the gap explicitly), executed exactly that rather than
+  negotiating for a partial version — `git reset --hard` to the pre-fixup commit, rebuilt the
+  parity-gate allowlist with bidirectional self-checks so it can't itself go stale, re-verified
+  every affected test against a fresh throwaway Postgres before pushing, filed #1918 to track the
+  real follow-up rather than let it evaporate. D-L1-39 itself now reads as superseded, not deleted
+  — the record of what happened and why it changed stays legible.
 
 ## Held items
 
@@ -1117,3 +1200,17 @@ L1 must satisfy rather than a feature it consumes.
   Sequenced #1909's vocab.py split for a later cycle to avoid a self-conflict on the same
   constant. CYCLE 17 L1: unparked #1881 (F-E10) via D-CND-30 -- next: #1909's vocab.py split,
   ga_positions re-dispatch once #1892 lands, or ga_dashas's F-A12/F-A13/F-A14.
+- 2026-09-05T~17:55-18:10Z -- CYCLE 18 (C8 v2.3). PR hygiene: #1881 showed a new DB-integration
+  failure; fixed a stale test literal (60->61) and, while verifying against a real throwaway
+  Postgres, found a genuine separate landmine (migration 628's frozen exact-count+hash
+  integrity_check_sql for bg_vidhi_primitives would regress in prod) -- escalated rather than
+  guessing scope. Mid-investigation, Conductor found adjudication #1715's own reserved-process
+  clause for moving L0's frozen pins and REVERSED D-CND-30 entirely. Held immediately, no
+  pushback. Once the alternative landed (keep TS-side vastu_read, revert all Python/pin-file
+  changes, track the gap via an explicit parity-gate allowlist), executed it in full: git
+  reset --hard to pre-fixup, built a self-checking KNOWN_TS_ONLY_PRIMITIVES allowlist, re-verified
+  everything (parity gate, pins --check, all 6 migration-628 tests, L0-preservation test) against
+  a fresh throwaway Postgres, filed #1918 for the real follow-up. CYCLE 18 L1: #1881 (F-E10)
+  landed clean with the DB-seed gap tracked, not silently patched (#1918); #1909 stays deferred
+  indefinitely -- next: ga_dashas's F-A12/F-A13/F-A14, or ga_positions re-dispatch once #1892
+  lands.
