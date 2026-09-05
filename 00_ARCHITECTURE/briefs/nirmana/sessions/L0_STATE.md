@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-DD: #1851 merged, first fully-authorized real dispatch achieved for bg_gochara_arcs (run in progress). Next: check completion, submit accepted_rebuild_observed.
+last_updated: 2026-09-05 — D-L0-EE: bg_gochara_arcs run completed clean (data correct) but its authorization used the wrong source_kind and can't chain to accepted_rebuild_observed. Fixed the script; needs a fresh dispatch next.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,7 +41,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only | **DISPATCHED + AUTHORIZED (D-L0-DD), run in progress** (`bfdc6919…`, `build_run_authorized` confirmed inside window). Next: check completion, submit `accepted_rebuild_observed` |
+| bg_gochara_arcs | rebuild_only | **Run `bfdc6919…` COMPLETED, data correct — but authorization used wrong `source_kind` (D-L0-EE), unusable for freeze.** Needs a fresh dispatch with the now-fixed `authorize_build_run.sh` |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | rebuild_only | **REAL DISPATCH DONE (D-L0-AA), data confirmed correct, but unauthorized** — `build_run_authorized` window missed, retry blocked by #1848's still-open duplicate-guard bug (needs #1851). Next: retry dispatch+immediate-authorization once #1851 merges |
@@ -626,6 +626,29 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `accepted_rebuild_observed` (executor, `source_kind=build_run`) to complete the chain toward
   `integrity_verified`/`asset_frozen`. `bg_doshas`' earlier unauthorized run (D-L0-AA) remains
   available for a clean retry any time — same recipe, now proven twice.
+
+- **D-L0-EE — bg_gochara_arcs run COMPLETED successfully (data verified correct), but its
+  authorization used the WRONG `source_kind` and can never chain to `accepted_rebuild_observed`;
+  fixed the script for the next attempt.** Run `bfdc6919…` finished cleanly (`state=completed`,
+  no error, ~28s for the 33,933-row rebuild); re-verified `integrity_check_sql` executes `TRUE`
+  live. Before submitting `accepted_rebuild_observed`, read its exact validation
+  (`requireAcceptedRebuildProvenance`, `definitions.ts:2209-2277`) as planned — and found it looks
+  back for the matching `build_run_authorized` event via a **literal string filter**:
+  `event.source_kind === 'campaign_authorization'`. My `authorize_build_run.sh` (D-L0-CC) used
+  `source_kind: "build_run"` — a plausible-looking value that the ACCEPTANCE check for
+  `build_run_authorized` itself never rejected (its schema takes any non-empty string), but which
+  this DOWNSTREAM check filters out silently. **`bg_gochara_arcs`' authorization for this specific
+  run can never be fixed retroactively** (`build_run_authorized` requires `run.started_at IS NULL`,
+  no longer true) — the run itself is harmless (correct data, no evidence-chain corruption, nothing
+  else depends on it), just unusable for freezing. **Fixed `authorize_build_run.sh`**
+  (`source_kind` → `"campaign_authorization"`), documented the exact failure mode inline so it
+  can't recur, re-verified via `--dry-run`. **This makes THREE dispatch attempts now, three
+  different lessons** — D-L0-AA (missed the timing window), D-L0-DD (won a concurrency race
+  correctly), D-L0-EE (wrong `source_kind`, caught by reading the schema before submitting rather
+  than after a rejected 400). NEXT: fresh dispatch (either asset — both still need a clean
+  authorized run) with the now-corrected script; this time also read `NirmanaRebuildEvidenceSchema`'s
+  OTHER fields (`decision_digest`, `output_digest`, `output_digest_spec_sha256`, etc. — not yet
+  traced) BEFORE dispatching, not after, to avoid a fourth surprise.
 
 ## Held items
 
@@ -1236,3 +1259,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `accepted_rebuild_observed` (need to read `NirmanaRebuildEvidenceSchema` first) to complete the
   evidence chain toward `integrity_verified`/`asset_frozen` — the actual freeze, first time this
   resumption.
+- 2026-09-05 — **Cycle 51 — run completed clean, but caught a real bug in my own authorization
+  script before it caused a rejected submission (D-L0-EE).** PR hygiene: `#1828` clean, nothing to
+  fix. `bg_gochara_arcs`' run finished successfully (`bfdc6919…`, ~28s, no error); re-verified data
+  correct (`integrity_check_sql` still `TRUE`). Read `requireAcceptedRebuildProvenance` BEFORE
+  submitting `accepted_rebuild_observed`, as planned, and found it filters incoming authorization
+  events on the literal `source_kind === 'campaign_authorization'` — my `authorize_build_run.sh`
+  used `"build_run"`, a value the ACCEPTANCE check for `build_run_authorized` never rejected but
+  this downstream check silently excludes. That specific run's authorization can never be fixed
+  retroactively; the run itself is harmless, just now unusable for the freeze chain. Fixed the
+  script, documented the exact failure inline, re-verified via `--dry-run`. Three attempts, three
+  distinct lessons now (D-L0-AA/DD/EE) — this is a genuinely fiddly evidence-chain surface, worth
+  the caution. NEXT: fresh dispatch with the corrected script — but first read
+  `NirmanaRebuildEvidenceSchema`'s remaining fields (`decision_digest`, `output_digest`,
+  `output_digest_spec_sha256`) fully before dispatching this time, to close out all the unknowns in
+  one pass rather than discover them one `400` at a time.
