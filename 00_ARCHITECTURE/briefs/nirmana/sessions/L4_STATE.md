@@ -391,3 +391,32 @@ propagation + the degenerate `linked_anchor_id`), `ph_pramana` (the dead `life_e
 detector), `ph_rectification` (`load_bearing` on a zero fit), `ph_phaladesa` (headline anchor
 ignores the purification verdict).
 
+---
+
+## RESUME LOG — 2026-09-05, cycle under C8 v2.3 (bounded units, supervisor-driven)
+
+`2026-09-05T~19:10Z` — L4 — **cycle: PR HYGIENE fixed a RED check on #1791.** Step 1 swept all
+open PRs: #1808 was CLEAN but not queued (`autoMergeRequest=null`, absent from `is:queued`) —
+enabled auto-merge, now genuinely queued (verified with `is:queued`, not `autoMergeRequest`,
+per the lane's own earlier correction). #1791 was RED: `Governance Gates` failed on
+`tests/test_ph_wave4.py::TestDeriveMuhurtaRecord::test_all_fields_populated` —
+`window_quality_verdict` asserted `is not None` against the test's default context, which now
+(correctly, per this PR's own `classify_verdict` honesty fix) carries
+`tarabala_chandrabala_source='placeholder_no_ephemeris'` and so withholds the verdict. This was
+my own PR leaving a pre-existing test stale, not a defect in the fix. Root-caused, not
+weakened: split the test into the honest-null case (default ctx) and a new case with a genuine
+`panchang_engine_live` lookup to keep the original "all fields populated" coverage intact. 59/59
+`test_ph_wave4.py` pass locally; the 10 directly-relevant tests pass individually. Pushed
+`e7d0cdf59` to `codex/nirmana-l4-w3-3b-muhurta`; CI re-running.
+
+**Verified this cycle, not assumed:** #1799 (D-CND-04 trigger completion) shows `state:MERGED`
+on `main` — deploy-liveness check (verify no column default + trigger present in production) and
+the `## CAPABILITIES LANDED` announcement are the next cycle's unit, deliberately not folded into
+this one (C8: one unit per cycle).
+
+**Position unchanged from prior RESUME LOG** except: #1791 no longer rotting on a stale RED
+check; #1808 now genuinely queued. No slot claimed — `ph_nimitta` still E-gate-blocked.
+
+CYCLE L4: fixed RED PR #1791 (stale test after own honesty fix) + queued CLEAN PR #1808 → next:
+verify #1799 deployed live, announce CAPABILITIES LANDED, then W3-3 writer work.
+
