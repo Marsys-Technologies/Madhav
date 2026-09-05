@@ -913,3 +913,8 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 25: IDLE-OK.** One more merge landed (`#1830`, docs, `a14e94575`) but none
   of mine/`#1838`; all still cleanly `is:queued` (30-deep), `#1828` clean pending checks, nothing to
   fix. Deploy still unchanged (`bd398f065`), live `bg_doshas` check still old. Genuinely idle.
+- 2026-09-05 — **Cycle 26.** PR hygiene: unchanged, all still cleanly queued/unmerged (`#1832`,
+  `#1836`, `#1838`), `#1828` clean; nothing to fix. **Deploy advanced one more step**
+  (`NIRMANA_DEPLOYED_SHA` → `3b208dbfa`) but confirmed via `git merge-base --is-ancestor` it's
+  still one commit short of my `#1829` merge commit (`3bfeaf284`) — live `bg_doshas` check
+  correspondingly still the old version. Progressing steadily, not there yet.
