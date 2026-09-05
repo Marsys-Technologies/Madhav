@@ -693,6 +693,31 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     cr27_prevents: [],
   },
   {
+    // NIRMANA L1 W3 F-E10 (2026-09-05): ga_vastu's serving surface (get_vastu_directions,
+    // post-F-E11 joined against L0's classical per-direction remedies) had zero routed
+    // consumers — 245 vidhi primitives, none mentioning vastu — reachable only by explicit
+    // tool name. This primitive gives it a proper vidhi face. It is deliberately NOT added
+    // to any life-domain deepdive floor (wealth/career/health/marriage/spirituality/
+    // education/progeny): vastu is a "property"-domain concept, and DOMAIN_TO_INTENT
+    // (compiler.ts) already documents `property` as a domain with no dedicated deepdive
+    // floor yet — minting a new domain/floor is a shared retrieval-plane change beyond this
+    // finding's scope, not an L1 asset-file fix. Recorded disposition: primitive exists and
+    // is planner-citable by primitive_id; floor-forced inclusion awaits a future property/
+    // dwelling deepdive floor. fallback_face left null — the L0 classical reference
+    // (query_vastu_directions) is not in the bridged/verified live-tool catalog.
+    primitive_id: 'vastu_read',
+    version: 1,
+    definition:
+      'Per-graha vastu (directional) impact read: direction, condition_score, dignity_d1, direction_impact, indication_tier for each graha, joined with the classical per-direction remedy (remedy_type, remedy_description, classical_citation). A directional-affliction + classical-remedy read, not a construction/architectural prescription.',
+    category: 'structural',
+    live_tool: 'ganita_vastu_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: null,
+    known_gap: null, // data-backed live; post-F-E11 the tool already joins remedies in.
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
     // F3 (marriage): Upapada Lagna read. NOTE ON NAMING — the P-3 task called for "a new arudha_read
     // primitive scoped to UPA"; it is authored here as a DISTINCT primitive_id (`upapada_read`)
     // rather than overloading the existing generic `arudha_read` (which declares the mode:'arudha'
