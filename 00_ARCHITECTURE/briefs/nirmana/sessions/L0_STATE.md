@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-CC: built + tested authorize_build_run.sh, the one-call build_run_authorized fast-path for the D-L0-AA retry. Still gated on #1851 merging.
+last_updated: 2026-09-05 — D-L0-DD: #1851 merged, first fully-authorized real dispatch achieved for bg_gochara_arcs (run in progress). Next: check completion, submit accepted_rebuild_observed.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -41,7 +41,7 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only | **Migration LIVE + TRUE; fresh W2 real-submitted (D-L0-BB, both 201).** Same as bg_doshas: needs a real dispatch + immediate `build_run_authorized` for the freeze chain, gated on #1851 for a clean retry (LEAF asset, no cascade) |
+| bg_gochara_arcs | rebuild_only | **DISPATCHED + AUTHORIZED (D-L0-DD), run in progress** (`bfdc6919…`, `build_run_authorized` confirmed inside window). Next: check completion, submit `accepted_rebuild_observed` |
 | bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
 | bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
 | bg_doshas | rebuild_only | **REAL DISPATCH DONE (D-L0-AA), data confirmed correct, but unauthorized** — `build_run_authorized` window missed, retry blocked by #1848's still-open duplicate-guard bug (needs #1851). Next: retry dispatch+immediate-authorization once #1851 merges |
@@ -603,6 +603,29 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   from stdout → immediately `authorize_build_run.sh <run_id> <asset_id> <wave_index>` → THEN
   `accepted_rebuild_observed`.** This should comfortably beat the ~20s window that was lost last
   cycle reading schema code live. `#1851` still not merged as of this cycle.
+
+- **D-L0-DD — #1851 MERGED; first PROPERLY-AUTHORIZED real dispatch achieved (run in progress).**
+  Pulled the narrowed duplicate-guard fix locally, verified it (`state = ANY(['planned','running',
+  'paused'])`, matches #1848's description exactly). Posted `SLOT CLAIM`, fresh backup
+  (`cloudsql-backup:1788627280698`), dry-ran `bg_gochara_arcs` (LEAF, no WP-6 warning as expected)
+  — **first `--commit` attempt hit a genuine, unrelated concurrency conflict**
+  (`build_runs_one_active_per_chart_idx`, a stricter single-active-run-per-chart constraint, not
+  the per-triggered-by guard): another lane (L5, `mi_vistara`) dispatched at the exact same instant
+  and won the race. Verified precisely (checked `build_run_assets.asset_id` for the row that
+  appeared — it was `mi_vistara`, not mine) rather than assuming my own run had partially
+  succeeded; confirmed zero rows/side effects for `bg_gochara_arcs` from the failed attempt, safe
+  to retry immediately. **Retried cleanly** (same dry-run digest, confirming determinism) with
+  corrected output handling (stdout-only capture this time — the mixed stdout+stderr capture from
+  the D-L0-AA attempt is exactly what caused that cycle's `RUN_ID` extraction to fail): `--commit`
+  succeeded (`run_id=bfdc6919…`), and **`authorize_build_run.sh` fired immediately after and
+  succeeded (HTTP 201)** — confirmed `build_run_authorized` recorded at `16:58:42Z`, run's own
+  `started_at` still `NULL` at that moment, genuinely inside the window this time. **This is the
+  first fully-authorized real dispatch this whole resumption.** Run was still `running`/`building`
+  at cycle end (33,933-row asset, bigger than `bg_doshas`' 79 rows — expect longer runtime). NEXT:
+  check completion next cycle; once terminal, read `NirmanaRebuildEvidenceSchema` and submit
+  `accepted_rebuild_observed` (executor, `source_kind=build_run`) to complete the chain toward
+  `integrity_verified`/`asset_frozen`. `bg_doshas`' earlier unauthorized run (D-L0-AA) remains
+  available for a clean retry any time — same recipe, now proven twice.
 
 ## Held items
 
@@ -1198,3 +1221,18 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 - 2026-09-05 — **Cycle 49: IDLE-OK.** Same: `main` tip unchanged (3rd cycle), `#1851` still
   cleanly queued/unmerged, `#1828` clean, no new coordination activity. Nothing to fix, nothing
   new.
+- 2026-09-05 — **Cycle 50 — #1851 MERGED; first properly-authorized real dispatch achieved.** PR
+  hygiene: `#1851` merged (16:52:52Z), `#1828` clean. Pulled the fix locally, posted `SLOT CLAIM`
+  for `bg_gochara_arcs`, took a fresh backup. First `--commit` attempt hit a genuine concurrency
+  conflict with another lane's simultaneous dispatch (L5's `mi_vistara`) — investigated properly
+  (checked which asset the resulting row actually belonged to, rather than assume) before
+  concluding it was safe to retry with zero side effects. **Retried cleanly with corrected
+  stdout-only output capture** (the D-L0-AA cycle's mixed-stream capture was the actual bug behind
+  that RUN_ID-extraction failure) and **the pre-built `authorize_build_run.sh` fired immediately
+  after commit — `build_run_authorized` confirmed recorded while `started_at` was still `NULL`**,
+  genuinely inside the window this time. This is the campaign's first fully-authorized real
+  dispatch this resumption. Run (`bfdc6919…`) still `running`/`building` at cycle end (larger
+  asset than `bg_doshas`). NEXT: check completion next cycle, then submit
+  `accepted_rebuild_observed` (need to read `NirmanaRebuildEvidenceSchema` first) to complete the
+  evidence chain toward `integrity_verified`/`asset_frozen` — the actual freeze, first time this
+  resumption.
