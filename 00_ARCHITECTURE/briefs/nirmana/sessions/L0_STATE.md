@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-BB: bg_gochara_arcs migration LIVE, fresh W2 real-submitted (both 201). Both bg_doshas + bg_gochara_arcs are W2-fresh, data-correct, waiting only on #1851 for a clean dispatch+authorize retry.
+last_updated: 2026-09-05 — D-L0-CC: built + tested authorize_build_run.sh, the one-call build_run_authorized fast-path for the D-L0-AA retry. Still gated on #1851 merging.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -591,6 +591,19 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `bg_doshas`, and is subject to the same #1848/#1851 duplicate-guard block once #1851 merges (or
   possibly not, if #1851 lands before I dispatch this one — worth checking freshly each cycle).
 
+- **D-L0-CC — built + tested the `build_run_authorized` fast-path script for the D-L0-AA retry;
+  still gated on #1851.** Wrote `.../scratchpad/authorize_build_run.sh <run_id> <asset_id>
+  <wave_index> [layer] [--dry-run]`: builds the exact `record_evidence`/`build_run_authorized`
+  body (idempotency key, `entity_type=build_run`, `source_ref=build_run:<run_id>`,
+  `source_kind=build_run` → executor identity, a deterministic shape-valid
+  `authorization_sha256`) and fires it via `l0_submit_evidence.sh` in one call — no schema lookup,
+  no JSON hand-authoring at dispatch time. Smoke-tested end-to-end with a fake UUID in `--dry-run`
+  mode: resolves correctly to executor identity, produces valid JSON. **Next real dispatch attempt
+  (bg_gochara_arcs or bg_doshas, once #1851 merges) is now: dispatch `--commit` → capture `run_id`
+  from stdout → immediately `authorize_build_run.sh <run_id> <asset_id> <wave_index>` → THEN
+  `accepted_rebuild_observed`.** This should comfortably beat the ~20s window that was lost last
+  cycle reading schema code live. `#1851` still not merged as of this cycle.
+
 ## Held items
 
 - **bg_cohort dispatch** — **CLEARED (D-L0-R)**: job image now carries #1772 (`ee8cf7d09`
@@ -1143,3 +1156,11 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   LEAF asset with no cascade, lower-risk than bg_doshas' CASCADE, good for re-proving the
   authorization-window technique before repeating it on bg_doshas) with the authorization payload
   pre-built per last cycle's lesson.
+- 2026-09-05 — **Cycle 39.** PR hygiene: `#1828` still pending own checks (not queued yet, no
+  failures), `#1851` still `is:queued`, not merged. Nothing to fix. Since dispatch is still blocked
+  on #1851, did the concrete prep from last cycle's plan (D-L0-CC): wrote + tested
+  `authorize_build_run.sh`, a one-call `build_run_authorized` submitter parameterized by run_id,
+  ready to fire the instant a fresh dispatch's `run_id` is known. Smoke-tested end-to-end in
+  `--dry-run` with a fake UUID — resolves to executor identity, produces valid JSON. NEXT: keep
+  polling #1851; when it merges, the retry is now purely mechanical (dispatch → capture run_id →
+  `authorize_build_run.sh` → done), no more schema lookups eating into the window.
