@@ -22,7 +22,10 @@ your `nirmana-adjudication` issues → continue.
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
-- **Migration range:** 670–679 (yours alone, collision-free by construction)
+- **Migration range:** 670–679 FULLY CONSUMED (all ten used) → **730–739** (Conductor
+  ruling on #1942, closed 2026-09-06 — checked the full allocation table first: L2's own
+  continuation already claimed 710-729, L0's sits at 700-709, so 730-739 was the next
+  genuinely free block). Currently in use starting at 730.
 - **Branch namespace:** `codex/nirmana-l3-*` · **PR title prefix:** `L3:`
 - **Worktree:** `~/nirmana-s/l3`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -457,6 +460,655 @@ your layer close.
 |---|---|---|---|
 
 ## Heartbeat
+
+- `2026-09-06T~13:1xZ — L3-W3 — IDLE-OK: ALL 30 L3 PRs (including this cycle's own
+  `#1976`) now genuinely `is:queued` — full house, nothing DIRTY/RED/unqueued-CLEAN
+  anywhere.** Three DIRTY-PR fixes landed across this run (#1883, #1887, #1890 — all the
+  same `ka_sangam` generated-pin/digest collision family) and all three, plus this
+  branch's own follow-up PR, have now cleared into the queue. #1903/#1958/#1894/#1921/
+  sidecar-traffic/#1960 all re-verified fresh, unchanged — still the only genuinely open
+  items, all externally-timed. Routing this entry to a fresh branch since `#1976` just
+  locked (`isInMergeQueue: true`).
+
+- `2026-09-06T~13:0xZ — L3-W3 — IDLE-OK, still holding local: #1890 finally queued
+  (`isInMergeQueue: true`); `#1976` MERGEABLE/0 failures, still pending. Watch list
+  (#1913/#1917/#1919/#1924/#1905) all still genuinely queued, no new DIRTY.
+  #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~12:5xZ — L3-W3 — IDLE-OK (6th consecutive on this hold), still holding
+  local: #1890/#1976 both 0 failures, still pending (long-running checks, not stuck). Watch
+  list unchanged, no new DIRTY. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~12:4xZ — L3-W3 — IDLE-OK, still holding local: #1890/#1976 both
+  MERGEABLE/0 failures, still pending. Watch list unchanged, no new DIRTY.
+  #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~12:3xZ — L3-W3 — IDLE-OK, still holding local: #1890/#1976 both
+  MERGEABLE/0 failures, still pending. Watch list (#1913/#1917/#1919/#1924/#1905) all still
+  genuinely queued, no new DIRTY. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~12:2xZ — L3-W3 — IDLE-OK, holding local: #1970 finally queued
+  (`isInMergeQueue: true`); #1890/#1976 both MERGEABLE/0 failures, pending. Remaining
+  ka_sangam watch list (#1913/#1917/#1919/#1924/#1905) all still genuinely queued, no new
+  DIRTY. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~12:1xZ — L3-W3 — THIRD DIRTY-PR fix this run: #1890 (N1 first step,
+  ka_sangam stance vocabulary) — same recurring family as #1883/#1887, caught in the routine
+  hygiene sweep the moment it happened.** Root cause identical pattern:
+  `#1890`'s stale copy of the two generated pin/digest files conflicted once a sibling
+  `ka_sangam`-touching PR (likely #1883 or #1887, both now past it) landed on `origin/main`;
+  `engine.py` itself auto-merged CLEANLY again (the `current_stances` dict addition doesn't
+  overlap textually with c8/c12/c13's dict-literal edits). Same fix: stashed held local
+  edits (SHA-verified, `apply` not `pop`), checked out `codex/nirmana-l3-n1-stance-vocab`,
+  `git rebase origin/main`, took `origin/main`'s copy of both generated files then
+  regenerated for real. Verified `test_ka_sangam.py`+`test_u3_convergence_currents.py`
+  (135/135), full `tests/l3/` (1429 passed — 5 more than the last two fixes' 1424, this PR's
+  own new stance-vocabulary tests genuinely add coverage rather than just carrying stale
+  count — 0 failures), both `--check` invocations exit 0, `tsc --noEmit` clean. Amended,
+  force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  **Third occurrence confirms this is a standing hazard, not a one-off**: ANY open PR
+  touching `ka_sangam/engine.py` or the two generated files will go DIRTY the instant any
+  sibling PR in that family merges, regardless of whether the actual code conflicts —
+  because the generated JSON files always textually collide even when the underlying
+  writer logic doesn't. Re-checked the remaining watch list fresh this cycle
+  (`#1913`/`#1917`/`#1919`/`#1924`/`#1905`) — all still genuinely queued, no new DIRTY.
+  `#1970` (this branch's own PR) now shows `mergeStateStatus: CLEAN`/0 in-progress checks,
+  just waiting on GitHub to actually pull it into the queue (not yet `isInMergeQueue`,
+  nothing to fix) — pushing this entry now while the window is still open.
+
+- `2026-09-06T~12:0xZ — L3-W3 — IDLE-OK, still holding local: #1887 now genuinely
+  `isInMergeQueue: true` (progress); `#1970` still `MERGEABLE`/0 failures, pending. ka_sangam
+  watch list (#1890/#1913/#1917) unchanged, no new DIRTY. #1903/#1958/#1894/#1921/
+  sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~11:5xZ (b) — L3-W3 — IDLE-OK, still holding local: #1887/#1970 both
+  MERGEABLE/0 failures, still pending, not yet queued. ka_sangam watch list
+  (#1890/#1913/#1917/#1919/#1924/#1927) all still genuinely queued, no new DIRTY.
+  #1903/#1958/#1894/#1921/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~11:5xZ — L3-W3 — IDLE-OK, holding local: #1887/#1970 both MERGEABLE/0
+  failures, not yet queued (normal pending). Proactively re-checked the ka_sangam-touching
+  watch list (`#1890/#1913/#1917`) plus `#1919/#1924/#1927` — all genuinely
+  `isInMergeQueue: true`, none DIRTY. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 all
+  re-verified, unchanged.
+
+- `2026-09-06T~11:4xZ — L3-W3 — SECOND DIRTY-PR fix this run: #1887 (F-SANGAM-7 eclipse
+  half) — the sibling PR to last cycle's #1883 fix, same root cause family, caught the
+  moment it happened rather than idling past it.** #1883 finally entering the merge queue
+  meant its rebased `engine.py` landed on `origin/main`; #1887's own still-stale copy then
+  genuinely conflicted (confirmed: `mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`,
+  `autoMergeRequest` disarmed) — but ONLY on the two generated pin/digest files this time;
+  `engine.py` itself auto-merged cleanly (c8_eclipse and c12_tajika/c13 touch different,
+  non-overlapping dict entries, so no hand-resolution needed here, unlike last cycle).
+  Same fix pattern as established: stashed held local edits (verified SHA, `apply` not
+  `pop`, dropped after confirming restore), checked out `codex/nirmana-l3-w3-c8-eclipse`,
+  `git rebase origin/main` (clean except the 2 generated files, took `origin/main`'s copy
+  then regenerated for real), verified `test_ka_sangam.py` + `test_u3_convergence_currents.py`
+  (136/136), full `tests/l3/` (1424 passed, 0 failures), both `--check` invocations exit 0,
+  `tsc --noEmit` clean. Amended, force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  **Pattern now confirmed twice in two cycles**: any PR touching `ka_sangam/engine.py`'s
+  per-current dict literals or the generated pin/digest files is at real, recurring risk of
+  going DIRTY the moment ANY sibling merges. Proactively checked the other 3 open
+  `ka_sangam`-touching PRs THIS cycle rather than waiting to react again: `#1890`, `#1913`
+  (F-SANGAM-5/c11_vedha), `#1917` (N3 moorti data-wiring) all confirmed genuinely
+  `isInMergeQueue: true` right now — none DIRTY yet. Keep checking each cycle; the same
+  collision risk applies the moment any one of them actually merges.
+  #1903/#1958/#1894/#1921/sidecar-traffic/#1960 all re-verified fresh this cycle too,
+  unchanged. `#1966` (last cycle's own state PR) is now genuinely queued
+  (`isInMergeQueue: true`) — routing this entry to a fresh branch again, same reason as
+  before.
+
+- `2026-09-06T~11:3xZ (b) — L3-W3 — IDLE-OK, still holding local: #1883/#1966 both
+  `mergeable: UNKNOWN` (normal transient), 0 failures, not yet queued — still correctly not
+  pushing. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 all re-verified, unchanged.
+
+- `2026-09-06T~11:3xZ — L3-W3 — IDLE-OK, holding local again (learned lesson applied):
+  #1883 and #1966 both `MERGEABLE`/0 failures, checks still pending, not yet queued** —
+  correctly not pushing anything to either branch this cycle to avoid resetting their CI,
+  same discipline as the earlier #1961 hold. #1903/#1958/#1894/#1921/sidecar-traffic/#1960
+  all re-verified fresh, unchanged.
+
+- `2026-09-06T~11:2xZ — L3-W3 — DIRTY-PR fix: #1883 (F-SANGAM-7 tajika half) had genuinely
+  dropped out of the merge queue (auto-merge disarmed, `is:queued` no longer listing it)
+  since the last full hygiene sweep — the third distinct DIRTY-PR event this session, this
+  time caught DURING the routine PR-hygiene step rather than by a merge notification.**
+  `#1961` (this cycle's own prior state PR) meanwhile finished its last check and genuinely
+  entered the merge queue (`isInMergeQueue: true`) — vindicating the last few cycles'
+  decision to stop pushing to it and let it finish undisturbed.
+  Root cause: `#1883`'s stale branch conflicted with main on `services/ka_sangam/engine.py`
+  (its own c12_tajika conditional-key fix collided with #1877's already-merged c13
+  conditional-key fix — both rewrote the SAME `supporting`/`constituent_factors` dict
+  literals independently) plus the two generated pin/digest files (same class of conflict
+  as the #1877×#1954 event two cycles ago). Fixed properly, not by force: stashed this
+  cycle's held local heartbeat edits first (`git stash push -u -m`, verified SHA, `apply`
+  not `pop`, dropped only after confirming restore), checked out `#1883`'s real branch
+  (`codex/nirmana-l3-w3-c12-tajika`), `git rebase origin/main`. Resolved the engine.py
+  conflict by hand — the correct merge is BOTH fixes' conditional-key pattern applied to
+  BOTH c12 and c13 (4 near-identical hunks, Mode A + Mode B × `supporting` +
+  `constituent_factors`), not picking one side. Generated files: took `origin/main`'s
+  version as base, then regenerated for real (`provenance_inventory` + 
+  `nirmana_analysis_layer_pins.py --convergence-commit dbc1865b...`) — only `ka_sangam`'s
+  hash changed in each, confirmed via `git diff`; both `--check` invocations exit 0.
+  Verified before pushing: `tests/l3/test_ka_sangam.py` (72/72), `test_u3_convergence_
+  currents.py` (60/60), full `tests/l3/` (1424 passed, 40 skipped, 2 xfailed, 0 failures),
+  `tsc --noEmit` clean. Amended the rebased commit with the regenerated files (single-commit
+  branch, no history to preserve separately), force-pushed with `--force-with-lease`,
+  re-armed auto-merge, confirmed `mergeable: MERGEABLE`.
+  Since `#1961` is now genuinely queued (branch locked against further pushes, confirmed via
+  the same GH006 lesson from 2 cycles ago), this entry — and the whole held block above it —
+  is going to a FRESH branch off `origin/main` instead, per the established pattern.
+
+- `2026-09-06T~11:1xZ (h) — L3-W3 — IDLE-OK (9th consecutive unchanged), still holding
+  local-uncommitted.** `#1961`'s `Governance Gates` check now ~6.5min in (still
+  `IN_PROGRESS`, no failure) — longer than the other checks took but not yet clearly stuck;
+  watching, not acting. #1903/#1958/#1894/#1921/sidecar-traffic/#1960 all re-verified,
+  unchanged.
+
+- `2026-09-06T~11:1xZ (g) — L3-W3 — IDLE-OK (8th consecutive unchanged). Still deliberately
+  holding this and the prior entry local-uncommitted** (per last cycle's decision) —
+  `#1961`'s checks have now progressed to 24/25 SUCCESS/SKIPPED, only `Governance Gates`
+  still `IN_PROGRESS` (~4min in, not stuck, auto-merge armed since `20:48:34Z`) — very close
+  to finishing on its own; still correctly not pushing anything that would reset it.
+  #1903/#1958/#1894/#1921/sidecar-traffic/#1960 all re-verified, unchanged.
+  **Next action:** once #1961 finishes its last check and queues/merges, commit+push this
+  accumulated block of local heartbeat entries as a single follow-up (or bundle with real
+  new work if any surfaces first).
+
+- `2026-09-06T~11:0xZ (f) — L3-W3 — IDLE-OK (7th consecutive unchanged), + a self-inflicted
+  hygiene fix: STOPPED pushing this heartbeat commit to #1961 for now.** Noticed
+  `#1961`'s in-progress checks kept restarting from `startedAt` timestamps that exactly
+  match this cycle's own prior push, cycle after cycle — every heartbeat-only push to that
+  branch resets its CI run, so as long as I keep pushing every ~90s-2min cycle, #1961 can
+  never actually finish checks and queue. Per C8's own Step 3 ("keep it local-uncommitted...
+  state files must not generate PR spam"), this entry is being written to the file but
+  **deliberately NOT committed/pushed this cycle** — letting #1961's current CI run (started
+  `21:10:34Z`) actually complete undisturbed. Will commit+push the accumulated local entries
+  once either (a) #1961 finishes CI and queues/merges, or (b) real new work needs a
+  dedicated PR, whichever comes first — not every single idle cycle. #1903/#1958/#1894/
+  #1921/sidecar-traffic all re-verified fresh, unchanged again. PR hygiene otherwise clean
+  (26/27 queued).
+
+- `2026-09-06T~11:0xZ (e) — L3-W3 — IDLE-OK (6th consecutive unchanged): PR hygiene clean
+  (26/27 queued, #1961 pending checks, 0 failures); #1903/#1958/#1894/#1921/sidecar-traffic/
+  #1960 all re-verified fresh, unchanged.
+
+- `2026-09-06T~11:0xZ (d) — L3-W3 — IDLE-OK: #1903/#1958/#1894/#1921, sidecar traffic,
+  and #1960's comment count all re-checked fresh, unchanged again. PR hygiene clean
+  (26/27 queued; #1961 checks still IN_PROGRESS, 0 failures, `isInMergeQueue: false` —
+  not stuck, just not there yet). Fifth consecutive unchanged check across this run of
+  cycles — the standing blockers are genuinely slow-moving (external PR review/merge
+  timing, a deploy pipeline traffic cutover, and a native decision), not something this
+  session can accelerate by checking more often. Next action unchanged.
+
+- `2026-09-06T~11:0xZ (c) — L3-W3 — IDLE-OK: full re-verification this time, not just the
+  4 PR blockers.** Re-ran `egate.sql` fresh for L3 — `unfrozen_ancestors` counts identical
+  to every prior run this session (e.g. `ka_avadhi`=20, `ka_kota_chakra`=1, `ka_kshetra`=25
+  — no L0/L1/L2 freeze progress). Checked #1960 for new comments (still exactly 1, the
+  ruling) and #1713 for anything new relevant to L3 (last comment unchanged, the tracker-
+  rework heads-up). #1903/#1958/#1894/#1921 and sidecar traffic also re-checked, unchanged.
+  PR hygiene clean (26/27 queued; #1961's checks IN_PROGRESS ~2min, not stuck).
+  **Next action unchanged.**
+
+- `2026-09-06T~11:0xZ (b) — L3-W3 — IDLE-OK: re-checked #1903/#1958/#1894/#1921 and the
+  sidecar traffic split fresh — all unchanged from the immediately-prior cycle (only ~90s
+  of real wall-clock elapsed between supervisor invocations this round). PR hygiene clean
+  (26/27 queued; #1961's checks IN_PROGRESS since `20:59:33Z`, ~90s old, not stuck — nothing
+  RED). Declined to manufacture a second prep item this cycle (cost ledger would need
+  fabricated token estimates this session has no real instrumentation for; a close-report
+  draft would be premature with N1/F-CONC-6/F-CONC-7 all still open) — an honest IDLE-OK
+  beats fake busywork per the contract's own framing.
+  **Next action unchanged:** re-check the four PR blockers + sidecar traffic each cycle;
+  fire the pre-written `ka_graha_sancara` probe dispatch (previous entry) the moment either
+  clears.
+
+- `2026-09-06T~11:0xZ — L3-W3 — prep unit (priority 5, nothing higher eligible): pre-wrote
+  `ka_graha_sancara`'s W4 probe-dispatch procedure, precomputed and ready to fire the moment
+  `amjis-sidecar`'s traffic cutover catches up to #1846.** Re-checked all four standing PR
+  blockers fresh (no change: #1903/#1958/#1894/#1921 all still `OPEN`/`mergedAt: null`) and
+  the sidecar traffic split (still `80a9cd71e105`, still pre-#1846) before picking this as
+  the cycle's unit — priorities 1-4 all confirmed still exhausted, so this is a genuine
+  prep item, not a stall.
+  **Read `routers/nirmana_probe.py` in full to nail down the actual dispatch mechanism**
+  (never previously documented precisely in this state file — only the evidence-command
+  route was): probe execution is a SEPARATE authenticated surface
+  (`POST /probe` on the sidecar itself, `X-API-Key` against `PYTHON_SIDECAR_API_KEY`, not
+  the `/api/admin/internal/nirmana-elevation-executor` route used for W2's acceptance
+  events — that route only handles `record_definition`/`freeze_definition`/
+  `supersede_definition`/`record_label_catalogue`/`accept_baseline_candidate`/
+  `record_evidence`, confirmed by reading its full source, no probe-execution branch
+  exists there). The real two-step dispatch, once unblocked:
+  1. `POST https://<sidecar>/probe` with `{"asset_id": "ka_graha_sancara",
+     "probe_contract_sha256": "<below>", "health_probe": <below>}`, authenticated via
+     `X-API-Key: $PYTHON_SIDECAR_API_KEY` (a secret this session has not yet checked
+     access to — first thing to verify next time this is picked up, not assumed now).
+  2. Record the result via `record_evidence` (`source_kind='server_reconstructed'`,
+     `event_type=probe_accepted`) through the executor route, impersonating the VERIFIER
+     principal (`amjis-nirmana-verifier@...`, not the executor principal — confirmed from
+     `requiredPrincipalFor()`'s own routing logic: `server_reconstructed` source_kind goes
+     to the verifier SA, everything else to the executor SA).
+  **Precomputed the exact request body now, from LIVE `asset_registry.health_probe`** (read-
+  only, no risk): `{"probe_type": "graha_sancara_forensic", "forensic_ayanamsha": "lahiri",
+  "forensic_birth_instant": "1984-02-05T10:43:00", "forensic_expected_moon_sign": "Aquarius"}`.
+  Ran the server's own `jcs.canonicalize({"health_probe": ...})` + sha256 locally (not a
+  reimplementation guess) → **`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6`**
+  — matches byte-for-byte the digest this session independently verified against a real
+  `node -e` run several cycles ago (F-L3-15 close), confirming the contract hasn't drifted
+  since. Did NOT attempt to fire this for real — the sidecar doesn't yet serve the
+  `graha_sancara_forensic` probe type at its traffic-receiving revision, so any live attempt
+  would just fail; this is pre-work only, correctly not confused with dispatch itself.
+  **Next action:** once sidecar traffic includes #1846 (re-check each cycle), verify
+  `PYTHON_SIDECAR_API_KEY` access, fire the `/probe` call with the payload above, then the
+  `record_evidence` follow-up as the verifier SA — this prep removes everything except the
+  actual HTTP calls from that future cycle's critical path.
+
+- `2026-09-06T~10:3xZ — L3-W3 — IDLE-OK cycle (verified, nothing eligible found).**
+  **#1960 ruled — cross-session confirmation received AND independently re-verified against
+  the issue itself (not trusted from the message alone):** Conductor's ruling reads exactly
+  as the cross-session message described — NOT authorized (either L3 or Conductor) to run
+  `w44_weight_fitting.py` for real; flagged for native attention, issue stays open, nothing
+  further from me. Replied acknowledging + noting #1958 still open.
+  **Re-ran `scripts/nirmana/egate.sql` fresh for L3**: no change — 21 assets still
+  `BLOCKED-ANCESTORS`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`, `ka_graha_sancara`
+  still the sole `OPEN-PENDING-PIN`.
+  **`ka_graha_sancara`'s W4 dispatch — checked deploy status with MORE PRECISION than prior
+  cycles, genuinely still blocked, new detail worth recording:** PR #1846's merge commit
+  (`a734f34a06b6...`) **IS now an ancestor of `amjis-web`'s 100%-traffic revision**
+  (`962188fad956` — confirmed via `git merge-base --is-ancestor`, exit 0) — the web tier has
+  caught up. But the health_probe route lives in the Python sidecar
+  (`service_probes.py`/`routers/nirmana_probe.py`), and **`amjis-sidecar`'s 100%-traffic
+  revision (`80a9cd71e105`, exit 1 on the same ancestor check) is OLDER than #1846** — a
+  ready revision matching the same commit as web (`962188fad956`) exists on the sidecar
+  service too, but **traffic has not been cut over to it**. This is a finer-grained finding
+  than "not yet deployed": the sidecar build/deploy happened, but the traffic split is
+  stale — a deploy-pipeline lag, not a missing build. Did not touch Cloud Run traffic
+  routing myself (shared infra, not a layer-session action) and did not re-post to #1713
+  (already carries a deploy-lag note from earlier this session; this is corroborating
+  detail, not a new incident).
+  **All three previously-tracked blockers re-verified fresh, no change:** #1903 (F-CONC-6),
+  #1958 (F-CONC-7), #1894/#1921 (migrations 675/677, N1 verdict-wiring) all still
+  `OPEN`/`mergedAt: null`.
+  PR hygiene checked first: all 26 pre-existing L3 PRs confirmed `is:queued` (GraphQL
+  `--limit 200`); #1961 (this cycle's own prior state PR) confirmed still pre-queue
+  (`isInMergeQueue: false`, `mergeStateStatus: BLOCKED` — checks pending, not DIRTY/RED) —
+  pushed this entry directly onto that same branch/PR rather than opening a new one, since
+  it had not yet entered the merge queue (still safely pushable).
+  **Next action:** re-run `egate.sql` + re-check #1903/#1958/#1894/#1921/sidecar-traffic
+  each future cycle; nothing rushed today was actually eligible.
+
+- `2026-09-06T~10:0xZ — L3-W3 — cross-session message received from "conductor-2b" (via
+  in-process message, not the user): reports #1956 ruled, PR #1958 (chart_id binding into
+  `size_sql` + `size_is_estimate` flag) shipped, and invites the six-asset `size_sql`
+  migration once #1958 merges. Per the standing cross-session-verification discipline, did
+  NOT act on the invitation directly — independently re-verified via `gh pr view 1958
+  --json state,mergedAt`: genuinely **`{"mergedAt":null,"state":"OPEN"}`**, confirmed twice.
+  Authoring the migration now would be premature (a `$1`-bound `size_sql` merged ahead of the
+  calling-code fix would be a genuine production "no parameter $1" error) — correctly
+  deferred, not actioned.
+  **Re-checked all three standing blockers fresh this cycle** (none assumed from memory):
+  PR #1903 (F-CONC-6) — still `OPEN`, `mergedAt: null`. PR #1958 (F-CONC-7) — still `OPEN`,
+  `mergedAt: null`. Migrations 675/677 (N1's `kala_explain_get` verdict-wiring precondition,
+  PRs #1894/#1921) — both still `OPEN`, `mergedAt: null`. All three genuinely unblocked-
+  candidates from the last several cycles remain blocked; nothing to pick up there.
+  **Investigated the one remaining nominally-open item, N3's moorti admission/ablation
+  half, as this cycle's candidate — and correctly did NOT run it.** The harness that would
+  produce ablation evidence and commit an admission decision is fully built
+  (`scripts/kala_admission/w43_ablation_runner.py` → `w44_weight_fitting.py` →
+  `w45_post_fit_rebuild.py`) but `w44` **writes fitted weights directly to
+  `gochara_v3_calibration` with `conn.commit()`, no dry-run/report-only mode**, for all 10
+  currently-dormant Wave-2 mechanisms (not just moorti) — a live scoring-input change, not a
+  measurement. Read all three scripts' docstrings before deciding: `w43`'s ablation is an
+  explicitly-labeled STRUCTURAL PROXY (true per-toggle ablation needs materializing
+  `kala_gochara_windows_v3`, "a production-DB operation beyond a DB-free script's scope," per
+  its own comment); `w44`'s admission threshold is a train-only composite score its own
+  docstring calls "a CALIBRATION choice this session makes explicitly, not inherited from a
+  ratified prior formula." Running it for real would be committing an unreviewed statistical
+  judgment to production in an unattended cycle — exactly the class of action this session
+  has correctly refused to rush every time it's come up (F-SANGAM-5 took a dedicated cycle;
+  moorti's own data-wiring half was deliberately split from this ablation half for the same
+  reason). **Filed #1960 (nirmana-adjudication)** asking who is authorized to run `w44` for
+  real (L3 alone, or a Conductor/GOCHARA-UTKARSA-wave-owned decision — the harness's own
+  header reads as conductor-owned, "W4.4 admission loop"), offering to run it and post the
+  full search table if authorized, rather than silently re-deferring it again with no
+  forward motion.
+  PR hygiene checked first: `gh pr list --author "@me" --search "is:queued" --limit 200` →
+  25 L3 PRs genuinely queued. #1957 (last cycle's state-only PR) confirmed
+  **`isInMergeQueue: true`** this time (was `false`/pending checks last cycle) — genuinely
+  queued now, nothing to fix. Correctly did NOT push this cycle's state update to #1957's
+  branch once queue membership was confirmed — a queued branch rejects pushes (GH006,
+  discovered 2 cycles ago on #1954) — routed this update to a fresh branch
+  (`codex/nirmana-l3-state-f-conc-6-7-cont`) off `origin/main` instead, copying forward
+  #1957's branch content via `git show <branch>:<path> > <path>` before prepending this
+  entry, per the established pattern.
+  **Next action:** re-check #1903/#1958/#1894/#1921 merge status and #1960's ruling each
+  future cycle; if all four remain blocked, this is the correct standing state — nothing to
+  rush. Reply to "conductor-2b" (`SendMessage`) is still owed, now that this cycle's work is
+  settled.
+
+- `2026-09-06T~09:3xZ — L3-W3 — IDLE-adjacent cycle: investigated F-CONC-6 and F-CONC-7,
+  correctly deferred/escalated both rather than shipping either unsafely.** With
+  `ka_vighnakara`/`ka_kala_darshana`/`ka_jivana_parva`/`ka_bhavishya_lekha` all closed on
+  their per-asset findings, moved to PART 3's cross-cutting findings
+  (`L3_W1_ANALYSIS_BATCH_E.md`). Checked ALL of F-CONC-1/2/3/4/5/8/9/10 live first — every
+  one is already done, logged-no-action, or in-flight (F-CONC-8: all six assets already
+  have `integrity_check_sql` + `target_floor` set — `expected_volume_formula` staying NULL
+  is fine per the D-CND-01 standing ruling, since none of them is a bare count-equality
+  pin; F-CONC-9: all six `catalog_status` already CURRENT, checked live).
+  **F-CONC-6 (`_c_cross_dasha_agreement`'s hardcoded `7.0` denominator) — investigated,
+  then deliberately NOT touched this cycle.** First verified the finding's own framing:
+  `7.0` is not simply "wrong" — it's `KaDashaKalaService`'s own `ALL_DASHA_SYSTEMS`
+  constant (`services/ka_dasha_kala/tree_walk.py`), confirmed to have exactly 7 members
+  today, so the literal happens to be correct, just not DERIVED from its real source
+  (the actual §N.7 item 3 concern: a wrapper-local constant that could silently drift).
+  Began implementing the fix (import `ALL_DASHA_SYSTEMS`, derive the denominator) on a
+  fresh branch — then discovered, via `git merge-tree` simulation (not assumption), that
+  my own still-open PR #1903 (from an earlier cycle, not yet rebased past #1877's
+  meanwhile-merged c13 rewrite) touches the SAME function (`_c_cross_dasha_agreement`),
+  rewriting its return type to `Optional[float]` and its whole body. Confirmed via the
+  simulated 3-way merge that #1903 itself merges CLEANLY against current origin/main (no
+  real conflict — false alarm on the first read, corrected before acting on it) — but
+  building MY OWN new fix directly on top of the OLD pre-#1903 function body would create
+  a genuine, avoidable conflict once #1903 eventually merges. Abandoned the half-started
+  branch (no commits made) rather than force a self-contained copy of #1903's whole
+  still-in-review diff into a new PR, which would have made two independent reviews of
+  the same logic. **Correctly caught a stray uncommitted edit that followed across a
+  `git checkout`** back to this cycle's own branch (#1954) — discarded before it could
+  contaminate an unrelated, already-pushed PR.
+  **F-CONC-7 (`size_sql` not chart-scoped, all six assets over-report ~3x with 3 charts
+  resident) — investigated to root cause, then filed #1956 (nirmana-adjudication) rather
+  than fixing unilaterally.** Traced past the registry data to the actual mechanism:
+  `platform/src/app/api/cockpit/stats/route.ts` calls `size_sql` with **zero parameters**
+  — unlike `count_sql`, which conditionally binds `$1` via `/\$1/.test(...)` one function
+  up. Fixing this needs a change to SHARED cockpit infrastructure serving every layer's
+  registry rows, not just L3's six — matches the D-L3-2 precedent (campaign-wide shared
+  tooling goes through the Conductor, not a unilateral per-layer patch) exactly. Also a
+  genuine design question, not purely mechanical: Postgres has no cheap way to measure
+  "this chart's exact physical disk bytes" out of a shared table — only an ESTIMATE
+  (proportional row-count share × table's total physical size) is possible, and whether
+  that estimate should carry an explicit "estimated" flag in the served payload is a
+  disclosure decision, not something to decide alone. Proposed a concrete two-part fix
+  (calling-code `$1`-binding change + the proportional-share SQL formula) in the issue so
+  whoever picks it up has a starting point, not just a restated problem.
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake (though the
+  stray-edit-following-checkout issue above shows branch discipline needs to extend past
+  the initial check, to every subsequent `git checkout` too).
+  PR hygiene checked first: 24 L3 PRs queued; #1954 (last cycle's DIRTY-fix target)
+  confirmed CLEAN (0 failing, checks still running) — nothing to fix. Also independently
+  re-verified #1903 (queued, touches the same file as this cycle's abandoned attempt) is
+  genuinely safe to merge as-is — not a hidden hygiene problem, confirmed via
+  `git merge-tree` rather than assumed.
+
+- `2026-09-06T~09:0xZ — L3-W3 — DIRTY-PR fix: #1877 (my own long-queued N4/F-SANGAM-6 PR)
+  finally merged mid-cycle, conflicting my F-VIGHNA-6 PR (#1954) on
+  `nirmana-analysis-layer-pins.json`.** Same class of issue as the #1863 conflict several
+  cycles ago, different cause: this time it's my OWN generated-pin file, not
+  `L3_STATE.md` — #1877's merge re-pinned L3 using a NEWER convergence-commit
+  (`dbc1865bfdb01a8f7a84f6e48ddb9b5f09bcb2d6`, superseding the `72bb87821b...` sha reused
+  all session), so every subsequent branch's stale copy of that one field conflicts.
+  Resolved by taking origin/main's version of the pin file during the rebase, then
+  regenerating for real (`--layer L3 --convergence-commit dbc1865b...`) rather than
+  hand-editing a hash — confirmed both `--check` commands pass, only L3's
+  `writer_inventory_sha256` changed on top of the already-merged baseline. Verified tests
+  still green post-rebase, force-pushed, re-armed auto-merge.
+  **Noted for future cycles, not acted on further this cycle:** every other queued L3 PR
+  that also carries a stale `72bb87821b...`-based pin file will hit the identical
+  conflict when the merge queue's own internal rebase reaches it. Spot-checked 3 (#1883,
+  #1887, #1890) — all show the same transient `UNKNOWN` `mergeStateStatus` already
+  established as normal for genuinely-queued PRs (not a new problem), so left for the
+  merge queue and future PR-hygiene cycles to discover and fix as each surfaces, per
+  contract (fix hygiene AS discovered, not speculatively for the whole queue at once).
+  **Going forward: the convergence-commit sha to use for any future L3 re-pin is
+  `dbc1865bfdb01a8f7a84f6e48ddb9b5f09bcb2d6`, not `72bb87821b...`.**
+
+- `2026-09-06T~08:3xZ — L3-W3 — F-VIGHNA-6 fix (PR pending, branch
+  `codex/nirmana-l3-f-vighna-6-proxy-window-cleanup`).** Before picking this cycle's unit,
+  **re-verified ka_vighnakara's remaining findings against LIVE production rather than
+  trusting my own earlier reading of the batch** — and found two more were ALREADY
+  CLOSED, not just F-VIGHNA-3/5 from prior cycles: **F-VIGHNA-4 and F-VIGHNA-7 are BOTH
+  done** — `asset_registry.integrity_check_sql` for `ka_vighnakara` already carries a
+  full multi-clause D-CND-03 contract (part of migration 670's 19-contract batch),
+  and its own header comment explicitly names itself "the F-VIGHNA-4 cascade detector"
+  (clause (b): "every chart that has convergence windows must have obstruction rows").
+  **F-VIGHNA-8/F-DARSH-8's `catalog_status` half is ALSO already CURRENT** for both
+  assets (checked live) — combined with this session's own doc-comment fix last cycle,
+  both findings are now fully closed. This left F-VIGHNA-6 as the one genuinely
+  remaining, actionable item for this asset.
+  **F-VIGHNA-6 (CR-87 contamination pattern, NEVER-LATER):** `_check_malefic_transit`'s
+  `swe is None` branch (a TEST-ONLY fallback — `run()` hard-raises before ever calling
+  this function without real `swe`, so unreachable in production) used a module-level
+  `_SATURN_PROXY_WINDOWS` constant hardcoded to this one native's own Saturn transits,
+  living in writer scope. Moved the constant into the test module entirely; the writer's
+  function now takes an explicit `_test_proxy_windows` parameter (default `None` → empty,
+  so a production call — which never passes this param — gets zero proxy rows regardless)
+  whose name makes the test-only nature unmissable at the call site, rather than silently
+  defaulting to any hardcoded data.
+  **Caught my own mistake writing the regression test AGAIN** (same exact self-referential-
+  quote trap as last cycle, this time for `_SATURN_PROXY_WINDOWS` itself): my first
+  docstring explanation literally named the constant in backticks, making my own new
+  static test (`'_SATURN_PROXY_WINDOWS' not in content`) fail against its own writer-side
+  mention. Reworded the docstring to describe the history without repeating the literal
+  identifier, rather than weakening the test.
+  3 tests changed/added (35 total in `test_ka_vighnakara.py`): 6 existing malefic-transit
+  tests updated to inject `_test_proxy_windows` explicitly; 1 new test proving a call with
+  NO injected windows (the genuine production shape) returns `None` rather than
+  fabricating a result; 1 new static test proving the writer source no longer contains
+  the constant at all. Mutation-proved BOTH the static test (reintroduced the constant,
+  correctly went red) and the behavioral test (gave the `or []` fallback a real default
+  window covering the test's exact peak_date — the first attempt used a window that
+  didn't actually cover the test date and passed by coincidence, caught and corrected
+  before trusting it; the second attempt correctly went red). Full `tests/l3/` suite:
+  **1425 passed, 0 failures**, zero regressions. Writer digest inventory + L3 layer pin
+  proactively re-pinned (only `ka_vighnakara`'s hash / only L3's
+  `writer_inventory_sha256` changed).
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 23 L3 PRs queued; #1951/#1952 both confirmed CLEAN (0
+  failing, checks still running) — nothing to fix.
+  **`ka_vighnakara`'s findings are now ALL closed or correctly deferred** — F-VIGHNA-1/2
+  remain genuinely blocked on upstream F-SANGAM-1 (Mode-C score-scale root cause); every
+  other finding (3, 4, 5, 6, 7, 8) is done.
+
+- `2026-09-06T~08:0xZ — L3-W3 — F-VIGHNA-5 fix: migration 730 (PR pending, branch
+  `codex/nirmana-l3-f-vighna-5-depends-on`) — the FIRST migration in L3's new 730-739
+  range.** #1942 (migration-range exhaustion, filed 2 cycles ago) was answered and closed
+  by the Conductor this cycle: **L3 gets 730-739**, ruled after checking the full
+  allocation table (L2's own continuation already claimed 710-729, L0 sits at 700-709).
+  Unblocks every migration-dependent finding deferred since range 670-679 was exhausted.
+  **Picked F-VIGHNA-5 first** (of the now-unblocked candidates: F-VIGHNA-4/7 integrity
+  contracts, catalog_status fixes) as the smallest, cleanest, most directly analogous to
+  an already-proven pattern (N5's `ka_muhurta_seva` depends_on fix, migration 676).
+  `ka_vighnakara`'s live `depends_on` = `{ka_sangam, ka_gochara, ka_muhurta_seva,
+  ga_positions}` — verified against the writer's own code before writing the migration,
+  not assumed from the analysis batch: `ka_gochara` is genuinely UNREAD (grepped for
+  `KaGocharaService`/`kala_gochara` in the writer — zero matches; it imports `swisseph`
+  directly instead) — a fictional edge, removed. Two undeclared real reads added:
+  `bg_combustion_orbs` is read but traced to the wrong owner in the finding's own text
+  until I checked which writer actually populates that table — `bg_dignity_reference`
+  (`@register("bg_dignity_reference")`'s own `_seed_combustion_orbs` step), not a bare
+  table-name edge; and `kala_activation_predicates` (`ka_yojaka`'s own output — F-VIGHNA-5's
+  own text calls this "a real ordering dependency," not just bookkeeping). Corrected value:
+  `{ka_sangam, ka_muhurta_seva, ga_positions, bg_dignity_reference, ka_yojaka}`.
+  8 new migration tests (6 static + 2 live dry-run, all passing) — including a static test
+  that greps the WRITER's own source directly (not just trusting the migration's comment)
+  to independently confirm `ka_gochara` is unread. Production verified untouched via direct
+  `psql` read after the dry-run. No writer file touched, so — confirmed via both checks —
+  neither the writer digest inventory nor the L3 layer pin needed re-pinning this cycle
+  (a genuine, verified no-op, not an assumption).
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 22 L3 PRs queued; #1949/#1951 both confirmed CLEAN (0
+  failing, checks still running) — nothing to fix.
+
+- `2026-09-06T~07:3xZ — L3-W3 — F-VIGHNA-8/F-DARSH-8 fix (PR pending, branch
+  `codex/nirmana-l3-f-vighna-8-darsh-8-stale-header`).** A NON-migration unit, chosen
+  specifically because migration range 670-679 remains fully consumed (#1942, no response
+  yet). Both findings share one defect class: `L3_kala/index.ts`'s roster header comment
+  still called `query_obstruction_periods` (ka_vighnakara) and `query_temporal_view`
+  (ka_kala_darshana) "STUBBED-PENDING-DATA, 0 rows" in the PRESENT tense, even though both
+  capabilities' own served `description` field was already corrected in an earlier session
+  (confirmed: the sibling `d5_roster_smoke.test.ts`/`d5_l3_capabilities.test.ts` assertions
+  already pass) and both writers serve real, measured rows (536-741 for ka_vighnakara,
+  750 for ka_kala_darshana, per canonical chart).
+  **Found and fixed a SECOND instance of the identical stale claim** while verifying
+  scope: `register_d5_fanout.ts`'s own roster comment carried the exact same present-tense
+  "(data, STUBBED-PENDING-DATA)" for both tools — a sibling doc file, same defect, not
+  named in the analysis batch's citation (which only pointed at `index.ts`) but genuinely
+  the same live-false claim, fixed identically for consistency.
+  Reworded both headers to name the finding, state the corrected fact, and explicitly
+  point live-row counts at the real tables (`kala_obstruction`/`kala_darshana`) rather than
+  hardcoding a number that will itself go stale.
+  **Caught my own mistake writing the regression test**: my first version of the new
+  `index.ts` comment literally QUOTED the old stale phrase in past-tense explanation
+  ('this header called it "STUBBED-PENDING-DATA, 0 rows"'), which made my own new
+  regression test assert against its own bait and fail immediately — the string was
+  technically still present, just quoted. Reworded to describe the defect without
+  repeating the literal flagged string, rather than weakening the test to tolerate it.
+  2 new tests (`f_vighna_8_darsh_8_stale_header.test.ts`) reading the raw file content
+  (not importing — matches `d5_roster_smoke.test.ts`'s own stated reason for avoiding a
+  direct import of `register_d5_fanout.ts`, which pulls in DB-client-dependent modules).
+  Mutation-proved: reverted `index.ts`'s comment to the literal stale text, the test
+  correctly went red, restored, green again. `tsc --noEmit` clean; 70 tests pass across
+  the new file plus the two sibling roster/capability test files, zero regressions.
+  Pure comment-only change — no migration, no schema, no DB touched; `catalog_status`
+  itself (F-VIGHNA-8/F-DARSH-8's OTHER named defect, a registry field) remains correctly
+  deferred pending the migration-range reassignment.
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 21 L3 PRs queued; #1943/#1949 both confirmed CLEAN (0
+  failing, checks still running) — nothing to fix.
+
+- `2026-09-06T~07:0xZ — L3-W3 — F-PARVA-3/F-PARVA-4 fix (PR pending, branch
+  `codex/nirmana-l3-f-parva-3-4-quality-detector`).** Closes the two remaining
+  `ka_jivana_parva` findings deferred two cycles ago — no migration needed (uses
+  EXISTING `parva_quality` vocabulary), so this ran despite migration range 670-679 being
+  exhausted (#1942, still awaiting reassignment).
+  **F-PARVA-3 (§N.8):** `_assign_quality`'s ongoing-period branch gave EVERY ongoing
+  period `'building'` regardless of evidence, unless `avg_score >= 0.55` (never true given
+  the measured 0.000-0.513 score range — root cause upstream, F-SANGAM-1). Measured live
+  before fixing: **52 of 100 rows on the native chart were `'building'` with
+  `avg_effective_score IS NULL`** — a label asserting momentum with literally zero
+  convergence windows measured in that period's span. Split the branch: ongoing +
+  `avg_score is not None` (some real, if modest, measured activity) stays `'building'`;
+  ongoing + `avg_score is None` (genuinely zero windows in span) becomes `'transitional'`
+  — reusing the EXISTING vocabulary value already used for the analogous past-period
+  no-evidence case, not inventing a new one (which would have needed a migration).
+  Deliberately did NOT lower the 0.55/0.60 thresholds to make `'peak'` reachable —
+  curve-fitting a threshold to this chart's own measured ceiling would be exactly the
+  invented-judgment defect the doctrine forbids; `'peak'` staying unreachable today is
+  root-caused upstream and stays that way until F-SANGAM-1 raises the real ceiling.
+  **F-PARVA-4 (§N.7 item 6):** the same rewrite fixes the `avg_score and avg_score >=
+  0.55` truthiness short-circuit on the same line — folded into the same branch split
+  (`avg_score is not None and avg_score >= 0.55`) rather than a separate change, since it's
+  the identical line. Confirmed this specific instance was behaviorally inert against the
+  0.55 threshold before the fix (0.0 can never clear 0.55 regardless of truthiness-vs-
+  is-not-None) but fixed anyway, on principle, rather than left as a latent trap for a
+  future threshold change.
+  3 tests changed/added in `test_ka_jivana_parva.py` (27 total): the existing
+  `test_assign_quality_ongoing_no_score` corrected to assert the honest `'transitional'`
+  outcome (it previously asserted the DEFECT itself); 2 new tests distinguishing a
+  genuine `avg_score=0.0` (stays `'building'` — real evidence, just weak) from `None`
+  (`'transitional'` — no evidence at all) and confirming a real, modest positive score
+  also stays `'building'`. Mutation-proved: reverted to the original single-branch logic,
+  1 test correctly went red, restored, green again. Full `tests/l3/` suite: **1425
+  passed, 0 failures**, zero regressions. Writer digest inventory + L3 layer pin
+  proactively re-pinned (only `ka_jivana_parva`'s hash / only L3's
+  `writer_inventory_sha256` changed).
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 21 L3 PRs queued; #1943 (previous cycle's PR) confirmed CLEAN
+  (0 failing, checks still running) — nothing to fix.
+  **`ka_jivana_parva`'s two remaining named findings are now both closed** (F-PARVA-1
+  landed last cycle pending merge, F-PARVA-2 two cycles ago pending merge, F-PARVA-3/4
+  this cycle) — F-PARVA-5 through F-PARVA-8 remain (declared-but-unread `ka_dasha_kala`
+  dependency, the O-1 overlap-with-`ka_avadhi` logging item, the C12 integrity contract,
+  stale `catalog_status`), none MUST-priority per the batch's own route recommendation.
+
+- `2026-09-06T~06:3xZ — L3-W3 — F-PARVA-1 fix: migration 679 (PR pending, branch
+  `codex/nirmana-l3-f-parva-1-level-column`) — the LAST free number in the 670-679
+  migration range assigned to me.** Adds `kala_jivana_parva.parva_level` (1=MD/2=AD/3=PD),
+  the level discriminator this table lacked entirely (measured: `parva_index=8`, an MD,
+  sits between two AD rows with no served column distinguishing them — recoverable only
+  by string-parsing `source_citation`). Writer updated to populate the new
+  `_PARVA_LEVEL_MD/AD/PD` constants at all three INSERT sites.
+  **The genuinely interesting part of this cycle: the finding's OWN proposed natural key
+  was wrong, caught by dry-running against real production data rather than trusting the
+  design on paper.** `(chart_id, parva_level, dasha_planet, start_year)` — the finding's
+  suggested fix — failed a live dry-run with a real `UniqueViolation`: chart 482012f1 has
+  TWO antardaśā rows at `(level=2, planet='Sun', start_year=2054)` — `MD=Venus:AD=Sun`
+  (the last, one-year AD of the outgoing Venus mahādaśā) and `MD=Sun:AD=Sun` (a real
+  Vimshottari rule: every MD's own first AD is always the same lord as the MD itself) —
+  two structurally different antardaśās sharing a (lord, year) at an MD boundary.
+  Investigated further rather than patching narrowly: tried `(chart_id, source_citation)`
+  next, which ALSO failed live — traced to `chart_dashas` genuinely carrying a SECOND
+  partial Vimshottari cycle for this chart (Moon MD recurs at 2060-08-18, exactly 120
+  years after its first 1950-01-01 occurrence — confirmed directly against `chart_dashas`)
+  — honest long-horizon dasha data, not an accretion bug; the same (MD,AD) lord pair, and
+  therefore the same `source_citation` string, legitimately recurs once per cycle.
+  **The key this migration actually installs, verified live with ZERO duplicate groups
+  across all three canonical charts:** `(chart_id, source_citation, start_year)` — the
+  full lord-chain string disambiguates siblings within one cycle, the year disambiguates
+  the same chain's next cycle. `parva_level` itself is not a key column (the level is
+  already fully implied by `source_citation`'s own `MD=`/`AD=`/`PD=` markers) — it exists
+  purely as the served, directly-queryable discriminator F-PARVA-1 says was missing.
+  Migration backfills existing rows from `source_citation` (`:PD=` before `:AD=` in the
+  CASE priority, since a PD citation also contains `:MD=`), sets NOT NULL + CHECK(1,2,3),
+  and ADDS the new unique index alongside the existing `(chart_id, parva_index)` one
+  (kept, not dropped — purely additive).
+  9 new migration tests (6 static + 3 live dry-run, all passing) plus 1 existing writer
+  test (`test_existing_md_ad_rows_unchanged_when_pd_present`) updated for the INSERT
+  tuple's new column position (dasha_planet shifted from index 4 to 5). Full `tests/l3/`
+  suite: **1423 passed, 0 failures**. Writer digest inventory + L3 layer pin proactively
+  re-pinned (only `ka_jivana_parva`'s hash / only L3's `writer_inventory_sha256` changed).
+  Production verified untouched after every dry-run (`\d kala_jivana_parva` shows no
+  `parva_level` column) — the failed attempts never left any trace.
+  **Migration-range note for the Conductor:** 679 is now used, meaning ALL TEN numbers in
+  my assigned 670-679 range are consumed (670-674 merged; 675/676/677/678 still open on my
+  own branches; 679 is this PR). The next L3 migration will need either a fresh range
+  assignment or confirmation that a merged predecessor's number may not be reused — raising
+  this now rather than discovering it mid-write on a future cycle.
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 20 L3 PRs queued; #1940 (previous cycle's PR) confirmed CLEAN
+  (0 failing, checks still running) — nothing to fix.
+
+- `2026-09-06T~05:5xZ — L3-W3 — F-BHAV-2/F-BHAV-3 fix (PR pending, branch
+  `codex/nirmana-l3-f-bhav-2-3-tierbasis-orderby`).** Moved to `ka_bhavishya_lekha` (the
+  forward-projection artifact — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_bhavishya_lekha section,
+  the asset the finding calls "the single most direct carrier of the MACRO_PLAN Ethical
+  Framework obligation"). Both fixes are the SAME writer/query, flagged together in the
+  analysis batch as "must be fixed before any rebuild," so done as one cohesive unit.
+  **F-BHAV-2 (§N.7 items 5/6, MACRO_PLAN Ethical Framework):** the narrative claimed
+  calibrated probability language ("High probability (>=70% convergence...)" /
+  "This projection is probabilistic and calibrated") over a substrate whose OWN
+  `kala_convergence.tier_basis` column stamps itself `'relative_uncalibrated'` on 100% of
+  rows (measured, confirmed live via `psql` before writing the fix). Threaded
+  `kc.tier_basis` through the query into `_build_projection_narrative` (new required
+  param) and reworded `_TIER_LABELS` to describe structural convergence strength, never
+  "probability"/"%". The caveat now forks on the REAL `tier_basis` value: an explicit
+  `_CALIBRATED_TIER_BASES` allowlist (currently just `{'calibrated'}`, unobserved in
+  production) licenses calibrated language; everything else — including an unrecognized
+  future value or a NULL — defaults to the honest "structural, uncalibrated prior" wording
+  naming the actual `tier_basis` value inline (§N.7 item 6: default to the LESS confident
+  claim when uncertain, never invent the favorable one).
+  **F-BHAV-3 (§N.7 item 2):** the intake `ORDER BY kd.effective_score DESC NULLS LAST
+  LIMIT 100` had no tiebreak — measured 100/100 rows tied at `effective_score=0.700` on the
+  canonical chart, so WHICH 100 of the eligible windows even survived the LIMIT (not just
+  their display order) varied build-to-build. Added `kd.peak_date, kd.convergence_id` as a
+  real total-order tiebreak.
+  **Caught and fixed a downstream test-fixture break during the full-suite run** (not just
+  the isolated unit tests): `test_ka_bhavishya_a4_fixes.py`'s `_make_darshana_row` fixture
+  (used at 2 call sites) predated the new `tier_basis` column read and threw
+  `KeyError: 'tier_basis'` — added the field to both fixtures rather than working around it
+  in the writer; this is exactly why this session runs the FULL suite, not just the file
+  being edited, before calling a fix done.
+  11 tests changed/added in `test_ka_bhavishya_lekha.py` (36 total: existing tests updated
+  for the new `tier_basis` param, 2 tests replaced — the old
+  `test_build_projection_narrative_calibration_caveat` literally asserted the dishonest
+  wording existed, which is exactly what needed removing, not preserving — plus 4 new tests
+  covering the calibrated/uncalibrated/unrecognized/None tier_basis fork, and 1 new static
+  test pinning the ORDER BY tiebreak clause). Mutation-proved both fixes independently
+  (forced the calibrated branch always-true: 3/4 caveat tests correctly went red; removed
+  the ORDER BY tiebreak: the pinning test correctly went red), both restored, green again.
+  Full `tests/l3/` suite: **1427 passed, 0 failures**, zero regressions. Re-pinned the
+  writer digest inventory + L3 layer pin proactively (only `ka_bhavishya_lekha`'s hash /
+  only L3's `writer_inventory_sha256` changed) before opening the PR.
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 17 L3 PRs queued; #1934/#1936/#1938 all confirmed CLEAN (0
+  failing, checks still running) — nothing to fix.
 
 - `2026-09-06T~05:2xZ — L3-W3 — F-PARVA-2 fix: migration 678 (PR pending, branch
   `codex/nirmana-l3-f-parva-2-volume-explanation`).** Moved to `ka_jivana_parva` (the
