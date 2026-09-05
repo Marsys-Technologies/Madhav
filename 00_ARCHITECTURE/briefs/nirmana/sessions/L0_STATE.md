@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-Z: corrected an over-optimistic "no dispatch needed" claim — freeze requires a real accepted_rebuild_observed receipt for every build-obligation asset; #1838 gates everyone, no exceptions
+last_updated: 2026-09-05 — All 3 migration PRs (692/693/694) now merged to main; none deployed yet. #1838 (dispatch script) is the one remaining real blocker for every asset's actual freeze (D-L0-Z).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1032,3 +1032,15 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   deployed). #1713: L5 flagged that Conductor's own #1851/#1861 (the two orchestrator fixes) are
   green but never queued/armed for ~75-90 min — not my PR to act on, noted for context only.
   Nothing new to diagnose or act on this cycle.
+- 2026-09-05 — **Cycle 32 — all 3 migration PRs now merged.** PR hygiene: **`#1836` (bg_gochara_arcs
+  D-CND-01 rewrite) MERGED** (15:54:06Z) — all 3 of this resumption's migrations (692/693/694) are
+  now on `main`. `#1828` showed `mergeStateStatus=UNKNOWN`/not in `is:queued` — investigated
+  properly (not a scare this time): 3 checks genuinely still `IN_PROGRESS` (started 15:52:37Z),
+  explaining why it hasn't queued yet; re-armed `--auto` defensively anyway, no failures anywhere.
+  `#1838` (dispatch script, the one remaining real blocker) still cleanly queued. **Checked deploy
+  for both newly-merged migrations — neither applied yet**: `bg_gochara_arcs` still shows old
+  `target_floor=34553`/bare count check; `bg_vidhi_floors` still shows `hi<>n`. NEXT: watch deploy
+  catch up on both (same pattern as `#1829`/`bg_doshas`, which took a few cycles); once live,
+  `bg_gochara_arcs` gets the same real-W2-resubmission treatment as `bg_doshas` (D-L0-Y) — but per
+  D-L0-Z, remember that still isn't sufficient for an actual freeze without `#1838` + a real
+  dispatch.
