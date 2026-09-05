@@ -162,14 +162,22 @@ gh issue list --label nirmana-adjudication --state open --json number,title,crea
 * **Post the backlog line in every #1713 update:** `BACKLOG: N open · N ruled this loop · oldest
   unruled: <age or "none">`. A stall must be visible without anyone asking.
 
-## §C2 — LIVENESS, MEASURED AT THE PUSH
+## §C2 — LIVENESS, MULTI-SIGNAL (worktree mtime + push)
 
 ```bash
-git fetch origin -q
-git for-each-ref --format='%(committerdate:unix) %(refname:short)' refs/remotes/origin \
-  | grep -E "nirmana-(l[0-5]|conductor)|fix/nirmana" | sort -rn | head -20 \
-  | while read TS REF; do echo "$(date -u -r $TS +%H:%M:%SZ)  $REF"; done
+platform/scripts/nirmana/lane_liveness.sh        # worktree mtime + push, three verdicts
 ```
+
+**Push alone is not enough, in BOTH directions, and both were live failures:**
+* **false alive** — merges drain branches dead lanes pushed hours ago (#1788 merged 04:07 while
+  L4's last push was 00:40Z);
+* **false dead** — a lane in a long W3 task does not push for an hour. **L2 was reported DEAD at 57
+  minutes with files modified 3 minutes earlier**, and the Conductor told the native to re-paste a
+  live session.
+
+**Do NOT add a GitHub-activity signal.** It was tried and removed: all seven sessions share one
+GitHub account, so it scores a lane "active" on the Conductor's own comments *about* that lane.
+Not fixable by filtering.
 Report per-lane silence in every #1713 status. **A dead CLI cannot be resurrected remotely** — say so
 honestly, name which prompt the native must re-paste, and say what that lane left mid-flight. Do not
 fake it, and do not let merge activity disguise it.
@@ -189,6 +197,38 @@ fake it, and do not let merge activity disguise it.
 6. **Aggregation** — roll cost ledgers at every layer close; keep the tracker honest.
 7. **Phase Z** — when L5 freezes: 128/128 capsule audit by SQL, WP-5 tracker polish, debris cleanup,
    monitor disposition, close report, deferred register per plan §7.3.
+
+## §C3.5 — NO LANE SITS IDLE (native directive, 2026-09-05)
+
+> *"Make sure none of the sessions sit idle unless they have to — that's something the Conductor
+> has to make sure of."*
+
+**This is a duty, not a report.** Observing that a lane is idle and writing it down is not
+discharging it. **Every loop**, after triage and liveness:
+
+1. **Classify each lane WORKING / IDLE? / DEAD** (`lane_liveness.sh`, worktree mtime + push).
+   * **WORKING** — leave it alone. Do not nudge a lane that is editing files.
+   * **IDLE?** — alive but not editing. **This is the case this section exists for.** Post that
+     lane's available work on #1713, naming specific items.
+   * **DEAD** — say so plainly and name the exact resume prompt to re-paste. A dead CLI cannot be
+     resurrected remotely (C7); do not pretend otherwise and do not let merge activity disguise it.
+2. **Refresh the PER-LANE WORK QUEUE on #1713**, built from measured state, not memory:
+   * `egate.sql` — who has **OPEN** assets (dispatchable now) vs **BLOCKED-NO-ROUTE** (ancestor-clear,
+     needs only their own acceptance — *always* actionable) vs **BLOCKED-ANCESTORS** (genuinely waiting).
+   * `gh pr list` per lane — DIRTY / dequeued PRs are always actionable.
+   * Open rulings assigning that lane specific work.
+3. **Distinguish legitimate waiting from idleness, and say which it is.** A lane with zero
+   ancestor-clear assets *cannot* dispatch — that is a real block, and telling it to dispatch anyway
+   is noise. But **W1, W2, W3, C13 statements, W5 pre-writes and close-report drafting are never
+   blocked**, so no lane is ever out of work entirely.
+4. **BLOCKED-NO-ROUTE is the highest-leverage thing you can point at.** An ancestor-clear asset
+   whose only gap is its own W2 acceptance is a lane blocking *itself*. Name those assets, per lane,
+   every loop.
+
+**The failure mode to avoid in yourself:** reporting six lanes as dead for three loops running while
+taking no action that would change it. If a lane is DEAD, the only lever is the native re-pasting —
+so **name the prompt, say why that lane matters, and rank the re-pastes by unblocking value** rather
+than listing them.
 
 ## §C4 — WHAT IS IN FLIGHT RIGHT NOW (2026-09-05T04:52Z)
 
