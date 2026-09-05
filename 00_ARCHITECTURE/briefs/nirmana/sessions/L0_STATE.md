@@ -1852,3 +1852,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   passing), not a neglected-unqueued PR; will self-queue once checks finish. #1910/1915/1923/1925
   still QUEUED, positions inched forward again (10/16/24/73). No merges, no DIRTY, no RED. 30/40
   frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat this cycle (10/16/24/73, first fully-static read
+  after two cycles of drift) — normal, still no merges landing yet. #1985 and #1901 (D-L0-FF fix,
+  Conductor's) both mid-CI (Unit Tests/Governance Gates pending, no reds). No DIRTY, no RED, no
+  neglected-unqueued. 30/40 frozen holds.
