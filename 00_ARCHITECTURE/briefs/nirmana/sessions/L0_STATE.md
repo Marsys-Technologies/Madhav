@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — D-L0-NN: MILESTONE — bg_vidhi_floors FROZEN, the first genuine freeze of this campaign resumption. 30/40 frozen, 10 remaining. Full chain traced live: W2→dispatch→authorize→accepted_rebuild_observed→integrity_verified→asset_frozen. D-L0-II, D-L0-GG (PR #1910), D-L0-FF, D-L0-KK (PR #1923), D-L0-MM (PR #1925, includes 702) all still open/awaiting merge.
+last_updated: 2026-09-06 — IDLE-OK cycle: all 10 remaining assets checked, every one genuinely blocked (3 on merging/deploying check-correction migrations 700/701/702; 4 on the two open structural findings D-L0-FF/D-L0-II; 3 on ancestor E-gating, own W2 re-verified fresh). Merge queue confirmed healthy-but-deep (position 36, ~3.8h ETA), not stuck. No new work this cycle; 30/40 frozen still holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1529,4 +1529,16 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   preserved — no silent pass on unfixed data). This is the 4th instance this session of the
   established C12 pattern (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694, now
   bg_dasha_systems/700): "correct the check, not the writer." No writer change made or needed.
+
+- 2026-09-06 — **IDLE-OK cycle.** Checked all 10 remaining unfrozen assets individually rather than
+  assume: `bg_yogas`/`bg_dasha_systems`/`bg_compendium_index` blocked purely on migrations
+  701/700/702 merging + deploying (all three queued, none merged yet); `bg_cohort`/
+  `bg_gochara_arcs`/`bg_doshas`/`bg_text_index` blocked on the two open structural findings
+  (D-L0-FF, D-L0-II — checked, no new movement, Conductor's `#1901` still open); `bg_rules`/
+  `bg_parihara_rules`/`bg_concordance` blocked on ancestor E-gating only — recomputed their current
+  registry fingerprints and confirmed all three still match their stored `asset_analysis_accepted`
+  payloads exactly, so no W2 pre-refresh is needed once ancestors clear (nothing to pre-stage).
+  Checked merge-queue health rather than assume stuck: `gh api graphql`'s `mergeQueueEntry` on the
+  oldest queued PR (#1828) shows `position: 36, estimatedTimeToMerge: ~3.8h` — deep but healthy.
+  Posted status to #1713. No code/migration/evidence work this cycle — genuinely nothing eligible.
 
