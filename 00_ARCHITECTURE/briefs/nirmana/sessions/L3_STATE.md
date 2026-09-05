@@ -458,6 +458,104 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~05:2xZ — L3-W3 — F-PARVA-2 fix: migration 678 (PR pending, branch
+  `codex/nirmana-l3-f-parva-2-volume-explanation`).** Moved to `ka_jivana_parva` (the
+  life-arc chapter artifact — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_jivana_parva section).
+  `asset_registry.volume_explanation` read "One row per mahadasha (typically 9 for a full
+  Vimshottari cycle)" — an 11x-wrong, stale description of the pre-D7/O6 MD-only design;
+  the writer's own module docstring confirms it was extended to MD + AD (D7) + PD-of-
+  current-AD (O6) long ago, and live measurement confirms **100 rows**, not ~9. The
+  cockpit reads this table's metadata directly, so this is a live reader-facing narration
+  defect (§N.7 narration fidelity), not dead text.
+  **Fix:** migration 678 (next free number in the 670-679 range — confirmed 675/676/677
+  are all consumed by my own still-open branches via `git show <branch>:platform/
+  migrations/` before picking 678, avoiding a collision). New text names all three levels
+  (mahādaśā/antardaśā/pratyantardaśā) the writer actually emits and explicitly does not
+  restate a fixed row count, since the T-9 pre-birth clip and current-AD-only PD scope
+  both make the true count chart-dependent. Caught and fixed my own bug during the static
+  test run: the migration's original text had a literal semicolon inside the SQL string
+  value ("...canonical chart);"), which the test's own scoped-UPDATE regex (matching up to
+  the first `;`) misread as the statement terminator — not a real SQL bug (Postgres would
+  have parsed the string literal correctly regardless), but a test-fragility smell; fixed
+  by rephrasing to a period, avoiding the ambiguity entirely rather than hardening the
+  regex to tolerate it.
+  4 new static tests + 2 live dry-run integration tests (same two-layer convention as
+  migrations 675/676/677: DB-free scoped-UPDATE + content assertions, then
+  `@pytest.mark.integration` live-against-production-rolled-back). All 6 pass. Verified via
+  direct `psql` read after the dry-run that the production row is genuinely unchanged
+  (rollback confirmed, not just asserted).
+  Deliberately NOT done here: F-PARVA-1 (MUST — adding a `parva_level` column so MD/AD/PD
+  rows are machine-distinguishable without string-parsing `source_citation`) — needs a
+  schema change + writer change + new natural key, a larger, separate bounded unit; F-PARVA-
+  3/F-PARVA-4 (the `parva_quality='peak'` unreachability and the `avg_score` truthiness
+  short-circuit) — investigated F-PARVA-4 first and found it has NO current behavioral
+  effect (the 0.55 threshold can never be cleared by a falsy `0.0` regardless of the
+  truthiness-vs-None-check distinction), so fixing it now would be a code-hygiene-only
+  change with no test able to distinguish before/after behaviorally; left for a cycle that
+  tackles F-PARVA-3 properly (a real design decision about what should count as genuine
+  "building" evidence), where the two are more honestly fixed together.
+  Checked `git branch --show-current` BEFORE editing — no wrong-branch mistake.
+  PR hygiene checked first: 17 L3 PRs queued; #1934/#1936 (last cycle's DIRTY-fix targets)
+  confirmed CLEAN this cycle (0 failing, checks still running post-force-push) — no new
+  hygiene action needed.
+
+- `2026-09-06T~04:5xZ — L3-W3 — PR hygiene: fixed two genuinely DIRTY PRs (#1934, #1936)
+  after #1863 (the long-stuck `codex/nirmana-l3-state-sync` branch, queued behind other
+  work for the entire session) finally merged.** #1863 landed a MUCH OLDER,
+  independently-maintained version of this very file — its own Heartbeat section carried
+  the full session history back to bootstrap, including one entry
+  (`2026-09-05T~16:2xZ — N3 partially closed: PR #1868`) that my own copy-forward-through-
+  branches chain never received (that entry was written directly onto the state-sync
+  branch, not through any code-fix branch I copied from). Every open L3 PR touches this
+  file, so #1863 merging conflicted the two PRs not yet rebased past it (#1934, #1936;
+  the other 17 were already in the merge queue, which rebases internally — confirmed
+  via `is:queued`, not the transiently-`UNKNOWN` `mergeStateStatus` field GraphQL showed
+  for all of them right after the merge). Resolved both identically: the conflict was
+  ALWAYS "empty HEAD-side insertion vs. my new entries", with origin/main's own older
+  history auto-merging in cleanly right after (git only marked the exact insertion point
+  ambiguous, not the surrounding content) — verified no entry appeared on both sides
+  (grepped for `PR #1868`/`N3 partially closed` in my own content first) before keeping my
+  side and letting origin/main's older tail follow. Re-ran the affected tests + digest/pin
+  checks after each rebase (all still green/current), force-pushed with `--force-with-lease`,
+  re-armed auto-merge on both. Net effect: **the full, continuous, un-duplicated session
+  heartbeat history is now unified in one place** — no content lost from either lineage.
+
+- `2026-09-06T~04:3xZ — L3-W3 — F-DARSH-2 fix: PR (branch
+  `codex/nirmana-l3-f-darsh-2-mode-label`).** Moved to `ka_kala_darshana` (the display
+  view — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_kala_darshana section). **Checked F-DARSH-1 first
+  and confirmed it's ALREADY FIXED** — the writer's `conv_score` handling already carries
+  the exact M9/§N.7-item-6 honest-null treatment (loud warning + explicit `is None` check,
+  not `or 0.5`), with a comment citing "NIRMĀṆA L3-W3 finding M9" — the analysis batch's
+  write-up predates that fix landing; verified by direct read rather than assumed stale.
+  **F-DARSH-2 was still open:** `_build_narrative`'s `mode_label = 'daśā-aligned' if mode
+  == 'A' else 'independent sweep'` — a two-way branch over `ka_sangam`'s real four-value
+  mode enum (A/B/C/D). `'independent sweep'` is Mode B's own meaning
+  (`services/ka_sangam/engine.py`: "un-gated long-horizon anomaly sweep"); Mode C is a
+  sign-ingress period trigger (`mode_c_subsystem_period`) and Mode D is an SAV-bindhu
+  convergence window (`mode_d_av_bindhu`) — neither is a sweep. Measured (per the batch):
+  `ka_sangam`'s top-750 intake is 100% Mode C, so every served row carried the wrong mode
+  description — a grade/label keyed off a proxy (is-it-Mode-A) instead of the actual fact
+  it reports (§N.7 item 1).
+  **Fix:** a 4-entry `_MODE_LABELS` dict (`A`→daśā-aligned, `B`→independent sweep,
+  `C`→sign-ingress trigger, `D`→ashtakavarga bindhu convergence — terminology drawn
+  verbatim from `ka_sangam`'s own module/function names, not invented) with an honest
+  fallback (`f'mode {mode}'`) for any unrecognized value, rather than silently defaulting
+  into one of the four real labels (§N.7: an honest null/self-naming beats an invented
+  judgment). 4 new tests (mode C, mode D, the honest-fallback case, alongside the 2
+  pre-existing mode A/B tests which still pass unmodified). Mutation-proved: reverted to
+  the original two-way branch, 3/4 new tests correctly went red, restored, green again.
+  Full `tests/l3/` suite: **1426 passed, 0 failures**, zero regressions.
+  **Re-pinned the writer digest inventory + L3 layer pin proactively THIS time** (learned
+  from 2 cycles ago's RED-fix cycle) — regenerated both, verified via `git diff` that only
+  `ka_kala_darshana`'s hash changed in the digest file and only `writer_inventory_sha256`
+  changed in the layer pin (`--layer L3 --convergence-commit
+  72bb87821bd2d976b5230bc439f7b38114a86234`, the same commit reused all session), both
+  `--check` commands pass locally before this PR even opens — avoiding a repeat of the RED
+  CI cycle two turns ago.
+  Checked `git branch --show-current` BEFORE editing again — no wrong-branch mistake.
+  PR hygiene checked first: 18 L3 PRs queued; #1934 (previous cycle's PR) confirmed CLEAN
+  (0 failing, 4 checks still running) — nothing to fix.
+
 - `2026-09-06T~04:0xZ — L3-W3 — F-KALA-1 fix (third slice): PR (branch
   `codex/nirmana-l3-f-kala-1-ahead-recurrence-rank`).** Continuing the same finding's four
   named call sites (register_d9_judgment.ts fixed 2 cycles ago; query_temporal_activation.ts
