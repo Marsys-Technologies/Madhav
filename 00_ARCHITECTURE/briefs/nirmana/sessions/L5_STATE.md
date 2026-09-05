@@ -40,7 +40,16 @@ into a `json.dumps()` call with no `uuid.UUID` case in `_normalise()` — filed 
 (URGENT, possibly production-`click-Build`-affecting, not patched myself per §N.2 — core FROZEN
 orchestrator internals). This is the THIRD structural blocker found this session (#1840 data,
 #1848 guard logic, #1856 a genuine crash bug) — every one is now a real, independently-verified,
-well-evidenced campaign-wide finding, not a workaround-and-move-on. W5 mechanical checks/capsule
+well-evidenced campaign-wide finding, not a workaround-and-move-on. **#1848 already has a
+Conductor fix in flight** (PR #1851, Option B exactly as recommended, not yet merged). **Canary
+2 (`lel_events`) reconciliation done**: found and removed a self-labeled test-fixture row
+(`"D-4a Lane A-4 append-hook live demonstration"`, 2026-07-19) that had been sitting in
+production `life_events` since before this campaign, propagated into `mimamsa_event_provenance`
+and an unregistered `brahma_prospective_ledger` "matched prediction" row — all three deleted in
+one FK-respecting transaction after a fresh snapshot, both real `integrity_check_sql`s
+re-verified `true` non-vacuously afterward (63 real rows). `lel_events`' own W2+disposition
+evidence (`source_accepted`) not yet submitted — that's the next real step, now on a genuinely
+clean corpus. W5 mechanical checks/capsule
 remain fresh-context-verifier-only regardless. W4 gated only on holds for two OTHER assets: #1732 for
 `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
@@ -418,6 +427,38 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~22:20Z (C8 v2.3 cycle 11) — **`lel_events` (canary 2) reconciliation: found and
+  removed a real production-data contamination — a demo/test fixture sitting in `life_events`
+  since 2026-07-19.** PR hygiene first: #1844 CLEAN-but-unqueued, re-armed and confirmed queued
+  (`isInMergeQueue` re-checked True after re-arming); #1826 checks-pending only. Noted #1851 —
+  the Conductor's fix for #1848, exactly Option B as I recommended, not yet merged. Started the
+  runbook's "reconciliation + clear-protection proof" for `lel_events`: confirmed the `null`
+  clear-spec entry (`assetClearSpec.ts`, already landed in an earlier W3 batch) genuinely
+  protects `life_events` from any auto-derived DELETE. Compared the canonical chart's live
+  `life_events` count (64) against the LEL markdown's own declared `total_events_logged: 57` —
+  a real gap, investigated rather than hand-waved as "just growth since the snapshot." Grouped
+  by `provenance->>'source'` and found one row whose OWN `description` field says
+  `"[TEST FIXTURE - D-4a Lane A-4 append-hook live demonstration, NOT real native data]"` —
+  confirmed exactly one such row campaign-wide (`ILIKE '%TEST FIXTURE%' OR '%demo%'` sweep, not
+  assumed). Traced it three tables deep before touching anything: it had propagated into L5's
+  own `mimamsa_event_provenance` (a prior 2026-08-02 build) and into `brahma_prospective_ledger`
+  (an unregistered, non-campaign table — not any layer's `asset_registry.target_table`) as a
+  "matched prediction," itself also self-labeled `"[TEST FIXTURE ... NOT a real reading]"` —
+  same demo session, both ends of the fixture confirmed, not a coincidental match. Took a fresh
+  Cloud SQL backup (`cloudsql-backup:1788620773163`) before touching anything (hard floor §3.5).
+  First delete attempt caught a real FK I hadn't checked (`brahma_prospective_ledger` →
+  `life_events.id`) and rolled back cleanly (`ON_ERROR_STOP=1` inside `BEGIN...COMMIT` — verified
+  nothing partially applied before retrying). Redid in correct FK order (ledger → provenance →
+  life_events) in one transaction: 3 rows deleted, verified. **Re-ran both real
+  `integrity_check_sql`s live afterward** (not trusted from memory) — `lel_events` and
+  `mi_jivanaghatana` both `true`, non-vacuously (63 real rows each, not an empty-table pass).
+  Posted the full account to #1713 for visibility, since this was production data outside any
+  layer's own write-set, not a NIRMANA-scoped change.
+  **Next cycle: `lel_events`' own W2 (`asset_analysis_accepted` + `optimization_verdict_accepted`,
+  verdict `non_build_disposition`/`formal_disposition`) then its `source_accepted` disposition
+  event** — the actual terminal evidence this reconciliation was building toward, now on a
+  genuinely clean corpus. Compute `disposition_digest` as a derived value (not arbitrary) per
+  the same discipline as `authorization_sha256` earlier this session.
 - 2026-09-05T~22:00Z (C8 v2.3 cycle 10) — **`mi_jivanaghatana` dispatched solo, the full
   authorized sequence executed correctly, and the run CRASHED on a real orchestrator bug —
   filed as #1856.** PR hygiene first: #1844 confirmed queued; #1826 checks-pending only.
