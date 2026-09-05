@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK, no change since last cycle: queue still at position 35 (none of my 5 PRs merged), D-L0-FF/#1901 still open, no new coordination activity. 30/40 frozen holds from D-L0-NN.
+last_updated: 2026-09-06 — IDLE-OK, still no change (2nd consecutive check): queue still position 35, #1901 still open, no new #1713 activity since my own last comment. 30/40 frozen holds from D-L0-NN.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1573,4 +1573,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   activity on #1713 since my own last comment. All 10 remaining assets' blockers unchanged. Not
   re-deriving the full per-asset breakdown again this cycle since nothing moved — see the D-L0-NN/
   prior IDLE-OK entries above for the current status of each.
+
+- 2026-09-06 — **IDLE-OK, 2nd consecutive no-change cycle** (little real time appears to have
+  elapsed between the last two invocations). Quick re-check only: queue position 35 (unchanged),
+  `#1901` mergedAt still null, `#1713`'s last comment is still my own from the prior cycle. Nothing
+  new to act on.
 
