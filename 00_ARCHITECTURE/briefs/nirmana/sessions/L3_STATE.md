@@ -62,12 +62,25 @@ corpus since migration 588 removed its triggers. **One contract already returns 
 positive:** `ka_bhavishya_lekha`'s degeneracy conjunct fires because all 100 projections on the
 canonical chart share one `peak_date`, proven two-valued against the second chart.
 
-**Next action on resume:** the last two contracts land → author **migration 670** (19
-`integrity_check_sql` + `expected_volume_formula`/`_inputs` + achieved-count `target_floor` +
-`ka_gochara`'s `count_sql` correction (M6) + 10 `DRAFT`→`CURRENT`, holding `ka_graha_sancara` at
-DRAFT until M3 deploys). Then N1, the Temporal Concordance Contract, for which W1 established the
-evidence base: 34 engines, a 10-cell overlap matrix, one existing arbiter, and `ka_sangam` already
-~60% of the way there.
+**W3 DELIVERED (PR #1792, migration 670):** all 19 D-CND-03 contracts installed, each executed
+live and **mutation-proved**; 19 achieved-count floors; 3 derived volume formulas (the rest honestly
+floor-only rather than curve-fitted); M6's `count_sql` correction; 10 of 11 DRAFT→CURRENT with
+`ka_graha_sancara` deliberately held. Dry-run applied and rolled back against production: 19/19
+contracts, 19 floors, 1 DRAFT remaining as intended. **Five contracts return `false` — true
+positives, shipped honest** (see F-L3-14).
+
+**Next action on resume:** **N1, the Temporal Concordance Contract** — the layer's headline
+mandate and the largest remaining item. W1 established the whole evidence base for it: 34 temporal
+engines catalogued with question/table/granularity/range, a 10-cell overlap matrix, exactly one
+arbiter in existence (`kala_gochara_authority`), both seed authority tables dumped and explained,
+and `ka_sangam` already ~60% of the arbiter (12 weighted currents, a necessary/supporting split, an
+independence discount, persisted per-window testimony). What is missing is nameable: a stance
+vocabulary (today a dissent and an absent engine are both `0.0`), testimony on Modes C/D, and
+**N2, score commensurability**, which is a strict precondition — a verdict comparing four
+incommensurable scales is theatre. Serving attachment named precisely: `explain.ts:571`, beside
+`weakest_link`, with `school_voices[]` becoming `engine_testimony[]`.
+
+Also open: M12 (54 orphan `era_slice_key` rows), N3–N7, N10–N12.
 
 **Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
 rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
@@ -96,6 +109,14 @@ Concordance Contract), N2–N12.
   L3's position: **L2 rebuilds first.** Those 710,899 rows descend from a `convergence_score`
   written on four incommensurable scales where the least-evidenced mode captured every served
   surface — regenerating them from a corrected base is better than preserving them.
+- **F-L3-14 (five contracts red — true positives, shipped honest).** `ka_avadhi`, `ka_yojaka`,
+  `ka_kalasutra`, `ka_gochara_v3_century_materialize`, `ka_bhavishya_lekha`. Installing a contract
+  that passes over known-bad data would be the gate-weakening the hard floor forbids, so they went
+  in red. **Four of the five localise to chart `cb73cd3d`**, which the fan-out evidence shows is
+  cascade-damaged (0.021 activations per predicate against 6.699 and 6.694 on the healthy charts,
+  with the FK-less predicate table intact). Filed **#1793** asking for that chart's formal
+  disposition, because floors, volume derivations and contracts across every layer all depend on
+  whether it is a peer — and a layer session should not settle that alone.
 - **F-L3-13 (doctrine, offered to the register).** The E-gate reasons about what an asset *needs*,
   never about what *needs it*. `depends_on` has no inverse anywhere in the campaign's machinery —
   not the gate, not the slot protocol, not the plan. A DELETE travels those edges backwards and
