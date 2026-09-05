@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 34; ga_structural F-A14 landed, F-A15 discovered (#1964)
+last_updated: 2026-09-06 — C8 v2.3 cycle 35; ga_yoga F-A14 landed, F-A16 discovered (#1965)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -25,7 +25,8 @@ your `nirmana-adjudication` issues → continue.
 - **Migration range:** 650–659, FULLY CONSUMED (cycle 27) → **continuation 740–749 granted**
   (adjudication #1947, Conductor ruling, cycle 29). 740 (`ga_medical`, cycle 29), 741 (`ga_vastu`,
   cycle 30), 742 (`ga_nakshatra`, cycle 31), 743 (`ga_sensitive`, cycle 32), 744
-  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34) used. 746–749 remain free.
+  (`ga_sensitive_degree`, cycle 33), 745 (`ga_structural`, cycle 34), 746 (`ga_yoga`, cycle 35)
+  used. 747–749 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -1386,6 +1387,55 @@ the remaining 6 assets (ga_yoga, ga_vichara, ga_sade_sati, ga_transit_anchors, g
 ga_prashna), consider a future pass fixing F-A15 in `ga_structural_writer.py` itself, or
 `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 35 (C8 v2.3) — ga_yoga's F-A14 contract (migration 746); discovers F-A16, an unearned formula-version LABEL rather than an unearned value
+
+**PR hygiene:** clean sweep. `#1928`/`#1853` unchanged, `#1892` still open. #1955/#1959/#1962/#1963
+confirmed genuinely `is:queued`. #1827/#1964 still legitimately CI-pending from last cycle's fresh
+pushes, auto-merge armed, not DIRTY/RED. Nothing to fix.
+
+**Unit of work: F-A14 for `ga_yoga`** (migration 746, seventh used in the new 740-749 range).
+Dedicated table (`ga_yoga_firings`), existing UNIQUE `(chart_id, ayanamsha_id, yoga_canonical_id)`
+already exactly matching the natural key — no distinctness conjunct.
+
+Three conjuncts, all measured live and mutation-proved: (a) `strength_formula_version` must never
+be set without a corresponding non-NULL `strength` — the writer's own docstring: "strength is NULL
+unless resolvable via the single ratified constituent_bala_v1 derivation"; (b)
+`bhanga_active`/`bhanga_na_reason` mutual exclusivity — the writer's own NULL-with-documented-
+reason discipline, clean live; (c) `is_partial` honesty — a partial-formation claim must carry the
+percentage that makes it checkable.
+
+**Conjunct (a) discovered a NEW genuine defect, filed as F-A15's sibling, F-A16.** Traced 4/212
+live rows where `strength_formula_version='yoga_strength_formula_v1'` but `strength IS NULL` — all
+four `jaimini_karakamsha_rahu` on a non-canonical chart. Read the actual code (not assumed): both
+insert sites (`ga_yoga_writer.py:2748` and `:3029`) write
+`derivation or STRENGTH_FORMULA_VERSION` into `strength_formula_version`. `_compute_constituent_bala_strength`'s
+own docstring states all five of its return values (including `derivation`) are `None` "when no
+constituent graha has resolvable shadbala (e.g. Rahu/Ketu-only constituents)" — the Python `or`
+fallback then substitutes the module-level `STRENGTH_FORMULA_VERSION` constant
+(`"yoga_strength_formula_v1"`, actually the UNRELATED Pancha-Mahapurusha dignity formula's own
+label from a completely different code path) into the column, even though `strength` itself
+correctly stays `None`. A caller reading the column would wrongly believe a formula ran. This is
+the SAME defect class as §N.7 item 4 / §N.8 (an unearned signal with no real detector behind it)
+one further level removed — not an unearned VALUE, but an unearned LABEL describing a value that
+never got computed. Followed the F-C8/F-A15 precedent: shipped the conjunct RED rather than
+narrow it, verified as a genuine detector via a synthetic post-fix overlay (NULLing the label
+alongside the value) that clears cleanly. Did not touch the writer this cycle.
+
+Two bugs caught and fixed in my OWN test file (not the migration): a `not.toMatch(/DISTINCT/i)`
+assertion false-failed because the migration's own comment ("no distinctness conjunct") contains
+"distinct" as a substring — fixed by stripping `--` comments before the regex check, the same
+comment-vs-code confusion class as cycle 33's `LEAST(` count bug. And a multi-line prose wrap
+broke a single contiguous-phrase regex spanning "GENUINELY RED TODAY on" / "4/212 rows" across a
+line break — fixed to two independent assertions rather than one brittle span.
+
+No Python writer touched; `provenance_inventory --check` clean. 8 new textual-contract tests; full
+`tests/unit/migrations/` suite: 39 files, 188 passed / 91 skipped, no regressions.
+
+CYCLE 35 L1: landed `ga_yoga`'s F-A14 contract (PR #1965, migration 746), discovered and documented
+F-A16 — next: continue F-A14 for the remaining 5 assets (ga_vichara, ga_sade_sati,
+ga_transit_anchors, ga_ayurdaya, ga_prashna), consider a future pass fixing F-A15/F-A16 in their
+respective writers, or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -1403,7 +1453,7 @@ none accepted yet (blocked on #1736).
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
 | ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964, partial — 1/57 categories); **NEW: F-A15 — graha_vargottama_amplification_factor re-derives D9 vargottama instead of citing ga_vargas' authority, 4/105 rows disagree (§N.5)** |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
-| ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1) |
+| ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); **NEW: F-A16 — strength_formula_version invents an unrelated label when the real derivation returns nothing, 4/212 rows (jaimini_karakamsha_rahu)** |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D) |
@@ -1413,10 +1463,10 @@ none accepted yet (blocked on #1736).
 | ga_tajaka | 240 / 240 | rebuild_only | floor is a wall-clock literal; already wrong on 2/3 charts (F-E) |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E) |
 
-Cross-cutting: **13/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-34: ga_dashas,
+Cross-cutting: **14/19 carry `integrity_check_sql`** (F-A14 campaign, cycles 21-35: ga_dashas,
 ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka, ga_medical, ga_vastu,
 ga_nakshatra, ga_sensitive, ga_sensitive_degree, ga_structural [partial, 1/57 categories — the
-other 56 remain a future pass]); `expected_volume_formula` NULL on 6; `ga_vichara` is
+other 56 remain a future pass], ga_yoga); `expected_volume_formula` NULL on 6; `ga_vichara` is
 `catalog_status=DRAFT` with 8,249 live rows.
 
 ## Decisions log
@@ -1845,6 +1895,17 @@ other 56 remain a future pass]); `expected_volume_formula` NULL on 6; `ga_vichar
   owned `fact_category`s (the largest asset by far, ~15x more categories than `ga_sensitive`'s
   already-bounded 18-category-family pass) — the remaining 56 are a future pass, not silently
   dropped.
+- **D-L1-57** — C8 v2.3 cycle 35: discovered **F-A16** while authoring `ga_yoga`'s F-A14 contract
+  — a `derivation or STRENGTH_FORMULA_VERSION` Python fallback (two call sites,
+  `ga_yoga_writer.py:2748`/`:3029`) invents an unrelated formula-version LABEL
+  (`'yoga_strength_formula_v1'`, actually a different code path's own constant) whenever the real
+  `constituent_bala_v1` derivation legitimately returns nothing (Rahu-only constituents, no
+  classical shadbala) — `strength` stays honestly NULL but `strength_formula_version` wrongly
+  claims a formula ran, on 4/212 live rows. A NEW variant of the same defect class as §N.7 item 4:
+  not an unearned VALUE this time, an unearned LABEL for a value that never got computed — the
+  falsy-`or`-fallback idiom is the mechanism, generalizable to watch for elsewhere in this
+  codebase. Followed the F-C8/F-A15 precedent (D-L1-48, D-L1-56) a third time: shipped the
+  conjunct RED, verified via a synthetic post-fix overlay, did not touch the writer this cycle.
 
 ## Held items
 
@@ -2321,3 +2382,22 @@ L1 must satisfy rather than a feature it consumes.
   categories). No writer touched. CYCLE 34 L1: landed ga_structural's F-A14 contract (PR #1964,
   migration 745), discovered and documented F-A15 -- next: continue F-A14 for the remaining 6
   assets, consider fixing F-A15 in a future pass, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T02:5xZ -- CYCLE 35 (C8 v2.3). PR hygiene clean: #1928/#1853/#1892 unchanged;
+  #1955/#1959/#1962/#1963 confirmed genuinely is:queued; #1827/#1964 still legitimately CI-pending,
+  auto-merge armed, not DIRTY/RED. Unit of work: ga_yoga's F-A14 integrity_check_sql (PR #1965,
+  migration 746 -- seventh used in the new range). Dedicated table (ga_yoga_firings), existing
+  UNIQUE already exact, no distinctness conjunct. Three conjuncts: strength_formula_version
+  requires non-NULL strength, bhanga_active/bhanga_na_reason mutual exclusivity (clean), is_partial
+  honesty (requires partial_formation_pct). Conjunct (a) discovered a NEW genuine defect, F-A16:
+  a `derivation or STRENGTH_FORMULA_VERSION` Python fallback (two call sites) invents an unrelated
+  formula-version label whenever the real constituent_bala_v1 derivation legitimately returns
+  nothing (Rahu-only constituents) -- strength stays honestly NULL but the LABEL wrongly claims a
+  formula ran, on 4/212 live rows. Same defect class as sec.N.7 item 4, one further level removed:
+  an unearned label rather than an unearned value. Followed the F-C8/F-A15 precedent a third time:
+  shipped RED, verified via a synthetic post-fix overlay, did not touch the writer. Caught and
+  fixed two bugs in my OWN test file: a not.toMatch(/DISTINCT/i) false-failed on the comment word
+  "distinctness" (fixed by stripping comments first), and a multi-line prose wrap broke a
+  contiguous-phrase regex (fixed to two independent assertions). No writer touched. CYCLE 35 L1:
+  landed ga_yoga's F-A14 contract (PR #1965, migration 746), discovered and documented F-A16 --
+  next: continue F-A14 for the remaining 5 assets, consider fixing F-A15/F-A16 in a future pass,
+  or ga_positions re-dispatch once #1892 lands.
