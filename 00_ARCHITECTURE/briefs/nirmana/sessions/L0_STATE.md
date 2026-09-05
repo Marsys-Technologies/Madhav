@@ -1186,3 +1186,6 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   (`49bb5c98…`) and `writer_inventory_sha256` are both unchanged** since those submissions — no
   other L0 writer has been touched this session, so both remain valid. Worth re-checking this
   each cycle before the eventual dispatch retry, cheaply, rather than assuming it still holds.
+- 2026-09-05 — **Cycle 45: IDLE-OK.** `main` advanced (`6be9f5302`) but not `#1851`; `#1828`
+  clean, `#1851` still cleanly queued (49-deep). L0's convergence pin re-checked, still unchanged.
+  Nothing to fix, nothing new.
