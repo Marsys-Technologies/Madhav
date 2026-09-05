@@ -501,6 +501,43 @@ no data was touched. Next: re-dispatch `ga_positions` once #1892 lands (or the L
 re-submission if the fix requires a fresh convergence-pin check), or continue changed-asset MUST
 work (`ga_dashas`, `ga_transit_anchors`) while waiting.
 
+## CYCLE 14 (C8 v2.3) — ga_positions.fact_id no longer bakes in build_id (#1747, PR #1898)
+
+**PR hygiene:** all 8 L1 PRs confirmed `is:queued`; nothing DIRTY/RED.
+
+**Unit of work: closed Conductor's long-open ask on #1747** — `fact_id` embedding
+`build_id`, the fourth confirmed instance of the D-CND-29 defect class (after
+`phala_anchors.anchor_id`, `bodha_msr_signals.signal_id`, `bo_bimba.node_id`). A
+cross-session message from `conductor-2b` resurfaced this exact issue mid-cycle;
+Conductor's own precedent said "treat 'give the writer a stable identity' as the
+default answer, not a fresh investigation" — decided accordingly rather than
+re-litigating.
+
+Removed `build_id` from `_fact_id`'s signature and hash input in
+`ga_positions_writer.py` (3 call sites). Verified first, not assumed: `chart_facts`'
+`fact_id` IS the table's PRIMARY KEY, but L1's delete-then-insert idempotency
+discipline (§N.3) means no live PK collision — a rebuild deletes the old row for
+that natural key before the new one (with the now-identical `fact_id`) is inserted.
+Repurposed the one existing test that depended on the OLD (wrong) behavior
+(`test_fact_id_differs_for_different_inputs` used to prove `build_id` changed the
+hash; now proves a genuine input does) and added a real regression test building
+full rows under two different `build_id`s and asserting identical `fact_id` per
+`(subject, key)`. 157 tests passing across the writer's own suite + 5
+directly-importing modules. Grepped for `_fact_id` usage repo-wide first — private
+to this file, no external caller to break.
+
+Regenerating the writer-digest inventory moved `bo_pratijna` (L2) again — the
+SAME transitive coupling `#1852` already tracks (`bo_pratijna_v4_engine.py` →
+`ga_condition_writer.py` → `ga_positions_writer.py`). Followed the established
+protocol exactly: wrote the full raw inventory (honest current-state snapshot),
+regenerated only `--layer L1`'s pin, left L2's pin untouched, posted the second
+occurrence to `#1852` rather than filing a new issue or touching L2's pin myself.
+
+CYCLE 14 L1: landed the fact_id stability fix (PR #1898, #1747) — next: re-dispatch
+`ga_positions` once #1892 lands (this fix means the NEXT successful rebuild's
+`fact_id`s will finally be stable across future rebuilds too), or continue
+changed-asset MUST work (`ga_dashas`, `ga_transit_anchors`) while waiting.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -738,6 +775,13 @@ Cross-cutting: **0/19 carry `integrity_check_sql`**; `expected_volume_formula` N
   retrying blindly or reporting an unexplained failure; verified data safety directly (530
   `chart_facts` rows, single `build_id`, unchanged) before writing that claim down. Filed #1892
   rather than patching `pipeline/orchestrator/` myself — FROZEN, Conductor-owned per C5/§N.2.
+- **D-L1-36** — C8 v2.3 cycle 14: `ga_positions_writer.py`'s `fact_id`/`build_id` fix (PR #1898,
+  full account in CYCLE 14 above), closing the fourth D-CND-29-class instance Conductor named on
+  #1747. Verified the PK-safety claim against the live schema (`chart_facts_pkey` on `fact_id`) and
+  §N.3's delete-then-insert discipline before asserting it was safe, rather than assuming. Second
+  occurrence of `bo_pratijna`'s cross-layer digest coupling (#1852) — followed the exact same
+  protocol as D-L1-27/D-L1-31: regenerated only `--layer L1`'s pin, left L2's pin untouched,
+  corroborated on the existing issue rather than filing a duplicate or fixing L2's file myself.
 
 ## Held items
 
@@ -906,3 +950,13 @@ L1 must satisfy rather than a feature it consumes.
   FROZEN Conductor-owned code, not touched myself. CYCLE 13 L1: ga_positions dispatched for the
   first time this campaign, build failed on a shared bug (#1892), not an L1 defect -- next:
   re-dispatch once #1892 lands, or continue changed-asset MUST work while waiting.
+- 2026-09-05T17:01Z -- CYCLE 14 (C8 v2.3). PR hygiene clean, all 8 L1 PRs queued. A cross-session
+  message from conductor-2b resurfaced #1747's open fact_id/build_id ask mid-cycle; decided per
+  Conductor's own precedent (fourth D-CND-29 instance -- fix, don't re-investigate). Unit of
+  work: removed build_id from ga_positions_writer.py's _fact_id hash entirely (PR #1898) --
+  verified PK-safety against the live chart_facts_pkey schema and §N.3 delete-then-insert first;
+  157 tests passing; repurposed the one test that depended on the old behavior, added a real
+  cross-build stability regression test. bo_pratijna's digest moved again (same #1852 coupling)
+  -- regenerated only --layer L1's pin, corroborated on #1852 rather than touching L2's pin.
+  CYCLE 14 L1: landed the fact_id stability fix (PR #1898, #1747) -- next: re-dispatch
+  ga_positions once #1892 lands, or continue changed-asset MUST work while waiting.
