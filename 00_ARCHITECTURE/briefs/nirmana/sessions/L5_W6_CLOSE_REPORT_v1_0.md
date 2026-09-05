@@ -1,7 +1,7 @@
 ---
 artifact: L5_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L5_W6_CLOSE_REPORT
-version: "0.4-DRAFT"
+version: "0.6-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L5
 layer: L5 — Mīmāṃsā
@@ -17,7 +17,12 @@ warning: >
 
 ## §0 — Status
 
-**NOT CLOSED.** W1 ✅ (15/15) · W2 ✅ (15/15 routed) · W3 🟡 in flight · W4 ⛔ blocked · W5 ⬜ · W6 ⬜.
+**NOT CLOSED.** W1 ✅ (15/15) · W2 ✅ (15/15 routed) · **W3 ✅ complete, 6 PRs** · W4 ⛔ gated ·
+W5 🟡 scripted + run, not certified · W6 ⬜.
+
+**The lane died at 00:37Z and was resumed.** Nothing was lost except two artifacts that had been
+committed to a queued branch and never pushed; both were recovered from a local worktree (#1811)
+rather than re-authored.
 
 L5's freeze is last in the C2 ordering (L0→L1→L2→L3→L4→L5), so this report closes the build arc.
 It is being drafted against evidence as that evidence lands, not written at the end from memory.
@@ -45,6 +50,19 @@ Routes are W2-final. Status is live.
 | 15 | `mi_darshana` | `rebuild_only` | 🟡 | ⛔ | ⬜ | code correct at HEAD; data predates three merged fixes. |
 
 ⛔ = blocked on #1715/PR #1736 (receipt spine) and #1723 (per-chart detector). 🔒 = additionally held on a named cross-layer item.
+
+## §1.5 — W3 outcome (6 PRs)
+
+| PR | content | state |
+|---|---|---|
+| #1745 | W1 analyses (15/15), W2 decisions, notes audit, state | **merged** |
+| #1768 | migration 690 — registry accuracy (floors, `target_table`, 5 volume formulas, 5 measured durations) | **merged** |
+| #1769 | writer honesty fixes — 9 raises + 2 fabricated-value repairs + a float off-by-one | **merged** |
+| #1786 | serving plane — density contracts **0/16 → 15/15**, `qa_fail_count` under-report, an always-empty spine section | **merged** |
+| #1785 | migration 691 — 15 integrity contracts + the free-registry-window sweep | queued |
+| #1790 | `mi_pariksha` §N.3 idempotency scar | queued |
+| #1809 | C13 blast-radius statements, all 15 routes | armed |
+| #1811 | recovered W5 checks + W4 canary runbook | armed |
 
 ## §2 — Findings ledger outcome
 
@@ -91,6 +109,30 @@ The one genuine contribution is negative and worth Phase Z's attention: `mimamsa
 reports **rank as measurement**, and its `>= 1.0` cut excludes the only empirically-grounded family
 on the canonical chart while promoting an `n=0` family to `role='load_bearing'`.
 
+## §3.5 — Findings that outgrew L5 (the layer's real contribution)
+
+Four L5 findings became campaign-wide rulings or corrected another layer's work. Recording them
+here because Phase Z's value from this layer is mostly *not* L5's own assets:
+
+1. **#1732 — a `ph_nimitta` rebuild destroys the L5 prediction-provenance chain.** Became
+   **D-CND-04**; L4 built the deterministic `anchor_id` fix (#1754). **And on re-verification after
+   it landed, its identity tuple COLLIDES**: 191 of 195 anchors match their own identity, and the 4
+   that do not are two *pairs* collapsing to one id each — so the next `ph_nimitta` rebuild silently
+   drops 2 of 195 via `ON CONFLICT DO NOTHING`, and all 4 are referenced by live L5 predictions.
+   Reported; L5's hold stays for that reason rather than the original one.
+2. **#1738 — `WriterResult.notes` is write-only across 87 writers.** Became a campaign-wide ruling;
+   every layer audits its own. L5's audit: 10 A-sites, 9 converted, **the tenth decided as a
+   considered B under §R5 rather than left waiting** — it is an instance of the *parked* class (the
+   orchestrator cannot hear structured degradation), not the closed one.
+3. **#1807 — `catalog_status` is still seed-governed**, so a `runSeed()` reverts the DRAFT→CURRENT
+   sweeps of **L0/L2/L3/L4 — 45 assets**, including L2's migration-660 nine. Found while checking
+   whether my *own* sweep would survive. Same defect class as #1757, which had already been ruled;
+   `catalog_status` was simply not in that fix's scope.
+4. **#1748 — the `signal_id` type split.** L5 is the only layer storing it as `text`; the other nine
+   such columns are `uuid`. Supplied the JSONB surface a column-name sweep cannot see
+   (`mimamsa_predictions.driving_signals`, 975 refs) and live evidence that identity is already
+   unstable across builds (predictions referencing two `bo_laksana` generations).
+
 ## §4 — Cost actuals vs forecast
 
 **The plan's L5 forecast was wrong in a way Phase Z should record.** Plan §5 forecast "mostly
@@ -111,6 +153,17 @@ and the intervening rebuild was BLOCKED, so the digest lineage that route requir
 ## §5 — Backlog handed forward
 
 **To Phase Z:**
+- **The `catalog_status` seed-revert (#1807)** if unruled — it silently undoes four layers' merged
+  registry work.
+- **The `mimamsa_attribution` `text`→`uuid` conversion + `ON DELETE RESTRICT` FK**, sequenced behind
+  L2's deterministic `signal_id`. Together the two make the orphan class *structurally impossible*
+  rather than merely absent-today; either alone leaves it possible.
+- **`mi_adhilepa`'s `target_table` / `count_sql`** — decided (#1757) but **not executable by
+  migration**, because both fields remain seed-governed. The decision is on the record; the
+  mechanism is not.
+- **The one L5 sequencing rule:** `mi_gunanaka` must be followed by `mi_adhilepa`, always — 224,742
+  overlay rows carry *copies* of multiplier values, so a multiplier change leaves them stale at an
+  unchanged row count.
 - L5's **32 DAG corrections** (19 undeclared-but-read, 13 declared-but-unread), posted to #1734.
   Two false edges have **already destroyed real builds**; under D-CND-09 those blocks are permanent
   for this campaign.
@@ -136,7 +189,32 @@ and the intervening rebuild was BLOCKED, so the digest lineage that route requir
 - **A predecessor seal is evidence, not authority** (D-L5-09): L5's seal gate G8 is a false PASS and
   G11 has regressed. Any layer inheriting a seal should re-verify its gates.
 
+## §5.5 — C13 blast radius (charter requirement, discharged)
+
+**Measured empty, in both directions.** Zero CASCADE children from all 27 L5 write-target tables;
+no campaign-layer table cascades into L5 either (the only inbound CASCADE is from `profiles`, i.e.
+user-account deletion). L5 is the terminal layer, so the hazard that made C13 necessary has no L5
+analogue. Full statements per route: `L5_C13_BLAST_RADIUS_v1_0.md` (#1809).
+
+The substance is in the no-FK half, and it includes one finding worth carrying forward: a
+**name collision that is not a reference** — `kala_field_provenance` (663,000 rows) shares the
+`weight_id` column name with `mimamsa_multipliers` but is **100% unresolvable against it in both
+directions**. A naive column-name sweep reports "663,000 L3 rows depend on an L5 table", which is
+alarming and false. Recorded so nobody adds an FK that would be actively wrong.
+
 ## §6 — OPEN
 
-Per-finding disposition table · W4/W5 evidence · cost actuals · the Conductor's freeze-ordering ack ·
-closure-safe sync proof.
+Per-finding disposition table · **W4 execution and W5 capsules — no L5 asset is terminal and no
+capsule exists** · cost actuals · the Conductor's freeze-ordering ack · closure-safe sync proof.
+
+**W4's current gate is L5's own choice, and it is worth stating as such:** the three E-gate-open
+assets (`lel_events`, `mi_vistara`, `mi_jivanaghatana`) are dispatchable, and the receipt spine
+(#1736) and per-chart detector (#1723) have both merged. Acceptance is deliberately sequenced behind
+migration **691**, because **D-CND-09** closes the registry window on the *first* W2 acceptance and
+691 carries the last of it. Accepting first would strand the `catalog_status` sweep and the final ten
+volume formulas and force re-acceptance. That is a sequencing decision, not a stall.
+
+**W5's honest state:** the mechanical checks are written *and run* — **7 of 12 pass, 5 fail, and
+every failure is on a defect already found and recorded**. Those five failing is the C12
+rewrite-floor test passing: the checks can fail on real corruption and they do. W3 fixed the code;
+only a W4 rebuild fixes the data.
