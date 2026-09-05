@@ -1826,3 +1826,15 @@ second-closest; E-gate uncheckable, DB access down 23 cycles; no new capability 
 adjudications) → next: watch `#1854`'s merge; retry E-gate/dispatch dry-run once DB access
 returns; watch `#1885`'s merge; F1 remains deferred.
 
+`2026-09-06T~09:30Z` — L4 — **CYCLE 34 (v2.3) — `#1858` merged. PR hygiene found and fixed one
+real DIRTY PR this cycle: `#1854` was ejected from the queue near the front, confirmed
+unambiguously (`mergeStateStatus: DIRTY`, `mergeQueueEntry: null`), rebased onto fresh
+`origin/main`, governance regenerated (digest unchanged, only pin re-derived), 62/62
+`test_ph_wave4.py` green, pushed clean, re-armed.** DB access still down (24th consecutive
+cycle), no new capability landings or adjudications.
+
+CYCLE 34 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1854`), rebased, regenerated,
+tested, re-armed → E-gate uncheckable, DB access down 24 cycles; no new capability landings or
+adjudications → next: watch `#1854`'s re-queue; retry E-gate/dispatch dry-run once DB access
+returns; watch `#1885`'s merge; F1 remains deferred.
+
