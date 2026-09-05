@@ -51,6 +51,24 @@ def test_contract_digest_matches_javascript_numeric_edge_vectors(
     assert nirmana_probe._contract_digest(probe) == javascript_digest
 
 
+GRAHA_SANCARA_PROBE = {
+    "probe_type": "graha_sancara_forensic",
+    "forensic_birth_instant": "1984-02-05T10:43:00",
+    "forensic_ayanamsha": "lahiri",
+    "forensic_expected_moon_sign": "Aquarius",
+}
+
+
+def test_contract_digest_matches_javascript_bytes_for_graha_sancara():
+    # Generated independently with definitions.ts's own stableJson algorithm run
+    # under real node (not a Python reimplementation): `node -e` executing the
+    # exact stableJson recursion from platform/src/lib/nirmana-elevation/
+    # definitions.ts against this literal object, then sha256 of the result.
+    assert nirmana_probe._contract_digest(GRAHA_SANCARA_PROBE) == (
+        "2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6"
+    )
+
+
 def test_full_frozen_release_contracts_match_javascript_digests():
     contracts_path = (
         Path(__file__).resolve().parents[1] / "scripts" / "nirmana_probe_contracts.json"
@@ -61,6 +79,9 @@ def test_full_frozen_release_contracts_match_javascript_digests():
     )
     assert nirmana_probe._contract_digest(contracts["bg_ephemeris_engine"]) == (
         "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4"
+    )
+    assert nirmana_probe._contract_digest(contracts["ka_graha_sancara"]) == (
+        "2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6"
     )
 
 
@@ -146,6 +167,8 @@ def test_probe_route_rejects_digest_mismatch_before_execution(
         ("bg_panchanga", "ephemeris_engine"),
         ("bg_ephemeris_engine", "panchanga_engine"),
         ("bg_unknown_service", "panchanga_engine"),
+        ("ka_graha_sancara", "panchanga_engine"),
+        ("bg_panchanga", "graha_sancara_forensic"),
     ],
 )
 def test_probe_route_rejects_asset_probe_type_mismatch(

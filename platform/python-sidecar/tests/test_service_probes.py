@@ -66,6 +66,13 @@ _EPHEMERIS_SPEC = {
     },
 }
 
+_GRAHA_SANCARA_SPEC = {
+    "probe_type": "graha_sancara_forensic",
+    "forensic_birth_instant": "1984-02-05T10:43:00",
+    "forensic_ayanamsha": "lahiri",
+    "forensic_expected_moon_sign": "Aquarius",
+}
+
 _EPHEMERIS_CORPUS_FILES = tuple(_EPHEMERIS_SPEC["ephemeris_file_sha256"])
 _EPHEMERIS_CORPUS_PATH = pathlib.Path(os.environ.get("SWE_EPHE_PATH", "/app/ephe"))
 _HAS_PINNED_EPHEMERIS_CORPUS = all(
@@ -78,6 +85,8 @@ def _probe(kind: str) -> dict:
         spec = _PANCHANGA_SPEC
     elif kind == "ephemeris_engine":
         spec = _EPHEMERIS_SPEC
+    elif kind == "graha_sancara_forensic":
+        spec = _GRAHA_SANCARA_SPEC
     else:
         spec = {"probe_type": kind}
     return sp.run_health_probe("bg_x", spec)
@@ -252,6 +261,74 @@ def test_verdict_cannot_be_green_while_a_reported_check_is_false():
         "a verdict must not contradict the checks it ships in the same payload"
     )
     assert res["message"] != "All checks passed"
+
+
+# ── ka_graha_sancara probe (NIRMĀṆA L3-W4, F-L3-15) ───────────────────────────
+
+def test_graha_sancara_probe_returns_green():
+    res = _probe("graha_sancara_forensic")
+    assert res["status"] == "GREEN", (
+        f"got {res['status']}: {res['message']}"
+    )
+
+
+def test_graha_sancara_probe_calls_get_ephemeris_with_force_live_and_no_db_conn(monkeypatch):
+    """CAN-FAIL proof for the force_live=True argument itself. This probe is
+    deliberately DB-free (db_conn=None always), which already makes PATH-A
+    (day-grade ephemeris_daily, 12:00 UT — wrong sign for this birth instant,
+    L3-W3 M3) unreachable regardless of force_live's value — so asserting the
+    RESULT's `source` field cannot fail on a dropped force_live=True (nothing
+    to regress to with db_conn=None). Assert the actual call arguments instead:
+    this fails if force_live is ever silently removed or a db_conn is added."""
+    from pipeline.orchestrator import service_probes as module
+    import services.ka_graha_sancara.engine as engine_module
+
+    captured: dict = {}
+    real_get_ephemeris = engine_module.get_ephemeris  # capture BEFORE patching
+
+    def spy(*args, **kwargs):
+        captured.update(kwargs)
+        captured["args"] = args
+        return real_get_ephemeris(*args, **kwargs)
+
+    monkeypatch.setattr(engine_module, "get_ephemeris", spy)
+    # _probe_graha_sancara imports get_ephemeris fresh inside the function body,
+    # so patching the module attribute it re-imports from is what takes effect.
+    res = module.run_health_probe("ka_graha_sancara", _GRAHA_SANCARA_SPEC)
+
+    assert captured.get("db_conn") is None
+    assert captured.get("force_live") is True
+    check = _check(res, "forensic_moon_sign")
+    assert check["moon_sign"] == "Aquarius"
+
+
+def test_graha_sancara_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("ka_graha_sancara", {"probe_type": "graha_sancara_forensic"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_graha_sancara_probe_fails_on_wrong_expected_moon_sign():
+    """CAN-FAIL proof: a wrong expected sign must not be swallowed."""
+    wrong = dict(_GRAHA_SANCARA_SPEC, forensic_expected_moon_sign="Pisces")
+    res = sp.run_health_probe("ka_graha_sancara", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_moon_sign")["passed"] is False
+
+
+def test_graha_sancara_probe_rejects_a_non_lahiri_ayanamsha():
+    """The live-compute path only supports lahiri (engine constraint) — a probe
+    contract claiming otherwise must fail closed, not silently coerce."""
+    wrong = dict(_GRAHA_SANCARA_SPEC, forensic_ayanamsha="raman")
+    res = sp.run_health_probe("ka_graha_sancara", wrong)
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_graha_sancara_probe_reports_nine_grahas_present():
+    check = _check(_probe("graha_sancara_forensic"), "nine_grahas_present")
+    assert check["passed"] is True
+    assert check["graha_count"] == 9
 
 
 def test_add_check_makes_a_silent_false_structurally_impossible():
