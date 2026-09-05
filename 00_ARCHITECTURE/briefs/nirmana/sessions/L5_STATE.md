@@ -451,6 +451,27 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~01:00Z (C8 v2.3 cycle 21) — **Corrected my own prior nudge: #1851/#1861/#1873
+  were never actually stalled — they're properly queued (positions 12/24/37 of 40), just behind
+  a genuinely slow, actively-processing 40-deep merge queue.** PR hygiene: #1844 confirmed
+  queued (position 9). Went to check #1851/#1861 again per plan and, on `main`'s tip looking
+  suspiciously unchanged for multiple cycles, queried the ACTUAL merge queue directly
+  (`mergeQueue(branch: "main") { entries }` via GraphQL) instead of individual PR fields for the
+  first time this session — the exact check the cycle contract itself prescribes and I'd been
+  skipping for these three PRs specifically, relying instead on `autoMergeRequest`/
+  `mergeStateStatus`, which the contract explicitly warns can mislead. **Result: all three ARE
+  properly queued** (#1851 pos 12, #1861 pos 24, #1873 pos 37 of a 40-entry queue). My prior
+  cycle's nudge calling them "stalled" was wrong. Posted a correction to #1713 immediately —
+  didn't let a wrong claim stand once I found the error, matching this session's own established
+  discipline. Separately confirmed the queue itself is NOT stuck: cross-referenced
+  `actions/runs?event=merge_group` and found a real, steady cadence (#1829→#1830→#1832, ~10 min
+  apart, matching `main`'s actual tip; currently processing #1836 at position 1,
+  `AWAITING_CHECKS`, an in-progress merge-group run since 15:41:59Z) — just a deep, honestly slow
+  queue, not a stall. At position 9, #1844 realistically has a real wait ahead too, not a defect.
+  No new E-gate movement; #1869 unchanged.
+  **Next cycle: same checks, using the correct `mergeQueue` GraphQL query this time** for
+  #1851/#1861/#1873 rather than the misleading individual-PR fields — position advancing is
+  itself the signal to watch for, not state changes on those fields.
 - 2026-09-06T~00:45Z (C8 v2.3 cycle 20) — **IDLE-OK, verified — honoring last cycle's own
   commitment not to re-nudge without new information.** PR hygiene: #1844 confirmed queued;
   #1826 checks-pending only. #1851/#1861 unchanged (still `autoMergeRequest=null`,
