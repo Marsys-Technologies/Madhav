@@ -61,8 +61,14 @@ for `mi_vistara`'s `build` obligation) — and `mi_vistara` has no `accepted_reb
 (that's exactly what #1848 blocks). Only `lel_events` is genuinely W5-ready right now. A
 fresh-context verifier subagent is dispatched for `lel_events` only, briefed thoroughly
 (implementer≠certifier, verifier SA only, independently re-run the real integrity check itself,
-STOP rather than fabricate if anything fails). W4 gated only on holds for two OTHER assets: #1732 for
-`mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
+STOP rather than fabricate if anything fails). **Verifier reported back: it did exactly what it
+was asked, and STOPPED correctly on a real infra gap — `nirmana_evidence_ingress_writer` (the
+verifier-side DB role) has no `SELECT` on `life_events`/`charts`, so the server's own
+re-verification of `integrity_verified` 500'd even though the check itself passed and the
+digests routed correctly.** Filed as **#1869** (fourth structural finding this session, alongside
+#1840/#1848/#1856) — a production GRANT is Conductor/security territory, not mine to make.
+Digests preserved for instant resubmission once granted. W4 gated only on holds for two OTHER
+assets: #1732 for `mi_bhavisya`/`mi_pramana` (L4 anchor-identity collision, still live).
 
 **Mandate (plan §5, L5):** parked-P7 seam-keeping. STRUCTURAL mode re-documented as deliberate;
 prediction provenance retention verified; journal/adjudication-log seams confirmed intact;
@@ -438,6 +444,37 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-05T~23:15Z (C8 v2.3 cycle 14) — **The W5 verifier's report landed: a fourth real
+  structural finding, filed as #1869; also updated the close report draft (0.6→0.7-DRAFT) while
+  waiting on the subagent.** PR hygiene first: #1844 confirmed queued via GraphQL; #1826
+  checks-pending only. While the verifier ran (deliberately did NOT wait on or peek at it — per
+  the Agent tool's own instruction), used the cycle for legitimate prep work (C8 item 5): refreshed
+  `L5_W6_CLOSE_REPORT_v1_0.md`, which had gone stale relative to the huge amount of real W3/W4
+  progress since it was last touched — updated §0 status, the asset table's W3/W4/W5 columns for
+  all three canaries, confirmed via live `gh pr view` (not assumed) that #1785/#1790/#1809/#1811
+  are all genuinely MERGED before marking them so, and added a new §3.6 documenting the three W4
+  structural findings (#1840/#1848/#1856) in the same pattern §3.5 already established for W1's
+  findings. **Then the verifier's notification arrived**: it independently re-ran `lel_events`'s
+  real integrity check (`true`, non-vacuous, 63 rows), correctly recomputed all digests via the
+  real server functions, correctly routed the submission as verifier identity (`nrec` confirmed
+  it) — and the server's own re-verification returned **HTTP 500** (not the transient-409 deploy
+  pattern seen earlier). It diagnosed the exact cause read-only via `gcloud logging read`:
+  `nirmana_evidence_ingress_writer` (the DB role backing every layer's `integrity_verified`/
+  `asset_frozen`/`probe_accepted`) has no `SELECT` grant on `life_events`/`charts` — tables
+  outside the normal registry-owned surface. **It stopped correctly rather than attempt a fix**
+  (a production GRANT is outside a verifier's remit, and outside mine too — Conductor/security
+  territory). Filed as **#1869**, the fourth structural, campaign-wide finding this session
+  (#1840 data, #1848 guard logic, #1856 crash bug, #1869 a missing grant) — every one found by
+  actually pushing a real asset through the pipeline farther than any layer had gone before,
+  every one escalated with preserved evidence rather than routed around. Updated the close report
+  to record #1869 too (§1 row 2, new §3.6 item 4) before committing both docs together.
+  **Next cycle: check #1851/#1861/#1869 for merges/grants**; if any landed, resume the
+  corresponding blocked step (mi_vistara's bundle-retry, mi_jivanaghatana's retry, or
+  `lel_events`'s `integrity_verified` resubmission with the preserved digests). If nothing has
+  moved, there is genuinely no new W4/W5 progress available — four independent structural
+  blockers now stand between L5 and any terminal capsule, all outside L5's own authority to fix,
+  all already escalated with full evidence. An honest IDLE-OK cycle checking for movement on
+  #1851/#1861/#1869 would be correct in that case, not manufactured busywork.
 - 2026-09-05T~22:50Z (C8 v2.3 cycle 13) — **Dispatched a fresh-context verifier subagent for
   `lel_events`'s W5 (integrity_verified → asset_frozen) — first real implementer≠certifier
   handoff this session.** PR hygiene first: #1844 confirmed queued; #1826 still checks-pending

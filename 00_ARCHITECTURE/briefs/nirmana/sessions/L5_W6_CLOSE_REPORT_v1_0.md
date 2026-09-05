@@ -1,7 +1,7 @@
 ---
 artifact: L5_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L5_W6_CLOSE_REPORT
-version: "0.6-DRAFT"
+version: "0.7-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L5
 layer: L5 — Mīmāṃsā
@@ -17,12 +17,24 @@ warning: >
 
 ## §0 — Status
 
-**NOT CLOSED.** W1 ✅ (15/15) · W2 ✅ (15/15 routed) · **W3 ✅ complete, 6 PRs** · W4 ⛔ gated ·
-W5 🟡 scripted + run, not certified · W6 ⬜.
+**NOT CLOSED.** W1 ✅ (15/15) · W2 ✅ (15/15 routed) · **W3 ✅ complete, all PRs merged** ·
+**W4 🟢 IN FLIGHT — real dispatches executed, not just routed** · **W5 🟢 first real handoff to a
+fresh-context verifier in progress** (`lel_events`) · W6 ⬜.
 
-**The lane died at 00:37Z and was resumed.** Nothing was lost except two artifacts that had been
-committed to a queued branch and never pushed; both were recovered from a local worktree (#1811)
-rather than re-authored.
+**The lane died at 00:37Z and was resumed once**; separately, a second stale-worktree episode was
+found and recovered mid-session (a prior local branch sat on an already-merged commit with 117
+stray uncommitted files, discarded after confirming nothing was lost — see `L5_STATE.md`
+heartbeat). Nothing real was ever lost either time.
+
+**W4 turned out to be the layer's real contribution, not a formality.** `mi_vistara` (canary 1)
+was dispatched and completed — the campaign's first-ever real `mi_*` build execution. Getting its
+evidence chain to `accepted_rebuild_observed` then surfaced, in order, **three genuine
+campaign-wide structural defects** that no layer had hit before because L5 dispatched the first
+real non-L0 builds this session: #1840 (`output_digest_spec` L0-only), #1848 (dispatch
+duplicate-guard has no bypass), #1856 (a UUID-serialization crash in core orchestrator
+provenance capture). All three independently found, evidenced, and filed rather than routed
+around; two already have Conductor fixes in flight (#1861 for #1856, #1851 for #1848, neither
+merged yet as of this draft). See §3.6.
 
 L5's freeze is last in the C2 ordering (L0→L1→L2→L3→L4→L5), so this report closes the build arc.
 It is being drafted against evidence as that evidence lands, not written at the end from memory.
@@ -33,9 +45,9 @@ Routes are W2-final. Status is live.
 
 | # | asset | route | W3 | W4 | W5 | notes |
 |---|---|---|---|---|---|---|
-| 1 | `mi_vistara` | `rebuild_only` | — | ⛔ | ⬜ | **CANARY 1.** 0.287s measured, zero deps. Would capture the campaign's first `mi_*` provenance receipt. Must dispatch `scope='asset'` (D-F-D01). |
-| 2 | `lel_events` | `static` | — | ⛔ | ⬜ | **CANARY 2.** `source_accepted` disposition; no build. Zero precedent events in campaign history. |
-| 3 | `mi_jivanaghatana` | `changed` | 🟡 | ⛔ | ⬜ | **CANARY 3**, demoted from 1st on its own W1 evidence. |
+| 1 | `mi_vistara` | `rebuild_only` | ✅ | ✅ built | 🔒 #1848 | **CANARY 1 — BUILT.** `run_id=e45e343b-…`, 18.29s, job logs + DB verified, first-ever `mi_*` provenance receipt. `output_digest_spec` authored (migration 692, first non-L0 entry, #1840). Capsule blocked: `mi_vistara`'s own already-completed run permanently occupies its `triggered_by` — no `accepted_rebuild_observed` possible until #1851 merges AND a fresh dispatch (bundled with another asset) succeeds. |
+| 2 | `lel_events` | `static` | ✅ | ✅ `source_accepted` | 🔒 #1869 | **CANARY 2 — TERMINAL-ACCEPTANCE COMPLETE, W5 BLOCKED ON A FOURTH INFRA GAP.** First `source_accepted` event in the campaign. Reconciliation found + removed real production test-fixture contamination (2026-07-19 demo data in `life_events`/`mimamsa_event_provenance`/`brahma_prospective_ledger`). Fresh-context verifier subagent independently reran the real integrity check (`true`, non-vacuous) and correctly-routed digests, but the server's own re-verification 500'd: `nirmana_evidence_ingress_writer` has no `SELECT` grant on `life_events`/`charts`. Filed #1869; digests preserved for immediate resubmission once granted. |
+| 3 | `mi_jivanaghatana` | `changed` | ✅ | ⚠️ crashed | ⬜ | **CANARY 3.** W2 complete (verdict `correct`, two real writer defects confirmed already-fixed: A-F-08 honest-null, A-F-09 volume formula). Dispatched solo (full `build_run_authorized` sequence executed correctly — landed 3.4s before start), but the run **crashed** in orchestrator provenance capture — the #1856 bug, found here. Retry pending #1861. |
 | 4 | `mi_kula` | `changed` | ⬜ | ⛔ | ⬜ | global re-seed; dispatch `scope='global'`, `chart_id=NULL`. |
 | 5 | `mi_sankalpa` | `rebuild_only` | 🟡 | ⛔ | ⬜ | floor fix must land before the build. |
 | 6 | `mi_seva` | `rebuild_only` | 🟡 | ⛔ | ⬜ | **not** `probe` — that path is unreachable through four gates. |
@@ -59,10 +71,11 @@ Routes are W2-final. Status is live.
 | #1768 | migration 690 — registry accuracy (floors, `target_table`, 5 volume formulas, 5 measured durations) | **merged** |
 | #1769 | writer honesty fixes — 9 raises + 2 fabricated-value repairs + a float off-by-one | **merged** |
 | #1786 | serving plane — density contracts **0/16 → 15/15**, `qa_fail_count` under-report, an always-empty spine section | **merged** |
-| #1785 | migration 691 — 15 integrity contracts + the free-registry-window sweep | queued |
-| #1790 | `mi_pariksha` §N.3 idempotency scar | queued |
-| #1809 | C13 blast-radius statements, all 15 routes | armed |
-| #1811 | recovered W5 checks + W4 canary runbook | armed |
+| #1785 | migration 691 — 15 integrity contracts + the free-registry-window sweep | **merged** |
+| #1790 | `mi_pariksha` §N.3 idempotency scar | **merged** |
+| #1809 | C13 blast-radius statements, all 15 routes | **merged** |
+| #1811 | recovered W5 checks + W4 canary runbook | **merged** |
+| #1844 | migration 692 — `mi_vistara` `output_digest_spec` (first non-L0 entry, #1840) | queued |
 
 ## §2 — Findings ledger outcome
 
@@ -132,6 +145,51 @@ here because Phase Z's value from this layer is mostly *not* L5's own assets:
    such columns are `uuid`. Supplied the JSONB surface a column-name sweep cannot see
    (`mimamsa_predictions.driving_signals`, 975 refs) and live evidence that identity is already
    unstable across builds (predictions referencing two `bo_laksana` generations).
+
+## §3.6 — W4 findings that outgrew L5 (the layer's SECOND real contribution)
+
+§3.5 recorded W1's contributions. W4 — actually dispatching real builds, the first non-L0
+dispatches this campaign has run — produced three more, structurally deeper because they sit in
+shared plumbing every other layer's Conform work must also pass through:
+
+1. **#1840 — `output_digest_spec` is L0-only.** `asset_output_digest_specs` had 37 rows, every
+   one `bg_*`; zero for any other layer. `compute_output_digest()` deliberately returns
+   `(None, None)` when no spec exists, and `NirmanaRebuildEvidenceSchema.output_digest` is
+   non-nullable — so `accepted_rebuild_observed`/`asset_frozen` were structurally unreachable for
+   every non-L0 asset campaign-wide, confirmed by a live query: 0 such events anywhere outside
+   L0. Ruled by the Conductor (D-CND-27): per-layer authoring, same division of labor as the
+   #1715 receipt-spine generalization. L5 authored its own first entry (migration 692,
+   `mi_vistara`) as the precedent for other layers to follow.
+2. **#1848 — the dispatch script's duplicate-execution guard has no bypass.** Blocks on ANY
+   prior `build_runs` row sharing a `(definition_revision, layer, wave, asset_ids)` key,
+   regardless of terminal state — so an asset dispatched once without first submitting
+   `build_run_authorized` (which every layer's naive first CLI use does, since the CLI's
+   single-shot `--commit` path doesn't leave a window to submit it) permanently loses its only
+   chance at `accepted_rebuild_observed`. `mi_vistara` hit this itself. Conductor fix (#1851,
+   Option B — narrow to genuinely in-flight states) in flight, not yet merged.
+3. **#1856 — a real crash in core orchestrator provenance capture.** `chart_id` reaches
+   `compute_upstream_hash`/`canonical_upstream_hash` as a raw `uuid.UUID` and both functions
+   `json.dumps()` it directly with no `uuid.UUID` case in the canonicalizer — crashing any
+   per-chart asset with declared dependencies before its writer even runs. Found live on
+   `mi_jivanaghatana`'s first (correctly-authorized) dispatch attempt. Flagged, not
+   self-patched — it is inside the FROZEN core orchestrator (§N.2), and genuinely uncertain
+   whether production's regular "click Build" flow is equally exposed (worth Phase Z or the
+   native's own confirmation). Conductor fix (#1861) in flight, not yet merged.
+
+4. **#1869 — `nirmana_evidence_ingress_writer` lacks `SELECT` on tables outside the registry
+   surface.** Found by a fresh-context verifier subagent's own independent W5 attempt on
+   `lel_events` (implementer≠certifier working as designed): the real integrity check passed
+   (`true`, non-vacuous, live-reran) and the digests routed correctly under the verifier identity,
+   but the server's own re-verification 500'd — `permission denied for table life_events`. This
+   role backs every layer's `integrity_verified`/`asset_frozen`/`probe_accepted`, so any OTHER
+   asset whose integrity check reads a table outside its own registered surface will hit the same
+   wall the first time any layer's W5 reaches it. Not self-fixed (a production GRANT is
+   Conductor/security territory); digests preserved for instant resubmission once granted.
+
+Between them, these four findings are why **zero non-L0 assets, anywhere in the campaign, had
+ever reached `accepted_rebuild_observed`, `integrity_verified`, or `asset_frozen` before this
+session** — not for lack of trying elsewhere, but because nobody had yet pushed a real non-L0
+asset far enough through W4→W5 to hit all four walls in sequence.
 
 ## §4 — Cost actuals vs forecast
 
