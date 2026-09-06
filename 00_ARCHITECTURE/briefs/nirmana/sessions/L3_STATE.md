@@ -208,7 +208,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 
 | item | blocked on | status |
 |---|---|---|
-| `ka_graha_sancara`'s W4 probe dispatch | Sidecar blocker (#2096) CLOSED — Conductor confirmed live GREEN + 100% traffic promotion (verified independently: `gcloud run services describe` shows 100% on the `e8ad7db71c1a` revision). W2 re-accepted with the corrected LIVE registry fingerprint/analysis digest (catalog_status had drifted DRAFT→CURRENT via migration 673 since the original 2026-09-05 acceptance, invalidating its stale fingerprint — reverse-engineered `assertLifecycleBinding`'s exact hash inputs and verified each correction against the real server, not guessed). `probe_accepted` itself is now blocked only on a self-inflicted clock mistake: its `observed_at` was submitted ~50min in the future relative to real time, and `requireProbeObservationTiming` requires the live probe's server-side request to start strictly after it — cannot resubmit with a corrected timestamp without creating a duplicate-matching-row conflict (`loadCurrentAcceptedAnalysis` requires exactly one current match), so this clears itself once real time passes **2026-09-06T15:52:00Z** | genuinely open but fully mechanical — retry `probe_accepted` (payload already correct, saved at `/tmp/probe_accepted_v2.json` this session, will not survive a fresh session — reconstruct from this row's digests if needed: registry_fingerprint_sha256=`aadfaa20f662bc323a70eeb4a3fa4a6eae51c0635ecf791436fe12c161e8f660`, analysis_digest=`4662bf0a4f0212d5b40f3916659377006d6882df2d4f5b95784cde0e72a3d35e`, probe_contract_sha256=`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6`) once past that timestamp — this is the layer's first real, non-artefactual W4 dispatch, no ruling or adjudication needed, purely wait-and-retry |
+| `ka_graha_sancara`'s W4 probe dispatch | Sidecar blocker (#2096) CLOSED — Conductor confirmed live GREEN + 100% traffic promotion (verified independently: `gcloud run services describe` shows 100% on the `e8ad7db71c1a` revision). W2 re-accepted with the corrected LIVE registry fingerprint/analysis digest (catalog_status had drifted DRAFT→CURRENT via migration 673 since the original 2026-09-05 acceptance). `probe_accepted` itself is blocked only on a self-inflicted clock mistake — `observed_at` was submitted ~50min ahead of real time, and `requireProbeObservationTiming` needs the live probe's server request to start strictly after it; clears once real time passes **2026-09-06T15:52:00Z**. **This cycle's prep (clock not yet past threshold): mapped and precomputed the ENTIRE remaining chain**, not just the next step — `asset_frozen` additionally requires its own prior `integrity_verified` event (confirmed by reading `requireFreezeProvenance`: exactly one current `integrity_verified` row, independent of `probe_accepted`), which for a probe-obligation asset with null `count_sql`/`integrity_check_sql` re-runs the SAME live health probe under a DIFFERENT digest scheme (`collectIntegrityObservation`, confirmed by reading the function directly — not assumed). All three remaining events' STATIC inputs (the ones the server does NOT overwrite) are now precomputed and verified consistent with the live registry: `registry_fingerprint_sha256`=`aadfaa20f662bc323a70eeb4a3fa4a6eae51c0635ecf791436fe12c161e8f660`, `analysis_digest`=`4662bf0a4f0212d5b40f3916659377006d6882df2d4f5b95784cde0e72a3d35e` (both for `probe_accepted`/`integrity_verified`/`asset_frozen` alike), `probe_contract_sha256`=`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6` (for `probe_accepted`), `integrity_contract_sha256`=`454eeb2d8f51156d7db58fa8a9c08fe79e1685531b3978bdcfc8151e0d1b898f` (for `integrity_verified`, = `sha256(stableJson(registry_contract))`, the bare 14-field object, NOT wrapped in `{health_probe:...}` — a different wrapping than the probe contract digest, confirmed by reading `canonicalNirmanaIntegrityContractDigest` directly). `asset_frozen`'s own `lifecycle_digest` CANNOT be precomputed — it hashes the actual recorded rows of `probe_accepted`/`integrity_verified` (server-generated `detector_observation`/timestamps unknown until those exist), so it must be read back from the DB after each lands, not guessed | genuinely open but fully mechanical, no design risk remains — sequence once past 15:52Z: (1) submit `probe_accepted` (payload template at `/tmp/probe_accepted_v2.json` this session, ephemeral — reconstruct from the digests above if the session restarted), (2) wait ~15-20s for `recorded_at` to clear, (3) submit `integrity_verified` with `source_ref=nirmana-elevation:integrity:ka_graha_sancara`, same two lifecycle-binding digests + the `integrity_contract_sha256` above, (4) query `nirmana_evidence.nirmana_elevation_campaign_events` for both new rows' exact `evidence_payload`/`source_kind`/`source_ref`, replicate `requireFreezeProvenance`'s sort+stableJson+sha256 in Python to get `lifecycle_digest`, (5) submit `asset_frozen` with `source_ref=nirmana-elevation:freeze:ka_graha_sancara`. All four submissions use `--as verifier` (server_reconstructed) |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -473,6 +473,38 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~50:0xZ — L3-W4 — PR hygiene: `#1929` merged since last cycle;
+  `#2079`/`#2070`/`#2065` were all `CLEAN`-but-unqueued — queued all three,
+  verified via `is:queued`. `#1903` healthy, just still building CI. **Priority
+  work: clock threshold (2026-09-06T15:52:00Z, real time 15:06) not yet reached
+  for `ka_graha_sancara`'s `probe_accepted` retry — checked, not assumed.**
+  Considered other bounded W3 units before defaulting to prep: N1's next step
+  (D-TIME item 1, per-engine question-declarations) has no single ready-made
+  data source across the 5 W1 batch files, too unbounded for one cycle; N3's
+  admission/ablation half is externally blocked pending #1960's authorization
+  question; M1/M6/M12 (the "Not started"/"Also open" lines near the top of
+  this file) are ALL already fixed — re-verified via `git log`, not assumed —
+  but that whole paragraph is INTENTIONALLY left as a point-in-time record per
+  this session's own prior precedent (found explicitly stated further down:
+  "an old historical paragraph further up is left as-is; it's a point-in-time
+  record, not a status the newer entries were meant to keep re-stating"), so
+  correcting it would contradict established discipline, not fix real drift.
+  **Chose the tier-5 prep slot instead: mapped the ENTIRE remaining
+  `ka_graha_sancara` W4 chain**, not just the immediately-next step. Read
+  `requireFreezeProvenance` directly and found `asset_frozen` needs its OWN
+  prior `integrity_verified` event too (not just `probe_accepted`) — for a
+  probe-obligation asset with null `count_sql`/`integrity_check_sql`,
+  `collectIntegrityObservation` re-runs the SAME live health probe under a
+  DIFFERENT digest scheme (`canonicalNirmanaIntegrityContractDigest`, the bare
+  registry_contract object, not wrapped in `{health_probe:...}` like the probe
+  digest is — confirmed by reading both functions, not inferred from naming
+  similarity). Precomputed and recorded (Held items, row 1) every static value
+  the server does NOT overwrite for all three remaining events; `asset_frozen`'s
+  own `lifecycle_digest` genuinely cannot be precomputed (depends on rows that
+  don't exist yet) and is documented as the one step requiring a read-back.
+  — blocked on: real time passing 15:52:00Z; next action: execute the full
+  4-step sequence recorded in Held items row 1 once past that timestamp —
+  probe_accepted → integrity_verified → read back both rows → asset_frozen.
 - `2026-09-06T~49:0xZ — L3-W4 — FIRST REAL W4 DISPATCH ATTEMPT (ka_graha_sancara),
   99% complete — blocked only on a self-inflicted clock error, not a design or
   campaign defect.** PR hygiene: `#1929` was `CLEAN`-but-unqueued — queued,
