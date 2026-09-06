@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:40Z (C8 v2.3 cycle 195) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
+  same 3 checks pending (Unit/DB Integration/Governance Gates), no failures, auto-merge armed.
+  #1844 confirmed `isInMergeQueue: true`. Queue resumed moving: #1861=7 (was 9), #1844=64
+  (was 66), #1901=90 (was 92) — confirms cycle 194's "not stalled, just normal latency" read
+  was correct. #1869 unchanged at 3 comments; #1856 still OPEN. No eligible dispatch.
 - 2026-09-06T00:35Z (C8 v2.3 cycle 194) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
   24/27 checks SUCCESS, only Unit Tests/DB Integration Tests/Governance Gates still
   IN_PROGRESS, auto-merge armed, not yet re-queued (expected — waiting on those 3). #1844
