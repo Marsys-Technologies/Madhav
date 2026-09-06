@@ -630,6 +630,18 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~45:0xZ — L3-W3 — `#2104` MERGED (14:07:14Z).** Sidecar traffic
+  still on the same old stale revision — checked whether that's already a
+  problem or just timing: a fresh `Deploy to Cloud Run` run is actively
+  `in_progress` (started 14:07:34Z, seconds after the merge), so the old
+  traffic reading is expected right now, not a fresh failure. `#2096` has no
+  new comment yet either (Conductor said it would confirm live GREEN +
+  actual promotion before closing). Not declaring success or failure yet —
+  genuinely too early to tell. PR hygiene: `#1917` was `CLEAN`-but-unqueued —
+  queued it, verified via `is:queued`. — blocked on: the in-progress deploy
+  completing; next action: check the deploy run's outcome and the sidecar's
+  actual serving revision next cycle before concluding anything about
+  whether `#2104`'s fix actually worked.
 - `2026-09-06T~44:0xZ — L3-W3 — IDLE-OK (verified): all 6 L3-owned PRs
   healthy. `#2104` unchanged from last cycle — still position 2,
   `AWAITING_CHECKS`, no movement in a full cycle. Checked ahead of it:
