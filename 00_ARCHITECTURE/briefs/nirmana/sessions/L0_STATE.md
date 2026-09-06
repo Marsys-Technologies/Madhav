@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- bg_parihara_rules dispatch found a genuinely NEW, precisely-diagnosed defect (D-L0-OO): writer upserts but never deletes, so 1 orphaned row (rahu_kalam) in bg_parihara_rules and 8 orphaned rows in bg_muhurta_factor_census have accreted since their sources shrank. Exact rows identified, no writer change needed for the fix (DATA-only migration: delete 9 named rows + re-pin counts/hashes 61->60, 59->51). Deferred to next cycle to author+ship. Data unchanged, no damage from the failed dispatch attempt. Still 33/40 frozen (bg_doshas/bg_gochara_arcs/bg_text_index from the D-L0-FF batch). #2066 still not confirmed deployed. No open L0 PRs.
+last_updated: 2026-09-06 -- MILESTONE: D-L0-OO migration authored+verified+shipped (PR #2081, checks running, not yet queued). #2066 confirmed DEPLOYED this cycle -- submitted implementation_accepted for bg_dasha_systems successfully, but its accepted_rebuild_observed hit a reproducible HTTP 500 (not a validation error) -- all fields independently re-verified correct, looks like a genuine server bug specific to the implementation_digest-non-null path (first time this session using that path; all prior successes used implementation_digest=null). Not resolved, flagged for next cycle. bg_compendium_index's identical work deliberately NOT attempted yet pending understanding of the 500. Still 33/40 frozen. No open L0 PRs besides #2081.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3089,3 +3089,40 @@ while doing the first one (reviewed-deployment-sha must match the accepted W2's 
     the diagnosis, already substantial. Fresh backup was taken before the attempt
     (`cloudsql-backup:1788691271577`) and is still valid for the follow-up migration's own
     pre-check.
+
+- 2026-09-06 — **MILESTONE: D-L0-OO migration authored, verified, and SHIPPED (PR #2081).** No
+  open L0 PRs at cycle start. Migration 703 (`platform/migrations/703_bg_parihara_rules_orphan_
+  cleanup_and_repin.sql`) deletes the exact 9 orphaned rows identified last cycle and re-pins
+  `bg_parihara_rules`'s two affected counts/hashes (61→60, 59→51) — data-only, no writer file
+  touched. Verified twice via rolled-back replays against live production before shipping: once
+  to derive the corrected hashes (`353b1cad...` parihara, `42f23d0b...` census;
+  `bg_muhurta_activity_rules`'s hash confirmed unchanged), once more to confirm the exact new
+  check text evaluates `TRUE` post-delete. Also confirmed the migration's `old_check` guard text
+  byte-matches the live `integrity_check_sql` via a direct SQL string-equality query before
+  authoring. PR #2081 opened, auto-merge armed, checks running cleanly at cycle end (not yet
+  `is:queued` — confirm next cycle).
+  - **`#2066` confirmed DEPLOYED this cycle** (ancestry-verified against the live deployed sha,
+    which had since advanced to `475b5a8c...`). Submitted `implementation_accepted` for
+    `bg_dasha_systems` successfully (HTTP 201) — **but `accepted_rebuild_observed` for
+    `bg_dasha_systems` hit a reproducible HTTP 500 ("failed to record Nirmana evidence"), not a
+    validation rejection.** Retried twice (including a fresh idempotency_key to rule out a
+    partial-write collision) — same 500 both times. All fields independently re-verified correct
+    (provenance receipt still `proven` and matching; `implementation_accepted`'s own
+    `implementation_digest` matches exactly what was submitted; `authorization_sha256` matches
+    the real stored `build_run_authorized` event's value exactly; `occursAfter` ordering is
+    correct — `accepted_rebuild_observed`'s `observed_at` postdates `implementation_accepted`'s
+    real recorded one). **This looks like a genuine server-side bug specific to the
+    `implementation_digest`-non-null path** — every prior `accepted_rebuild_observed` submission
+    this session used `implementation_digest: null` (a `no_change` verdict); this is the first
+    attempt with a real, non-null value (a `correct` verdict). No server logs available to
+    confirm root cause from here. **Not resolved this cycle — flagging for next cycle (or
+    filing to #1713 if it recurs identically) rather than guessing at a fix.**
+  - `bg_compendium_index` has the identical `implementation_accepted`/`accepted_rebuild_observed`
+    need (same verdict shape, same #2066 commit) — **not attempted yet**, deliberately, since
+    `bg_dasha_systems`'s 500 needs understanding first (attempting the same path twice in a row
+    without understanding the first failure would just produce a second unexplained 500).
+  - Precomputed values kept for whenever this unblocks: `bg_dasha_systems`
+    `implementation_digest 57b8e4f2808bfd1bcbe157c09de08526881351927285ff4d1f7142e84ef8450b`
+    (already submitted, accepted), `authorization_sha256
+    7e87ffe8c28ec889e31ceaae373f73237a979ac135bc612194f29937a3c154f0` (verified matches the real
+    stored event).
