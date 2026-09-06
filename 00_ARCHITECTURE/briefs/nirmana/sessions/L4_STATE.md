@@ -7477,3 +7477,19 @@ E-gate uncheckable, DB access down 370 cycles) → next: retry E-gate/dispatch d
 cycle until DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's
 one deferred code item; the entire L4 W3 IMPLEMENT wave (8 own PRs) remains fully merged
 with nothing further eligible until either DB access returns or a new finding surfaces.
+
+`2026-09-06T~14:06Z` — L4 — **CYCLE 381 (v2.3) — IDLE-OK. Zero own PRs open.**
+
+**PR hygiene:** trivially clean — zero open `codex/nirmana-l4*` PRs.
+
+**Priorities 1-4:** one new `main` commit (`#2104`, Conductor's own PR, fixing the L3
+sidecar release-smoke gate root-caused in `#2096`/`#1713`) confirmed not L4-relevant — a
+positive sign for overall campaign merge-queue health but not an L4 action item. No new
+adjudications name L4 (count unchanged at 17). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 371st consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 381 L4: IDLE-OK (verified: zero own PRs open; no new L4-relevant adjudications;
+E-gate uncheckable, DB access down 371 cycles) → next: retry E-gate/dispatch dry-run every
+cycle until DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's
+one deferred code item.
