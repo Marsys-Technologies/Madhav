@@ -630,6 +630,15 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~42:0xZ — L3-W3 — PR hygiene: 2 of 6 L3-owned PRs went DIRTY
+  (`#1929`/`#1903`) — #1929's rebase showed a large migration file + test
+  "deleted" (matching the known rebase-target-staleness pattern, not
+  corruption); confirmed via `merge-base` that `origin/main` had genuinely
+  advanced again (#2100 merged) mid-cycle, re-fetched and re-rebased cleanly.
+  Both fixed (standard L3-pin regen, tests re-pass 36/73), confirmed
+  `MERGEABLE`. `#2104` still hasn't merged, `#2096` unchanged. — blocked on:
+  `#2104` merging; next action: keep L3-only hygiene sweeps going, watch
+  `#2104`/`#2096` each cycle.
 - `2026-09-06T~37:0xZ — L3-W3 — PR hygiene: 3 of 7 L3-owned PRs were `CLEAN`
   but unqueued (`#1936`/`#1929`/`#1917`, after waiting out a transient
   `UNKNOWN` batch read) — queued all three, verified via `is:queued`. `#2096`
