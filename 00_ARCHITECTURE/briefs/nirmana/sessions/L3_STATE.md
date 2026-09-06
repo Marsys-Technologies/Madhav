@@ -458,6 +458,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~10:0xZ — L3-W3 — Three genuinely DIRTY PRs this cycle: #1905, #1996,
+  #1992.** #1905 (N1 third step, `engine_testimony.ts`): L3_STATE.md-only, standard
+  shape (`theirs` empty), `engine_testimony.ts`/its test auto-merged cleanly (this
+  branch predates the later N1 steps that superseded it — nothing on `main` conflicts
+  yet), 9/9 tests pass, `tsc` clean. #1996 (its own DIRTY-fix-note PR): knock-on,
+  standard shape, resolved the same way. **#1992** (a heartbeat PR): also resolved the
+  usual way, but its own PRIOR content carried a genuine, pre-existing minor blemish —
+  a duplicated trailing fragment ("sidecar-traffic/#1960 unchanged.") dangling after an
+  already-complete sentence, from this branch's own earlier authoring, not from this
+  cycle's resolution. Cleaned it up while already touching the region (confirmed via
+  `git diff origin/main` that it was never part of `origin/main`'s own copy — purely
+  local, zero shared-history impact). All three force-pushed, re-armed auto-merge,
+  confirmed `MERGEABLE`. `origin/main` advanced 3 more merges (unrelated L1/L2); this
+  state-tracking branch rebased cleanly (19 commits). `#2060` unchanged, still queued.
+
 - `2026-09-06T~09:0xZ — L3-W3 — IDLE-OK: `#1903` checks still `pending` (no failures) —
   not yet re-queued, expected after last cycle's force-push.` PR hygiene clean.
   `#2060`/`origin/main` tip unchanged.
