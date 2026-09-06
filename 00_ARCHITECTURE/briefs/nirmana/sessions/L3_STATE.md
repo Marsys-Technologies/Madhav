@@ -650,6 +650,28 @@ your layer close.
   confirm `#2065` actually reaches `isInMergeQueue: true` next cycle, then its merge
   unblocks `ka_muhurta_seva`'s W2 acceptance (route any verifier-role submissions
   through a fresh subagent per D-CND-35, same as every other asset this campaign).
+- `2026-09-06T~75:1xZ — L3-W4 — IDLE-OK (2nd consecutive), holding local-uncommitted.**
+  PR hygiene re-verified via `is:queued` truth, not `autoMergeRequest`: `#2079` genuinely
+  `isInMergeQueue: true`, position 1 — the shared queue is actively busy (confirmed via
+  `gh run list` for `event=='merge_group'`: an L1 PR's merge-group build, `#2145`, was
+  `in_progress` at check time, ~6min in — not stuck, matches the known Build-Check/
+  Governance-Gates timing pattern) so #2079 hasn't started its own build yet; this is
+  healthy queue-ahead-of-me lag, not a defect. `#2065` also genuinely `isInMergeQueue:
+  true`, position 3, `mergeQueueEntry.state: UNMERGEABLE` — the documented "not-yet-tried
+  placeholder" shape (an earlier-position PR hasn't finished), not a real conflict;
+  `mergeable: MERGEABLE` confirms this. `#2147`/`#2149` (this session's own two heartbeat
+  PRs) both still `BLOCKED`/not-yet-queued but 0 CI failures on either, `autoMergeRequest`
+  armed — same genuine async lag as last cycle. Nothing DIRTY, nothing RED, nothing
+  CLEAN-but-unqueued. Re-checked for anything newly eligible: `L2_STATE.md`'s
+  `bo_laksana` rebuild status unchanged (still HELD campaign-wide per #1770); no new
+  L0/L1/L2 freeze since last check. Holding this entry LOCAL-UNCOMMITTED-TO-REMOTE
+  (committed on this branch, not pushed) rather than opening a fourth heartbeat-only PR
+  this session — `#2149` (this branch's own remote HEAD) is still mid-CI, so pushing now
+  would reset its checks for no reason; will push this and any further accumulated
+  entries once `#2149` clears (merges or drops out of contention), same pattern as the
+  earlier `#1961`-holding precedent. — blocked on: nothing genuinely new; next action:
+  watch `#2065`/`#2079`/`#2147`/`#2149` progress, push the accumulated local block once
+  `#2149` is no longer mid-CI.
 - `2026-09-06T~75:0xZ — L3-W4 — IDLE-OK (verified, not assumed).** PR hygiene: all three
   L3 PRs healthy — `#2079` genuinely `isInMergeQueue: true` (position 2, `AWAITING_CHECKS`);
   `#2065` and `#2147` (this session's own two most recent branches, `#2065`'s finished
