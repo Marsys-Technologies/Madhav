@@ -489,6 +489,24 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~91:0xZ — L3-W4 — IDLE-OK (verified): `#2147`/`#2149` both now
+  genuinely `isInMergeQueue: true` (position 2 and 4) — the earlier
+  `UNMERGEABLE` reading on `#2149` was, as documented, the not-yet-tried
+  placeholder, not a real conflict; both now correctly not being touched so
+  their queue position survives undisturbed. `#2065` still not yet queued
+  (2 checks pending, 0 failures, `autoMergeRequest` armed unchanged since
+  last cycle) — healthy async lag. One new unrelated merge to `origin/main`
+  since last cycle (`#2148`, L1's `get_medical_indications`) — no L3 file
+  overlap, no new conflict risk. Neither `ka_dasha_kala` nor `ka_muhurta_seva`
+  has its `health_probe` live yet; no new dispatch opportunity. Adding this
+  entry LOCAL-UNCOMMITTED-TO-REMOTE only (safe — a local commit doesn't touch
+  the remote branch tip the queue is tracking) rather than pushing, since
+  `#2149`'s own remote HEAD is now genuinely IN the shared queue and a push
+  now would dequeue it for no reason. — blocked on: nothing genuinely new;
+  next action: let `#2147`/`#2149` clear the queue on their own, THEN push
+  this accumulated local block (5 entries now) to whichever of them is still
+  open, or to a fresh branch if both have already merged by then; watch
+  `#2065` reach `isInMergeQueue: true` too.
 - `2026-09-06T~90:0xZ — L3-W4 — IDLE-OK (verified): all three PRs healthy —
   `#2147` genuinely `isInMergeQueue: true` (position 3, `AWAITING_CHECKS`);
   `#2065`/`#2149` both `mergeable: MERGEABLE`, `autoMergeRequest` armed, 0 CI
