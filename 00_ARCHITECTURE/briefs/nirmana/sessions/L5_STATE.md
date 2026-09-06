@@ -457,6 +457,16 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T~18:35Z (C8 v2.3 cycle 193) — **IDLE-OK, verified.** PR hygiene: #1844
+  confirmed `isInMergeQueue: true` (autoMergeRequest showed null/UNKNOWN — the known lying-field
+  pattern; GraphQL is ground truth). #1826 clean, auto-merge armed, pending fresh checks after
+  cycle 192's push — no DIRTY/RED, nothing to fix. Queue positions unchanged since cycle 192
+  (#1861=9, #1844=66, #1901=92) but merge queue confirmed actively processing (position-1 PR
+  `AWAITING_CHECKS`, not stalled) — just no movement this specific cycle window. Conductor fleet
+  status (posted 00:28Z, live DB) confirms L1-L5 all 0 `asset_frozen` layer-wide, L0 at 30/127 —
+  `mi_kula`'s 3 unfrozen L0 ancestors (`bg_dasha_systems`/`bg_rules`/`bg_yogas`) almost certainly
+  still open (bg_yogas writer-verdict PR #1828 merged but that's not the same as `asset_frozen`).
+  #1869 unchanged at 3 comments; #1856 still OPEN. No eligible dispatch this cycle.
 - 2026-09-06T~18:30Z (C8 v2.3 cycle 192) — **IDLE-OK, verified.** PR hygiene: #1844, #1861,
   #1901 all confirmed `isInMergeQueue: true` via GraphQL. #1826 (own state PR, just pushed
   this cycle's heartbeat commit) has autoMergeRequest armed (`enabledAt` set), checks freshly
