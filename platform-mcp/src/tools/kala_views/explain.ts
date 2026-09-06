@@ -168,6 +168,13 @@ import {
   type KpSchoolVoice,
   type KpRunningPeriod,
 } from '../../lib/kp_school_voice.js'
+import {
+  kpVoiceToTestimony,
+  a5AgreementToTestimony,
+  composeConcordanceVerdict,
+  type EngineTestimony,
+  type AuthorityProfileRow,
+} from '../../lib/engine_testimony.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 // F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
@@ -191,6 +198,13 @@ const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
 // computation, no new capability, no second implementation of either read.
 const CHART_FACTS_URI = 'marsys://tool/L1/chart_facts_query'
 const DASHAS_URI = 'marsys://tool/L1/get_dashas'
+
+// ── N1 (Temporal Concordance Contract): the O-10 authority profile read ──────────────
+// The only factor_family seeded so far (migration 677) — "does the causal chain hold?",
+// exactly the question this PACT-chain reading already answers. Existing capability,
+// existing table (kala_paddhati_profile); no new computation.
+const PADDHATI_PROFILE_URI = 'marsys://tool/L3/query_kala_paddhati_profile'
+const O10_FACTOR_FAMILY = 'O-10'
 
 /** KP is canonically read in the Krishnamurti ayanāṃśa — the same convention
  *  `get_kp_cusps.ts` already defaults to (school_conventions.ts §3). The PACT chain is read
@@ -369,6 +383,35 @@ export async function fetchKpSchoolVoice(params: {
     chainAyanamshaId,
     substrateNote,
   })
+}
+
+/**
+ * Fetches the chart's O-10 `kala_paddhati_profile` rows — the one authority profile
+ * migration 677 has seeded so far — for `composeConcordanceVerdict` (N1 seventh step).
+ * Returns `[]` (never throws) on any read failure; the composer already treats an
+ * empty/no-primary profile as an honest `null` verdict rather than a crash (§N.8).
+ */
+async function fetchO10AuthorityProfile(
+  chartId: string,
+  principal: Principal,
+): Promise<AuthorityProfileRow[]> {
+  try {
+    const raw = await callKalaRegistryCap(
+      PADDHATI_PROFILE_URI,
+      { chart_id: chartId, factor_family: O10_FACTOR_FAMILY },
+      principal,
+    )
+    const rows = asRows(unwrapKalaPayload(raw))
+    return rows
+      .filter((r) => r['convention_status'] === 'computed')
+      .map((r) => ({
+        convention_id: String(r['convention_id']),
+        arbitration_role: (r['arbitration_role'] ?? null) as AuthorityProfileRow['arbitration_role'],
+        precedence: typeof r['precedence'] === 'number' ? (r['precedence'] as number) : null,
+      }))
+  } catch {
+    return []
+  }
 }
 
 /** The KP voice's coverage entry — `computed` only when a real verdict was reached, and
@@ -733,6 +776,24 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
             )
           : undefined
 
+        // N1 (Temporal Concordance Contract, L3_W1_ANALYSIS_BATCH_E.md §1.5):
+        // `engine_testimony[]` in the one canonical shape (see lib/engine_testimony.ts),
+        // assembled from whichever engines actually voiced an opinion this call.
+        // Additive alongside `school_voices`/`a5_gochara_agreement` below, not a
+        // replacement. `concordance` is the composed verdict over that testimony
+        // (aligned | partially_aligned | disputed), read against the chart's O-10
+        // authority profile (migration 677's seed — PACT primary, KP/gochara_v3
+        // corroborating); `null` when no primary role is on record yet (honest
+        // no-verdict, §N.7 — not an invented default) or no engine actually computed.
+        const engineTestimony: EngineTestimony[] = [
+          ...(kpVoice ? [kpVoiceToTestimony(kpVoice)] : []),
+          ...(C4_ENABLED && a5GocharaAgreement !== undefined
+            ? [a5AgreementToTestimony(a5GocharaAgreement)]
+            : []),
+        ]
+        const o10Profile = await fetchO10AuthorityProfile(chart_id, principal)
+        const concordance = composeConcordanceVerdict(engineTestimony, o10Profile)
+
         const baseContent = {
           ok: true as const,
           tool: TOOL_NAME,
@@ -743,6 +804,10 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           about: about ?? null,
           pact_status: pactStatus,
           weakest_link: weakestLink,
+          // N1 (Temporal Concordance Contract): the canonical-shape testimony array
+          // plus the composed verdict over it. See lib/engine_testimony.ts docstring.
+          engine_testimony: engineTestimony,
+          concordance,
           // W3K G-5: the school-tagged Law-2 voice, served in full so the verdict is
           // auditable in place (which limb, which running lord, which ayanāṃśa).
           school_voices: kpVoice ? [kpVoice] : [],
