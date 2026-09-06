@@ -380,6 +380,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:05:57Z` — cycle 489: **IDLE-OK, watching closely.** Own PR #2104: merge-group's
+  `CI — Ganga Quality Gate` run (id 34037568743) still `in_progress`, ~10 min elapsed since
+  13:55:32Z — near the top of the documented ~700s/~11.7min normal-variance ceiling but not over it
+  yet; not declaring stuck this cycle. Fleet DIRTY: empty. No new `nirmana-adjudication` issues
+  (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:03:45Z` — cycle 488: **IDLE-OK.** Own PR #2104: dug one level deeper than the
   queue-position check — confirmed via the actual `merge_group` workflow-run list that its
   `CI — Ganga Quality Gate` merge-group check is genuinely `in_progress` (not stuck), within the
