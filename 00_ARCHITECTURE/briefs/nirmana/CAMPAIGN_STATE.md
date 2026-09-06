@@ -380,6 +380,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:41:52Z` — cycle 503: **ONE bounded unit: #1869 CLOSED — confirmed live, not
+  assumed merged-and-done.** Migration 647 (cycle 479's `chart_grants` fix, PR #2094 merged
+  13:26:09Z) had been sitting unconfirmed since landing. Queried
+  `information_schema.role_table_grants` directly against production via the `postgres` MCP tool —
+  `nirmana_evidence_ingress_writer` × `chart_grants` × `SELECT`, exactly as intended, nothing
+  broader. Posted confirmation and closed; L2/L5 can now resubmit `lel_events`/`mi_vistara`'s
+  preserved digests. Fleet DIRTY: empty. Adjudication count 15 (down from 16 — two closed today:
+  #2096, #1869).
 - `2026-09-06T14:39:13Z` — cycle 502: **ONE bounded unit: #2096 CLOSED — confirmed fixed live, not
   inferred.** Run 34038669312 (checkout = `4281a5a8e`, PR #2104's own merge commit) completed fully
   green end to end: image build, zero-traffic candidate deploy, and the real
