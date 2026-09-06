@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:40Z (C8 v2.3 cycle 391) — **IDLE-OK, deploy advanced but still short — a
+  minor mystery resolved.** Deploy jumped to `492f32f0…`, which `git merge-base` shows
+  PREDATES `0452d1e74` (#1901) — briefly looked anomalous, but confirmed via
+  `gcloud run revisions list` (chronological deploy order matches commit order) and
+  confirmed `0452d1e74` IS an ancestor of current main tip: the deploy pipeline is simply
+  still catching up sequentially through main's history, not a real anomaly. #1826
+  unchanged, no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1869 unchanged
+  at 4 comments. 5 cycles since last push — pushing next cycle.
 - 2026-09-06T10:37Z (C8 v2.3 cycle 390) — **IDLE-OK, still waiting on deploy.** Live
   revision unchanged at `4dd77e21…`, still hasn't caught up to `0452d1e74` (#1901). #1826
   unchanged (Governance Gates, no failures, armed). #1844 confirmed `isInMergeQueue: true`.
