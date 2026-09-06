@@ -5738,3 +5738,35 @@ hygiene clean, all 8 own PRs genuinely queued and advancing; E-gate uncheckable,
 down 284 cycles; nothing new) → next: watch queue positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~14:50Z` — L4 — **CYCLE 295 (v2.3) — a full sweep found TWO more own PRs
+genuinely `UNMERGEABLE` (`#1831`, `#1808`) — this window's tenth and eleventh DIRTY-PR
+episodes, both fixed using the now-established `dequeuePullRequest`-then-push recipe from
+cycle 285's `#1870` — this cycle's bounded unit of work.**
+
+**PR hygiene:** `#1831` (`codex/nirmana-l4-w3-3d-pratikara-anchor`) and `#1808`
+(`codex/nirmana-l4-w3-3c-nimitta-defaults`) both rebased onto `origin/main`. For `#1831`:
+routine conflicts on both generated files (digest byte-identical to fresh regen once
+resolved; pin hand-derived and verified `--check` clean from the final state); confirmed via
+`git diff <rebase-base> HEAD` that the branch's own F-3.4 fix survived intact, 76/76 tests
+pass. For `#1808`: only the pin conflicted (digest applied clean); confirmed the branch's own
+F-12/F-16 ph_nimitta fixes survived intact via the same base-pinned diff technique, 289/289
+tests pass. For **both**, the first push would have hit the same protected-branch rejection
+`#1870` did — proactively checked `mergeQueueEntry` before pushing, found both still
+occupying their slot with `state: UNMERGEABLE`, called `dequeuePullRequest` via GraphQL for
+each, then pushed successfully (`mergeStateStatus: MERGEABLE`/`BLOCKED`-on-checks). Both
+re-armed via `gh pr merge --auto`.
+
+Remaining 6 own PRs (`#1870` 61, `#1849` 32, `#1845` 30, `#1842` 22, `#1839` 26, `#1834` 11)
+all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** several new `main` commits landed during this cycle's work (L1/L2, not
+L4-relevant). No new adjudications name L4 (count unchanged at 14). E-gate still
+uncheckable, 285th consecutive cycle DB access down.
+
+CYCLE 295 L4: dequeued+rebased+repushed 2 UNMERGEABLE PRs (`#1831`, `#1808` — both writer
+fixes verified intact through rebase using a fixed-base diff technique, 76+289 tests pass,
+both re-armed for auto-merge via the cycle-285 dequeue-then-push recipe) → next: confirm
+`#1831`/`#1808` re-enter the merge queue next cycle; watch remaining 6 PRs' positions
+continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
