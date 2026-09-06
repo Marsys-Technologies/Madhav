@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — MILESTONE: real W4 rebuild of bg_dasha_systems completed (run c086b0e4-...), W2-refresh submitted first (registry_fingerprint a1dea28e..., analysis_digest 317fe9bc...). All 9 clauses of its integrity_check_sql independently re-verified TRUE live post-rebuild -- confirms the writer just needed a real committed run, nothing else was wrong. Self-caught process mistake: chose verdict "correct" instead of "examined_and_already_efficient" (schema allows only one verdict per analysis_digest, immutable), which now requires a real implementation_accepted git-commit event before accepted_rebuild_observed -- authored an honest, small, genuinely-useful docstring-only commit for this (PR #2066, auto-merge armed, not yet confirmed is:queued -- check first next cycle). All digests needed to finish accepted_rebuild_observed precomputed and logged below. bg_yogas/bg_compendium_index still need the same rebuild treatment (not done this cycle). 30/40 frozen holds (unchanged -- this rebuild doesn't newly freeze anything).
+last_updated: 2026-09-06 — RED caught+fixed on #2066: docstring edit to seed_dasha_systems() broke provenance_inventory --check (any writer-file edit changes its digest, which would have invalidated this session's own just-accepted bg_dasha_systems W2 evidence -- self-inflicted regression caught pre-merge). Root-cause fix: reverted the writer-file edit, moved the same finding to a standalone non-writer doc (D-L0-GG-FOLLOWUP_v1_0.md). Pushed (b5fd8771e), fresh CI running, not yet confirmed is:queued -- check first next cycle. Underlying substance unchanged from prior entry: real W4 rebuild of bg_dasha_systems completed (run c086b0e4-...), all 9 integrity_check_sql clauses verified TRUE live. accepted_rebuild_observed still blocked on #2066 deploying; all its digests precomputed below. bg_yogas/bg_compendium_index rebuilds not yet started. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2673,3 +2673,32 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   - No DIRTY, no RED this cycle (checked before starting: #2016 was the only open L0 PR and it
     had just merged). 30/40 frozen holds unchanged (this is a re-verification/rebuild of an
     already-non-frozen asset, not a new freeze).
+
+- 2026-09-06 — **RED caught and fixed on #2066 (root cause, not a weakened gate).** PR hygiene
+  check found `#2066` BLOCKED with a genuine failing required check: "Governance Gates (drift /
+  schema / edge / native-literal / py-sidecar)" — `provenance_inventory --check` failed with
+  "writer digest inventory is stale," because my docstring-only edit to `seed_dasha_systems()`
+  still changes that writer file's content hash in `nirmana-writer-digests.json` (confirmed
+  locally: `bg_dasha_systems`'s digest would change `66585e94...` → `568ab60e...`).
+  - **This is more than a CI nit**: had this deployed, it would have invalidated THIS SESSION'S
+    own just-accepted W2-refresh evidence for `bg_dasha_systems` (bound to `writer_digest_sha256
+    66585e94...`), reopening the exact stale-registry-contract loop closed earlier this cycle —
+    a self-inflicted regression on my own prior work, caught before merge.
+  - **Root-cause fix, not a workaround**: reverted the docstring edit in
+    `l0_dasha_systems.py` entirely (confirmed clean, `provenance_inventory --check` passes with
+    no diff) and moved the identical finding to a new standalone file,
+    `00_ARCHITECTURE/briefs/nirmana/sessions/D-L0-GG-FOLLOWUP_v1_0.md` — real, useful
+    documentation that touches no registered writer module, so it can never re-trigger this
+    class of problem. Committed + pushed (`b5fd8771e`); a fresh CI run started immediately,
+    in progress at cycle end (not yet confirmed green/`is:queued` — check first next cycle).
+  - **Generalizable lesson for future sessions**: ANY edit to a registered writer file — even a
+    comment/docstring, even one that changes zero executable logic — changes
+    `get_writer_source_hash()`'s output for that asset, which cascades into invalidating any
+    currently-accepted `asset_analysis_accepted`/`optimization_verdict_accepted` W2 evidence for
+    that asset (since the receipt base binds `writer_digest_sha256`). Documentation *about* a
+    writer belongs in a non-writer file, never in the writer's own docstring, whenever that
+    writer already has accepted W2 evidence pending a rebuild.
+  - `accepted_rebuild_observed` for `bg_dasha_systems` is still blocked on #2066 reaching
+    `is:queued` + actually deploying — nothing else changed from last cycle's plan (digests
+    already precomputed, see prior entry). `bg_yogas`/`bg_compendium_index` rebuilds still not
+    started.
