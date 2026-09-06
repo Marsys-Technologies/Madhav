@@ -3702,3 +3702,7 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** Deploy run `34043050211` progressing normally (Apply DB Migrations,
   Build & Deploy Sidecar, Build & Deploy Pipeline Job Image all `in_progress`, no failures). No
   open L0 PRs, no DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Deploy `34043050211` progress: Apply DB Migrations completed
+  success. Sidecar/Pipeline Job Image/Web still `in_progress`, no failures. No open L0 PRs, no
+  DIRTY/RED. 36/40 frozen unchanged.
