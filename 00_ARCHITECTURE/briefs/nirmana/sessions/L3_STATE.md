@@ -458,6 +458,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~23:0xZ — L3-W3 — One DIRTY-PR fix caught in the final sweep this cycle:
+  #1978 (a heartbeat PR from earlier in this run).** L3_STATE.md-only conflict (2
+  commits to rebase, first conflicted, second applied clean), resolved via the
+  established script, single surviving heading verified. No writer/generated files
+  touched. Force-pushed, re-armed auto-merge, confirmed `MERGEABLE`. Standing blockers
+  unchanged.
+
 - `2026-09-06T~22:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED (checked #2062/#1976's own CI runs
   weren't stuck — only ~2.5min in-progress, normal), `#1903`/`#2060` unchanged,
   `origin/main` tip unchanged, migration 731 still not deployed.` Nothing eligible.
