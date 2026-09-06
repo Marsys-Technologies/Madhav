@@ -457,6 +457,16 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:01Z (C8 v2.3 cycle 204) — **IDLE-OK, movement resumed after a 4-cycle
+  static stretch.** Investigated the static run: #1854 (position 1) had all 3 required
+  merge-group checks (TAP/EKV/CI-Ganga) complete SUCCESS by 01:01Z but the queue still
+  showed it AWAITING_CHECKS on first look — an immediate re-query moments later showed it
+  had advanced (#1854 gone, #1920 now position 1) — confirms this was normal completion
+  registration lag, not a real stall; considered filing adjudication but resolved before
+  needing to. **#1861 now position 2** (was 4) — very close to merging. #1844=57 (was 59),
+  #1901=83 (was 85). Both own PRs (#1826, #1844) still confirmed `isInMergeQueue: true`,
+  clean, no hygiene action needed; still no push (nothing new, #1826 still queued deep).
+  #1869 unchanged at 3 comments; #1856 still OPEN.
 - 2026-09-06T00:59Z (C8 v2.3 cycle 203) — **IDLE-OK, verified not stalled.** Queue positions
   static for 3 cycles running (#1861=4, #1844=59, #1901=85) — investigated: position-1 PR
   #1854's TAP + EKV merge-group checks both completed SUCCESS, only `CI — Ganga Quality
