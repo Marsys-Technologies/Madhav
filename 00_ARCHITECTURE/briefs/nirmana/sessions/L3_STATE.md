@@ -720,6 +720,28 @@ your layer close.
   file makes them worth watching together), and #1713's sidecar finding is now five
   cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
   next cycle regardless.
+- `2026-09-06T~14:0xZ — L3-W3 — PR hygiene: fully clean fleet sweep this cycle (36
+  PRs checked, zero DIRTY/UNMERGEABLE-in-queue — the biggest single improvement
+  since this session started; last cycle's 8-PR fix batch held). Queue itself
+  healthy (7 entries, all `AWAITING_CHECKS`/`QUEUED`). Re-checked #1713's
+  `amjis-sidecar` finding directly (`gcloud run services describe`, correct region
+  `asia-south1` this time — confirmed the earlier `us-central1` guess was wrong):
+  **still stuck, unchanged** — 100% traffic still on the same stale revision
+  (`80a9cd71e105`) while `latestReadyRevisionName` has advanced even further
+  (`475b5a8c3afa` now, was `93ba7b539a7b` three cycles ago). No response on the
+  issue thread yet. Correctly not re-posted (already on record) — but while
+  re-verifying, caught a real regression: the **Held-items table's row 1 had
+  reverted to blaming PR #1846 again**, even though a prior cycle (per this
+  session's own history) had corrected it to name the real sidecar blocker — that
+  fix evidently never survived a rebase/consolidation and the stale text was still
+  on `origin/main` (confirmed via `git show origin/main:...`, not just the local
+  branch). Re-fixed it properly this time, attached to #1903 (open, unlocked).
+  — blocked on: nothing new (the sidecar issue itself remains genuinely external,
+  outside this session's authority); next action: re-verify next cycle whether
+  THIS correction actually survives to `origin/main` this time (worth a direct
+  `git show origin/main:...` check before assuming it landed, given it silently
+  reverted once already), keep checking #1713 for a response, and resume normal
+  W3/prep work once hygiene stays this clean for a cycle or two.
 - `2026-09-06T~13:0xZ — L3-W3 — PR hygiene: the queue-cascade fully cleared (7 clean
   `QUEUED` entries, no blocker) — but the fleet sweep then found **15 PRs genuinely
   DIRTY outside the queue** (main had advanced with two more merges, #1913/#1926,
