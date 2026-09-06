@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — MILESTONE: #2004 (migration 700, bg_dasha_systems integrity_check_sql fix, D-L0-GG) MERGED to main — first genuine L0 migration merge of this queue-drain campaign. Verified live it has NOT yet deployed (old FULL-JOIN-scope bug + stale catalog_hash pin still active); will re-check before treating bg_dasha_systems as freeze-eligible. #2013/#2014 now at queue positions 7/8, #2016 at 29. 30/40 frozen holds.
+last_updated: 2026-09-06 — MILESTONE: all three campaign migration fixes now MERGED to main — #2004 (700, bg_dasha_systems), #2013 (701, bg_yogas), #2014 (702, bg_compendium_index). Verified live via mcp__postgres__query that none have deployed yet (all three still show pre-fix integrity_check_sql). Only #2016 (heartbeat consolidation) remains open, at queue position 21. Will re-check deployment before treating any of the three as W2-refresh/freeze-eligible. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2546,3 +2546,13 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** #2011 merged (L1, not L0's). `#2013` now at queue position 1 —
   literal front of the queue. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **MILESTONE: `#2013` + `#2014` BOTH MERGED** (`2026-09-06T08:16:08Z`) — migration
+  701 (`bg_yogas` join-scope fix, D-L0-KK) and migration 702 (`bg_compendium_index` content-hash
+  repin) are now both on `main`. All three of this campaign's original migration fixes
+  (700/701/702) are merged. **Verified live via `mcp__postgres__query`: none of the three have
+  deployed yet** — `bg_dasha_systems`, `bg_yogas`, and `bg_compendium_index` all still show their
+  pre-fix `integrity_check_sql` (old FULL-JOIN scope + stale hash pins for the first two; old
+  hashes for the third). Deploy lag confirmed consistent across all three — will re-check
+  periodically. Only `#2016` (heartbeat consolidation) remains open, at queue position 21. No
+  DIRTY, no RED. 30/40 frozen holds.
