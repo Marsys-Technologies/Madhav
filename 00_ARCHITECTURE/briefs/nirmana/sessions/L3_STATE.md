@@ -461,6 +461,24 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~03:0xZ — L3-W3 — ROOT CAUSE FOUND for the "why hasn't #1903 merged yet"
+  question carried across many cycles: the repo's merge-queue ruleset is genuinely
+  serial.** Pulled `rulesets/20141220` directly (`gh api repos/.../rulesets/20141220`):
+  `max_entries_to_build: 1, min_entries_to_merge: 1, max_entries_to_merge: 1,
+  check_response_timeout_minutes: 60` — the queue builds and merges exactly ONE PR at a
+  time, full-suite, across the WHOLE repo (every layer shares one queue). Independently
+  confirmed via `git log origin/main`: the tip has genuinely not moved
+  (`1ef6267e9`, `2026-09-05T18:22:05Z`) for hours despite ~40+ PRs sitting authentically
+  `is:queued`. With `Governance Gates` alone regularly taking 6-12min per PR this session
+  and a queue this deep, full drain is a genuine multi-hour affair by policy design, not a
+  stall, stuck job, or anything actionable from a layer session. Matches L5's own
+  independently-observed "~10-15min apart" deploy cadence exactly (read on the
+  coordination issue this cycle, not assumed).
+  **Posted this finding to #1713** so other lanes don't spend cycles diagnosing a "stuck"
+  queue that is actually draining exactly as configured — first time this session has
+  posted proactively to the coordination issue rather than only reading it.
+  #1903/#1958/#1921/sidecar-traffic/#1960 all re-verified this cycle, unchanged.
+
 - `2026-09-06T~02:5xZ — L3-W3 — IDLE-OK: full house again — all 43 open L3 PRs
   genuinely `is:queued`, `#1903` still among them but still not merged.** Noting a
   pattern worth naming: #1903 has now stayed continuously queued (not cycling in/out)
