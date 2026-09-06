@@ -380,6 +380,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:30:07Z` — cycle 498: **IDLE-OK.** Run 34038669312's sidecar image build still
+  `in_progress` (~10 min, matches expected ~19-20 min build time). Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:27:53Z` — cycle 497: **IDLE-OK, promising signal.** Run 34038669312's sidecar
   job: checkout succeeded and the "Build and push sidecar image" step has been running ~8 min
   without the instant `COPY` failure the bad backlog run hit — consistent with a checkout that has
