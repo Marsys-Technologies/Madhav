@@ -457,6 +457,22 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:35Z (C8 v2.3 cycle 420) — **#2086 RULED — the migration-number race is finally
+  closed for real.** Conductor's ruling (cycle 445): root cause was L5 falling back to "next free
+  number globally" instead of using its own granted range (`690-699`, only `690-694` used),
+  landing repeatedly inside L1's actively-churning `780-819` continuation block — not a tooling
+  gap, the range table itself IS the reservation mechanism, L5 just wasn't using it. Granted a
+  fresh continuation: **L5 range 820-839**. Immediately renumbered BOTH PRs into it: `#1826`'s
+  `mi_jivanaghatana` spec `813→820`, `#1844`'s `mi_vistara` spec `812→821` — both files' FIFTH
+  total number this session (`mi_jivanaghatana`: 806→809→811→813→**820**;
+  `mi_vistara`: 692→808→810→812→**821**), and per the ruling this should be the last one for either.
+  Same discipline both times: verified all three gates locally before pushing (`migration_number_
+  guard.ts` PASS, `migrate.ts` reconciled — confirmed via `_migrations_applied` tracker row, canary
+  test 3 passed), dequeued/force-pushed/re-armed, cross-checked the other PR unaffected. **Going
+  forward: any future L5 migration must be allocated from 820-839 first**, not "next free number
+  globally" — this is the concrete behavior change the ruling asks for, and it directly prevents a
+  sixth collision. File for another continuation via the same adjudication path once 820-839 gets
+  down to its last few numbers, same as L1/L2/L3 have done repeatedly this campaign.
 - 2026-09-06T12:30Z (C8 v2.3 cycle 419) — **Filed #2086: escalated the migration-number race as a
   structural, cross-cutting finding rather than continuing to fix it per-cycle forever.** PR
   hygiene clean, no new collision this cycle (main's migration tip unchanged at 811 — the one new
