@@ -4599,3 +4599,25 @@ pushed; `#1831` independently re-verified clean → next: confirm `#1808`'s CI g
 both `#1831`/`#1808` re-enter the merge queue; watch remaining 7 PRs continue advancing;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~09:10Z` — L4 — **CYCLE 227 (v2.3) — `#1831` confirmed re-queued (CLEAN, all
+checks pass); `#1808` still `BLOCKED` on its own fresh CI run from the cycle-226 fix, not an
+action item.**
+
+**PR hygiene:** `#1831` read `autoMergeRequest: null` / `mergeQueueEntry: null` first pass —
+a transient race, not a real unqueued state: re-running `gh pr merge --auto` returned
+"already queued to merge", and a follow-up GraphQL read confirmed `mergeQueueEntry` position
+128, `QUEUED`. `#1808` is `BLOCKED` with its post-fix CI (`Governance Gates`, `Unit Tests`,
+`Build Check`) still `pending` — genuinely in progress, no action needed this cycle. Remaining
+7 own PRs (`#1870` 103, `#1864` 92, `#1849` 27, `#1845` 28, `#1842` 18, `#1839` 6, `#1834` 2)
+all `QUEUED`, unchanged from last cycle. No DIRTY, no RED remaining.
+
+**Priorities 1-4:** one new `main` commit (`#1953`, L1 W3-21, not L4-relevant). No new
+adjudications name L4 (count unchanged at 16). E-gate still uncheckable, 217th consecutive
+cycle DB access down.
+
+CYCLE 227 L4: PR hygiene — `#1831` confirmed genuinely re-queued after a transient
+autoMergeRequest-null race; `#1808` still legitimately pending its post-fix CI run, not
+stalled; remaining 7 own PRs unchanged/queued → next: confirm `#1808` goes green and
+re-enters the queue; watch all 9 positions continue advancing; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
