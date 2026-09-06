@@ -1232,6 +1232,41 @@ class TestSpecialStates:
             subj = sut.PLANET_TO_SUBJECT.get(g["name"], g["name"].upper())
             assert subj in subjects
 
+    def test_is_vargottama_reads_ga_vargas_authority_not_the_old_navamsha_formula(self):
+        # F-A17: graha_special_state_rollup.is_vargottama used its own hardcoded
+        # navamsha-degree formula (nav_starts sign-cycling table) -- the same bug class as
+        # F-A15's original graha_vargottama_amplification_factor instance, never fixed here.
+        # Now reads ga_vargas' own D9 varga_vargottama_flag via the shared
+        # _get_varga_vargottama_flag helper. Mercury=True, everything else=False.
+        fake_conn = TestShaddBalaExtensions._VargottamaConn({"Mercury": True})
+        rows = sut._build_special_state_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=fake_conn,
+        )
+        rollup = {
+            r["fact_subject"]: r["fact_value_text"]
+            for r in rows
+            if r["fact_category"] == "graha_special_state_rollup" and r["fact_key"] == "is_vargottama"
+        }
+        assert rollup.get("MER") == "true", rollup
+        non_mercury = {subj: val for subj, val in rollup.items() if subj != "MER"}
+        assert non_mercury, "expected other classical grahas in the rollup"
+        assert set(non_mercury.values()) == {"false"}, non_mercury
+
+    def test_is_vargottama_is_honest_unavailable_without_conn(self):
+        # Without a conn, ga_vargas' own varga_vargottama_flag is unreachable -- the row must
+        # say "unavailable", never guess true/false (§N.8/B.10).
+        rows = sut._build_special_state_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rollup = [
+            r for r in rows
+            if r["fact_category"] == "graha_special_state_rollup" and r["fact_key"] == "is_vargottama"
+        ]
+        assert rollup, "graha_special_state_rollup.is_vargottama rows must still be produced"
+        for r in rollup:
+            assert r["fact_value_text"] == "unavailable", r
+
 
 # ── §Node Parashari Aspects ───────────────────────────────────────────────────
 
@@ -1366,12 +1401,17 @@ class TestVargaNodeRelationships:
             f"Mercury-Rahu conjunction missing. Subjects: {conj_subjects}"
 
     def test_rahu_ketu_in_vargottama_when_same_sign_as_d1(self):
-        # Rahu in Taurus in D1 (MOCK_CHART_OUTPUT). Make it Taurus in D9 too.
+        # F-A17: vargottama_per_varga now READS ga_vargas' own varga_vargottama_flag
+        # (chart_divisionals) instead of re-deriving it from chart_output's D1 sign — this fake
+        # conn feeds that read path directly (reuses TestShaddBalaExtensions' fixture, which
+        # already answers the (chart_id, ayanamsha_id, varga, graha) shaped query).
         vs = self._make_varga_state()
         vs["Rahu"] = {"sign": "Taurus", "sign_num": 2, "house": 2, "degree": 20.0}
+        fake_conn = TestShaddBalaExtensions._VargottamaConn({"Rahu": True})
         rows = sut._build_varga_relationship_rows(
             "D9", vs, MOCK_CHART_OUTPUT,
-            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=fake_conn,
         )
         vargottama_subjects = {r["fact_subject"] for r in rows
                                if r["fact_category"] == "vargottama_per_varga"}
@@ -1382,6 +1422,19 @@ class TestVargaNodeRelationships:
                         if r["fact_category"] == "vargottama_per_varga"
                         and r["fact_subject"] == "D9_RAH_MEAN")
         assert rahu_row["fact_value_text"] == "vargottama"
+
+    def test_vargottama_per_varga_is_honest_unavailable_without_conn(self):
+        # F-A17: without a conn, ga_vargas' own varga_vargottama_flag is unreachable — the row
+        # must say "unavailable", never guess True/False (§N.8/B.10).
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        vargottama_rows = [r for r in rows if r["fact_category"] == "vargottama_per_varga"]
+        assert vargottama_rows, "vargottama_per_varga rows must still be produced"
+        for r in vargottama_rows:
+            assert r["fact_value_text"] == "unavailable", r
+            assert r["fact_value_num"] is None, r
 
     def test_rahu_node_dignity_in_gemini_is_neutral(self):
         # L0 seal 2026-06-24: Rahu exaltation = Taurus (Parashari mainstream).
