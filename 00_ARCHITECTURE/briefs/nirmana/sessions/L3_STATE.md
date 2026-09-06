@@ -458,6 +458,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~18:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, nothing changed since last cycle.**
+  PR hygiene: #2062/#1890 both `BLOCKED`/`MERGEABLE` (expected pre-queue), all other 51 L3
+  PRs genuinely queued. Standing blockers re-verified: `#1903` and `#2060` (F-CONC-7
+  migration 731) both still genuinely `isInMergeQueue: true`, unmerged; migration 731
+  confirmed still not deployed (`_migrations_applied` has no `731_` row). `origin/main`'s
+  tip unchanged since last cycle (`6c7398224`). Coordination issue #1713 checked — no new
+  comments since last read. No new adjudication filings touch L3. N1/N2/`kala_now_get`/
+  moorti-admission unchanged — still correctly blocked.
+
 - `2026-09-06T~17:0xZ — L3-W3 — Four genuinely DIRTY/UNKNOWN-settling PRs this cycle,
   one a real ka_sangam-family conflict (#1890, N1 first step).** Opening sweep found
   #2062/#1970/#1966 transient `UNKNOWN` (settled clean on re-check, no action needed) and
