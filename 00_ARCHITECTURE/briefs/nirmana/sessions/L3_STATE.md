@@ -198,9 +198,17 @@ E-gate snapshot taken 2026-09-05 at W1 open. Re-run the C10 batch query every lo
 its W1-open snapshot) are now stale/resolved; corrected in place rather than left to accumulate
 silent drift (C9). Verified each against current `origin/main`/live DB rather than assumed.
 
+**Row 1 re-verified 2026-09-06T~10:5xZ** — its stated blocker was itself stale: `gh pr view
+1846` confirms MERGED 2026-09-05T17:39:13Z, long since deployed. The genuine current blocker
+(found two cycles ago, posted to #1713) is `amjis-sidecar`'s Cloud Run traffic being pinned to
+a stale revision (`amjis-sidecar-probe-80a9cd71e105-...`, predates PR #1846) — re-confirmed
+still stuck on the SAME revision this cycle (`gcloud run services describe amjis-sidecar`).
+Code and DB are both confirmed correct; this is purely an external deploy-pipeline blocker,
+not an L3 code problem, and outside this session's authority to fix directly.
+
 | item | blocked on | status |
 |---|---|---|
-| `ka_graha_sancara`'s W4 probe dispatch | PR #1846 (health_probe, deploy) | genuinely open — PR queued, not yet merged/deployed |
+| `ka_graha_sancara`'s W4 probe dispatch | `amjis-sidecar` Cloud Run traffic stuck on a stale pre-#1846 revision (posted to #1713, unresolved) | genuinely open — NOT PR #1846 (merged+deployed long ago); code+DB confirmed correct, purely an external deploy-pipeline blocker |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -531,6 +539,25 @@ your layer close.
   land, confirm whether #1839's L4-owned blocker has cleared on its own, and re-check
   #1713's `amjis-sidecar` finding (not re-verified this cycle — hygiene filled the
   bounded unit again).
+- `2026-09-06T~10:5xZ — L3-W3 — PR hygiene clean (15/15 L3 PRs, no DIRTY/UNMERGEABLE at
+  sweep time — Conductor's own fleet-sweep comment on #1713 independently confirmed the
+  same root cause for last cycle's #1929/#1917/#1913/#1903 batch: branched off a main
+  commit superseded by a fast merge run, not 4 independent conflicts).** Re-checked
+  #1713: `amjis-sidecar`'s Cloud Run traffic is STILL pinned to the same stale revision
+  two cycles later — no response/fix yet, correctly not re-posted (already on record).
+  **Refreshed the Held items table's stale row 1**: it blamed PR #1846 for
+  `ka_graha_sancara`'s W4 probe-dispatch block, but #1846 merged+deployed back on
+  2026-09-05T17:39:13Z — the table hadn't been updated since. Corrected to name the
+  real, current blocker (the sidecar traffic issue) instead of a resolved one, so a
+  future session reading this table isn't misled into re-investigating an already-closed
+  question.
+  N1's remaining chain (#1917/#1913/#1903/#1929, all fixed 2 cycles ago) progressing
+  normally through the queue — not yet merged, not stuck.
+  — blocked on: nothing new; next action: re-verify N1's chain merges and #1713 for a
+  response next cycle; no fresh bounded W3 unit was obviously ready this cycle beyond
+  verification/correction work, so this cycle's unit was the Held-items refresh above
+  (tier 2, completed-run verification, per the contract's priority order) rather than
+  inventing new work.
 - `2026-09-06T~10:4xZ — L3-W3 — F-L3-15 CLOSED completely (PR #2079): ka_dasha_kala
   gets a DB-free PROXY health_probe per D-CND-34 ruling (#2071).** All four L3
   service assets (ka_graha_sancara, ka_muhurta_seva, ka_tulana, ka_dasha_kala) now
