@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T05:19Z (C8 v2.3 cycle 295) — **IDLE-OK.** Both own PRs confirmed genuinely
+  queued (`isInMergeQueue: true`), clean. #1901=24 unchanged (short interval); #1844
+  still beyond top-100 (fresh re-arm from cycle 294). #1869 unchanged at 4 comments. 3
+  cycles since last push.
 - 2026-09-06T05:16Z (C8 v2.3 cycle 294) — **PR HYGIENE FIX: #1844 fell out of the queue,
   re-armed.** Found #1844 genuinely CLEAN-but-unqueued (`isInMergeQueue: false`,
   `autoMergeRequest` null/disarmed, `state: OPEN`, not merged) — presumably ejected by a
