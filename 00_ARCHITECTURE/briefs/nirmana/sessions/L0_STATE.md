@@ -3345,3 +3345,6 @@ see log). Still 35/40 until that's resolved.
   worth-escalating migrate.ts defect (§N.4/§N.8 territory: a migration job reporting success
   while silently not applying a file). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged; still
   not safe to re-dispatch `bg_parihara_rules`.
+
+- 2026-09-06 — **IDLE-OK.** `34033909025`'s `Apply DB Migrations` job still `in_progress`, no
+  change. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
