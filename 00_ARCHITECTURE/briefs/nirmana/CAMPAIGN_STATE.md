@@ -380,6 +380,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:48:29Z` — cycle 505: **ONE bounded unit: ruled #2113 (L1's cross-layer rebuild
+  decision for 8 tracked-red integrity conjuncts), verified against live `build_runs` rather than
+  assumed.** Queried `build_runs` directly for all three affected charts (`482012f1`/`1c826d5a`/
+  `cb73cd3d`) — no live/running row exists for any of them; the only non-terminal (`stopped`) rows
+  are weeks-old dead sessions. `482012f1` has been getting constant small `asset_set` rebuilds all
+  day with no failures, confirming the orchestrator's idempotency handles this traffic fine as
+  routine operation. No `NIRMANA_HOLD` active. **Ruled: in scope now** — the earlier #1770 CASCADE
+  caution is resolved, not a standing block, and per §N.5 leaving 8 known-fixed conjuncts red
+  indefinitely means downstream layers keep serving known-wrong L1 facts. Required one coordination
+  courtesy (heads-up to #1713 before triggering, not a blocking wait) and kept execution with L1
+  (owns the affected assets + migration range), same division-of-labor precedent as #1888/D-CND-29.
+  Fleet DIRTY: empty. Adjudication count 16 (new #2113 ruled same-cycle it was filed).
 - `2026-09-06T14:44:28Z` — cycle 504: **IDLE-OK, verified rather than assumed.** No own PRs. Fleet
   DIRTY: empty. All 15 open `nirmana-adjudication` issues checked — none new, none stale-and-
   unruled; spot-checked the ones with fewest Conductor touches (#1888: correctly scoped to L2's own
