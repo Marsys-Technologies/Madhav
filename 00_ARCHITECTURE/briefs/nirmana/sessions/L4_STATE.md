@@ -6160,3 +6160,23 @@ confirmed reached the queue head; remaining five legitimately pending fresh CI) 
 confirm `#1845` re-enters the queue and the other five go green; retry E-gate/dispatch
 dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~16:35Z` — L4 — **CYCLE 316 (v2.3) — `#1839`/`#1831`/`#1808` confirmed
+re-entered the queue. `#1834` read `CLEAN`-but-unqueued (a transient `mergeQueueEntry: null`
+race); re-running `gh pr merge --auto` confirmed already queued (position 15). `#1849` still
+at the queue head, ~7.6 min elapsed via merge-group run list — within normal range. This
+cycle's bounded unit of work: the `#1834` re-arm.**
+
+**PR hygiene:** `#1839`/`#1831`/`#1808` genuinely `QUEUED`. `#1834` confirmed genuinely
+queued after the transient-null read (`gh pr merge --auto` returned "already queued to
+merge"). `#1845`/`#1842` re-swept: only `pending` checks, none failed — legitimate
+in-progress CI. `#1849` confirmed genuinely mid-CI at ~7.6 min via `merge_group` run list.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+15). E-gate still uncheckable, 306th consecutive cycle DB access down.
+
+CYCLE 316 L4: PR hygiene — `#1834` confirmed genuinely queued after a transient
+mergeQueueEntry-null race (re-armed via `gh pr merge --auto`); remaining six own PRs
+unchanged/queued or legitimately pending fresh CI, nothing failed → next: watch `#1849`
+merge; confirm `#1845`/`#1842` go green; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
