@@ -7670,3 +7670,21 @@ than finding hidden work; documented the reusable connection recipe for future c
 next: with DB access now live, re-run the E-gate every cycle going forward (cheap, ~seconds)
 instead of assuming down; watch ancestor closure progress narrow across future cycles; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~14:28Z` — L4 — **CYCLE 392 (v2.3) — E-gate re-checked for real (proxy from
+cycle 391 still alive, `ps aux` confirmed). Unchanged: all 9 assets still
+`BLOCKED-ANCESTORS`, `ph_nimitta` canary still at 35 unfrozen ancestors — no movement since
+the last check a few minutes ago, as expected for campaign-wide ancestor closure over a
+short interval.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. No new adjudications name L4
+(count unchanged at 17). No `NIRMANA_HOLD` file present. E-gate genuinely checked (not
+assumed) — still BLOCKED for all 9 assets, no priority-1 dispatch work eligible.
+
+CYCLE 392 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked via live DB
+— unchanged, all 9 assets `BLOCKED-ANCESTORS`, canary `ph_nimitta` at 35 unfrozen ancestors;
+no new L4-relevant adjudications) → next: re-run the E-gate each cycle (now cheap and real)
+to catch the moment `ph_nimitta`'s ancestor count starts dropping; F1 (`ph_phaladesa` zero
+MCP consumers) remains the layer's one deferred code item.
