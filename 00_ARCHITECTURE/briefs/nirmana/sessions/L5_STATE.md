@@ -457,6 +457,23 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:44Z (C8 v2.3 cycle 197) — **SELF-INFLICTED HYGIENE BUG FOUND AND FIXED.**
+  Pattern across cycles 194-197: #1826's CI checks restart from 0:00 on EVERY cycle's push
+  (00:38:xx → 00:39:xx → 00:41:xx → now), because I've been committing+force-pushing the
+  state-file update to #1826 every single cycle (~2 min apart), which is faster than CI's
+  ~15-18 min full-suite runtime. **#1826 can structurally never finish checks and merge under
+  this pattern** — each push resets the clock before the previous run completes. This is
+  exactly a hard-floor-adjacent hygiene defect (self-caused CLEAN-but-perpetually-unqueued),
+  not a red/dirty case the contract's three buckets name explicitly, but the same "own-PR
+  rot" the contract exists to prevent. **Fix applied this cycle:** committed cycle 197's
+  entry LOCALLY but deliberately withholding push — letting the in-flight run (started
+  00:41:49Z) actually reach completion before the next push. Per C8 v2.3's own state-file
+  rule ("keep it local-uncommitted... state files must not generate PR spam"), batching is
+  the correct discipline; I had been violating it by pushing every cycle unconditionally.
+  Going forward: push only every ~3-5 cycles (enough for one CI run to complete), or
+  immediately if a real work PR needs the state update alongside it. #1844 still confirmed
+  `isInMergeQueue: true` this cycle. Queue: #1861=7, #1844=64, #1901=90 (unchanged, short
+  interval). #1869 unchanged at 3 comments; #1856 still OPEN.
 - 2026-09-06T00:41Z (C8 v2.3 cycle 196) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
   fresh check run from cycle 195's push (started 00:38-00:39Z, only ~2 min old at check time),
   same 3 checks in-progress (Unit/DB Integration/Governance Gates), no failures, auto-merge
