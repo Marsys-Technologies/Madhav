@@ -208,7 +208,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 
 | item | blocked on | status |
 |---|---|---|
-| `ka_graha_sancara`'s W4 probe dispatch | `amjis-sidecar` Cloud Run traffic stuck on a stale pre-#1846 revision (posted to #1713, unresolved) | genuinely open — NOT PR #1846 (merged+deployed long ago); code+DB confirmed correct, purely an external deploy-pipeline blocker |
+| `ka_graha_sancara`'s W4 probe dispatch | Root cause now KNOWN (#2096): the sidecar release-smoke gate correctly refuses traffic promotion because `_compute_live()`'s import of `platform/scripts/temporal/compute_transits` fails inside the sidecar's own Docker build context (`platform/scripts/` is outside it) | genuinely open — awaiting #2096's ruling (widen Docker context vs. vendor a local copy); not a code-correctness issue, a packaging one |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -469,6 +469,44 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~31:0xZ — L3-W3 — MAJOR FINDING: root-caused the `amjis-sidecar`
+  stuck-traffic mystery this session has been re-checking (and correctly not
+  re-posting) for 11+ cycles. Noticed one new comment on `#1713` this cycle
+  (L0, unrelated to sidecar directly) but it prompted a fresh check of comment
+  count, which led to finding an L0 session's own **new, directly relevant**
+  comment reporting `Build & Deploy Sidecar`'s release-smoke job failing on
+  `ka_graha_sancara` specifically. **This is not a pipeline stall — it's the
+  gate correctly, deterministically refusing to promote traffic on every
+  single deploy.** Confirmed via `gcloud logging read` on the
+  `amjis-sidecar-release-smoke` Cloud Run job (7 consecutive identical
+  failures across the last 24h) and by calling the still-live zero-traffic
+  candidate revision directly for the full diagnostic payload (not just the
+  smoke script's own discarded-detail summary): `ka_graha_sancara`'s live-
+  compute path fails with `compute_transits not importable from /scripts: No
+  module named 'temporal'`. Root cause verified by reading both the code and
+  the deploy config directly: `engine.py::_compute_live()` expects
+  `platform/scripts/temporal/compute_transits.py` (which genuinely exists and
+  works — reproduced the exact same call locally, correctly returns
+  Moon=Aquarius/9 grahas/all speeds present); but the sidecar's own Docker
+  build (`deploy.yml` line 634-635) scopes its context to
+  `platform/python-sidecar` only — `platform/scripts/` is a sibling directory
+  entirely outside that context, so it has **never been present in the
+  deployed sidecar image**, since before this session's very first sidecar
+  check. Every layer's sidecar-side merges since have built successfully but
+  never actually served traffic — the entire duration of this session's
+  "stuck sidecar" reports.
+  **Filed `#2096` rather than fixing unilaterally**: the two real fix options
+  (widen the Docker build context to repo root, matching `Dockerfile.pipeline`'s
+  own precedent — vs. vendor a local drift-guard-tested copy of the needed
+  ~259-line `compute_transits.py` logic, matching the #1852/D-CND-28 precedent
+  but at a materially larger scale than that precedent's own 1-line+6-entry-
+  matrix case) both touch shared CI/deploy infrastructure every layer depends
+  on — exactly the kind of shared-surface decision this session has learned
+  (the hard way, via `#2087`) not to make alone. Posted a correction to
+  `#1713` pointing at `#2096` rather than re-describing the finding there.
+  — blocked on: `#2096`'s ruling; next action: keep L3-only hygiene sweeps
+  going, watch for a ruling on `#2096`, implement whichever option is chosen
+  once ruled.
 - `2026-09-06T~30:0xZ — L3-W3 — IDLE-OK (verified): all 8 L3-owned PRs healthy,
   no `UNKNOWN` ambiguity this time (clean `BLOCKED`/`MERGEABLE` across the
   board). Merge queue has 5 entries — one `UNMERGEABLE` (`#1808`), checked its
