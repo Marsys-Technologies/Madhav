@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.4-DRAFT"
+version: "0.5-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -258,15 +258,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
   W5 pass.
 
 **To L1's own future work (does NOT need #2113 — genuinely unheld, highest-priority open item):**
-- **F-B32/F-B33 real fix** (reconfirmed open cycle 146, §2): re-derive
-  `coverage_matrix.ts`'s `CHART_FACTS_CATEGORIES` against the live 223-category `chart_facts`
-  universe (was 169 at cycle 146; drift is monotonically growing as writers add categories, so
-  re-checking the live count at fix-time rather than trusting this report's 223 is required), and
-  either implement `platform/scripts/census/schema_map_alias_coverage_check.ts` for real (the
-  file `concept_aliases.ts:14` already claims exists) or correct that docstring to stop citing a
-  CI check that was never built. Not attempted cycle 146 — scoped as substantial (a real category
-  audit + either a new CI gate or a documentation correction with its own review), not a
-  single-cycle bounded unit.
+- **F-B33 — CLOSED cycle 147** (PR #2191, queued): `concept_aliases.ts`'s docstring no longer
+  claims `platform/scripts/census/schema_map_alias_coverage_check.ts` is a real, running CI
+  check — corrected to state honestly that no such gate exists yet. This closes the
+  false-citation half; it does not build the check itself (see F-B32 below, which the check
+  would need to share a live-category derivation with anyway).
+- **F-B32 — still OPEN**: re-derive `coverage_matrix.ts`'s `CHART_FACTS_CATEGORIES` against the
+  live `chart_facts` universe (223 at cycle 146; drift is monotonically growing as writers add
+  categories, so re-checking the live count at fix-time rather than trusting this report's 223 is
+  required). Once that re-derivation exists, a real CI check (the one F-B33's docstring used to
+  falsely claim) becomes buildable on top of it — building the check before settling the count
+  would just inherit the same staleness. Not attempted cycle 146/147 — scoped as substantial (a
+  real category audit against a live, still-growing count), not a single-cycle bounded unit.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -277,8 +280,8 @@ awaits either a dedicated prep cycle or genuine W6 close.
 
 ## §6 — OPEN
 
-Per-finding disposition table (§2) · cost actuals (§4) · **F-B32/F-B33 real fix (§5 — reconfirmed
-open cycle 146, unheld, does not need #2113)** · W4 execution (blocked, #2113) · W5
+Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
+#2191 cycle 147; F-B32 itself still open, unheld, does not need #2113)** · W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.

@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 146; began the 139-row disposition-table prep item, and while reconstructing MUST-tier statuses caught that cycle 125's "MUST tier fully closed" claim was WRONG for one id-group (F-B32/F-B33) -- independently re-verified LIVE that it is still genuinely open (coverage_matrix.ts still 169 hand-maintained categories vs. live chart_facts now at 223, up from 219 at original measurement; concept_aliases.ts:14 still cites a CI check file, schema_map_alias_coverage_check.ts, that still does not exist anywhere in the repo). Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, version 0.2-DRAFT->0.4-DRAFT) rather than silently propagating the wrong "closed" claim forward. Did not attempt the real fix this cycle (re-deriving the category list + either building the cited CI check or correcting the docstring) -- too large for one bounded unit; recorded as the new highest-priority unheld W3 item. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 147; closed the F-B33 half of last cycle's reconfirmed-open finding: concept_aliases.ts's docstring no longer claims a CI check (schema_map_alias_coverage_check.ts) that does not exist -- corrected to state the honest current reality instead (PR #2191, queued). F-B32 (coverage_matrix.ts's stale 169-vs-223 category list) remains open -- deliberately not attempted this cycle, since a real fix needs to settle the live-category-count question once, and doing that properly is its own bounded unit. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8296,3 +8296,26 @@ record — they are the only entries in this table with a real wall-clock behind
   real fix is now the highest-priority unheld W3 item (does not need #2113); the 139-row
   disposition table itself remains open pending either a dedicated future cycle or #2180 staying
   quiet long enough to justify one; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T1xZ -- CYCLE 147 (C8 v2.3). PR hygiene: `#2185` genuinely `is:queued` (GraphQL
+  confirmed) -- no action needed. `#2178` `BLOCKED`/`MERGEABLE`, autoMergeRequest armed, only
+  `Unit Tests` + `Governance Gates` still `pending`, zero `fail` -- same already-diagnosed mid-CI
+  pattern. Nothing DIRTY/RED/unqueued-but-clean. #2113/#2180: re-checked comment counts/timestamps,
+  identical to cycle 146 -- still no reply from either.
+  Picked the F-B32/F-B33 real fix (flagged cycle 146 as the new highest-priority unheld W3 item)
+  and split it: F-B33's half (the false CI-check citation) is a clean, small, low-risk doc-only
+  correction; F-B32's half (re-deriving 169-vs-223 categories) is a real audit that deserves its
+  own bounded unit rather than being rushed. Did F-B33 this cycle: corrected
+  `concept_aliases.ts`'s docstring (lines 12-16) to stop claiming
+  `platform/scripts/census/schema_map_alias_coverage_check.ts` is a real, running CI check --
+  it never existed (re-confirmed via direct path check + repo-wide grep for `alias_coverage`,
+  same result as cycle 146). New docstring states the honest current reality (no gate exists; a
+  category added without an alias degrades `concept_locate` silently today) and points to
+  `L1_W6_CLOSE_REPORT_v1_0.md` §5/§6 for the still-open real fix. Verified no test depended on the
+  old text (grep clean). Branched fresh off origin/main (`codex/nirmana-l1-f-b33-docstring-fix`),
+  committed, rebased clean (origin/main had advanced 15 commits, zero conflicts since this touches
+  only one file no one else is editing), pushed, opened PR #2191, queued (`gh pr merge --auto`),
+  confirmed `autoMergeRequest` armed. CYCLE 147 L1: PR hygiene clean; closed F-B33's honest-doc
+  half of last cycle's reconfirmed-open finding (PR #2191, queued) -- next: F-B32's own half
+  (re-deriving `coverage_matrix.ts`'s category list against the live, still-growing count) is now
+  the standing highest-priority unheld W3 item; keep re-checking #2113/#2180 every cycle
+  regardless.
