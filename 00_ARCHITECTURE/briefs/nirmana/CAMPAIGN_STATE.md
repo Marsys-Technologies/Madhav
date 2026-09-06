@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T19:31:59Z` — cycle 617: **IDLE-OK.** Own PR #2161: still pending, normal. Fleet
+  DIRTY: empty (#2132 cleared). No new `nirmana-adjudication` issues (20).
 - `2026-09-06T19:29:18Z` — cycle 616: **ONE bounded unit: fleet sweep nudge on #2132** (L1's
   test-coverage fix), ~14 min stale, first real sighting for this instance. Own PR #2161: CI
   still pending, normal. No new `nirmana-adjudication` issues (20).
