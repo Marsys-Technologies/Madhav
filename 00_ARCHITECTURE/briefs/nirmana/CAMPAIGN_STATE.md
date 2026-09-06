@@ -380,6 +380,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:57:16Z` — cycle 508: **ONE bounded unit: fleet sweep nudge on #2112** (L1's
+  F-A26 fix PR, the one #2113 references) — new to the DIRTY list, ~19 min/~9 cycles old, first
+  sighting. Posted the standard nudge naming the fault (real content, needs a rebase before next
+  queue turn). No new `nirmana-adjudication` issues (16). No own PRs.
 - `2026-09-06T14:54:46Z` — cycle 507: **ONE bounded unit: Step 3.5 fleet status post to #1713**
   (overdue — last one was ~3h/~80 cycles ago). Gathered live: frozen 38/128 (29.7%, via
   `asset_frozen` event_type in `nirmana_evidence.nirmana_elevation_campaign_events`, distinct
