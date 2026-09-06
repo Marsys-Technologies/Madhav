@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 99; corrected 5 stale "MUST" asset-table markers (all already writer-fixed: F-A1/F-A3, F-B24, F-C8, F-E5, F-E16); filed #2113 (cross-layer adjudication on whether to trigger a chart rebuild to clear the 8 now-writer-fixed tracked-red conjuncts)
+last_updated: 2026-09-06 — C8 v2.3 cycle 100; #2113 RULED in-scope; attempted the ga_structural/ga_condition rebuild on all 3 charts, blocked by a NEW campaign-wide `asset_freshness` gate (0 L1 assets ever populated) unrelated to the original ask — no data touched, production metadata restored, finding posted back to #2113
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -6683,3 +6683,44 @@ L1 must satisfy rather than a feature it consumes.
   unilaterally -- next: continue other L1 W3 work while #2113 is pending, or re-verify all 19
   assets' summary-table dispositions are current (this cycle found 5 stale in one pass; there may
   be more, though a full sweep would be a larger, separately-scoped hygiene task).
+- 2026-09-06T20:2xZ -- CYCLE 100 (C8 v2.3). PR hygiene: #2109 confirmed genuinely `is:queued`
+  (and subsequently merged mid-cycle); #2112/#1898 both `is:queued`; #2110 showed transient
+  UNKNOWN mergeable/mergeStateStatus with only IN_PROGRESS checks (the familiar D-L1-103
+  staleness, autoMergeRequest still armed) -- nothing DIRTY/RED/unqueued-but-clean. **#2113
+  RULED (Conductor)**: investigated live (no active build_runs on any of the three charts,
+  `482012f1` getting routine `asset_set` traffic all day with no failures), ruled IN SCOPE NOW
+  per §N.5 -- one coordination courtesy (heads-up on #1713, not a blocking gate), execution stays
+  with L1. Posted the heads-up naming all three charts + both assets. Unit of work: attempted the
+  rebuild. Wrote a proper frozen-run-manifest dispatch (queried `asset_registry` live for scope/
+  depends_on/natural_key_partition/has_cowriters per asset, `nirmana-writer-digests.json` for
+  expected_code_digest, digest computed via `runner._canonical_manifest_digest` directly so it's
+  guaranteed self-consistent on read) after a first naive attempt (bare `plan`/no
+  `plan_manifest`) correctly failed fast with zero data touched -- confirmed via
+  `\d asset_throughput`/`\d build_runs` that the manifest/digest columns are a newer requirement
+  the older `rebuild_el18_manglik_ga_structural.py` template predates. **All three properly-
+  manifested attempts STILL failed** -- not on anything F-A14-related, but on a genuinely NEW
+  blocker: `run_asset`'s writer-entry DEP-ASSERT check (asset_runner.py's `deps_unsatisfied`)
+  gates on `asset_freshness.freshness_state == 'fresh'`, SEPARATELY from `asset_throughput.state`
+  (which was correctly `'lit'` for every declared dependency on every chart -- verified directly,
+  ruling out the D-1.6-class "state says not-lit but data is present" anomaly the error's own
+  diagnostic text suggested). **`asset_freshness` holds exactly 35 rows total, all `bg_*` (L0)
+  plus `mi_vistara`/`mi_jivanaghatana` (L5) -- the exact set touched by today's live
+  `nirmana-elevation:t0-2026-09-01-...` wave dispatches. Zero L1 assets have EVER had a freshness
+  row.** This is a campaign-wide gate, not specific to this rebuild -- it would block ANY L1
+  asset_set rebuild attempted this way, for any L1 session, right now. Did NOT attempt a
+  workaround (backfilling `asset_freshness` rows myself would be the exact unearned-signal
+  antipattern the campaign forbids) -- restored `asset_throughput` for `ga_structural`/
+  `ga_condition` on all three charts back to its EXACT pre-attempt state+rows_written after
+  confirming `chart_facts`/`ga_condition_composite` row counts were genuinely untouched (writer
+  never executed on any of the three blocked attempts -- confirmed via direct row-count query
+  before and after). Deleted the local rebuild script (untracked, non-functional until the
+  freshness gate is addressed) rather than leave a dangling non-working artifact in the tree.
+  Posted the full finding back to #2113, asking whether `asset_freshness` needs an L1-side
+  bootstrap/backfill or whether this is a known gap already being worked. `provenance_inventory
+  --check` and the L1 pin slice both confirmed clean (no writer touched this cycle). CYCLE 100
+  L1: PR hygiene clean, executed #2113's ruling as instructed and hit a genuine, campaign-wide,
+  previously-undiscovered blocker (the `asset_freshness` gate) one layer deeper than the ruling's
+  own investigation reached -- decided NOT to force past it, left production exactly as found,
+  escalated with full diagnostic detail rather than guessing at a fix -- next: continue other L1
+  W3 work while #2113's follow-up is pending; the chart rebuild itself remains blocked
+  campaign-wide until `asset_freshness` gets an L1 answer.
