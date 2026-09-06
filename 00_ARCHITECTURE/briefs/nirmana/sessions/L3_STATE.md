@@ -489,6 +489,32 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~88:0xZ — L3-W4 — PR hygiene: `#2079` MERGED** (ka_dasha_kala's
+  DB-free proxy health_probe, F-L3-15 fully closed 4/4). Its merge left this
+  session's own `#2147`/`#2149` (state-only heartbeat PRs) genuinely `DIRTY`/
+  `CONFLICTING` — both prepend to the SAME `L3_STATE.md` Heartbeat section
+  `#2079`'s own branch history had been carrying, so once it landed on `main`
+  both trailing PRs collided there. Fixed at root (rebase, not force-merge):
+  `#2147` rebased clean (a straightforward "HEAD's newer block flows into
+  mine" prepend conflict, no data lost — verified via `git diff origin/main
+  | grep '^-'` showing zero real line removals, only conflict-marker noise);
+  `#2149` (2 local commits) rebased the same way, same pattern twice. Also
+  discovered `#2079`'s own branch had accumulated a long run of IDLE-OK
+  entries (`~75:0xZ` through `~87:0xZ`) documenting the queue-position/
+  migration-collision saga in far more granular detail than this file's
+  visible history showed before now — folded in intact, nothing summarized
+  away. Both PRs re-verified `mergeable: MERGEABLE`, 0 CI failures, `auto
+  MergeRequest` still armed. `#2065` back to genuinely `isInMergeQueue: true`
+  (position 2, healthy not-yet-tried). Checked whether `ka_dasha_kala`'s
+  health_probe is live yet: **not yet** — `asset_registry.health_probe IS
+  NULL` still, on the shared Cloud SQL proxy; a fresh "Deploy to Cloud Run"
+  run started `18:27:06Z`, minutes after the merge, so the migration is
+  presumably mid-deploy, not stalled. Same for `ka_muhurta_seva` (pending
+  `#2065`). — blocked on: the deploy finishing (external, not this session's
+  to force) and `#2065` merging; next action: once both land and deploy,
+  `ka_dasha_kala`'s and `ka_muhurta_seva`'s W2 acceptance become the next
+  genuine W4-path items — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~87:0xZ — L3-W4 — IDLE-OK (verified, deeper check): `#2070`
   stuck at queue position 1 for 2 full cycles prompted a closer look —
   searched the last 30 workflow runs for `#2070`'s own `gh-readonly-queue`
