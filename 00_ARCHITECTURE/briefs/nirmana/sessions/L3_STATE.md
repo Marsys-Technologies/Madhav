@@ -473,6 +473,33 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~48:0xZ — L3-W3 — PR hygiene: found and fixed THREE separate,
+  genuine migration-number collisions across the 3 F-L3-15 sibling PRs
+  (`#2079`/`#2070`/`#2065`), each independently caught by `Unit Tests`'
+  E2 gate going RED after main advanced further (or, for `#2065`, a
+  self-inflicted same-branch collision with its own already-merged N5
+  predecessor).** `#2079`: 811 collided with L1's already-merged
+  `811_..._lordinhouse.sql` — renumbered to 841 (last cycle's fix), but its
+  own digest-freshness check was missed in that same pass — caught THIS
+  cycle and regenerated separately. `#2070`: 810 (itself already a same-
+  session renumber from 764) collided with L1's already-merged
+  `810_..._houcompstrength.sql` — renumbered to 842, deliberately skipping
+  the guard's own suggested 841 since `#2079` had already claimed it this
+  cycle (avoids the two PRs colliding with EACH OTHER once both land, a
+  failure mode the guard itself can't see since it only checks one branch
+  at a time). `#2065`: its own new file collided with its own pre-existing
+  N5 file at 676 — renumbered to 843, again skipping 841/842 for the same
+  sibling-collision-avoidance reason. All three: header comment + docstring
+  + test-file path references updated, `migration_number_guard.ts` re-run
+  clean, tests re-pass (5/28/47), pushed. `#1929`/`#1903` had no new
+  failures, just still-building CI. All 5 L3-owned PRs confirmed
+  `MERGEABLE`, none queued yet (CI still running post-push, expected). —
+  blocked on: nothing new; next action: watch all 5 actually queue/merge
+  next cycle (particularly confirm no FOURTH collision surfaces once these
+  land in sequence — deliberately serialized 841/842/843 to prevent that,
+  but only cross-checked against each other, not exhaustively simulated),
+  keep checking `#2096` for Conductor's live-GREEN confirmation and the
+  sidecar's actual serving revision.
 - `2026-09-06T~47:0xZ — L3-W3 — SECOND-ORDER DEPLOY BUG found and diagnosed (not
   a regression in `#2104`).** After `#2104` merged, the very next `Deploy to
   Cloud Run` run (34038183719, fired 20s later) FAILED with `COPY requirements.txt
