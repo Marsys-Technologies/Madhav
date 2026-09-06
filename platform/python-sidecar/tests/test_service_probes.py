@@ -106,6 +106,20 @@ _DASHA_KALA_SPEC = {
     ],
 }
 
+_MUHURTA_SEVA_SPEC = {
+    "probe_type": "muhurta_seva_forensic",
+    "forensic_date": "1984-02-05",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset_minutes": 330,
+    "forensic_event": "vivah",
+    "forensic_birth_nakshatra_id": 25,
+    "forensic_expected_tithi": "Shukla Tritiya",
+    "forensic_expected_nakshatra": "Purva Bhadrapada",
+    "forensic_expected_score_with_native": 33.0,
+    "forensic_expected_score_without_native": 28.000000000000004,
+}
+
 _EPHEMERIS_CORPUS_FILES = tuple(_EPHEMERIS_SPEC["ephemeris_file_sha256"])
 _EPHEMERIS_CORPUS_PATH = pathlib.Path(os.environ.get("SWE_EPHE_PATH", "/app/ephe"))
 _HAS_PINNED_EPHEMERIS_CORPUS = all(
@@ -124,6 +138,8 @@ def _probe(kind: str) -> dict:
         spec = _TULANA_SPEC
     elif kind == "dasha_kala_proxy_integrity":
         spec = _DASHA_KALA_SPEC
+    elif kind == "muhurta_seva_forensic":
+        spec = _MUHURTA_SEVA_SPEC
     else:
         spec = {"probe_type": kind}
     return sp.run_health_probe("bg_x", spec)
@@ -531,3 +547,68 @@ def test_dasha_kala_probe_detects_a_renamed_system(monkeypatch):
     res = sp.run_health_probe("ka_dasha_kala", _DASHA_KALA_SPEC)
     assert res["status"] != "GREEN"
     assert _check(res, "seven_system_constant_set_intact")["passed"] is False
+
+
+# ── ka_muhurta_seva probe (NIRMĀṆA L3-W3, F-L3-15 next slice) ────────────────
+
+def test_muhurta_seva_probe_returns_green():
+    res = _probe("muhurta_seva_forensic")
+    assert res["status"] == "GREEN", (
+        f"got {res['status']}: {res['message']}"
+    )
+
+
+def test_muhurta_seva_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("ka_muhurta_seva", {"probe_type": "muhurta_seva_forensic"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_muhurta_seva_probe_rejects_an_unsupported_event():
+    wrong = dict(_MUHURTA_SEVA_SPEC, forensic_event="not_a_real_event")
+    res = sp.run_health_probe("ka_muhurta_seva", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_event_supported")["passed"] is False
+
+
+def test_muhurta_seva_probe_fails_on_wrong_expected_panchang_anga():
+    """CAN-FAIL proof: a wrong FORENSIC expectation must not be swallowed."""
+    wrong = dict(_MUHURTA_SEVA_SPEC, forensic_expected_nakshatra="Rohini")
+    res = sp.run_health_probe("ka_muhurta_seva", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_panchang_smoke")["passed"] is False
+
+
+def test_muhurta_seva_probe_fails_on_wrong_expected_score():
+    """CAN-FAIL proof: a wrong pinned score must not be swallowed."""
+    wrong = dict(_MUHURTA_SEVA_SPEC, forensic_expected_score_with_native=99.0)
+    res = sp.run_health_probe("ka_muhurta_seva", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_native_overlay_activates")["passed"] is False
+
+
+def test_muhurta_seva_probe_detects_a_silently_ignored_native_chart(monkeypatch):
+    """The 'un-floor' contract, mirroring the writer's own docstring claim: if
+    score_muhurat ever stopped reading native_chart.birth_nakshatra_id, both
+    scores would collapse to the same value — this must be caught, not just a
+    bare not-None check on the native_chart argument."""
+    from pipeline.orchestrator import service_probes as module
+    import muhurat.finder as finder_module
+
+    real_score_muhurat = finder_module.score_muhurat
+
+    def ignoring_native_chart(panchang, event, weights=None, native_chart=None):
+        return real_score_muhurat(panchang, event, weights=weights, native_chart=None)
+
+    monkeypatch.setattr(finder_module, "score_muhurat", ignoring_native_chart)
+    res = module.run_health_probe("ka_muhurta_seva", _MUHURTA_SEVA_SPEC)
+    assert res["status"] != "GREEN"
+    check = _check(res, "forensic_native_overlay_activates")
+    assert check["passed"] is False
+
+
+def test_muhurta_seva_probe_rejects_out_of_range_birth_nakshatra_id():
+    wrong = dict(_MUHURTA_SEVA_SPEC, forensic_birth_nakshatra_id=28)
+    res = sp.run_health_probe("ka_muhurta_seva", wrong)
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False

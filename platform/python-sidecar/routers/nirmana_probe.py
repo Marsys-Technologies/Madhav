@@ -23,6 +23,7 @@ _ASSET_PROBE_TYPES = {
     "ka_graha_sancara": "graha_sancara_forensic",
     "ka_tulana": "tulana_ranking_forensic",
     "ka_dasha_kala": "dasha_kala_proxy_integrity",
+    "ka_muhurta_seva": "muhurta_seva_forensic",
 }
 
 

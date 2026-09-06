@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 127; adjudication #2156 (migration-range encroachment) RULED and CLOSED -- no L1 action required, L3's 848-850 recorded as a permanent authorized exception, L1's own next free number confirmed 852. Updated the top-of-file migration-range tracking block (stale since cycle 86/819) to reflect the full 840-859 grant + the #2156 ruling. #2113/#2122/#2123 all unchanged
+last_updated: 2026-09-07 — C8 v2.3 cycle 128; wrote and shipped `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only prep item running all 19 ga_* integrity_check_sql contracts live: 15 PASS, 4 expected FAIL (ga_yoga F-A16, ga_structural's 7 tracked-red conjuncts, ga_condition F-C8, ga_vargas F-A1 -- all pre-existing writer-fixed defects awaiting the blocked #2113 rebuild, no new findings). #2113/#2122 unchanged
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7611,3 +7611,49 @@ L1 must satisfy rather than a feature it consumes.
   confirmed already-actioned) -- only #2113 (W4 gate) and #2122 (L0's PR #2153, still open)
   remain genuinely open; re-check both next cycle before falling back to the W3 snapshot's own
   suggestion (pre-writing W5 verification scripts) if neither has moved.
+- 2026-09-07T01:1xZ -- CYCLE 128 (C8 v2.3). PR hygiene: #2157/#2149 genuinely `is:queued`;
+  #2132 mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean (it DID go DIRTY later
+  in this same cycle, once main advanced further while this state edit was in flight -- see the
+  merge-conflict resolution below, done as part of this same cycle's own push, not carried
+  forward). Re-checked the 2 remaining tracked blockers: #2113 unchanged (still the same
+  15:00:13Z comment); #2153 (L0's escalation fix for #2122) still OPEN, not merged. Neither
+  moved, so per cycle 127's own explicit "next" pointer and `SESSION_CHARTER_V21.md`'s priority-5
+  authorization ("blocked-item deepening: pre-write W5 verification scripts"), did exactly that.
+  Read the W5 spec (charter: "scripted mechanical checks + fresh-context verification subagent
+  -> verifier-identity capsule") and the existing shared campaign tooling
+  (`platform/scripts/nirmana/README.md`, `egate.sql`, `capsule_audit.sql`, `cascade_check.sql`)
+  before writing anything, to avoid duplicating Conductor-owned infrastructure. Confirmed live
+  that all 19 `ga_*` assets' `integrity_check_sql` share one uniform shape (`SELECT ... AS
+  integrity_passed`, no `$1` parameter) -- a safe, mechanical, read-only dry run is directly
+  runnable today, no rebuild needed. Wrote `platform/scripts/nirmana/l1_integrity_check_dry_run.sql`
+  (matching the directory's plain-`.sql`-with-`\echo` convention, a session-local TEMP-table
+  scratch pattern per `cascade_check.sql`'s own documented autocommit/`ON COMMIT DROP` pitfall),
+  ran it live: 15 PASS, 4 FAIL (ga_yoga, ga_structural, ga_condition, ga_vargas). Did NOT stop at
+  "script ran" -- cross-checked every FAIL against this file's own history before shipping:
+  ga_yoga=F-A16 (PR #1979, cycle 41, "will clear once chart rebuilds"), ga_structural=seven
+  tracked-red conjuncts (F-A15/F-A17/F-157/F-A18/F-A24/F-A25/F-A26, same disposition),
+  ga_condition=F-C8 (fixed at the writer level, conjunct (a) genuinely red on already-built
+  data), ga_vargas=F-A1 (D1-authority mismatch, precisely quantified cycle 22, same rebuild-
+  gated disposition) -- all four pre-existing and already tracked, zero new defects. Updated the
+  script's own header comment to document all four expected FAILs explicitly (not just the one
+  first spotted), so a future reader doesn't have to re-derive this cross-check. Deliberately
+  scoped the script to stop at the mechanical-check half of W5 -- did NOT attempt capsule
+  minting / `nrec --as verifier integrity_verified` (exact SHA256 digest computation against a
+  strict Zod schema, real side effects on shared identity-split-enforced infrastructure) --
+  correctly a deliberate W5-time action for a session with a real completed build to certify,
+  not background prep. Committed on a fresh branch off `origin/main`
+  (`codex/nirmana-l1-w3-prep-integrity-dry-run`), opened PR #2163, armed auto-merge, confirmed
+  genuine CI dispatch (real run IDs, mixed pending/pass/skipping, not a stub). While finishing
+  this state update, `origin/main` advanced again (a queued PR merged), turning PR #2132 DIRTY
+  mid-cycle -- resolved via `git merge origin/main --no-edit` right here, both conflicts in the
+  now-familiar shape (origin/main carrying a stale, older snapshot of this same file's tail --
+  cycle 123's `last_updated` line and a fully-missing cycles-124-127 heartbeat block -- because
+  a queued state-PR merge landed out of order relative to this branch's own more-advanced local
+  history); resolved by keeping HEAD's more-current content both times. CYCLE
+  128 L1: PR hygiene clean throughout (one in-flight DIRTY resolved as part of this same cycle's
+  own state push, not carried to next cycle), shipped a genuinely useful, live-verified W5 prep
+  script (PR #2163) confirming zero new defects across all 19 assets -- next: re-check #2113/
+  #2153 again; if still stuck, either extend the dry-run script to cover a couple of non-ga_*
+  sanity checks it could reasonably also report on, or continue the "pre-write W5" cadence with
+  a second concrete prep artifact (e.g. drafting the close-report section per charter priority-5's
+  other named option) once this one's value is confirmed unique and not redundant.

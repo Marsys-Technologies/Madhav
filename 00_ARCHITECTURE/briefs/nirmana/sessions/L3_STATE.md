@@ -489,6 +489,153 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~93:0xZ — L3-W4 — PR hygiene: `#2149` went genuinely `DIRTY`
+  (caught, not assumed clean)** — the SAME `L3_STATE.md` Heartbeat-prepend
+  collision hit a third time this saga, this time between `#2149`'s own
+  accumulated local-then-pushed entries and `#2065`'s heartbeat content that
+  had landed via `#2147`'s merge. Fixed via the same rebase pattern (7
+  commits this time — all of `#2149`'s held-local heartbeat history);
+  every conflict was the same trivial "HEAD's block flows into theirs, no
+  data lost" prepend shape, verified via `git diff --stat` showing pure
+  additions each time and a final zero-marker grep. **Genuinely new finding
+  this cycle, not just hygiene**: `ka_dasha_kala.health_probe` is now LIVE on
+  the shared Cloud SQL proxy (`#2079`'s migration 848 deployed) — F-L3-15's
+  probe infrastructure is now 3/4 deployed (`ka_graha_sancara`, `ka_tulana`,
+  `ka_dasha_kala`; `ka_muhurta_seva` pending `#2065`). **Corrects the
+  `egate.sql` "oddity" flagged 2 cycles ago as a likely query bug**: re-ran
+  `egate.sql` and found `ka_dasha_kala` still reads `kind=(data)`/
+  `BLOCKED-ANCESTORS` (`ga_dashas`, `ga_positions` unfrozen) even with its
+  probe live — traced this to the REGISTRY's own declared `depends_on` for
+  this asset, which genuinely includes `ga_dashas`/`ga_positions` (the real
+  DATA-writer dependency `KaDashaKalaService`/`tree_walk` actually reads),
+  unlike the other three service assets' near-trivial dependencies (frozen
+  `bg_panchanga`/`bg_ephemeris` only). This is NOT a query bug — it is the
+  E-gate correctly refusing full `asset_frozen` dispatch for `ka_dasha_kala`
+  despite its probe being runnable, because D-CND-34's DB-free PROXY probe
+  deliberately does NOT verify the live-DB behavior the ancestor-freeze gate
+  protects; `probe_accepted` could in principle run today, but `asset_frozen`
+  genuinely cannot until `ga_dashas`/`ga_positions` freeze, same long-standing
+  L1 blocker as most of L3. No premature dispatch attempted. — blocked on:
+  `ga_dashas`/`ga_positions` freeze (for `ka_dasha_kala`'s full W4) and
+  `#2065` merging+deploying (for `ka_muhurta_seva`'s route to exist at all);
+  next action: re-verify `#2149` stays clean, watch `#2065` merge, and
+  consider whether `ka_dasha_kala`'s `probe_accepted` alone (without
+  `asset_frozen`) is worth recording now vs. waiting — not decided this
+  cycle, flagged for the next one.
+- `2026-09-06T~92:0xZ — L3-W4 — PR hygiene: `#2147` MERGED for real** (its
+  own `L3_STATE.md` heartbeat content now landed on `main`). Checked `#2149`
+  for the same post-merge DIRTY risk that hit `#2065` two cycles ago (same
+  file, same section) — confirmed still genuinely `isInMergeQueue: true`
+  (position 2, `UNMERGEABLE` not-yet-tried placeholder) rather than DIRTY, so
+  no fix needed this time; GitHub's own queue re-validates against the new
+  base automatically once it actually attempts the build, and a state-file-
+  only PR prepending to the SAME section as an already-merged sibling is
+  exactly the shape that broke last time — watching closely, not assuming
+  clean. `#2065`'s own merge-group build genuinely `in_progress` (confirmed
+  via `gh run list` for `event=='merge_group'`, `pr-2065`'s own readonly-queue
+  branch, 2/3 jobs already `success`), position 5 — active progress, not
+  stuck. No new `origin/main` merge touches L3 code files. Neither service
+  asset's `health_probe` live yet. Continuing to hold the accumulated local
+  block (now 6 entries) rather than push — both `#2065` and `#2149` are
+  genuinely mid-queue-attempt right now, and pushing either branch would
+  dequeue it. — blocked on: nothing; next action: watch `#2065`/`#2149`
+  actually merge (or catch `#2149` going DIRTY if `#2065` merges first and
+  touches the same file — check explicitly, don't assume clean); push the
+  held local block once a landing spot is safe.
+- `2026-09-06T~91:0xZ — L3-W4 — IDLE-OK (verified): `#2147`/`#2149` both now
+  genuinely `isInMergeQueue: true` (position 2 and 4) — the earlier
+  `UNMERGEABLE` reading on `#2149` was, as documented, the not-yet-tried
+  placeholder, not a real conflict; both now correctly not being touched so
+  their queue position survives undisturbed. `#2065` still not yet queued
+  (2 checks pending, 0 failures, `autoMergeRequest` armed unchanged since
+  last cycle) — healthy async lag. One new unrelated merge to `origin/main`
+  since last cycle (`#2148`, L1's `get_medical_indications`) — no L3 file
+  overlap, no new conflict risk. Neither `ka_dasha_kala` nor `ka_muhurta_seva`
+  has its `health_probe` live yet; no new dispatch opportunity. Adding this
+  entry LOCAL-UNCOMMITTED-TO-REMOTE only (safe — a local commit doesn't touch
+  the remote branch tip the queue is tracking) rather than pushing, since
+  `#2149`'s own remote HEAD is now genuinely IN the shared queue and a push
+  now would dequeue it for no reason. — blocked on: nothing genuinely new;
+  next action: let `#2147`/`#2149` clear the queue on their own, THEN push
+  this accumulated local block (5 entries now) to whichever of them is still
+  open, or to a fresh branch if both have already merged by then; watch
+  `#2065` reach `isInMergeQueue: true` too.
+- `2026-09-06T~90:0xZ — L3-W4 — IDLE-OK (verified): all three PRs healthy —
+  `#2147` genuinely `isInMergeQueue: true` (position 3, `AWAITING_CHECKS`);
+  `#2065`/`#2149` both `mergeable: MERGEABLE`, `autoMergeRequest` armed, 0 CI
+  failures (checked `gh pr checks` directly, not inferred from status alone)
+  — `#2149`'s last remaining check (`Governance Gates`) confirmed genuinely
+  `in_progress` at ~11min via `gh run view`, matching the known pattern, not
+  stuck. Neither `ka_dasha_kala` nor `ka_muhurta_seva` has its `health_probe`
+  live yet (re-checked `asset_registry` directly) and no new `origin/main`
+  commit landed since last cycle, so no new dispatch opportunity opened.
+  Noted an `egate.sql` oddity worth a future look, not acted on this cycle:
+  `ka_dasha_kala` reads `kind=(data)`/`BLOCKED-ANCESTORS` in that view despite
+  `asset_registry.asset_type='service'` (confirmed directly) — the other
+  three service assets read correctly; likely a `kind`-classification quirk
+  in the query itself rather than a registry-data problem, since the actual
+  blocker (null `health_probe`, pending deploy) is the same regardless of
+  which gate label it shows. Continuing to hold this and the prior 2 entries
+  LOCAL-UNCOMMITTED-TO-REMOTE — `#2149`'s own remote HEAD is still mid-CI on
+  its last check, so pushing now would reset it for no reason this close to
+  done. — blocked on: nothing genuinely new; next action: push the
+  accumulated local block once `#2149` clears, then watch `#2065`/`#2147`
+  merge — `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path item
+  once `#2065` lands and deploys (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
+- `2026-09-06T~89:0xZ — L3-W4 — PR hygiene: `#2065` went genuinely `DIRTY`/
+  `CONFLICTING` too** (caught on the very next check after fixing `#2147`/
+  `#2149` last cycle) — `#2079`'s merge (ka_dasha_kala's proxy probe code, not
+  just its state-file entries) collided with `#2065`'s own `ka_muhurta_seva`
+  code across the SAME 5 files as every prior round of this saga
+  (`service_probes.py`, `nirmana_probe.py`, `nirmana_probe_contracts.json`,
+  `test_nirmana_probe_route.py`, `test_service_probes.py`) — this time
+  `dasha_kala` (HEAD, already-merged) vs `muhurta_seva` (theirs, this PR's own
+  WIP), the fourth distinct pairing of this exact conflict shape this session
+  (tulana×dasha_kala, tulana×muhurta_seva, and now dasha_kala×muhurta_seva).
+  Resolved with the same established "reconstruct two complete functions/
+  entries in sequence, never pick one side" pattern — all 5 files, one at a
+  time, each verified marker-free + syntax-valid before moving to the next.
+  Migration number **850 held with NO new collision this round** — a first,
+  after four straight rounds of L1 migration-churn hitting this exact file.
+  Regenerated digests fresh (`provenance_inventory --check` exit 0) rather
+  than hand-resolve the generated-file conflict; pins `--check` exit 0 (no
+  diff outside L3's own hash); `migration_number_guard.ts` PASS; relevant
+  suite 76 passed / 3 skipped / 1 pre-existing env-only `asyncpg` failure
+  (same documented gap, not a regression). Force-pushed, re-armed auto-merge
+  (`enabledAt` fresh). `#2147` now genuinely `isInMergeQueue: true` (`CLEAN`);
+  `#2149` still `BLOCKED`/not-yet-queued but `mergeable: MERGEABLE`, 0 CI
+  failures. — blocked on: nothing; next action: watch `#2065`/`#2147`/`#2149`
+  all merge, then `ka_muhurta_seva`'s W2 acceptance becomes the next genuine
+  W4-path item (route any verifier-role submissions through a fresh subagent
+  per D-CND-35) — `ka_dasha_kala`'s equivalent is already unblocked by
+  `#2079`'s own merge, pending only its migration's deploy.
+- `2026-09-06T~88:0xZ — L3-W4 — PR hygiene: `#2079` MERGED** (ka_dasha_kala's
+  DB-free proxy health_probe, F-L3-15 fully closed 4/4). Its merge left this
+  session's own `#2147`/`#2149` (state-only heartbeat PRs) genuinely `DIRTY`/
+  `CONFLICTING` — both prepend to the SAME `L3_STATE.md` Heartbeat section
+  `#2079`'s own branch history had been carrying, so once it landed on `main`
+  both trailing PRs collided there. Fixed at root (rebase, not force-merge):
+  `#2147` rebased clean (a straightforward "HEAD's newer block flows into
+  mine" prepend conflict, no data lost — verified via `git diff origin/main
+  | grep '^-'` showing zero real line removals, only conflict-marker noise);
+  `#2149` (2 local commits) rebased the same way, same pattern twice. Also
+  discovered `#2079`'s own branch had accumulated a long run of IDLE-OK
+  entries (`~75:0xZ` through `~87:0xZ`) documenting the queue-position/
+  migration-collision saga in far more granular detail than this file's
+  visible history showed before now — folded in intact, nothing summarized
+  away. Both PRs re-verified `mergeable: MERGEABLE`, 0 CI failures, `auto
+  MergeRequest` still armed. `#2065` back to genuinely `isInMergeQueue: true`
+  (position 2, healthy not-yet-tried). Checked whether `ka_dasha_kala`'s
+  health_probe is live yet: **not yet** — `asset_registry.health_probe IS
+  NULL` still, on the shared Cloud SQL proxy; a fresh "Deploy to Cloud Run"
+  run started `18:27:06Z`, minutes after the merge, so the migration is
+  presumably mid-deploy, not stalled. Same for `ka_muhurta_seva` (pending
+  `#2065`). — blocked on: the deploy finishing (external, not this session's
+  to force) and `#2065` merging; next action: once both land and deploy,
+  `ka_dasha_kala`'s and `ka_muhurta_seva`'s W2 acceptance become the next
+  genuine W4-path items — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~87:0xZ — L3-W4 — IDLE-OK (verified, deeper check): `#2070`
   stuck at queue position 1 for 2 full cycles prompted a closer look —
   searched the last 30 workflow runs for `#2070`'s own `gh-readonly-queue`
@@ -650,6 +797,54 @@ your layer close.
   confirm `#2065` actually reaches `isInMergeQueue: true` next cycle, then its merge
   unblocks `ka_muhurta_seva`'s W2 acceptance (route any verifier-role submissions
   through a fresh subagent per D-CND-35, same as every other asset this campaign).
+- `2026-09-06T~75:1xZ — L3-W4 — IDLE-OK (2nd consecutive), holding local-uncommitted.**
+  PR hygiene re-verified via `is:queued` truth, not `autoMergeRequest`: `#2079` genuinely
+  `isInMergeQueue: true`, position 1 — the shared queue is actively busy (confirmed via
+  `gh run list` for `event=='merge_group'`: an L1 PR's merge-group build, `#2145`, was
+  `in_progress` at check time, ~6min in — not stuck, matches the known Build-Check/
+  Governance-Gates timing pattern) so #2079 hasn't started its own build yet; this is
+  healthy queue-ahead-of-me lag, not a defect. `#2065` also genuinely `isInMergeQueue:
+  true`, position 3, `mergeQueueEntry.state: UNMERGEABLE` — the documented "not-yet-tried
+  placeholder" shape (an earlier-position PR hasn't finished), not a real conflict;
+  `mergeable: MERGEABLE` confirms this. `#2147`/`#2149` (this session's own two heartbeat
+  PRs) both still `BLOCKED`/not-yet-queued but 0 CI failures on either, `autoMergeRequest`
+  armed — same genuine async lag as last cycle. Nothing DIRTY, nothing RED, nothing
+  CLEAN-but-unqueued. Re-checked for anything newly eligible: `L2_STATE.md`'s
+  `bo_laksana` rebuild status unchanged (still HELD campaign-wide per #1770); no new
+  L0/L1/L2 freeze since last check. Holding this entry LOCAL-UNCOMMITTED-TO-REMOTE
+  (committed on this branch, not pushed) rather than opening a fourth heartbeat-only PR
+  this session — `#2149` (this branch's own remote HEAD) is still mid-CI, so pushing now
+  would reset its checks for no reason; will push this and any further accumulated
+  entries once `#2149` clears (merges or drops out of contention), same pattern as the
+  earlier `#1961`-holding precedent. — blocked on: nothing genuinely new; next action:
+  watch `#2065`/`#2079`/`#2147`/`#2149` progress, push the accumulated local block once
+  `#2149` is no longer mid-CI.
+- `2026-09-06T~75:0xZ — L3-W4 — IDLE-OK (verified, not assumed).** PR hygiene: all three
+  L3 PRs healthy — `#2079` genuinely `isInMergeQueue: true` (position 2, `AWAITING_CHECKS`);
+  `#2065` and `#2147` (this session's own two most recent branches, `#2065`'s finished
+  rebase + its heartbeat-state PR) both `mergeable: MERGEABLE`, `autoMergeRequest` armed,
+  0 CI failures on either — just still 2-3 checks pending, genuine async lag, not a
+  defect. Nothing to fix. Ran a fresh `egate.sql` batch rather than trust the last read:
+  `ka_graha_sancara` still the sole frozen asset; `ka_muhurta_seva` and
+  `ka_gochara_resonance` both read `unfrozen_ancestors: 0` / `BLOCKED-NO-ROUTE` — the
+  route gap for `ka_muhurta_seva` closes the moment `#2065` actually merges+deploys, not
+  before; nothing else opened up (no L0/L1/L2 freeze progress since W1). Checked the two
+  live adjudications that could plausibly unblock something: `#2071` (ka_dasha_kala DB
+  access) — already RULED (Option B, DB-free proxy) and already implemented in `#2079`,
+  nothing further to do; `#1960` (moorti/Wave-2 admission) — still genuinely blocked on
+  native sign-off, not Conductor's or mine to grant, re-confirmed by re-reading the
+  ruling rather than assumed from memory. Considered D-TIME item 1 (per-engine
+  question-declarations) again per standing practice of not silently dropping it: still
+  the same "no persisted structured source across the 34 engines, genuinely too
+  unbounded for one cycle" conclusion reached twice before — not re-deriving from
+  scratch without new information. Verified 19/19 D-CND-03 integrity contracts and
+  target_floor/catalog_status are already fully landed for all 23 assets (queried
+  `asset_registry` directly) — no silent gap in either. No genuinely new bounded W3/W4
+  unit and no further useful prep beyond what's already recorded; declaring this cycle
+  idle rather than manufacturing filler work. — blocked on: nothing; next action: watch
+  `#2065`/`#2079`/`#2147` all actually merge, then `ka_muhurta_seva`'s W2 acceptance
+  becomes the next genuine W4-path item (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
@@ -2818,6 +3013,42 @@ your layer close.
   PR hygiene checked first: 18 L3 PRs queued; #1934 (previous cycle's PR) confirmed CLEAN
   (0 failing, 4 checks still running) — nothing to fix.
 
+- `2026-09-06T~05:0xZ — L3-W3 — PR hygiene: two more genuinely DIRTY PRs found and
+  fixed this cycle beyond last cycle's eight — #1887 (F-SANGAM-7 tajika/eclipse half,
+  `ka_sangam/engine.py` — the ka_sangam-family generated-file conflict pattern: pins
+  regenerated for real, only its own `writer_inventory_sha256` changed; writer-digests
+  regenerated, only `ka_sangam`'s hash changed; 142/142 targeted tests pass) and
+  #2023 (heartbeat-lineage branch, standard L3_STATE.md shape, only the known-safe
+  migration-range line removed). Both force-pushed, re-armed, confirmed `MERGEABLE`.
+  Full L3-lane sweep (54 PRs, batch GraphQL) otherwise clean — no other DIRTY, no
+  CLEAN-but-unqueued.
+  **F-L3-15 next slice: `ka_muhurta_seva` gets a real `health_probe` (migration 676,
+  PR #2065).** Continuing the health-probe gap F-L3-15 first found (`ka_graha_sancara`,
+  migration 671, prior cycle) across L3's four service assets — all four had
+  `health_probe = NULL` in production; this closes the second. Checked
+  `KaMuhurtaSevaService.score()` first: DB-free (composes `panchang_engine.
+  compute_panchang` + `muhurat.finder.score_muhurat`, both in-process libraries) — the
+  same architecture class the existing three probes are built for, unlike
+  `ka_dasha_kala`/`ka_tulana` which both genuinely need live `chart_dashas`/DB access
+  and `run_health_probe()` has no `db_conn` parameter — a real contract question for a
+  future slice, deliberately left out of this one rather than forced through. Ground
+  truth independently re-derived through this module's own import path at the FORENSIC
+  birth date/location (Tithi = Shukla Tritiya, Nakshatra = Purva Bhadrapada, matching
+  CLAUDE.md §B): scoring "vivah" with `native_chart.birth_nakshatra_id=25` activates
+  Tara Bala, `score_with_native=33.0` vs `score_without_native=28.000000000000004` —
+  pinned as an exact difference (not a bare not-None check) so a silently-ignored
+  `native_chart` param would be caught (§N.8). New JS-canonical contract digest
+  independently cross-checked via real `node` executing `definitions.ts`'s own
+  `stableJson` (not a Python reimplementation) — matched Python's `_contract_digest`
+  byte-for-byte on the first attempt. 15 new tests total (7 probe + 6 migration + 2
+  route), full `tests/l3/` suite 1459 passed/0 new failures (only the 3 pre-existing
+  `ka_kshetra` parity failures), branch/PR kept separate from this cycle's hygiene
+  fixes (new work off a fresh `origin/main`-based branch, not stacked on a heartbeat
+  branch). — blocked on: nothing; next action: `ka_dasha_kala`/`ka_tulana`'s
+  DB-backed health_probe architecture question, or continue N1 sequencing
+  (#1905/#1919/#1921/#1924/#2047/#2049 all queued, not yet merged — the seventh step
+  and its arbitration_role/composeConcordanceVerdict wiring land once the queue
+  drains them in order).
 - `2026-09-06T~04:0xZ — L3-W3 — F-KALA-1 fix (third slice): PR (branch
   `codex/nirmana-l3-f-kala-1-ahead-recurrence-rank`).** Continuing the same finding's four
   named call sites (register_d9_judgment.ts fixed 2 cycles ago; query_temporal_activation.ts
