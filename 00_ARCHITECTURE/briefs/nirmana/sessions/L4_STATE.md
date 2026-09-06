@@ -6485,3 +6485,31 @@ genuinely mid-own-CI within normal range, zero DIRTY/RED/unqueued; no new L4-rel
 adjudications; E-gate uncheckable, DB access down 317 cycles) → next: watch the four
 in-progress PRs reach `QUEUED`; watch all 5 drain in position order; retry E-gate/dispatch
 dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~11:51Z` — L4 — **CYCLE 328 (v2.3) — new lesson confirmed: `mergeStateStatus:
+CLEAN` + `autoMergeRequest` enabled does NOT reliably self-enqueue. `#1808`'s own CI finished
+(`CLEAN`/`MERGEABLE`) but `mergeQueueEntry` stayed `null` until the disable-then-auto force
+was applied — this generalizes last cycle's "stale-enabled-but-not-queued" trap: it is not
+only a stale-arm artifact from a prior cycle, it can recur on the SAME arm once that PR's own
+checks complete. Standing playbook updated: always re-check `mergeQueueEntry` once a
+`BLOCKED`→`CLEAN` transition is observed, and apply disable-then-auto if still null — don't
+assume `CLEAN` + armed auto-merge is sufficient.**
+
+**PR hygiene:** `#1808` found `CLEAN`/`MERGEABLE` (own CI had finished since last cycle) but
+`mergeQueueEntry: null` — fixed via disable-then-auto, confirmed genuinely `QUEUED` (position
+7). `#1831`/`#1834`/`#1839` all confirmed still genuinely `BLOCKED` via direct job
+inspection — own CI in progress at 6-8 min elapsed (pushed at 11:43-11:45Z last cycle), well
+within normal range, not stalled, no action possible yet. `#1845` unchanged, genuinely
+queued (not re-checked this cycle; no signal it needed attention).
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+318th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 328 L4: found and fixed a new trap variant — `#1808` was genuinely `CLEAN` with
+auto-merge armed but had NOT self-enqueued (disable-then-auto forced it to `QUEUED` position
+7); confirmed `#1831`/`#1834`/`#1839` still genuinely mid-CI within normal range, not
+stalled → next: re-check the three in-progress PRs next cycle for the same
+CLEAN-but-not-self-enqueued pattern once their CI finishes; watch all 5 drain in position
+order; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
+consumers) remains deferred.
