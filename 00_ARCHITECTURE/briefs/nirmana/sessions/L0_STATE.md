@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2066 at queue position 18, steady progress. #1901 still not deployed (deploy pipeline catching up). No DIRTY/RED. Standing priorities unchanged: bg_doshas+bg_gochara_arcs+bg_text_index ready for #1901 deploy; bg_dasha_systems+bg_compendium_index ready for #2066 deploy. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, #2066 at queue position 17. Deployed sha unchanged for 3 cycles despite main advancing -- noticed deploy.yml keeps getting cancelled+restarted per new merge (plausible normal churn, not flagging yet -- will flag next cycle if still stuck). No DIRTY/RED. Standing priorities unchanged. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2951,5 +2951,10 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   confirmed queued/pending — genuinely mid-catch-up, not stalled again. 30/40 frozen holds
   unchanged.
 
-- 2026-09-06 — **IDLE-OK.** `#2066` position 18, `main` advanced again, deployed sha still behind
-  `#1901`. No DIRTY/RED. Steady progress, nothing to act on yet. 30/40 frozen holds unchanged.
+- 2026-09-06 — **IDLE-OK.** `#2066` position 17, no DIRTY/RED. Deployed sha unchanged for 3
+  cycles now (`492f32f0...`) despite `main` continuing to advance — noticed why: `deploy.yml`
+  keeps getting a fresh `main`-branch run cancelled and restarted for each new merge (saw one
+  cancelled + a newer pending run, both for `main`, ~3 min apart) — plausible ordinary "deploy
+  latest, cancel stale" behavior during a busy merge period, not necessarily a bug. Not flagging
+  yet (single observation window, could resolve once merge velocity settles) — will flag to
+  #1713 if the deployed sha is STILL stuck next cycle. 30/40 frozen holds unchanged.
