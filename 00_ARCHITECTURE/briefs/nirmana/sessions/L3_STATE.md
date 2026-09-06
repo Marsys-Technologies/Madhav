@@ -494,6 +494,31 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~144:0xZ — L3-W3 — PR hygiene: `#2189` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
+  F-L3-4 with a 10th individual asset (13 total incl. the 4-asset service
+  batch), `ka_gochara_resonance` — scoped strictly to volume
+  documentation, deliberately NOT touching `depends_on` (immutable,
+  D-CND-09) or this asset's correctly-HELD W4 dispatch (D-CND-26); the
+  paired test asserts both stay untouched. Derived from the writer's own
+  module docstring/code: one row per (event_class, target_type, matched
+  instance) across 27 event classes x 8 target_types (3 from
+  `brahma_event_ontology.signature_model`, 1 from `bg_transit_rules`, 4
+  from the writer's own uncited chart-specific synthesis). Live per-type
+  breakdown sums to 762, matching `target_floor`/`count_sql` exactly.
+  Migration 861 + paired test authored (no self-transaction wrapper from
+  the start). **Self-caught and fixed a false positive in the test's own
+  guard**, not the migration: an early regex flagged the migration for
+  mentioning "target_floor" in its own descriptive prose (inside a
+  jsonb string value), not for actually assigning that column — fixed
+  by checking only the top-level assigned column names. All 7 tests
+  pass after the fix. Migration-number guard PASS (861, confirmed free).
+  Committed locally (`2a62083cc`), held from push — `#2189` still
+  mid-queue-attempt. — blocked on: nothing new; next action: push once
+  `#2189` merges or clearly finishes, then continue F-L3-4 on another
+  asset (6 remain NULL: `ka_gochara_v3_century_materialize`,
+  `ka_kala_darshana`, `ka_kalasutra`, `ka_kshetra`, `ka_sangam`,
+  `ka_yojaka`) if still no E-gate work.
 - `2026-09-07T~143:0xZ — L3-W3 — PR hygiene: `#2189` down to 1 pending
   check (`Governance Gates`, ~7.6min, within normal range),
   `mergeStateStatus: UNKNOWN` is normal async settling lag, not a
