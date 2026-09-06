@@ -6464,3 +6464,24 @@ noted new adjudication `#2086` as Conductor-addressed, not an L4 action item →
 `#1808` complete and reach `QUEUED`; watch all 5 own PRs drain in position order; retry
 E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
 remains deferred.
+
+`2026-09-06T~11:48Z` — L4 — **CYCLE 327 (v2.3) — IDLE-OK. PR hygiene clean, nothing to
+fix; all 5 own PRs accounted for and healthy.**
+
+**PR hygiene:** `#1845` confirmed genuinely `QUEUED` via `gh pr list --search "is:queued"`.
+`#1831`/`#1808`/`#1834`/`#1839` all `BLOCKED`/`MERGEABLE` with auto-merge armed from last
+cycle's re-arms, all confirmed genuinely mid-own-CI via `gh pr checks` + `gh run view`
+(elapsed times ranging ~3-9 min across the four, all within the established 8-12 min normal
+range) — none stalled, none DIRTY, none RED. No fixes needed this cycle.
+
+**Priorities 1-4:** one new `main` commit (`#1859`, L1's own PR) confirmed not L4-relevant.
+Adjudication count back to 15 (down from 16 last cycle — `#2086` presumably actioned by
+Conductor or another session; not an L4 concern either way). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 317th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 327 L4: IDLE-OK (verified: PR hygiene clean — `#1845` genuinely queued, remaining four
+genuinely mid-own-CI within normal range, zero DIRTY/RED/unqueued; no new L4-relevant
+adjudications; E-gate uncheckable, DB access down 317 cycles) → next: watch the four
+in-progress PRs reach `QUEUED`; watch all 5 drain in position order; retry E-gate/dispatch
+dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
