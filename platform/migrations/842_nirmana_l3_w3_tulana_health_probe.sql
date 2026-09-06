@@ -1,4 +1,4 @@
--- 810_nirmana_l3_w3_tulana_health_probe.sql
+-- 842_nirmana_l3_w3_tulana_health_probe.sql
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_tulana`, F-L3-15's third slice. Corrects a scoping error made in this
@@ -30,6 +30,14 @@
 -- applied migration" rule does not apply). The self-assigned-range
 -- convention (this session's own 670-679, now 810+) is a coordination
 -- courtesy, not a guarantee; the guard is the actual authority.
+--
+-- RENUMBERED AGAIN 810→842 (next cycle): 810 was independently claimed by
+-- L1's own already-merged 810_nirmana_l1_ga_structural_integrity_contract_
+-- houcompstrength.sql — another genuine cross-lane collision, same E2 gate.
+-- Renumbered to 842 rather than 841 (the guard's own suggestion) because a
+-- SIBLING open L3 PR (#2079, ka_dasha_kala's proxy probe) had already claimed
+-- 841 for itself on its own branch in the same cycle; picking a distinct
+-- number avoids the two PRs colliding with each other once both land.
 --
 -- The contract below is consumed by a NEW, INDEPENDENT probe implementation
 -- (`_probe_tulana`, platform/python-sidecar/pipeline/orchestrator/service_probes.py)

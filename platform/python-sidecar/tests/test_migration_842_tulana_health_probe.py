@@ -1,12 +1,14 @@
 """
-tests/test_migration_810_tulana_health_probe.py — L3 Kāla, F-L3-15 third
-slice: migration 810 populates `asset_registry.health_probe` for `ka_tulana`.
+tests/test_migration_842_tulana_health_probe.py — L3 Kāla, F-L3-15 third
+slice: migration 842 populates `asset_registry.health_probe` for `ka_tulana`.
 
-RENUMBERED 764→810 (same cycle it was authored): 764 collided with L2's own
-760-779 range (`764_bo_cgm_paths_volume_formula.sql`, merged first) — caught
-by `scripts/ci/migration_number_guard.ts`'s E2 check on this PR's own CI.
-Fixed by renumbering to 810 (above the campaign-wide highest at the time,
-802) since this migration had never been applied anywhere.
+RENUMBERED 764→810→842 (across two cycles): 764 collided with L2's own
+760-779 range (`764_bo_cgm_paths_volume_formula.sql`, merged first); 810 was
+then independently claimed by L1's own already-merged 810_..._houcompstrength.sql
+— both caught by `scripts/ci/migration_number_guard.ts`'s E2 check. Fixed each
+time by renumbering upward (842 chosen over the guard's own 841 suggestion to
+avoid colliding with a sibling open PR, #2079, that claimed 841 in the same
+cycle) since this migration had never been applied anywhere.
 
 Corrects a scoping error made in this migration's own F-L3-15 predecessor
 (#2065's PR description, for `ka_muhurta_seva`): `ka_tulana` was described
@@ -39,13 +41,13 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )
 _MIGRATION_PATH = os.path.join(
-    _REPO_ROOT, "platform", "migrations", "810_nirmana_l3_w3_tulana_health_probe.sql"
+    _REPO_ROOT, "platform", "migrations", "842_nirmana_l3_w3_tulana_health_probe.sql"
 )
 
 
 def _read_migration() -> str:
     if not os.path.exists(_MIGRATION_PATH):
-        pytest.skip(f"migration 810 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
+        pytest.skip(f"migration 842 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
     with open(_MIGRATION_PATH, encoding="utf-8") as f:
         return f.read()
 
