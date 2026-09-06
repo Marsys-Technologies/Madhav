@@ -458,6 +458,27 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~17:0xZ — L3-W3 — Four genuinely DIRTY/UNKNOWN-settling PRs this cycle,
+  one a real ka_sangam-family conflict (#1890, N1 first step).** Opening sweep found
+  #2062/#1970/#1966 transient `UNKNOWN` (settled clean on re-check, no action needed) and
+  #1890 genuinely `DIRTY`/`CONFLICTING`. #1890's rebase was the substantive one this
+  cycle: `ka_sangam/engine.py` + its test auto-merged cleanly, but BOTH generated files
+  (`nirmana-writer-digests.json`, `nirmana-analysis-layer-pins.json`) conflicted —
+  resolved via the established pattern (take `origin/main`'s copy, regenerate for real).
+  Confirmed only `ka_sangam`'s own hash changed in the digest file (diffed directly, not
+  assumed) and the pins file's `writer_inventory_sha256` updated to match, both `--check`
+  invocations exit 0. `test_ka_sangam.py` 77/77 pass, `tsc --noEmit` clean on both
+  `platform` and `platform-mcp`, full `tests/l3/` suite: **1430 passed, 3 failed (same
+  pre-existing, unrelated `ka_kshetra` parity failures — confirmed unchanged yet again),
+  36 skipped, 2 xfailed.** All four PRs force-pushed/re-confirmed, re-armed auto-merge
+  where needed, confirmed `MERGEABLE`.
+  **Re-verified standing items**: `#1903` and `#2060` (F-CONC-7 migration) both still
+  genuinely queued, neither merged yet; `origin/main` advanced by one commit since last
+  cycle (`#1974`, a CONDUCTOR CI-gate fix — a DDL race serialization, immaterial to L3).
+  This state-tracking branch itself needed a clean rebase onto that one commit before
+  this entry (no conflict). N1/N2/`kala_now_get`/moorti-admission all unchanged — still
+  correctly blocked, nothing new to act on beyond this cycle's hygiene.
+
 - `2026-09-06T~16:0xZ — L3-W3 — Three genuinely DIRTY PRs found and fixed this cycle
   (#1961, #1966, #1970) — all three had gone stale since 2-3 cycles ago; no new
   substantive unit found beyond hygiene.** GraphQL `is:queued` initially listed all three
