@@ -457,6 +457,19 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:15Z (C8 v2.3 cycle 416) — **Caught #1826's own 809→(collision) before it ever hit
+  a merge-queue build failure — pure PR hygiene, done before any other work this cycle.** Main's
+  tip had advanced to `809` (an unrelated L1 migration) exactly as #1826 entered the merge queue
+  for the first time. Dequeued #1826 immediately (before its build could run and discover the
+  collision itself), renumbered `809_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql` → `811`
+  (clear of main's fresh tip AND #1844's own pending 810), updated the disclosure entry + canary
+  test together, verified all three gates locally (`migration_number_guard.ts` PASS, `migrate.ts`
+  reconciled-not-executed, canary 3 passed) before pushing. Re-armed, confirmed #1844 fully
+  unaffected (`autoMerge` timestamp unchanged throughout). **This is the third distinct number
+  this exact file has carried this session (806→809→811)** — a direct, expected consequence of
+  main's migration velocity right now (L1's structural-integrity-contract lane is landing several
+  migrations per cycle); no sign this will stop soon, so continued vigilance on both PRs' numbers
+  right up until each one actually merges remains necessary, not optional.
 - 2026-09-06T12:10Z (C8 v2.3 cycle 415) — **IDLE-OK** (verified, not assumed): #1826 down to 2
   checks (Build Check, Governance Gates), no failures, not queued yet (pending, expected). #1844
   has 4 checks pending after last cycle's force-push, no failures. Both `809`/`810` re-confirmed
