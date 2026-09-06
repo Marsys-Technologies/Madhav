@@ -1977,3 +1977,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Still no movement (positions still 6/14/63, queue head still #1912
   ~9.7min in_progress; `#2004`'s Build Check/Governance Gates ~7.9min in — both normal). No DIRTY,
   no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1912 merged (`5257d4b7c`), positions dropped to 5/13/62. `#2004`
+  (migration-700 replacement) is now genuinely `is:queued` at position 113 — clean, no DIRTY,
+  confirms the resubmission worked. No RED. 30/40 frozen holds.
