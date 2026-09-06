@@ -3667,3 +3667,8 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** `#2115` still position 1, `AWAITING_CHECKS` for 2 cycles now --
   verified not stalled: all checks on its head commit show SUCCESS/SKIPPED, just waiting for its
   own merge-group batch to run. No DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Deeper check on `#2115`'s 3-cycle stall at position 1: found its own
+  dedicated merge-group batch (`pr-2115-7a2fdb59...`) with Ganga Quality Gate genuinely
+  `in_progress` (~9min elapsed, TAP/EKV already passed for this batch) -- normal duration for
+  this suite this session, confirmed healthy not stalled. No DIRTY/RED. 36/40 frozen unchanged.
