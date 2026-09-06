@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — bg_yogas extraction-yield defect ROOT-CAUSED and FIX VERIFIED (dict-row-as-tuple unpacking bug in extract_yogas_from_corpus -- confirmed live: fix yields exactly 85 extracted/233 total, matching integrity_check_sql exactly) but DELIBERATELY NOT SHIPPED: it would change L0's writer_inventory_sha256, which nirmana_analysis_layer_pins.py explicitly and permanently refuses to re-pin for L0 (adjudication #1715 requirement 3 -- "no L0 writer change is in scope for this campaign", protects 29 frozen capsules). Full diff + regression test preserved verbatim in the entry below for a future campaign phase. Decided not to file a new adjudication (the boundary is already settled, not an open question) -- posted to #1713 for visibility instead. Local git state cleaned up, nothing pushed. Prior milestone unchanged: bg_dasha_systems + bg_compendium_index both rebuilt+verified live; both still need the same implementation_accepted record once #2066 deploys (queue position 68). 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — IDLE-OK cycle with a useful find: bg_doshas re-confirmed fully data-correct (8/8 clauses) and its W2 evidence still current, but blocked on the exact D-L0-FF/#1899 structural bind (no build_run_authorized event can bind retroactively to its already-completed, already-proven receipt). Good news: #1899 already has a Conductor ruling implemented in PR #1901 (receipt re-attribution on skip_no_delta) -- not yet merged, but once it deploys it should unblock bg_doshas + bg_gochara_arcs + bg_text_index in one shot (same root cause, three assets). Watch #1901 alongside #2066 every cycle now. No new dispatch attempted (would hit a known dead end). 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2862,3 +2862,35 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   - **Do NOT re-attempt this dispatch or write this code change until this is explicitly
     back in scope** (a native/Conductor decision, or a future NIRMANA campaign phase). Local git
     state cleaned up — no dangling branch, no uncommitted diff left on disk.
+
+- 2026-09-06 — **IDLE-OK, but with a genuinely useful verification.** `#2066` at queue position
+  54, no DIRTY/RED, not yet deployed. Searched for other independently-actionable work among the
+  remaining 7 unfrozen assets (beyond `bg_dasha_systems`/`bg_compendium_index`/`bg_yogas`,
+  already covered this cycle-set) since #2066 hasn't landed yet.
+  - **`bg_doshas` re-checked: ALL 8 clauses of its `integrity_check_sql` already pass live** —
+    data has been correct since migration 692 (PR #1829, a check-only fix, no rebuild needed —
+    verdict was correctly `examined_and_already_efficient`/`no_change`/`digest_identical`). W2
+    evidence (2026-09-05) is still current: independently recomputed `registry_fingerprint_sha256
+    cf02b44f8c16ea2f2cd0a313d6d45108599b627579a01e9e8c058bbeecb1e1e5` from the live registry row
+    matches the accepted evidence exactly — no refresh needed.
+  - **What's actually blocking it is NOT data or W2 — it's the exact D-L0-FF/#1899 structural
+    bind, independently reconfirmed**: a genuine `receipt_state='proven'` provenance receipt
+    exists (`build_id 92830957-...`) but has zero matching `build_run_authorized` event (checked
+    directly), because that run completed back on 2026-09-05 — its authorization window is long
+    closed and can never be retroactively satisfied. A fresh dispatch would just `skip_no_delta`
+    against the already-matching data and hit the identical dead end, per `#1899`'s own title
+    ("delta-skip gate + build_run_authorized timing window jointly make accepted_rebuild_observed
+    unreachable on any re-dispatch"). **Correctly NOT re-dispatched** — would waste a build slot
+    and a fresh backup for a known-unreachable outcome.
+  - **Good news found while checking**: `#1899` has a CONDUCTOR ruling already posted — "Option
+    A" (re-attribute the existing matching receipt's `build_id`/`observed_at` to the run that
+    reconfirms it on `skip_no_delta`), implemented in **PR #1901**, verified by the Conductor
+    against a real reproduction (`mi_vistara`), existing tests still pass. **`#1901` is not yet
+    merged** (`state=OPEN`, not Conductor-authored-and-owned so not mine to touch/queue). Once it
+    deploys, this should unblock `bg_doshas` AND `bg_gochara_arcs` AND `bg_text_index` in one shot
+    (all three share the identical D-L0-FF root cause) — worth checking `#1901`'s status
+    alongside `#2066` every cycle going forward.
+  - No other unfrozen asset had new information this cycle (`bg_cohort` remains blocked on the
+    unrelated service-kind-dependency issue already posted to #1713; `bg_parihara_rules`/
+    `bg_rules`/`bg_concordance` remain blocked on their own unfrozen ancestors). 30/40 frozen
+    holds unchanged.
