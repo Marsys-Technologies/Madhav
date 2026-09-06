@@ -458,6 +458,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~20:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` still queued
+  unmerged.** `origin/main` advanced one commit (`#1975`, L1 migration 750 — unrelated),
+  migration 731 confirmed still not deployed. Coordination issue #1713 unchanged since
+  last read. PR hygiene clean across all 53 L3 PRs. Nothing eligible to act on.
+
 - `2026-09-06T~19:3xZ — L3-W3 — Correction to this cycle's own "IDLE-OK" note above: a
   final PR-hygiene sweep (taken after writing that note) caught #1976 genuinely DIRTY —
   another #1890-family conflict, same recurring shape.** L3_STATE.md-only conflict,
