@@ -1970,3 +1970,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   unchanged (6/14/63). `#2004` (the migration-700 replacement) is CLEAN-but-mid-CI (Build
   Check/Unit Tests/Governance Gates pending, no reds, auto-merge already armed) — will self-queue.
   No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement (positions still 6/14/63, `#2004` still mid-CI no reds,
+  queue head #1912 ~7min in_progress, normal). No DIRTY, no RED. 30/40 frozen holds.
