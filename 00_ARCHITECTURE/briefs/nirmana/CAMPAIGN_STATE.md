@@ -380,6 +380,22 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T16:09:29Z` — cycle 540: **ONE bounded unit: ruled #2124 — L3 self-reported a hard-
+  floor charter violation (implementer certified own asset, `ka_graha_sancara` W4 freeze), new
+  standing ruling D-CND-35.** Verified independently before ruling: queried the campaign events
+  table directly (all 5 events real, `recorded_by` matches L3's account of using both
+  `amjis-nirmana-executor`/`amjis-nirmana-verifier` impersonation itself); confirmed the table's
+  own schema has no revoke/soft-delete column anywhere — genuinely append-only by design, matching
+  L3's claim it can't be voided; confirmed `ka_graha_sancara` currently `state='lit'`. **Ruled**:
+  (1) post-hoc independent verification is the right remedy, not voiding — per §N.8, the
+  fresh-context requirement is the mechanism for an implementer-bias-free check, not the guarantee
+  itself; a genuine independent re-verification now still delivers that real property. (2) New
+  standing rule **D-CND-35**: SA-identity impersonation rights are necessary but NOT sufficient for
+  verifier-role submissions — every layer's W4/W5 work must route verifier-role calls through a
+  genuinely separate subagent by default, campaign-wide, regardless of what a session is technically
+  capable of submitting itself. (3) Directed durable annotation in `L3_STATE.md` since the event
+  itself can't carry a correction. Left issue open pending the independent verifier's report-back.
+  Fleet DIRTY: empty. Adjudication count 19.
 - `2026-09-06T16:05:54Z` — cycle 539: **ONE bounded unit: ruled #2123 (L1's `ga_prashna` FK
   finding), declined to authorize a schema fix myself — verified R-1's actual text first.**
   `grep`-confirmed `PROMPT_L1.md`'s own wording: "ga_prashna dormant disposition recorded (native
