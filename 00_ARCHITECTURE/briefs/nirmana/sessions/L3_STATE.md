@@ -469,6 +469,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~41:0xZ — L3-W3 — `#1936` (F-DARSH-2) merged. Post-push `#1917`
+  showed genuinely `DIRTY` (not the usual async lag — confirmed via a real
+  `merge-base` check that `origin/main` had advanced past the rebase base),
+  standard L3-pin regen, tests re-pass (8/8), confirmed `MERGEABLE`. 6 L3-owned
+  PRs remain. `#2104` still hasn't merged. — blocked on: `#2104` merging;
+  next action: keep L3-only hygiene sweeps going, watch `#2104`/`#2096` each
+  cycle.
 - `2026-09-06T~40:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
   (`#1903` showed `UNSTABLE` — checked `gh pr checks 1903` directly, only
   `Build Check (PR only)` still `pending`, not failed — no action). `#2104`
