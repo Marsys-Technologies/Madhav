@@ -458,8 +458,18 @@ your layer close.
 
 ## Heartbeat
 
-- `2026-09-06T~15:0xZ — L3-W3 — IDLE-OK: `#1903`/`#2060` advanced slightly (105/79, from
-  109/83) — real, steady gradual progress.` PR hygiene clean. Migration 731 still not
+- `2026-09-06T~16:0xZ — L3-W3 — Two genuinely DIRTY PRs this cycle (#2006, #2009), both
+  standard shape; both also carried the SAME accumulated-duplicate-fragment blemish
+  found and cleaned up last two cycles (#1992, #2002) — this time 3-4 stacked stale
+  tails apiece, all cleaned up.** Confirms this is a recurring pattern specific to
+  these "fresh branch, carry pending content forward" heartbeat branches, not a
+  one-off — each new fork in this lineage has been copying an already-slightly-corrupt
+  tail forward and adding its own. Both L3_STATE.md-only, `theirs` empty, resolved via
+  the established script, single surviving heading verified for each after cleanup, no
+  writer/generated files touched. Both force-pushed, re-armed auto-merge, confirmed
+  `MERGEABLE`. Real progress confirmed: `#1903` advanced 105→101, `#2060` advanced
+  79→75. `origin/main` advanced several more merges; this state-tracking branch
+  rebased cleanly (25 commits). Migration 731 still not
   deployed; no reply yet on the #1713 finding.
 
 - `2026-09-06T~14:0xZ — L3-W3 — IDLE-OK: `#1903`/`#2060` positions unchanged (109/83),
