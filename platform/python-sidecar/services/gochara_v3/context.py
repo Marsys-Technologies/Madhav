@@ -171,6 +171,20 @@ class ClassContext:
     # Empty when table is absent — suppression factor falls back to a fixed schedule.
     malefic_scale: tuple[MaleficScaleRow, ...] = ()
 
+    # F-MOORTI-2 (L3-W3, N3): kala_moorti_nirnaya rows for the W2.2 moorti_nirnaya
+    # CANDIDATE mechanism (services/gochara_v3/mechanisms/w22_moorti_nirnaya.py).
+    # Plain dicts, not a dataclass — the mechanism's own _find_overlapping_moorti
+    # already reads this shape via .get() (window_start, window_end, moorti_name,
+    # moorti_computed); matching that existing, already-tested contract exactly
+    # rather than introducing a second row type it would need to be adapted to.
+    # Empty when the table has no rows for this chart (e.g. not yet built) —
+    # the mechanism degrades to modifier=1.0 honestly (§N.7 item 6), same as
+    # every other optional context field here. Wiring this data does NOT admit
+    # the mechanism: admission_state stays 'candidate' in its own registry entry
+    # until ablation evidence is gathered (a separate, later step — this PR is
+    # data-wiring only).
+    moorti_rows: tuple[dict, ...] = ()
+
     @classmethod
     def fetch(
         cls,
@@ -233,6 +247,10 @@ class ClassContext:
         vedha_rows = _fetch_vedha_rows(conn, chart_id)
         malefic_scale = _fetch_malefic_scale(conn)
 
+        # 13. F-MOORTI-2 (L3-W3, N3): moorti_nirnaya rows for the W2.2 candidate
+        # mechanism (data-wiring only — see moorti_rows field docstring above)
+        moorti_rows = _fetch_moorti_rows(conn, chart_id, ayanamsha_id)
+
         return cls(
             chart_id=chart_id,
             event_class=event_class,
@@ -253,6 +271,7 @@ class ClassContext:
             sade_sati_phases=tuple(sade_sati_phases),
             vedha_rows=tuple(vedha_rows),
             malefic_scale=tuple(malefic_scale),
+            moorti_rows=tuple(moorti_rows),
         )
 
 
@@ -461,6 +480,55 @@ def _fetch_vedha_rows(conn, chart_id: str) -> list[VedhaRow]:
             classical_citation=d.get("classical_citation"),
             detail=detail_raw,
         ))
+    return result
+
+
+def _fetch_moorti_rows(conn, chart_id: str, ayanamsha_id: str) -> list[dict]:
+    """Pre-fetch all kala_moorti_nirnaya rows for this chart, for the W2.2
+    moorti_nirnaya CANDIDATE mechanism (F-MOORTI-2, L3-W3, N3).
+
+    Empty list when the table is absent (CI without prod DB) or has no rows
+    for this chart — the mechanism degrades gracefully to modifier=1.0
+    (honest, not a guess — see w22_moorti_nirnaya.py's own docstring).
+
+    Returns plain dicts (window_start/window_end as ISO date strings,
+    matching _fetch_vedha_rows's string-date convention for fast comparison)
+    rather than a dataclass: the mechanism's own _find_overlapping_moorti
+    already reads this exact shape via .get() — matching its existing,
+    already-tested contract rather than introducing a second row type.
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_moorti_rows"):
+            cur = conn.execute(
+                """
+                SELECT window_start::text AS window_start,
+                       window_end::text   AS window_end,
+                       moorti_name,
+                       moorti_computed
+                  FROM kala_moorti_nirnaya
+                 WHERE chart_id = %s AND ayanamsha_id = %s
+                 ORDER BY window_start
+                """,
+                [chart_id, ayanamsha_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] moorti_rows fetch failed: %s", exc)
+        return []
+
+    result = []
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["window_start", "window_end", "moorti_name", "moorti_computed"], row)
+        )
+        result.append({
+            "window_start": d["window_start"],
+            "window_end": d["window_end"],
+            "moorti_name": d.get("moorti_name"),
+            "moorti_computed": bool(d.get("moorti_computed", False)),
+        })
     return result
 
 
