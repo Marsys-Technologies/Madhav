@@ -6427,3 +6427,40 @@ still genuinely `QUEUED`; `#1845` confirmed still genuinely progressing at ~10 m
 stalled → next: watch `#1845` complete and reach `QUEUED`; watch queue drain in position
 order; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
 consumers) remains deferred.
+
+`2026-09-06T~11:45Z` — L4 — **CYCLE 326 (v2.3) — a large cycle: `#1831`, `#1834`, `#1839`
+all found genuinely DIRTY simultaneously (real conflicts after several `main` merges landed
+since their last rebase — not the stale-flag trap), all three rebased, resolved, tested, and
+re-armed. `#1808` confirmed still legitimately mid-CI (~6 min, normal range). `#1845`
+confirmed genuinely `QUEUED`.**
+
+**PR hygiene this cycle, in order:** `#1831` (`ph_pratikara` F-3.4) — rebase conflicted in
+both generated files this time; digest regenerated clean, pin hand-derived to
+`77201648...8697e2`; 76/76 tests green. `#1834` (`ph_rectification` F3) — rebase conflicted
+only in the pin; digest already correct; pin hand-derived to `36143aca...fde1a68`; 49/49
+tests green. `#1839` (`ph_phaladesa` headline-anchor) — a three-commit rebase this time
+(the branch carries its own earlier digest-regen commit plus a pin-resplice commit); digest
+conflicted first (regenerated clean), then pin conflicted on the next commit (hand-derived to
+`142259ab...625d374`); 97/97 tests green. All three: `--check` and a fresh digest diff
+verified clean from each branch's fully-rebased final state; `git diff $(git merge-base HEAD
+origin/main) HEAD --stat` confirmed isolation; `mergeQueueEntry` checked before push (all
+three null, not occupying a slot, pushed directly); re-armed via disable-then-auto. `#1808`
+(`ph_nimitta`) checked and found `BLOCKED`/`MERGEABLE` with auto-merge armed but not yet
+queued — traced via `gh run view` to its own CI genuinely `in_progress` at ~6 min elapsed,
+within normal range, not stalled, no action taken. `#1845` (`ph_sodhana`) confirmed
+genuinely `QUEUED` via `gh pr list --search "is:queued"`.
+
+**Priorities 1-4:** several new `main` commits (L1's own PRs) confirmed not L4-relevant. One
+new adjudication this cycle, `#2086` (L5 → CONDUCTOR: migration-number races at campaign
+velocity) — cross-layer informational notice addressed to the Conductor, not an L4 action
+item (L4 owns its own 680-689 range and has had no collision); adjudication count now 16.
+E-gate still uncheckable — `mcp__postgres__query` unavailable, 316th consecutive cycle DB
+access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 326 L4: found and fixed three simultaneous genuine DIRTY PRs (`#1831`, `#1834`,
+`#1839` — all real conflicts from `main` advancing, all rebased/resolved/tested green/
+re-armed); confirmed `#1808` genuinely mid-CI (not stalled) and `#1845` genuinely `QUEUED`;
+noted new adjudication `#2086` as Conductor-addressed, not an L4 action item → next: watch
+`#1808` complete and reach `QUEUED`; watch all 5 own PRs drain in position order; retry
+E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
+remains deferred.
