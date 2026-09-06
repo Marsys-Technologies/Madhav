@@ -2117,3 +2117,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** #1881 merged (`9f9c32dc8`, L1, not L0's). `#2016`'s checks re-triggered
   again against the new base, still mid-CI, no reds. No DIRTY, no RED, no new eligible work. 30/40
   frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (`#2016` still mid-CI, no reds; no active merge-queue entry
+  found momentarily). No DIRTY, no RED. 30/40 frozen holds.
