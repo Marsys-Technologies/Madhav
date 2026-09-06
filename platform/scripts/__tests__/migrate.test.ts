@@ -752,7 +752,7 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; three known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→810 mi_vistara output_digest_spec (2026-09-06)', () => {
+  it('the checked-in allowlist parses; three known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→812 mi_vistara output_digest_spec (2026-09-06)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
     // forces documentation of each real renumber event. Current disclosed set: exactly 3.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
@@ -760,7 +760,7 @@ describe('loadRenumberDisclosures', () => {
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31143327280).
     // Entry 3: 692_nirmana_l5_mi_vistara_output_digest_spec.sql applied to the shared dev DB,
-    //   renumbered to 808 then to 810 after main independently claimed 808 too, after colliding with an unrelated 692_bg_doshas_... migration that
+    //   renumbered 808->810->812 after main independently claimed each in turn, after colliding with an unrelated 692_bg_doshas_... migration that
     //   merged to main first. Disclosed 2026-09-06 (self-diagnosed by the L5 NIRMANA campaign
     //   lane via an independent migration-guard review of a sibling migration, PR #1844).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
@@ -779,12 +779,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry544!.sql_identity).toBe('42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08')
     expect(entry544!.disposition).toBe('already-applied-under-old-name')
     expect(entry544!.disclosed_on).toBe('2026-08-07')
-    const entry810 = map.get('810_nirmana_l5_mi_vistara_output_digest_spec.sql')
-    expect(entry810).toBeDefined()
-    expect(entry810!.applied_filename).toBe('692_nirmana_l5_mi_vistara_output_digest_spec.sql')
-    expect(entry810!.sql_identity).toBe('24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8')
-    expect(entry810!.disposition).toBe('already-applied-under-old-name')
-    expect(entry810!.disclosed_on).toBe('2026-09-06')
+    const entry812 = map.get('812_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry812).toBeDefined()
+    expect(entry812!.applied_filename).toBe('692_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry812!.sql_identity).toBe('24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8')
+    expect(entry812!.disposition).toBe('already-applied-under-old-name')
+    expect(entry812!.disclosed_on).toBe('2026-09-06')
   })
 })
 
