@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 130; #2113 the ONLY genuinely open item now -- adjudication #2122 CLOSED, PR #2153 (L0's from_moon_view fix) merged, independently re-verified live (not just trusted on the merge): confirmed live_tool/tool_args correct in both origin/main's source and the live vidhi_primitives DB row. Corrected stale "still open" tracking in this file's per-asset table + W3 SNAPSHOT, and in the L1_W6_CLOSE_REPORT_v1_0.md draft (PR #2170)
+last_updated: 2026-09-07 — C8 v2.3 cycle 131; reconciled the stale Cost ledger section (last real entry cycle 1-2) honestly rather than fabricate wall-clock/token estimates -- recorded why per-cycle wall-clock/tokens aren't meaningful/available under C8 v2.3, substituted live-verified counts instead (118 merged PRs, 39 migrations, 139 findings triaged). Caught and corrected a real arithmetic error in my own first-draft migration count (12 -> 39) before shipping. #2113 still the sole open blocker
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -4637,6 +4637,37 @@ L1 must satisfy rather than a feature it consumes.
 
 ## Cost ledger
 
+**RECONCILED cycle 131 (C8 v2.3 priority-5 prep item).** The table below was stale since roughly
+cycle 2 — it stopped recording per-item wall-clock entries once the session moved from turn-based
+W1/W2 work into the C8 v2.3 supervised-cycle model (cycle 1 onward), and nothing backfilled it
+across the ~129 cycles since. Rather than fabricate plausible-looking per-cycle wall-clock/token
+numbers this session has no way to actually measure (§N.8: an unmeasured number is null, not an
+estimate dressed up as one), this reconciliation does three honest things instead:
+
+1. **States why per-cycle wall-clock is not a meaningful cost metric under C8 v2.3.** Each
+   "cycle" is one bounded supervisor-paced invocation (~1 minute apart by the contract's own
+   design, `CYCLE_CONTRACT_C8_V23.md` §Step 0) — the gap between cycles is supervisor idle time,
+   not session work time, so "wall-clock per cycle" would measure the supervisor's polling
+   cadence, not this session's actual cost. Nothing here can honestly backfill it.
+2. **States why per-cycle token counts are not available either.** This session has no
+   introspective access to its own token consumption, per-cycle or cumulative — no tool exposes
+   it, and none of the prior 130 cycles' heartbeat entries recorded a real number (checked: zero
+   hits for a token count anywhere in this file's heartbeat log outside the one W1 parallel-
+   subagent measurement below, which came from the Agent tool's own summary, not
+   self-measurement).
+3. **Records what IS honestly countable** as of cycle 131, live-verified rather than estimated:
+   **130 cycles run** (C8 v2.3, cycles 1-131) · **118 merged PRs** (`gh pr list --search "is:pr
+   is:merged head:codex/nirmana-l1-"`, an approximation bounded by branch-naming convention, same
+   caveat as `L1_W6_CLOSE_REPORT_v1_0.md` §1.5) · **39 migrations authored** in L1's own granted
+   ranges (live-counted via `ls platform/migrations/`, filtered to 650-659/740-759/840-851 and
+   excluding the 2 files in that range that are genuinely L3's — 848/849, the #2156-adjudicated
+   collision) ·
+   **139 findings triaged**, of which the NOW tier (18) closed by cycle 122 and the MUST tier
+   (~24 id-groups) closed by cycle 125, both live-verified, not merely counted.
+
+The five original rows (cycles 1-2, genuinely measured at the time) are kept below as historical
+record — they are the only entries in this table with a real wall-clock behind them.
+
 | item | wall-clock | notes |
 |---|---|---|
 | bootstrap + grounding + 3 blocker analyses | ~35 min | E-gate, floors, pins all measured live |
@@ -4645,6 +4676,7 @@ L1 must satisfy rather than a feature it consumes.
 | W3 batch 2 — ga_vargas instant (#1766) | ~25 min | incl. live proof against the L1 authority |
 | W1 ANALYZE (19 assets, 5 parallel subagents) | ~21 min wall / ~1.2M subagent tokens | fully parallel |
 | PR #1736 (campaign critical path) | ~45 min | incl. generator, tests, live 6-layer acceptance |
+| **C8 v2.3 cycles 1-131 (this reconciliation)** | **not trackable, see above** | 118 merged PRs, 39 migrations, 139 findings triaged (18 NOW + ~24 MUST closed) — count-based facts substituted honestly for wall-clock/token estimates this session cannot measure |
 
 ## Heartbeat
 
@@ -7745,3 +7777,39 @@ L1 must satisfy rather than a feature it consumes.
   proceed with the cost-ledger reconciliation prep item per cycle 129's own "next" pointer, since
   W1-W3 finding-list work, both adjudications, and one close-report draft update are all now
   genuinely done.
+- 2026-09-07T01:4xZ -- CYCLE 131 (C8 v2.3). PR hygiene: #2171/#2170 (my only two open PRs --
+  confirmed the rest of `gh pr list --author "@me"`'s rows belong to other layer sessions: L5/
+  #2168+#2167, L3/#2166, L2/#2165, plus ancient parked PRs) both showed `mergeStateStatus:
+  BLOCKED` with checks either `pass` or still-`pending`, zero `fail` -- genuinely mid-CI, not
+  DIRTY, not RED, nothing to fix. Re-checked #2113 (now the sole tracked blocker): unchanged,
+  same 15:00:13Z comment. Proceeded with the cost-ledger reconciliation per cycle 130's own
+  "next" pointer. First searched the other layer sessions' own STATE.md files for how they
+  handle this (`grep -rn "cost ledger"`) rather than inventing a format -- found L0/L2/L3/L4/L5
+  ALL already carry a `## Cost ledger` section, and L1's OWN file already has one too (found at
+  the point of searching, not previously noticed as stale) -- last real entry from cycles 1-2,
+  nothing added across the ~129 cycles since. Considered fabricating plausible per-cycle wall-
+  clock/token numbers to "fill the gap" and explicitly rejected that (§N.8: an unmeasured number
+  presented as an estimate is exactly the same defect class as an invented judgment) -- instead
+  reconciled honestly: (1) recorded WHY per-cycle wall-clock isn't a meaningful metric under C8
+  v2.3 (cycles are supervisor-paced ~1-minute-apart invocations per the contract's own Step 0,
+  not continuous session time -- the gap between cycles is supervisor idle time, not this
+  session's cost), (2) recorded WHY per-cycle token counts aren't available (no tool exposes
+  self-token-consumption, and none of the 130 prior heartbeat entries recorded a real number
+  either, confirmed by checking), (3) substituted what IS honestly countable: live-verified 118
+  merged PRs (`gh pr list --search "is:pr is:merged head:codex/nirmana-l1- "`), 139 findings
+  triaged (18 NOW + ~24 MUST closed, both live-verified in earlier cycles), and migrations
+  authored. Caught and fixed my own arithmetic mistake mid-task on the last figure: first wrote
+  "12 migrations" from a rough mental estimate, then actually ran `ls platform/migrations/ | grep
+  -E "^(65[0-9]|74[0-9]|75[0-9]|84[0-9]|851)_" | grep -v "_l3_"` (excluding #2156's 2 genuinely
+  L3-owned files, 848/849) before shipping the number -- got **39**, more than 3x my first guess
+  -- corrected before committing rather than trusting the initial estimate. Kept the five
+  original cycles-1-2 entries verbatim as the only rows in the table with a real measured
+  wall-clock behind them. No code change, no writer touched -- pure documentation, landed
+  directly on this branch (not a separate PR) since the edit IS the state file. CYCLE 131 L1: PR
+  hygiene clean, reconciled a genuinely stale cost ledger honestly (count-based facts, not
+  fabricated time/token estimates) after catching and fixing a real arithmetic error in my own
+  first draft -- next: re-check #2113 again; with W1-W3 finding-list work, both adjudications,
+  the close-report draft, and now the cost ledger all reconciled, the only remaining charter-
+  named priority-5 prep item is the full 139-row per-finding disposition table (§2's own OPEN
+  note in the close report) -- worth it next if #2113 is still stuck, though its marginal value
+  is lower since the source data doesn't change until new findings land.
