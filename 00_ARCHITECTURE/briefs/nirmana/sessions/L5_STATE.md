@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:26Z (C8 v2.3 cycle 230) — **IDLE-OK.** Both own PRs still `isInMergeQueue:
+  true`, clean. #1844=39, #1901=65 unchanged for 2nd cycle — confirmed turnover active
+  (new PRs #1934/#1935 now at top). #1869 unchanged at 3 comments. 5 cycles since last
+  push (~15 min elapsed) — pushing next cycle per the time-based cadence.
 - 2026-09-06T02:23Z (C8 v2.3 cycle 229) — **IDLE-OK.** #1826 CLEAN, all checks passed,
   self-queued (`isInMergeQueue: true`) — 2nd time this fix has held across a full CI cycle.
   #1844 confirmed `isInMergeQueue: true`. #1844=39, #1901=65 unchanged. #1869 unchanged at
