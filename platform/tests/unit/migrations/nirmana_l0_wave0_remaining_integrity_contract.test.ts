@@ -271,12 +271,6 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
     const client = await connectPrepared()
     try {
       await client.query(migration)
-      // Migration 628's own content re-pins bg_vidhi_primitives.integrity_check_sql to the
-      // OLD from_moon_view content hash. This fixture's vidhi_primitives is populated by
-      // dumping the CURRENT (already-corrected, #2122/F-D21/F-D23) writer, so replay migration
-      // 706 immediately after to re-pin the check to match -- otherwise the CONTRACTS loop
-      // below legitimately fails bg_vidhi_primitives' stored integrity SQL.
-      await client.query(migration706)
       await expect(client.query(
         `SELECT is_generated FROM information_schema.columns
          WHERE table_schema = 'public' AND table_name = 'bg_sky_calendar'
@@ -310,9 +304,15 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
           sampling_method: MUHURTA_V1, factor_family, count,
         })),
       ] })
-      for (const assetId of CONTRACTS.map(contract => contract.assetId)) {
-        await expect(executeStoredIntegritySql(client, assetId)).resolves.toBe(true)
-      }
+      // Migration 628's own replay-idempotency + digest-contract-mutation-rejection invariants are
+      // exercised here, BEFORE migration 706 (below) re-pins bg_vidhi_primitives.integrity_check_sql.
+      // Migration 628's guard for that asset hardcodes the OLD (pre-#2122) from_moon_view content
+      // hash; replaying 628 a second time after 706 has already moved that column away from the OLD
+      // hash would spuriously trip 628's own guard -- an artifact of same-test-function ordering, not
+      // a real production sequence (migrations never replay in production; each of 628/705/706 runs
+      // exactly once, in that order). This block only exercises migration 628's own idempotency and
+      // digest-guard behavior, both unrelated to the vidhi content correction, so it is unaffected by
+      // running before it.
       await client.query(migration)
       await client.query(`
         UPDATE asset_output_digest_specs
@@ -326,6 +326,16 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
         `SELECT catalog_status FROM asset_registry WHERE asset_id='bg_vidhi_primitives'`,
       )
       expect(status.rows).toEqual([{ catalog_status: 'CURRENT' }])
+
+      // Migration 706 re-pins bg_vidhi_primitives.integrity_check_sql to the corrected from_moon_view
+      // content hash (#2122/F-D21/F-D23) -- needed because this fixture's vidhi_primitives is
+      // populated by dumping the CURRENT (already-corrected) writer, not migration 628's original
+      // stale content. None of the three stored integrity_check_sql values (sky/vidhi/muhurta)
+      // reference asset_output_digest_specs, so the mutation above does not affect this loop.
+      await client.query(migration706)
+      for (const assetId of CONTRACTS.map(contract => contract.assetId)) {
+        await expect(executeStoredIntegritySql(client, assetId)).resolves.toBe(true)
+      }
     } finally {
       await client.end()
     }
