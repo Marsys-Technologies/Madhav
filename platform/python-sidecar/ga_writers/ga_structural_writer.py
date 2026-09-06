@@ -6165,6 +6165,23 @@ def _build_karaka_bhava_concordance_per_varga_rows(
     return rows
 
 
+def _build_varga_sign_occupants(varga_state: dict[str, Any]) -> dict[str, list[str]]:
+    """Bucket a varga_state's real grahas by occupied sign, for argala/virodha occupancy.
+
+    F-A26: varga_state carries a "LAGNA" (D1: _extract_chart_state) or "Lagna" (non-D1:
+    _load_varga_positions) pseudo-entry for lagna-sign-number consumers -- it is not a graha
+    and must never count as an argala/virodha occupant. Excluded here, not left to callers.
+    """
+    sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
+    for graha_name, gdata in varga_state.items():
+        if graha_name in ("LAGNA", "Lagna"):
+            continue
+        g_sign = gdata.get("sign", "")
+        if g_sign in sign_occupants:
+            sign_occupants[g_sign].append(graha_name)
+    return sign_occupants
+
+
 def _build_varga_aspect_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -6214,11 +6231,7 @@ def _build_varga_aspect_rows(
         ))
 
         # Argala/virodha 144-cell matrices per varga — completeness-first (native decision 2026-06-12)
-        varga_sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
-        for graha_name, gdata in varga_state.items():
-            g_sign = gdata.get("sign", "")
-            if g_sign in varga_sign_occupants:
-                varga_sign_occupants[g_sign].append(graha_name)
+        varga_sign_occupants = _build_varga_sign_occupants(varga_state)
         rows.extend(_build_argala_rows(
             chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver,
             varga=varga, varga_sign_occupants=varga_sign_occupants,
