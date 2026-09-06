@@ -128,7 +128,7 @@ jobs:
       - name: Build regular sidecar image (load, no push)
         uses: docker/build-push-action@v6
         with:
-          context: ./platform/python-sidecar
+          context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
           file: ./platform/python-sidecar/Dockerfile
           push: false
           load: true
@@ -631,7 +631,7 @@ jobs:
       - name: Build and push sidecar image
         uses: docker/build-push-action@v6
         with:
-          context: ./platform/python-sidecar
+          context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
           file: ./platform/python-sidecar/Dockerfile
           push: true
           tags: |
