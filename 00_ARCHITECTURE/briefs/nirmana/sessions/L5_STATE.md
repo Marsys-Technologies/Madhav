@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T07:45Z (C8 v2.3 cycle 326) — **IDLE-OK.** #1826 unchanged (Governance Gates,
+  no failures, armed). #1844 confirmed genuinely queued via `is:queued` search (beyond the
+  100-entry GraphQL window — queue depth currently >100). #1869 unchanged at 4 comments.
+  4 cycles since last push.
 - 2026-09-06T07:42Z (C8 v2.3 cycle 325) — **IDLE-OK.** #1826 down to just Governance Gates,
   no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1901 dropped from the
   queue (`isInMergeQueue: false`, still `state: OPEN`, not merged) — **not mine to fix**
