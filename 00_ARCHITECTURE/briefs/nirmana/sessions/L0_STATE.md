@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, progress on #2088 (migration 704, D-L0-PP fix): Unit Tests + Build Check completed, only Governance Gates still IN_PROGRESS -- no failures, mergeable=MERGEABLE, not DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK, no change: #2088 (migration 704, D-L0-PP fix) still has only Governance Gates IN_PROGRESS (unusually long-running vs the other checks, but no failure) -- mergeable=MERGEABLE, not DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3276,3 +3276,6 @@ see log). Still 35/40 until that's resolved.
 - 2026-09-06 — **IDLE-OK.** Progress: Build Check also completed on `#2088`; only Governance
   Gates still `IN_PROGRESS`, no failures. No DIRTY/RED, no other open L0 PRs. 35/40 frozen
   unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change: Governance Gates still `IN_PROGRESS` on `#2088` (unusually
+  long-running, but no failure). No DIRTY/RED, no other open L0 PRs. 35/40 frozen unchanged.
