@@ -3893,3 +3893,37 @@ now closest at position 3; E-gate uncheckable, DB access down 171 cycles; nothin
 next: watch queue positions continue advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~05:25Z` — L4 — **CYCLE 182 (v2.3) — PR hygiene found and fixed a real DIRTY PR
+(`#1864`); this rebase hit a genuine SOURCE-CODE conflict, not just a governance-file one —
+resolved by hand.**
+
+**PR hygiene:** GraphQL sweep showed `#1864` (`ph_pratikara` F-6 `source_id` propagation)
+`CONFLICTING`/`DIRTY`. Rebasing `codex/nirmana-l4-w3-3l-pratikara-source-id` onto `origin/main`
+conflicted on **`services/ph_pratikara/engine.py` and `tests/test_ph_wave4.py` themselves** —
+`#1854` (merged earlier this cycle sequence) had made `classical_citation` nullable on the same
+`MitigationRecord` dataclass this branch was adding `source_id` to. **Resolved by hand, not by
+`--skip`**: kept HEAD's `classical_citation: Optional[str]` and added this branch's own
+`source_id: Optional[str]` field alongside it; verified the writer's INSERT and the
+`RemedyPrescription` dataclass defaults were unaffected. The test-file conflict was two
+independent, non-overlapping test additions (citation-nullability tests from `#1854`,
+source_id-propagation tests from this PR) — kept **both** as a union rather than picking one
+side, since neither superseded the other.
+
+Then the now-familiar governance-commit sequence: `--skip`ped the stale digest-regen and
+pin-splice commits, regenerated the digest fresh (real 1-line change on `ph_pratikara`,
+expected), re-spliced the L4 pin fresh, verified `--check` PASS. Ran `test_ph_wave4.py`:
+**65/65 pass** (the union of both test additions, none dropped). Pushed `--force-with-lease`
+clean (no dequeue needed). Re-armed auto-merge; swept the other 8 own PRs afterward, none
+cascaded into DIRTY.
+
+**This cycle's unit was the DIRTY fix itself** — the first genuine source-code (not just
+generated-governance-file) merge conflict this session, handled with the same rigor: verify
+what each side actually changed, union rather than discard, re-test before trusting.
+
+CYCLE 182 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1864`) whose rebase conflicted on
+real source code (not just generated governance files) because of a same-dataclass field
+overlap with the just-merged `#1854`; resolved by hand as a union of both fixes, verified
+65/65 tests pass → other 8 own PRs confirmed healthy → E-gate uncheckable, DB access down 172
+cycles → next: watch `#1864` re-enter the queue; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
