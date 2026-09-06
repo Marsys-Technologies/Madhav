@@ -149,7 +149,7 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 | ka_sudarshana_varsha | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_tithi_pravesha | data | build | 0 | **verified_reuse** | W2-done | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
 | ka_vedha_gochara | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
-| ka_muhurta_seva | service | probe | 1 | **probe** | W2-accepted | **OPEN-PENDING-PIN (real)** | — | health_probe deployed live (migration 850, PR #2065); `asset_analysis_accepted`+`optimization_verdict_accepted` recorded live 2026-09-06T~102:0xZ (verdict `examined_and_already_efficient`); ready for W4 probe/freeze dispatch via a genuinely fresh subagent (D-CND-35) |
+| ka_muhurta_seva | service | probe | 1 | **probe** | **W4 FROZEN (real)** | **— (frozen)** | `asset_frozen` 2026-09-06T21:10:00Z | **Layer's SECOND genuine, non-artefactual `asset_frozen` — and the FIRST done correctly per D-CND-35 from the start** (a genuinely separate fresh subagent executed all 3 verifier-role events, no post-hoc-remediation needed this time, unlike `ka_graha_sancara`). Full chain: `probe_accepted` (201, live probe re-called independently by the subagent itself, GREEN, 5/5 checks incl. native-overlay 33.0/28.000000000000004) → `integrity_verified` (201, server re-probes under the integrity-contract framing since `integrity_check_sql`/`count_sql` are both NULL for this service asset) → `asset_frozen` (201, `lifecycle_digest` over the 4 prior events). Independently re-verified by this session via direct DB query (not trusted from the subagent's report alone): all 5 rows present, correct `source_ref` per event type, correct verifier-SA attribution. `egate.sql` re-run: `ka_muhurta_seva` no longer appears anywhere in the not-yet-frozen output. |
 | ka_gochara_sweep | data | retired_with_disposition | 1 | **retired** | W2-done | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
 | ka_dasha_kala | service | probe | 0 | **probe** | W2-done | 2 | — | |
 | ka_gochara | data | build | 1 | **changed** | W2-done | 2 | — | v2/v3 authority question |
@@ -212,7 +212,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | `ka_dasha_kala`'s W2/W4 dispatch (health_probe LIVE since migration 848 deployed — #2079) | `ga_dashas`/`ga_positions` (L1, unfrozen) — declared AND true ancestors, per `KaDashaKalaService`/`tree_walk`'s own live-DB read | **DECIDED, not attempted**: `egate.sql` reads `BLOCKED-ANCESTORS` for this asset despite its probe being runnable — this is the E-gate correctly refusing dispatch, not a stale/artefactual block. D-CND-34's DB-free PROXY probe deliberately does NOT verify the live-DB behavior the ancestor-freeze gate protects, so a green probe result would not license bypassing C2's asset-frontier discipline — same "not this session's call to make alone" precedent as #1960. No `probe_accepted` submitted ahead of ancestor freeze. (Note: this row was accidentally dropped from an earlier rebase and is re-added here unchanged, not re-decided.) |
 | ~~`ka_muhurta_seva`'s W2 route submission~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T~102:0xZ — recorded live, independently re-verified.** `egate.sql` confirms `OPEN-PENDING-PIN`. See heartbeat for the full procedure and digest cross-check. Next: W4 probe/freeze chain via a genuinely fresh subagent (D-CND-35). |
-| `ka_muhurta_seva`'s W4 probe/freeze dispatch (`probe_accepted`→`integrity_verified`→`asset_frozen`) | nothing external — genuinely `OPEN-PENDING-PIN` now | **Ready, but MUST route through a genuinely separate fresh subagent per D-CND-35** — not this session's own context, regardless of what it is technically capable of submitting. Not yet dispatched. |
+| ~~`ka_muhurta_seva`'s W4 probe/freeze dispatch~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T21:10:00Z — `asset_frozen` recorded for real, via a genuinely fresh subagent from the start (no D-CND-35 process gap this time).** See asset table + heartbeat for the full chain and independent re-verification. |
 | deploy-pipeline defect (`migrate` job checks out wrong commit under `workflow_run.head_sha` race, no self-check unlike `deploy-web`) — CAMPAIGN-WIDE, not L3-only | Conductor/native ruling on **#2159** (filed, nirmana-adjudication, TIME-CRITICAL) | genuinely open — `ka_muhurta_seva` recovered by luck this time (a later deploy happened to get the right ref); the next asset/layer this hits may not be so lucky. Not fixed unilaterally — shared CI/deploy infra. |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -493,6 +493,138 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~113:0xZ — L3-W4 — IDLE-OK (verified): `#2166`'s known
+  `Governance Gates` run (`34060510321`) now ~11.5min, still on the same
+  `pytest — pyjhora_adapter + pipeline` step — matches this exact step being
+  the consistently slowest one across every run checked this whole session,
+  not evidence of a stall specific to this PR. 0 failures anywhere. No new
+  `origin/main` merges. Nothing new eligible. — blocked on: nothing; next
+  action: same, wait for it to finish.
+- `2026-09-06T~112:0xZ — L3-W4 — IDLE-OK (deeper check, corrects last cycle's
+  shallow read).** Last cycle's `gh run list --limit 15` sweep genuinely
+  didn't surface `#2166`'s OWN `merge_group` build at all (it had scrolled
+  past the limit as other queue entries' builds started after it) — looked
+  like it hadn't started despite reporting `position: 1`. Queried GitHub's
+  merge-queue entries directly this time (`mergeQueue(branch: "main")`
+  GraphQL field) to see the real queue order/state, then searched the FULL
+  run list filtered on `pr-2166` specifically rather than the truncated
+  recent-N list: **found it — started `21:15:33Z`, 14/15 jobs already
+  passed, only `Governance Gates` still running (~8-9min, same job that's
+  consistently the slowest one this whole saga, not uniquely stuck here).**
+  Genuinely close to finishing, not stalled. Lesson for future cycles: when
+  a PR reports `position: 1` but a shallow `gh run list` sweep shows no
+  matching `merge_group` run, search the FULL list by branch name before
+  concluding anything — a truncated list is not evidence of non-existence.
+  No new bounded work. — blocked on: nothing; next action: same, wait for
+  `#2166`'s `Governance Gates` to finish.
+- `2026-09-06T~111:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
+  `isInMergeQueue: true`, position 1, healthy — its own `merge_group` build
+  hasn't started yet, but `main` genuinely advanced by 2 more commits since
+  last cycle (`#2163`, `#2162`, both other layers), confirming the shared
+  queue is actively merging, just hasn't reached mine — not a stall. No new
+  bounded work. — blocked on: nothing; next action: same, wait for `#2166`.
+- `2026-09-06T~110:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
+  `isInMergeQueue: true`, healthy — confirmed the shared queue itself is
+  actively processing (other PRs' `merge_group` builds `in_progress`/
+  completing right now via `gh run list`), just hasn't reached mine yet. No
+  new `origin/main` merges since last cycle. Continuing to hold local rather
+  than push. — blocked on: nothing; next action: same as last cycle, wait
+  for `#2166` to clear.
+- `2026-09-06T~109:0xZ — L3-W4 — IDLE-OK (verified): `#2166` genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — the slow `Governance Gates`
+  check from the last two cycles finished with no failures, confirming it
+  was genuine shared-queue contention, not a stall. Re-ran `egate.sql` full
+  layer sweep (not just the L3 grep): `ka_muhurta_seva` confirmed genuinely
+  absent from the entire not-yet-frozen output now — the freeze holds. No
+  new merges, no new opening anywhere in the layer. Holding this entry
+  local-uncommitted-to-remote — `#2166` is genuinely mid-queue-attempt right
+  now and a push would dequeue it for no reason. — blocked on: nothing
+  genuinely new; next action: let `#2166` clear the queue on its own, then
+  push the accumulated local block.
+- `2026-09-06T~108:0xZ — L3-W4 — IDLE-OK (verified, closer check): same
+  `Governance Gates` run ID as last cycle, now ~11-12min — past the typical
+  ~10min pattern, so checked step-level progress via `gh run view --job`
+  rather than trust "in_progress" alone: still on the same step (`pytest —
+  pyjhora_adapter + pipeline`), but `gh run list` shows 3+ OTHER runs
+  genuinely `in_progress` concurrently right now (other layer sessions'
+  PRs) — a busy, contended shared CI runner queue, not a stall unique to
+  this run. No hard evidence of a stuck job (no error, no repeated-identical
+  timestamp signature to compare against); treating as slow-but-progressing
+  rather than escalating on a borderline elapsed time alone. No new
+  `origin/main` merges, no new E-gate opening. — blocked on: `#2166`
+  finishing; next action: if it's STILL on this exact run next cycle with
+  no further evidence of progress, check the actual step start-time via the
+  log once available (or reconsider) rather than repeat the same "probably
+  fine" read a third time.
+- `2026-09-06T~107:0xZ — L3-W4 — IDLE-OK (verified): `#2166`'s last check
+  (`Governance Gates`) confirmed genuinely `in_progress` at ~8.5min via
+  `gh run view` — within the known pattern, not stuck. No new `origin/main`
+  merges. Re-ran `egate.sql`: no new E-gate opening — `ga_positions` still
+  `OPEN-PENDING-PIN` (not yet `asset_frozen`, L1's own asset); everything
+  else genuinely `BLOCKED-ANCESTORS` on it, unchanged. `ka_gochara_resonance`
+  still `BLOCKED-NO-ROUTE`, deliberately held per D-CND-26/#1734 (true
+  closure needs `ga_sensitive`/`ga_yoga`/`ga_dashas`/`bo_arudha`, not just
+  the mechanical E-gate). Nothing new eligible. — blocked on: `#2166`'s last
+  check; next action: push the accumulated local block once it clears, then
+  watch for `ga_positions` freezing (the layer's single highest-leverage
+  unlock) each cycle.
+- `2026-09-06T~106:0xZ — L3-W4 — `ka_muhurta_seva` is FROZEN. Layer's second
+  genuine, non-artefactual `asset_frozen`, and the first one done cleanly
+  end-to-end.** The redispatched fresh subagent completed successfully (51
+  tool calls, ~6.4min): re-confirmed `OPEN-PENDING-PIN` itself before
+  starting, independently called the live probe endpoint directly (not
+  reusing any value from this session), got GREEN (5/5 checks incl. the
+  native-overlay contract), THEN submitted `probe_accepted` (201) →
+  `integrity_verified` (201, correctly reading that a NULL-`integrity_check_
+  sql` service asset gets re-probed under the integrity-contract framing
+  rather than a SQL check) → `asset_frozen` (201, `lifecycle_digest` over the
+  4 prior events). **Independently re-verified myself, not trusted from the
+  subagent's report alone**: direct `SELECT` against `nirmana_evidence.
+  nirmana_elevation_campaign_events` confirms all 5 rows present, each
+  `source_ref` matching its event type's exact required format
+  (`nirmana-elevation:health-probe:ka_muhurta_seva`,
+  `nirmana-elevation:integrity:ka_muhurta_seva`,
+  `nirmana-elevation:freeze:ka_muhurta_seva`), all 3 W4 events correctly
+  attributed to the verifier SA. Re-ran `egate.sql`: `ka_muhurta_seva` no
+  longer appears ANYWHERE in the not-yet-frozen output. **Unlike
+  `ka_graha_sancara`, this freeze required no post-hoc remediation** — the
+  fresh-subagent separation was genuine from the first submission, not
+  retrofitted after a self-caught process gap. Two dispatch attempts total
+  this saga (first stalled safely with zero submissions before any
+  evidence went out; second completed cleanly) — recorded as the honest
+  process account, not smoothed over. `#2166` still healthy, mergeable, not
+  yet queued, 0 failures. — blocked on: nothing; next action: `ka_dasha_kala`
+  remains the layer's only still-genuinely-blocked service asset (real
+  `ga_dashas`/`ga_positions` ancestor freeze, L1's to resolve); watch for
+  any new E-gate openings each cycle per standing practice; `#2159`
+  (deploy-pipeline defect) still open, unrelated to this success.
+- `2026-09-06T~105:0xZ — L3-W4 — Genuine progress on the W4 chain, not
+  finished yet.** PR hygiene: `#2166` still healthy, mergeable, 2 checks
+  pending, 0 failures. Checked the subagent's progress via a direct,
+  non-intrusive DB read (not `ListAgents` chatter alone) rather than interrupt
+  it: **`probe_accepted` and `integrity_verified` are both live**, correctly
+  attributed to `amjis-nirmana-verifier@...`, observed at `21:06:38Z` and
+  `21:07:14Z`. `asset_frozen` not yet present — the subagent is still
+  genuinely working (5min in, well within budget), not stalled. Left it
+  running undisturbed. No new bounded work available while it finishes. —
+  blocked on: the subagent completing the third event; next action: verify
+  `asset_frozen` lands, re-run `egate.sql` to confirm `ka_muhurta_seva` drops
+  out of the not-yet-frozen list entirely (the layer's second genuine
+  freeze), and read the subagent's own report for the full procedural
+  account once it returns.
+- `2026-09-06T~104:0xZ — L3-W4 — IDLE-OK (verified): `#2166` healthy, mergeable,
+  3 checks pending, 0 failures — nothing to fix. The redispatched W4 subagent
+  (2nd attempt) is genuinely still running (~3min in via `ListAgents`, not
+  stalled — well within its own budget), so left it undisturbed rather than
+  touch anything it might be reading/writing concurrently. No new
+  `origin/main` merges touch L3. `ga_positions` still `OPEN-PENDING-PIN` (not
+  yet `asset_frozen` — L1's own asset, outside this session's control);
+  `ga_dashas`/`ga_condition`/etc. still correctly `BLOCKED-ANCESTORS` on it —
+  no new unlock for `ka_dasha_kala`. Nothing else eligible this cycle. —
+  blocked on: the subagent's completion; next action: read its report,
+  transcribe the outcome, decide whether a third dispatch is warranted if it
+  stalls again (and if so, whether the task needs a narrower scope rather
+  than an unchanged retry).
 - `2026-09-06T~103:0xZ — L3-W4 — Dispatched `ka_muhurta_seva`'s W4 chain to a
   genuinely fresh subagent, per D-CND-35 — not executed by this session's own
   context.** PR hygiene: `#2160` still genuinely `isInMergeQueue: true`
