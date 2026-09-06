@@ -630,6 +630,11 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~37:0xZ — L3-W3 — PR hygiene: 3 of 7 L3-owned PRs were `CLEAN`
+  but unqueued (`#1936`/`#1929`/`#1917`, after waiting out a transient
+  `UNKNOWN` batch read) — queued all three, verified via `is:queued`. `#2096`
+  still has no ruling. — blocked on: `#2096`'s ruling; next action: keep
+  L3-only hygiene sweeps going, check `#2096` each cycle.
 - `2026-09-06T~36:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
   (waited out another transient `UNKNOWN` batch read before trusting it).
   `#2096` still has no ruling. **Corroborating context found on `#1713`**: an
