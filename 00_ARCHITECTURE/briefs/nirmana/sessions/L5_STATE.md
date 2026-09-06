@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T08:27Z (C8 v2.3 cycle 342) — **IDLE-OK, verified mi_kula's E-gate directly.**
+  #2004 merged (L0: bg_dasha_systems integrity_check_sql fix, D-L0-GG) — checked live
+  whether this moved mi_kula's E-gate (blocked on 3 unfrozen L0 ancestors:
+  bg_dasha_systems, bg_rules, bg_yogas): queried `asset_frozen` events directly, confirmed
+  0 rows for all three — #2004 was an integrity-check-SQL bug fix, not a freeze; E-gate
+  still closed. #1826's fresh CI progressing normally, no failures, armed. #1844 confirmed
+  `isInMergeQueue: true`. #1869 unchanged at 4 comments. 1 cycle since last push.
 - 2026-09-06T08:24Z (C8 v2.3 cycle 341) — **Pushed 6-cycle batch (334-340).** Dequeued
   #1826 (was genuinely queued), rebased 343 commits clean, pushed, re-armed. #1844
   confirmed unaffected (`isInMergeQueue: true`). Starting a new local batch.
