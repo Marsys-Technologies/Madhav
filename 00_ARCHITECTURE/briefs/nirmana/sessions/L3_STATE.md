@@ -461,6 +461,33 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~10:1xZ — L3-W3 — MAJOR PROCESS CHANGE: discovered #2067's standing ruling
+  (Conductor, cycle 367) that heartbeats must NEVER be a PR — post as a comment on #1713
+  or update this file directly, no PR/merge/DIRTY-fleet noise.** Found this while fighting
+  an unwinnable cascade: main is advancing extremely fast right now (L1's migration-799+
+  wave landing in rapid succession) relative to this session's ~45 open PRs, so
+  individually rebasing each stale PR kept re-poisoning ones already just fixed minutes
+  earlier (confirmed genuine via a 20s-delayed recheck, not transient churn — #2073 itself
+  and #1954/#1940, both fixed this same cycle, showed DIRTY/UNMERGEABLE again). Checked
+  #2067 rather than keep chasing: exactly this problem, already ruled on.
+  **Consolidating per the ruling: 29 pure-heartbeat-only PRs identified (`gh pr diff
+  --name-only` confirmed each touches ONLY this file) — #1957,#1961,#1966,#1970,#1976,
+  #1978,#1980,#1982,#1984,#1989,#1992,#1996,#2001,#2002,#2006,#2009,#2018,#2020,#2023,
+  #2025,#2032,#2034,#2038,#2042,#2045,#2050,#2061,#2062,#2073.** Rather than continue an
+  unwinnable rebase chase on all 29, consolidating onto this one (the freshest, re-rebased
+  onto current `main`) and closing the other 28 with a reference to #2067's ruling — their
+  unique historical color (mostly repetitive "queue clean, #1903 not merged" boilerplate
+  across many stale cycles) is accepted as superseded per the ruling's own framing of
+  heartbeats as non-critical status broadcasts, not code needing strict preservation.
+  **Going forward this cycle onward: heartbeats are comments on #1713 or direct
+  `L3_STATE.md` commits attached to an already-open substantive PR — never a fresh
+  PR of their own.** This is the actual root cause of this session's entire recurring
+  DIRTY-PR-fix pattern (every "Nth DIRTY-PR fix" heartbeat entry this file accumulated was
+  itself spawning the NEXT cycle's fix target) — closing the loop for good, not just this
+  cycle's instance of it.
+  — blocked on: nothing; next action: verify all 28 closures landed cleanly, confirm this
+  PR (#2073) merges, then resume N1/#2071/#1713 follow-ups with the new no-heartbeat-PR
+  discipline in place.
 - `2026-09-06T~09:0xZ — L3-W3 — PR hygiene: five more genuinely DIRTY PRs found and
   fixed this cycle: #1957 (pure state-file sync), #2042 (heartbeat-14, pure state-file),
   #2045 (heartbeat-15, two commits — the second's "removed" `Also open: M12...` line
