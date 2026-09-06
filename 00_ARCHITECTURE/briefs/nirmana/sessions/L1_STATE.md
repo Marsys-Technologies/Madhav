@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 51; ga_structural F-A14 widened to 7/57 (#2011); range 752-759 exhausted, #2012 filed
+last_updated: 2026-09-06 — C8 v2.3 cycle 52; #2012 ruled (780-799 granted); ga_structural F-A14 widened to 8/57 (#2015)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -29,9 +29,10 @@ your `nirmana-adjudication` issues → continue.
   bhadra/panchaka flags, cycle 46), 756 (`ga_structural` vargottama_per_varga, F-A17 found, cycle
   47), 757 (`ga_structural` parivartana_per_varga, ships F-157 residual, cycle 49), 758
   (`ga_structural` combustion_per_varga, cycle 50), 759 (`ga_structural` graha_yuddha_per_varga,
-  cycle 51) used. **752-759 range EXHAUSTED as of cycle 51** — adjudication **#2012** filed
-  same-cycle, per the D-L1-59/D-L1-60 drill. Awaiting a fresh range before authoring any new
-  migration.
+  cycle 51) used. 752-759 EXHAUSTED as of cycle 51 — adjudication #2012 filed same-cycle, **RULED
+  same-day (cycle 52): L1 continuation 3, 780–799 granted (20 numbers — sized up from the last two
+  10-number blocks given the ~50-remaining-category estimate)**. 780 (`ga_structural`
+  nway_config_per_varga, cycle 52) used. 781–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2219,6 +2220,39 @@ await #2012's ruling before authoring any new migration; meanwhile, non-migratio
 remains available (root-causing why F-A15/F-A17/F-157's three tracked conjuncts are all waiting on
 the same future rebuild, or `ga_positions` re-dispatch once #1892 lands).
 
+## CYCLE 52 (C8 v2.3) — adjudication #2012 ruled same-day (780-799 granted); ga_structural's F-A14 contract widened to 8/57 categories (PR #2015, migration 780, first in new range)
+
+**PR hygiene:** clean sweep (kept `--limit 200`). `#2011` was CLEAN-but-unqueued (checks green,
+mid-CI) — nothing actionable. All other 37 L1 PRs confirmed genuinely `is:queued`. #1928/#1892
+unchanged.
+
+**Checked adjudication #2012 first**, per last cycle's own closing note. Ruled the SAME DAY it was
+filed (matching #1972's own same-day-ruling precedent): the Conductor verified the FULL campaign
+allocation table live (all six other layers' ranges plus L1's own three exhausted ranges),
+confirmed against `origin/main`'s actual highest present migration file (720) that 780+ is
+genuinely free, and granted **L1 continuation 3, 780-799 (20 numbers)** — sized up from the last
+two 10-number blocks given L1's own estimate (in #2012 itself) of ~50 remaining `ga_structural`
+categories, explicitly to reduce re-filing overhead. Recorded in `CAMPAIGN_STATE.md`'s migration-
+ranges table by the Conductor.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `nway_config_per_varga`** (PR
+**#2015**, migration 780 — first in the new range), stellium (3+ grahas sharing a sign) detection.
+Three conjuncts following the now-well-established playbook: (m) a domain conjunct re-deriving the
+writer's own `>= 3` threshold; (n) an internal self-consistency check (the graha count stored twice
+— once as `fact_value_num`, once as `value_jsonb.grahas`'s array length — must agree); (o) a
+cross-authority re-derivation, using `jsonb_array_elements_text` to check EVERY graha in the
+stellium's array (not just the first) against `ga_vargas`' own sign data for the same varga. Ran
+(o) unscoped, found 1/764 violations on D1 — the FOURTH `_per_varga` category to hit the by-now
+thoroughly-recognized dual-D1-source shape — scoped it out without re-investigating, confirmed
+clean (0/746). All three individually mutation-tested via real transactional corruption. Carried
+the twelve prior conjuncts (a)-(l) forward verbatim, including the three already-tracked
+genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/` suite: 192 passed /
+91 skipped (40 files).
+
+CYCLE 52 L1: adjudication #2012 ruled (780-799 granted), widened `ga_structural`'s F-A14 contract
+to 8/57 categories (PR #2015, migration 780) — next: continue `ga_structural` widening (49
+categories remain), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2234,7 +2268,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 → #2007 cycle 49 → #2008 cycle 50 → #2011 cycle 51 — 7/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga; migration range 752-759 EXHAUSTED, adjudication #2012 filed cycle 51); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) now confirmed on THREE `_per_varga` categories (vargottama/combustion/graha_yuddha) — any future `_per_varga` conjunct comparing against `chart_divisionals` should check for this same shape before assuming a new defect |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2011 cycle 51 → #2015 cycle 52 — 8/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga; migration range 780-799 granted via #2012, ruled same-day); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) now confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config) — any future `_per_varga` conjunct comparing against `chart_divisionals` should check for this same shape before assuming a new defect |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -2930,6 +2964,14 @@ whole campaign.
   exactly (full per-migration table with PR links, concrete ask, explicit "does not block work in
   flight" framing). `ga_structural`'s F-A14 arc remains the campaign's largest coverage gap
   (50/57 categories still uncovered) — will resume once the new range is granted.
+
+- **D-L1-76** — C8 v2.3 cycle 52: adjudication #2012 ruled same-day — **L1 continuation 3,
+  780-799 granted (20 numbers)**, sized up from the last two 10-number blocks given L1's own
+  ~50-remaining-category estimate. Widened `ga_structural`'s F-A14 contract (migration 780,
+  PR #2015), 7/57 → 8/57, adding `nway_config_per_varga`. Fourth `_per_varga` category to hit the
+  D1 dual-source shape — recognized and scoped out on sight, no re-investigation needed; the
+  pattern is now thoroughly established across four independent categories (vargottama,
+  combustion, graha_yuddha, nway_config).
 
 ## Held items
 
@@ -3747,3 +3789,20 @@ L1 must satisfy rather than a feature it consumes.
   migration; non-migration-touching work remains available (root-causing why F-A15/F-A17/F-157's
   three tracked conjuncts all await the same rebuild, or ga_positions re-dispatch once #1892
   lands).
+- 2026-09-06T06:2xZ -- CYCLE 52 (C8 v2.3). PR hygiene clean: #2011 CLEAN-but-unqueued (mid-CI, not
+  stuck), all other 37 L1 PRs genuinely is:queued. #1928/#1892 unchanged. Checked adjudication
+  #2012 first per last cycle's note -- ruled same-day: L1 continuation 3, 780-799 granted (20
+  numbers, sized up given the ~50-remaining-category estimate), Conductor verified the full
+  allocation table + confirmed live against origin/main that 780+ is genuinely free. Unit of
+  work: widened ga_structural's F-A14 contract to 8/57 (PR #2015, migration 780, first in new
+  range) -- nway_config_per_varga (stellium detection). Three conjuncts: (m) domain re-deriving
+  the writer's >=3 threshold; (n) internal self-consistency (graha count stored twice must agree);
+  (o) cross-authority re-derivation using jsonb_array_elements_text to check EVERY graha in the
+  array against ga_vargas' own sign data. Ran (o) unscoped, found 1/764 violations on D1 -- the
+  FOURTH _per_varga category to hit the now-thoroughly-recognized dual-D1-source shape -- scoped
+  out without re-investigating, confirmed clean (0/746). All three mutation-tested. Carried the 12
+  prior conjuncts forward verbatim. No writer touched. Full platform/tests/unit/migrations/ suite:
+  192 passed / 91 skipped (40 files). CYCLE 52 L1: adjudication #2012 ruled (780-799 granted),
+  widened ga_structural's F-A14 contract to 8/57 categories (PR #2015, migration 780) -- next:
+  continue ga_structural widening (49 categories remain), or ga_positions re-dispatch once #1892
+  lands.
