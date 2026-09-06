@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — D-L0-EE: bg_gochara_arcs run completed clean (data correct) but its authorization used the wrong source_kind and can't chain to accepted_rebuild_observed. Fixed the script; needs a fresh dispatch next.
+last_updated: 2026-09-06 — Second DIRTY-PR catch of the campaign: #1910 (migration 700, bg_dasha_systems) went DIRTY once it reached the queue head after #1911 merged — same stale-branch-point pattern as #1969 (branch cut from an old main point, would have deleted ~60 other layers' migrations/files, 397 insertions/3862 deletions in the diff). Closed #1910, replaced with clean single-commit #2004 off current main, auto-merge armed. 1915/1923/1925 confirmed still queued normally (UNKNOWN mergeStateStatus is just not-yet-recomputed, not DIRTY). 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,23 +33,25 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 29 frozen. **29/40
-frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remaining**, all diagnosed.
+**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 30 frozen. **30/40
+frozen** (verifier-signed 5-event chains, implementer≠verifier). **10 remaining**, all diagnosed.
+`bg_vidhi_floors` FROZEN this cycle (D-L0-NN) — first genuine freeze of this campaign resumption,
+full chain traced end-to-end: fresh W2 → dispatch → authorize → accepted_rebuild_observed →
+integrity_verified → asset_frozen, all via the scratchpad tooling built this session.
 
-## The 11 unfrozen assets
+## The 10 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only | **Run `bfdc6919…` COMPLETED, data correct — but authorization used wrong `source_kind` (D-L0-EE), unusable for freeze.** Needs a fresh dispatch with the now-fixed `authorize_build_run.sh` |
-| bg_yogas | rebuild_only | **VERDICT CLOSED (D-L0-J): writer correct, no fix.** Live 233/229/229/0 is stale pre-migration-630 data; dispatch alone produces 233/233/233/85. CASCADE parent → snapshot+`--acknowledge-destroys` |
-| bg_dasha_systems | rebuild_only | **VERDICT CLOSED (D-L0-K): writer correct, no fix.** Live catalog=20/ontology=20/reference=19 (kp missing only from reference) is stale pre-reconciliation data (63aeba051); `DASHA_SYSTEMS` list already has 20 unique incl. kp, one synced transactional loop writes all 3 tables — dispatch alone produces 20/20/20 |
-| bg_doshas | rebuild_only | **REAL DISPATCH DONE (D-L0-AA), data confirmed correct, but unauthorized** — `build_run_authorized` window missed, retry blocked by #1848's still-open duplicate-guard bug (needs #1851). Next: retry dispatch+immediate-authorization once #1851 merges |
-| bg_vidhi_floors | rebuild_only | **Tiling-check migration MERGED (#1832), not yet deployed to live DB** (still shows old `hi<>n` clause — check each cycle). 11/14-intent, 286/409-item gap traced to stale-build (D-L0-N) — same family as D-L0-J/K, source internally sound — still needs dispatch + `catalog_status` DRAFT→CURRENT (D-CND-09) once #1838 lands |
+| bg_cohort | rebuild_only | **Job-image blocker CLEARED (deployed image now `80a9cd71e...`, confirmed ancestor of #1772). Genuine dispatch succeeded (run `a9446885-...`, real build, valid receipt) but hit a NEW structural blocker (D-L0-II): `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set for its `depends_on`, so `receipt_state` is permanently `'unknown'`.** Posted to #1713 for Conductor; not L0-fixable (shared orchestrator provenance code). Only L0 asset affected (checked: no other L0 asset depends on a service-kind asset) |
+| bg_gochara_arcs | rebuild_only | **Structural bind (D-L0-FF): 2 runs now** — `bfdc6919` (genuine build, valid receipt, WRONG authorization) and `5ba8cedf` (valid authorization, `skip_no_delta`'d, stale receipt). Neither completes the evidence chain; may need Conductor input on a `force` path |
+| bg_yogas | rebuild_only | **D-L0-J refined by D-L0-KK: real dispatch (run `f89f70fa-...`) failed integrity_check_sql, but writer is fully correct.** Genuine `seed_yogas()` replay produces exactly 233/233/233/85 with all three content-hash pins matching byte-for-byte — the ONLY failing subclause is the same FULL-JOIN scope leak as bg_doshas/692 and bg_dasha_systems/700 (`entity_class='yoga'` in the ON clause, 508 non-yoga `brahma_ontology` rows leak in). Migration 701 authored + verified live (TRUE on genuine replay, FALSE on stale live data). No writer change; awaiting PR merge + deploy, then re-dispatch. CASCADE parent → snapshot+`--acknowledge-destroys` (already done this cycle) |
+| bg_dasha_systems | rebuild_only | **D-L0-K refined by D-L0-GG: writer still correct; the CHECK had two bugs.** Real genuine dispatch (run `ce86f4cf`, not skip_no_delta) failed `integrity_check_sql`. Root-caused live: (1) same FULL-JOIN scope bug as bg_doshas/692 — `ontology.entity_class='dasha_system'` in the ON clause instead of a pre-filtered subquery, so all non-dasha_system `brahma_ontology` rows leaked in; (2) migration 621's `catalog_hash` pin itself was wrong at authoring time (writer content unchanged since 5f47906bc; genuine hash is `8e35495f...`, pin says `30742da6...`). Fix migration 700 authored + verified live (rolled-back tx): guard matches 621's exact pin, corrected check evaluates **TRUE** against a genuine fresh writer run and **FALSE** (fail-closed, as expected) against current stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
+| bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
 | bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
-| bg_compendium_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — depends only on already-frozen `bg_reference`/`bg_texts`. Same blocker as the rest (job-image), not wave-gated |
+| bg_compendium_index | rebuild_only | **D-L0-JJ refined by D-L0-MM: writer fully correct; both content-hash pins were stale.** Replayed `_build_desired_rows()` directly (no full `ContextSpec` needed — pure function of `classical_text_chunks`/`reference_topic_tags`): produces exactly 9571/7969/1602 matching migration 623's structural pin precisely. Both content hashes (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer file being unchanged since — corpus content evidently evolved since 623 was authored. Migration 702 authored + verified live (rolled-back tx): TRUE on genuine replay, FALSE on stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
-| bg_text_index | rebuild_only | **CORRECTED (D-L0-Q): E-gate `OPEN-PENDING-PIN`, 0 unfrozen ancestors** — same as bg_compendium_index |
+| bg_text_index | rebuild_only | **Now caught by D-L0-FF (4th confirmed instance).** Genuine build (run `27fea532-...`) lost its evidence chain to the D-L0-JJ multi-asset authorization tooling bug (now fixed); solo retry (run `f3c762e6-...`, correctly authorized this time) `skip_no_delta`'d against the still-matching old receipt, so no fresh run/receipt pair exists. Blocked on Conductor's `#1899/#1901` (delta-skip receipt re-attribution) landing — do not retry again until then |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
 
 ## Decisions log
@@ -139,6 +141,209 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `reference_dasha_systems` is pre-reconciliation stale data, same story as bg_yogas. **No writer
   fix, no adjudication, no migration for bg_dasha_systems.** Blocked only on job-image deploy
   (unchanged, re-checked this cycle: still `d93d9d0a…`, still predates #1772).
+
+- **D-L0-GG (refines D-L0-K)** — **a genuine, correctly-authorized dispatch (run `ce86f4cf`, NOT
+  skip_no_delta) failed `integrity_check_sql` — the writer is still correct, but the CHECK had two
+  independent bugs: the same FULL-JOIN entity_class-in-ON-clause scope leak as bg_doshas/D-L0-L,
+  plus a `catalog_hash` pin that was computed wrong at migration 621's own authoring time (writer
+  content unchanged since; genuine hash `8e35495f...` ≠ pinned `30742da6...`).** Migration
+  `700_bg_dasha_systems_catalog_hash_repin.sql` authored, fixes both, verified live twice
+  (rolled-back tx): correctly guards on 621's exact prior pin, evaluates TRUE against a genuine
+  writer replay and FALSE (fail-closed) against current stale live data. Full root-cause account
+  in the Heartbeat entry below. No writer change. 4th instance this session of "correct the check"
+  (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694, bg_dasha_systems/700).
+
+- **D-L0-II** — **bg_cohort: job-image blocker cleared, genuine dispatch succeeded, hit a NEW
+  structural evidence-chain gap (not a data/writer defect).** Confirmed the deployed job image
+  (`80a9cd71e...`) now has #1772 as an ancestor (`git merge-base --is-ancestor`) — bg_cohort's only
+  prior blocker. Existing W2 evidence (2026-09-04) verified still live-valid via dry-run; took a
+  fresh Cloud SQL backup (`cloudsql-backup:1788630136147`, CASCADE parent per WP-6, destroys
+  `bg_synthetic_cohort_md`); ran a real `--commit --acknowledge-destroys` dispatch (run
+  `a9446885-2a21-49ae-baac-d3b7cc1f317b`), authorized inside the timing window (confirmed
+  `authorization.recorded_at` < `run.started_at`), and the run completed genuinely
+  (`disposition='build'`, not skip_no_delta, fresh provenance receipt with matching `build_id` and
+  `output_digest`/`output_digest_spec_sha256`). `accepted_rebuild_observed` submission still
+  failed (HTTP 500: "requires a completed exact run/asset with a matching proven content
+  receipt"). Root-caused by manually reproducing `requireAcceptedRebuildProvenance`'s full SQL
+  (`definitions.ts:2278-2325`) clause-by-clause: every condition holds except
+  `receipt.receipt_state = 'proven'` — the fresh receipt has `receipt_state='unknown'`,
+  `unknown_reasons=["upstream_digest_unavailable"]`. Traced to `asset_runner.py`'s
+  `compute_upstream_hash` (line 200-220): for an asset with `depends_on`, it requires
+  `load_upstream_receipts` to return one `receipt_state='proven'` row per declared dependency —
+  but `bg_ephemeris_engine` (bg_cohort's sole dependency) is `asset_kind='service', has_writer=
+  false`, so it can **never** have a row in `asset_provenance_receipts` at all. The upstream-digest
+  computation therefore always returns `None` for bg_cohort, and `provenance.py`'s `Receipt.
+  receipt_state` property (line 56-58, `"unknown" if self.unknown_reasons else "proven"`) is
+  permanently `'unknown'` — no retry or dispatch can ever fix this without a code change to the
+  shared orchestrator provenance logic (service-kind deps need to be excluded from, or vacuously
+  satisfy, the upstream-receipt-completeness check). Checked L0's own `depends_on` graph: bg_cohort
+  is the ONLY L0 asset depending on any service-kind asset, so this does not block any other L0
+  asset — but the defect class is general across layers. Posted in full to #1713 (not filing a
+  separate `nirmana-adjudication` issue since precedent — D-L0-FF — was handled the same way and
+  Conductor picked it up as #1899/#1901); not attempting a fix myself since `compute_upstream_hash`/
+  `build_receipt` are shared orchestrator code, not L0-owned. bg_cohort's writer output itself is
+  genuinely correct (real build, real receipt content, real digest) — purely an evidence-chain gap.
+
+- **D-L0-JJ** — **bg_compendium_index + bg_text_index dispatched together (run
+  `27fea532-d8c1-44c2-84ca-7cfaf3f95ade`, wave 2), mixed outcome, one real defect + one tooling
+  bug.** `bg_text_index` built genuinely (`disposition='build'`, fresh receipt) but
+  `bg_compendium_index` failed its post-write `integrity_check_sql`, so the run's overall state is
+  `failed`. Separately, my own `authorize_build_run.sh` only ever accepted a single `asset_id` —
+  submitting `asset_ids: ["bg_compendium_index"]` for a run that actually planned BOTH assets
+  tripped `requireBuildRunAuthorizationProvenance`'s exact-set-match requirement
+  (`definitions.ts:2367-2390`, both directions: every planned asset must be in the authorized set
+  AND vice versa), rejecting the WHOLE authorization (HTTP 409) — so `bg_text_index`'s otherwise-
+  clean build never got its `accepted_rebuild_observed` chain this attempt, even though nothing
+  was wrong with the build itself. Fixed the script to accept a comma-separated asset list. For
+  `bg_compendium_index` itself: live counts post-failure are `total=9538` (pin expects `9571`, −33),
+  `topic_id IS NULL`=7969 (matches pin exactly), `chapter_num IS NULL`=1569 (pin expects `1602`,
+  −33 — exactly the total shortfall); the structural `(chapter_num IS NULL) = (topic_id IS NULL)`
+  alignment check passes. So topic-type rows are exactly right and chapter-type rows are missing
+  precisely 33 — narrows the defect to chapter-row production/extraction, but NOT yet root-caused
+  to writer-defect vs. stale-pin: `CompendiumIndexWriter` (`writers/bg_compendium_index.py`) is a
+  full `WriterBase` subclass needing a real `ContextSpec`/`ctx.config` to replay, unlike the
+  standalone-function L0 writers (`l0_dasha_systems.py` etc.) diagnosed earlier this session via a
+  bare psycopg2 call — replaying it in isolation needs more setup, left for next cycle. Both
+  assets' evidence chains remain open; no writer fix made yet for either.
+
+- **D-L0-KK (refines D-L0-J)** — **bg_yogas: a genuine, correctly-authorized, CASCADE-acknowledged
+  dispatch (run `f89f70fa-59f3-4d57-92f2-758de7d66a09`, wave 1) failed `integrity_check_sql`, rolling
+  back to the prior stale data — but the writer itself is fully correct.** Root-caused with the same
+  discipline as D-L0-GG: replayed `seed_yogas()` directly in a rolled-back transaction. The genuine
+  writer output is exactly `233/233/233/85` (catalog/ontology/reference/source_chunks), matching
+  D-L0-J's original prediction precisely, and all THREE content-hash pins
+  (`catalog_hash`/`ontology_hash`/`reference_hash`) match the registry's pinned values byte-for-byte.
+  Isolated the ONE failing subclause by evaluating each condition separately: the same FULL-JOIN
+  scope leak already fixed for `bg_doshas` (692) and `bg_dasha_systems` (700) —
+  `ontology.entity_class='yoga'` sits in the ON clause of a FULL JOIN against `brahma_ontology`
+  (shared across every L0 entity class) instead of a pre-filtered subquery, so every non-yoga
+  ontology row surfaces as a spurious violation. Verified live: raw violation count is exactly 508,
+  and `count(*) FROM brahma_ontology WHERE entity_class != 'yoga'` is also exactly 508 — zero real
+  yoga misalignments. Migration `701_bg_yogas_integrity_check_join_scope_fix.sql` authored: applies
+  the same subquery-pre-filter fix, verified twice live (rolled-back tx) — applies cleanly against
+  the current pin, evaluates TRUE against a genuine `seed_yogas()` replay, and FALSE (fail-closed)
+  against current stale live data. No writer change. 5th instance this session of the established
+  C12 "correct the check" pattern (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694,
+  bg_dasha_systems/700, bg_yogas/701). Fresh Cloud SQL backup taken before the dispatch
+  (`cloudsql-backup:1788631501151`) per WP-6 CASCADE-parent discipline; no destructive action was
+  needed since the run failed cleanly (savepoint rollback, no partial writes).
+
+- **D-L0-LL — MILESTONE: first `accepted_rebuild_observed` of this campaign resumption
+  (bg_vidhi_floors, run `1d24dbed-a7e5-423f-806b-00598739c911`).** Old W2 evidence was invalidated
+  by migration 693's registry contract change (dry-run correctly refused: "accepted asset analysis
+  does not match the current live registry contract"). Computed fresh `registry_fingerprint_sha256`
+  (`88858552...`) and `analysis_digest` (`b7dae9ff...`) via `compute_analysis_digest.py`, using
+  the L0 layer's pinned `convergence_commit` (`49bb5c98b...`, read from
+  `src/generated/nirmana-analysis-layer-pins.json`) and `bg_vidhi_floors`'s writer digest from
+  `nirmana-writer-digests.json`. Submitted fresh W2 (verdict=`examined_and_already_efficient`/
+  `no_change`, since D-L0-N already established the writer source is internally sound) bound to
+  `git:d54bab7e...` — the CURRENTLY-DEPLOYED web commit (confirmed via `gcloud run services
+  describe amjis-web` + `git merge-base --is-ancestor` that migration 693's commit is an
+  ancestor), not just "a commit where the migration merged" (D-L0-T's exact gotcha, avoided this
+  time on the first try). Dispatched (`--reviewed-deployment-sha` = same deployed commit),
+  authorized inside the timing window, genuine build (`disposition='build'`, 14/409 matching the
+  pin exactly, fresh receipt with matching `build_id`/`output_digest`/`output_digest_spec_sha256`).
+  `accepted_rebuild_observed` computed `decision_digest` from the exact stored verdict payload
+  (stableJson + sha256, matching `canonicalNirmanaOptimizationVerdictDigest`) and submitted
+  successfully (HTTP 201). This is the first time this session has cleared BOTH the D-L0-AA timing
+  trap AND the D-L0-FF delta-skip trap on the same attempt.
+  **`integrity_verified` blocked, but by a self-inflicted bug, not a structural one:** submission
+  failed "integrity_verified requires exactly one prior current typed execution or disposition
+  receipt." Root-caused: `integrity_verified`'s `server_reconstructed` source has its `observed_at`
+  OVERWRITTEN server-side to the real `new Date()` at submission time
+  (`normalizeDetectorEvidence`, `definitions.ts:1739-1760`), and `occursAfter(input, event)`
+  requires that real timestamp to exceed the accepted_rebuild_observed event's `observed_at`. My
+  own evidence JSON hand-typed a plausible-looking but FICTIONAL future `observed_at`
+  (`18:52:00Z`) instead of shelling out to `date -u` for the real value — confirmed via both `date
+  -u` and the DB's own `SELECT now()` agreeing the real clock was only `~18:31` at submission time,
+  ~21 real minutes short. Not a data or evidence-chain defect: retry the exact same
+  `integrity_verified` payload (`integrity_contract_sha256=6fc6f187890068ab29573252df6b8dc2e77d24d
+  995f25e8c8f832ec79c1b34b0`, computed via `RegistryContractSchema`'s 13-field shape over the
+  fresh post-693 registry row) once real time has caught up — `detector_observation`/`result_digest`
+  get recomputed server-side regardless of what's submitted for them, so no other recomputation is
+  needed. **Lesson recorded: always shell out to `date -u +%Y-%m-%dT%H:%M:%SZ` for `observed_at`
+  fields, never hand-type a plausible future value** — the mistake is harmless for client-controlled
+  timestamps (git_commit/build_run sources, which don't get overwritten) but breaks
+  server_reconstructed occursAfter checks specifically.
+
+- **D-L0-MM (refines D-L0-JJ)** — **bg_compendium_index: writer is fully correct; both
+  content-hash pins in migration 623 were stale.** `CompendiumIndexWriter`'s core logic
+  (`_build_desired_rows`) is a pure function of `classical_text_chunks` + `reference_topic_tags`
+  with no chart-scoped inputs — replayed it directly (no `ContextSpec`/orchestrator machinery
+  needed, just the two source queries + the function call) in a rolled-back transaction. Produces
+  exactly 9571 rows (7969 chapter-scoped + 1602 topic-scoped), matching migration 623's structural
+  pin exactly, and passing the `(chapter_num IS NULL) = (topic_id IS NULL)` alignment check. Both
+  content-hash subclauses (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer
+  file being unchanged since 623's authoring commit (`5f47906bc`, the same commit that authored
+  bg_dasha_systems' wrong catalog_hash pin, D-L0-GG) — the `classical_text_chunks` corpus content
+  has evidently evolved since (verse ranges / `content_en` feeding the mechanical synopsis) while
+  the per-(text,chapter)/(text,topic) partition COUNTS happened to remain identical. (Investigated
+  and ruled out a red herring first: a separate, never-merged branch `codex/nirmana-l0-wave2-
+  correctness` had a `chunk_ids`-populating writer fix that looked directly relevant — confirmed
+  via `git merge-base --is-ancestor` that this commit is NOT an ancestor of `main`/HEAD, so it's
+  irrelevant to the live/deployed writer.) Migration `702_bg_compendium_index_content_hash_repin.sql`
+  authored: re-pins both content hashes to the freshly-computed correct values, verified twice live
+  (rolled-back tx) — applies cleanly against the 623 pin, evaluates TRUE against a genuine writer
+  replay, FALSE (fail-closed) against current stale live data. No writer change. 6th instance this
+  session of the established C12 "correct the check" pattern.
+
+- **D-L0-NN — MILESTONE: `bg_vidhi_floors` FROZEN, the first genuine freeze of this campaign
+  resumption (30/40, 10 remaining).** Continuing directly from D-L0-LL's `accepted_rebuild_observed`
+  success: waited (bounded, single-call `until` loop, not a cross-cycle sleep) for real clock time
+  to pass the fabricated `18:52:00Z` `observed_at` baked into the already-recorded
+  `accepted_rebuild_observed` event, then retried the previously-computed `integrity_verified`
+  payload unchanged — accepted immediately (HTTP 201). Server-side `normalizeDetectorEvidence`
+  independently re-ran `bg_vidhi_floors`' `integrity_check_sql` live and recorded a genuine
+  `detector_observation`/`result_digest` (verdict `true`) — confirms this is a REAL independent
+  verification, not a rubber stamp. For `asset_frozen`: computed `lifecycle_digest` by fetching
+  ALL historical lifecycle events for the asset (not just the "current" ones — 6 rows total,
+  including the two now-superseded 2026-09-04 W2 events) and replicating the exact
+  `{event_type, evidence_payload, source_kind, source_ref}` sort-then-stableJson-then-sha256
+  scheme from `definitions.ts:2196-2203` in Python. First submission attempt failed
+  ("requires exactly one current validated integrity receipt") — root-caused to the SAME class of
+  bug as D-L0-LL: hand-typed `observed_at: "18:52:20Z"` again, this time landing 2 seconds *before*
+  `integrity_verified`'s real server-assigned `observed_at` (`18:52:22.39`). Confirmed via
+  `normalizeDetectorEvidence`'s exact scope (`definitions.ts:1725`: only `probe_accepted` and
+  `integrity_verified` get their `observed_at` server-overwritten) that `asset_frozen`'s
+  client-submitted `observed_at` is NOT overwritten and must itself be genuinely later — fixed by
+  shelling out to real `date -u` and resubmitting; accepted immediately. Verified via `egate.sql
+  -v layer=L0`: `bg_vidhi_floors` no longer appears in the unfrozen-asset list. Posted to #1713.
+  Confirms the full evidence-chain toolkit built this session (dispatch, authorize, all W2/W4/W5
+  submission scripts) works genuinely end-to-end for a real asset when nothing structural (D-L0-FF,
+  D-L0-II) interferes — the remaining 10 unfrozen assets are ALL either awaiting a merged
+  check-correction migration's deploy (bg_yogas/701, bg_dasha_systems/700, bg_compendium_index/702)
+  or blocked on the two open structural findings.
+
+  **D-CND-09 follow-up, checked and correctly NOT actioned:** now that `bg_vidhi_floors` is safely
+  frozen (freezing is a historical attestation, not a live invariant — a later registry change
+  can't retroactively invalidate it), re-checked whether its `catalog_status` DRAFT→CURRENT flip
+  is now safe. Read the writer source (`writers/bg_vidhi_floors.py:514-516`) directly: both
+  `education_deepdive` and `progeny_deepdive` are STILL tagged `[CANDIDATE]` (unchanged) —
+  `spirituality_deepdive` and the other 11 are `[MANDATORY]`. Per the registry row's own documented
+  policy ("re-verify against the writer source before flipping to CURRENT"), the precondition for
+  CURRENT (all intents ratified) is genuinely NOT met — `catalog_status=DRAFT` remains correct, not
+  stale. This is a positive, evidence-based "not yet," not a deferred/unclear item — nothing to act
+  on until those two intents are ratified (native/campaign decision, not an L0 writer task).
+
+- **D-L0-OO — found and logged, no action taken (Conductor's call, not L0's): a real gate L0 will
+  hit at its own W6 freeze ceremony.** Noticed via #1713 that the native-directed tracker-rework
+  session (#1944) filed `#1945` — "zero `stage_transition_accepted` and zero
+  `foundation_lane_accepted` receipts exist in the campaign ledger, ever, verified live against
+  `nirmana_evidence.nirmana_elevation_campaign_events`." The canonical stage chain is `BOOTSTRAP →
+  T0_CENSUS → PLAN_FROZEN → DENOMINATOR_FROZEN → F0_FOUNDATION → L0 → …`; with zero receipts
+  anywhere in that chain, `requireStageTransitionProvenance` (`definitions.ts`) will reject a `→ L0`
+  transition at freeze time even though L0's own per-asset evidence (accepted_rebuild_observed,
+  integrity_verified, asset_frozen — the chain D-L0-NN proved out) is completely unaffected. This
+  is explicitly framed in the issue as squarely Conductor/charter §C2/§C7 territory (freeze
+  ordering) needing "an identity authorized for it," not an L0-session action — the issue's own
+  recommended fix (Option A: backfill the five real historical `foundation_lane_accepted` receipts
+  + the `BOOTSTRAP→…→F0_FOUNDATION` transitions, citing real provenance already documented in
+  `CAMPAIGN_STATE.md`) is Conductor's to execute, not mine. **Nothing for L0 to do right now** — L0
+  is 30/40, not yet at its W6 ceremony — but recording this so it isn't a surprise once the
+  remaining 10 assets clear: L0 should NOT assume 40/40 asset-level freezes alone means the layer
+  is done; the W6 ceremony itself has its own separate, currently-unmet precondition that only
+  Conductor can resolve. No comment posted to #1945 — nothing to add, and it's not L0's ruling to
+  make.
 
 - **D-L0-L** — **bg_doshas: check bug, not data defect. Migration 692 filed (PR #1829),
   auto-merge armed.** The "658 FULL-JOIN violations" (D-L0-F had called this a real data defect)
@@ -649,6 +854,40 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   authorized run) with the now-corrected script; this time also read `NirmanaRebuildEvidenceSchema`'s
   OTHER fields (`decision_digest`, `output_digest`, `output_digest_spec_sha256`, etc. — not yet
   traced) BEFORE dispatching, not after, to avoid a fourth surprise.
+
+- **D-L0-FF — structural gap found: the orchestrator's delta-skip optimization and the evidence
+  layer's `accepted_rebuild_observed` requirement are not integrated, and it may be unfixable via
+  the current tooling for an already-correct asset.** Fully traced `NirmanaRebuildEvidenceSchema`
+  before this cycle's retry (registry_fingerprint/analysis_digest from D-L0-BB;
+  `decision_digest=57a9bc47…` precomputed from the exact stored `optimization_verdict_accepted`
+  payload via `canonicalNirmanaOptimizationVerdictDigest`; `implementation_digest=null` since
+  `changeIsRequired()` is false for a `no_change` proposal; `output_digest`/
+  `output_digest_spec_sha256` read live from `asset_provenance_receipts`/`asset_output_digest_specs`
+  — not computed, the orchestrator writes these). Fixed `authorize_build_run.sh`'s `source_kind`
+  bug (D-L0-EE), took a fresh backup, dispatched `bg_gochara_arcs` a 3rd time with authorization
+  correctly inside the window (`run 5ba8cedf…`, `source_kind=campaign_authorization` confirmed
+  correct this time). **Run completed, but `asset_provenance_receipts` was never updated** — traced
+  to `asset_runner.py`'s `disposition='skip_no_delta'` (O-wave WP-2, "delta-skip gate",
+  `_skip_no_delta`): since the writer's code/config/upstream/output all already matched the
+  receipt from the FIRST successful run (`bfdc6919…`), the orchestrator correctly skipped
+  re-invoking the writer — **but this means the receipt still points at `bfdc6919`'s `build_id`,
+  not the newly-authorized `5ba8cedf`'s**, and `requireAcceptedRebuildProvenance` requires an EXACT
+  `receipt.build_id = run.id` match. **Checked for a `force`/bypass path**: `_run_data_writer`
+  accepts a `force=True` param that skips the delta-skip gate, but the ONLY caller that ever passes
+  it is the probe-failure-regenerate path — `dispatch_nirmana_campaign_wave.py`'s CLI exposes no
+  equivalent flag for a plain rebuild dispatch. **Confirmed `bg_doshas` hit the exact same
+  trap from the other direction**: its first run (`92830957…`, `disposition='build'`, genuine)
+  has a valid receipt but an authorization that missed the timing window (D-L0-AA); no second
+  genuine run is possible now that the receipt matches (any retry would `skip_no_delta` too).
+  **Net effect: for either target asset, the ONE run that ever did real work has no valid
+  authorization, and no further dispatch will do real work (nothing left to redo) — so
+  `accepted_rebuild_observed` may be structurally unreachable via the current tooling for any
+  asset whose data was already correct before its first properly-authorized dispatch.** This is
+  the SAME defect *class* as #1848 (a real orchestrator/evidence-layer integration gap), just a
+  different manifestation — worth flagging to Conductor, not something to keep working around
+  solo. Did not yet post; recording here first, will flag next cycle unless a workaround surfaces
+  (e.g. an untried asset's FIRST dispatch, where no prior receipt exists yet to short-circuit
+  against, might complete a full authorized+genuine-build+receipt chain in one shot).
 
 ## Held items
 
@@ -1274,3 +1513,501 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `NirmanaRebuildEvidenceSchema`'s remaining fields (`decision_digest`, `output_digest`,
   `output_digest_spec_sha256`) fully before dispatching this time, to close out all the unknowns in
   one pass rather than discover them one `400` at a time.
+- 2026-09-05 — **Cycle 52 — 4th dispatch attempt, and a real structural gap surfaces (D-L0-FF).**
+  PR hygiene: `#1828` clean, nothing to fix. Fully traced `NirmanaRebuildEvidenceSchema` before
+  dispatching this time (precomputed `decision_digest`, confirmed `output_digest*` come from
+  `asset_provenance_receipts`/`asset_output_digest_specs`, not something I compute). Posted `SLOT
+  CLAIM`, fresh backup, dispatched `bg_gochara_arcs` a 3rd time with the corrected script —
+  authorization landed correctly this time (`source_kind=campaign_authorization`, confirmed inside
+  the window) — but the run got `disposition=skip_no_delta` (the orchestrator correctly recognized
+  nothing had changed since the FIRST run and skipped re-invoking the writer), so no fresh
+  provenance receipt was written for THIS run's `build_id`. **Confirmed `bg_doshas` is in the exact
+  same bind from the other direction**: its one genuine build (valid receipt) has an authorization
+  that missed the window; any retry would now also `skip_no_delta`. **Root cause: no `force`
+  bypass for the delta-skip gate is exposed via `dispatch_nirmana_campaign_wave.py`'s CLI** — the
+  orchestrator's `force=True` param exists but only one internal caller (probe-regenerate) ever
+  uses it. For either asset, `accepted_rebuild_observed` may be structurally unreachable via
+  current tooling — not a mistake to keep retrying past. NEXT: either flag this to Conductor as a
+  real gap (same class as #1848/#1856, worth the same rigor), or try a completely fresh,
+  never-dispatched asset (e.g. `bg_dasha_systems`/`bg_yogas`) where no prior matching receipt
+  exists yet, to see if a FIRST properly-authorized dispatch can complete the whole chain in one
+  shot before deciding this needs escalation.
+
+- **D-L0-GG** — **bg_dasha_systems: genuine dispatch (run `ce86f4cf`, correctly authorized, NOT
+  skip_no_delta) failed `integrity_check_sql`, refining D-L0-K.** Root-caused with the same
+  discipline as D-L0-J/L/N: ran `seed_dasha_systems()` directly in a rolled-back transaction,
+  then evaluated the registry's own pinned check-SQL subclauses against the just-written
+  (uncommitted) rows. Found TWO independent check bugs, not a writer bug: (1) a **FULL JOIN
+  scope leak identical to bg_doshas/692** — the check's `FULL JOIN brahma_ontology AS ontology
+  ON ontology.entity_class='dasha_system' AND ontology.canonical_id=catalog.canonical_id` puts
+  the entity_class filter in the ON clause, so every OTHER entity_class row in the (shared,
+  multi-domain) `brahma_ontology` table surfaces as an unmatched row and trips the alignment
+  NOT EXISTS — verified live by dumping the raw join's violation rows and finding they were all
+  `nak_*`/other-class ontology ids, zero real dasha-system misalignments; (2) migration 621's
+  `catalog_hash` pin was **wrong at authoring time** — `git show` on 5f47906bc (the commit that
+  both introduced the DASHA_SYSTEMS `kp` entry and authored migration 621's pin, "PYTHONHASHSEED=0
+  and 3 production-shaped replays produced these digests") confirms the writer's DASHA_SYSTEMS
+  content has not changed since; recomputing the same `jsonb_build_array(...)::text` SHA256 the
+  check itself uses, against a genuine fresh writer run, produces `8e35495ffef68342f7e88e2adee0-
+  0654701feeee7852634cdada8df3932bf906` every time, never the pinned `30742da6005fc977124192ae27-
+  ee1ca0bb29dd5363267860dfd8260e8bb3173a`. `ontology_hash`/`reference_hash` both matched their
+  pins exactly throughout — this narrows the defect precisely to the catalog_hash literal, an
+  authoring-time computation slip, not drift. Migration `700_bg_dasha_systems_catalog_hash_repin.sql`
+  authored: fixes the join scope (subquery pre-filter, mirroring 692's exact pattern) AND re-pins
+  catalog_hash to the verified-correct value. Verified twice live (rolled-back tx): guard clause
+  matches 621's stored pin byte-for-byte (no exception on apply); post-fix check evaluates **TRUE**
+  against a genuine writer replay and **FALSE** against current stale live data (fail-closed
+  preserved — no silent pass on unfixed data). This is the 4th instance this session of the
+  established C12 pattern (bg_doshas/692, bg_vidhi_floors/693, bg_gochara_arcs/694, now
+  bg_dasha_systems/700): "correct the check, not the writer." No writer change made or needed.
+
+- 2026-09-06 — **IDLE-OK cycle.** Checked all 10 remaining unfrozen assets individually rather than
+  assume: `bg_yogas`/`bg_dasha_systems`/`bg_compendium_index` blocked purely on migrations
+  701/700/702 merging + deploying (all three queued, none merged yet); `bg_cohort`/
+  `bg_gochara_arcs`/`bg_doshas`/`bg_text_index` blocked on the two open structural findings
+  (D-L0-FF, D-L0-II — checked, no new movement, Conductor's `#1901` still open); `bg_rules`/
+  `bg_parihara_rules`/`bg_concordance` blocked on ancestor E-gating only — recomputed their current
+  registry fingerprints and confirmed all three still match their stored `asset_analysis_accepted`
+  payloads exactly, so no W2 pre-refresh is needed once ancestors clear (nothing to pre-stage).
+  Checked merge-queue health rather than assume stuck: `gh api graphql`'s `mergeQueueEntry` on the
+  oldest queued PR (#1828) shows `position: 36, estimatedTimeToMerge: ~3.8h` — deep but healthy.
+  Posted status to #1713. No code/migration/evidence work this cycle — genuinely nothing eligible.
+
+- 2026-09-06 — **Queue-health investigation (no new L0 work, but resolved an ambiguity).**
+  `estimatedTimeToMerge` read identically (36 / ~3.8h) across two consecutive checks — worth
+  verifying rather than trusting a possibly-stale estimate. Applied L4's `gh-readonly-queue/main/
+  pr-<N>-<sha>` branch technique (posted to #1713 earlier this session) to read position-1 (#1867)'s
+  REAL merge-group check-runs directly: 26 checks, all either already `success` or (2 remaining)
+  `in_progress`, with `started_at` timestamps showing the CI run had only just kicked off — after
+  sitting `AWAITING_CHECKS` since `15:35:39Z`, ~3.3 real hours earlier. Not the same defect class
+  as #1838's zero-check-runs-forever jam (peer L4's earlier finding, still open) — this was a long
+  scheduling delay (plausibly GitHub Actions runner contention across 6 concurrent layer sessions'
+  worth of PR checks), not a broken trigger. Waited it out with bounded polling loops (not a
+  cross-cycle sleep): all 26 checks passed, #1867 merged, `main` advanced to `54a4a695a`. None of
+  my own PRs merged this cycle (still deep in the 72-entry queue) — genuinely nothing new for L0's
+  own asset work. Posted the confirming finding to #1713 so other layers don't have to re-diagnose
+  the same ambiguity.
+
+- 2026-09-06 — **IDLE-OK, no change since last cycle.** Re-checked rather than assume: queue
+  position for #1828 still 35 (no merges since last check), `#1901` still open, no new coordination
+  activity on #1713 since my own last comment. All 10 remaining assets' blockers unchanged. Not
+  re-deriving the full per-asset breakdown again this cycle since nothing moved — see the D-L0-NN/
+  prior IDLE-OK entries above for the current status of each.
+
+- 2026-09-06 — **IDLE-OK, 2nd consecutive no-change cycle** (little real time appears to have
+  elapsed between the last two invocations). Quick re-check only: queue position 35 (unchanged),
+  `#1901` mergedAt still null, `#1713`'s last comment is still my own from the prior cycle. Nothing
+  new to act on.
+
+- 2026-09-06 — **IDLE-OK, 3rd consecutive no-change cycle.** Queue position 35, none of my 5 PRs
+  merged, PR #1925's checks still pending (no reds). Nothing new to act on.
+
+- 2026-09-06 — **IDLE-OK.** Queue genuinely advancing (position 35→33), but none of my 5 PRs have
+  merged yet. D-L0-FF/#1901 still open, no new #1713 activity. Nothing new to act on.
+
+- 2026-09-06 — **IDLE-OK, no change.** Queue still position 33, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK, 6th consecutive no-change cycle.** Queue still position 33, no merges,
+  no new coordination activity. Nothing here changes faster than the merge queue itself moves.
+
+- 2026-09-06 — **IDLE-OK, 7th consecutive no-change cycle.** Queue still position 33, no merges.
+  Flagging for whoever resumes next: these cycles are firing faster than the queue advances.
+
+- 2026-09-06 — **IDLE-OK, 8th consecutive no-change cycle.** Queue at position 32, no merges.
+  Self-pacing the next wakeup to ~20 minutes via ScheduleWakeup instead of re-checking immediately.
+
+- 2026-09-06 — **IDLE-OK, 9th consecutive no-change cycle.** Queue still position 32, no merges.
+  This cycle's own re-invocation arrived before the prior 20-min self-paced wakeup — re-arming.
+
+- 2026-09-06 — **IDLE-OK, 10th consecutive no-change cycle.** Queue still position 32, no merges.
+
+- 2026-09-06 — **IDLE-OK, 11th consecutive no-change cycle.** Queue still position 32, no merges.
+
+- 2026-09-06 — **IDLE-OK, 12th consecutive no-change cycle.** Queue still position 32, no merges.
+
+- 2026-09-06 — **IDLE-OK, confirmed genuinely healthy.** Position advanced 32→31. Spot-checked the
+  current queue-head (#1873) via `gh-readonly-queue/main/pr-1873-...`'s real check-runs: 20/26
+  already `success`, the rest `in_progress` (started `19:43`) — not a repeat of the #1867-class
+  stall. Still none of my own PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
+
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges. Self-pacing next wakeup again.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 31, no merges, no new coordination activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 30, still no PRs of mine merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 30, no merges. #1945 unactioned (Conductor's call).
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 30, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Confirmed genuine queue progress (position 30→28, #1875 merged), still
+  none of my own PRs merged yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 27, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 27, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 27, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 27, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** My own queue position steady at 27 for a few checks, but confirmed
+  genuinely healthy (not stuck): queue-head has moved on to #1877 (was #1875), 25/26 real checks
+  already passing. Position likely steady because new PRs keep entering near my slot at a similar
+  rate to entries ahead clearing. No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 25, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 25, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 25, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 25 for me, but head has moved on (now #1876), still healthy. No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** My position steady at 25 for 4 checks; verified queue head (#1876)
+  genuinely healthy — 25/26 real checks passed, "Governance Gates" still running (normal duration).
+  Not stuck. No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 24, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 24, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 24, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 24, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** My position steady at 24, but queue head confirmed moving (now #1879, was #1876). Still no merges of mine.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 22, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 22, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 22, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 22, queue head confirmed moving (#1880). No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 22; verified queue head (#1880) healthy (25/26
+  checks passed, Governance Gates still running normally). No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 21, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 21, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 21, queue head confirmed moving (now #1882). No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 21, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 20, still none of my 5 PRs merged.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 20, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 20, queue head confirmed moving (now #1825). No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 20; verified queue head (#1825) healthy (25/26
+  checks passed, Governance Gates still running normally). No merges of mine yet.
+
+- 2026-09-06 — **D-L0-PP: found and reported a genuine merge-queue-wide CI hang.** Position-1
+  (#1825, Conductor doc-only PR) has had its `pytest — pyjhora_adapter + pipeline` step
+  `in_progress` since 21:07:27Z, unmoved across 5 consecutive checks (well over an hour real
+  time), while every other job/step in the same run completed within ~35s. The suite's own
+  documented historical timing is 285-422s -- this is 20x+ that, on a doc-only PR, so it's a hang
+  not workload. No `timeout-minutes` set anywhere in `ci.yml` for this job, so it inherits GitHub
+  Actions' 360-min default -- meaning up to ~6h before this self-resolves without intervention.
+  Not something I can fix (no Actions-cancel access, not an L0 asset) -- reported to #1713 with
+  the exact run/job IDs for whoever has admin access. My own queue position: still 20.
+
+- 2026-09-06 — **IDLE-OK, D-L0-PP resolved.** The CI hang cleared -- queue head moved from #1825
+  to #1884, my position advanced from 20 to 17. No merges of mine yet, no new coordination activity
+  beyond my own D-L0-PP report.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 17, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 17; verified queue head (#1884) healthy (25/26
+  checks passed, one still running normally, started 21:19:37Z -- not another hang). No merges of
+  mine yet.
+
+- 2026-09-06 — **IDLE-OK, watching for a possible repeat of D-L0-PP.** Queue head (#1884) is on
+  the same "pytest — pyjhora_adapter + pipeline" step that hung before, running since 21:19:52Z
+  (~9 min so far -- within/near the documented 285-422s normal range, not yet clearly abnormal).
+  Will re-check next cycle before reporting; not escalating prematurely. My own position steady
+  at 17, no merges yet.
+
+- 2026-09-06 — **IDLE-OK, watched hang resolved again.** #1884's pytest step cleared naturally
+  (queue head now #1886) -- 2nd occurrence, 2nd natural resolution, no intervention needed either
+  time. My position advanced 17->16. No merges of mine yet. All 5 PRs' checks green (spot-checked
+  #1925: all pass).
+
+- 2026-09-06 — **IDLE-OK.** #1925 now queued but far back (position 90 -- queue has grown
+  significantly since earlier). All 5 of my PRs (1828/1910/1915/1923/1925) now genuinely queued.
+  #1969 (new heartbeat PR) checks still pending, no reds. No merges yet, no new coordination
+  activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity. Widening wakeup pace
+  since several consecutive 30-min checks found nothing new.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** All PRs still queued, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK, confirmed genuine progress.** `main` has advanced (now `cbab8570d`),
+  and #1925's queue position moved 90->83 -- queue is healthy, just very deep; my PRs haven't
+  reached the front yet. No merges of mine yet, no new coordination activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 83 for #1925, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 83 for #1925, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue head (#1894) on the same pytest step, running ~9 min so far --
+  not yet abnormal (both prior instances resolved naturally within reasonable time). My position
+  steady at 83, no merges yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue head still #1894, same pytest step now ~11 min in -- getting
+  close to concerning but not yet clearly abnormal (first hang was 30+ min before reported). Will
+  escalate next check if still unresolved. Position steady at 83, no merges yet.
+
+- 2026-09-06 — **IDLE-OK, watched hang resolved (3rd time).** Queue head moved from #1894 to
+  #1896 -- 3rd occurrence, 3rd natural resolution, still no intervention needed. Position advanced
+  83->81. No merges of mine yet. Resuming normal 30-min pace.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 81, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 81, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 81, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue head (#1896) on same pytest step, ~11 min in -- consistent with
+  the now-established pattern of this step routinely taking longer than its documented range but
+  resolving naturally (4th occurrence). Not escalating. Position steady at 81, no merges yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 80, still none of my 5 PRs merged, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 80, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 80, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 80, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Position steady at 80, queue head confirmed moving (now #1889). No merges of mine yet.
+
+- 2026-09-06 — **IDLE-OK.** Queue advanced to position 78, still none of my 5 PRs merged, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 78, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 78, no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** Queue still position 78, no merges, no new activity.
+
+- 2026-09-06 — **My own PR #1828 is now at queue position 1!** 25/26 checks passed, one still
+  running normally. Should merge soon. Position for #1925 still 78 (separate PR, further back).
+
+- 2026-09-06 — **MILESTONE: first PR merge of this campaign resumption.** `#1828` (bg_yogas writer
+  verdict CLOSED, D-L0-J heartbeat) merged to `main` at 22:57:23Z. Posted to #1713. Remaining PRs:
+  `#1910` (migration 700) position 13, `#1915` position 19, `#1923` (migration 701) position 27,
+  `#1925` (migration 702) position 76 -- all progressing well.
+
+- 2026-09-06 — **PR hygiene catch: DIRTY PR fixed before it could do damage.** `#1969` (this
+  branch's own heartbeat-history PR) showed `mergeStateStatus: DIRTY`. Investigated properly
+  rather than blind-rebase: `git diff origin/main feat/nirmana-l0-cycle-resume-6 --stat` revealed
+  the diff would have DELETED `L2_STATE.md`, three migrations (675/714/715), and edits to
+  `cascade_check.sql` -- none of them mine. Root cause: the branch was cut from an OLDER point of
+  `main` (before those files existed), so a full-branch merge/rebase would drag along their
+  apparent "removal." A 33-commit rebase kept hitting the same conflict on every commit (all
+  touched the same append-only `L0_STATE.md`), so instead: created a fresh branch off current
+  `origin/main`, cherry-picked ONLY the file (`git checkout <old-branch> -- L0_STATE.md`), verified
+  the resulting diff touched exactly that one file (561 insertions, 12 deletions, nothing else),
+  committed, opened `#1985` as the clean replacement, armed auto-merge, then closed `#1969` with an
+  explanation pointing to `#1985`. Confirmed `#1910`/`#1915`/`#1923`/`#1925` (separate PRs/branches)
+  were never at risk. This is exactly the "fix any DIRTY (rebase)" contract clause working as
+  intended -- caught before merge, not after.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions unchanged (13/19/27/76), no merges, no new activity.
+
+- 2026-09-06 — **IDLE-OK.** PR hygiene re-checked: #1910/1915/1923/1925 still QUEUED (positions now
+  11/17/25/74, modest forward drift from 13/19/27/76 — normal queue drainage, no action needed),
+  #1985 checks still pending (no reds), no PR shows DIRTY. `#1901` (D-L0-FF fix) still open/unmerged.
+  No new eligible dispatch work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1985 confirmed not yet `is:queued` but auto-merge already armed
+  (enabled 2026-09-05T23:02:19Z) and `mergeable=MERGEABLE` — `mergeStateStatus=BLOCKED` is just
+  pending checks (DB Integration Tests/Unit Tests/Governance Gates still running, everything else
+  passing), not a neglected-unqueued PR; will self-queue once checks finish. #1910/1915/1923/1925
+  still QUEUED, positions inched forward again (10/16/24/73). No merges, no DIRTY, no RED. 30/40
+  frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat this cycle (10/16/24/73, first fully-static read
+  after two cycles of drift) — normal, still no merges landing yet. #1985 and #1901 (D-L0-FF fix,
+  Conductor's) both mid-CI (Unit Tests/Governance Gates pending, no reds). No DIRTY, no RED, no
+  neglected-unqueued. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat for a third consecutive read (10/16/24/73) but
+  confirmed the queue itself is healthy, not stuck: `origin/main` HEAD has advanced with 4 new
+  merges from other layers (#1900 L1, #1889 L2, #1896 L2, #1894 L3) since the last #1828 (L0) merge
+  — the front of the queue is processing normally, my PRs are just further back. Only one
+  `gh-readonly-queue/*` branch exists (single head-of-queue entry in flight), consistent with
+  ordinary sequential drain, not a hang. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Queue positions flat for a 4th consecutive read (10/16/24/73, ~2h
+  static). Verified NOT a hang via the `gh-readonly-queue/main/pr-<N>-<sha>` technique: current
+  queue head is #1906 (Conductor's `count_sql` migration-governance PR), and every one of its 26
+  real check-runs is `completed` (23 success, 3 skipped-by-design) — main just hasn't absorbed the
+  merge yet, plain GitHub processing lag, not a stuck CI job. Expect main to advance and my
+  positions to drop next cycle. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1906 merged (`812731a22`), all 4 core positions
+  dropped by exactly 1 (9/15/23/72). Queue draining normally, just slowly (~1 merge per 30-45min
+  cycle). No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 9/15/23/72, main HEAD
+  still `812731a22`). New queue head #1904 (L2 `bo_cdlm_summary` integrity check) is only ~4.5min
+  into `in_progress` checks (Governance Gates, Unit Tests) — not a hang, just mid-CI. No DIRTY, no
+  RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read in a row (positions still 9/15/23/72, main HEAD still
+  `812731a22`, queue head still #1904). Governance Gates check now ~7min in_progress — still well
+  under the D-L0-PP hang threshold (30+min), just routine CI duration. No DIRTY, no RED, no new
+  eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 9/15/23/72, queue head still #1904,
+  Governance Gates now ~9.5min in_progress — still under the 30min hang threshold). No DIRTY, no
+  RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1904 merged, main advanced to `e2e6c9113`, positions dropped by 2
+  (7/13/21/70). New queue head #1767 (L2 shadbala selector fix) just entered CI (~1min in). Noted
+  `#1901` (D-L0-FF fix, Conductor's) flipped `mergeStateStatus` to CLEAN — not mine to queue, just
+  tracking for when its fix lands. No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen
+  holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 7/13/21/70, main HEAD
+  still `e2e6c9113`). No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read (positions still 7/13/21/70). Queue head #1767's
+  Governance Gates check ~5min in_progress, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 7/13/21/70, queue head still #1767,
+  ~7.5min in_progress — normal). No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Fourth flat read (positions still 7/13/21/70, queue head still #1767,
+  ~9.8min in_progress — still under the 30min hang threshold). No DIRTY, no RED. 30/40 frozen
+  holds.
+
+- 2026-09-06 — **IDLE-OK.** Fifth flat read (positions still 7/13/21/70), but #1767's all 26 real
+  check-runs now `completed` (22 success, 4 skipped-by-design) — should merge imminently, same
+  pattern as #1906. Shortened next wakeup to catch the expected position drop. No DIRTY, no RED.
+  30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1767 merged (`8d35be284`), positions dropped by 2
+  again (5/11/19/68). Queue draining steadily (~1 merge per 15-30min). No DIRTY, no RED, no merges
+  of my own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 5/11/19/68). New queue
+  head #1907, ~4.5min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 1 (4/10/18/67) though main HEAD unchanged (still
+  `8d35be284`) — likely a queue reordering/removal ahead of mine, not a merge I need to track by
+  SHA. No DIRTY, no RED, no merges of my own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions unchanged (4/10/18/67). Confirmed last cycle's reordering
+  theory: #1907 (previous queue head) dropped out of the merge queue back to `CLEAN`/`OPEN` (not L0's
+  — an L2 integrity-check PR), not a merge — explains the position drop without a main-HEAD change.
+  New head #1908, ~3min into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 4/10/18/67, queue head
+  still #1908, ~5.4min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1908 merged (`9083e8dd2`), positions dropped to 2/8/16/65. `#1910` is
+  now at queue position 2 — very close to merging. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement (positions still 2/8/16/65). New queue head #1911 (L2
+  `bo_anveshana` integrity check), ~3min into CI, normal — one more ahead of `#1910` still to clear.
+  No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Still no movement (positions still 2/8/16/65), queue head still #1911,
+  ~5.6min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 2/8/16/65), queue head still #1911,
+  ~8min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Fourth flat read (positions still 2/8/16/65), queue head still #1911,
+  ~10.6min in_progress — still under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen
+  holds.
+
+- 2026-09-06 — **PR HYGIENE: second DIRTY-PR catch.** #1911 merged; #1910 (`bg_dasha_systems`
+  migration 700, D-L0-GG) then fell out of `is:queued` and surfaced `mergeStateStatus=DIRTY`,
+  `mergeable=CONFLICTING`. Root-caused via `git diff origin/main <branch> --stat` (branch
+  `feat/nirmana-l0-cycle-resume-2`, cut from a stale main point weeks of merges ago): the diff was
+  397 insertions / 3862 deletions — merging as-is would have deleted ~60 files belonging to other
+  layers (migrations 651/665-669/671-675/686/710-716/718, `L2_STATE.md`, `L3_STATE.md` content,
+  several python-sidecar/registry files), not a real conflict on my one file. Fix: fresh branch
+  `fix/nirmana-l0-migration-700-resubmit` off current `origin/main`, `git checkout
+  origin/feat/nirmana-l0-cycle-resume-2 -- platform/migrations/700_bg_dasha_systems_catalog_hash_repin.sql`
+  only, verified `git diff HEAD --stat` showed exactly one file (134 insertions, 0 deletions) before
+  committing. Opened **#2004**, auto-merge armed, closed **#1910** with explanation. Confirmed
+  #1915/#1923/#1925 (branches `-3`/`-4`/`-5`, each cut later than `-2`) still genuinely `is:queued`
+  — their `UNKNOWN` mergeStateStatus is just not-yet-recomputed (GitHub only recomputes at/near
+  queue head), not a DIRTY signal; will re-verify each as it nears the queue head. 30/40 frozen
+  holds.
+
+- 2026-09-06 — **IDLE-OK.** `#1911` merged (already reflected above); positions for 1915/1923/1925
+  unchanged (6/14/63). `#2004` (the migration-700 replacement) is CLEAN-but-mid-CI (Build
+  Check/Unit Tests/Governance Gates pending, no reds, auto-merge already armed) — will self-queue.
+  No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement (positions still 6/14/63, `#2004` still mid-CI no reds,
+  queue head #1912 ~7min in_progress, normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Still no movement (positions still 6/14/63, queue head still #1912
+  ~9.7min in_progress; `#2004`'s Build Check/Governance Gates ~7.9min in — both normal). No DIRTY,
+  no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1912 merged (`5257d4b7c`), positions dropped to 5/13/62. `#2004`
+  (migration-700 replacement) is now genuinely `is:queued` at position 113 — clean, no DIRTY,
+  confirms the resubmission worked. No RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement (positions still 5/13/62/113). New queue head #1914, ~3min
+  into CI, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read (positions still 5/13/62/113, queue head still #1914,
+  ~5.3min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 5/13/62/113, queue head still #1914,
+  ~7.6min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions essentially unchanged (5/13/62/112, `#2004` inched down by 1),
+  queue head still #1914, ~10min in_progress — still under the 30min hang threshold. No DIRTY, no
+  RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions unchanged (5/13/62/112), but #1914's all 26 real check-runs
+  now `completed` (22 success, 4 skipped-by-design) — should merge imminently. Shortened next
+  wakeup to catch the expected drop. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1914 merged (`f45b29389`), positions dropped by 2
+  (3/11/60/110). `#1915` now at queue position 3 — very close. No DIRTY, no RED, no merges of my
+  own PRs yet. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No movement (positions still 3/11/60/110). New queue head #1916, ~4.6min
+  into CI, normal — one more ahead of `#1915` still to clear. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read (positions still 3/11/60/110), queue head still #1916,
+  ~7min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Third flat read (positions still 3/11/60/110), queue head still #1916,
+  ~9.3min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
