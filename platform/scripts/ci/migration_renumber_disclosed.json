@@ -43,6 +43,15 @@
       "reason": "bg_muhurta_lattice was initially filed as 484_bg_muhurta_lattice.sql and applied to production in the pre-ṢAḌ-DARŚANA build phase. During the ṢAḌ-DARŚANA campaign it was renumbered to 543 to reflect its actual dependency order relative to migrations 485–542. The SQL content is identical (only the -- Migration NNN: header comment differs, which is stripped by sqlIdentityOf). Production already has this table; the runner should record 543 as applied without re-executing.",
       "disclosed_via": "ṢAḌ-DARŚANA campaign post-merge deploy failure 2026-08-07 — MigrationRenumberedError blocked deploy run 31140238243; DVA RULING 73 disclosure discipline (same pattern as migration_hash_disclosed_residuals.json)",
       "disclosed_on": "2026-08-07"
+    },
+    {
+      "new_filename": "808_nirmana_l5_mi_vistara_output_digest_spec.sql",
+      "applied_filename": "692_nirmana_l5_mi_vistara_output_digest_spec.sql",
+      "sql_identity": "24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8",
+      "disposition": "already-applied-under-old-name",
+      "reason": "mi_vistara's output_digest_spec was authored and applied to the shared dev DB (amjis-postgres, tracked in _migrations_applied under this exact filename, applied_at 2026-09-05T14:28:13.291668Z) as 692_nirmana_l5_mi_vistara_output_digest_spec.sql on the L5 NIRMANA campaign lane's branch. That number collided with an unrelated, independently-authored L0 migration also numbered 692 (692_bg_doshas_integrity_check_join_scope_fix.sql), which merged to main first (2026-09-05T15:37:05Z) — a genuine authoring-time numbering race between two parallel campaign lanes, not a mistake on either side; both are tracked fine in _migrations_applied by their distinct full filenames, so nothing was ever functionally broken. Found by an independent migration-guard subagent review dispatched for an unrelated migration (806) and self-filed by the L5 session on its own PR (#1844). Renumbered to 808, the next available number as of this reconciliation (main tip was 807). The SQL content is byte-identical apart from the -- Migration NNN: header comment (stripped by sqlIdentityOf, confirmed identical sql_identity before and after rename). The shared dev DB already has this row; the runner should record 808 as applied without re-executing.",
+      "disclosed_via": "L5 NIRMANA campaign lane, self-diagnosed via migration-guard subagent review of an unrelated sibling migration (806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql), 2026-09-06 — filed on PR #1844 before merge, not a post-merge deploy failure",
+      "disclosed_on": "2026-09-06"
     }
   ]
 }
