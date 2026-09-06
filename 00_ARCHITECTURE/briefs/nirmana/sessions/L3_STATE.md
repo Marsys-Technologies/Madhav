@@ -473,6 +473,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~64:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
+  had fallen out of the queue again — re-queued, verified via `is:queued`.
+  `#1903` healthy, zero failures. Clock threshold within 36 SECONDS (real
+  time 15:51:24 vs. 15:52:00Z) — deliberately not sleeping to close the gap
+  per the contract's own "do not wait for anything inside the session" rule;
+  the next cycle (~1 min out) will be past it for certain. — blocked on:
+  real time passing 15:52:00Z (imminent); next action: execute the recorded
+  4-step `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1) — this should finally be the cycle it lands.
 - `2026-09-06T~63:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
   had fallen out of the queue again — re-queued, verified via `is:queued`.
   `#1903` healthy, zero failures. Clock threshold (15:52:00Z) very close now
