@@ -380,6 +380,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:54:46Z` — cycle 507: **ONE bounded unit: Step 3.5 fleet status post to #1713**
+  (overdue — last one was ~3h/~80 cycles ago). Gathered live: frozen 38/128 (29.7%, via
+  `asset_frozen` event_type in `nirmana_evidence.nirmana_elevation_campaign_events`, distinct
+  entity_id by layer — 36 bg/L0, 1 lel, 1 mi); 278 total campaign events (up from 227); merge queue
+  depth 4 (healthy); 16 open adjudications; no active holds; per-lane state-file heartbeat ages
+  (L0 ~12h50m, L1 ~37m, L2 ~15h30m, L3 ~44m, L4 ~8h46m, L5 ~10m — noted L0/L2/L4 quiet a while,
+  not flagged as broken). Highlighted this session's two live-confirmed closures (#2096, #1869).
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues beyond #2113 (already ruled).
 - `2026-09-06T14:50:44Z` — cycle 506: **IDLE-OK.** No own PRs. Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (16, unchanged since #2113 ruled last cycle). Nothing rose to a
   bounded unit.
