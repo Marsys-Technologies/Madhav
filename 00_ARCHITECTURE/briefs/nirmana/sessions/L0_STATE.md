@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, 35/40 frozen unchanged. #2081 confirmed is:queued (position 2, AWAITING_CHECKS), no DIRTY/RED. Watching for merge+deploy -- once live, bg_parihara_rules re-dispatch (verdict no_change, no implementation_accepted needed) would bring L0 to 36/40, leaving only bg_cohort + bg_yogas (permanent holds) and bg_rules + bg_concordance (downstream of bg_yogas).
+last_updated: 2026-09-06 -- IDLE-OK, #2081 still position 2, confirmed active merge_group runs in progress (not stuck). No DIRTY/RED. 35/40 frozen unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3166,3 +3166,6 @@ the milestone entries in the log below for full chains + every gotcha found alon
   DIRTY/RED. Watching for merge+deploy — once live, re-dispatch `bg_parihara_rules` (verdict
   `no_change`, so no `implementation_accepted` needed this time — straight dispatch →
   `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`). 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2081` still position 2, confirmed active merge_group runs in
+  progress (not stuck). No DIRTY/RED. 35/40 frozen unchanged.
