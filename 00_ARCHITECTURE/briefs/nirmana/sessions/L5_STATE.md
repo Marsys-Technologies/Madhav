@@ -457,6 +457,29 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T17:55Z (C8 v2.3 cycle 482) — **Milestone: `#2108` MERGED — the fifth state-recovery
+  PR closed out.** Fifth recurrence of the exact same pattern (cycles 442, 453, 461, 473, now
+  482). 8 more local-only commits (cycles 474-481, 18 lines, single-file) recovered via
+  patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-6`. `mi_kula`'s remaining
+  ancestors unchanged.
+- 2026-09-06T17:50Z (C8 v2.3 cycle 481) — **IDLE-OK, #2108 now at queue position 1** — next in
+  line. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:45Z (C8 v2.3 cycle 480) — **IDLE-OK.** #2108 unchanged at queue position 3, normal
+  single-cycle pace. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:40Z (C8 v2.3 cycle 479) — **IDLE-OK.** #2108 at queue position 3, still queued.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:35Z (C8 v2.3 cycle 478) — **IDLE-OK, #2108 now CLEAN and genuinely queued.** All
+  checks passed. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:30Z (C8 v2.3 cycle 477) — **IDLE-OK.** #2108's Governance Gates job checked at the
+  job level (~10 min elapsed, within the normal 7-12 min range) — genuine progress, not stalled.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:25Z (C8 v2.3 cycle 476) — **IDLE-OK.** #2108 unchanged, still on its last check, no
+  failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:20Z (C8 v2.3 cycle 475) — **IDLE-OK.** #2108 down to its last check (Governance
+  Gates), no failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:15Z (C8 v2.3 cycle 474) — **IDLE-OK.** #2108 (now L5's only open PR) down to 3
+  checks pending, no failures — holding, not touching it while it runs. `mi_kula`'s remaining
+  ancestors unchanged.
 - 2026-09-06T17:10Z (C8 v2.3 cycle 473) — **Milestone: `#2103` MERGED — the fourth state-recovery
   PR closed out.** Fourth recurrence of the exact same pattern (cycles 442, 453, 461, now 473):
   found via routine hygiene check (`mergedAt` set, right at the same moment as the check —
