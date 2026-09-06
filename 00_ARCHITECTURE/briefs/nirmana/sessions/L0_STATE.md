@@ -3396,3 +3396,7 @@ see log). Still 35/40 until that's resolved.
   commit — confirmed recurring, not a one-off; posted an FYI to #1713 for whoever owns L3/that
   asset (not L0's to fix, doesn't block my own path — migrations + web deploy both proceed fine
   independently of the sidecar smoke gate). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Same run `34034499400`, `Build & Deploy Web` still `in_progress`, no
+  newer commit superseded it (deploy churn has slowed). No open L0 PRs, no DIRTY/RED. 35/40
+  frozen unchanged.
