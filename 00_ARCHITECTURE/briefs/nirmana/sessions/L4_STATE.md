@@ -8242,3 +8242,17 @@ CYCLE 434 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked,
 new adjudication `#2124` confirmed L3's own item, not L4-relevant) → next: continue
 re-checking the E-gate each cycle; F1 (`ph_phaladesa` zero MCP consumers) remains the
 layer's one deferred code item.
+
+`2026-09-06T~16:09Z` — L4 — **CYCLE 435 (v2.3) — CONTINUED MOVEMENT: E-gate re-checked
+live, every asset's `unfrozen_ancestors` count dropped by another 1 (canary `ph_nimitta`
+33→32). Still `BLOCKED-ANCESTORS` for all 9.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. No new adjudications name L4
+(count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 435 L4: IDLE-OK on dispatch but E-gate continues steady progress — canary
+`ph_nimitta` now at 32 unfrozen ancestors (down from 35 five cycles ago); no new
+L4-relevant adjudications → next: continue re-checking the E-gate each cycle; F1
+(`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
