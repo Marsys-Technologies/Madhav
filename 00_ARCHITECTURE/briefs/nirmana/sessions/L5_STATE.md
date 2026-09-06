@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:40Z (C8 v2.3 cycle 431) — **IDLE-OK, checked actual queue depth/position since
+  nothing had moved in 2 cycles.** `#1844` is at position 1 (next in line, `AWAITING_CHECKS`) —
+  main's own migration tip stalling isn't a stall, it's the queue's front entry still finishing
+  its build. `#1826` is at position 6, behind 5 other PRs (`UNMERGEABLE` — normal for non-head
+  entries not yet speculatively evaluated, not itself concerning). Queue is moving, just slowly.
+  Still deliberately not pushing to #1826. #1869 and `mi_kula`'s remaining ancestors both
+  unchanged.
 - 2026-09-06T13:35Z (C8 v2.3 cycle 430) — **IDLE-OK, both PRs still queued.** No hygiene action
   needed — still deliberately not pushing to #1826 while it holds its queue position. Main's
   migration tip unchanged. #1869 and `mi_kula`'s remaining ancestors both unchanged.
