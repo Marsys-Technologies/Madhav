@@ -4562,3 +4562,40 @@ both re-armed for auto-merge) → next: verify #1831/#1808 actually re-enter the
 next cycle (not just armed); watch remaining 7 PRs' positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~09:05Z` — L4 — **CYCLE 226 (v2.3) — RED CI catch on `#1808`: last cycle's
+rebase conflict resolution left a stale pin (a real defect, not a false alarm) — fixed root
+cause, never weakened the gate.**
+
+**PR hygiene — RED found and fixed:** `#1808`'s `Governance Gates` check (specifically the
+`pytest — pyjhora_adapter + pipeline` step's `nirmana_analysis_layer_pins --check`) was
+genuinely `fail`, 43s in. Root cause, verified by reading the actual CI log
+(`gh api .../actions/jobs/.../logs`): the committed pin's `writer_inventory_sha256`
+(`a71d2568...`) did not match the ph_* slice of the already-correctly-regenerated
+`nirmana-writer-digests.json` (`af017ec3...`) — a genuinely stale pin, not a flake. Traced
+to my own cycle-225 conflict resolution: I resolved the pin conflict by keeping the branch's
+pre-rebase committed value and ran `--check`, which reported "current" — that read must have
+been taken against an intermediate rebase working-tree state, not the final combined tree
+(confirmed by re-running `--check` from a clean checkout of the branch afterward, which
+reproduced the same STALE failure CI saw). Manually re-derived the correct hash via the
+script's own byte-for-byte algorithm (`sorted ph_* slice of digests.json['writers'],
+json.dumps(sort_keys, no spaces), sha256`) — matched CI's reported `af017ec3...` exactly.
+Updated the pin, `--check` now passes clean, 286/286 `ph_nimitta`/wave tests still pass.
+New commit `a3adf5573` pushed (not amended, since the prior commit was already on remote).
+Separately re-verified `#1831`'s pin from a clean checkout (not mid-rebase) — genuinely
+current, no equivalent defect there.
+
+**Remaining 7 own PRs:** `#1870`, `#1864`, `#1849`, `#1845`, `#1842`, `#1839`, `#1834` all
+re-verified `QUEUED` via GraphQL, positions advancing (113→103 etc. over the two cycles). No
+DIRTY, no RED.
+
+**Priorities 1-4:** one new `nirmana-adjudication` issue (#2052, L2-owned salience-formula
+under-specification) — not L4-relevant. E-gate still uncheckable, 216th consecutive cycle DB
+access down.
+
+CYCLE 226 L4: found+fixed a genuine RED (stale pin on `#1808`, root-caused to my own
+cycle-225 conflict-resolution check having read a mid-rebase state) — re-derived the correct
+`writer_inventory_sha256` byte-for-byte, `--check` clean, 286/286 tests pass, new commit
+pushed; `#1831` independently re-verified clean → next: confirm `#1808`'s CI goes green and
+both `#1831`/`#1808` re-enter the merge queue; watch remaining 7 PRs continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
