@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — RED caught+fixed on #2066: docstring edit to seed_dasha_systems() broke provenance_inventory --check (any writer-file edit changes its digest, which would have invalidated this session's own just-accepted bg_dasha_systems W2 evidence -- self-inflicted regression caught pre-merge). Root-cause fix: reverted the writer-file edit, moved the same finding to a standalone non-writer doc (D-L0-GG-FOLLOWUP_v1_0.md). Pushed (b5fd8771e), fresh CI running, not yet confirmed is:queued -- check first next cycle. Underlying substance unchanged from prior entry: real W4 rebuild of bg_dasha_systems completed (run c086b0e4-...), all 9 integrity_check_sql clauses verified TRUE live. accepted_rebuild_observed still blocked on #2066 deploying; all its digests precomputed below. bg_yogas/bg_compendium_index rebuilds not yet started. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — #2066 confirmed is:queued (CLEAN). Attempted the same rebuild playbook on bg_yogas -- this time it's a GENUINELY different, real, pre-existing defect: the writer's own extraction step (extract_yogas_from_corpus) yields 0 (not the expected 85), confirmed live via job logs ("corpus extraction: 0 distinct yogas found ... seeding 148 yogas"), matching an earlier session's own diagnosis (commit ffeb5e2ea, 2026-09-05) that had been unable to actually run the writer to confirm it. Build failed cleanly, rolled back, no data damage (233/229/229/0 unchanged). My own W2 verdict summary for bg_yogas wrongly assumed the D-L0-GG rolled-back-replay pattern -- corrected here since the evidence itself is immutable. This needs real W3 investigation into the extraction pipeline, not another dispatch attempt -- deferred, not attempted this cycle (unbounded scope). bg_dasha_systems' accepted_rebuild_observed still blocked on #2066 deploying (now queued, watch for merge). bg_compendium_index rebuild not yet attempted. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2702,3 +2702,45 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
     `is:queued` + actually deploying — nothing else changed from last cycle's plan (digests
     already precomputed, see prior entry). `bg_yogas`/`bg_compendium_index` rebuilds still not
     started.
+
+- 2026-09-06 — **`#2066` confirmed `is:queued` (CLEAN) at cycle start.** No DIRTY, no RED. Did the
+  W2-refresh + W4-dispatch attempt for `bg_yogas`, expecting the same D-L0-GG pattern as
+  `bg_dasha_systems` — **this time the result is genuinely different and important.**
+  - W2 refresh submitted cleanly: `registry_fingerprint_sha256
+    198785740014e7062df573ab5ef938db68d068785f17f742aa1b0b55768bc82f`, `analysis_digest
+    188dfa9b584483d1a4810ee28a8fd758e512d0f47b4062a80b038d9d7d9f4102`, verdict `correct` (source
+    ref bound to the newly-observed deployed sha `4bcf21588c9dd7bbf1df15ec5dcb875e5f12d250` — the
+    deploy pipeline had advanced since last cycle's `a5752e9d...`). This time I used the
+    lesson from last cycle from the start: no writer-file edits planned, so no digest-cascade risk.
+  - Fresh backup (`cloudsql-backup:1788685472786`), SLOT CLAIM, dry-run (blast radius 229 rows
+    `reference_yogas` + 0 rows `brahma_yoga_source_chunks`, matching expectations), committed
+    dispatch (`run_id 5abc56e8-3f63-49bb-b8bb-8258c95cb9df`), authorized immediately.
+  - **The run genuinely executed the writer this time (unlike the 2026-09-05 attempt, which was
+    blocked earlier) — and it FAILED for real, exposing a pre-existing, already-diagnosed defect,
+    not a rebuild-freshness issue.** Job log: `corpus extraction: 0 distinct yogas found` /
+    `seeding 148 yogas (144 inline + 4 detector + 0 extracted)` — the writer's own extraction step
+    yields **zero**, not the expected 85, so it only ever produces 148/233 rows. `build_runs.state
+    = 'failed'`, and live data is **unchanged** from before the dispatch (orchestrator rolled back
+    on the post-write integrity check failing — verified: identical counts before/after, no
+    damage: 233/229/229/0, same as pre-dispatch).
+  - **This exactly confirms an EARLIER session's own diagnosis** (commit `ffeb5e2ea`, 2026-09-05,
+    predates this whole continuation): "real current defect: `extract_yogas_from_corpus` yields
+    ≠85 ... verdict held on being able to run the writer" — that session couldn't actually run the
+    writer (blocked on a job-image deploy at the time, #1772). This cycle could, and it confirms
+    the yield is exactly **zero**, not merely "off." The 233 rows currently in `brahma_yoga_catalog`
+    are themselves stale old-build data from before this defect existed (matching that session's
+    own read of `l0_yogas.py`).
+  - **Self-correction, logged honestly**: my own `optimization_verdict_accepted` summary for
+    `bg_yogas` (submitted just before the dispatch) assumed the D-L0-GG rolled-back-replay pattern
+    and is now known to be an inaccurate causal claim — it can't be edited (immutable once
+    accepted) but the true cause is recorded here for anyone reading that evidence later. The
+    submitted digests/fields themselves (`registry_fingerprint`, `analysis_digest`, `verdict=
+    correct`, `output_contract=correctness_change`) remain structurally valid regardless of which
+    specific defect the eventual fix addresses.
+  - **Correctly NOT attempted this cycle**: debugging why `extract_yogas_from_corpus` yields 0
+    (likely a `bg_texts` dependency/matching-logic issue) is real W3 implementation work, not a
+    W4 dispatch problem, and is unbounded in scope — a fresh cycle (or a dedicated investigation)
+    should pick this up rather than force it into this cycle's budget. `bg_compendium_index`'s
+    rebuild also still not attempted.
+  - Posted an honest SLOT RELEASE to #1713 correcting my own SLOT CLAIM's assumption. 30/40 frozen
+    holds unchanged.
