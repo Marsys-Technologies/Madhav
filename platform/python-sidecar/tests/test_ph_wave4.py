@@ -188,7 +188,7 @@ def prescriptions():
             estimated_cost_inr_range={'min_inr': 0, 'max_inr': 0},
             estimated_time_minutes=10, requires_acharya_review=False,
             prerequisite_ids=[], incompatible_ids=['P3'],
-            classical_citation='BPHS Upaya ch. 85',
+            classical_citation='BPHS Upaya ch. 85', source_id='BPHS',
         ),
         RemedyPrescription(
             prescription_id='P2', tradition='ayurvedic', remedy_category='dravya',
@@ -373,6 +373,50 @@ class TestDeriveMitigationRecord:
         )
         rec = derive_mitigation_record(ctx)
         assert rec.classical_citation is None
+
+    def test_source_id_propagated(self, prescriptions):
+        # F-6: classical_sources_jsonb.source_id (e.g. 'BPHS') is real, populated
+        # bo_upaya data that was never propagated -- same JSON the citation
+        # string already reads.
+        from services.ph_pratikara.engine import MitigationContext, derive_mitigation_record
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=prescriptions,
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.source_id == 'BPHS'
+
+    def test_no_prescriptions_yields_honest_none_source_id(self):
+        from services.ph_pratikara.engine import MitigationContext, derive_mitigation_record
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=[],
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.source_id is None
+
+    def test_prescriptions_present_but_none_carry_a_source_id_yields_none(self):
+        from services.ph_pratikara.engine import (
+            MitigationContext, RemedyPrescription, derive_mitigation_record,
+        )
+        blank = RemedyPrescription(
+            prescription_id='P9', tradition='vedic', remedy_category='mantra',
+            classical_strength_rating=0.5, resonance_match_score=0.5, feasibility_score=0.5,
+            estimated_cost_inr_range={}, requires_acharya_review=False,
+            prerequisite_ids=[], incompatible_ids=[], source_id='',
+        )
+        ctx = MitigationContext(
+            obstruction_id=1, obstruction_severity='medium',
+            obstruction_window_start=None, obstruction_window_end=None,
+            afflicting_graha='saturn', linked_anchor_id=None,
+            anchor_magnitude='major', prescriptions=[blank],
+        )
+        rec = derive_mitigation_record(ctx)
+        assert rec.source_id is None
 
 
 # ══════════════════════════════════════════════════════════════════════════════

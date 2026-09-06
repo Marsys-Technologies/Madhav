@@ -130,7 +130,7 @@ class PhPratikaraWriter(WriterBase):
                         intensity_tier, proportionality_basis,
                         initiation_muhurta_ref,
                         window_start, window_end, re_evaluation_date,
-                        outcome_hook_jsonb, classical_citation,
+                        outcome_hook_jsonb, classical_citation, source_id,
                         cross_tradition_corroboration,
                         derivation_ledger_jsonb, source_citation
                     ) VALUES (
@@ -140,7 +140,7 @@ class PhPratikaraWriter(WriterBase):
                         %s, %s,
                         %s,
                         %s, %s, %s,
-                        %s::jsonb, %s,
+                        %s::jsonb, %s, %s,
                         %s,
                         %s::jsonb, %s
                     )
@@ -155,7 +155,7 @@ class PhPratikaraWriter(WriterBase):
                         rec.intensity_tier, rec.proportionality_basis,
                         rec.initiation_muhurta_ref,
                         rec.window_start, rec.window_end, rec.re_evaluation_date,
-                        json.dumps(rec.outcome_hook_jsonb), rec.classical_citation,
+                        json.dumps(rec.outcome_hook_jsonb), rec.classical_citation, rec.source_id,
                         rec.cross_tradition_corroboration,
                         json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
                     ),
@@ -261,6 +261,7 @@ class PhPratikaraWriter(WriterBase):
                     recommended_choghadiya=(choghadiya_arr[0] if choghadiya_arr else None),
                     pranapratishtha=bool(row.get('pranapratishtha_required_flag')),
                     classical_citation=str(sources.get('citation') or ''),
+                    source_id=str(sources.get('source_id') or ''),
                 )
                 result.setdefault(graha_key, []).append(p)
         return result

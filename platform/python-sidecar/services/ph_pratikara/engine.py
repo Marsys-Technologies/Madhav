@@ -58,6 +58,7 @@ class RemedyPrescription:
     recommended_choghadiya:     Optional[str] = None
     pranapratishtha:            bool = False
     classical_citation:         str = ''
+    source_id:                  str = ''
 
 
 def topo_sort_prescriptions(prescriptions: list[RemedyPrescription]) -> list[str]:
@@ -196,6 +197,7 @@ class MitigationRecord:
     re_evaluation_date:         date
     outcome_hook_jsonb:         dict
     classical_citation:         Optional[str]
+    source_id:                  Optional[str]
     cross_tradition_corroboration: int
     derivation_ledger_jsonb:    dict
     source_citation:            str
@@ -266,6 +268,16 @@ def derive_mitigation_record(ctx: MitigationContext) -> MitigationRecord:
         None,
     )
 
+    # F-6 (L4_W1_ANALYSIS_BATCH_C.md §3.5): classical_sources_jsonb.source_id
+    # (e.g. 'BPHS') is populated on 135/135 bo_upaya rows -- the same JSON the
+    # citation string above already reads -- but was never propagated. Honest
+    # None (not a picked default) when no prescription carries one, mirroring
+    # how classical_citation itself is handled.
+    source_id = next(
+        (p.source_id for p in prescriptions if p.source_id),
+        None,
+    )
+
     derivation = {
         'obstruction_id':    ctx.obstruction_id,
         'linked_anchor_id':  ctx.linked_anchor_id,
@@ -292,6 +304,7 @@ def derive_mitigation_record(ctx: MitigationContext) -> MitigationRecord:
         re_evaluation_date=re_eval,
         outcome_hook_jsonb=outcome_hook,
         classical_citation=citation,
+        source_id=source_id,
         cross_tradition_corroboration=ctc,
         derivation_ledger_jsonb=derivation,
         source_citation=f"ph_pratikara/{ctx.obstruction_id or 'anchor'}/{ctx.linked_anchor_id or 'none'}",
