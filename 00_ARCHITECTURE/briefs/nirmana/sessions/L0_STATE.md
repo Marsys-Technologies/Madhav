@@ -453,3 +453,9 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   eligible work. NEXT: revert to standard IDLE-OK cycles, watching #1713 for (a) Conductor's C12
   carve-out ruling on `bg_cohort`, (b) any ruling on `#2169`, (c) new discoveries of #2122's class
   surfacing from other lanes' work.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PR (`is:queued` and author search both confirm).
+  `bg_cohort`'s carve-out still unimplemented — checked `git log` on
+  `platform/src/lib/nirmana-elevation/definitions.ts` (the file governing
+  `requireAcceptedRebuildProvenance`), no commits since well before D-L0-II was even discovered.
+  `#2169` has no comments yet (freshly filed, expected). #1713 tail unchanged since my own closing
+  posts. Nothing eligible.
