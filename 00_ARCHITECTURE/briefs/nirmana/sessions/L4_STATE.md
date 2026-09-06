@@ -5517,3 +5517,18 @@ hygiene clean, all 9 own PRs genuinely queued and advancing; E-gate uncheckable,
 down 271 cycles; nothing new) → next: watch queue positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~13:45Z` — L4 — **CYCLE 282 (v2.3) — `#1864` (own PR, position 13) has become
+the merge-group's active testing PR (`AWAITING_CHECKS`) — first own PR to reach the
+merge-group head this window.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued, `#1864` now actively processing at
+the queue head. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 272nd consecutive cycle DB access down.
+
+CYCLE 282 L4: IDLE-OK (verified: PR hygiene clean, `#1864` now at the merge-group head
+actively processing, remaining 8 unchanged/queued; E-gate uncheckable, DB access down 272
+cycles; nothing new) → next: watch `#1864` merge, confirm remaining PRs continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
