@@ -493,6 +493,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~117:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s last check,
+  same run, now ~9.3min — still within the known ~10min pattern, not yet
+  stuck. 0 failures. No new merges, no new bounded work. — blocked on:
+  `#2174` finishing; next action: same, check step-level detail next cycle
+  if still on this exact run.
 - `2026-09-06T~116:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s last check
   (`Governance Gates`) genuinely `in_progress` at ~7min — within normal
   range, not stuck. 0 failures. No new `origin/main` merges, no new bounded
