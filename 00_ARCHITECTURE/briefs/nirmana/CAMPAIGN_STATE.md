@@ -379,6 +379,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T13:09:17Z` — cycle 477: **IDLE-OK.** Own PR #2094: CI still running (~5 min in,
+  Build Check/Governance Gates/Unit Tests `pending` — within documented normal variance, not
+  stuck), not yet `is:queued`. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (15).
+  Nothing rose to a bounded unit.
 - `2026-09-06T13:07:13Z` — cycle 476: **IDLE-OK.** Own PR #2094 (migration 647, cycle 475): CI
   still pending (~2 min in — Build/DB-Integration/Governance-Gates/Unit-Tests all `pending`, not
   stuck), correctly not yet `is:queued` — nothing to fix, just needs time. Fleet DIRTY sweep: empty.
