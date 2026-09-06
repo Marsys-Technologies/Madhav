@@ -630,6 +630,14 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~28:0xZ — L3-W3 — First real merge in a while: `#1954`
+  (F-VIGHNA-6) landed (`mergedAt` confirmed via direct GraphQL check, not
+  assumed from the queue listing showing it absent). 8 L3-owned PRs remain,
+  all healthy this cycle (zero DIRTY/UNMERGEABLE/CLEAN-unqueued). Merge queue
+  itself empty. `#2079` still open, not merged — `#2071` stays open too.
+  `#1713`'s sidecar finding unchanged, tenth+ cycle. — blocked on: nothing new;
+  next action: keep L3-only sweeps going, watch for more of the 8 to merge now
+  that the queue is flowing, recheck `#1713`.
 - `2026-09-06T~27:0xZ — L3-W3 — PR hygiene: the 4 PRs queued over the last two
   cycles (`#1940`/`#1936`/`#1929`/`#1903`) went `UNMERGEABLE`-in-queue this
   cycle (main advancing past them while queued). Fixed all four the standard
