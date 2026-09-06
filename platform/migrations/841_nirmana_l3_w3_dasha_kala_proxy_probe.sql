@@ -1,4 +1,4 @@
--- 811_nirmana_l3_w3_dasha_kala_proxy_probe.sql
+-- 841_nirmana_l3_w3_dasha_kala_proxy_probe.sql
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_dasha_kala`, F-L3-15's fourth and final slice.

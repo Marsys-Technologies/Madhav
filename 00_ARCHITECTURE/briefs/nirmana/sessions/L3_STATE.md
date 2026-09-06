@@ -1457,7 +1457,11 @@ your layer close.
   things — importability + the documented 7-system constant-set identity — and
   every check carries an explicit `scope` field disclosing it never confirms
   chart_dashas correctness or any live-DB behavior (the ruling's own required
-  condition, §N.8). Migration 811. 13 new tests (7 probe + 7 migration [overlap:
+  condition, §N.8). Migration 841 (renumbered 2026-09-06T~46:0xZ from 811 — a
+  genuine collision with L1's own already-merged 811_nirmana_l1_ga_structural_
+  integrity_contract_lordinhouse.sql, caught by the Unit Tests E2 gate; renamed
+  per the gate's own instruction, max() across both migration directories + 1,
+  test file and internal header comment updated to match). 13 new tests (7 probe + 7 migration [overlap:
   2 shared assertions counted once] + 2 route), full `tests/l3/` 1465
   passed/0 new failures.
   **Also this cycle: fixed a genuine RED — migration collision.** PR #2070's own
