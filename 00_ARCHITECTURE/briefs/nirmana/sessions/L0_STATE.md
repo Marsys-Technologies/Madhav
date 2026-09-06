@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Second DIRTY-PR catch of the campaign: #1910 (migration 700, bg_dasha_systems) went DIRTY once it reached the queue head after #1911 merged — same stale-branch-point pattern as #1969 (branch cut from an old main point, would have deleted ~60 other layers' migrations/files, 397 insertions/3862 deletions in the diff). Closed #1910, replaced with clean single-commit #2004 off current main, auto-merge armed. 1915/1923/1925 confirmed still queued normally (UNKNOWN mergeStateStatus is just not-yet-recomputed, not DIRTY). 30/40 frozen holds.
+last_updated: 2026-09-06 — Full DIRTY-branch sweep: #1915/#1923/#1925 all also went DIRTY (same stale-branch-point pattern as #1910/#1969) — fixed all three (closed, resubmitted as #2013/#2014, #1915 needed no replacement since its sole content was already superseded). Then discovered my OWN active working branch (-7, carrying #1985) was equally stale (would have deleted migrations 652/716/718/719/720/721) — proactively replaced with fresh branch -8 (#2016) before it could surface as DIRTY. All five resubmissions auto-merge-armed. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2011,3 +2011,36 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Third flat read (positions still 3/11/60/110), queue head still #1916,
   ~9.3min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **PR HYGIENE: full DIRTY-branch sweep, three more catches + one proactive fix.**
+  #1916 merged; `#1915` then surfaced `mergeStateStatus=DIRTY` at the queue head, same
+  stale-branch-point pattern as `#1910` (branch `feat/nirmana-l0-cycle-resume-3`, diff 312
+  insertions / 3705 deletions — would have deleted ~55 other layers' files). Unlike `#1910`,
+  `#1915`'s sole content was an `L0_STATE.md` heartbeat documenting D-L0-II — already fully
+  captured (and superseded) by the current, far more complete `L0_STATE.md`, so it was **closed
+  with no replacement needed**.
+
+  Given this was now the *second* independent DIRTY catch this cycle, proactively checked the two
+  remaining queued PRs (`#1923` branch `-4`, `#1925` branch `-5`) via `git diff origin/main
+  <branch> --stat` **before** waiting for GitHub to flag them at the queue head (both confirmed the
+  same destructive pattern: `-4` was 462 ins/3530 del across 53 files, `-5` was 719 ins/3494 del
+  across 52 files). Fixed both preemptively: `#1923`'s genuine content (migration 701,
+  `bg_yogas` join-scope fix, D-L0-KK) → fresh branch → **#2013**; `#1925`'s genuine content
+  (migration 702, `bg_compendium_index` content-hash repin) → fresh branch → **#2014**. Both
+  auto-merge armed, both old PRs closed with explanation.
+
+  Then checked my own actively-worked branch (`feat/nirmana-l0-cycle-resume-7`, carrying `#1985`)
+  against the same diagnostic — since I only ever append commits to it without rebasing, it had
+  quietly gone stale too (would have deleted migrations 652/716/718/719/720/721, several of which
+  I'd watched merge earlier THIS SAME CYCLE — 718/719/720/721 are `bo_anveshana`/
+  `bo_yantra_mechanism`/`bo_pramana_mapa`/`bo_upaya`, i.e. PRs #1911/#1912/#1914/#1916). Fixed
+  proactively before GitHub ever flagged it: fresh branch `feat/nirmana-l0-cycle-resume-8` off
+  current `main`, carried over only `L0_STATE.md` → **#2016**, auto-merge armed, `#1985` closed.
+  **`-8` is now the ongoing L0 working branch** — every future cycle's heartbeat commits land here.
+
+  Lesson for future cycles: an append-only working branch that sits across many main-side merges
+  from other layers is not inherently safe just because *I* never touch anyone else's files — the
+  destructive-diff risk comes from the branch's fork point aging, not from anything in my own
+  commits. Re-check `git diff origin/main <own-working-branch> --stat` periodically even when
+  nothing has flagged DIRTY yet, not only when GitHub surfaces it. 30/40 frozen holds; no writer
+  code touched, no data risk — this was entirely a git-hygiene incident on my own PR branches.
