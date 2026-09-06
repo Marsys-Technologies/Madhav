@@ -380,6 +380,17 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T16:05:54Z` — cycle 539: **ONE bounded unit: ruled #2123 (L1's `ga_prashna` FK
+  finding), declined to authorize a schema fix myself — verified R-1's actual text first.**
+  `grep`-confirmed `PROMPT_L1.md`'s own wording: "ga_prashna dormant disposition recorded (native
+  ruling R-1 — do not open the facility)." L1 correctly re-investigated F-E22 and found the "5
+  orphaned rows" were actually real, correctly-grounded prashna data (keyed to `prashna_charts`,
+  not `charts`) — the real defect is `ga_prashna_judgment`'s FK pointing at the wrong parent table.
+  **Ruled out of scope under R-1** — even a narrow, well-evidenced FK fix is still touching the
+  dormant facility, not something I'll authorize on the native's behalf. Directed L1 to fix its own
+  documentation framing (orphaned → correctly-grounded) but leave the FK as-is, and flagged the
+  actual FK question to the native by name (does R-1's dormancy cover schema-integrity fixes, or
+  only new feature work). Fleet DIRTY: empty. Adjudication count 18.
 - `2026-09-06T16:02:46Z` — cycle 538: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T15:59:37Z` — cycle 537: **IDLE-OK.** Fleet DIRTY: empty. No new
