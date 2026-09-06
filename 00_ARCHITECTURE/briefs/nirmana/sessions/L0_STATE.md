@@ -8,9 +8,10 @@ session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
 last_updated: 2026-09-07 — 39/40 frozen (bg_yogas/bg_rules/bg_concordance froze via D-NATIVE-06); only
-  bg_cohort remains, held on Conductor's C12 carve-out. PR #2153 (issue #2122) MERGED; migrations
-  705/706 confirmed live; found + filed a NEW deploy gap (#2169, distinct from #2159) and closed it
-  via manual force-deploy (run 34059983414, in progress) — production rollout not yet fully verified.
+  bg_cohort remains, held on Conductor's C12 carve-out. Issue #2122/PR #2153 arc FULLY CLOSED —
+  merged, force-deployed, live-verified end-to-end (actual tool call confirms correct served
+  content). #2169 (the systemic deploy-gap this surfaced) stays open, Conductor's call. Back to
+  standard IDLE-OK cadence.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -42,8 +43,9 @@ carve-out (see Held items). Separately, **issue #2122** (F-D21/F-D23: `bg_vidhi_
 `from_moon_view` Vidhi primitive pointed at an inert `reference_point` arg on
 `ganita_chart_facts_get`) surfaced via a Conductor fleet-status post on #1713 — this is NEW L0 work,
 independent of the freeze-tracking count above (it does not un-freeze `bg_vidhi_primitives`; it
-corrects a served primitive's routing). Fixed and shipped as **PR #2153**, currently CI-running after
-a RED-fix (see heartbeat).
+corrects a served primitive's routing). Fixed and shipped as **PR #2153, merged, force-deployed, and
+live-verified end-to-end — the arc is CLOSED** (see heartbeat for the full account, including the
+deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic level).
 
 ## The 1 unfrozen asset
 
@@ -431,3 +433,23 @@ a RED-fix (see heartbeat).
   lane to fix or mine to correct in their file; noted here as independent confirmation my own
   deeper verification (deployed image SHA, eventually a live tool call) is the one that actually
   closes this. #1713's only new item is my own prior post. Nothing else actionable.
+- 2026-09-07 — **Force-deploy `34059983414` COMPLETED. #2122/PR #2153 production rollout fully
+  closed, end-to-end, live-verified — not stopping at "the deploy succeeded."** Confirmed directly:
+  (1) `amjis-mcp`'s live image is now `6964b5538...`, confirmed via `git merge-base --is-ancestor
+  c39345c7b 6964b5538...` that my merge is genuinely an ancestor — the earlier staleness (image
+  `70dbe58b...`, predating my merge) is resolved. (2) 100% traffic on the new revision
+  (`amjis-mcp-00620-2hp`). (3) **Called the actual live tool** (`ganita_transit_anchors_get`,
+  canonical chart `482012f1-710e-4a25-994a-93821f5871aa`, `graha=moon`) — returns
+  `natal_house_from_moon` per ayanamsha, exactly the "bhāva reckoned from Moon" semantic
+  `from_moon_view` exists to provide. Not merely "a valid tool now resolves" — the served content is
+  genuinely the right content, verified against the canonical native's chart. This closes every
+  layer: writer code → live DB row → deployed serving code → actual served output. Posted final
+  confirmation to `#1713`. **`#2169` (the systemic deploy-pipeline changed-paths gap) stays OPEN** —
+  my manual force-deploy closed only THIS instance; the underlying gap for future PRs remains
+  Conductor's call, not something I've fixed by working around it once. **This closes the entire
+  #2122 arc** (discovery → root-cause → fix → 3 sequentially-found RED gates → merge → deploy-gap
+  discovery → remediation → full live verification) across many cycles. L0 is back to **39/40
+  frozen, `bg_cohort` the sole remaining blocker**, held on Conductor's C12 carve-out — no other
+  eligible work. NEXT: revert to standard IDLE-OK cycles, watching #1713 for (a) Conductor's C12
+  carve-out ruling on `bg_cohort`, (b) any ruling on `#2169`, (c) new discoveries of #2122's class
+  surfacing from other lanes' work.
