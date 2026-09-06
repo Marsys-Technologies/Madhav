@@ -313,6 +313,33 @@ def previous_output_digest(
     return row.get("output_digest") if isinstance(row, dict) else row[0]
 
 
+def reattribute_unchanged_receipt(
+    cur, *, asset_id: str, chart_id: str | None, partition_declaration: str | None, build_id: str | None,
+) -> None:
+    """After a delta-skip (O-wave WP-2), re-stamp the existing matching receipt's
+    build_id/observed_at to the run that just verified it is still current.
+
+    Only ever called immediately after previous_receipt_matches_inputs() has
+    already proven -- by comparing code/config/upstream/partition digests --
+    that this run's inputs are byte-identical to the receipt's. Nothing here
+    re-derives or asserts a NEW fact; it attributes an already-verified,
+    unchanged fact to the run that reconfirmed it, the same "verified-unchanged
+    is still verified" posture the freshness classifier already applies (Nirmana
+    #1899). Skipping this update is what previously left accepted_rebuild_observed
+    structurally unreachable: the run holding the build_run_authorized event and
+    the run whose receipt records the (unchanged) content were never the same row.
+    """
+    partition_key = partition_declaration or WHOLE_ASSET_PARTITION
+    cur.execute(
+        """
+        UPDATE asset_provenance_receipts
+           SET build_id = %s, observed_at = NOW()
+         WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        """,
+        (build_id, asset_id, chart_id, partition_key),
+    )
+
+
 def previous_receipt_matches_inputs(
     cur,
     *,

@@ -855,7 +855,10 @@ def _mark_probe_green(
                 "from_state": "building", "to_state": "lit"})
 
 
-def _skip_no_delta(conn, cur, run_id: str, chart_id: str | None, asset_id: str) -> bool:
+def _skip_no_delta(
+    conn, cur, run_id: str, chart_id: str | None, asset_id: str,
+    natural_key_partition: str | None = None,
+) -> bool:
     """O-wave WP-2 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.2, "delta-skip"):
     the pre-execution gate found every input digest unchanged since the last
     complete receipt. Record the skip WITHOUT invoking the writer.
@@ -868,6 +871,17 @@ def _skip_no_delta(conn, cur, run_id: str, chart_id: str | None, asset_id: str) 
     acceptance wording) and output_changed=False, so staleness.py's
     delta-directional propagation (O-wave WP-1) also reads "no delta" and
     does not walk downstream for nothing.
+
+    Also re-attributes the existing (already-proven-unchanged) receipt's
+    build_id/observed_at to THIS run (Nirmana #1899): without this, the run
+    holding the campaign's build_run_authorized event and the run whose
+    receipt records the verified content are never the same row, which made
+    accepted_rebuild_observed structurally unreachable for any asset whose
+    inputs are stable across a short retry window -- the common case, not
+    the exception, once an asset's upstreams settle. The caller's own
+    previous_receipt_matches_inputs() check already proved this run's
+    inputs are byte-identical to the stored receipt before routing here;
+    this asserts nothing new, it attributes an already-verified fact.
     """
     cur.execute(
         """UPDATE asset_throughput
@@ -876,6 +890,11 @@ def _skip_no_delta(conn, cur, run_id: str, chart_id: str | None, asset_id: str) 
         (chart_id, asset_id),
     )
     _guard_state_write(cur, run_id, chart_id, asset_id, 'lit')
+    from .provenance import reattribute_unchanged_receipt
+    reattribute_unchanged_receipt(
+        cur, asset_id=asset_id, chart_id=chart_id,
+        partition_declaration=natural_key_partition, build_id=run_id,
+    )
     cur.execute(
         """UPDATE build_run_assets
            SET state = 'complete', disposition = 'skip_no_delta',
@@ -965,7 +984,10 @@ def _run_data_writer(
                 config=ctx.config, upstream_digest=upstream_hash,
                 partition_declaration=natural_key_partition, has_cowriters=has_cowriters,
             ):
-                return _skip_no_delta(conn, cur, run_id, chart_id, asset_id)
+                return _skip_no_delta(
+                    conn, cur, run_id, chart_id, asset_id,
+                    natural_key_partition=natural_key_partition,
+                )
         except Exception as exc:
             # A failed delta-skip DECISION must never become a failed BUILD.
             # Fail open into the normal execute path -- a wasted execution is
