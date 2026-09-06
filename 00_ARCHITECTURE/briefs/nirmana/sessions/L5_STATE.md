@@ -457,6 +457,50 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T00:04Z (C8 v2.3 cycle 591) — **Root-caused and fixed the deeper blocker behind
+  `mi_kula`'s missing `accepted_rebuild_observed`; `#2162` MERGED (seventeenth state-recovery
+  PR).** The executor subagent (`a3119d1452ef053be`) dispatched to submit
+  `accepted_rebuild_observed` correctly stopped instead — independently re-confirmed all three
+  of its findings myself via direct DB query: zero `build_run_authorized` rows for the actual
+  successful `run_id=343fe4fa-...`, zero `implementation_accepted` rows for `mi_kula`, and zero
+  `asset_output_digest_specs` rows for `mi_kula` (confirmed 0/0/0 live, not trusted from the
+  subagent's report alone). The digest-spec gap is the fundamental one — without it
+  `compute_output_digest()` returns `(None, None)` forever, so even a fresh rebuild couldn't
+  resolve. **Authored migration 822** (`mi_kula`'s own `asset_output_digest_specs` row, L5's
+  reserved 820-839 range, confirmed free both locally and on fresh `origin/main`), following the
+  exact `mi_vistara`(821)/`mi_jivanaghatana`(820) precedent: two components (`mi_kula` writes two
+  tables) — `mimamsa_signal_families` (key `family_id`) and `mimamsa_negative_controls` (key
+  `control_id`). Computed `spec_sha256` via the REAL `canonical_digest()`/`_validate_spec()`
+  server functions (`pipeline.orchestrator.provenance`/`output_digest`), never hand-computed.
+  `migration_number_guard.ts` PASS. Applying it hit two client-side timeouts (2min, then 60s) —
+  diagnosed as genuinely slow disclosure-history scanning across hundreds of already-applied
+  migrations, not a hung/stuck process (confirmed via `pg_stat_activity`: zero active queries
+  during the "hang"); a 280s timeout let it complete cleanly (`Applied:
+  822_nirmana_l5_mi_kula_output_digest_spec.sql`). Independently re-verified the row landed with
+  the exact expected `spec_sha256`. PR #2167 opened on its own branch, auto-merge armed. The
+  remaining two gaps (`implementation_accepted`, `build_run_authorized`) still need addressing
+  before `accepted_rebuild_observed` can be resubmitted — next cycle's work. 8 local-only commits
+  (cycles 583-590, 30 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-18`.
+- 2026-09-06T23:45Z (C8 v2.3 cycle 590) — **IDLE-OK, verified.** #2162 building cleanly, no
+  failures. `accepted_rebuild_observed` executor subagent still running (~2 min) — holding.
+- 2026-09-06T23:39Z (C8 v2.3 cycle 589) — **W5 verifier correctly stopped on a real gap:
+  `mi_kula` never got `accepted_rebuild_observed` submitted.** The fresh-context verifier
+  (`ac485a55eb69fdab1`) independently confirmed zero such rows exist despite the build genuinely
+  succeeding (`build_run_assets.state='complete'`, `asset_throughput.rows_written=15`) — traced
+  to `requireIntegrityProvenance` requiring exactly one valid `accepted_rebuild_observed` event
+  for `build`-obligation assets; correctly refused to fabricate or route around it. **Root cause
+  is my own gap, not a system bug**: my W4-dispatch brief for `mi_kula` (cycle 584) verified the
+  build succeeded but never included submitting this follow-up evidence event — unlike
+  `mi_vistara`/`mi_jivanaghatana`, which both have it recorded (`source_kind='build_run'`,
+  `recorded_by=nirmana-executor:...` — confirmed this is `nrec --as executor` submission, not
+  anything auto-triggered by the build pipeline itself; no caller of the evidence-command route
+  exists anywhere in `platform/python-sidecar`). Dispatched a fresh executor subagent
+  (`a3119d1452ef053be`) to submit it now, referencing the real completed
+  `run_id=343fe4fa-5979-4cb3-a5f3-a1600304fd28`, briefed to read the actual schema/validator from
+  `definitions.ts` rather than hand-guess the payload, and to re-verify build-vs-acceptance
+  timing ordering (the same 500-causing pattern L0 hit earlier this session) before submitting.
+  #2162 building cleanly, no failures.
 - 2026-09-06T23:33Z (C8 v2.3 cycle 588) — **Milestone: `#2158` MERGED — the sixteenth
   state-recovery PR closed out.** Sixteenth recurrence of the exact same pattern (cycles 442,
   453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, now 588). 9 local-only
