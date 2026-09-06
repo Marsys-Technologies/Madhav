@@ -2489,3 +2489,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** #1983 merged (`e48396684`, L2, not L0's), positions flat (20/27/28/49)
   — already reflected. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (positions still 20/27/28/49). Queue batch now has 6 entries
+  (#1990/#1991/#1993/#1994/#1995/#1997), frontmost ~11min in_progress — still under the 30min hang
+  threshold. No DIRTY, no RED. 30/40 frozen holds.
