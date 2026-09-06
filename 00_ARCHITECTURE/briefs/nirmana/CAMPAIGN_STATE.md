@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T23:40:39Z` — cycle 678: **IDLE-OK.** #2178 cleared. Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (20). Nothing rose to a bounded unit.
 - `2026-09-06T23:38:07Z` — cycle 677: **IDLE-OK.** Fleet DIRTY: #2178 (L1, "orphan-risk finding on
   ga_positions rebuild" — likely follow-up to my own #2180 ruling), only ~1.5 min old, too fresh
   to act. No new `nirmana-adjudication` issues (20).
