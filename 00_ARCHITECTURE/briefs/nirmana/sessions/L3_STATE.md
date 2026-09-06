@@ -494,6 +494,47 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~14:0xZ — L3-W3 — No DIRTY/RED this cycle (PR hygiene clean); cross-checked
+  #1713/adjudication issues for anything missed + precisely root-caused WHY `kala_now_get`
+  can't take the N1 pattern (deeper than "no infrastructure", now confirmed structural).**
+  PR hygiene: all 50 L3 PRs genuinely queued or expected pre-queue-checks-running;
+  #1903/#1958 both confirmed `isInMergeQueue: true` via GraphQL (progressing normally).
+  `git log origin/main` advanced by one commit since last cycle (#1955, an unrelated L1
+  integrity-contract PR) — real but immaterial to L3.
+  **Cross-checked the coordination issue (#1713) and every open `nirmana-adjudication`
+  issue for anything new/missed**, since three consecutive cycles concluding "nothing
+  changed" warranted checking from a different angle rather than re-running the same
+  checks: confirmed L2's `bo_laksana` dispatch, reported as "GO" earlier
+  (2026-09-05T13:25Z), was walked back by a LATER correction (2026-09-06T01:25Z, L2's own
+  post) — the charter's C10 E-gate found 15 unfrozen ancestors (all L1 `ga_*` + 3 L0
+  `bg_*`) and L2 correctly did NOT dispatch. This independently corroborates this
+  session's own `egate.sql` finding from last cycle (ga_positions still
+  `OPEN-PENDING-PIN`) via a completely different source — strong confirmation, not just
+  repetition. Checked #1810 (the `ashtakavarga_bindu` HOUSE_<N>-vs-rāśi frame question,
+  c7's own hold) for a possible L1 ruling: still open, CONDUCTOR's own comment
+  (2026-09-05T16:47Z) confirms still waiting on L1, nothing new. No other open
+  adjudication issue names an L3 asset needing action.
+  **Went one level deeper on `kala_now_get` than last cycle's "no existing voice
+  infrastructure" finding.** Found `buildNowReading()` (now.ts:1257) DOES already produce
+  an `ArgumentReading` (thesis/evidence/dissent/verdict/falsifier) fed through the SAME
+  `composeArgument()` explain.ts uses — genuinely promising at first read. But traced the
+  actual blocker precisely: KP voice needs a `bhava` (house) and A5 gochara agreement
+  needs a `domain` to test agreement against (`fetchKpSchoolVoice({ bhava, ... })` /
+  `buildA5GocharaAgreement(chartId, pactStatus, domain, bhava, ...)` in explain.ts) —
+  both derived there from PACT's own resolved `about.bhava`/`domain`. `computeKalaNow`'s
+  own signature (`{ ayanamsha_id?, as_of?, question_frame? }`) carries **no domain/bhava
+  input at all** — it reports chart-wide temporal state for a date, not a domain-scoped
+  question. Wiring KP/A5 testimony in would need EITHER a breaking signature change
+  (adding a domain/bhava parameter to a tool every existing caller invokes without one) OR
+  inventing a different "operative reading" concept `now.ts` doesn't have today — a real
+  API-surface decision, not a wiring task, and correctly not attempted unilaterally this
+  cycle. This is materially more precise than last cycle's conclusion and should replace
+  it as the standing reason `kala_now_get` stays out of scope, not just a size estimate.
+  **Next action unchanged:** re-verify standing blockers each cycle; no N1/N2 code
+  eligible until P5A lands, `kala_now_get`'s domain/bhava-scoping question gets a real
+  design decision, or a ruling unblocks something. #1903/#1958/#1956/#1810/#1960 all
+  unchanged.
+
 - `2026-09-06T~13:0xZ — L3-W3 — IDLE-OK: one DIRTY-PR fix (#1957) + full standing-blocker
   re-verification, nothing else changed since last cycle.** PR hygiene: #1957 (the
   F-CONC-6/F-CONC-7 investigation-note PR) had gone genuinely `DIRTY`/`CONFLICTING` —
