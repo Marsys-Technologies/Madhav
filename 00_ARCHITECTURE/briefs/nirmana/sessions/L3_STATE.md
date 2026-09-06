@@ -461,6 +461,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~06:3xZ — L3-W3 — IDLE-OK: full house again — all 46 open L3 PRs
+  genuinely `is:queued`, `#1903` still among them but still not merged.** Refined the
+  drain-rate finding: `git log origin/main` shows the tip has only advanced ONE commit
+  (#1935) since the last check several cycles ago (`18:22:05Z` → `19:31:22Z`, ~69 minutes
+  for one merge) — slower than the raw per-PR CI duration alone would suggest (6-12min),
+  meaning the queue's real-world throughput includes additional overhead beyond CI time
+  (batch coordination, `min_entries_to_merge_wait_minutes: 5`, or contention from other
+  repos'/lanes' PRs sharing the same queue). Not a new escalation — already covered by
+  the #1713 post — just a more precise number for expectations going forward: at ~1
+  merge/hour with 46+ PRs queued, #1903 reaching the front could genuinely take many
+  hours. #1958/sidecar-traffic/#1960 unchanged.
+  Routing to a fresh branch since `#2032` just locked.
+
 - `2026-09-06T~04:3xZ — L3-W3 — THIRTEENTH, FOURTEENTH, FIFTEENTH DIRTY-PR fixes this
   run — three at once: #1929 (F-VIGHNA-3), #1931 (F-KALA-1 first slice), #1932 (F-KALA-1
   second slice).** #1929 was the `ka_sangam`-adjacent-family shape (L3_STATE.md + the
