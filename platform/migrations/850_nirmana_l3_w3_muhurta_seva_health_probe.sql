@@ -1,7 +1,7 @@
 -- 850_nirmana_l3_w3_muhurta_seva_health_probe.sql
 --
--- RENUMBERED (676 → 850, after intermediate self-inflicted attempts at 843/846
--- were superseded by this rebase): 676 collided with L1's own
+-- RENUMBERED (676 → 850, after intermediate self-inflicted attempts at
+-- 843 and 846 were superseded by this rebase): 676 collided with L1's own
 -- `676_nirmana_l3_n5_muhurta_seva_depends_on.sql` (an unrelated, already-landed
 -- L1 file reusing this number on origin/main) — L1's concurrent migration
 -- allocation in this range moves fast enough that a filename-only reservation
