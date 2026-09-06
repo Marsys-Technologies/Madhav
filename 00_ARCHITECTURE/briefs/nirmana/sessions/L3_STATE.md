@@ -469,6 +469,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~29:0xZ — L3-W3 — PR hygiene: an initial batch check showed `UNKNOWN`
+  mergeable/status on 7 of 8 L3-owned PRs — waited ~10s and rechecked (async-lag
+  lesson from earlier this session) rather than trust the transient read, which
+  revealed 4 genuinely `DIRTY` (`#1940`/`#1936`/`#1929`/`#1917`). Fixed all four:
+  standard L3-pin regen (one, `#1929`, needed both pins AND digests, ka_sangam-
+  family style), one genuinely-additive concurrent-entry `L3_STATE.md` conflict
+  on `#1940` and another on `#1917` (both combined chronologically, verified zero
+  data loss each time). Tests re-pass (45/30/36/8 — `#1929`'s own test count grew
+  from 34→36 since `#1954`'s merge folded in cleanly). All four confirmed
+  `MERGEABLE`. — blocked on: nothing new; next action: keep sweeping, recheck
+  `#1713`/`#2079`.
 - `2026-09-06T~26:0xZ — L3-W3 — PR hygiene: last cycle's 3 queued PRs
   (`#1954`/`#1940`/`#1903`) are progressing (`AWAITING_CHECKS`/`QUEUED`/`QUEUED`)
   — not yet merged but genuinely moving, not stuck. Found 2 more `CLEAN`-but-
