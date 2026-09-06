@@ -6095,3 +6095,19 @@ next: if the three pending PRs still pending next cycle, treat as genuine stall 
 and escalate per contract; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~16:20Z` — L4 — **CYCLE 313 (v2.3) — `#1849`/`#1845`/`#1839` all confirmed
+re-entered the merge queue, resolving cycle 312's near-upper-bound diagnosis. All 7 own PRs
+genuinely queued — full clean sweep, the cycle-310 seven-PR UNMERGEABLE episode fully
+closed out.**
+
+**PR hygiene:** all 7 own PRs genuinely `QUEUED` via GraphQL `mergeQueueEntry` — `#1849` 31,
+`#1845` 32, `#1842` 24, `#1839` 28, `#1834` 25, `#1831` 17, `#1808` 22. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+15). E-gate still uncheckable, 303rd consecutive cycle DB access down.
+
+CYCLE 313 L4: IDLE-OK (verified: PR hygiene fully clean — all 7 own PRs genuinely queued,
+`#1849`/`#1845`/`#1839` fully recovered confirming last cycle's diagnosis; E-gate
+uncheckable, DB access down 303 cycles; nothing new) → next: watch queue positions continue
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
