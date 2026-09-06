@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:12Z (C8 v2.3 cycle 208) — **IDLE-OK, verified not stalled (4th static
+  cycle).** Position-1 PR #1920's `Governance Gates` job checked at job level: 14/16
+  sub-jobs completed SUCCESS, only that one job in_progress (on the pytest step), ~10 min
+  in — same shape as #1826's own earlier run, genuine progress not a hang. Both own PRs
+  still `isInMergeQueue: true`, clean. #1861=2, #1844=57, #1901=83 unchanged. #1869
+  unchanged at 3 comments; #1856 still OPEN. 12 cycles now batched locally unpushed.
 - 2026-09-06T01:09Z (C8 v2.3 cycle 207) — **IDLE-OK, verified not stalled (3rd static
   cycle).** Position-1 PR #1920: TAP+EKV both SUCCESS, only CI-Ganga still running at
   ~7.4 min — normal duration, not stuck. Both own PRs still `isInMergeQueue: true`, clean.
