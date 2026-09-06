@@ -72,6 +72,30 @@ floor-only rather than curve-fitted); M6's `count_sql` correction; 10 of 11 DRAF
 contracts, 19 floors, 1 DRAFT remaining as intended. **Five contracts return `false` — true
 positives, shipped honest** (see F-L3-14).
 
+**Next action on resume (updated 2026-09-06, superseding the stale paragraph below):** **N1,
+the Temporal Concordance Contract** remains the layer's headline mandate. Seven steps landed
+this session, each self-contained against still-unmerged upstream branches (all still `is:queued`,
+none deployed yet): (1) stance vocabulary (`engine_testimony.ts` unification, #1905), (2) migration
+675 seeding `arbitration_role`/`precedence` columns — **deployed 2026-09-05**, (3) `kp`/`gochara_v3`
+voices wired into `kala_explain_get`'s new `engine_testimony[]` (#1919, additive alongside
+`school_voices`), (4) O-10 authority-profile seed data, migration 677 (#1921, not yet deployed —
+schema-only, no code depends on it existing), (5)/(6) `composeConcordanceVerdict` itself (#1924) —
+the pure verdict-composition function, mutation-proved 19/19, (7) **part A landed this cycle**
+(#2047): `query_kala_paddhati_profile`'s SELECT + `PaddhatiConventionRow` now serve
+`arbitration_role`/`precedence` over the wire (migration 675's columns existed in prod but were
+never exposed to any TS consumer). **N1 seventh step, part B (next, not yet started):** wire
+`composeConcordanceVerdict` into `kala_explain_get` as a new `concordance` field beside
+`weakest_link` — needs #2047 confirmed live, then `engine_testimony.ts`/its `explain.ts` diff
+(from #1905/#1919/#1924's branches, none merged yet) copied in via `git show` (established
+self-contained-PR pattern), plus a real O-10-scoped `kala_paddhati_profile` fetch at request time.
+**N2, score commensurability**, remains a strict precondition for a FULLER verdict across all 34
+engines — a verdict comparing four incommensurable scales is theatre — but is not blocking part B,
+since part B only consumes O-10's already-commensurable `concurs`/`dissents`/`not_comparable` triad.
+
+Also open: M12 (54 orphan `era_slice_key` rows), N3–N7, N10–N12.
+
+<details><summary>Original (2026-09-05) next-action paragraph — superseded, kept for history</summary>
+
 **Next action on resume:** **N1, the Temporal Concordance Contract** — the layer's headline
 mandate and the largest remaining item. W1 established the whole evidence base for it: 34 temporal
 engines catalogued with question/table/granularity/range, a 10-cell overlap matrix, exactly one
@@ -83,7 +107,7 @@ vocabulary (today a dissent and an absent engine are both `0.0`), testimony on M
 incommensurable scales is theatre. Serving attachment named precisely: `explain.ts:571`, beside
 `weakest_link`, with `school_voices[]` becoming `engine_testimony[]`.
 
-Also open: M12 (54 orphan `era_slice_key` rows), N3–N7, N10–N12.
+</details>
 
 **Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
 rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_natal_lagna_lon`;
@@ -460,6 +484,38 @@ your layer close.
 |---|---|---|---|
 
 ## Heartbeat
+
+- `2026-09-06T~10:0xZ — L3-W3 — N1 SEVENTH STEP (part A): PR #2047,
+  `query_kala_paddhati_profile` now serves `arbitration_role`/`precedence`.** PR
+  hygiene checked first (GraphQL `is:queued`, `--limit 300`): 130 PRs total genuinely
+  queued repo-wide, 45/47 L3 PRs among them; the only two not queued were #2045 (just
+  opened this cycle, checks still running) and #1943 (freshly force-pushed the prior
+  cycle, also just running checks) — both confirmed clean via direct inspection
+  (`gh pr checks 1943`: all green, 2 pending, 0 red), not hygiene defects.
+  Substantive work this cycle: migration 675 (deployed 2026-09-05, confirmed live via
+  `_migrations_applied`) added `arbitration_role`/`precedence` to
+  `kala_paddhati_profile`, but neither the registry capability's SELECT
+  (`query_kala_paddhati_profile.ts`) nor the consumer's `PaddhatiConventionRow`
+  interface (`kala_sky_pattern.ts`) ever picked the columns up — the sixth step's
+  `composeConcordanceVerdict` (#1924, still queued not yet merged) has nothing to
+  read from yet. Closed that gap: both columns now served/typed as optional fields
+  (same pattern as `confirmation_provenance`), migration 677 (O-10's actual seed
+  rows, #1921, still queued) needs no further code change once it deploys — this
+  capability already serves whatever the table holds.
+  **Mutation-proved live**: reverted the SELECT's two new columns, re-ran the new
+  test against the real production DB (chart `482012f1-...`) — correctly went red
+  (`AssertionError: expected ... to have property "arbitration_role"`); restored,
+  confirmed green again (17/17). `kala_sky_pattern.ts`'s own 42 tests + ritual/
+  ritual_mode2_gate suites (86 total) pass, `tsc --noEmit` clean on both `platform`
+  and `platform-mcp`. No writer file touched — digest/pin regeneration correctly
+  skipped (those tools track `pipeline/orchestrator/writers/*.py` only).
+  **Deliberately NOT done here (part B, a later step):** wiring
+  `composeConcordanceVerdict` itself into `kala_explain_get` as a new `concordance`
+  field — needs this capability change confirmed live, plus `engine_testimony.ts`
+  and its `explain.ts` wiring (still unmerged: #1905/#1919/#1924) copied in via the
+  established self-contained-PR pattern used for every prior N1 step.
+  #1903 (F-CONC-6 prerequisite), #1958, sidecar-traffic, #1960 all unchanged —
+  re-checked, no new movement.
 
 - `2026-09-06T~09:3xZ — L3-W3 — TWENTIETH DIRTY-PR fix this run: #1943 (F-PARVA-1,
   ka_jivana_parva parva_level discriminator + corrected natural key).** Triple conflict
