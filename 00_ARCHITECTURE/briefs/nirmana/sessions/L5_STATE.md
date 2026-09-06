@@ -457,6 +457,17 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:40Z (C8 v2.3 cycle 408) — **Dispatched a fresh-context verifier subagent for
+  `mi_vistara`'s `integrity_verified` (W5)**, briefed thoroughly (implementer≠certifier: I
+  submitted `accepted_rebuild_observed` last cycle, so I must not also certify it; the verifier
+  must independently re-derive `registry_fingerprint_sha256`/`analysis_digest` from the DB,
+  reconstruct the live `registryContract` from `asset_registry`, actually execute `mi_vistara`'s
+  real `integrity_check_sql`, compute both digests via the real exported TS functions (throwaway
+  vitest, delete after), submit via `nrec --as verifier`, and independently re-verify via direct DB
+  read — STOP and report honestly rather than fabricate if anything doesn't check out). Running in
+  background; result picked up next cycle. PR hygiene: #1826 now confirmed `isInMergeQueue: true`
+  (entered the queue since last check); #1844 still `isInMergeQueue: true`. No hygiene action
+  needed. 4 cycles since last push (404→408) — still under the ~5-6 cycle batch threshold.
 - 2026-09-06T10:35Z (C8 v2.3 cycle 407) — **`mi_vistara`'s `accepted_rebuild_observed` LANDED
   live — the campaign's first `mi_*` asset to reach it.** Deploy caught up to #1901's
   receipt-re-attribution fix (`abe1f610…` confirmed a live ancestor of `0452d1e74`); #1713 showed
