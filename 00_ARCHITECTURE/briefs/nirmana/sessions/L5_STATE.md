@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T05:16Z (C8 v2.3 cycle 294) — **PR HYGIENE FIX: #1844 fell out of the queue,
+  re-armed.** Found #1844 genuinely CLEAN-but-unqueued (`isInMergeQueue: false`,
+  `autoMergeRequest` null/disarmed, `state: OPEN`, not merged) — presumably ejected by a
+  concurrent event during its climb. Re-armed via `gh pr merge 1844 --auto --squash`,
+  confirmed re-entry (`isInMergeQueue: true`). #1826 also confirmed genuinely queued.
+  #1901 progressed well (=24, was 39). #1869 unchanged at 4 comments. (Also hit a
+  transient `git fetch` ref-lock error this cycle — resolved cleanly on immediate retry,
+  logged as a one-off API/git blip, not a real signal.)
 - 2026-09-06T05:13Z (C8 v2.3 cycle 293) — **IDLE-OK.** #1826's fresh CI progressing
   normally (2 checks pending, no failures, armed). #1844 confirmed `isInMergeQueue: true`
   — climbing fast: #1844=13 (was 15), #1901=39 (was 41). #1869 unchanged at 4 comments.
