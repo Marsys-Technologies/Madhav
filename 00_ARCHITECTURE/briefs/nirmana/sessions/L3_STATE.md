@@ -208,7 +208,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 
 | item | blocked on | status |
 |---|---|---|
-| `ka_graha_sancara`'s W4 probe dispatch | Root cause now KNOWN (#2096): the sidecar release-smoke gate correctly refuses traffic promotion because `_compute_live()`'s import of `platform/scripts/temporal/compute_transits` fails inside the sidecar's own Docker build context (`platform/scripts/` is outside it) | genuinely open — awaiting #2096's ruling (widen Docker context vs. vendor a local copy); not a code-correctness issue, a packaging one |
+| `ka_graha_sancara`'s W4 probe dispatch | Sidecar blocker (#2096) CLOSED — Conductor confirmed live GREEN + 100% traffic promotion (verified independently: `gcloud run services describe` shows 100% on the `e8ad7db71c1a` revision). W2 re-accepted with the corrected LIVE registry fingerprint/analysis digest (catalog_status had drifted DRAFT→CURRENT via migration 673 since the original 2026-09-05 acceptance, invalidating its stale fingerprint — reverse-engineered `assertLifecycleBinding`'s exact hash inputs and verified each correction against the real server, not guessed). `probe_accepted` itself is now blocked only on a self-inflicted clock mistake: its `observed_at` was submitted ~50min in the future relative to real time, and `requireProbeObservationTiming` requires the live probe's server-side request to start strictly after it — cannot resubmit with a corrected timestamp without creating a duplicate-matching-row conflict (`loadCurrentAcceptedAnalysis` requires exactly one current match), so this clears itself once real time passes **2026-09-06T15:52:00Z** | genuinely open but fully mechanical — retry `probe_accepted` (payload already correct, saved at `/tmp/probe_accepted_v2.json` this session, will not survive a fresh session — reconstruct from this row's digests if needed: registry_fingerprint_sha256=`aadfaa20f662bc323a70eeb4a3fa4a6eae51c0635ecf791436fe12c161e8f660`, analysis_digest=`4662bf0a4f0212d5b40f3916659377006d6882df2d4f5b95784cde0e72a3d35e`, probe_contract_sha256=`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6`) once past that timestamp — this is the layer's first real, non-artefactual W4 dispatch, no ruling or adjudication needed, purely wait-and-retry |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -473,6 +473,55 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~49:0xZ — L3-W4 — FIRST REAL W4 DISPATCH ATTEMPT (ka_graha_sancara),
+  99% complete — blocked only on a self-inflicted clock error, not a design or
+  campaign defect.** PR hygiene: `#1929` was `CLEAN`-but-unqueued — queued,
+  verified via `is:queued`; other 4 healthy, no new failures. **Priority-1 work:
+  `#2096` CLOSED (Conductor confirmed live GREEN + 100% traffic promotion —
+  independently re-verified via `gcloud run services describe`, revision
+  `e8ad7db71c1a` at 100%)**, clearing `ka_graha_sancara`'s sidecar blocker for
+  real. Claimed the dispatch: found the frozen manifest's own copy of
+  `health_probe` is null (a red herring — same class as #1816/D-CND-23; the
+  server binds `assertLifecycleBinding` to LIVE `asset_registry`, confirmed by
+  reading `loadCurrentAssetAnalysisContext`'s actual SQL, not assumed). First
+  `probe_accepted` attempt failed: `does not bind the current frozen registry`
+  — my cached W2 fingerprint (from 2026-09-05) had gone stale, root-caused to
+  `catalog_status` flipping DRAFT→CURRENT (migration 673) sometime after that
+  acceptance. Reverse-engineered `assertLifecycleBinding`'s exact hash chain
+  (`registryContractFingerprintInput`+`canonicalRegistryContractDigest` for the
+  fingerprint; `canonicalNirmanaAssetAnalysisDigestForRegistryRow`, needing the
+  DEPLOYED `nirmana-analysis-receipts.ts`/writer-digests/layer-pins at the
+  live server's own `NIRMANA_DEPLOYED_SHA` — fetched via `gcloud run services
+  describe amjis-web`, not guessed) and replicated `stableJson` in Python.
+  Verified each correction against the REAL server, not my own arithmetic:
+  resubmitted `asset_analysis_accepted` (201 created) then
+  `optimization_verdict_accepted` (201 created) with the corrected live
+  fingerprint/digest, same verdict/basis/proposal as the original (only the
+  two digests + evidence_refs/summary updated for the resubmission). Retried
+  `probe_accepted` — now fails only on `requireProbeObservationTiming`:
+  a genuine mistake, not a design gap — I supplied `observed_at` for the two
+  W2 resubmissions using a wrong wall-clock assumption (~50 min ahead of the
+  real system/DB time, confirmed via `SELECT now()` vs `date -u`), and the
+  live probe's server-side request must start strictly after those. Cannot
+  resubmit with a corrected timestamp without violating `loadCurrentAcceptedAnalysis`'s
+  "exactly one current match" invariant (a second identical-fingerprint row
+  would create ambiguity, not fix it). **This is fully self-resolving**: once
+  real time passes 2026-09-06T15:52:00Z, the existing W2 events legitimately
+  satisfy the timing check and the SAME already-correct `probe_accepted`
+  payload (saved to `/tmp/probe_accepted_v2.json`, ephemeral — full digest
+  values recorded in the Held-items row above for reconstruction) can be
+  resubmitted with zero further changes. No adjudication needed — this
+  never touched shared/other-layer state, entirely within L3's own asset and
+  authority, and the remaining blocker is wall-clock time, not a decision.
+  — blocked on: real time passing 15:52:00Z; next action: retry the saved
+  `probe_accepted` payload (or reconstruct it from the digests recorded in
+  Held items) with a FRESH `observed_at`/`idempotency_key` — the exact same
+  `registry_fingerprint_sha256`/`analysis_digest`/`probe_contract_sha256`
+  values remain valid since nothing about the registry contract has changed
+  again — then verify the resulting `asset_frozen`-eligibility and E-gate
+  status for `ka_graha_sancara` (still needs its own `asset_frozen`
+  server-reconstructed event separately, per the same identity-split rules,
+  once `probe_accepted` lands).
 - `2026-09-06T~48:0xZ — L3-W3 — PR hygiene: found and fixed THREE separate,
   genuine migration-number collisions across the 3 F-L3-15 sibling PRs
   (`#2079`/`#2070`/`#2065`), each independently caught by `Unit Tests`'
