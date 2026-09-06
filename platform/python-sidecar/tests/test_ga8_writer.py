@@ -1679,6 +1679,68 @@ class TestJaiminiPerVarga:
         assert all(r["fact_value_jsonb"]["varga"] == "D9" for r in jaimini_rows)
 
 
+# ── F-A24/F-A25: non-D1 vargas must use the chart's REAL D1 lagna, not a ──────
+# ── hardcoded Aries default (both bugs were invisible only because every ─────
+# ── fixture/canonical chart used so far happens to have Aries lagna) ─────────
+
+class TestKarakaBhavaConcordanceLagnaFix:
+    """F-A24: bhava_sign/bhava_lord must derive from the caller-supplied
+    lagna_sign_num (now threaded from chart_output), never re-derived from
+    varga_state (which has no Lagna entry outside D1)."""
+
+    def test_house_one_uses_the_real_non_aries_lagna(self):
+        # House 1's sign must be the chart's actual lagna sign (Cancer), not
+        # Aries -- and its lord must be Moon (Cancer's lord), not Mars.
+        vs = {"Jupiter": {"sign": "Sagittarius", "sign_num": 9, "house": 9, "degree": 10.0}}
+        rows = sut._build_karaka_bhava_concordance_per_varga_rows(
+            vs, 4, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        self_row = next(r for r in rows if r["fact_value_jsonb"]["significance"] == "self")
+        assert self_row["fact_value_jsonb"]["bhava_sign"] == "Cancer"
+        assert self_row["fact_value_jsonb"]["bhava_lord"] == "MOON"
+
+    def test_aries_lagna_still_gives_aries_house_one(self):
+        # Sanity: passing the Aries lagna explicitly still gives the old
+        # (correct-for-Aries) answer -- confirms the fix only changes WHERE
+        # lagna_sign_num comes from, not the downstream arithmetic.
+        vs = {"Jupiter": {"sign": "Sagittarius", "sign_num": 9, "house": 9, "degree": 10.0}}
+        rows = sut._build_karaka_bhava_concordance_per_varga_rows(
+            vs, 1, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        self_row = next(r for r in rows if r["fact_value_jsonb"]["significance"] == "self")
+        assert self_row["fact_value_jsonb"]["bhava_sign"] == "Aries"
+        assert self_row["fact_value_jsonb"]["bhava_lord"] == "MAR"
+
+
+class TestBhavaWebLagnaFix:
+    """F-A25: lord_placed's house-1 lord must derive from the caller-supplied
+    lagna_sign_num (now threaded from chart_output via the wrong-case "Lagna"
+    key that never matched varga_state's actual "LAGNA" key, for ANY varga
+    including D1)."""
+
+    def test_house_one_lord_uses_the_real_non_aries_lagna(self):
+        vs = {"Moon": {"sign": "Cancer", "sign_num": 4, "house": 1, "degree": 5.0}}
+        rows = sut._build_bhava_web_per_varga_rows(
+            vs, 4, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        h1_placed = next(
+            r for r in rows
+            if r["fact_key"] == "lord_placed" and r["fact_value_jsonb"]["source_house"] == 1
+        )
+        assert h1_placed["fact_value_jsonb"]["lord"] == "Moon"
+
+    def test_aries_lagna_still_gives_mars_as_house_one_lord(self):
+        vs = {"Mars": {"sign": "Aries", "sign_num": 1, "house": 1, "degree": 5.0}}
+        rows = sut._build_bhava_web_per_varga_rows(
+            vs, 1, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        h1_placed = next(
+            r for r in rows
+            if r["fact_key"] == "lord_placed" and r["fact_value_jsonb"]["source_house"] == 1
+        )
+        assert h1_placed["fact_value_jsonb"]["lord"] == "Mars"
+
+
 # ── §T7: Karaka inter-relationship web ────────────────────────────────────────
 
 class TestKarakaWeb:
