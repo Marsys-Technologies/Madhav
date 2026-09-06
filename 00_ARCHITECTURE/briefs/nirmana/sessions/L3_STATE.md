@@ -461,6 +461,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~23:3xZ — L3-W3 — EIGHTH DIRTY-PR fix this run: #1917 (N3 moorti
+  data-wiring half) — L3_STATE.md + the layer-pins file conflicted; the writer-digests
+  file auto-merged CLEANLY this time (confirmed correct by regenerating anyway — zero
+  diff against the auto-merged version).** Resolved `L3_STATE.md` via the established
+  script (verified exactly 1 occurrence of "N3 (moorti data-wiring half) CLOSED"
+  survived), took `origin/main`'s copy of the pins file then regenerated for real (only
+  `writer_inventory_sha256` changed, matching the untouched digest file). Verified
+  `test_context_moorti_wiring.py` (6 passed, 2 skipped — the 2 `@pytest.mark.integration`
+  ones need a live DB, correctly skipped locally), full `tests/l3/` (1430 passed, 0
+  failures — 6 more than the ka_sangam-family fixes' 1424, this PR's own new coverage),
+  both `--check` invocations exit 0, `tsc --noEmit` clean. Force-pushed, re-armed
+  auto-merge, confirmed `MERGEABLE`.
+  Eighth DIRTY-PR fix this run; the first NOT in the `ka_sangam` family (this one's
+  conflict surface is `services/gochara_v3/context.py` + the pins file only) — confirms
+  the L3_STATE.md conflict class is genuinely independent of which writer a PR touches,
+  exactly as flagged two fixes ago.
+  #1903 (F-CONC-6 prerequisite) still not merged. #1958/#1921/sidecar-traffic/#1960
+  unchanged.
+
 - `2026-09-06T~23:0xZ — L3-W3 — SEVENTH DIRTY-PR fix this run: #1913 (F-SANGAM-5,
   c11_vedha_factor) — the triple-conflict shape (L3_STATE.md + both generated files),
   same as #1903's fix; `engine.py` auto-merged CLEANLY again.** Resolved `L3_STATE.md`
