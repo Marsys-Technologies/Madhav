@@ -3372,3 +3372,6 @@ see log). Still 35/40 until that's resolved.
     `Build & Deploy Web` completed, submit the fresh W2 pair above, then dispatch straight
     through to `asset_frozen` → **36/40**.
   - No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `Build & Deploy Web` still `in_progress`, no change. No open L0 PRs,
+  no DIRTY/RED. 35/40 frozen unchanged.
