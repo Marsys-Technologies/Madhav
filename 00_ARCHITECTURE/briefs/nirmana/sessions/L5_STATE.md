@@ -457,6 +457,48 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T19:35Z (C8 v2.3 cycle 502) — **Milestone: `#2114` MERGED — the seventh state-recovery
+  PR closed out.** Seventh recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, now 502). Found via a `push` event to `main` at 15:19:46Z plus new candidates (#2112,
+  #2115) starting to build — inferred the merge before directly confirming, then verified via a
+  fresh fetch + `gh pr view --json mergedAt`. 9 more local-only commits (cycles 493-501, 35 lines,
+  single-file) recovered via patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-8`.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:30Z (C8 v2.3 cycle 501) — **IDLE-OK, dug deeper on #2114's 4th cycle at position
+  1 since a `Unit Tests` FAILURE surfaced in the run history.** Traced it: the failure was on an
+  earlier, now-superseded speculative merge-base attempt (`...3a4d5520`, 15:07:14Z) — impossible
+  to be caused by #2114 itself (a single-file state-only PR) and not reproduced in the current,
+  fresher attempt (`...547747768`, 15:07:49Z), which has `Unit Tests: success` and only
+  `Governance Gates` still `in_progress`. Genuine self-healing queue churn (merge-base shifted as
+  other candidates moved), not a real blocker. Queue depth check also showed 3 `UNMERGEABLE`
+  entries behind #2114 (#2079/#2070/#2065) — normal for non-head entries not yet evaluated.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:25Z (C8 v2.3 cycle 500) — **IDLE-OK, cycle 500.** Verified #2114's queue build
+  directly (`gh run list` for `merge_group` runs on its branch) — genuine active build in
+  progress (started 15:07:49Z, ~6 min in, two sibling checks already SUCCESS), not stalled.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:20Z (C8 v2.3 cycle 499) — **IDLE-OK, #2114 now at queue position 1** — next in
+  line. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:15Z (C8 v2.3 cycle 498) — **IDLE-OK.** #2114 still queued, no failures. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T19:10Z (C8 v2.3 cycle 497) — **#2114 CLEAN-but-unqueued, fixed with one retry.**
+  First `gh pr merge --auto --squash` call left `enabledAt` unchanged and `isInMergeQueue` still
+  false — the re-arm silently no-op'd since auto-merge was already (uselessly) enabled. A second
+  `gh pr merge --auto --squash` call (no flag changes, just retried) actually triggered re-entry,
+  confirmed via `isInMergeQueue: true`. Noting this as a minor tooling quirk (auto-merge-already-
+  enabled doesn't always force a fresh enqueue attempt on the first call) rather than a real
+  blocker — the fix (retry the same command) is cheap and this is the first time it's needed a
+  second attempt this session. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:05Z (C8 v2.3 cycle 496) — **IDLE-OK.** #2114's Governance Gates job checked at the
+  job level (~9.2 min elapsed, within the normal 7-12 min range) — genuine progress, not stalled.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:00Z (C8 v2.3 cycle 495) — **IDLE-OK.** #2114 down to its last check (Governance
+  Gates), no failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:55Z (C8 v2.3 cycle 494) — **IDLE-OK.** #2114 down to 2 checks pending, no
+  failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:50Z (C8 v2.3 cycle 493) — **IDLE-OK.** #2114 (L5's only open PR) down to 3 checks
+  pending, no failures — holding, not touching it while it runs. `mi_kula`'s remaining ancestors
+  unchanged.
 - 2026-09-06T18:45Z (C8 v2.3 cycle 492) — **Milestone: `#2111` MERGED — the sixth state-recovery
   PR closed out.** Sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482, now
   492). 9 more local-only commits (cycles 483-491, 22 lines, single-file) recovered via
