@@ -2559,3 +2559,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** 2 more merges (#2015/#2019, L1, not L0's). `#2016` dropped to position
   15. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (position still 15). Batch queue now 5 entries, frontmost
+  just started. No DIRTY, no RED. 30/40 frozen holds.
