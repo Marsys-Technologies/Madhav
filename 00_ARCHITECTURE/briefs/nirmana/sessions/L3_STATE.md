@@ -493,6 +493,9 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~119:0xZ — L3-W4 — IDLE-OK (verified): `#2174` still genuinely
+  `isInMergeQueue: true` (position 3, `CLEAN`), healthy. No new merges, no
+  new bounded work. — blocked on: `#2174` finishing; next action: same.
 - `2026-09-06T~118:0xZ — L3-W4 — `#2159` (the deploy-pipeline defect this
   session filed) is CLOSED — Conductor ruled it correct in full and fixed
   it.** PR hygiene: `#2174`'s check finished (0 failures) and it's now
