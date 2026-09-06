@@ -267,6 +267,30 @@ a RED-fix (see heartbeat).
   migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
   `from_moon_view` is correctly wired end-to-end in production. Then revert to IDLE-OK pending
   Conductor's C12 carve-out for `bg_cohort`.
+- 2026-09-07 — **PR #2153 turns up a THIRD, previously-unseen RED gate; root-caused and fixed.**
+  DB Integration Tests now genuinely passed (confirms the prior cycle's migration706 reorder fix
+  works). But `is:queued`/status check showed a new failure: **Unit Tests** —
+  `plan_bridge.test.ts`'s §N.8 pinned-baseline coverage detector
+  (`getPlanBridgeCoverage`/`KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE`). Root cause: `from_moon_view`'s
+  repoint to `ganita_transit_anchors_get` (#2122) is a genuinely NEW distinct `live_tool`
+  (`total_distinct_live_tools` 41→42) with no resolvable mapping in the Pariprashna plan bridge yet
+  — confirmed via `web_tool_bridge.generated.json` (`uri: null`, `resolution_kind: "unmapped"`, not
+  a stale-generation artifact) and via `compiled_floor_adapter.ts`'s hand-curated
+  `LIVE_TOOL_TO_RETRIEVAL` map (absent) — the same class of genuinely un-bridged tool as the two
+  already-documented DEFERRED entries there (`ganita_structural_get`/`ganita_condition_get`).
+  Followed the test's own documented remediation path exactly (its header comment prescribes this
+  exact move): added `ganita_transit_anchors_get` to the pinned baseline (19→20 names), updated
+  `total_distinct_live_tools` 41→42; `covered_live_tools` stays 22 (total and uncovered both grew by
+  1, cancelling) — **verified via a throwaway script call to `getPlanBridgeCoverage()` directly**,
+  not guessed from the failure diff (my first read of the diff direction was backwards; recomputing
+  live caught it). Did NOT force-map the tool into the resolver — that's out of this PR's scope
+  (Pariprashna/L1 territory), noted inline for that owner. Verified: `plan_bridge.test.ts` 20/20,
+  full `src/lib/pariprashna` suite 1498/1498, 0 regressions. Committed `ab9685e77`, pushed. NEXT:
+  next cycle's PR-hygiene re-checks #2153 via `is:queued`; given this is now the THIRD distinct gate
+  found sequentially rather than all at once, budget for a possible fourth before assuming CLEAN —
+  check the full `statusCheckRollup`, not just the previously-failing names. Once genuinely CLEAN,
+  queue it. Once merged+deployed, verify migrations 705+706 applied live and `from_moon_view` wired
+  end-to-end in production, then IDLE-OK pending Conductor's C12 carve-out for `bg_cohort`.
 - 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
   and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
   (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
