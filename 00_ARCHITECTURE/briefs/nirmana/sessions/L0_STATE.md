@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2066 at queue position 2, AWAITING_CHECKS, all checks passing -- very close to merging. #1901 still not deployed. No DIRTY/RED. Standing priorities unchanged. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, #2066 still queue position 2, checks confirmed in-progress normally (not hung). #1901 still not deployed. No DIRTY/RED. Standing priorities unchanged. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2964,6 +2964,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   `#1901` but no longer stuck. `#2066` now at queue position 7, `AWAITING_CHECKS` — close. No
   DIRTY/RED. 30/40 frozen holds unchanged.
 
-- 2026-09-06 — **IDLE-OK.** `#2066` at queue position 2, `AWAITING_CHECKS`, all its own checks
-  passing (including "Governance Gates" — the one my earlier docstring mistake had broken).
-  `#1901` still not deployed. No DIRTY/RED. Very close now. 30/40 frozen holds unchanged.
+- 2026-09-06 — **IDLE-OK.** `#2066` still position 2 — its own batch's checks confirmed
+  in-progress normally (~11-min CI-Ganga job still running, matching typical durations, not
+  hung). No DIRTY/RED. `#1901` still not deployed. 30/40 frozen holds unchanged.
