@@ -834,7 +834,10 @@ def build_ga_tajaka(chart_id: str,
         "forensic_checks": forensic_checks,
         "two_pass_verified": len(divergent) == 0,
         "divergent_flagged": len(divergent),
-        "storage_strategy": "hybrid (precomputed window; rest on-demand via compute_varsha)",
+        # F-E17 (cycle 106): compute_varsha() exists but has zero callers -- correcting this
+        # claim rather than repeating it. Only the precomputed window (varsha 1..48) is stored;
+        # get_tajik.ts's own empty_reason honestly discloses the rest as genuinely not computed.
+        "storage_strategy": "windowed (varsha 1..48 precomputed; outside the window is not stored, not computed on-demand)",
     }
     logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s",
                 inserted, forensic_pass, summary["two_pass_verified"])

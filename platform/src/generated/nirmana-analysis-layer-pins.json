@@ -14,10 +14,10 @@
     },
     "L1": {
       "asset_prefix": "ga_",
-      "convergence_commit": "d93a07a7c2572c0bf60dcb7d80a5e88b91bae8aa",
+      "convergence_commit": "63a596a8ec2d466a4cd9f18e266e872ad0038bc6",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "387c1bdb7cc12b7dc99ec3d9bc2e44c4f9eaf1f4e2a6c9c6184a195351eb8a79"
+      "writer_inventory_sha256": "86a96209c80d9d2d4b64bed0aeeba4c887f63f0b52cf8731ff2859c18663ddd9"
     },
     "L2": {
       "asset_prefix": "bo_",
@@ -33,7 +33,7 @@
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "writer_inventory_sha256": "91883b3e73b5152d22c1a074617c74d020a6cebc3947145e0bb719278a87b910"
+      "writer_inventory_sha256": "6fd76349c2e8bd65ca571c0e56799629405126df228146c4f2c799ff8a0281ed"
     },
     "L4": {
       "asset_prefix": "ph_",
@@ -44,12 +44,12 @@
     },
     "L5": {
       "asset_prefix": "mi_",
-      "convergence_commit": "72bb87821bd2d976b5230bc439f7b38114a86234",
+      "convergence_commit": "fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5",
       "non_writer_assets": [
         "lel_events"
       ],
       "receipt_count": 15,
-      "writer_inventory_sha256": "ea465326c6d5114baf6f56dc765a6b38dccb3849c0376a6e78d7417d88cff35b"
+      "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
     }
   },
   "version": "nirmana-analysis-layer-pins/v1"
