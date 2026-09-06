@@ -3788,3 +3788,6 @@ itself. L0 is now IDLE-OK until that lands.
     the C12 service-dependency carve-out (flagged on #1713) — once that lands, `bg_cohort`
     should freeze without further L0 action, closing L0 at a true 40/40.
   - 39/40 frozen. Remaining 1: `bg_cohort` only.
+
+- 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work (bg_cohort still
+  genuinely Conductor-owned, C12 carve-out not yet wired in). 39/40 frozen unchanged.
