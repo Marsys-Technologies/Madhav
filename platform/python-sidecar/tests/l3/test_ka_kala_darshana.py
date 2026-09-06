@@ -197,6 +197,43 @@ def test_narrative_mode_b_label():
     assert 'independent sweep' in narrative['context']
 
 
+def test_narrative_mode_c_label():
+    """F-DARSH-2: Mode C is a sign-ingress period trigger, NOT 'independent sweep'
+    (Mode B's own meaning) — the defect the old two-way branch mislabeled on 100% of the
+    layer's served rows, since ka_sangam's top-750 intake measured 100% Mode C."""
+    narrative = _build_narrative(
+        mode='C', effective_score=0.75, net_label='auspicious_strong',
+        peak_date='2026-09-15', conf_label='high', obstructions=[],
+        orb_strength=0.8, rarity_years=5.0,
+    )
+    assert 'sign-ingress trigger' in narrative['context']
+    assert 'independent sweep' not in narrative['context']
+
+
+def test_narrative_mode_d_label():
+    """F-DARSH-2: Mode D is an SAV-bindhu convergence window, also not a sweep."""
+    narrative = _build_narrative(
+        mode='D', effective_score=0.75, net_label='auspicious_strong',
+        peak_date='2026-09-15', conf_label='high', obstructions=[],
+        orb_strength=0.8, rarity_years=5.0,
+    )
+    assert 'ashtakavarga bindhu convergence' in narrative['context']
+    assert 'independent sweep' not in narrative['context']
+
+
+def test_narrative_unrecognized_mode_names_itself_honestly():
+    """§N.7: an unrecognized mode value must never silently fall into an existing label —
+    it names itself rather than inventing a plausible-sounding default."""
+    narrative = _build_narrative(
+        mode='Z', effective_score=0.75, net_label='auspicious_strong',
+        peak_date='2026-09-15', conf_label='high', obstructions=[],
+        orb_strength=0.8, rarity_years=5.0,
+    )
+    assert 'mode Z' in narrative['context']
+    assert 'independent sweep' not in narrative['context']
+    assert 'daśā-aligned' not in narrative['context']
+
+
 def test_narrative_unknown_peak_date():
     narrative = _build_narrative(
         mode='A', effective_score=0.60, net_label='auspicious_moderate',

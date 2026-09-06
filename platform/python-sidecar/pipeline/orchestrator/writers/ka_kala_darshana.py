@@ -189,7 +189,22 @@ def _build_narrative(mode: str, effective_score: float, net_label: str,
     rarity_str = f"{rarity_years:.1f}-year" if rarity_years else ''
     conf_str = conf_label or 'speculative'
 
-    mode_label = 'daśā-aligned' if mode == 'A' else 'independent sweep'
+    # F-DARSH-2 (§N.7 item 1): this was `'daśā-aligned' if mode == 'A' else 'independent
+    # sweep'` — a two-way branch over ka_sangam's real four-value mode enum (A/B/C/D).
+    # 'independent sweep' is Mode B's own meaning (services/ka_sangam/engine.py's
+    # "un-gated long-horizon anomaly sweep"); Mode C is a sign-ingress period trigger and
+    # Mode D is an SAV-bindhu convergence window — neither is a sweep. Measured live:
+    # ka_sangam's top-750 intake is 100% Mode C, so every served row carried the wrong
+    # mode description. A grade/label assignment keyed off a proxy (is-it-Mode-A) instead
+    # of the actual mode the row reports. An unrecognized mode value names itself honestly
+    # rather than falling into whichever label the old binary happened to assign.
+    _MODE_LABELS = {
+        'A': 'daśā-aligned',
+        'B': 'independent sweep',
+        'C': 'sign-ingress trigger',
+        'D': 'ashtakavarga bindhu convergence',
+    }
+    mode_label = _MODE_LABELS.get(mode, f'mode {mode}')
 
     headline_map = {
         'auspicious_strong': f"Strong activation window near {peak_str}",
