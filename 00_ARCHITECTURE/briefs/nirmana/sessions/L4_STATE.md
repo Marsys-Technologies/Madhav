@@ -6055,3 +6055,25 @@ intact through rebase, 76+53+291+49+32+97+53 tests pass, all re-armed for auto-m
 next: confirm all seven re-enter the merge queue next cycle; retry E-gate/dispatch dry-run
 once DB access returns; F1 remains deferred.
 
+`2026-09-06T~16:10Z` — L4 — **CYCLE 311 (v2.3) — `#1831`/`#1808` confirmed re-entered the
+merge queue. `#1849`/`#1845`/`#1842`/`#1839`/`#1834` legitimately pending their own
+post-rebase CI runs, nothing failed. Noted for the record (decide-and-log, no adjudication
+filed): this window has now seen the "all own PRs UNMERGEABLE simultaneously" pattern three
+times (cycles 289, 297, 310, each larger than the last) — read as normal contention from
+many concurrent sessions' PRs touching the same two generated governance files, fully
+within my own remit to fix each time with the established rebase+dequeue recipe; not
+escalating unless a future occurrence proves genuinely unresolvable.**
+
+**PR hygiene:** `#1831`/`#1808` genuinely `QUEUED`. Remaining five re-swept via `gh pr
+checks`: only `pending` checks, none failed — legitimate in-progress CI.
+
+**Priorities 1-4:** several new `main` commits confirmed not L4-relevant. No new
+adjudications name L4 (count unchanged at 15). E-gate still uncheckable, 301st consecutive
+cycle DB access down.
+
+CYCLE 311 L4: IDLE-OK (verified: PR hygiene clean — `#1831`/`#1808` confirmed re-queued,
+remaining five legitimately pending fresh CI with nothing failed; E-gate uncheckable, DB
+access down 301 cycles; nothing new) → next: confirm the remaining five go green and
+re-enter the queue; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
