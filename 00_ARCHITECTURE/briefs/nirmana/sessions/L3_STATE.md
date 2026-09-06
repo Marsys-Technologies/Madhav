@@ -489,6 +489,33 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~89:0xZ — L3-W4 — PR hygiene: `#2065` went genuinely `DIRTY`/
+  `CONFLICTING` too** (caught on the very next check after fixing `#2147`/
+  `#2149` last cycle) — `#2079`'s merge (ka_dasha_kala's proxy probe code, not
+  just its state-file entries) collided with `#2065`'s own `ka_muhurta_seva`
+  code across the SAME 5 files as every prior round of this saga
+  (`service_probes.py`, `nirmana_probe.py`, `nirmana_probe_contracts.json`,
+  `test_nirmana_probe_route.py`, `test_service_probes.py`) — this time
+  `dasha_kala` (HEAD, already-merged) vs `muhurta_seva` (theirs, this PR's own
+  WIP), the fourth distinct pairing of this exact conflict shape this session
+  (tulana×dasha_kala, tulana×muhurta_seva, and now dasha_kala×muhurta_seva).
+  Resolved with the same established "reconstruct two complete functions/
+  entries in sequence, never pick one side" pattern — all 5 files, one at a
+  time, each verified marker-free + syntax-valid before moving to the next.
+  Migration number **850 held with NO new collision this round** — a first,
+  after four straight rounds of L1 migration-churn hitting this exact file.
+  Regenerated digests fresh (`provenance_inventory --check` exit 0) rather
+  than hand-resolve the generated-file conflict; pins `--check` exit 0 (no
+  diff outside L3's own hash); `migration_number_guard.ts` PASS; relevant
+  suite 76 passed / 3 skipped / 1 pre-existing env-only `asyncpg` failure
+  (same documented gap, not a regression). Force-pushed, re-armed auto-merge
+  (`enabledAt` fresh). `#2147` now genuinely `isInMergeQueue: true` (`CLEAN`);
+  `#2149` still `BLOCKED`/not-yet-queued but `mergeable: MERGEABLE`, 0 CI
+  failures. — blocked on: nothing; next action: watch `#2065`/`#2147`/`#2149`
+  all merge, then `ka_muhurta_seva`'s W2 acceptance becomes the next genuine
+  W4-path item (route any verifier-role submissions through a fresh subagent
+  per D-CND-35) — `ka_dasha_kala`'s equivalent is already unblocked by
+  `#2079`'s own merge, pending only its migration's deploy.
 - `2026-09-06T~88:0xZ — L3-W4 — PR hygiene: `#2079` MERGED** (ka_dasha_kala's
   DB-free proxy health_probe, F-L3-15 fully closed 4/4). Its merge left this
   session's own `#2147`/`#2149` (state-only heartbeat PRs) genuinely `DIRTY`/
