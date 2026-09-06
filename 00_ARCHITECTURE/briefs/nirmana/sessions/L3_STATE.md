@@ -461,6 +461,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~07:1xZ — L3-W3 — SEVENTEENTH AND EIGHTEENTH DIRTY-PR fixes this run:
+  #1936 (F-DARSH-2, ka_kala_darshana mode label) and #1938 (F-PARVA-2, registry volume
+  explanation).** #1936 was the `ka_kala_darshana`-writer generated-file shape
+  (`ka_kala_darshana.py` itself + writer-digests auto-merged cleanly, only the pins file
+  conflicted — confirmed correct by regenerating, zero diff); #1938 was migration-only +
+  L3_STATE.md, no writer file so no re-pin needed. Both had 2-3 commits to rebase (this
+  session's own earlier state-sync commits stacked on top of the actual fixes), both
+  resolved cleanly with no further conflicts after the first. Verified:
+  `test_ka_kala_darshana.py` (30/30) + full `tests/l3/` (1427 passed, 0 failures) for
+  #1936, both `--check` invocations exit 0; `test_migration_678_parva_volume_
+  explanation.py` (6/6 incl. 2 live-DB integration tests) for #1938. `tsc --noEmit` clean
+  on #1936. Both force-pushed, both re-armed auto-merge, both confirmed `MERGEABLE`.
+  Eighteen DIRTY-PR fixes total this run. #1903 (F-CONC-6 prerequisite) still not merged.
+  #1958/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~06:5xZ — L3-W3 — SIXTEENTH DIRTY-PR fix this run, and a real merge:
   #1934 (F-KALA-1 third slice, kala_ahead_get recurrence-ladder) genuinely MERGED**
   (`2026-09-06T02:33:50Z`, the first confirmed merge since #1935 several cycles ago) —
