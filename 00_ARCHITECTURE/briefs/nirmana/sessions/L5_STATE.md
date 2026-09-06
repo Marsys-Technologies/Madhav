@@ -457,6 +457,21 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T03:59Z (C8 v2.3 cycle 265) — **#1948 landed (chart_grants sweep) — retried
+  lel_events, found the ONE table it missed.** Main advanced to #1948 (CONDUCTOR: grant
+  `nirmana_evidence_ingress_writer` SELECT on 65 non-L0 tables, closing #1869). Verified
+  live: `charts`/`chart_facts`/`chart_dashas`/142 others now granted, but **`chart_grants`
+  itself was not included**. Retried `lel_events`'s preserved `integrity_verified`
+  submission (same digests, unchanged since 2026-09-05) via `nrec --as verifier` — same
+  HTTP 500. `gcloud logging read` confirmed the exact new failure:
+  `permission denied for table chart_grants` (was `life_events` before #1873, now this one
+  table specifically — confirms everything upstream of it is fixed). Commented on #1869
+  with the precise reproduction and a narrow follow-up recommendation
+  (`GRANT SELECT ON chart_grants ...`) rather than attempting the grant myself (still
+  Conductor's authority, per the issue's own original disposition). Both own PRs confirmed
+  `isInMergeQueue: true` (checked before and after the investigation — #1826 completed its
+  CI run and self-queued during this cycle's work). #1844/#1901 positions not re-checked
+  this cycle (investigation took priority).
 - 2026-09-06T03:56Z (C8 v2.3 cycle 264) — **IDLE-OK.** #1826 unchanged (Governance Gates,
   ~7.3 min in, no failures, armed — normal duration). #1844 confirmed `isInMergeQueue:
   true`. #1844=29, #1901=55 unchanged for 3rd cycle. #1869 unchanged at 3 comments. 3
