@@ -414,6 +414,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 359 | 2026-09-06T17:07Z | L2-W3 | `#2054` still genuinely QUEUED (`is:queued` re-confirmed), no failures -- holding this commit locally again, not pushing. Main advanced (`#1903`, L3's own fix). Both E-gates unchanged. No new adjudication activity. Nothing new eligible -- held pending `#2054`'s merge |
 | 360 | 2026-09-06T17:11Z | L2-W3 | `#2054` still genuinely QUEUED, no failures -- holding this commit locally again. Both E-gates unchanged. No new adjudication activity. Nothing new eligible -- held pending `#2054`'s merge |
 | 361 | 2026-09-06T17:14Z | L2-W3 | `#2054` still genuinely QUEUED, no failures -- holding this commit locally again. Both E-gates unchanged. No new adjudication activity. Nothing new eligible -- held pending `#2054`'s merge |
+| 362 | 2026-09-06T17:18Z | L2-W3 | `#2054` still genuinely QUEUED -- confirmed via `gh-readonly-queue` refs it's literally at the BASE of the chain (`pr-2054` -> `pr-2070` -> `pr-2130` stacked behind it), all checks `COMPLETED`, just waiting on the merge queue's own final action, not a stall. Holding this commit locally again. Both E-gates unchanged. No new adjudication activity. Nothing new eligible -- held pending `#2054`'s merge |
 
 ## ASSET TABLE (22)
 
