@@ -1323,6 +1323,23 @@ your layer close.
   file makes them worth watching together), and #1713's sidecar finding is now five
   cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
   next cycle regardless.
+- `2026-09-06T~15:0xZ — L3-W3 — PR hygiene: near-clean sweep (35 PRs checked), one
+  genuine issue: `#1895` (L2's `bo_karanajala`, not mine but not owned by any
+  active worktree either) was `UNMERGEABLE`-in-queue at position 5, on track to
+  become the head-of-line blocker once positions 1-4 cleared their checks. Fixed
+  pre-emptively rather than wait for it to actually jam the queue: dequeued,
+  rebased — writer-digests conflict (real, since it edits `bo_karanajala.py`
+  itself) then a follow-on L2-pin conflict using a stale pre-rebase convergence
+  sha, both regenerated against the branch's own new post-rebase commit sha and
+  verified `--check` clean, diffs scoped to `bo_karanajala`'s own entries only.
+  Full `bo_karanajala` test family (4 files) 42/42 pass. Pushed, back in queue.
+  Verified last cycle's Held-items-table fix (#1903) hasn't reverted again — it
+  simply hasn't merged yet (`git show origin/main:...` still shows the old #1846
+  text, but that's expected since #1903 is still queued, not a fresh regression).
+  — blocked on: nothing new; next action: confirm #1903 actually merges this time
+  and the Held-items fix finally lands on `main` for real, re-check #1713 for a
+  sidecar response, and consider resuming normal W3 work now that hygiene has
+  been clean or near-clean for several consecutive cycles.
 - `2026-09-06T~14:0xZ — L3-W3 — PR hygiene: fully clean fleet sweep this cycle (36
   PRs checked, zero DIRTY/UNMERGEABLE-in-queue — the biggest single improvement
   since this session started; last cycle's 8-PR fix batch held). Queue itself
