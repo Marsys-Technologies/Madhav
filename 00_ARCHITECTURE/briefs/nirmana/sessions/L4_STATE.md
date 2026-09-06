@@ -6216,3 +6216,35 @@ remaining unchanged/queued; E-gate uncheckable, DB access down 308 cycles; nothi
 next: watch `#1849` merge; confirm `#1845` goes green; retry E-gate/dispatch dry-run once DB
 access returns; F1 remains deferred.
 
+`2026-09-06T~16:50Z` — L4 — **CYCLE 319 (v2.3) — a very large cycle: `#1849` MERGED (queue
+head cleared). Two consecutive waves of the recurring UNMERGEABLE pattern hit seven distinct
+own-PR fix operations this cycle (`#1831`, `#1808`, `#1834`, `#1842` in wave one; `#1839`,
+`#1845` in wave two, plus a mid-fix re-conflict on `#1834` when `#1849` merged between
+rebase and push — caught via a `DIRTY`/`CONFLICTING` push-result check, re-rebased onto the
+newer main, and re-verified before the retry succeeded). Given the scope already completed,
+closing this cycle now rather than immediately chasing the newest `#1831`/`#1808`
+UNMERGEABLE recurrence (deferred to next cycle, both confirmed not-DIRTY/not-RED, just
+dequeued) — keeps cycles reasonably bounded per the contract's own guidance.**
+
+**PR hygiene this cycle, in order:** `#1831`, `#1808`, `#1834` (twice — see above), `#1842`
+(wave one); `#1839`, `#1845` (wave two). Every fix followed the established recipe: rebase
+onto `origin/main`, resolve the routine generated-file conflict (regenerate digest via
+`provenance_inventory`, hand-derive the pin's `writer_inventory_sha256` via the script's own
+algorithm when it conflicted), verify `--check` and a fresh digest diff both clean from the
+final rebased state, confirm the branch's own writer fix survived via a `git merge-base`
+-anchored diff, run the full test suite, check `mergeQueueEntry` before pushing and call
+`dequeuePullRequest` when still occupied, push, re-arm. All test suites green across every
+fix. `#1831`/`#1808` found `UNMERGEABLE` again at cycle-close (a third recurrence for both)
+— confirmed not DIRTY/RED via `gh pr view`, left for next cycle's PR-hygiene-first sweep
+rather than starting a third rebase round in an already-oversized cycle.
+
+**Priorities 1-4:** `#1849` merged (own PR). No new adjudications name L4 (count unchanged
+at 15). E-gate still uncheckable, 309th consecutive cycle DB access down.
+
+CYCLE 319 L4: `#1849` MERGED; dequeued+rebased+repushed 6 more UNMERGEABLE-episode fixes
+across two waves (`#1831`, `#1808`, `#1834`×2, `#1842`, `#1839`, `#1845` — all writer fixes
+verified intact, all test suites green, all re-armed) → next: `#1831`/`#1808` need a fresh
+PR-hygiene pass next cycle (confirmed UNMERGEABLE again but not DIRTY/RED, deliberately
+deferred to keep this cycle bounded); retry E-gate/dispatch dry-run once DB access returns;
+F1 remains deferred.
+
