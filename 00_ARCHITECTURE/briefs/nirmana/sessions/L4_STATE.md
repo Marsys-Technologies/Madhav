@@ -5679,3 +5679,18 @@ hygiene clean, all 8 own PRs genuinely queued and advancing; E-gate uncheckable,
 down 280 cycles; nothing new) → next: watch queue positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~14:30Z` — L4 — **CYCLE 291 (v2.3) — several more `main` commits landed
+(`#2036`/`#2037`/`#2040`, L1, not L4-relevant); all 8 own PRs' positions moved up well.**
+
+**PR hygiene:** all 8 own PRs genuinely queued and advancing (79→71, 50→42, 48→40, 40→32,
+44→36, 29→21, 20→12, 25→17). No DIRTY, no RED.
+
+**Priorities 1-4:** new `main` commits confirmed not L4-relevant. No new adjudications name
+L4 (count unchanged at 14). E-gate still uncheckable, 281st consecutive cycle DB access
+down.
+
+CYCLE 291 L4: IDLE-OK (verified: several new `main` commits confirmed not L4-relevant; PR
+hygiene clean, all 8 own PRs genuinely queued and advancing; E-gate uncheckable, DB access
+down 281 cycles; nothing new) → next: watch queue positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
