@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) merged (12:26:39Z); Deploy to Cloud Run (run 34033115503) still pending ~3min in -- not yet safe to re-dispatch bg_parihara_rules. No open L0 PRs, no DIRTY/RED. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm deploy completed + migration 704 applied live, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704) merged; original deploy run 34033115503 came back all-skipped (normal supersession by a newer commit fa265773, confirmed descendant of my merge via git merge-base) -- new run 34033464028 now in_progress and WILL apply migration 704. Not yet safe to re-dispatch bg_parihara_rules. No open L0 PRs, no DIRTY/RED. No other L0 asset currently eligible. 35/40 frozen unchanged -- next cycle: confirm this new deploy run completed + migration 704 applied live, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3311,4 +3311,11 @@ see log). Still 35/40 until that's resolved.
   no DIRTY/RED. 35/40 frozen unchanged.
 
 - 2026-09-06 — **IDLE-OK.** Deploy run `34033115503` still `pending` (~5min in, normal duration).
+  No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Run `34033115503` completed with ALL jobs `skipped` (including Apply
+  DB Migrations) — checked and confirmed this is normal supersession, not a failure: a newer
+  commit (`fa265773`) landed on main right after and triggered a fresh run (`34033464028`, now
+  `in_progress`); confirmed via `git merge-base --is-ancestor` that `fa265773` is a descendant of
+  my merge commit `0d66be4e`, so migration 704 is included and will be applied by this newer run.
   No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
