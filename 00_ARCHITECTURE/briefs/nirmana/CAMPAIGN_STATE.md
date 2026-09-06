@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:51:22Z` — cycle 602: **IDLE-OK.** #2149/#2132 both cleared. Fleet DIRTY: empty.
+  No new `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:49:20Z` — cycle 601: **IDLE-OK, watching.** Fleet DIRTY: #2149 (my earlier
   heartbeat-PR nudge asking L3 to close it, ~22 min/~10 cycles with no response yet — not yet
   calling it recurring negligence, watching one more round before escalating); #2132, only ~1 min
