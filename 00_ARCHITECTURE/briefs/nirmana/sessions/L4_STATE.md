@@ -6138,3 +6138,25 @@ CYCLE 314 L4: dequeued+rebased+repushed 5 UNMERGEABLE PRs (`#1842`, `#1839`, `#1
 unaffected/queued) → next: confirm all five re-enter the merge queue next cycle; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~16:30Z` — L4 — **CYCLE 315 (v2.3) — `#1849` confirmed reached the queue head
+(`AWAITING_CHECKS`). One more own PR, `#1845`, found genuinely `UNMERGEABLE` — fixed with
+the same conflict-free-rebase recipe. This cycle's bounded unit of work.**
+
+**PR hygiene:** `#1845` (`codex/nirmana-l4-w3-3h-sodhana-leakage-blindspot`) rebased onto
+`origin/main` with zero conflicts; pin `--check` and a fresh `provenance_inventory` diff
+both already matched. Confirmed via a `git merge-base`-anchored diff that the branch's own
+LEAKAGE-FIREWALL fix survived intact, 53/53 tests pass. Still occupied its queue slot with
+`state: UNMERGEABLE`; dequeued via GraphQL, pushed successfully, re-armed. Remaining five own
+PRs (`#1842`, `#1839`, `#1834`, `#1831`, `#1808`) confirmed legitimately pending fresh CI
+from the cycle-314 batch, nothing failed.
+
+**Priorities 1-4:** two new `main` commits confirmed not L4-relevant. No new adjudications
+name L4 (count unchanged at 15). E-gate still uncheckable, 305th consecutive cycle DB access
+down.
+
+CYCLE 315 L4: rebased+repushed 1 more UNMERGEABLE PR (`#1845` — conflict-free rebase,
+LEAKAGE-FIREWALL fix verified intact, 53/53 tests pass, re-armed for auto-merge; `#1849`
+confirmed reached the queue head; remaining five legitimately pending fresh CI) → next:
+confirm `#1845` re-enters the queue and the other five go green; retry E-gate/dispatch
+dry-run once DB access returns; F1 remains deferred.
+
