@@ -2483,3 +2483,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 1 (22/29/30/51). Noted `#1901` (D-L0-FF fix,
   Conductor's) flipped to `BLOCKED` — just tracking, not L0's action. No DIRTY, no RED. 30/40
   frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 2 (20/27/28/49). No DIRTY, no RED, no new eligible
+  work. 30/40 frozen holds.
