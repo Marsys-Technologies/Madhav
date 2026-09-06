@@ -461,6 +461,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~16:0xZ — L3-W3 — PR hygiene: 5 issues found (2030, 1940, 1928, 1922,
+  1808), all L2/L3/L4-owned but none held by an active worktree — fixed all 5.
+  **Real finding along the way**: #1928's rebase surfaced a genuine pre-existing test
+  failure (`test_birth_anchor_2slot_provisional_weights_match_spec`, `bo_pratijna_v4_
+  engine.py`) — traced it carefully before assuming it was this branch's fault: the
+  two functions #1928 actually touches were byte-identical to `origin/main`'s copies,
+  and the failing test's own registry/function were untouched by #1928 too. Found the
+  actual root cause already owned by **#2030** (`F-L2-16`, also in this cycle's DIRTY
+  batch, whose own PR description independently confirms the same pre-existing-on-
+  `origin/main` diagnosis) — `compute_class_weights` was activating `divisional`/
+  `yoga` slots for `birth_anchor` when it shouldn't (a category error per its own
+  `kill_switch_criteria` classification). Pushed #1928 as-is (its own 70/70 minus the
+  one unrelated, separately-owned failure) rather than duplicate #2030's fix, then
+  fixed #2030 itself in the same cycle — confirmed the fix actually resolves the
+  failure (70/70 clean after) plus 160 broader `-k pratijna` tests pass (6 unrelated
+  pre-existing collection errors in files neither PR touches: forensic_writer,
+  a3_writer, panchanga_writer, ka_kshetra, permission_curve_route). #1808 turned out
+  to have already self-healed before I could dequeue it (`gh api`'s `dequeuePullRequest`
+  failed with "actively building," recheck showed it had already left the queue on its
+  own, now clean `MERGEABLE`) — the established "wait and recheck" pattern held again.
+  #1940 needed a full fix (missed it initially this cycle, caught on the final sweep) —
+  standard L3-pin regen plus a genuinely-additive concurrent-entry `L3_STATE.md`
+  conflict (this branch's own stale ~11:3x entry, not yet on `main`, combined
+  chronologically after this cycle's own newer entry). All 5 confirmed `MERGEABLE`
+  on a final batched recheck. — blocked on: nothing new; next action: keep sweeping
+  for fresh staleness each cycle, verify #2030/#1928 both land cleanly (their shared
+  file makes them worth watching together), and #1713's sidecar finding is now five
+  cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
+  next cycle regardless.
 - `2026-09-06T~12:0xZ — L3-W3 — PR hygiene: re-swept the queue after #1950/#1940 landed —
   cascade shrank further (#1839, #1845, #1844 also cleared since last cycle). New head
   blocker: **#1951 (F-VIGHNA-8/F-DARSH-8, TypeScript-only, no writer/generated-file
@@ -477,6 +506,31 @@ your layer close.
   L4-owned blocker cleared under its own session's hygiene, and re-check #1713's
   `amjis-sidecar` finding (still not re-verified for two cycles now — worth doing next
   cycle if no fresher hygiene work is available).
+- `2026-09-06T~11:3xZ — L3-W3 — PR hygiene: re-swept the merge queue after last cycle's
+  #1950 fix — the cascade shrank but didn't fully clear; the queue's new head blocker
+  turned out to be **#1839 (an L4 PR, not L3)**. Checked `git worktree list` before
+  touching it and found its branch (`codex/nirmana-l4-w3-3f-phaladesa-top-anchor`) is
+  actively checked out at `/Users/Dev/nirmana-s/l4` — a different concurrent session's
+  own lane — so deliberately left it alone rather than risk stepping on in-flight work
+  there; that queue segment is that session's own hygiene responsibility, not mine to
+  force. Redirected to the one genuinely-DIRTY (not just cascade-adjacent) PR still
+  outstanding from two cycles ago: **#1940 (F-BHAV-2/F-BHAV-3)**, confirmed via GraphQL
+  (`mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`, not queued) before touching it.
+  Rebased: one conflict, `L3_STATE.md` — genuinely concurrent-entry shaped (both sides
+  non-empty, ~10:1x vs ~10:2x, both describing the SAME #2067 heartbeat-PR-ruling event
+  from two different sessions' independent write-ups) but NOT a case for chronological
+  combination this time: full side-by-side comparison showed `theirs` (this branch's own
+  stale commit) was a complete, fact-for-fact subset of what `ours` (already-landed via
+  #2073) already covered — same 28-PR closure list, same #1905/#2071/sidecar-finding
+  facts, just organized as one merged paragraph instead of two separate entries. Kept
+  `ours` only; safety diff vs `origin/main` confirmed zero lines removed. Pins/digests
+  both verified `--check` clean (no regen needed, resolved automatically by the rebase).
+  45/45 branch tests pass, `migration_number_guard.ts` PASS (same pre-existing advisory
+  warnings as last cycle, no new collision). Pushed, `mergeable: MERGEABLE`. — blocked
+  on: nothing new; next action: re-sweep the queue next cycle once #1950/#1917/#1940 all
+  land, confirm whether #1839's L4-owned blocker has cleared on its own, and re-check
+  #1713's `amjis-sidecar` finding (not re-verified this cycle — hygiene filled the
+  bounded unit again).
 - `2026-09-06T~10:4xZ — L3-W3 — F-L3-15 CLOSED completely (PR #2079): ka_dasha_kala
   gets a DB-free PROXY health_probe per D-CND-34 ruling (#2071).** All four L3
   service assets (ka_graha_sancara, ka_muhurta_seva, ka_tulana, ka_dasha_kala) now

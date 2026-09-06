@@ -86,6 +86,7 @@ class TestB4ConsumeKaBhavishya:
             'confidence_label': 'high',
             'rarity_years': 12.0,
             'mode': 'vimshottari',
+            'tier_basis': 'relative_uncalibrated',
             'domain': domain_col_value,  # from kc.domain (migration 361)
         }
         return row
@@ -261,6 +262,7 @@ class TestB4ConsumeKaBhavishya:
             'confidence_label': 'high',
             'rarity_years': 12.0,
             'mode': 'vimshottari',
+            'tier_basis': 'relative_uncalibrated',
             'domain': None,  # NULL AS domain from probe-gated query
         }
 

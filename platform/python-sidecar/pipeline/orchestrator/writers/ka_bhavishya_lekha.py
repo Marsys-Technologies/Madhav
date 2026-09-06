@@ -91,7 +91,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
                        kd.peak_date, kd.window_start, kd.window_end,
                        kd.narrative, kd.obstruction_summary,
-                       kc.confidence_label, kc.rarity_years, kc.mode,
+                       kc.confidence_label, kc.rarity_years, kc.mode, kc.tier_basis,
                        {domain_select}
                 FROM kala_darshana kd
                 JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
@@ -99,7 +99,11 @@ class KaBhavishyaLekhaWriter(WriterBase):
                   AND kd.peak_date >= %s
                   AND kd.peak_date <= %s
                   AND kd.net_label NOT IN ('obstructed_severe')
-                ORDER BY kd.effective_score DESC NULLS LAST
+                -- F-BHAV-3 (§N.7 item 2): the old ORDER BY had no tiebreak, so which 100
+                -- of the eligible windows survived LIMIT 100 varied build-to-build whenever
+                -- effective_score ties (measured: 100/100 rows tied at 0.700 on the
+                -- canonical chart). kd.peak_date, kd.convergence_id give a real total order.
+                ORDER BY kd.effective_score DESC NULLS LAST, kd.peak_date, kd.convergence_id
                 LIMIT 100
             """, (chart_id, today, date(today.year + 5, today.month, today.day)))
             darshana_rows = cur.fetchall()
@@ -139,6 +143,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
             conf_label = row['confidence_label']
             rarity = row['rarity_years']
             mode = row['mode']
+            tier_basis = row['tier_basis']
 
             # Probability tier
             tier = _assign_tier(eff_score, net_label)
@@ -161,7 +166,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
             proj_narrative = _build_projection_narrative(
                 tier=tier, domain=domain, peak_date=peak_date,
                 eff_score=eff_score, conf_label=conf_label,
-                rarity=rarity, net_label=net_label,
+                rarity=rarity, net_label=net_label, tier_basis=tier_basis,
             )
 
             rows.append((
@@ -304,15 +309,31 @@ def _build_falsifiability(tier: str, domain: str, peak_date, eff_score: float) -
     }
 
 
+# F-BHAV-2 (§N.7 items 5/6, MACRO_PLAN Ethical Framework): these labels used to read
+# "High probability (>=70% convergence, clear activation)" — reading a [0,1] structural
+# score as a calibrated percentage is a category error. `effective_score` is a product of
+# catalog constants (ka_kala_darshana's convergence x obstruction terms), not a probability
+# estimate; wording it as one over a substrate whose OWN `kala_convergence.tier_basis`
+# column stamps itself 'relative_uncalibrated' (100% of rows, measured) is exactly the
+# defect this doctrine item exists to close. Reworded to describe structural convergence
+# strength, never "probability" or "%".
 _TIER_LABELS = {
-    'tier_1_high': 'High probability (>=70% convergence, clear activation)',
-    'tier_2_moderate': 'Moderate probability (45-70% convergence)',
-    'tier_3_speculative': 'Speculative (<45% convergence or obstructed)',
+    'tier_1_high': 'High structural convergence (score >=0.70, clear activation)',
+    'tier_2_moderate': 'Moderate structural convergence (score 0.45-0.70)',
+    'tier_3_speculative': 'Speculative (score <0.45 or obstructed)',
 }
+
+# The only `kala_convergence.tier_basis` value that would license "calibrated probability"
+# language — none observed in production (100% 'relative_uncalibrated', measured). Kept as
+# an explicit allowlist rather than an "!= 'relative_uncalibrated'" exclusion so a future,
+# genuinely-unrecognized tier_basis value defaults to the SAFER, less-confident wording
+# (§N.7 item 6: an honest null/uncertain framing beats an invented favorable one).
+_CALIBRATED_TIER_BASES = frozenset({'calibrated'})
 
 
 def _build_projection_narrative(tier: str, domain: str, peak_date, eff_score: float,
-                                conf_label: str, rarity: float, net_label: str) -> dict:
+                                conf_label: str, rarity: float, net_label: str,
+                                tier_basis: str | None) -> dict:
     peak_str = str(peak_date) if peak_date else 'unknown date'
     tier_desc = _TIER_LABELS.get(tier, tier)
     rarity_str = f"{rarity:.1f}-year cycle" if rarity else "event"
@@ -323,10 +344,19 @@ def _build_projection_narrative(tier: str, domain: str, peak_date, eff_score: fl
         f"Confidence: {conf_label or 'speculative'}."
     )
     domain_ctx = f"Domain: {domain}. Cycle type: {rarity_str}."
-    caveat = (
-        "This projection is probabilistic and calibrated. "
-        "Record actual outcomes at evaluation_date for calibration refinement."
-    )
+
+    if tier_basis in _CALIBRATED_TIER_BASES:
+        caveat = (
+            "This projection reflects a calibrated probability estimate. "
+            "Record actual outcomes at evaluation_date for calibration refinement."
+        )
+    else:
+        caveat = (
+            "This projection is a structural, uncalibrated prior — a computed convergence "
+            f"strength score (kala_convergence.tier_basis={tier_basis!r}), not a calibrated "
+            "probability estimate. Record actual outcomes at evaluation_date to build the "
+            "calibration data this projection does not yet have."
+        )
 
     return {
         'headline': headline,
