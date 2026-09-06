@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 106; closed F-E17 (migration 844) — ga_tajaka's volume_explanation claimed live on-demand computation via a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching internal string in one coherent fix. F-D21/F-D23 (ga_transit_anchors) traced to L0's own bg_vidhi_primitives.py — correctly out of L1's lane, flagged not fixed
+last_updated: 2026-09-06 — C8 v2.3 cycle 107; #2122 (F-D21/F-D23) RULED, assigned to L0. Re-investigated F-E22 before acting on its own MUST instruction — the "5 orphaned rows" are real, correctly-grounded prashna data; the actual defect (ga_prashna_judgment's FK pointing at the wrong parent table) is R-1-sensitive and filed as #2123, not fixed unilaterally
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -6936,3 +6936,45 @@ L1 must satisfy rather than a feature it consumes.
   (F-D21/F-D23) that requires L0's action rather than mine -- staying in-lane even when the
   DATA involved is L1's own -- next: continue the sweep with F-E21/E22 (`ga_prashna`), the last
   items from cycle 102's initial zero-mention scan.
+- 2026-09-06T21:4xZ -- CYCLE 107 (C8 v2.3). PR hygiene: #2121/#2119/#2118 all healthy mid-CI
+  (`mergeable: MERGEABLE`, `autoMergeRequest` armed, only IN_PROGRESS checks), nothing DIRTY/
+  RED/unqueued-but-clean. **#2122 RULED (Conductor)**: verified the F-D21/F-D23 finding
+  independently, confirmed L1's diagnosis accurate, assigned the actual fix to L0 (both
+  `bg_vidhi_primitives.py` and its TS mirror are L0-owned; correct call by L1 to flag rather
+  than fix). No ruling yet on #2113's asset_freshness follow-up -- not blocking. Unit of work:
+  the last items from cycle 102's scan, F-E21/F-E22 (`ga_prashna`). **F-E21** (facility live-
+  mounted despite "dormant" framing) was ALREADY adequately recorded in the asset table
+  (`"R-1: facility is live-mounted"`) -- no action needed, confirmed rather than assumed.
+  **F-E22 (the 5 "orphaned" `ga_prashna_lagna` rows) re-investigated BEFORE acting on its own
+  MUST instruction ("re-ground or retire the rows") -- and the rows turned out not to be
+  orphaned at all.** The finding checked `charts`/`chart_facts`/`asset_throughput` (all 0 rows
+  for chart_id `b35046d8`) and concluded the rows were ungroundable garbage. Checking ONE more
+  table (`prashna_charts`) found a real row: a genuine prashna cast, 2026-06-18, "Will I get the
+  promotion I applied for this quarter?", `querent_natal_chart_id` = the canonical chart. Read
+  `ga_prashna_writer.py`'s own docstring before concluding anything: "Check if chart_id is in
+  prashna_charts. If not -> 0 rows" -- the writer's OWN documented design keys off
+  `prashna_charts`, never the generic `charts` table at all. The 5 `ga_prashna_lagna` rows
+  (Capricorn 28°, Tājika Nīlakaṇṭhī Ch.1 citation, one per ayanamsha) are real, well-formed
+  lagna computations for that genuine question -- not garbage to retire. **Found the ACTUAL,
+  more interesting defect while verifying this**: `ga_prashna_judgment` carries `FOREIGN KEY
+  (chart_id) REFERENCES charts(id)` -- contradicting its own writer's documented design, and
+  almost certainly why `ga_prashna_judgment` holds 0 rows for this chart_id (a real prashna
+  chart_id that legitimately has no `charts` row would be REJECTED by that FK on insert) while
+  `ga_prashna_lagna` (no FK to anything) succeeded. Did NOT touch this schema question myself --
+  `ga_prashna` carries native ruling R-1 ("dormant disposition... do not open the facility"),
+  and a foreign-key change on this specific asset is exactly the kind of decision that native
+  ruling's sensitivity puts outside my unilateral authority, even though it's a narrow,
+  well-evidenced data-integrity question rather than a feature request. Filed **#2123** laying
+  out the full finding and asking for a ruling on whether to re-point/drop the FK or leave it
+  as-is under R-1's scope. Corrected the asset table's own "5 orphaned served rows" framing to
+  the accurate "correctly-grounded to prashna_charts, not charts" account in the same pass --
+  the state file should never carry a claim I've since disproven, adjudication pending or not.
+  `provenance_inventory --check` + L1 pin: clean (no writer touched this cycle). CYCLE 107 L1:
+  PR hygiene clean, one ruling landed (#2122, assigned to L0), closed out cycle 102's entire
+  zero-mention findings scan -- F-E21 already adequately recorded, F-E22 re-investigated and
+  found NOT to be the defect it appeared to be, with the real underlying question escalated
+  (#2123) rather than guessed at given R-1's sensitivity -- next: with the full W2 DECIDE MUST
+  findings sweep now complete (every item from L1_W1_ANALYSIS_BATCH_B/C/D/E either closed,
+  confirmed already-honest, correctly out-of-lane and escalated, or R-1-sensitive and
+  escalated), survey whether any genuinely open W3 IMPLEMENT work remains, or whether L1 is
+  ready to begin preparing for W4 DISPATCH review.
