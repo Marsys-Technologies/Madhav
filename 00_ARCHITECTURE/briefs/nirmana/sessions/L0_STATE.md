@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — #1901 (Conductor's delta-skip receipt re-attribution fix) MERGED but verified NOT yet deployed (merge commit not an ancestor of the currently-deployed sha). Once it deploys, should unblock bg_doshas + bg_gochara_arcs + bg_text_index in one shot (same D-L0-FF root cause). #2066 (own PR) at queue position 42, is:queued confirmed, no DIRTY/RED. Nothing newly actionable this cycle -- watching both PRs' deploy status. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — Possible merge-queue stall flagged (visibility only, #1713): origin/main's tip hasn't moved in 2+ hours despite continuous merge_group CI activity, including a batch where all required checks passed and nothing landed; the existing watchdog's heuristic doesn't catch this (checks for activity, not completed merges). Not my infra to fix. #2066 still queued (position 42), no DIRTY/RED. #1901 (Conductor's delta-skip fix) merged but not deployed -- once main advances and it deploys, should unblock bg_doshas + bg_gochara_arcs + bg_text_index. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2900,3 +2900,14 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   **verified NOT yet deployed** — its merge commit is not an ancestor of the currently-deployed
   sha (`4dd77e21...`), correctly per "merge ≠ deploy" discipline. Nothing newly actionable yet;
   will re-check both PRs' deploy status next cycle. 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **IDLE-OK, with one prep item: flagged a possible merge-queue stall.** `#2066`
+  position dropped 54→42 but `origin/main`'s actual tip (`0452d1e74`, #1901) hasn't moved in 2+
+  hours despite continuous `merge_group` CI activity — including a `09:24:54Z` batch where all 3
+  required checks (`TAP CI`, `EKV`, `CI — Ganga Quality Gate`) succeeded and still nothing landed.
+  The existing `merge_queue_watchdog.sh` (confirmed still running) reports `wedged=false` every
+  10 min because its heuristic only checks "was there recent CI activity," not "did anything
+  actually merge" — a real gap in what it detects. Posted to #1713 for visibility (not an
+  adjudication — no ruleset/branch-protection access to act on this myself, and it's Conductor-
+  owned infra per C5). Not blocking my own work; continuing normal cycles. No DIRTY/RED on my
+  own PR. 30/40 frozen holds unchanged.
