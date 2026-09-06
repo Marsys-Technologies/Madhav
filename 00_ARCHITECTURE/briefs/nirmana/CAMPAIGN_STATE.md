@@ -381,6 +381,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T21:23:15Z` — cycle 623: **ONE bounded unit: fixed #2169 (TIME-CRITICAL, distinct from
+  #2159) — changed-paths gate's HEAD~1 diff base silently missed backlog changes, real bug found
+  and fixed mid-review before shipping.** L0 diagnosed exactly: any PR touching mcp/sidecar/
+  pipeline-job merged during a fast-merge window could silently never redeploy while the pipeline
+  reported success — confirmed live for PR #2153. **Fix**: diff from the most recent PRIOR
+  successful deploy run's head_sha (via GH API), fetched on demand since the checkout is shallow —
+  verified the fetch-by-arbitrary-SHA mechanism against the real remote in a throwaway shallow
+  clone before trusting it. **First version had a real HIGH bug, caught by an independent
+  code-reviewer pass**: the jq filter only checked `conclusion == "success"`, which also matches
+  this workflow's own `pull_request` runs (never deploy, but still report success) — confirmed
+  empirically this exact collision exists in real run history and would have picked a
+  non-main-ancestor PR branch tip as the diff base. Fixed by restricting to
+  `(workflow_run or workflow_dispatch) and head_branch == main`; re-verified live, got a second
+  independent PASS. Shipped as **PR #2172** (built entirely in a fresh worktree from the start this
+  time — no repeat of the earlier stale-file near-miss). Fleet DIRTY: empty. Adjudication count 19.
 - `2026-09-06T21:05:53Z` — cycle 622: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (18). Nothing rose to a bounded unit.
 - `2026-09-06T21:03:50Z` — cycle 621: **IDLE-OK.** Adjudication count down to 18 (another lane's
