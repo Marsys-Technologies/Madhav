@@ -3619,3 +3619,6 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
     freezes (it's their sole remaining unfrozen ancestor).
   - 36/40 frozen unchanged this cycle (fix shipped, not yet deployed/dispatched). Next cycle:
     PR hygiene on `#2115`, then once deployed, drive `bg_yogas` through to freeze.
+
+- 2026-09-06 — **IDLE-OK.** `#2115` checks (Build Check, Unit Tests, Governance Gates) all
+  `IN_PROGRESS`, no failures. No DIRTY/RED. 36/40 frozen unchanged.
