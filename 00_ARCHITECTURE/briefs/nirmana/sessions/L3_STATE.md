@@ -473,6 +473,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~52:0xZ — L3-W4 — IDLE-OK (verified): all 3 previously-unqueued
+  PRs (`#2079`/`#2070`/`#2065`) confirmed genuinely `isInMergeQueue: true`
+  this time (queue held, no repeat of the churn). `#1903` still `BLOCKED`
+  (CI running, zero failures) — armed auto-merge again since it read `null`;
+  will queue itself once checks clear. Clock threshold (15:52:00Z) still not
+  reached (real time 15:17). Re-ran the `egate.sql` batch check — unchanged,
+  `ka_graha_sancara` remains the sole `OPEN-PENDING-PIN` asset. Nothing new
+  to act on this cycle; not re-deriving conclusions already verified twice
+  (N1's next step, M1/M6/M12 staleness) without new information. — blocked
+  on: real time passing 15:52:00Z; next action: execute the recorded 4-step
+  `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1) once past it.
 - `2026-09-06T~51:0xZ — L3-W4 — IDLE-OK (verified, not assumed).** PR hygiene:
   `#2079`/`#2070`/`#2065` had fallen back out of the queue (`CLEAN`-but-
   unqueued again — queue churn, not a new defect) — re-queued all three,
