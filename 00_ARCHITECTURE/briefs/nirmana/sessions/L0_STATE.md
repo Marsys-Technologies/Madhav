@@ -2136,3 +2136,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Fifth flat read (main HEAD unchanged this time). `#2016`'s newest CI
   run only ~2min old, in_progress, no reds — the pattern is just each run's ~2-3min cadence lining
   up with my check timing, not a hang. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** `#2016` down to 3 remaining pending checks (DB Integration Tests,
+  Unit Tests, Governance Gates) — all other 22 checks now pass, no reds. Close to completing. No
+  DIRTY, no RED. 30/40 frozen holds.
