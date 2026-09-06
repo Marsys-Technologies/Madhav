@@ -74,13 +74,25 @@ describe('nirmana analysis receipt spine (all layers)', () => {
 })
 
 describe('L0 preservation (adjudication #1715, ruling requirement 3)', () => {
-  it('keeps L0 pinned constants byte-identical to the pre-generalisation values', () => {
+  it('keeps L0 pinned constants byte-identical to the ratified baseline', () => {
     // Hardcoded here on purpose: this test is the detector for "no L0 capsule is
-    // re-accepted". Deriving them from the same record the implementation reads
-    // would make it assert nothing.
+    // re-accepted, and no UNRATIFIED re-pin lands silently". Deriving these from
+    // the same record the implementation reads would make it assert nothing.
+    //
+    // writer_inventory_sha256 updated 2026-09-06 (D-NATIVE-06, native-ratified
+    // transparent re-derivation): bg_yogas's writer was fixed (a dict-row-as-tuple
+    // bug silently yielded 0 corpus-extracted yogas on every real dispatch), which
+    // changes bg_yogas's own writer digest and therefore the L0 aggregate. Verified
+    // before this update: regenerating the writer-digest inventory changed exactly
+    // one entry (bg_yogas); all other 35 frozen L0 writers' digests are
+    // byte-identical to before, and this aggregate is not part of any per-asset
+    // NirmanaAnalysisReceiptBase (see buildLayerReceipts in
+    // nirmana-analysis-receipts.ts), so no other asset's already-accepted
+    // analysis_digest is affected. convergence_commit and receipt_count are
+    // unchanged -- this re-pin touches exactly the one value that changed.
     expect(NIRMANA_L0_CONVERGENCE_COMMIT).toBe('49bb5c98b864a2cb2fee037cdb7f14f6892a8263')
     expect(NIRMANA_L0_WRITER_INVENTORY_SHA256)
-      .toBe('8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae')
+      .toBe('dd4500b6526b68b13d60dc447bcc57f76e4ba1cb1dd6782bd60f3a21017e90a3')
     expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(40)
   })
 

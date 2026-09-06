@@ -61,9 +61,23 @@ LAYER_PREFIX = {
 # L0's reviewed convergence, carried forward verbatim from the pre-generalisation
 # nirmana-l0-analysis-receipts.ts.  Changing either value re-computes every L0
 # analysis digest and invalidates the frozen L0 capsules — see --check.
+#
+# `writer_inventory_sha256` re-pinned 2026-09-06 (D-NATIVE-06, native-ratified
+# transparent re-derivation): the previous value (8650e7a7...) was superseded
+# because bg_yogas's writer was fixed (a dict-row-as-tuple bug in
+# extract_yogas_from_corpus silently yielded 0 corpus-extracted yogas on every
+# real dispatch). This aggregate is NOT part of any per-asset
+# NirmanaAnalysisReceiptBase (see nirmana-analysis-receipts.ts's
+# buildLayerReceipts — only writer_digest_sha256, layer, convergence_commit,
+# and the two static grounding constants feed the hashed base); it only gates
+# whether NEW analysis-acceptance calls resolve for the layer at all. Verified
+# before re-pinning: regenerating platform/src/generated/nirmana-writer-digests.json
+# changed exactly one entry (bg_yogas); the other 35 frozen L0 writers' digests
+# are byte-identical to before, so no other asset's already-accepted
+# analysis_digest is affected by this re-pin.
 L0_FROZEN_PINS = {
     "convergence_commit": "49bb5c98b864a2cb2fee037cdb7f14f6892a8263",
-    "writer_inventory_sha256": "8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae",
+    "writer_inventory_sha256": "dd4500b6526b68b13d60dc447bcc57f76e4ba1cb1dd6782bd60f3a21017e90a3",
     "receipt_count": 40,
 }
 
