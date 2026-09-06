@@ -6401,3 +6401,29 @@ legitimately mid-CI within normal range; no new adjudications name L4; E-gate un
 DB access down 314 cycles; no new prep item) → next: watch `#1845` reach `QUEUED`; watch the
 4 queued PRs drain in position order; retry E-gate/dispatch dry-run once DB access returns;
 F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~11:40Z` — L4 — **CYCLE 325 (v2.3) — `#1808` found genuinely DIRTY (real conflict
+after main advanced past it, `autoMergeRequest` had gone `null` — i.e. it had actually merged
+into the queue and been ejected, not the stale-flag trap); rebased, resolved the routine pin
+conflict, 110/110 tests green, re-armed.**
+
+**PR hygiene:** `#1808` (`ph_nimitta` F-12/F-16) — rebase conflicted only in the pin file;
+digest already correct (confirmed via fresh regen, byte-identical); pin hand-derived to
+`6ef6dd1a...5da05c3`; isolation confirmed via `git diff $(git merge-base HEAD origin/main)
+HEAD --stat`; full `test_ph_nimitta_*` suite (110 tests) green; not occupying a queue slot so
+pushed directly, then re-armed via disable-then-auto. `#1831`/`#1834`/`#1839` confirmed
+genuinely `QUEUED` via `gh pr list --search "is:queued"`. `#1845` re-checked via direct job
+inspection: still `in_progress` at ~10 min elapsed (actively on a `pytest` step, not hung) —
+within the established upper bound, not escalated.
+
+**Priorities 1-4:** one new `main` commit (`#2083`, L1's own PR) confirmed not L4-relevant.
+No new adjudications name L4 (count unchanged at 15). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 315th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 325 L4: found and fixed a genuine DIRTY on `#1808` (real conflict, not the stale-flag
+trap — pin re-derived, 110/110 tests green, re-armed); confirmed `#1831`/`#1834`/`#1839`
+still genuinely `QUEUED`; `#1845` confirmed still genuinely progressing at ~10 min, not
+stalled → next: watch `#1845` complete and reach `QUEUED`; watch queue drain in position
+order; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
+consumers) remains deferred.
