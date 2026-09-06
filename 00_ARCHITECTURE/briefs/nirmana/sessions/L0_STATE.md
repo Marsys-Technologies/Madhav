@@ -459,3 +459,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   `requireAcceptedRebuildProvenance`), no commits since well before D-L0-II was even discovered.
   `#2169` has no comments yet (freshly filed, expected). #1713 tail unchanged since my own closing
   posts. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PR. #1713 tail still ends at my own closing posts;
+  `#2169` still 0 comments. Nothing new, nothing eligible.
