@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- migration 704 CONFIRMED genuinely applied live (verified directly, not trusting the job conclusion alone -- _migrations_applied row exists, census content corrected, integrity_check_sql evaluates True). Fresh W2 values computed for re-dispatch (registry_fingerprint 2f9735d1..., analysis_digest a062c6f9...) but NOT YET submitted -- 34033909025's Build & Deploy Web job still in_progress, and submitting W2 against a mid-rollout deployed commit risks a reviewed-deployment-sha mismatch. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- next cycle: confirm Build & Deploy Web completed, submit the precomputed W2 pair, dispatch bg_parihara_rules straight through to asset_frozen (36/40).
+last_updated: 2026-09-06 -- migration 704 confirmed genuinely applied live. Fresh W2 registry_fingerprint/analysis_digest computed (2f9735d1.../a062c6f9...) -- values are correct and reusable. First submit attempt (source_ref pinned to a448be8a) hit HTTP 409 "does not match currently deployed commit" because an even newer commit deployed seconds later -- main is churning fast right now. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- next cycle: let the churn settle, re-check the actual live deployed sha, resubmit asset_analysis_accepted + optimization_verdict_accepted with that sha, then dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3375,3 +3375,14 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** `Build & Deploy Web` still `in_progress`, no change. No open L0 PRs,
   no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — `34033909025` (headSha `a448be8a`) completed `success` including `Build & Deploy
+  Web`. Submitted the precomputed fresh `asset_analysis_accepted` for `bg_parihara_rules` using
+  `source_ref: git:a448be8a...` — **HTTP 409 "Evidence Git source does not match the currently
+  deployed commit."** Checked: an even newer commit (`5b1ab78f`) already had its own deploy
+  in-flight (`34034499400`, started seconds after `a448be8a`'s finished) — main is moving very
+  fast right now (other layer sessions merging constantly), so the "currently deployed" sha is a
+  moving target. Not resubmitted blind — waiting for the churn to settle, then re-check the
+  actual live deployed sha before resubmitting (registry_fingerprint/analysis_digest values
+  themselves are still correct and reusable; only `source_ref` needs to track whatever's live at
+  submit time). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
