@@ -469,6 +469,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~24:0xZ — L3-W3 — IDLE-OK (verified, not assumed): all 9 L3-owned
+  PRs healthy again (one showed `UNSTABLE` — checked `gh pr checks 1940`
+  directly rather than assume: every check passes, `Build Check (PR only)` was
+  just still `pending`, not failed — no action). Merge queue has 6 entries, all
+  L1/L2/L4-owned — not this session's lane, left alone. `#1713`'s sidecar
+  finding unchanged (nine+ cycles now, comment count still 136, no response).
+  **Checked my own open L3 adjudications for unactioned rulings**: `#2071`
+  (`ka_dasha_kala` health_probe, D-CND-34) already RULED and fully implemented
+  (PR #2079) — not yet merged, so not closing the issue prematurely; nothing
+  further to do until it lands. `#1960` and `#1810` are both waiting on the
+  native/L1, not L3's own action. No genuinely new W3/W4/prep work found. —
+  blocked on: nothing new; next action: keep L3-only hygiene sweeps going,
+  close `#2071` once `#2079` actually merges, recheck `#1713`.
 - `2026-09-06T~23:0xZ — L3-W3 — IDLE-OK (verified, not assumed): all 9 L3-owned
   PRs checked — zero DIRTY/UNMERGEABLE, all `MERGEABLE`/`BLOCKED` (CI pending)
   or already progressing; merge queue itself down to a single non-L3 entry
