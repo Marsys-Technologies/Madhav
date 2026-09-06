@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 139; no reply yet on #2180. While re-tracing why PR #1898 only fixed ga_positions' fact_id, found the ORIGINAL ask (issue #1747) named "ga_positions_writer.py and siblings" -- confirmed live that 7 more L1 writers (ga_ayurdaya, ga_panchanga, ga_sensitive, ga_sensitive_degree, ga_sade_sati, ga_strength, ga_vargas, ga_structural) still bake build_id into their own fact_id, the exact same D-CND-29-class defect, already Conductor-pre-authorized to fix but never done beyond ga_positions. Posted as a scoping input to #2180 (not proposing to fix now -- would compound an already-large rebuild scope)
+last_updated: 2026-09-07 — C8 v2.3 cycle 140; no reply yet on #2180 (only 1 quiet cycle, not yet worth a nudge). Extended L1_DEPENDS_ON_AUDIT_v1_0.md with a round-2 grep sweep of the 8 L1 assets round 1 hadn't touched (PR #2185) -- found ga_panchanga's writer issues ZERO SQL reads at all (pure ephemeris recomputation) and its declared bg_panchanga dependency doesn't even exist as a table -- both declared edges are false. Other 7 assets confirmed clean. All 19 L1 assets now have at least one audit pass
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8075,3 +8075,32 @@ record — they are the only entries in this table with a real wall-clock behind
   class while investigating why the original fix was incomplete -- next: keep watching #2180;
   if it stays quiet, the 7-writer fact_id question and the wave-0-3 rebuild scope both remain
   open decisions worth a nudge if several more cycles pass with no reply.
+- 2026-09-06T2xZ -- CYCLE 140 (C8 v2.3). PR hygiene: #2183 (only own open PR at cycle start)
+  MERGED since last check -- trivially clean. Checked #2180: still just my own cycle-139 comment,
+  no reply -- only 1 quiet cycle so far, not yet the "several more cycles" threshold worth a
+  nudge. Instead of a bare re-check, extended `L1_DEPENDS_ON_AUDIT_v1_0.md` with the round-2
+  systematic grep sweep round 1 had explicitly named as its own remaining gap (§3): the 8 L1
+  assets not yet covered by an existing finding (`ga_positions`, `ga_panchanga`, `ga_strength`,
+  `ga_vichara`, `ga_transit_anchors`, `ga_ayurdaya`, `ga_vastu`, `ga_prashna`). Built the
+  dedicated-target-table + declared-`bg_*` check per asset (matching L3's method), grepped each
+  writer directly. **Found a genuine new finding**: `ga_panchanga_writer.py` issues **zero** SQL
+  `SELECT`/`execute` calls anywhere in its 64KB file -- confirmed via whole-file grep, not
+  assumed -- it derives every panchanga element from `resolve_birth_params` (ephemeris
+  recomputation), the exact same "recomputes independently instead of reading" pattern as
+  `ga_vargas`' own F-A7. Its SECOND declared dependency, `bg_panchanga`, doesn't even exist as a
+  table (`\dt bg_panchanga*` returns nothing live) -- a dead reference, not merely unread. Both
+  declared edges are false. Caught and correctly resolved one near-miss before reporting it as a
+  defect: `ga_prashna`'s read of `bg_prashna_significators` looked like an undeclared 3rd edge,
+  but it's actually one of `bg_prashna_rules`' own 5 owned tables (confirmed via
+  `asset_registry` -- `bg_prashna_rules.target_table` is itself blank despite owning this whole
+  table family, a registry-metadata quirk, not a DAG defect) -- verified before reporting a false
+  positive rather than after. The other 6 assets (`ga_strength`, `ga_vichara`,
+  `ga_transit_anchors`, `ga_ayurdaya`, `ga_vastu`, plus `ga_positions` trivially) all confirmed
+  genuinely CLEAN. **All 19 L1 assets now have at least one audit pass.** Opened PR #2185,
+  armed auto-merge, confirmed genuine CI dispatch; also made the same minimal, surgical edit to
+  just L1's own row in `DAG_CORRECTIONS_REGISTER_v1_0.md`'s index table. CYCLE 140 L1: PR hygiene
+  clean, closed the exact gap round 1's own audit named as its remaining work, found one genuine
+  new defect (`ga_panchanga`, both declared edges false) and confirmed 7 more assets clean --
+  next: keep watching #2180; if it stays quiet for several more cycles, nudge it; otherwise the
+  remaining charter-named prep item (full 139-row per-finding disposition table) or a fuller
+  L3-grade exhaustive re-verification of the 8 now-CLEAN assets are the next legitimate options.
