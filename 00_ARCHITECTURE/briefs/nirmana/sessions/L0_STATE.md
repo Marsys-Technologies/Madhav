@@ -3791,3 +3791,7 @@ itself. L0 is now IDLE-OK until that lands.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work (bg_cohort still
   genuinely Conductor-owned, C12 carve-out not yet wired in). 39/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change (checked #1713 for Conductor activity on the C12
+  carve-out -- none since my milestone post). No open L0 PRs, no eligible work. 39/40 frozen
+  unchanged.
