@@ -457,6 +457,62 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T01:56Z (C8 v2.3 cycle 609) — **`#2173` MERGED — the nineteenth state-recovery PR
+  closed out.** Nineteenth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, now 609). 8 local-only commits
+  (cycles 601-608, 48 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-20`. Re-ran `egate.sql -v layer=L5`: `mi_kula` correctly
+  no longer appears (frozen, dropped from the not-yet-frozen query); all 11 remaining L5 assets
+  still show `w2_verdict=f`, still blocked on unfrozen ancestors — no new eligible work opened
+  up by `mi_kula`'s freeze.
+- 2026-09-07T01:50Z (C8 v2.3 cycle 608) — **MILESTONE: `mi_kula` reached `asset_frozen`.** The
+  third L5 asset frozen this session and by far the hardest — required 4 distinct fixes across
+  many cycles (C-F-01 writer defect → `depends_on` order-sensitivity orchestrator bug →
+  authored+applied migration 822 for the missing digest spec → a full correctly-ordered
+  redispatch to satisfy `build_run_authorized`'s planned-state window). Independently confirmed
+  the complete 8-event lifecycle live (`asset_analysis_accepted` ×2 generations →
+  `optimization_verdict_accepted` ×2 → `implementation_accepted` → `accepted_rebuild_observed` →
+  `integrity_verified` at 21:44:35Z → `asset_frozen` at 21:46:24Z) and confirmed the fresh-context
+  verifier's one small necessary code edit (temporarily exporting `stableJson` from
+  `definitions.ts` to compute the lifecycle digest via the real function) was cleanly reverted —
+  `git diff`/`git status` on the repo confirm zero lingering changes. Verifier's own account: the
+  `integrity_check_sql` result was independently reproduced identically by both its own manual
+  run and the server's live detector (non-vacuous, real 15-row check); every digest computed via
+  real exported functions, never hand-reimplemented; two real blockers hit and honestly resolved
+  (wrong DB user in an early connection attempt; the `stableJson` export gap) rather than worked
+  around. Milestone posted to #1713 with the full chain. PR hygiene: #2173/#2174/#2171 unchanged,
+  no failures.
+- 2026-09-07T01:44Z (C8 v2.3 cycle 607) — **IDLE-OK, verified.** #2173 unchanged, still
+  genuinely queued. Final W5 verifier still running (~9 min) — a transient diagnostic showed its
+  own in-progress scratch file hitting a real `stableJson` not-exported issue; left untouched
+  since it's the verifier's own active work, not mine to intervene in — it will either fix its
+  approach or report the blocker honestly.
+- 2026-09-07T01:38Z (C8 v2.3 cycle 606) — **IDLE-OK, verified.** #2173 unchanged, still
+  genuinely queued. Final W5 verifier still running (~7 min) — holding. (Note: a stale IDE
+  diagnostic flagged a missing scratch test file this cycle — the file was already deleted per
+  the prior redispatch subagent's own cleanup report; confirmed as IDE lag, not a real issue.)
+- 2026-09-07T01:32Z (C8 v2.3 cycle 605) — **IDLE-OK, verified.** #2173 unchanged, still
+  genuinely queued. Final W5 verifier still running (~5 min) — holding.
+- 2026-09-07T01:26Z (C8 v2.3 cycle 604) — **IDLE-OK, verified.** #2173 now genuinely queued.
+  Final W5 verifier still running (~2 min) — holding.
+- 2026-09-07T01:20Z (C8 v2.3 cycle 603) — **Milestone: `mi_kula`'s full evidence chain complete
+  through `accepted_rebuild_observed`.** Redispatch subagent (`a467e77872c8adb5e`) reported
+  success on every step; independently re-verified live before trusting it: `build_run_
+  authorized` for the new run (`a6111e46-...`) recorded 21:29:58Z, run's own `started_at` is
+  21:30:29Z — genuinely AFTER authorization, correct ordering confirmed, not just claimed.
+  `accepted_rebuild_observed` recorded 21:34:58Z. `asset_throughput.mi_kula` shows `state=lit,
+  rows_written=15, last_error=NULL` — the second successful build of this asset, idempotent
+  (same 15 rows as the first). Dispatched a fresh-context W5 verifier (`a479bf4aefa537644`,
+  implementer≠certifier — completely uninvolved in any of the prior dispatch/evidence work) for
+  `integrity_verified`→`asset_frozen`. #2173 CLEAN, will queue shortly.
+- 2026-09-07T01:14Z (C8 v2.3 cycle 602) — **IDLE-OK, verified.** #2173 down to its last check,
+  no failures. Redispatch subagent still running (~8 min — this task involves a real second
+  build dispatch + job execution, genuinely takes longer than pure evidence submission) —
+  holding.
+- 2026-09-07T01:08Z (C8 v2.3 cycle 601) — **IDLE-OK, verified.** `#2167` (migration 822)
+  MERGED — no recovery needed, that PR's own worktree/branch had no local-only follow-up
+  commits (it was a one-shot code PR, not the state file). #2173 building cleanly, no failures.
+  `mi_kula` redispatch subagent still running (~4 min) — holding.
 - 2026-09-07T01:02Z (C8 v2.3 cycle 600) — **Cycle 600. `#2168` MERGED — the eighteenth
   state-recovery PR closed out.** Eighteenth recurrence of the exact same pattern (cycles 442,
   453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, now 600). 8
