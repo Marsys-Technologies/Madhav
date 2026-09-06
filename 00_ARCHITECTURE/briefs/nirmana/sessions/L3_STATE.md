@@ -80,6 +80,40 @@ vocabulary (today a dissent and an absent engine are both `0.0`), testimony on M
 incommensurable scales is theatre. Serving attachment named precisely: `explain.ts:571`, beside
 `weakest_link`, with `school_voices[]` becoming `engine_testimony[]`.
 
+**(2026-09-06 correction — both paragraphs below are STALE, superseded here rather than
+re-stated silently; kept in the collapsed block for history, per C9 "never let state lag
+more than a few cycles"):** every item either paragraph names as open is now CLOSED, each
+independently re-verified against later heartbeat entries in this same file rather than
+assumed: **M1** (both zero-row fact reads — landed inside PR #1751, confirmed via
+`test_m1b_zero_row_fact_reads.py` 3/3), **M6** (`count_sql` correction — shipped in PR
+#1792/migration 670), **M12** (54 orphan rows — PR #1850/migration 672), **N3** (moorti
+data-wiring half — PR `codex/nirmana-l3-n3-moorti-wire-data`; the OTHER half, statistical
+admission, remains genuinely deferred — see moorti-WIRE below), **N4/N4a/N4b** (all six
+`ka_sangam` currents/veto terms), **N5** (both halves — panchanga-quality + `depends_on`),
+**N6** (all 8 Kāla `__ssv_*` rollback dispositions — PR #1860), **N7** (`ka_taranga` SPLIT
+decided with falsifiers via the decision-log RECORD mechanism — no code change was ever
+its requirement), **N9** (`ka_graha_sancara`'s last `catalog_status` flip — PR #1858),
+**N12** (the below-range `0.5` invented default — post-resume loop 2). **F-SANGAM-5**
+(the `c11_vedha_factor` NECESSARY-side veto, the one item multiple later cycles'
+"nothing else stands open from the NOW table" refrain still carried as open) closed in a
+dedicated cycle. The data-wiring half of **moorti WIRE** is also closed (same PR as N3);
+its admission half (statistical ablation evidence via `w44_weight_fitting.py`) remains
+genuinely, deliberately deferred — not this session's authority per the #1960 Conductor
+ruling (flagged for native, not authorized to run w44). **N8, N10, N11** could not be
+located as distinct, individually-defined items anywhere in this file or in
+`L3_W1_ANALYSIS_BATCH_E.md` (which only names N1 explicitly, in Part 1 §1.5) — honestly
+flagged as unresolved-to-locate rather than asserted closed on no evidence; every later
+cycle's own "NOW table" status checks (independently, repeatedly) named only F-SANGAM-5
+and moorti-WIRE as the table's open items, which is the actual evidence this correction
+rests on, not an assumption that N8/N10/N11 never existed. **Genuinely open today:** N1's
+own remaining scope — N2 (score commensurability, a design problem, not yet started) and
+extending the `engine_testimony`/`concordance` pattern to `kala_now_get` (checked this
+cycle: `now.ts` has ZERO existing KP/A5/agnivasa voice infrastructure to build on, unlike
+`explain.ts` before N1's third/fourth steps — a materially bigger, not-yet-designed unit
+than the `explain.ts` extension was; not attempted blind this cycle).
+
+<details><summary>Original (2026-09-05 and earlier) "Also open" / "Not started" paragraphs — superseded, kept for history</summary>
+
 Also open: M12 (54 orphan `era_slice_key` rows), N3–N7, N10–N12.
 
 **Not started:** M6 (`ka_gochara` count_sql — rides migration 670), M12 (54 orphan `era_slice_key`
@@ -87,6 +121,8 @@ rows), M1's two zero-row fact reads found by the audit (`ka_vighnakara._fetch_na
 `ka_kshetra` pinning `fact_category='lagna'` where the real category is `lagna_position`),
 migration 670 (19 contracts + volume formulas + floors + 10 DRAFT→CURRENT), N1 (the Temporal
 Concordance Contract), N2–N12.
+
+</details>
 
 ### New findings raised during W3 (added to the ledger, not silently absorbed)
 
