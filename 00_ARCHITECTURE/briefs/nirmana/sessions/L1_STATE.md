@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 141; still no reply on #2180/#2113 (2 quiet cycles, borderline). Extended the DAG audit further (PR #2185, round 3): fully re-verified ga_yoga's own 2 DECLARED edges in both directions rather than just its already-known hidden ones. Found ga_dashas is a FALSE edge (0 matches anywhere) and ga_vargas is a NEW hidden edge (chart_divisionals, reached via a helper function imported from ga_structural_writer.py -- an indirect dependency). ga_yoga now confirmed as the single worst-audited asset: 1 of 2 declared edges false, 4 real inputs undeclared
+last_updated: 2026-09-07 — C8 v2.3 cycle 142; still no reply on #2180/#2113 (3 quiet cycles). Extended the DAG audit round 4 (PR #2185): both-directions re-verified 4 more assets already carrying a hidden-edge finding (ga_dashas, ga_sensitive_degree, ga_nakshatra, ga_condition) -- all confirmed clean on every declared edge, an honest negative result this time. 15/19 L1 assets now fully re-verified; 4 remain (ga_structural's 7 edges, ga_sade_sati's 5, ga_medical's 2, ga_tajaka's 1)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8134,3 +8134,25 @@ record — they are the only entries in this table with a real wall-clock behind
   genuine defects on an asset already covered by 3 prior findings -- next: keep watching #2180/
   #2113; the same both-directions re-verification is now worth doing for the other 10 assets
   that already have at least one finding, if #2180 stays quiet.
+- 2026-09-06T2xZ -- CYCLE 142 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180/#2113
+  again: same comment counts, same timestamps as last cycle -- 3 quiet cycles on #2180 now,
+  still choosing not to nudge (the finding itself is substantive and complete; a bare "any
+  update?" ping adds noise, not information, while there's still legitimate bounded work left
+  to do). Continued cycle 141's own plan: extended the both-directions declared-edge
+  re-verification to 4 more assets already carrying a hidden-edge finding. Checked `ga_dashas`
+  (`depends_on={ga_positions}`, F-A13), `ga_sensitive_degree` (`depends_on={ga_positions}`,
+  F-B15), `ga_nakshatra` (`depends_on={bg_nakshatra,ga_positions,bg_kp_sublord_division}`,
+  F-B23 -- 3 declared edges, checked against the correct 3-file writer set, not just the single
+  file F-B23's own evidence line cited), and `ga_condition`
+  (`depends_on={ga_positions,ga_vargas,ga_dashas}`, F-C23). **All 4 confirmed clean on every
+  declared edge** -- a genuine, honest negative result this round (unlike round 3's `ga_yoga`,
+  these 4 assets' existing findings really were the whole story for their declared side).
+  Updated `L1_DEPENDS_ON_AUDIT_v1_0.md` (new "Round 4" block, version 0.3->0.4) and
+  `DAG_CORRECTIONS_REGISTER_v1_0.md`'s L1 row (now stating 15/19 assets have declared edges
+  fully re-verified, 4 remain) -- pushed onto the same open PR #2185 (3rd commit now), confirmed
+  fresh CI dispatch and auto-merge still armed. CYCLE 142 L1: PR hygiene clean, closed 4 more
+  assets on the both-directions re-verification checklist with an honest clean result -- next:
+  4 assets remain for this check (`ga_structural`'s 7 edges is the largest single remaining
+  gap, `ga_sade_sati`'s 5, `ga_medical`'s 2, `ga_tajaka`'s 1) -- worth finishing if #2180 stays
+  quiet; otherwise a nudge becomes reasonable after one or two more silent cycles.
