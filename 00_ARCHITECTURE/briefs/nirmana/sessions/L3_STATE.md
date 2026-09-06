@@ -493,6 +493,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~131:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
+  run, now ~9.5min, still within the confirmed ~11min normal range for
+  this exact step (per last cycle's precedent evidence). No new merges,
+  no new bounded work. — blocked on: `#2181` finishing; next action: same.
 - `2026-09-06T~130:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
   run, now ~7.1min, still within known range. No new merges, no new bounded
   work. — blocked on: `#2181` finishing; next action: same.
