@@ -5770,3 +5770,19 @@ both re-armed for auto-merge via the cycle-285 dequeue-then-push recipe) → nex
 continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~14:55Z` — L4 — **CYCLE 296 (v2.3) — genuinely IDLE; `#1831`/`#1808` both
+still `null`-queue but legitimately pending their own post-rebase CI runs, nothing failed.**
+
+**PR hygiene:** remaining 6 own PRs unchanged/genuinely queued. `#1831` and `#1808` each
+re-swept via `gh pr checks`: only `pending` checks (`Governance Gates`, `Build Check`, `Unit
+Tests`), none failed — legitimate in-progress CI, no action needed this cycle.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 286th consecutive cycle DB access down.
+
+CYCLE 296 L4: IDLE-OK (verified: PR hygiene clean — `#1831`/`#1808` legitimately pending
+fresh CI with nothing failed, remaining 6 unchanged/queued; E-gate uncheckable, DB access
+down 286 cycles; nothing new) → next: confirm `#1831`/`#1808` go green and re-enter the
+queue; watch all 8 positions continue advancing; retry E-gate/dispatch dry-run once DB
+access returns; F1 remains deferred.
+
