@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T21:03:50Z` — cycle 621: **IDLE-OK.** Adjudication count down to 18 (another lane's
+  own closure, not mine to act on). Fleet DIRTY: empty. Nothing rose to a bounded unit.
 - `2026-09-06T21:01:31Z` — cycle 620: **ONE bounded unit: #2159 CLOSED — confirmed live via SQL,
   not assumed from PR merge alone.** Noted two unusually long gaps since the prior cycle (~52 min,
   then ~32 min) — re-verified fleet state fresh each time rather than trusting stale context. PR
