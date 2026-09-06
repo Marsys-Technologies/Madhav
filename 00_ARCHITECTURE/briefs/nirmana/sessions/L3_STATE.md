@@ -493,6 +493,108 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~135:0xZ — L3-W3 — PR hygiene: `#2184` still genuinely
+  `isInMergeQueue: true` (position 1), own `merge_group` build (run
+  `34065366576`) confirmed via full `gh run list` scan (not a truncated
+  sweep) — 15/16 checks green, only `Governance Gates` `in_progress` at
+  ~6.3min, within the confirmed normal range. Nothing to fix. Re-ran
+  `egate.sql`: unchanged, no new E-gate opening. Continued F-L3-4 with a
+  third asset, `ka_gochara` (the GOCHARA-2.0/W2G materialization,
+  CLEAN in the depends_on audit): derived from `services/w2g/
+  materialize.py` directly — candidates from the Tier-A/point-class
+  subset of the global contact stream (`bg_gochara_arcs`), scored via
+  `compute_lambda_e` against `ka_gochara_resonance` targets + dasha
+  periods over a progressive +/-3yr horizon, sub-threshold candidates
+  produce no row (honest inactivity). Live per-event-class breakdown
+  (illness_acute 15 ... childbirth 3) sums to 83, matching
+  `target_floor`/`count_sql` (chart_id + generation='2.0' filtered)
+  exactly. Migration 854 + paired test authored, no self-transaction
+  wrapper from the start; all 6 tests pass; confirmed live the row is
+  genuinely still NULL after the "rolled back" tests ran. Migration-
+  number guard PASS (854, confirmed free). Committed locally
+  (`6eafcd23f`), held from push — `#2184` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2184` merges or
+  clearly finishes, then continue F-L3-4 (17 of 23 L3 assets still NULL)
+  if still no E-gate work.
+- `2026-09-07T~134:0xZ — L3-W3 — PR hygiene: `#2184` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — its checks cleared since
+  last cycle. Nothing to fix. Continued F-L3-4 with a second asset,
+  `ka_kota_chakra` (also fully CLEAN in the depends_on audit): derived
+  from `services/ka_kota_chakra/writer.py`/`logic.py` directly — simpler
+  than `ka_vedha_gochara`, no rule-matching gate at all, every graha
+  contributes one row per nakshatra-run over the same 460-day horizon.
+  Live per-graha breakdown (Moon 442, Mercury 41, Venus 35, Sun 35, Mars
+  18, Jupiter 7, Saturn 4, Ketu 3, Rahu 3) sums to 588, matching
+  `target_floor`/`count_sql` exactly. Migration 853 + paired test authored
+  — applied the immediately-preceding cycle's self-caught lesson up
+  front this time (no `BEGIN;`/`COMMIT;` wrapper from the start); all 6
+  tests pass, and confirmed live that the row is genuinely still NULL
+  after the "rolled back" integration tests ran (no repeat of the
+  migration-852 near-miss). Migration-number guard PASS (853, confirmed
+  free). Committed locally (`cdb75837c`), held from push — `#2184` still
+  mid-queue-attempt on the same branch. — blocked on: nothing new; next
+  action: push once `#2184` merges or clearly finishes its attempt, then
+  continue F-L3-4 on another asset if still no E-gate work.
+- `2026-09-07T~133:0xZ — L3-W3 — PR hygiene: `#2184` healthy, all checks
+  green except `Governance Gates` (still `pending`, within the confirmed
+  ~11min normal range for its pytest step), not yet queued (checks still
+  finishing). Re-ran `egate.sql`: unchanged — `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`
+  (correctly HELD per D-CND-26 true-closure ruling — checked its
+  `depends_on` fix is NOT mine to make: `DAG_CORRECTIONS_REGISTER_v1_0.md`
+  §2 already shows L3's row ✅ COMPLETE, and `depends_on` is campaign-wide
+  IMMUTABLE inside a frozen definition per D-CND-09/#1744 — confirmed by
+  reading migration 690's own header before nearly repeating that mistake).
+  With no E-gate-eligible W4 work available, did tier-5 prep instead:
+  **F-L3-4** (23 L3 assets with NULL `expected_volume_formula`) — picked
+  ONE asset, `ka_vedha_gochara` (fully CLEAN in the depends_on audit, no
+  ancestor entanglement), and derived its formula from
+  `services/ka_vedha_gochara/writer.py` directly: not a flat count (unlike
+  `ga_condition`, migration 851) — one row per (graha, transit-run) triple
+  gated by live reference-table sizes (41 vedha-checkable `bg_transit_rules`
+  rows, 8 `bg_phaladeepika_latta` rows) over a 460-day build-time-anchored
+  horizon, matching L5's `mi_adhilepa`/`mi_bhara` non-flat-count convention
+  (migration 690). Live-measured 176 (132 house_vedha + 24 sarvatobhadra +
+  20 latta) matches `target_floor`/`count_sql` exactly. Migration 852 +
+  paired DB-free/live-integration test authored, all 6 tests pass.
+  **Self-caught a real process defect while authoring it:** the first draft
+  wrapped the UPDATE in its own `BEGIN;`/`COMMIT;` (mirroring migration
+  851's style) while the paired test used the execute-then-`conn.rollback()`
+  pattern (mirroring migration 850's, which requires NO self-transaction
+  wrapper) — the migration's own `COMMIT;` closed the transaction before
+  the test's outer rollback ran, so the first "passing" test run silently
+  persisted real values into `asset_registry` against the local Cloud SQL
+  proxy, outside any deploy. Caught immediately by re-querying the live row
+  after the test claimed success (found it non-NULL when it should have
+  rolled back); reverted by hand
+  (`UPDATE asset_registry SET expected_volume_formula = NULL, ... WHERE
+  asset_id = 'ka_vedha_gochara'`, confirmed NULL again); fixed at root by
+  removing the `BEGIN;`/`COMMIT;` wrapper (matching 670/850's convention
+  for this range, not 851's) and re-ran all 6 tests — genuinely rolled
+  back this time, re-verified live. Migration-number guard PASS (852,
+  confirmed free). Committed locally
+  (`516728400`), held from push — `#2184`'s own checks still finishing on
+  the same branch; will push once it clears. — blocked on: nothing new;
+  next action: push once `#2184` finishes its checks/queues, then continue
+  F-L3-4 on another CLEAN asset next cycle if still no E-gate work.
+- `2026-09-07T~132:0xZ — L3-W4 — PR HYGIENE: `#2181` had merged
+  (squash `c1e68c385`, 22:36:48Z) since last cycle — it was no longer in
+  the open-PR list. Rebased the 9 not-yet-merged local heartbeat commits
+  (cycles ~123-131, previously accumulating on the now-closed branch) onto
+  fresh `origin/main`. Hit the standard prepend-conflict pattern 5x
+  (HEAD's already-merged content flowing directly into an empty "theirs"
+  side — each of those 5 commits' content had already landed via #2181's
+  squash); resolved each via the established marker-strip script after
+  visually confirming the empty-theirs pattern held every time, never
+  discarding content. 1 more commit auto-dropped by git itself as
+  "patch contents already upstream". Verified zero conflict markers, zero
+  duplicate timestamps, and the `ka_dasha_kala` held-row intact afterward.
+  Renamed branch to `codex/nirmana-l3-heartbeat-idle-2`, pushed, opened
+  **PR #2184**, armed auto-merge. Not yet in queue — its own pre-queue
+  checks are running now (normal). No new bounded work found this cycle
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: `#2184`
+  clearing its checks and queueing; next action: verify it queues cleanly
+  next cycle.
 - `2026-09-06T~131:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
   run, now ~9.5min, still within the confirmed ~11min normal range for
   this exact step (per last cycle's precedent evidence). No new merges,
