@@ -6887,3 +6887,24 @@ CYCLE 346 L4: IDLE-OK (verified: PR hygiene fully clean — all 3 remaining own 
 queued, zero DIRTY/RED; no new L4-relevant adjudications; E-gate uncheckable, DB access down
 336 cycles) → next: watch all 3 own PRs drain in position order; retry E-gate/dispatch
 dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~12:47Z` — L4 — **CYCLE 347 (v2.3) — `#1834` MERGED (own PR, `ph_rectification`
+F3). `#1839` found genuinely DIRTY (real conflict from `#1834` landing); rebased, resolved
+the routine pin conflict, 97/97 tests green, re-armed.**
+
+**PR hygiene:** `#1839` (`ph_phaladesa` headline-anchor) — pin-only conflict, digest already
+correct, hand-derived to `2031f2c6...c3aaa498`; isolation confirmed; 97/97 tests green; not
+occupying a queue slot, pushed directly, re-armed via disable-then-auto. `#1808` re-confirmed
+still genuinely `QUEUED`, untouched.
+
+**Priorities 1-4:** `#1834` merged (own PR) — the ninth of the layer's shipped `ph_*` W3
+fixes to land on `main` (prior: `#1870`, `#1849`, `#1842`, `#1845`, `#1831`). No new
+adjudications name L4 (count unchanged at 15). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 337th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 347 L4: `#1834` MERGED (ph_rectification F3 — 9th shipped fix to land); found and
+fixed a genuine DIRTY on `#1839` (pin re-derived, 97/97 tests green, re-armed); confirmed
+`#1808` still genuinely queued and untouched → next: watch `#1808`/`#1839` (the last two
+remaining own PRs) drain in position order; retry E-gate/dispatch dry-run once DB access
+returns; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
