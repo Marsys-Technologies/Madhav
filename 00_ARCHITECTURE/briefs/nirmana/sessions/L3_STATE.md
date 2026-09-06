@@ -630,6 +630,18 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~36:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
+  (waited out another transient `UNKNOWN` batch read before trusting it).
+  `#2096` still has no ruling. **Corroborating context found on `#1713`**: an
+  L0 session's own milestone report explicitly names `ka_graha_sancara`'s
+  smoke-probe failure (the same finding `#2096` is about) as the reason it had
+  to work around traffic-promotion gating manually (resubmitting evidence
+  against the actually-live SHA confirmed via direct `gcloud` query, not the
+  GH Actions job conclusion) — independent confirmation this is a real,
+  campaign-wide-impact blocker, not an L3-only concern, strengthening rather
+  than changing anything about the already-filed adjudication. Nothing new to
+  add there; not re-posting. — blocked on: `#2096`'s ruling; next action:
+  keep L3-only hygiene sweeps going, check `#2096` each cycle.
 - `2026-09-06T~35:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs
   healthy (waited out a transient `UNKNOWN` batch read before trusting it —
   settled to clean `BLOCKED`/`MERGEABLE`). Merge queue's 4 entries all
