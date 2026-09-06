@@ -267,3 +267,30 @@ a RED-fix (see heartbeat).
   migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
   `from_moon_view` is correctly wired end-to-end in production. Then revert to IDLE-OK pending
   Conductor's C12 carve-out for `bg_cohort`.
+- 2026-09-07 — **PR #2153's DB Integration Tests still RED after the prior cycle's fix; root-caused
+  for real and fixed.** `is:queued` showed #2153 not queued, `mergeStateStatus: BLOCKED`. Pulled the
+  actual failed job log (`gh api .../jobs/<id>/logs`) rather than trusting the check name alone:
+  `migration 628 refuses unknown bg_vidhi_primitives registry contract`, thrown on the test's SECOND
+  replay of migration 628 (line ~316) — the prior cycle's fix applied migration706 right after the
+  FIRST migration628 application, which correctly satisfied the CONTRACTS loop, but migration 628's
+  own guard for `bg_vidhi_primitives` hardcodes the OLD (pre-#2122) content hash, so once 706 had
+  already moved that column to the corrected hash, replaying 628 a second time (testing 628's own
+  idempotency + a digest-contract-mutation-rejection invariant) legitimately tripped 628's own guard.
+  **Fix: reordered the test**, not the migration (628 is immutable, never edited) — moved the
+  replay/digest-mutation block to run BEFORE migration706 (confirmed it only touches
+  `asset_output_digest_specs`/`catalog_status`, unrelated to the vidhi content fix; confirmed none of
+  the three stored `integrity_check_sql` values reference `asset_output_digest_specs`), so migration706
+  now applies exactly once, immediately before the CONTRACTS loop — mirroring real production
+  sequencing (628→705→706, each exactly once) instead of replaying 628 after 706. **Verified for real
+  this time**, not just reasoned through: spun up a throwaway Postgres 16 via Docker locally, ran the
+  actual DB-integration suite against it end-to-end — 6/6 pass, including the previously-failing test.
+  Also both offline governance checks re-confirmed green. Committed `10d67f74c`, pushed. **Also caught
+  and fixed a self-inflicted branch-mismatch this cycle**: made an initial editing pass on the
+  `feat/nirmana-l0-heartbeat-2` branch by mistake (this file's continuity branch does not carry the
+  PR's commits) before noticing the `migration706` TypeScript diagnostic couldn't resolve — reverted
+  that accidental edit (`git checkout --`) before it could be committed, switched to the correct PR
+  branch, redid the fix there. NEXT: next cycle's PR-hygiene step re-checks #2153 via `is:queued`
+  after this push's CI completes; once genuinely CLEAN, queue it. Once merged+deployed, verify
+  migrations 705 AND 706 both applied live (direct DB check) and confirm `from_moon_view` is correctly
+  wired end-to-end in production. Then revert to IDLE-OK pending Conductor's C12 carve-out for
+  `bg_cohort`.
