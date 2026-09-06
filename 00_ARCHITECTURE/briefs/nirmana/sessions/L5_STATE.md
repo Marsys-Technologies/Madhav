@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:34Z (C8 v2.3 cycle 215) — **IDLE-OK, deploy advanced but still one short.**
+  Live revision advanced to `21f6dda67` (#1920) — but `git merge-base --is-ancestor`
+  confirms this still predates `1ef6267e9` (#1861); one more deploy cycle needed. Both own
+  PRs still `isInMergeQueue: true`, clean. #1844=53 (was 55), #1901=79 (was 81). #1869
+  unchanged at 3 comments; #1856 still OPEN. 19 cycles now batched locally unpushed.
 - 2026-09-06T01:31Z (C8 v2.3 cycle 214) — **IDLE-OK, still waiting on deploy.** Live
   revision still `938351c657c4…` (#1854), ~9 min since that deploy (01:22:15Z) — within
   the observed 9-16 min deploy cadence, not stalled. Both own PRs still `isInMergeQueue:
