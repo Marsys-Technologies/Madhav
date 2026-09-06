@@ -267,6 +267,33 @@ a RED-fix (see heartbeat).
   migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
   `from_moon_view` is correctly wired end-to-end in production. Then revert to IDLE-OK pending
   Conductor's C12 carve-out for `bg_cohort`.
+- 2026-09-07 — **PR #2153's DB Integration Tests still RED after the prior cycle's fix; root-caused
+  for real and fixed.** `is:queued` showed #2153 not queued, `mergeStateStatus: BLOCKED`. Pulled the
+  actual failed job log (`gh api .../jobs/<id>/logs`) rather than trusting the check name alone:
+  `migration 628 refuses unknown bg_vidhi_primitives registry contract`, thrown on the test's SECOND
+  replay of migration 628 (line ~316) — the prior cycle's fix applied migration706 right after the
+  FIRST migration628 application, which correctly satisfied the CONTRACTS loop, but migration 628's
+  own guard for `bg_vidhi_primitives` hardcodes the OLD (pre-#2122) content hash, so once 706 had
+  already moved that column to the corrected hash, replaying 628 a second time (testing 628's own
+  idempotency + a digest-contract-mutation-rejection invariant) legitimately tripped 628's own guard.
+  **Fix: reordered the test**, not the migration (628 is immutable, never edited) — moved the
+  replay/digest-mutation block to run BEFORE migration706 (confirmed it only touches
+  `asset_output_digest_specs`/`catalog_status`, unrelated to the vidhi content fix; confirmed none of
+  the three stored `integrity_check_sql` values reference `asset_output_digest_specs`), so migration706
+  now applies exactly once, immediately before the CONTRACTS loop — mirroring real production
+  sequencing (628→705→706, each exactly once) instead of replaying 628 after 706. **Verified for real
+  this time**, not just reasoned through: spun up a throwaway Postgres 16 via Docker locally, ran the
+  actual DB-integration suite against it end-to-end — 6/6 pass, including the previously-failing test.
+  Also both offline governance checks re-confirmed green. Committed `10d67f74c`, pushed. **Also caught
+  and fixed a self-inflicted branch-mismatch this cycle**: made an initial editing pass on the
+  `feat/nirmana-l0-heartbeat-2` branch by mistake (this file's continuity branch does not carry the
+  PR's commits) before noticing the `migration706` TypeScript diagnostic couldn't resolve — reverted
+  that accidental edit (`git checkout --`) before it could be committed, switched to the correct PR
+  branch, redid the fix there. NEXT: next cycle's PR-hygiene step re-checks #2153 via `is:queued`
+  after this push's CI completes; once genuinely CLEAN, queue it. Once merged+deployed, verify
+  migrations 705 AND 706 both applied live (direct DB check) and confirm `from_moon_view` is correctly
+  wired end-to-end in production. Then revert to IDLE-OK pending Conductor's C12 carve-out for
+  `bg_cohort`.
 - 2026-09-07 — **PR #2153 turns up a THIRD, previously-unseen RED gate; root-caused and fixed.**
   DB Integration Tests now genuinely passed (confirms the prior cycle's migration706 reorder fix
   works). But `is:queued`/status check showed a new failure: **Unit Tests** —
@@ -318,30 +345,22 @@ a RED-fix (see heartbeat).
   39 bg/L0 frozen, #2122 already logged as ruled/assigned-to-L0 (matches my PR #2153 work), no mention
   of the bg_cohort carve-out landing. No new adjudication issues found for bg_cohort/C12 via
   `gh search issues`. Nothing eligible: `bg_cohort` still the sole blocked asset, externally gated.
-- 2026-09-07 — **PR #2153's DB Integration Tests still RED after the prior cycle's fix; root-caused
-  for real and fixed.** `is:queued` showed #2153 not queued, `mergeStateStatus: BLOCKED`. Pulled the
-  actual failed job log (`gh api .../jobs/<id>/logs`) rather than trusting the check name alone:
-  `migration 628 refuses unknown bg_vidhi_primitives registry contract`, thrown on the test's SECOND
-  replay of migration 628 (line ~316) — the prior cycle's fix applied migration706 right after the
-  FIRST migration628 application, which correctly satisfied the CONTRACTS loop, but migration 628's
-  own guard for `bg_vidhi_primitives` hardcodes the OLD (pre-#2122) content hash, so once 706 had
-  already moved that column to the corrected hash, replaying 628 a second time (testing 628's own
-  idempotency + a digest-contract-mutation-rejection invariant) legitimately tripped 628's own guard.
-  **Fix: reordered the test**, not the migration (628 is immutable, never edited) — moved the
-  replay/digest-mutation block to run BEFORE migration706 (confirmed it only touches
-  `asset_output_digest_specs`/`catalog_status`, unrelated to the vidhi content fix; confirmed none of
-  the three stored `integrity_check_sql` values reference `asset_output_digest_specs`), so migration706
-  now applies exactly once, immediately before the CONTRACTS loop — mirroring real production
-  sequencing (628→705→706, each exactly once) instead of replaying 628 after 706. **Verified for real
-  this time**, not just reasoned through: spun up a throwaway Postgres 16 via Docker locally, ran the
-  actual DB-integration suite against it end-to-end — 6/6 pass, including the previously-failing test.
-  Also both offline governance checks re-confirmed green. Committed `10d67f74c`, pushed. **Also caught
-  and fixed a self-inflicted branch-mismatch this cycle**: made an initial editing pass on the
-  `feat/nirmana-l0-heartbeat-2` branch by mistake (this file's continuity branch does not carry the
-  PR's commits) before noticing the `migration706` TypeScript diagnostic couldn't resolve — reverted
-  that accidental edit (`git checkout --`) before it could be committed, switched to the correct PR
-  branch, redid the fix there. NEXT: next cycle's PR-hygiene step re-checks #2153 via `is:queued`
-  after this push's CI completes; once genuinely CLEAN, queue it. Once merged+deployed, verify
-  migrations 705 AND 706 both applied live (direct DB check) and confirm `from_moon_view` is correctly
-  wired end-to-end in production. Then revert to IDLE-OK pending Conductor's C12 carve-out for
-  `bg_cohort`.
+- 2026-09-07 — **[Hygiene] Fixed a self-inflicted heartbeat-log ordering bug spanning several prior
+  entries.** Several consecutive `Edit` calls in earlier cycles matched a non-unique `old_string`
+  anchor (`...IDLE-OK pending Conductor's C12 carve-out for \`bg_cohort\`.\n- 2026-09-07 —
+  **IDLE-OK (verified).**`, which recurred verbatim across entries), so new content kept landing at
+  an EARLIER occurrence of that pattern instead of the file's true end. Net effect: the "DB
+  Integration Tests still RED... reorder fix" entry (commit `10d67f74c`) ended up displaced to the
+  very end of the file, chronologically AFTER the later "THIRD RED gate" entry (`ab9685e77`) and 5
+  subsequent IDLE-OK entries that actually came after it in real time. **No content was lost or
+  duplicated** — confirmed via grep before touching anything — purely an ordering defect. Fixed by
+  cutting that displaced entry and reinserting it in its correct chronological slot (right after the
+  "came back RED on 2 gates" / `0a22f321b` entry, right before the "THIRD RED gate" entry — exactly
+  where its own internal cross-references already implied it belonged). Verified: diff is a pure
+  27-line move (27 insertions, 27 deletions, net zero), single occurrence of the entry's title
+  string post-fix. Going forward: appending new heartbeat entries will anchor on the LAST occurrence
+  of any repeated phrase, or read the file's tail fresh each time, to prevent recurrence. #2153
+  status this cycle: `Governance Gates` now also confirmed PASS; only `Build Check (PR only)` still
+  running (~12.5min elapsed, `mergeStateStatus` transitioned to `UNSTABLE` — still-pending, no
+  failures). #1713's only new activity is L5's own `mi_kula` SLOT RELEASE (unrelated). Not
+  actionable yet.
