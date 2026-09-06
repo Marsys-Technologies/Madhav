@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 140; no reply yet on #2180 (only 1 quiet cycle, not yet worth a nudge). Extended L1_DEPENDS_ON_AUDIT_v1_0.md with a round-2 grep sweep of the 8 L1 assets round 1 hadn't touched (PR #2185) -- found ga_panchanga's writer issues ZERO SQL reads at all (pure ephemeris recomputation) and its declared bg_panchanga dependency doesn't even exist as a table -- both declared edges are false. Other 7 assets confirmed clean. All 19 L1 assets now have at least one audit pass
+last_updated: 2026-09-07 — C8 v2.3 cycle 141; still no reply on #2180/#2113 (2 quiet cycles, borderline). Extended the DAG audit further (PR #2185, round 3): fully re-verified ga_yoga's own 2 DECLARED edges in both directions rather than just its already-known hidden ones. Found ga_dashas is a FALSE edge (0 matches anywhere) and ga_vargas is a NEW hidden edge (chart_divisionals, reached via a helper function imported from ga_structural_writer.py -- an indirect dependency). ga_yoga now confirmed as the single worst-audited asset: 1 of 2 declared edges false, 4 real inputs undeclared
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8104,3 +8104,33 @@ record — they are the only entries in this table with a real wall-clock behind
   next: keep watching #2180; if it stays quiet for several more cycles, nudge it; otherwise the
   remaining charter-named prep item (full 139-row per-finding disposition table) or a fuller
   L3-grade exhaustive re-verification of the 8 now-CLEAN assets are the next legitimate options.
+- 2026-09-06T2xZ -- CYCLE 141 (C8 v2.3). PR hygiene: #2185 (only own open PR) `BLOCKED`, all
+  checks `pass` or still-`pending`, zero `fail` -- clean. Checked both #2180 and #2113: still
+  just my own prior comments on each, no reply -- 2 quiet cycles on #2180 now, borderline but
+  not yet the "several more cycles" threshold to justify a nudge. Chose the "fuller L3-grade
+  exhaustive re-verification" option from cycle 140's own menu, narrowed to the highest-value
+  single target: `ga_yoga`, since round 1/round 2 had only ever checked its ALREADY-KNOWN hidden
+  edges (F-D3's 2, cycle-135's 1 more) but never verified its 2 DECLARED edges' own validity in
+  either direction -- exactly the gap L3's method closes by checking every asset regardless of
+  prior findings. Grepped the whole file for `chart_dashas` and the substring "dasha"
+  case-insensitive: **zero matches, anywhere, including comments** -- `ga_dashas` (declared) is a
+  genuine FALSE edge. Grepped for FROM/JOIN patterns more broadly and found `chart_divisionals`
+  read twice, in a function (`_load_d9_positions`) whose OWN docstring says "Load D9 (navamsha)
+  positions from `chart_divisionals`" -- traced the call: a LAZY IMPORT of
+  `ga_structural_writer._load_varga_positions`, meaning `ga_yoga` reaches `ga_vargas`' own table
+  through a helper function defined in a DIFFERENT writer's module, not a direct query in its own
+  file -- an easy-to-miss indirect-dependency pattern, confirmed genuinely live (not a comment)
+  by reading the actual call site. Verified the OTHER declared edge (`ga_structural`) IS
+  genuinely needed, read via shared `chart_facts` categories rather than a dedicated table
+  (which is why it didn't show up as an obviously-separate hidden-table match). **`ga_yoga` is
+  now the single worst-audited asset found this campaign**: of its 2 declared edges, 1 is false
+  (`ga_dashas`) and 1 correct (`ga_structural`); of its real inputs, 4 are undeclared
+  (`ga_strength`, `ga_sensitive`, `ga_positions`, `ga_vargas`). Added findings #14/#15 to
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` and the matching update to `DAG_CORRECTIONS_REGISTER_v1_0.md`'s
+  L1 row, pushed both onto the SAME still-open PR #2185 rather than opening a new one (the
+  natural continuation of the same round-2 audit work) -- confirmed genuine fresh CI dispatch
+  for the new commit and that auto-merge stayed armed. CYCLE 141 L1: PR hygiene clean, proved
+  round 1's own "already has a finding" is not the same as "fully audited" by finding 2 more
+  genuine defects on an asset already covered by 3 prior findings -- next: keep watching #2180/
+  #2113; the same both-directions re-verification is now worth doing for the other 10 assets
+  that already have at least one finding, if #2180 stays quiet.
