@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: #2066 MERGED (9f415112..., 10:06:58Z). No open L0 PRs, clean hygiene. Both #2066 and #1901 confirmed NOT yet deployed (merge != deploy, verified via ancestry). Watching for both deploys -- once either lands, its priority work becomes actionable: bg_dasha_systems+bg_compendium_index evidence chains (#2066), bg_doshas+bg_gochara_arcs+bg_text_index dispatch (#1901). 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- MILESTONE: bg_doshas FROZEN, 31/40. #1901 confirmed deployed; used it to complete the first full D-L0-FF chain end-to-end (dispatch -> receipt re-attribution confirmed working -> accepted_rebuild_observed -> integrity_verified (genuine server verdict=true) -> asset_frozen). Two evidence-submission gotchas found+fixed: --reviewed-deployment-sha must match the accepted W2's own commit (not just any current deploy), and asset_frozen's observed_at must post-date integrity_verified's real server-set timestamp. Recipe now proven for bg_gochara_arcs and bg_text_index next (both confirmed data-correct+W2-current already). #2066 still not deployed -- bg_dasha_systems/bg_compendium_index evidence chains (implementation_accepted needed) still pending that. No open L0 PRs.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,26 +33,26 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 30 frozen. **30/40
-frozen** (verifier-signed 5-event chains, implementer≠verifier). **10 remaining**, all diagnosed.
-`bg_vidhi_floors` FROZEN this cycle (D-L0-NN) — first genuine freeze of this campaign resumption,
-full chain traced end-to-end: fresh W2 → dispatch → authorize → accepted_rebuild_observed →
-integrity_verified → asset_frozen, all via the scratchpad tooling built this session.
+**L0-W4 EXECUTE + Conform-stage integrity corrections.** **31/40 frozen** (verifier-signed 5-event
+chains, implementer≠verifier). **9 remaining.** `bg_doshas` FROZEN this cycle-set (D-L0-FF finally
+closed via #1901's receipt re-attribution fix) — see the milestone entry in the log below for the
+full chain + the two evidence-submission gotchas found while doing it (reviewed-deployment-sha
+must match the accepted W2's own commit; `asset_frozen`'s timestamp must post-date
+`integrity_verified`'s server-set one).
 
-## The 10 unfrozen assets
+## The 9 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | **Job-image blocker CLEARED (deployed image now `80a9cd71e...`, confirmed ancestor of #1772). Genuine dispatch succeeded (run `a9446885-...`, real build, valid receipt) but hit a NEW structural blocker (D-L0-II): `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set for its `depends_on`, so `receipt_state` is permanently `'unknown'`.** Posted to #1713 for Conductor; not L0-fixable (shared orchestrator provenance code). Only L0 asset affected (checked: no other L0 asset depends on a service-kind asset) |
-| bg_gochara_arcs | rebuild_only | **Structural bind (D-L0-FF): 2 runs now** — `bfdc6919` (genuine build, valid receipt, WRONG authorization) and `5ba8cedf` (valid authorization, `skip_no_delta`'d, stale receipt). Neither completes the evidence chain; may need Conductor input on a `force` path |
-| bg_yogas | rebuild_only | **D-L0-J refined by D-L0-KK: real dispatch (run `f89f70fa-...`) failed integrity_check_sql, but writer is fully correct.** Genuine `seed_yogas()` replay produces exactly 233/233/233/85 with all three content-hash pins matching byte-for-byte — the ONLY failing subclause is the same FULL-JOIN scope leak as bg_doshas/692 and bg_dasha_systems/700 (`entity_class='yoga'` in the ON clause, 508 non-yoga `brahma_ontology` rows leak in). Migration 701 authored + verified live (TRUE on genuine replay, FALSE on stale live data). No writer change; awaiting PR merge + deploy, then re-dispatch. CASCADE parent → snapshot+`--acknowledge-destroys` (already done this cycle) |
-| bg_dasha_systems | rebuild_only | **D-L0-K refined by D-L0-GG: writer still correct; the CHECK had two bugs.** Real genuine dispatch (run `ce86f4cf`, not skip_no_delta) failed `integrity_check_sql`. Root-caused live: (1) same FULL-JOIN scope bug as bg_doshas/692 — `ontology.entity_class='dasha_system'` in the ON clause instead of a pre-filtered subquery, so all non-dasha_system `brahma_ontology` rows leaked in; (2) migration 621's `catalog_hash` pin itself was wrong at authoring time (writer content unchanged since 5f47906bc; genuine hash is `8e35495f...`, pin says `30742da6...`). Fix migration 700 authored + verified live (rolled-back tx): guard matches 621's exact pin, corrected check evaluates **TRUE** against a genuine fresh writer run and **FALSE** (fail-closed, as expected) against current stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
-| bg_doshas | rebuild_only | **Same structural bind as bg_gochara_arcs (D-L0-FF)**: run `92830957` genuinely built (valid receipt) but missed the authorization window (D-L0-AA); any retry now would `skip_no_delta` since the receipt already matches |
-| bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only (row updated — was stale "UNROUTED"/"bg_doshas, bg_texts", `bg_texts` has since frozen) |
-| bg_compendium_index | rebuild_only | **D-L0-JJ refined by D-L0-MM: writer fully correct; both content-hash pins were stale.** Replayed `_build_desired_rows()` directly (no full `ContextSpec` needed — pure function of `classical_text_chunks`/`reference_topic_tags`): produces exactly 9571/7969/1602 matching migration 623's structural pin precisely. Both content hashes (chapter-scoped, topic-scoped) mismatched the 623 pin despite the writer file being unchanged since — corpus content evidently evolved since 623 was authored. Migration 702 authored + verified live (rolled-back tx): TRUE on genuine replay, FALSE on stale live data. No writer change; awaiting PR merge + deploy, then re-dispatch |
-| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` (both diagnosed, both need only dispatch) |
-| bg_text_index | rebuild_only | **Now caught by D-L0-FF (4th confirmed instance).** Genuine build (run `27fea532-...`) lost its evidence chain to the D-L0-JJ multi-asset authorization tooling bug (now fixed); solo retry (run `f3c762e6-...`, correctly authorized this time) `skip_no_delta`'d against the still-matching old receipt, so no fresh run/receipt pair exists. Blocked on Conductor's `#1899/#1901` (delta-skip receipt re-attribution) landing — do not retry again until then |
-| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last |
+| bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
+| bg_gochara_arcs | rebuild_only | **READY — confirmed data-correct (all 7 integrity clauses) + W2-current this session.** Same recipe as `bg_doshas` (now proven working via #1901): dispatch with `--reviewed-deployment-sha e54ae9acbcc86930418afce4b67481b35a3384af` (the exact commit its accepted W2 cites) → should `skip_no_delta` + receipt-reattribute → `accepted_rebuild_observed` (no implementation_accepted, `action=no_change`) → `integrity_verified` → `asset_frozen`. Next cycle's top priority. |
+| bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
+| bg_dasha_systems | rebuild_only | **Rebuilt + verified live this session (all 9 integrity clauses pass, run `c086b0e4-...`).** `accepted_rebuild_observed` blocked on an `implementation_accepted` record (verdict was `correct`, requiring one) — needs one small doc-only PR (touching no writer file — see the writer-digest-cascade lesson logged this session) to serve as that commit. Digests: `decision_digest 180b9337578767f109555b0a78084052bb6613e4ff4d817179b88ba62140df4f`, `output_digest bee5f89a3f97e831e2d4f2cba91acf42a270219dbefb270f2da89864ce102f39`, `output_digest_spec_sha256 b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593`, `wave_index 1`. |
+| bg_parihara_rules | rebuild_only | ROUTED (D-L0-H). E-gate `BLOCKED-ANCESTORS`: `bg_doshas` only — **`bg_doshas` is now FROZEN**, re-check E-gate next cycle, this may already be clear. |
+| bg_compendium_index | rebuild_only | **Rebuilt + verified live this session (all 6 integrity clauses pass, run `e8630a71-...`).** Same `implementation_accepted` block as `bg_dasha_systems` (verdict `correct`) — same doc-only PR can cover both in one shot. Digests: `decision_digest b2fb4c0eb54122752a1e30866212bb4be5b3fc112fb7691a96be363dc1594fda`, `output_digest 8fda033a96672e2edf9d1bb2f38628661ff64c5aaf25afb33fb4cb6529c36a87`, `output_digest_spec_sha256 f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806`, `wave_index 2`. |
+| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — `bg_dasha_systems` data is correct (pending evidence chain above); `bg_yogas` is deliberately unfixed this campaign, so this stays blocked until that changes. |
+| bg_text_index | rebuild_only | **READY — confirmed data-correct (all 7 integrity clauses) + W2-current this session.** Same recipe as `bg_doshas`: dispatch with `--reviewed-deployment-sha 4f7a9cc872714c74111ca8ae38ad4257c462cd3e` (its accepted W2's own commit) → should go straight through to `asset_frozen`. |
+| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last; still gated on `bg_yogas` regardless of the others. |
 
 ## Decisions log
 
@@ -2969,3 +2969,42 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   checked via ancestry against the current deployed sha). Watching for both deploys now; once
   either lands, its corresponding priority work (see prior milestones) becomes immediately
   actionable. 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **MILESTONE: `bg_doshas` FROZEN — 31/40. First real completion of the long-standing
+  D-L0-FF structural bind, end to end.** No open L0 PRs (clean hygiene at cycle start). `#1901`
+  confirmed DEPLOYED (verified via ancestry against deployed sha `77677d89...`); `#2066` still not
+  deployed.
+  - **Two real gotchas found and fixed while doing this — recipe corrected for
+    `bg_gochara_arcs`/`bg_text_index` next**:
+    1. **`--reviewed-deployment-sha` must equal the exact commit the ACCEPTED W2 evidence's
+       `source_ref` cites, not just any current-deploy sha.** The dispatch script's
+       `canonical_analysis_digests` filter (line ~373 of `dispatch_nirmana_campaign_wave.py`)
+       requires `row["source_ref"] == f"git:{reviewed_deployment_sha}"` exactly. Passing today's
+       freshly-deployed sha (correct for `bg_dasha_systems`/`bg_compendium_index`, whose W2 I'd
+       just refreshed against it) failed for `bg_doshas`, whose W2 dates from 2026-09-05
+       (`git:3b208dbf...`, PR #1829) — passing THAT sha fixed it immediately, no new W2 needed.
+    2. **`asset_frozen`'s submitted `observed_at` must be later than `integrity_verified`'s REAL
+       (server-overwritten) timestamp, not whatever I hardcode.** `integrity_verified`'s own
+       `observed_at` gets overwritten server-side to the actual query-execution time
+       (`collectIntegrityObservation`) — my first `asset_frozen` attempt used a timestamp I'd
+       picked before submitting `integrity_verified`, which ended up earlier than the server's
+       real one, failing `occursAfter(input, event)` inside `requireFreezeProvenance` with
+       "asset_frozen requires exactly one current validated integrity receipt" (a validation
+       failure disguised as the 409 idempotency-conflict message — read the error body, not just
+       the HTTP status). Fix: check current wall-clock time immediately before constructing
+       `asset_frozen`'s `observed_at`.
+  - **Full chain, all real**: dispatch run `1c44df29-d2b0-4ca4-810e-e7243b9a2ada` →
+    `receipt_state='proven'` (build_id correctly re-attributed by #1901's fix — output_digest
+    `fdcf2d46...` identical to the OLD orphaned run's, confirming genuine re-attribution not a
+    fresh rebuild) → `accepted_rebuild_observed` (decision_digest `a15fa103...`, no
+    `implementation_accepted` needed, `action=no_change`) → `integrity_verified` (server
+    independently ran the live query, `verdict.value=true` — genuine, not a rubber stamp) →
+    `asset_frozen` (`lifecycle_digest 12b69288...`, computed by exactly replicating the server's
+    sort-and-hash of all 6 lifecycle events for this asset).
+  - **Next up (same recipe, now de-risked)**: `bg_gochara_arcs` (W2 source_ref
+    `git:e54ae9acbcc86930418afce4b67481b35a3384af`) and `bg_text_index` (W2 source_ref
+    `git:4f7a9cc872714c74111ca8ae38ad4257c462cd3e`) — both already confirmed data-correct +
+    W2-current earlier this session; just need the dispatch-with-correct-sha →
+    accepted_rebuild_observed → integrity_verified → asset_frozen chain, one per future cycle.
+  - Stopped here (one full asset freeze) rather than chaining all three in one cycle, per
+    boundedness — no new risk in continuing, but this is already a complete, substantial unit.
