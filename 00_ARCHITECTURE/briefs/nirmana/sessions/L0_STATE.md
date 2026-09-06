@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_parihara_rules FROZEN -- L0 now 36/40. Root cause of the 409s: gcloud run services describe showed the actually-serving revision's NIRMANA_DEPLOYED_SHA was still a448be8a even after a "successful" newer deploy -- promotion for the newer commit was blocked by the recurring ka_graha_sancara smoke-probe failure (flagged to #1713, not L0's). Resubmitted W2 against a448be8a and it worked; full chain (W2 refresh -> dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) completed clean, verified at each step. Remaining 4 assets (bg_cohort, bg_yogas, bg_rules, bg_concordance) are ALL held/blocked -- no open L0 work left this phase. No open L0 PRs, no DIRTY/RED. L0 is now IDLE-OK indefinitely absent a scope change to #1715 or a Conductor-side fix for D-L0-II.
+last_updated: 2026-09-06 -- D-NATIVE-06 (native-ratified): L0 does NOT freeze at 36/40. bg_yogas's writer bug (0/233 corpus-extracted yogas ever firing) is a real defect; the pin protecting it is transparently re-derivable, not immutable. Re-investigated fresh, fixed (dict-row-as-tuple bug in extract_yogas_from_corpus, same class as the historical bg_parihara_rules fix), verified via rolled-back replay (85 corpus yogas extracted, existing integrity_check_sql satisfied exactly, no re-pin of the check needed). Shipped as PR #2115, with the mandatory guardrails verified: only bg_yogas's writer digest changed (35 others byte-identical), L0's aggregate writer_inventory_sha256 re-pinned transparently, L1-L5 pins byte-identical, all offline governance checks + 318 TS + 134 python tests pass. bg_cohort's C12 service-dependency carve-out flagged to Conductor. bg_rules/bg_concordance auto-unblock once bg_yogas freezes. No open L0 PRs, no DIRTY/RED. 36/40 frozen unchanged pending #2115 merge+deploy+dispatch.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,26 +33,25 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections — largely DONE.** **36/40 frozen**
-(verifier-signed 5-event chains, implementer≠verifier). **4 remaining, ALL held/blocked — no
-open work left for this campaign phase.** `bg_doshas` + `bg_gochara_arcs` + `bg_text_index`
-(D-L0-FF, via #1901's receipt re-attribution), `bg_dasha_systems` + `bg_compendium_index` (the
-`correct`-verdict/`implementation_accepted` path, via #2066 + an ordering fix), and
-`bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704, #2081+#2088) all FROZEN across this
-cycle-set — six real freezes in one arc. See the milestone entries in the log below for full
-chains + every gotcha found along the way. L0 is now IDLE-OK indefinitely absent a scope change
-to `bg_yogas` (#1715) or a Conductor-side fix for `bg_cohort` (D-L0-II) — neither is this
-session's to resolve.
+**L0-W4 EXECUTE + Conform-stage integrity corrections — 36/40 frozen, target now 40/40 (D-NATIVE-06).**
+`bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt re-attribution),
+`bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
+via #2066 + an ordering fix), and `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704,
+#2081+#2088) all FROZEN across this cycle-set. **D-NATIVE-06 (native-ratified) then overrode the
+prior "3 held, 1 deferred to a future phase" position**: there is no future L0 phase (L0→L5→close),
+so `bg_yogas`'s real writer defect (0/233 corpus yogas ever firing) must be fixed now, and the pin
+that was blocking it is transparently re-derivable, not immutable — verified from source, not
+assumed. Fix shipped as `#2115`; `bg_cohort`'s C12 carve-out flagged to Conductor. See the
+D-NATIVE-06 milestone entry below for the full guardrail verification.
 
 ## The 4 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
-| bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
-| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` (deliberately unfixed) still blocks this. Re-check E-gate if `bg_yogas` ever comes back in scope; otherwise stays blocked indefinitely. |
-| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; still gated on `bg_yogas` (and transitively `bg_rules`) regardless. |
-| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last; still gated on `bg_yogas` regardless of the others. |
+| bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned — but C12's service-dependency carve-out should resolve it (D-NATIVE-06).** `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (`service_health='healthy'` live) — no writer, so it can never produce a proven receipt via the current path. C12 says a live GREEN service probe should satisfy the dependency instead. Flagged to Conductor on #1713 (WP-6 sibling); once wired in, bg_cohort should freeze without further L0 action. |
+| bg_yogas | rebuild_only | **FIXED AND SHIPPED as `#2115` (D-NATIVE-06).** Root cause: `extract_yogas_from_corpus` tuple-unpacked a `dict_row` cursor's rows positionally, iterating KEYS not values — every variable was silently bound to a column-name string, so 0 corpus yogas ever extracted. Fixed (index by column name); verified via rolled-back replay (85 corpus yogas, 233 total, existing `integrity_check_sql` satisfied exactly, no check re-pin needed). Aggregate `writer_inventory_sha256` re-pinned transparently — confirmed via source read that this aggregate is NOT part of any per-asset `analysis_digest`, and via diff that only `bg_yogas`'s writer digest changed (35 others byte-identical). Once `#2115` merges+deploys: W2 refresh (may not be needed, registry contract itself unchanged — check first) → dispatch → `accepted_rebuild_observed` → `integrity_verified` (verifier identity) → `asset_frozen`. |
+| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` blocks this, and that's now fixed/shipped (pending deploy). Will unblock automatically once `bg_yogas` freezes — no separate action needed. |
+| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; will unblock automatically once `bg_yogas` (and transitively `bg_rules`) freeze — no separate action needed. |
 
 ## Decisions log
 
@@ -3571,3 +3570,52 @@ session's to resolve.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no new eligible work. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **D-NATIVE-06 (native-ratified ruling) — L0 does NOT freeze at 36/40.** Native
+  overrode the prior scope hold: three of the four "stuck" assets are genuinely unblockable now
+  (bg_cohort → Conductor's C12 carve-out; bg_rules/bg_concordance → automatic once bg_yogas
+  freezes), but bg_yogas's writer bug (0 of 233 corpus-extracted yogas ever firing) is a real
+  defect the campaign cannot ship as false-complete, and the pin protecting it is RE-DERIVABLE
+  under transparent discipline, not permanently immutable. Acknowledged + posted to #1713.
+  - **1. bg_cohort**: flagged to Conductor per the ruling — `bg_ephemeris_engine` is a live
+    `service_health='healthy'` service; C12's service-dependency clause should satisfy freeze via
+    GREEN probe, not a provenance receipt. This is the freeze/dependency-assert path
+    (`requireAcceptedRebuildProvenance`/`compute_upstream_hash`), Conductor-owned per C5 — not
+    something L0 implements. Requested the carve-out (WP-6 sibling).
+  - **2. bg_yogas — FIXED AND SHIPPED as `#2115`.** Re-investigated fresh (not trusting prior
+    session memory): reproduced the exact bug live (`extract_yogas_from_corpus` tuple-unpacks a
+    `dict_row` cursor's rows positionally — this iterates KEYS not values, so every variable was
+    silently bound to a column-name string, `content_en="content_en"` etc., matching zero yoga
+    patterns — 0 extracted confirmed via rolled-back replay before touching anything). Fixed by
+    indexing by column name (same fix pattern as `bg_parihara_rules.py`'s historical dict_row
+    fix). Verified: fixed extractor yields 85 corpus yogas (144+4+85=233, matching
+    `brahma_yoga_catalog`'s existing count); full `seed_yogas` run satisfies the EXISTING
+    `integrity_check_sql` pin exactly — no check re-pin needed, only the writer.
+  - **Guardrails, all verified before shipping (mandatory per D-NATIVE-06, not self-asserted)**:
+    confirmed from source (`nirmana-analysis-receipts.ts`'s `buildLayerReceipts`) that the
+    per-asset `NirmanaAnalysisReceiptBase` hashed into `analysis_digest` carries only the
+    asset-specific `writer_digest_sha256` + layer + two static grounding constants — the
+    aggregate `writer_inventory_sha256` is a per-layer availability GATE only, never digest
+    input, so no other asset's already-accepted `analysis_digest` can be affected. Regenerating
+    `nirmana-writer-digests.json` changed exactly ONE entry (`bg_yogas`,
+    `7600df1a...`→`18340f99...`); all 35 other frozen L0 writers byte-identical — confirmed via
+    diff, not assumed. Re-pinned `nirmana_analysis_layer_pins.py`'s `L0_FROZEN_PINS` aggregate
+    transparently (`8650e7a7...`→`dd4500b6...`, dated comment explaining why); L1-L5's pin
+    records confirmed byte-identical (spliced in only L0's fresh record directly in Python, since
+    the CLI's `--layer L0` guard is the #1715-requirement-3 guard itself — this PR is the
+    authorized exception, guard left in place for future accidental use). Updated the one test
+    that hardcodes the old L0 aggregate on purpose, with a dated justification comment. Both
+    offline governance checks (`provenance_inventory --check`, `nirmana_analysis_layer_pins
+    --check`) pass; full TS nirmana-elevation suite (318 tests) + L0 python suite (134 tests)
+    pass; 5 pre-existing unrelated failures confirmed pre-existing via `git stash` comparison
+    against clean `origin/main` (missing local Swiss Ephemeris files + a stale `ka_gochara_sweep`
+    completeness-check entry, neither touched by this change).
+  - Shipped as **PR #2115** (`fix/nirmana-l0-bg-yogas-corpus-extraction-fix`). Once
+    merged+deployed: W2 refresh (registry contract unchanged, so may not even need a refresh —
+    check first) → dispatch → `accepted_rebuild_observed` → `integrity_verified` (verifier
+    identity, not self-certified, per the ruling's explicit requirement) → `asset_frozen` →
+    37/40.
+  - **3. bg_rules/bg_concordance**: no separate action — unblock automatically once bg_yogas
+    freezes (it's their sole remaining unfrozen ancestor).
+  - 36/40 frozen unchanged this cycle (fix shipped, not yet deployed/dispatched). Next cycle:
+    PR hygiene on `#2115`, then once deployed, drive `bg_yogas` through to freeze.
