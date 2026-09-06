@@ -4887,3 +4887,20 @@ down 231 cycles; nothing new) → next: confirm `#1842`/`#1839` go green and re-
 queue; watch all 9 positions continue advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~10:25Z` — L4 — **CYCLE 242 (v2.3) — second consecutive cycle `#1842`/`#1839`
+`BLOCKED`; same job IDs as last cycle, drilled in directly: `Governance Gates` started
+`06:21:57Z`, checked at `06:29:27Z` (~7.5 min elapsed) — within normal range, not stalled.**
+
+**PR hygiene:** remaining 7 own PRs unchanged/genuinely queued. `#1842`/`#1839` confirmed
+genuinely in-progress via direct job inspection, no RED.
+
+**Priorities 1-4:** one new `main` commit (`#1974`, CI-tooling fix, not L4-relevant).
+`nirmana-adjudication` count dropped 15→14 (closed elsewhere), nothing new names L4. E-gate
+still uncheckable, 232nd consecutive cycle DB access down.
+
+CYCLE 242 L4: IDLE-OK (verified: PR hygiene clean — `#1842`/`#1839`'s Governance Gates jobs
+confirmed still running at ~7.5 min via direct job inspection, not stalled; remaining 7
+unchanged/queued; E-gate uncheckable, DB access down 232 cycles; nothing new) → next: confirm
+`#1842`/`#1839` go green and re-enter the queue; watch all 9 positions continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
