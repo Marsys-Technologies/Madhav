@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 117; closed F-D20 (PR #2144) — get_sade_sati.ts's shared ORDER BY (fact_category, ayanamsha_id, fact_key) was a non-total order, confirmed live 48-way ties; added fact_subject, fact_id (PK). Same file as still-open PR #2142 (F-D18) -- a small merge conflict is expected on whichever lands second
+last_updated: 2026-09-06 — C8 v2.3 cycle 118; closed F-D25 (PR #2145) — get_transit_anchors.ts genuinely grounds to L1 facts now: re-derived the writer's own chart_facts filter at serve time (the writer doesn't persist source fact_id) rather than fabricating grounds_to.l1_fact_ids:true; verified live every served row's constituent_fact_ids resolve to real matching rows
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3373,7 +3373,7 @@ none accepted yet (blocked on #1736).
 | ga_yoga | 63 / 5 | changed → fixed (cycle 8/101, PR #1865, merged 2026-09-05) | F-D1 (citations existed 233/233 but no surface joined them) + F-D2 (no offset paging) both fixed serving-side in `get_yoga_firings.ts`; stale "MUST" corrected cycle 101. F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds. F-D5 **FIXED (cycle 114, PR #2140)** — `get_yoga_firings.ts`'s `ORDER BY strength DESC NULLS LAST, yoga_canonical_id` was a non-total order (confirmed live: 5+ (yoga_canonical_id, strength) pairs genuinely repeat across the 5 stored ayanamshas); added `ayanamsha_id, id` (PK) to the sort key. Merge-conflicted against a concurrent PR that added the `brahma_yoga_catalog` LEFT JOIN + real `OFFSET` pagination — reconciled with `f.`-prefixed columns, both fixes coexist |
 | ga_vichara | 8,249 / 8,249 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D), already fixed (`catalog_status` confirmed `CURRENT` live, cycle 103); F-A14 integrity_check_sql (#1967). F-D10 **FIXED (cycle 109, migration 846)** — `target_floor` was 8,240, nine short of the finding's own derived model (8,249); never surfaced as a build failure since achieved already exceeded the stale floor. F-D12 (`ga_vichara` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 307s (n=18). F-D11 **FIXED (cycle 115, PR #2141)** — `get_vichara.ts`'s `ORDER BY vichara_family, domain NULLS FIRST, subject` was a non-total order; confirmed live 1,595 `valence_pass` rows/ayanamsha share this exact sort key (SAT/MAR/JUP each 1,595-way tied); added `ayanamsha_id, varga_id NULLS FIRST, id` (PK) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists). F-D20 **FIXED (cycle 117, PR #2144)** — the shared `ORDER BY fact_category, ayanamsha_id, fact_key` (both `all:true` and the default path's underlying fetch) was a non-total order; confirmed live 48 rows share the sort key for several combinations (e.g. `sade_sati_phase_quarter`/krishnamurti/`quarter_end_iso`); added `fact_subject, fact_id` (PK). Same file as F-D18's still-open PR #2142 -- expect a small merge conflict on whichever lands second |
-| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
+| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows |
 | ga_ayurdaya | 130 / 130 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
@@ -7252,3 +7252,35 @@ L1 must satisfy rather than a feature it consumes.
   cycle. CYCLE 117 L1: PR hygiene clean, closed F-D20 (third ORDER-BY-total-order fix this
   campaign) -- next: continue the remaining ~6 NOW claims (F-D25/F-E2/F-E8/F-E19/F-E28); watch
   for the #2142/#2144 merge-order conflict on whichever PR's turn comes second in the queue.
+- 2026-09-06T23:5xZ -- CYCLE 118 (C8 v2.3). PR hygiene: no PR genuinely queued this check, but
+  all open mine (#2144/#2142/#2132) confirmed mid-CI with nothing failing -- nothing DIRTY/RED/
+  unqueued-but-clean. Unit of work: ninth of the remaining NOW claims -- F-D25
+  (`ga_transit_anchors`, NOW, §N.6; D-SERVICE ≤2 hops to L1), a genuinely different shape from
+  every finding closed so far this sweep -- not just an undeclared metadata field, a
+  `grounds_to.l1_fact_ids: false` claim on a tool whose writer DOES derive every value from
+  specific chart_facts rows. Read `ga_transit_anchors.py`'s writer: it filters chart_facts on
+  `fact_category IN ('graha_position','graha_sign_attributes')` AND `fact_key IN ('sign',
+  'longitude_sidereal','nakshatra')`, keyed by the graha's fact_subject code via
+  `_SUBJECT_TO_GRAHA` -- but the writer does NOT select/store `fact_id`, so the served
+  `ga_transit_anchors` rows have no source-fact linkage at all today. Correctly did NOT flip
+  `grounds_to.l1_fact_ids` to `true` blindly (that would be exactly the fabricated-detector
+  defect §N.7 item 4/§N.8 exist to catch) -- instead re-derived the writer's EXACT filter at
+  serve time (one batched query per page, keyed by ayanamsha_id, not per-row/N+1), using the
+  TS-side `grahaCodeOf` (already the established graha-name-to-subject-code SSoT, reused from
+  get_dashas.ts's own F-A11 fix) to map each served row's graha back to its subject code, and
+  attached genuine `constituent_fact_ids`. Verified LIVE (not just via mocks) that every served
+  row's constituent_fact_ids resolve to real chart_facts rows with the correct ayanamsha_id and
+  fact_category -- only then set `grounds_to.l1_fact_ids: true`, an honest claim now. Also
+  added a real `empty_reason` (genuinely fires on `total===0`, unlike F-C21/F-D18's honest
+  `false` declarations for files with no such mechanism) and `density_contract`. 5 mock unit
+  tests (including RAH_MEAN/KET_MEAN subject-code mapping and the unrecognized-graha-string
+  edge case) + 1 live-DB integration test. `npx tsc --noEmit` + `npx eslint` clean;
+  `check_fact_category_pinning.py` exits 0 (new query does not reduce to one row, same safe
+  shape as precedent); `npx vitest run --project node src/lib/retrieval/registry/layers/
+  L1_ganita/` -- 131 passed, no regressions. No writer touched -- this is a serve-time
+  re-derivation of an already-established filter, not a new computation. Opened PR #2145
+  directly off `origin/main`, armed auto-merge, confirmed genuine CI dispatch (35 check-runs)
+  before ending the cycle. CYCLE 118 L1: PR hygiene clean, closed F-D25 by earning the
+  grounding claim rather than asserting it -- next: continue the remaining ~5 NOW claims
+  (F-E2/F-E8/F-E19/F-E28) plus F-D18/F-D20's expected merge-order conflict once one of them
+  actually queues.
