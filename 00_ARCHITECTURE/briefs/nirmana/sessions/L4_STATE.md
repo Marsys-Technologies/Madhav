@@ -4657,3 +4657,19 @@ confirm `#1808` re-enters the queue once `Build Check` completes; watch all 9 po
 continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~09:25Z` — L4 — **CYCLE 230 (v2.3) — `#1808` confirmed re-entered the merge
+queue (position 133) — the cycle-226 RED fix is fully closed out, both DIRTY casualties
+(`#1831`, `#1808`) now genuinely queued alongside the other 7.**
+
+**PR hygiene:** all 9 own PRs genuinely `QUEUED` via GraphQL `mergeQueueEntry` — `#1870` 103,
+`#1864` 92, `#1849` 27, `#1845` 28, `#1842` 18, `#1839` 6, `#1834` 2, `#1831` 128, `#1808`
+133. No DIRTY, no RED. Clean sweep.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+16). E-gate still uncheckable, 220th consecutive cycle DB access down.
+
+CYCLE 230 L4: IDLE-OK (verified: PR hygiene fully clean — all 9 own PRs genuinely queued,
+including both `#1831`/`#1808` fully recovered from last cycle's DIRTY+RED episode; E-gate
+uncheckable, DB access down 220 cycles; nothing new) → next: watch all 9 positions continue
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
