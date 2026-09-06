@@ -2543,3 +2543,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** `#2013`/`#2014`'s own queue-entry checks in_progress (~7-8min, no
   failures). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #2011 merged (L1, not L0's). `#2013` now at queue position 1 —
+  literal front of the queue. No DIRTY, no RED. 30/40 frozen holds.
