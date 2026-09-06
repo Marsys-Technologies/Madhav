@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2081 double-confirmed not yet applied (ancestry check + direct query of bg_parihara_rules' live integrity_check_sql still shows old pins). No open L0 PRs, no DIRTY/RED. Watching for deploy -- once live, top priority is re-dispatching bg_parihara_rules to bring L0 to 36/40. 35/40 frozen unchanged.
+last_updated: 2026-09-06 -- D-L0-PP OPEN: #2081/migration 703 confirmed applied+correct (live data re-verified twice), W2 refresh for bg_parihara_rules submitted cleanly, but TWO real re-dispatch attempts both failed with an unexplained "post-write integrity check failed: integrity_check_sql -> False" despite the writer's own log and an independent post-rollback re-query both confirming the data is correct. Root cause NOT found from outside asset_runner.py. Posted to #1713 as SLOT RELEASE (not a success). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- do not retry a third time blind; needs Conductor/asset_runner.py-owner investigation.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -39,6 +39,9 @@ chains, implementer≠verifier). **5 remaining, and 2 of those are deliberate ho
 `bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
 via #2066 + the ordering fix below) all FROZEN this cycle-set — five real freezes in one arc. See
 the milestone entries in the log below for full chains + every gotcha found along the way.
+Migration 703/`#2081` (D-L0-OO) is deployed and confirmed correct, but `bg_parihara_rules`'s
+re-dispatch itself now fails with a new, unexplained integrity-check mismatch (D-L0-PP, open —
+see log). Still 35/40 until that's resolved.
 
 ## The 5 unfrozen assets
 
@@ -46,7 +49,7 @@ the milestone entries in the log below for full chains + every gotcha found alon
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
 | bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
-| bg_parihara_rules | rebuild_only | **D-L0-OO: migration authored+verified+shipped as `#2081`** (deletes 9 named orphaned rows, re-pins counts 61→60/59→51 + hashes; data-only, no writer file touched). Not yet merged/deployed — check `is:queued` then merge status next cycle; once deployed, re-dispatch straight through to `asset_frozen` (verdict was `examined_and_already_efficient`/`no_change`, so no `implementation_accepted` needed — just dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`). |
+| bg_parihara_rules | rebuild_only | **D-L0-PP OPEN (blocks on D-L0-OO's own success):** migration 703/`#2081` confirmed merged+deployed+correct (live-verified twice); W2 refresh clean (`registry_fingerprint 2e324cd6...`, verdict `examined_and_already_efficient`/`no_change`). But TWO real dispatch attempts (`230ed9e8`, `7a12b137`) both fail with `"post-write integrity check failed: integrity_check_sql → False"` even though the writer's own log reports correct counts (60/329/51) and an independent post-rollback re-query confirms all 6 integrity_check_sql clauses pass. No root cause found in `asset_runner.py`/`_probe_asset` from outside (no obvious bug on inspection; no extra Cloud Logging detail; no `asset_provenance_receipts` row created either run). Both attempts rolled back cleanly, no data damage. Posted to #1713. **Do not retry blind a third time** — needs deeper transaction-internals investigation (Conductor/asset_runner.py owner) before another attempt. |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` (deliberately unfixed) still blocks this. Re-check E-gate if `bg_yogas` ever comes back in scope; otherwise stays blocked indefinitely. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; still gated on `bg_yogas` (and transitively `bg_rules`) regardless. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last; still gated on `bg_yogas` regardless of the others. |
@@ -3176,3 +3179,39 @@ the milestone entries in the log below for full chains + every gotcha found alon
   AND a direct query of `bg_parihara_rules`'s live `integrity_check_sql` (still shows the old
   61/59-count pins, migration 703's 60/51 re-pin not live). No open L0 PRs, no DIRTY/RED. Still
   waiting on deploy. 35/40 frozen unchanged.
+
+- 2026-09-06 — **D-L0-PP: `#2081` deployed and confirmed correct, but `bg_parihara_rules`
+  re-dispatch fails with an unexplained integrity-check mismatch — logged open, not shipped.**
+  Confirmed `#2081`/migration 703 live via direct query: `bg_parihara_rules`=60,
+  `bg_muhurta_activity_rules`=329, `bg_muhurta_factor_census`=51, all three content hashes match
+  the new pins. Submitted a fresh W2 refresh cleanly (`asset_analysis_accepted` +
+  `optimization_verdict_accepted`, `registry_fingerprint_sha256
+  2e324cd6e4e0ccf13e6666de8eeb66897998f38cfdab42df21f4ba7267fad2ac`, `analysis_digest
+  1df356d6b3368861ef8589014a89b0499c03cfb4d0eafed88359a3c173aaa6a6`, verdict
+  `examined_and_already_efficient`/`no_change` — correctly, since 703 already brought committed
+  data into agreement with the writer's deterministic output).
+  - Dispatched two real fresh runs (`230ed9e8-1d1d-4de1-ac9b-f7731acfc55f`,
+    `7a12b137-a42c-443a-830d-1ed4e53209f6`). **Both failed identically**:
+    `build_run_assets.error = "post-write integrity check failed: integrity_check_sql → False"`.
+  - The writer's own completion log reported the exactly-correct counts both times:
+    `[bg_parihara_rules] complete — parihara=60 activity=329 census=51`.
+  - Independently re-queried the live table (direct psycopg via Cloud SQL proxy) immediately
+    after each rollback: all 6 clauses of the migration-703-corrected `integrity_check_sql`
+    evaluate `TRUE` against committed data both times.
+  - No `asset_provenance_receipts` row was created for either run (checked directly). No extra
+    diagnostic detail in Cloud Logging beyond the one known WARNING line (checked
+    severity>=WARNING + keyword search for receipt/provenance/upstream/integrity).
+  - Read `asset_runner.py`'s dispatch sequence (~960-1025: delta-skip check →
+    `_drive_substeps` → `_probe_asset` if `has_integrity_check`) and `_probe_asset` itself
+    (~768-803: `cur.execute(integrity_sql); val = row[0]; return bool(val)`) — no bug found on
+    inspection. This is `BgPariharaRulesWriter`'s first-ever completed real run this campaign
+    (not a repeat of the D-L0-FF orphaned-receipt pattern), so it's a fresh, unexplained anomaly,
+    not a known defect class.
+  - **Decision: do not retry a third time blind.** Both attempts rolled back cleanly — confirmed
+    no data damage, committed state is exactly migration 703's clean state both times (fresh
+    backup `cloudsql-backup:1788694600012` exists from this arc if needed). Posted SLOT RELEASE
+    to #1713 with the full account, flagged for whoever owns `asset_runner.py`
+    (Conductor per C5) — needs transaction-internals visibility this session doesn't have.
+  - 35/40 frozen unchanged. `bg_parihara_rules` stays the 5th open item, now with this specific
+    new anomaly logged instead of "waiting on deploy" (which is resolved — deploy is NOT the
+    blocker anymore).
