@@ -457,6 +457,79 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T18:10Z (C8 v2.3 cycle 534) — **Real orchestrator bug found and adjudicated (#2137);
+  `#2131` MERGED — the eleventh state-recovery PR closed out.** Subagent `aee0c68dd31bd1840`
+  reported: W2 resubmission succeeded cleanly (independently re-confirmed live — both old
+  16:16Z and new 17:23Z events present, new one's `source_ref=git:3891ca7d1...` matching the
+  post-C-F-01-fix deployed sha; `registry_fingerprint_sha256` identical to before as expected,
+  `analysis_digest` differs as expected); the retry dispatch got PAST the earlier refusal, dry-ran
+  clean, committed (`run_id=ce114909-...`), but the **build job itself failed at preflight** —
+  `frozen manifest validation failed: asset_registry changed after dispatch for frozen asset
+  mi_kula`. Independently verified: `build_runs.state='failed'` with exactly that `last_error`;
+  `mimamsa_signal_families`+`mimamsa_negative_controls` row count unchanged (15, same as
+  before — no partial write); `asset_throughput.mi_kula` untouched. Root-caused by reading the
+  actual code (not trusting the subagent's claim alone): `runner.py`'s
+  `_verify_registry_still_matches_manifest` (line 343-369) compares the dispatcher's
+  alphabetically-**sorted** frozen `depends_on` against the **live, unsorted**
+  `asset_registry.depends_on` (`{bg_rules, bg_class_priors}`, its original authored order) with
+  plain order-sensitive list equality (line 365) — same set, different order, false-positive
+  fail-closed. **Confirmed generally-applicable, not mi_kula-specific or a sha race**: any asset
+  whose registry `depends_on` isn't already alphabetical will hit this on its first real
+  post-sort-fix dispatch. Both `runner.py` and the dispatcher are core FROZEN orchestrator
+  internals (§N.2) — not L5's to patch. Filed **#2137** with the full diagnosis and a
+  recommended fix (sort before comparing, or compare as sets). No data harmed; kept snapshot
+  (`cloudsql-backup:1788714572581`) still valid and unused for the retry once #2137 lands. 5
+  local-only commits (cycles 529-533, 49 lines, single-file) recovered via patch-onto-fresh-branch
+  onto `codex/nirmana-l5-heartbeat-recovery-12`.
+- 2026-09-06T18:00Z (C8 v2.3 cycle 533) — **IDLE-OK, verified.** #2131 still genuinely queued.
+  `mi_kula` subagent still running (~9 min) — the real build-dispatch + job-log verification
+  legitimately takes longer than prior evidence-only tasks. Holding.
+- 2026-09-06T17:54Z (C8 v2.3 cycle 532) — **IDLE-OK, verified.** #2131 still genuinely queued.
+  `mi_kula` subagent still running (~6 min — the resubmit-then-dispatch sequence is longer than
+  a pure verifier task, expected). Holding, not starting a competing unit.
+- 2026-09-06T17:48Z (C8 v2.3 cycle 531) — **IDLE-OK, verified.** #2131 now genuinely queued
+  (`is:queued` confirmed). `mi_kula` resubmission+dispatch subagent (`aee0c68dd31bd1840`) still
+  running (~3 min) — holding, not starting a competing unit.
+- 2026-09-06T17:43Z (C8 v2.3 cycle 530) — **Dispatched executor subagent
+  (`aee0c68dd31bd1840`) to resubmit `mi_kula`'s W2 evidence against the post-C-F-01-fix deployed
+  code, then retry the W4 dispatch.** PR hygiene first: #2131 still building cleanly, no
+  failures. Briefed the subagent with the full root-cause (from last cycle) and the exact
+  sequence: fresh deployed sha → recompute `analysis_digest` via `definitions.ts`'s real
+  functions (confirm `registry_fingerprint_sha256` comes out identical to before, since the
+  `asset_registry` row itself never changed — only `analysis_digest` should differ) → submit
+  both W2 events `--as executor` → claim a slot on #1713 (verify live via `build_runs`, never
+  trust the comment thread) → dry-run → commit dispatch → verify via JOB LOGS (this time
+  expecting real non-zero rows, unlike `mi_vistara`/`mi_jivanaghatana`'s zero-row terminations)
+  → release slot. Explicitly told NOT to attempt W5 (implementer≠certifier) and to stop after at
+  most two retries if the deployed sha races again mid-sequence (deploys are landing every few
+  minutes from other lanes) rather than loop indefinitely.
+- 2026-09-06T17:37Z (C8 v2.3 cycle 529) — **`mi_kula` W4 dispatch attempted, refused correctly
+  by design, root-caused, slot released.** Followed `L5_W4_CANARY_RUNBOOK.md` in full: claimed
+  the run slot on #1713 (found a stale, unreleased L0 `SLOT CLAIM` from 12:03Z in the comment
+  thread — verified live via `build_runs` that 0/3 slots are genuinely occupied, `state IN
+  ('running','pending','queued','in_progress')` returns 0 rows, so treated the comment as an
+  L0 hygiene lapse rather than a real block, per the established "verify live, never trust the
+  ledger comment" precedent from `mi_vistara`'s dispatch); took a fresh Cloud SQL backup
+  (`cloudsql-backup:1788714572581`, confirmed SUCCESSFUL); ran the dry-run with
+  `--reviewed-deployment-sha` set to the SHA recorded as `source_ref` on `mi_kula`'s own W2
+  events (`9b1c2c22b...`, independently re-verified via direct DB read — NOT the currently-live
+  deployed sha, which has moved on since W2 was recorded, per the runbook's explicit
+  instruction). **Refused**: `accepted asset analysis does not match the current live registry
+  contract for mi_kula`. Root-caused by reading the dispatcher's own source
+  (`dispatch_nirmana_campaign_wave.py:982-993`): it reconstructs each asset's canonical analysis
+  digest from CURRENT code, for every layer not just L0 (#1715/#1718) — specifically so a
+  post-acceptance writer edit is detected and blocks dispatch. Independently recomputed the live
+  `registry_fingerprint_sha256` via the dispatcher's own `_live_registry_fingerprint` function
+  (imported directly, not hand-reimplemented) and confirmed it byte-matches the stored W2
+  payload — that part was never the problem. The actual mismatch is the analysis digest itself:
+  `mi_kula`'s W2 acceptance predates the C-F-01 writer fix (#2128), so the writer's digest (and
+  therefore the canonical analysis digest the dispatcher derives) has moved since. **This is the
+  fail-closed mechanism working correctly, not a bug** — confirmed no `build_runs` row was
+  orphaned (`count=0` for `scope_target='mi_kula'`) before releasing the slot with the full
+  account on #1713. **Next: re-submit `asset_analysis_accepted` +
+  `optimization_verdict_accepted` for `mi_kula` against the current post-fix deployed sha, then
+  retry dispatch with the same kept snapshot.** PR hygiene: #2131 still building cleanly, no
+  failures.
 - 2026-09-06T17:20Z (C8 v2.3 cycle 528) — **Milestone: `#2128` MERGED — the C-F-01 writer fix is
   live on main.** Independently re-confirmed via `git show origin/main:...mi_kula.py` — only
   `fam_msr_signal`/`fam_anchor` carry `MARSYS_DERIVED_CITED`, the other 7 `classical`-class
