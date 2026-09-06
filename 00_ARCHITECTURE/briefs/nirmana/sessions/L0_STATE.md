@@ -2565,3 +2565,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change; frontmost queue entry ~3min in, normal. No DIRTY, no RED.
   30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #2021 merged (L2, not L0's), `#2016` at position 14. No DIRTY, no RED.
+  30/40 frozen holds.
