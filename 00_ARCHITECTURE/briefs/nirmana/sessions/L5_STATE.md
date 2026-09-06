@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:29Z (C8 v2.3 cycle 213) — **IDLE-OK, waiting on deploy.** Checked
+  `amjis-web`'s live revision again: still pinned to `938351c657c4…` (#1854), has not
+  caught up to `1ef6267e9` (#1861) yet — expected, short interval since last check.
+  `mi_jivanaghatana` dispatch stays correctly withheld. Both own PRs still
+  `isInMergeQueue: true`, clean. #1844=55 (was 56), #1901=81 (was 82). #1869 unchanged at
+  3 comments; #1856 still OPEN. 17 cycles now batched locally unpushed (#1826 still queued).
 - 2026-09-06T01:26Z (C8 v2.3 cycle 212) — **#1861 MERGED — retry attempted, correctly
   aborted on deploy-lag (not a wasted attempt, a real safety catch).** origin/main now at
   `1ef6267e9` (#1861). Did a full live-DB check via Cloud SQL Auth Proxy + secret-manager
