@@ -380,6 +380,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:57:53Z` — cycle 577: **ONE bounded unit: PR #2139 confirmed MERGED, posted
+  confirmation on #2137.** `mergeQueueEntry` went null and `gh pr view` confirmed
+  `state=MERGED` (17:57:39Z) — the fix for the frozen-manifest `depends_on`-order false-positive
+  is now live on `main`. Notified #2137 so L5 can retry `mi_kula`'s dispatch; left the issue open
+  pending L5's confirmation of a clean retry. Fleet DIRTY: #2079/#2065, both already nudged. No
+  new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:55:38Z` — cycle 576: **IDLE-OK.** Own PR #2139: still open, progressing. Fleet
   DIRTY: #2079/#2065, both already nudged. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:53:37Z` — cycle 575: **IDLE-OK.** Own PR #2139: still `is:queued` (1). Fleet
