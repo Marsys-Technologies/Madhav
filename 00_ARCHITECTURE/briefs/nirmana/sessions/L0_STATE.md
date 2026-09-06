@@ -2082,3 +2082,18 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (main HEAD unchanged; `#2016` still mid-CI, no reds; queue
   head #1861, not L0's). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **PR HYGIENE: RED investigated on `#2016`, root-caused as flake, not our defect.**
+  `#2016`'s `DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)` check failed
+  (`tests/pariprashna/samiksha/confirm_e2e.db.test.ts`) with `duplicate key value violates unique
+  constraint "pg_type_typname_nsp_index"` on `message_parts` and `relation
+  "brahma_mimamsa_prediction_ledger" does not exist` — both entirely unrelated to `#2016`'s sole
+  content (an `L0_STATE.md`-only commit) or to any L0 table. Confirmed non-systemic: the identical
+  check **passed** on `#2013` and `#2014` (2m23s/2m9s) minutes earlier against effectively the same
+  base — this is a test-isolation/concurrency flake in the shared throwaway-Postgres harness (a
+  `CREATE TABLE`-race on `message_parts`), not a real regression, and never mine to fix even if it
+  were (it's SAMĪKṢĀ/L5 test infrastructure, outside L0 scope). Per contract ("fix root cause, never
+  weaken a gate"): the correct root-cause action for a confirmed transient infra flake is a
+  legitimate retry, not editing any test or check. Attempted `gh run rerun --failed` immediately but
+  the run was still mid-flight (Unit Tests/Governance Gates pending) — queued to retry next cycle
+  once the run completes. No DIRTY, no gate touched. 30/40 frozen holds.
