@@ -458,6 +458,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~02:0xZ — L3-W3 — One DIRTY-PR fix caught in the final sweep: #1984
+  (another heartbeat PR).** Standard conflict shape (HEAD empty, incoming full),
+  resolved via the established script, single surviving heading verified. No writer/
+  generated files touched. Force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  Standing blockers unchanged.
+
 - `2026-09-06T~01:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` unchanged,
   `origin/main` tip unchanged. Queue confirmed healthy (~12min since last merge, normal
   cadence), not stalled — just position-in-line among ~53 L3 PRs sharing one serial
