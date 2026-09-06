@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 137; L2 confirmed readiness on #2180, deferring the #1713 slot claim to L1 finishing ga_positions' delta re-review first. Did exactly that: resubmitted asset_analysis_accepted + optimization_verdict_accepted (correct/correctness_change, via nrec --as executor, both HTTP 201), then re-ran the dry-run dispatch that previously failed -- it now passes clean (manifest_digest 244ad8bd..., WP-6 blast radius = known 270,471-row in-layer cascade). ga_positions' own prerequisite for the coordinated 5-asset wave is DONE. Did not claim the slot or --commit this cycle -- that's the actual coordinated dispatch, its own next step
+last_updated: 2026-09-07 — C8 v2.3 cycle 138; before claiming the #1713 slot, verified the actual scope of the #2180-ruled coordinated dispatch -- it's much bigger than 5 assets. ga_yoga's own declared deps (ga_structural, ga_dashas) also lack asset_freshness rows, AND the frozen manifest assigns every asset a fixed wave_index that can't be mixed in one dispatch call -- ga_yoga is wave 4, meaning waves 0-3 (15 of L1's 19 assets) need fresh dispatches first, in strict sequence. Posted the corrected scope to #2180; did not claim the slot or dispatch anything this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8021,3 +8021,31 @@ record — they are the only entries in this table with a real wall-clock behind
   `bo_laksana`, `bo_cgm_paths`, `bo_cgm_motifs`), take a fresh backup, and execute the actual
   coordinated dispatch -- this is now the single highest-priority piece of real work outstanding,
   should be the very next cycle's focus if slot/backup logistics allow.
+- 2026-09-06T2xZ -- CYCLE 138 (C8 v2.3). PR hygiene: #2183 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Per cycle 137's
+  own "next" pointer, began the actual coordinated-dispatch step -- but before claiming the
+  #1713 slot, verified the LITERAL scope the ruling named would actually work, rather than
+  assume 5 named assets is sufficient. Checked `ga_yoga`'s own declared deps (`ga_structural`,
+  `ga_dashas`, unaffected by the `ga_positions` fix and NOT among the 5 ruled assets): **zero
+  `asset_freshness` rows for either**, confirmed live -- meaning `ga_yoga` would hit the exact
+  same freshness DEP-ASSERT wall #2113 originally found for `ga_structural`/`ga_condition`, one
+  hop later, regardless of the `ga_positions` fix. Tried a genuinely safe dry-run
+  (`--assets ga_positions,ga_yoga`, zero side effects) to check directly and hit a MORE
+  fundamental, previously-unknown constraint first: **`L1 wave 0 has no build obligation for:
+  ga_yoga`** -- the frozen manifest assigns every asset a fixed `wave_index` by DAG depth, and
+  one dispatch call can only select assets within a single wave. Queried the full manifest to
+  find `ga_positions`=wave 0, `ga_yoga`=wave 4, with `ga_dashas` (wave 1) and `ga_structural`
+  (wave 3) sitting between them -- meaning waves 0 through 3 (**15 of L1's 19 assets**, not the
+  2 named L1 assets) need fresh, successful, IN-ORDER dispatches before `ga_yoga` can pass its
+  own freshness check when it finally runs. **This is not a 5-asset coordinated dispatch -- it
+  is essentially rebuilding all of L1's DAG waves 0-4, then the 3 named L2 assets.** Posted the
+  corrected scope to #2180 with the full wave table and the exact error/evidence trail, asking
+  for confirmation or correction before committing to it. Did NOT claim the #1713 slot or
+  dispatch anything this cycle -- claiming a slot for a plan that would fail partway through
+  (or silently turn into a much bigger undertaking than whoever's coordinating expects) is worse
+  than pausing to get the scope right first. CYCLE 138 L1: PR hygiene clean, **caught a
+  significant scope gap in the Conductor's own ruling before acting on it**, via the same
+  verify-before-claiming-victory discipline that already caught the fact_id-orphan risk at
+  cycle 133 -- next: watch #2180 for confirmation of the revised (much larger) scope, or a
+  correction if there's a way to satisfy the freshness check without a full-layer rebuild that
+  this session hasn't found.
