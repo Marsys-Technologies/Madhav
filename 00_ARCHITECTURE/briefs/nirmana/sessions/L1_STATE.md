@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 57; ga_structural F-A14 widened to 13/57 (#2027); 2 DIRTY PRs fixed (#1859, #1926)
+last_updated: 2026-09-06 — C8 v2.3 cycle 58; ga_structural F-A14 widened to 14/57 (#2029)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -35,7 +35,8 @@ your `nirmana-adjudication` issues → continue.
   nway_config_per_varga, cycle 52), 781 (`ga_structural` kala_sarpa_per_varga, cycle 53), 782
   (`ga_structural` tara_bala_natal_baseline, cycle 54), 783 (`ga_structural`
   conjunction_within_orb, cycle 55), 784 (`ga_structural` aspect_tajik, cycle 56), 785
-  (`ga_structural` graha_yoga_karaka_flag, cycle 57) used. 786–799 remain free.
+  (`ga_structural` graha_yoga_karaka_flag, cycle 57), 786 (`ga_structural`
+  graha_dispositor_chain, cycle 58) used. 787–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2473,6 +2474,45 @@ CYCLE 57 L1: fixed 2 DIRTY PRs (#1859, #1926); widened `ga_structural`'s F-A14 c
 categories (PR #2027, migration 785) — next: continue `ga_structural` widening (44 categories
 remain), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 58 (C8 v2.3) — ga_structural's F-A14 contract widened to 14/57 categories (PR #2029, migration 786); a second category confirmed NOT the D1 dual-source shape, six conjuncts re-deriving the classical dispositor rule directly
+
+**PR hygiene:** clean sweep (`--limit 200`). Filtered to L1's own 43 `codex/nirmana-l1-*` PRs;
+confirmed #1859 and #1926 (last cycle's DIRTY fixes) both now genuinely `is:queued` — the
+`UNSTABLE` `mergeStateStatus` label GitHub showed for both was noise, not signal, exactly as the
+contract warns. Only #1827 (this state PR) and #2027 (freshly opened) not yet queued, both
+mid-CI with green/pending checks only. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `graha_dispositor_chain`** (PR
+**#2029**, migration 786 — seventh in the 780-799 range).
+
+Recognized immediately (without re-deriving from scratch) that this category shares
+`graha_yoga_karaka_flag`'s (migration 785) dependency shape: the dispositor walk resolves
+entirely from `chart_output`'s own already-computed sign assignments via the classical
+`SIGN_LORDS` table, not two independent PyJHora position computations — so this is the SECOND
+category in this arc confirmed NOT to be the D1 dual-source shape, reusing last cycle's
+verification pattern rather than re-investigating the question fresh.
+
+This category's richer JSON structure (a `{chain, signs, length, cycle_detected_at_step}`
+value_jsonb per graha) supported six conjuncts, three of which are genuine re-derivations of the
+classical dispositor rule itself rather than mere internal bookkeeping checks: (hh) `chain[0]`
+identity, (ii) `length` vs. actual array length, (jj) `chain`/`signs` array-length parity, (kk)
+`cycle_detected_at_step` vs. `length` arithmetic identity (worked out by hand from the writer's
+own loop structure: `cycle_at = step+1` at the exact point `length` also reaches that value), (ll)
+a full walk of every consecutive chain pair against the classical `SIGN_LORDS` table (the same
+table already embedded in migration 757's conjunct (g)) via `generate_series` over the JSON array,
+and (mm) a terminal cycle-closure check confirming the writer's `cycle_detected_at_step` claim is
+genuine (the last sign's classical dispositor really is already a chain member, not just "the loop
+stopped"). All six verified live clean (0/135 each, 318 pairs for (ll)) then individually
+mutation-tested via real transactional `UPDATE`+`ROLLBACK`.
+
+Carried the thirty-three prior conjuncts (a)-(gg) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 233 passed / 91 skipped (45 files). `provenance_inventory --check`: clean.
+
+CYCLE 58 L1: widened `ga_structural`'s F-A14 contract to 14/57 categories (PR #2029, migration
+786) — next: continue `ga_structural` widening (43 categories remain), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2488,7 +2528,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2026 cycle 56 → #2027 cycle 57 — 13/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag; migration range 780-799, 786-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config), plus TWO pure-D1 (no varga) occurrences recognized-and-avoided: `conjunction_within_orb` (migration 783) and `aspect_tajik` (migration 784). `graha_yoga_karaka_flag` (migration 785) is the FIRST category in this arc explicitly confirmed NOT to be the D1 dual-source shape (house lordship resolves from a single ascendant-sign lookup, not two independent PyJHora position computations) — investigated the classical SIGN_LORDS structure to confirm today's all-'false' 105 rows are honest (only Taurus lagna makes the writer's narrow formula true, and none of the 3 live charts has one), not a stale/empty-detector artifact. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL — self-consistency/domain conjuncts shipped instead, same discipline reused for `conjunction_within_orb`/`aspect_tajik`. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category (emitted by `ga_panchanga_writer.py`, same pattern as bhadra/panchaka flags) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin by design. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2027 cycle 57 → #2029 cycle 58 — 14/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain; migration range 780-799, 787-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences (`conjunction_within_orb`, `aspect_tajik`). TWO categories now explicitly confirmed NOT the D1 dual-source shape (resolve from a single already-computed value, not two independent PyJHora invocations): `graha_yoga_karaka_flag` (migration 785, house lordship via ascendant-sign lookup) and `graha_dispositor_chain` (migration 786, dispositor walk via the same classical SIGN_LORDS table) — the second reused the first's verification pattern rather than re-investigating fresh. `graha_dispositor_chain`'s six conjuncts include three genuine re-derivations of the classical dispositor rule itself (not just internal bookkeeping): a full chain-pair walk against SIGN_LORDS via generate_series, and a terminal cycle-closure check confirming the writer's own cycle-detection claim is real. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL — self-consistency/domain conjuncts shipped instead. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category (emitted by `ga_panchanga_writer.py`) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3255,6 +3295,19 @@ whole campaign.
   now-familiar disclaimer applied) and the first to require working through the classical
   SIGN_LORDS table by hand to confirm an all-'false' live result is honest rather than a
   stale/empty detector.
+
+- **D-L1-82** — C8 v2.3 cycle 58: widened `ga_structural`'s F-A14 contract (migration 786,
+  PR #2029), 13/57 → 14/57, adding `graha_dispositor_chain`. Second category confirmed NOT the
+  D1 dual-source shape (dispositor walk resolves entirely from chart_output's own sign
+  assignments via classical SIGN_LORDS, not two independent PyJHora invocations) — recognized
+  the shared dependency shape with `graha_yoga_karaka_flag` (D-L1-81) immediately and reused
+  that cycle's verification pattern rather than re-investigating the question fresh. Shipped six
+  conjuncts, three of which re-derive the classical dispositor rule itself (a full chain-pair
+  walk against SIGN_LORDS via generate_series, plus a terminal cycle-closure check confirming
+  the writer's own cycle-detection claim is genuine) rather than merely checking the writer's
+  internal bookkeeping was self-consistent — the discipline of preferring a real rule
+  re-derivation over a bookkeeping-only check whenever a classical table is already available
+  and safe to embed (as established for migration 757's conjunct (g)).
 
 ## Held items
 
@@ -4178,3 +4231,22 @@ L1 must satisfy rather than a feature it consumes.
   provenance_inventory --check: clean. CYCLE 57 L1: fixed 2 DIRTY PRs, widened ga_structural's
   F-A14 contract to 13/57 categories (PR #2027, migration 785) -- next: continue ga_structural
   widening (44 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T07:3xZ -- CYCLE 58 (C8 v2.3). PR hygiene clean: confirmed #1859/#1926 (last cycle's
+  DIRTY fixes) both genuinely is:queued despite GitHub showing UNSTABLE mergeStateStatus --
+  exactly the autoMergeRequest-lies pattern the contract warns about. Only #1827/#2027 not yet
+  queued, both mid-CI green/pending. #1928/#1892 unchanged. Unit of work: widened ga_structural's
+  F-A14 contract to 14/57 (PR #2029, migration 786) -- graha_dispositor_chain. Recognized on
+  sight (without re-investigating) that this shares graha_yoga_karaka_flag's (cycle 57) NOT-D1
+  dependency shape -- dispositor walk resolves from chart_output's own sign assignments via
+  classical SIGN_LORDS, not two independent PyJHora invocations. Shipped six conjuncts: chain[0]
+  identity, length-vs-array-length, chain/signs array-length parity, cycle_detected_at_step-vs-
+  length arithmetic identity, a full chain-pair walk re-deriving the classical dispositor rule
+  against SIGN_LORDS via generate_series, and a terminal cycle-closure check confirming the
+  writer's own cycle-detection claim is genuine (not just "the loop stopped"). All six verified
+  live clean (0/135 each, 318 pairs for the walk) then individually mutation-tested via real
+  transactional UPDATE+ROLLBACK. Carried the 33 prior conjuncts forward verbatim, including the 3
+  already-tracked genuinely-red ones. No writer touched. Full platform/tests/unit/migrations/
+  suite: 233 passed / 91 skipped (45 files). provenance_inventory --check: clean. CYCLE 58 L1:
+  widened ga_structural's F-A14 contract to 14/57 categories (PR #2029, migration 786) -- next:
+  continue ga_structural widening (43 categories remain), or ga_positions re-dispatch once #1892
+  lands.
