@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
+from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, DOMAIN_SYNONYMS
+
 __all__ = [
     'AnchorForPramana',
     'LelEntry',
@@ -143,9 +145,9 @@ def classify_evidence_strength(evidence_type: str, lel_domain: Optional[str], an
     Classify structural evidence quality label (NOT a score).
     direct   — LEL match in same domain as anchor
     indirect — LEL match in adjacent/related domain
-    proxy    — pending observation or cross-domain proxy indicator
+    proxy    — pending observation, detector-unavailable, or cross-domain proxy indicator
     """
-    if evidence_type == 'pending_observation':
+    if evidence_type in ('pending_observation', 'detector_unavailable'):
         return 'proxy'
     if evidence_type in ('life_event_match', 'life_event_miss'):
         if lel_domain and lel_domain.lower() == anchor_domain.lower():
@@ -156,15 +158,51 @@ def classify_evidence_strength(evidence_type: str, lel_domain: Optional[str], an
     return 'proxy'
 
 
+def _normalize_domain(raw: Optional[str]) -> Optional[str]:
+    """Resolve a raw domain/category string to a canonical L4 domain via the shared
+    synonym map, or None if genuinely unmappable -- never silently guessed.
+
+    F2 (L4_W1_ANALYSIS_BATCH_D.md §ph_pramana): the prior exact-string comparison
+    between phala_anchors.domain (canonical) and life_events.domain (a compound
+    "<category>/<subtype>" slug, e.g. 'career/award_selection') could never match --
+    life_event_match fired 0 times across the whole DB. life_events.category is the
+    coarse bucket already aligned with the canonical vocabulary (the writer passes it
+    here, not the compound domain column); this normalises it the same way ph_nimitta
+    normalises signal domains, reusing brahmagyan.domain_vocabulary rather than
+    inventing new synonyms.
+    """
+    if not raw:
+        return None
+    cl = raw.lower().strip()
+    cl = DOMAIN_SYNONYMS.get(cl, cl)
+    return cl if cl in CANONICAL_DOMAINS else None
+
+
 def _find_matching_lel(anchor: AnchorForPramana, lel_entries: list[LelEntry]) -> Optional[LelEntry]:
-    """Find first LEL entry whose date is within anchor's window and domain matches."""
+    """Find first LEL entry whose date is within anchor's window and (normalised) domain matches."""
     if not anchor.window_start or not anchor.window_end:
+        return None
+    anchor_domain = _normalize_domain(anchor.domain)
+    if anchor_domain is None:
         return None
     for lel in lel_entries:
         if anchor.window_start <= lel.event_date <= anchor.window_end:
-            if lel.domain.lower() == anchor.domain.lower():
+            if _normalize_domain(lel.domain) == anchor_domain:
                 return lel
     return None
+
+
+def _has_relevant_lel_data(anchor: AnchorForPramana, lel_entries: list[LelEntry]) -> bool:
+    """Whether the detector had ANY life-event data in this anchor's (normalised) domain,
+    regardless of window. Distinguishes a genuine miss (we had visibility into this domain
+    and the predicted event did not occur in the window) from detector_unavailable (we have
+    no data source for this domain at all, so absence of a match proves nothing) -- §N.7
+    item 6: an honest 'we don't know' beats a plausible-looking refutation.
+    """
+    anchor_domain = _normalize_domain(anchor.domain)
+    if anchor_domain is None:
+        return False
+    return any(_normalize_domain(lel.domain) == anchor_domain for lel in lel_entries)
 
 
 def derive_pramana_records(ctx: PramanaContext) -> list[PramanaRecord]:
@@ -187,7 +225,11 @@ def derive_pramana_records(ctx: PramanaContext) -> list[PramanaRecord]:
         if lel_match:
             ev_type = 'life_event_match'
         elif w_status == 'past_window':
-            ev_type = 'life_event_miss'
+            # F2: a miss is only earned if the detector had SOME visibility into this
+            # domain -- otherwise "no match found" just means "nothing to check
+            # against", not "the predicted event was refuted".
+            ev_type = 'life_event_miss' if _has_relevant_lel_data(anchor, ctx.lel_entries) \
+                else 'detector_unavailable'
         else:
             ev_type = 'pending_observation'
 
