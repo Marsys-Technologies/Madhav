@@ -4997,3 +4997,18 @@ CYCLE 248 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 uncheckable, DB access down 238 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~11:00Z` — L4 — **CYCLE 249 (v2.3) — third flat cycle; drilled into the
+specific `merge_group` job for `#1977`: `Governance Gates` job running since `06:39:01Z`,
+now ~9.4 min elapsed — within the established 8-12 min normal range, not stalled.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 239th consecutive cycle DB access down.
+
+CYCLE 249 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1977`'s Governance Gates job confirmed still running at ~9.4 min, within normal range, via
+direct job inspection; E-gate uncheckable, DB access down 239 cycles; nothing new) → next:
+watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns;
+F1 remains deferred.
+
