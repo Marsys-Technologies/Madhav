@@ -1,7 +1,8 @@
 """
-tests/test_migration_841_dasha_kala_proxy_probe.py — L3 Kāla, F-L3-15 fourth
-and final slice: migration 841 populates `asset_registry.health_probe` for
-`ka_dasha_kala`.
+tests/test_migration_844_dasha_kala_proxy_probe.py — L3 Kāla, F-L3-15 fourth
+and final slice: migration 844 (renumbered twice, 811->841->844 -- see the
+migration file's own header for why) populates `asset_registry.health_probe`
+for `ka_dasha_kala`.
 
 Ruled D-CND-34 (#2071): unlike the other three L3 service probes,
 `ka_dasha_kala` cannot get a DB-free probe of the same architecture —
@@ -39,7 +40,7 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )
 _MIGRATION_PATH = os.path.join(
-    _REPO_ROOT, "platform", "migrations", "841_nirmana_l3_w3_dasha_kala_proxy_probe.sql"
+    _REPO_ROOT, "platform", "migrations", "844_nirmana_l3_w3_dasha_kala_proxy_probe.sql"
 )
 
 
