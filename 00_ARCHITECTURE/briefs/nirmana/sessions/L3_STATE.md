@@ -493,6 +493,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~112:0xZ — L3-W4 — IDLE-OK (deeper check, corrects last cycle's
+  shallow read).** Last cycle's `gh run list --limit 15` sweep genuinely
+  didn't surface `#2166`'s OWN `merge_group` build at all (it had scrolled
+  past the limit as other queue entries' builds started after it) — looked
+  like it hadn't started despite reporting `position: 1`. Queried GitHub's
+  merge-queue entries directly this time (`mergeQueue(branch: "main")`
+  GraphQL field) to see the real queue order/state, then searched the FULL
+  run list filtered on `pr-2166` specifically rather than the truncated
+  recent-N list: **found it — started `21:15:33Z`, 14/15 jobs already
+  passed, only `Governance Gates` still running (~8-9min, same job that's
+  consistently the slowest one this whole saga, not uniquely stuck here).**
+  Genuinely close to finishing, not stalled. Lesson for future cycles: when
+  a PR reports `position: 1` but a shallow `gh run list` sweep shows no
+  matching `merge_group` run, search the FULL list by branch name before
+  concluding anything — a truncated list is not evidence of non-existence.
+  No new bounded work. — blocked on: nothing; next action: same, wait for
+  `#2166`'s `Governance Gates` to finish.
 - `2026-09-06T~111:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
   `isInMergeQueue: true`, position 1, healthy — its own `merge_group` build
   hasn't started yet, but `main` genuinely advanced by 2 more commits since
