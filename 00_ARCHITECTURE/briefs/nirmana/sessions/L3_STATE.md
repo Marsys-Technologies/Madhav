@@ -493,6 +493,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~113:0xZ — L3-W4 — IDLE-OK (verified): `#2166`'s known
+  `Governance Gates` run (`34060510321`) now ~11.5min, still on the same
+  `pytest — pyjhora_adapter + pipeline` step — matches this exact step being
+  the consistently slowest one across every run checked this whole session,
+  not evidence of a stall specific to this PR. 0 failures anywhere. No new
+  `origin/main` merges. Nothing new eligible. — blocked on: nothing; next
+  action: same, wait for it to finish.
 - `2026-09-06T~112:0xZ — L3-W4 — IDLE-OK (deeper check, corrects last cycle's
   shallow read).** Last cycle's `gh run list --limit 15` sweep genuinely
   didn't surface `#2166`'s OWN `merge_group` build at all (it had scrolled
