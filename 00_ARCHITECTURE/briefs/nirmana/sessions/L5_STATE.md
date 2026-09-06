@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:45Z (C8 v2.3 cycle 421) — **IDLE-OK** (verified, not assumed): both PRs
+  hygiene-clean (BLOCKED only on pending checks post-re-arm, no failures). Main's migration tip
+  unchanged at 811 — well clear of L5's dedicated 820-839 range, first quiet cycle since #2086's
+  fix landed (no third renumber needed yet). #1869 unchanged (5 comments). `mi_kula`'s remaining 2
+  ancestors (`bg_rules`, `bg_yogas`) still unfrozen.
 - 2026-09-06T12:35Z (C8 v2.3 cycle 420) — **#2086 RULED — the migration-number race is finally
   closed for real.** Conductor's ruling (cycle 445): root cause was L5 falling back to "next free
   number globally" instead of using its own granted range (`690-699`, only `690-694` used),
