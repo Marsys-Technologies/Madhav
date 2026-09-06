@@ -93,14 +93,6 @@ _ALL_OBSTRUCTION_TYPES = frozenset({
     'rashi_dristi_conflict', 'combustion', 'gandanta', 'papakartari',
 })
 
-# Proxy fallback: Saturn adversarial date windows (for unit tests without live swisseph).
-# These correspond to known harsh Saturn transits for this native (Aries lagna, Aquarius Moon).
-# The live swe path overrides these when swe is available.
-_SATURN_PROXY_WINDOWS: list[tuple] = [
-    (DateType(2025, 3, 1),  DateType(2027, 6, 30)),   # Saturn in Pisces (sade-sati close)
-    (DateType(2030, 4, 1),  DateType(2032, 6, 30)),   # Saturn in Gemini (3rd — upachaya/adversarial by proximity)
-]
-
 
 def _severity(score: float) -> str:
     for threshold, label in _SEVERITY_THRESHOLDS:
@@ -509,11 +501,20 @@ def _detect_all(
 # ── Detector 1: malefic transit ───────────────────────────────────────────────
 
 def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
-                           native_location=None, natal_lagna_lon=None) -> Optional[dict]:
+                           native_location=None, natal_lagna_lon=None,
+                           _test_proxy_windows: Optional[list] = None) -> Optional[dict]:
     """
     Live malefic transit: Saturn or Rahu in an adversarial sign at peak_date.
-    Uses swisseph sidereal (Lahiri) positions when swe is provided;
-    falls back to hardcoded proxy windows when called without swe (unit-test path).
+    Uses swisseph sidereal (Lahiri) positions when swe is provided.
+
+    F-VIGHNA-6 (CR-87 contamination pattern): the `swe is None` branch below is a
+    TEST-ONLY fallback — `run()` hard-raises `RuntimeError` before ever calling this
+    function without a real `swe` module, so this path is unreachable in production.
+    The proxy adversarial-window DATA used to live as a module-level constant right
+    here in the writer, hardcoded to this one native's own transits — moved out to the
+    test module entirely and injected explicitly via `_test_proxy_windows` so no
+    native-specific data lives in writer scope, and so this parameter's name makes the
+    test-only nature impossible to miss at the call site.
     Citation: Parāśara Gochara phala — Saturn/Rahu in dusthāna from lagna/moon.
     """
     peak_date = _coerce_date(peak_date)
@@ -521,8 +522,9 @@ def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
         return None
 
     if swe is None:
-        # Proxy path: check hardcoded Saturn adversarial windows
-        for ws, we in _SATURN_PROXY_WINDOWS:
+        # Test-only proxy path — see the docstring above. `_test_proxy_windows` is never
+        # populated in production (see F-VIGHNA-6 note above).
+        for ws, we in (_test_proxy_windows or []):
             if ws <= peak_date <= we:
                 score = 0.45
                 return {
