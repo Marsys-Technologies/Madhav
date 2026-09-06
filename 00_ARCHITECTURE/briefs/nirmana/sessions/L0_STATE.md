@@ -2103,3 +2103,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   a fresh CI run kicked off against the new base and `DB Integration Tests` is running clean so far
   (no failures, just pending), confirming the earlier read: a one-off flake, not a real defect. No
   DIRTY, no RED, no gate touched. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Main advanced again (`1ef6267e9`, Conductor's UUID crash fix, not
+  L0's). `#2016`'s checks re-triggered again against the new base, mid-CI, no reds. No DIRTY, no
+  RED, no new eligible work. 30/40 frozen holds.
