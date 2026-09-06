@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) mergeStateStatus=BLOCKED only because its CI checks are still IN_PROGRESS (Build Check, Unit Tests, Governance Gates) -- mergeable=MERGEABLE, no failures, not DIRTY, not RED. Not yet is:queued. No other open L0 PRs. No other L0 asset is currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088's checks/queue status, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK, same 3 CI checks (Build Check, Unit Tests, Governance Gates) still IN_PROGRESS on #2088 (migration 704, D-L0-PP fix) across two consecutive cycles now -- no failures, mergeable=MERGEABLE, not DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3264,3 +3264,7 @@ see log). Still 35/40 until that's resolved.
   Governance Gates) — `mergeStateStatus=BLOCKED` is just pending-checks, not DIRTY/RED
   (`mergeable=MERGEABLE`). Not yet `is:queued`. No other open L0 PRs; no other L0 asset currently
   eligible. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Same 3 checks (Build Check, Unit Tests, Governance Gates) still
+  `IN_PROGRESS` on `#2088`, no failures. No DIRTY/RED, no other open L0 PRs. 35/40 frozen
+  unchanged.
