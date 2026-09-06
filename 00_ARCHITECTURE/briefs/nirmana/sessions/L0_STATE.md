@@ -484,3 +484,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified, broader check).** #1713's only new activity is L5's own `mi_kula`
+  freeze milestone. `bg_cohort` carve-out file still untouched; `#2169` still just Conductor's one
+  ruling comment (PR #2172); direct `gh search issues "bg_cohort"` finds no dedicated new issue.
+  Nothing eligible.
