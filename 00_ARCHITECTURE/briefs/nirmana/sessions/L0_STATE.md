@@ -2486,3 +2486,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 2 (20/27/28/49). No DIRTY, no RED, no new eligible
   work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1983 merged (`e48396684`, L2, not L0's), positions flat (20/27/28/49)
+  — already reflected. No DIRTY, no RED. 30/40 frozen holds.
