@@ -458,6 +458,48 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~10:3xZ — L3-W3 — N1 seventh step part B landed (#2049) + three DIRTY-PR
+  fixes this cycle (#1949, #1951, #1952).** PR hygiene checked first (GraphQL `is:queued`,
+  `--limit 300`): found #1949 (F-PARVA-3/F-PARVA-4), #1951 (F-VIGHNA-8/F-DARSH-8), #1952
+  (F-VIGHNA-5) all genuinely DIRTY/`CONFLICTING` — real conflicts, not stale
+  `mergeStateStatus`. All three L3_STATE.md-only conflicts (no writer-file collision this
+  time): resolved via the established script, each verified for exactly one surviving
+  heading (grep count 2-3 per file, but only ONE line matches the heading pattern itself —
+  the rest are older body references, not duplicates). #1949 also touched
+  `ka_jivana_parva.py` + the generated pins file (auto-merged cleanly, confirmed correct
+  by regenerating anyway — zero diff on writer-digests, only L3's own hash changed on the
+  pins file). #1952 carries migration 730 — applied cleanly, no conflict. Verified:
+  `test_ka_jivana_parva.py` (27/27) for #1949; `f_vighna_8_darsh_8_stale_header.test.ts`
+  (2/2) + `tsc --noEmit` clean for #1951; `test_migration_730_vighnakara_depends_on.py`
+  (8/8) for #1952. Full `tests/l3/` run: **1427 passed, 3 failed, 36 skipped** — the 3
+  failures are `ka_kshetra/test_dhara_parity.py`'s live-DB parity checks
+  (`ClassSkipped: career_change: no_class_prior_row`), a `bg_class_priors` data gap
+  entirely unrelated to any file touched this cycle (not `ka_jivana_parva`, not
+  `ka_vighnakara`) — noted honestly rather than claimed as "0 failures", not investigated
+  further this cycle (out of scope for a hygiene pass). All three force-pushed, re-armed
+  auto-merge, confirmed `MERGEABLE`.
+  Substantive work this cycle: **N1 seventh step, part B** (#2049, stacked on part A
+  #2047) — wired `composeConcordanceVerdict` into `kala_explain_get` as new
+  `engine_testimony[]`/`concordance` fields beside `weakest_link`. Self-contained against
+  three still-unmerged upstream branches (#1905/#1919/#1924, copied in via `git show`, the
+  established pattern). Honest by construction: with migration 677 (O-10 seed data) not
+  yet deployed, the profile fetch returns no rows in production today, so
+  `composeConcordanceVerdict`'s own no-primary-role branch returns `null` — verified live
+  in this PR's own test rather than special-cased. Mutation-proved: forced `concordance`
+  to a fabricated non-null default — both honest-null tests correctly went red; restored,
+  56/56 pass across the touched suites, `tsc --noEmit` clean. Ran the FULL
+  `platform-mcp` suite once to sanity-check for wider regressions: 80 failures across 25
+  files (phala_outlook, kala_timeline, bo_2-8, gochara authority naming, etc.) — confirmed
+  ALL pre-existing by stashing this PR's changes out and re-running: identical 42/81
+  failures reproduced on the same three sample files with zero code from this PR present.
+  Not this session's regression; not investigated further (out of L3's hygiene/N1 scope).
+  **N1 seventh step, part C (next, not yet started):** none currently planned — parts A+B
+  together closed the wiring named in the original N1 evidence base
+  (`explain.ts:571`/`school_voices[]`→`engine_testimony[]`). Remaining N1 work is N2
+  (score commensurability, a fuller-verdict precondition) and extending the same pattern
+  to `kala_now_get`'s analogous `concordance` block (named in `engine_testimony.ts`'s own
+  header comment as a later step, not started).
+  #1903 (F-CONC-6 prerequisite), #1958, sidecar-traffic, #1960 all unchanged.
 - `2026-09-06T~05:2xZ — L3-W3 — F-PARVA-2 fix: migration 678 (PR pending, branch
   `codex/nirmana-l3-f-parva-2-volume-explanation`).** Moved to `ka_jivana_parva` (the
   life-arc chapter artifact — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_jivana_parva section).
