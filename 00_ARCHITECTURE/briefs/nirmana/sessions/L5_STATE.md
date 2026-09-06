@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T05:25Z (C8 v2.3 cycle 297) — **IDLE-OK.** Both own PRs still `isInMergeQueue:
+  true`, clean. Main advanced to #1974 — Conductor's fix for #1973 (the DB Integration
+  Tests DDL race I filed mid-session), full closure of that thread. #1901=22 (was 24).
+  #1869 unchanged at 4 comments. 5 cycles since last push — pushing now.
 - 2026-09-06T05:22Z (C8 v2.3 cycle 296) — **IDLE-OK.** #1826's checks all complete (0
   notDone), safely genuinely queued. #1844 also confirmed `isInMergeQueue: true`. #1901=24
   unchanged. #1869 unchanged at 4 comments. 4 cycles since last push.
