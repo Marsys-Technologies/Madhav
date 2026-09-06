@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 120; closed F-E8 (PR #2148) — get_medical_indications.ts had no empty_reason (0-row response looked populated) and no density_contract; added both, and named both upstream authorities (chart_facts + bg_medical_mappings) in provenance.tables. F-D18/F-D20 both merged cleanly via the queue -- the anticipated same-file conflict never needed manual resolution
+last_updated: 2026-09-06 — C8 v2.3 cycle 121; closed F-E19 (PR #2151) — ga_tajaka_writer.py's _read_trirashipathi LIMIT 1 had no ORDER BY (latent, 15/15 chart×ayanamsha combos have exactly 1 row today); added ORDER BY fact_id + stopped silently swallowing the zero-row case; first WRITER-file fix this whole NOW-sweep, required regenerating writer-digests + re-pinning L1 analysis layer pins
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3377,7 +3377,7 @@ none accepted yet (blocked on #1736).
 | ga_ayurdaya | 130 / 130 | rebuild_only | F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99. F-E8 **FIXED (cycle 120, PR #2148)** — `get_medical_indications.ts` had no `empty_reason` (0-row response looked populated) and no `density_contract`; added both, and named both upstream authorities (`chart_facts` + `bg_medical_mappings`) in `provenance.tables`, not just `ga_medical` itself |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
-| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix |
+| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix. F-E19 **FIXED (cycle 121, PR #2151)** — `_read_trirashipathi`'s `LIMIT 1` had no `ORDER BY` (latent today since every chart×ayanamsha has exactly 1 row, confirmed live 15/15); added `ORDER BY fact_id` and stopped silently swallowing the zero-row case to `None` with no log |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted (F-E21, 2 real prashna casts 2026-06-18, `POST /api/compute/prashna/cast` reachable). F-E22's "5 orphaned served rows" **CORRECTED cycle 107** — re-investigated before acting on its own MUST instruction and found the rows are NOT orphaned: `ga_prashna_lagna`'s 5 rows for chart `b35046d8` are real, well-formed lagna computations for a genuine prashna cast that exists in `prashna_charts` (not `charts` — the table F-E22 checked); `ga_prashna_writer.py`'s own docstring confirms `prashna_charts` is the intended parent table. The actual finding: `ga_prashna_judgment`'s FK points at `charts(id)`, contradicting its own writer's design — likely why judgment rows for this chart never insert while lagna rows (no FK) do. R-1-sensitive schema question filed as #2123, not acted on unilaterally. F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only) |
 
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
@@ -7334,3 +7334,34 @@ L1 must satisfy rather than a feature it consumes.
   L1: PR hygiene clean (plus confirmed a two-cycle-old watch item resolved itself cleanly),
   closed F-E8 -- next: continue the remaining ~2 NOW claims (F-E19/F-E28); this NOW-tier
   sweep is close to done.
+- 2026-09-07T00:0xZ -- CYCLE 121 (C8 v2.3). PR hygiene: #2145 genuinely `is:queued`; #2148/
+  #2146/#2132 all mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Unit of
+  work: twelfth of the remaining NOW claims -- F-E19 (`ga_tajaka`, NOW, §N.7 item 2), the
+  FIRST writer-file (.py) fix this entire NOW-tier sweep -- every prior fix this segment was a
+  serving-layer TS file. Read `ga_tajaka_writer.py`'s `_read_trirashipathi`: confirmed
+  `LIMIT 1` with no `ORDER BY` -- pins `fact_category`+`fact_key` (passes the CI lint) but the
+  ordering half of the D1 defect class was genuinely absent, latent only because every
+  (chart, ayanamsha) currently has exactly 1 row/1 build (re-verified live: 15/15
+  combinations, count=1/builds=1/distinct_vals=1, matching the finding's own numbers exactly).
+  Added `ORDER BY fact_id` (confirmed the PK first). Also found and fixed the finding's
+  second half: a zero-row result (no exception, genuinely absent row) was silently swallowed
+  to `None` with NOTHING logged -- distinct from the already-logged exception path -- now logs
+  a warning naming chart_id+ayanamsha. 4 new DB-free unit tests (mocked conn/cursor,
+  mirroring this test suite's existing `_conn_returning`-style pattern from a sibling L2
+  test file) covering the ORDER BY clause text, the normal hit, the newly-logged zero-row
+  case, and the pre-existing exception path -- ran the broader `ga_writers/__tests__/` +
+  ga_tajaka suite (140 passed, 1 skipped, no regressions). Because this is a WRITER file,
+  followed the established writer-change protocol in full: regenerated
+  `nirmana-writer-digests.json` (`provenance_inventory --output`, confirmed via diff that
+  ONLY `ga_tajaka`'s entry changed) and re-pinned `nirmana-analysis-layer-pins.json`
+  (`nirmana_analysis_layer_pins.py --layer L1 --convergence-commit <this PR's own commit sha>`
+  -- L1-only, confirmed L0/L2/L3/L4/L5 untouched, per D-CND-28) as a second commit on the same
+  branch. `check_fact_category_pinning.py` exits 0. Opened PR #2151 directly off `origin/main`
+  (hit the by-now-familiar "commit lands on whichever branch checkout failed on" pitfall from
+  an uncommitted-changes conflict -- recovered the same way as before: branched off the
+  commit, reset the state branch back to its real tip), armed auto-merge, confirmed genuine
+  CI dispatch (31 check-runs) before ending the cycle. CYCLE 121 L1: PR hygiene clean, closed
+  F-E19 -- the NOW-tier sweep's first writer-file fix, full digest+pin discipline followed --
+  next: F-E28 is the last remaining NOW claim in this sweep; after that the sweep is
+  genuinely done and the next priority should be re-derived from the contract (W3 remaining
+  MUST findings, or W1/W2 work, per Step 2's own priority order).
