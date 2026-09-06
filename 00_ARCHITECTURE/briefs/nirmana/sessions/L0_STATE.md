@@ -3686,3 +3686,8 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** No change: main tip still `eb5aa07be` (includes my fix), deploy run
   for the prior commit (`7a2fdb59c`) still `in_progress`. No open L0 PRs, no DIRTY/RED. 36/40
   frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Deploy for `7a2fdb59c` (prior commit) completed success, but no new
+  deploy run has yet triggered for main's current tip `eb5aa07be` (includes my fix + #2112) --
+  likely propagation lag in the two-hop push->CI->workflow_run deploy trigger. No open L0 PRs,
+  no DIRTY/RED. 36/40 frozen unchanged.
