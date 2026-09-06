@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — MILESTONE: all three campaign migration fixes now MERGED to main — #2004 (700, bg_dasha_systems), #2013 (701, bg_yogas), #2014 (702, bg_compendium_index). Verified live via mcp__postgres__query that none have deployed yet (all three still show pre-fix integrity_check_sql). Only #2016 (heartbeat consolidation) remains open, at queue position 21. Will re-check deployment before treating any of the three as W2-refresh/freeze-eligible. 30/40 frozen holds.
+last_updated: 2026-09-06 — FINDING: migrations 700/701/702 are now confirmed DEPLOYED live (join-scope fixes + hash re-pins all present in asset_registry), but all three assets' integrity_check_sql still evaluate false against live data. For bg_dasha_systems, decomposed clause-by-clause: reference_dasha_systems missing "kp" (19 not 20 rows), brahma_ontology has stale "jaimini_chara" id instead of "chara_jaimini" (also missing kp) -- both directly contradicting migration 700's own "already correct, no rebuild needed" claim. seed_dasha_systems() writer is a genuine full delete-then-insert across all three tables; the mismatch means this writer has never actually been rebuilt end-to-end with its current (kp-including) source. Correction to prior plan: none of the three assets are W2-refresh-eligible yet -- next priority is a real W4 dispatch/rebuild of bg_dasha_systems, deferred to a fresh cycle as its own bounded unit. #2016 (only open L0 PR) at queue position 2, AWAITING_CHECKS, no DIRTY/RED. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2571,3 +2571,42 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** 3 more merges (#2022/#2024/#2026, L1, not L0's). `#2016` now at
   position 12, `AWAITING_CHECKS`. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **FINDING (deployment re-check): migrations 700/701/702 ARE now deployed, but all
+  three assets' `integrity_check_sql` STILL evaluate `false` against live data — a genuinely new
+  discrepancy, not the C12 join-scope/hash-pin bug the migrations already fixed.** `#2016` at
+  queue position 2, `AWAITING_CHECKS`. No DIRTY/RED on PR hygiene.
+  - `bg_dasha_systems`: confirmed deployed (corrected join-scope subquery + corrected catalog_hash
+    `8e35495f...906` both live in `asset_registry`). Decomposed the check clause-by-clause:
+    `reference_dasha_systems` has only 19 rows (missing `kp` entirely); `brahma_ontology`
+    (`entity_class='dasha_system'`) has the STALE id `jaimini_chara` instead of `chara_jaimini`
+    (and is also missing `kp`) — both contradicting migration 700's own commit-message claim ("kp
+    present, jaimini_chara absent... already correct once ontology is scoped correctly"). The
+    catalog table (`brahma_dasha_systems`) itself DOES have the correct 20 rows incl. `kp` +
+    `chara_jaimini` — but its content hash (`c7`) also comes back `false` against the newly-pinned
+    `8e35495f...906`, so even the one table that looks superficially right doesn't byte-match.
+    Read `l0_dasha_systems.py`'s `seed_dasha_systems()`: it's a genuine single-transaction
+    delete-then-insert across all three tables (catalog → ontology → pointer, per system, with a
+    strict postflight-count `RuntimeError` guard) — if this writer had ever actually *committed* a
+    run against its current source (which already has `kp` + `chara_jaimini`), all three tables
+    would agree. That they don't (ontology/reference stuck on pre-`kp` content, catalog updated by
+    some other route) means **this writer has not actually been rebuilt end-to-end since `kp` was
+    added to its source** — migration 700's "no rebuild required, verified live" claim was likely
+    based on a *rolled-back* dry-run replay (used only to compute the correct hash pins), not a
+    real committed-state observation, and got worded as if it were the latter. Root cause not yet
+    100% closed (the catalog_hash-only mismatch on an otherwise-correct-looking table needs one
+    more look at field-level content, e.g. `python_impl_module`/`conditions_for_use` NULL-vs-value
+    diffs) but the shape is clear enough to act on.
+  - `bg_yogas`: confirmed deployed (correct pre-filtered-subquery join scope now live) but the
+    live check still fails — not yet decomposed clause-by-clause this cycle.
+  - `bg_compendium_index`: confirmed deployed but still fails (`c1`/`c3`/`c5`/`c6` all `false` —
+    row counts and both content hashes off). Not yet decomposed.
+  - **Correction to prior plan**: earlier heartbeats said "once deployed, W2-refresh + likely
+    direct freeze eligible, no rebuild needed" — that assumption is now falsified for at least
+    `bg_dasha_systems`. **None of the three are W2-refresh-eligible yet.** Next priority: a real W4
+    dispatch/rebuild of `bg_dasha_systems` (writer is deterministic + idempotent, this is
+    ordinary NIRMANA lifecycle work, not an architecture question) — then re-verify the check
+    clause-by-clause before touching `bg_yogas`/`bg_compendium_index` the same way. Deferred to a
+    fresh cycle rather than rushed into this one (dispatch + build-run-authorization is its own
+    bounded unit, and I want a clean run at the `authorize_build_run.sh` timing window rather than
+    tacking it onto an already-long investigation cycle). 30/40 frozen holds unchanged.
