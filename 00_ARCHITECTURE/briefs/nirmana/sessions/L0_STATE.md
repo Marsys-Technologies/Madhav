@@ -387,3 +387,7 @@ a RED-fix (see heartbeat).
   "verify migrations 705+706 applied live via direct DB check, not CI-conclusion alone" rather than
   trusting the deploy job's green checkmark. No action needed from L0 now; will factor this into the
   post-merge verification once #2153 actually merges. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #2153 still `is:queued`, `mergedAt: null` — not merged yet, but
+  the queue is actively moving (`git log origin/main` shows steady merges from other lanes just this
+  past stretch, e.g. #2158/#2157/#2149/#2155). Not stalled, just hasn't reached #2153. #1713 tail
+  unchanged. Nothing else eligible.
