@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 119; closed F-E2/F-E3 (PR #2146) — get_ayurdaya.ts omitted fact_value_jsonb (maraka_grahas/per_graha/lagna_years all unreachable); added it and promoted harana_status from buried-in-jsonb to an honestly-derived top-level field
+last_updated: 2026-09-06 — C8 v2.3 cycle 120; closed F-E8 (PR #2148) — get_medical_indications.ts had no empty_reason (0-row response looked populated) and no density_contract; added both, and named both upstream authorities (chart_facts + bg_medical_mappings) in provenance.tables. F-D18/F-D20 both merged cleanly via the queue -- the anticipated same-file conflict never needed manual resolution
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3375,7 +3375,7 @@ none accepted yet (blocked on #1736).
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists). F-D20 **FIXED (cycle 117, PR #2144)** — the shared `ORDER BY fact_category, ayanamsha_id, fact_key` (both `all:true` and the default path's underlying fetch) was a non-total order; confirmed live 48 rows share the sort key for several combinations (e.g. `sade_sati_phase_quarter`/krishnamurti/`quarter_end_iso`); added `fact_subject, fact_id` (PK). Same file as F-D18's still-open PR #2142 -- expect a small merge conflict on whichever lands second |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows |
 | ga_ayurdaya | 130 / 130 | rebuild_only | F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
-| ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
+| ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99. F-E8 **FIXED (cycle 120, PR #2148)** — `get_medical_indications.ts` had no `empty_reason` (0-row response looked populated) and no `density_contract`; added both, and named both upstream authorities (`chart_facts` + `bg_medical_mappings`) in `provenance.tables`, not just `ga_medical` itself |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted (F-E21, 2 real prashna casts 2026-06-18, `POST /api/compute/prashna/cast` reachable). F-E22's "5 orphaned served rows" **CORRECTED cycle 107** — re-investigated before acting on its own MUST instruction and found the rows are NOT orphaned: `ga_prashna_lagna`'s 5 rows for chart `b35046d8` are real, well-formed lagna computations for a genuine prashna cast that exists in `prashna_charts` (not `charts` — the table F-E22 checked); `ga_prashna_writer.py`'s own docstring confirms `prashna_charts` is the intended parent table. The actual finding: `ga_prashna_judgment`'s FK points at `charts(id)`, contradicting its own writer's design — likely why judgment rows for this chart never insert while lagna rows (no FK) do. R-1-sensitive schema question filed as #2123, not acted on unilaterally. F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only) |
@@ -7309,3 +7309,28 @@ L1 must satisfy rather than a feature it consumes.
   findings in one migration since they shared a root cause and a file -- next: continue the
   remaining ~3 NOW claims (F-E8/F-E19/F-E28); keep watching for the F-D18/F-D20 merge-order
   conflict.
+- 2026-09-06T23:5xZ -- CYCLE 120 (C8 v2.3). PR hygiene: confirmed #2144/#2142 (F-D20/F-D18)
+  both MERGED at the identical timestamp -- the anticipated same-file conflict flagged at
+  cycles 116/117 never needed manual resolution; the merge queue's own sequential-rebase
+  batching handled it silently. All open mine (#2146/#2145/#2132) confirmed mid-CI with
+  nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Unit of work: eleventh of the
+  remaining NOW claims -- F-E8 (`ga_medical`, NOW, §N.6 items 3 and 4). Confirmed still live:
+  `get_medical_indications.ts` had no `empty_reason` field at all -- a 0-row response
+  returned the same populated-looking envelope (medical disclaimer + provenance block) as a
+  real result, with nothing distinguishing the two; also 0 `density_contract` occurrences.
+  Added a genuine `empty_reason` (fires on `total_matching===0`, naming the applied filters)
+  and `density_contract` (`empty_reason: true` -- a real claim, the handler now implements
+  it). The finding's third instruction ("name the two upstream authorities in
+  provenance.tables") required reading `ga_medical_writer.py` directly rather than guessing
+  -- confirmed it derives every row from `chart_facts` (natal sign/nakshatra per graha,
+  lines 194-227) AND `bg_medical_mappings` (an L0 seed table, the classical graha->dosha/
+  organ mapping, lines 162-185) -- both now named in `provenance.tables`, not just the
+  served `ga_medical` table itself. 4 mock unit tests (including one asserting the exact
+  3-table provenance list). No allowlist entry existed for this file. `npx tsc --noEmit` +
+  `npx eslint` clean; `check_fact_category_pinning.py` exits 0, `--self-test` passes; `npx
+  vitest run --project node src/lib/retrieval/registry/layers/L1_ganita/` -- 130 passed, no
+  regressions. No writer touched. Opened PR #2148 directly off `origin/main`, armed
+  auto-merge, confirmed genuine CI dispatch (35 check-runs) before ending the cycle. CYCLE 120
+  L1: PR hygiene clean (plus confirmed a two-cycle-old watch item resolved itself cleanly),
+  closed F-E8 -- next: continue the remaining ~2 NOW claims (F-E19/F-E28); this NOW-tier
+  sweep is close to done.
