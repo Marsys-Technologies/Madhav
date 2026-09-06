@@ -3667,3 +3667,16 @@ now the queue head; E-gate uncheckable, DB access down 154 cycles; one new adjud
 checked, not L4-relevant) → next: watch `#1854` merge; retry E-gate/dispatch dry-run once DB
 access returns; F1 remains deferred.
 
+`2026-09-06T~04:00Z` — L4 — **CYCLE 165 (v2.3) — genuinely IDLE; `#1854` still resolving at
+queue head, no change from cycle 164.**
+
+**PR hygiene:** all 10 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 155th consecutive cycle DB access down.
+
+CYCLE 165 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queued, `#1854`
+still resolving at queue head; E-gate uncheckable, DB access down 155 cycles; nothing new) →
+next: watch `#1854` merge; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
