@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:10Z (C8 v2.3 cycle 415) — **IDLE-OK** (verified, not assumed): #1826 down to 2
+  checks (Build Check, Governance Gates), no failures, not queued yet (pending, expected). #1844
+  has 4 checks pending after last cycle's force-push, no failures. Both `809`/`810` re-confirmed
+  still clear on `origin/main` (re-checked fresh, per cycle 414's own standing caution). #1869
+  unchanged (5 comments, no new response). **Real progress on `mi_kula`'s E-gate**: `bg_dasha_systems`
+  is now frozen (1 `asset_frozen` event, wasn't there last check) — down to 2 unfrozen ancestors
+  (`bg_rules`, `bg_yogas`), from 3. Still `BLOCKED-ANCESTORS`, nothing dispatchable yet, but this is
+  the first real movement on this gate all session.
 - 2026-09-06T12:00Z (C8 v2.3 cycle 414) — **RED on #1844 AGAIN, immediately after cycle 413's
   fix — a genuinely NEW collision, not a repeat of the old one.** L1's migration lane is landing
   numbers fast enough that the 808 I picked in cycle 411 got claimed a SECOND time (by a different
