@@ -90,6 +90,8 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
         return _probe_graha_sancara(probe_spec)
     elif probe_type == "tulana_ranking_forensic":
         return _probe_tulana(probe_spec)
+    elif probe_type == "dasha_kala_proxy_integrity":
+        return _probe_dasha_kala(probe_spec)
     else:
         return {"status": "down", "message": f"unknown probe_type: {probe_type}", "checks": []}
 
@@ -857,5 +859,109 @@ def _probe_tulana(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         _add_check(checks, failures, "forensic_compare_verdict", False,
                     f"compare failed: {exc}", error=str(exc))
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_dasha_kala probe (DB-free PROXY check — D-CND-34 ruling, #2071/#2067) ─────────
+
+# F-L3-15's fourth and final slice. Unlike the other four probes, `ka_dasha_kala`
+# CANNOT get the same DB-free architecture: `KaDashaKalaService.query()` reads
+# `chart_dashas` through `db_conn` inside `tree_walk.walk_eligible_intervals`, and
+# `run_health_probe()` has no `db_conn` parameter (by design — the standalone,
+# authenticated `nirmana_probe.py` route this dispatches from has zero DB
+# infrastructure, and giving it one would expand that route's security surface,
+# a live risk-acceptance decision outside a session's own authority to make).
+#
+# Ruled (D-CND-34, #2071): Option (B) — a DB-free PROXY check. This does NOT verify
+# `chart_dashas` correctness, `walk_eligible_intervals`'s pruning logic, or anything
+# live-DB-shaped. It verifies exactly two things: (1) the single canonical
+# implementation still imports cleanly, and (2) the documented 7-system constant set
+# (service.py's own docstring: "vimshottari, yogini, ashtottari, chara_karaka,
+# naisargika, mudda, kalachakra... KP is a Vimshottari sub-level dimension — NOT a
+# standalone system") has not silently drifted (a system renamed, removed, or an
+# 8th one added would break this).
+#
+# §N.8 Earned-Signal Principle, the ruling's own required condition: this probe's
+# GREEN must never be read as "live-DB correctness confirmed" — it measures
+# conditions (1) and a narrow slice of (2) only (importability + constant-set
+# identity), not (3) FORENSIC-consistency (no live instant to check against) or any
+# DB-backed behavior. The `checks` list's own `scope` field on every check says this
+# explicitly, so a caller reading a single check in isolation still sees the
+# disclosure, not just the module docstring.
+_DASHA_KALA_SCOPE_NOTE = (
+    "PROXY check only — importability + constant-set identity, NOT chart_dashas "
+    "correctness or any live-DB behavior (D-CND-34 ruling, #2071)"
+)
+
+
+def _validated_dasha_kala_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    if "expected_systems" not in probe_spec:
+        raise ValueError("missing required field: expected_systems")
+
+    expected = probe_spec["expected_systems"]
+    if not isinstance(expected, list) or not expected:
+        raise ValueError("expected_systems must be a non-empty list")
+    invalid = [s for s in expected if not isinstance(s, str) or not s.strip()]
+    if invalid:
+        raise ValueError(f"expected_systems contains invalid entries: {invalid}")
+    if len(set(expected)) != len(expected):
+        raise ValueError("expected_systems must not contain duplicates")
+
+    return {"expected_systems": frozenset(expected)}
+
+
+def _probe_dasha_kala(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_dasha_kala_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True, scope=_DASHA_KALA_SCOPE_NOTE)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid dasha_kala health_probe contract: {exc}",
+            error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE,
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from services.ka_dasha_kala.service import KaDashaKalaService  # noqa: F401
+        from services.ka_dasha_kala.tree_walk import walk_eligible_intervals, ALL_DASHA_SYSTEMS  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True, scope=_DASHA_KALA_SCOPE_NOTE)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                    f"import failed: {exc}", error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE)
+        return _aggregate(checks, failures)
+
+    # Check 2: the 7-system constant set is exactly what the registry contract
+    # declares — not "at least these 7" or "roughly these", an exact set match, so
+    # a silent rename/removal/addition is caught rather than tolerated.
+    try:
+        from services.ka_dasha_kala.tree_walk import ALL_DASHA_SYSTEMS
+
+        actual = frozenset(ALL_DASHA_SYSTEMS)
+        expected = config["expected_systems"]
+        systems_ok = actual == expected
+        mismatch_msg = ""
+        if not systems_ok:
+            missing = sorted(expected - actual)
+            extra = sorted(actual - expected)
+            mismatch_msg = f"missing={missing}, unexpected={extra}"
+        _add_check(
+            checks, failures, "seven_system_constant_set_intact",
+            systems_ok, mismatch_msg,
+            actual_systems=sorted(actual), expected_systems=sorted(expected),
+            scope=_DASHA_KALA_SCOPE_NOTE,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "seven_system_constant_set_intact", False,
+                    f"constant-set check failed: {exc}", error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE)
 
     return _aggregate(checks, failures)

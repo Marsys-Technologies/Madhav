@@ -489,6 +489,139 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~87:0xZ — L3-W4 — IDLE-OK (verified, deeper check): `#2070`
+  stuck at queue position 1 for 2 full cycles prompted a closer look —
+  searched the last 30 workflow runs for `#2070`'s own `gh-readonly-queue`
+  merge-group build: **it hasn't started at all.** Checked whether the
+  queue itself is stalled (a real, campaign-wide concern) rather than just
+  my own PRs waiting: pulled `main`'s recent commit history — merges from
+  L1 and L5 landed within the last few minutes, confirming the shared
+  queue is actively processing, just busy with heavy concurrent traffic
+  from other layer sessions. My `position: 1`/`position: 2` readings
+  reflect standing in a genuinely large, active shared queue, not a stall
+  — no action needed, no adjudication warranted. `#2079` healthy, zero
+  failures. `#2065` still hasn't merged. `egate.sql` unchanged. — blocked
+  on: `#2065` merging; next action: once it lands, `ka_muhurta_seva`'s W2
+  acceptance is the next genuine W4-path item — route any verifier-role
+  submissions through a fresh subagent per D-CND-35.
+- `2026-09-06T~86:0xZ — L3-W4 — IDLE-OK (verified): queue progressed —
+  `#2070` now position 1 (`AWAITING_CHECKS`), `#2065` position 2
+  (`UNMERGEABLE`, still the not-yet-tried placeholder since position 1
+  hasn't finished its own merge-group build). `#2079` was 18 commits
+  behind — rebased clean, no conflicts, pins/digests/migration-guard all
+  re-verified clean. Zero failures anywhere. `#2065` still hasn't merged.
+  `egate.sql` unchanged. — blocked on: `#2065` merging; next action: once
+  it lands, `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path
+  item — route any verifier-role submissions through a fresh subagent per
+  D-CND-35.
+- `2026-09-06T~85:0xZ — L3-W4 — IDLE-OK (verified): `#2065` read
+  `UNMERGEABLE` in the queue at position 3 — checked directly rather than
+  assume a new collision: `#2070` (position 2) is genuinely `AWAITING_
+  CHECKS`, and position 1 (`#2132`, not mine) has its own `merge_group` CI
+  run actively in progress — so the queue simply hasn't attempted #2065's
+  own merge-group build yet, `UNMERGEABLE` reads as a not-yet-tried
+  placeholder here, not a real conflict. Confirmed via a fresh local
+  `migration_number_guard.ts` run: clean, no new collision. `#2079` healthy,
+  zero failures. `#2065` still hasn't merged. `egate.sql` unchanged. —
+  blocked on: `#2065` merging; next action: once it lands, `ka_muhurta_
+  seva`'s W2 acceptance is the next genuine W4-path item — route any
+  verifier-role submissions through a fresh subagent per D-CND-35.
+- `2026-09-06T~84:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` now
+  genuinely queued (`UNSTABLE` = checks pending, not failed). `#2079`
+  healthy, zero failures, fresh CI run. `#2065` still hasn't merged.
+  `egate.sql` unchanged. — blocked on: `#2065` merging; next action: once
+  it lands, `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path
+  item — route any verifier-role submissions through a fresh subagent per
+  D-CND-35.
+- `2026-09-06T~83:0xZ — L3-W4 — IDLE-OK (verified, not assumed): same run
+  IDs on `#2070`/`#2065` as last cycle — checked run status directly via
+  `gh run view` rather than trust "no failures" alone (2 cycles same run
+  IDs warranted it). Confirmed genuinely `in_progress`, ~6-7 min elapsed —
+  matches the known ~10min `Build Check`/`Governance Gates` pattern, not a
+  stall. `#2079` progressed to a fresh run, zero failures. `#2065` still
+  hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
+  action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
+- `2026-09-06T~82:0xZ — L3-W4 — IDLE-OK (verified): all 3 PRs healthy, zero
+  failures, fresh CI runs on each. `#2065` still hasn't merged. `egate.sql`
+  unchanged. — blocked on: `#2065` merging; next action: once it lands,
+  `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path item —
+  route any verifier-role submissions through a fresh subagent per
+  D-CND-35.
+- `2026-09-06T~81:0xZ — L3-W4 — PR hygiene: a FIFTH round of migration-
+  number collisions hit `#2070`/`#2065` (not `#2079` this time).** Both
+  went `UNMERGEABLE`-in-queue. `#2070`: 845→849 (collided with L1's newly-
+  merged `845_..._ayurdaya_category_ownership_backfill.sql` — its fourth
+  renumber overall: 764→810→842→845→849). `#2065`: 846→850 (collided with
+  L1's newly-merged `846_..._vichara_target_floor.sql` — its third
+  renumber: 676→843→846→850). `#2079` itself rebased clean with no new
+  collision this round. Deliberately serialized 848/849/850 across all
+  three sibling PRs again (checked each other's already-claimed numbers
+  first). Both fixed: rebased, dequeued (both had already auto-dequeued
+  before my mutation call, not an error), header/docstring/test-path
+  references updated, `migration_number_guard.ts` re-verified clean, tests
+  re-pass (28/47), pushed, re-queue requested. `#2065` still hasn't merged.
+  — blocked on: nothing new; next action: watch all 3 F-L3-15 PRs actually
+  merge this time — L1's 840s-range churn shows no sign of slowing, so a
+  sixth round wouldn't be surprising; `#2065` landing unblocks
+  `ka_muhurta_seva`'s W2 acceptance, the next genuine W4-path item (route
+  verifier-role submissions through a fresh subagent per D-CND-35).
+- `2026-09-06T~80:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
+  queued, `#2079` healthy, zero failures, fresh CI run. `#2065` still
+  hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
+  action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
+- `2026-09-06T~79:0xZ — L3-W4 — IDLE-OK (verified): `#2079` showed `UNKNOWN`
+  mergeability (async lag — resolved to healthy on recheck, not a real
+  issue). `#2070`/`#2065` were `CLEAN`-but-unqueued — re-queued, verified
+  via `is:queued`. `#2079` itself was 11 commits behind — rebased clean, NO
+  new migration collision this time (a first, after four rounds), pins/
+  digests/migration-guard all re-verified clean. `#2065` still hasn't
+  merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
+  action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
+- `2026-09-06T~78:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
+  queued, `#2079` healthy, zero failures, still building fresh CI. `#2065`
+  still hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging;
+  next action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
+- `2026-09-06T~77:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
+  queued, held this time. `#2079` healthy, zero failures, still building
+  fresh CI. `#2065` still hasn't merged. `egate.sql` unchanged. — blocked
+  on: `#2065` merging; next action: once it lands, `ka_muhurta_seva`'s W2
+  acceptance is the next genuine W4-path item — route any verifier-role
+  submissions through a fresh subagent per D-CND-35.
+- `2026-09-06T~76:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` were
+  `CLEAN`-but-unqueued — re-queued, verified via `is:queued`. `#2079` still
+  `BLOCKED`, zero failures, just building fresh CI after last cycle's push.
+  `#2065` still hasn't merged. `egate.sql` unchanged. — blocked on: `#2065`
+  merging; next action: once it lands, `ka_muhurta_seva`'s W2 acceptance is
+  the next genuine W4-path item — route any verifier-role submissions
+  through a fresh subagent per D-CND-35.
+- `2026-09-06T~75:0xZ — L3-W4 — `#1903` MERGED for real** (squash-merged
+  during this cycle's PR hygiene sweep — its own commit title on `main` is
+  the PR's original title, not my last local commit message; a routine
+  intermediate "still building CI" note from mid-cycle didn't survive the
+  squash, no real content lost, just bookkeeping). Since `#1903` is now
+  closed, moved state-file tracking to `#2079` (still open, unlocked).
+  **Hit a FIFTH migration-number collision on `#2079` while rebasing onto
+  it**: 847→848 (collided with L1's newly-merged `847_..._estimated_seconds_
+  rebaseline.sql` — the fourth renumber for this one file overall:
+  811→841→844→847→848). Also resolved a genuine, additive L3_STATE.md
+  merge conflict while rebasing `#2079` onto the now-much-further-advanced
+  `main` (an old `#1895` L2 pre-emptive-fix heartbeat entry from early this
+  session, duplicated across HEAD/theirs — kept once, spliced at its correct
+  chronological position, verified zero data loss via the standing
+  `git diff origin/main | grep '^-'` check). Migration guard re-verified
+  clean, tests re-pass (5/5). `#2070`/`#2065` still healthy and queued from
+  last cycle. — blocked on: nothing new; next action: watch all 3 F-L3-15
+  PRs merge — `#2065` landing unblocks `ka_muhurta_seva`'s W2 acceptance,
+  the next genuine W4-path item (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
@@ -1323,6 +1456,23 @@ your layer close.
   file makes them worth watching together), and #1713's sidecar finding is now five
   cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
   next cycle regardless.
+- `2026-09-06T~15:0xZ — L3-W3 — PR hygiene: near-clean sweep (35 PRs checked), one
+  genuine issue: `#1895` (L2's `bo_karanajala`, not mine but not owned by any
+  active worktree either) was `UNMERGEABLE`-in-queue at position 5, on track to
+  become the head-of-line blocker once positions 1-4 cleared their checks. Fixed
+  pre-emptively rather than wait for it to actually jam the queue: dequeued,
+  rebased — writer-digests conflict (real, since it edits `bo_karanajala.py`
+  itself) then a follow-on L2-pin conflict using a stale pre-rebase convergence
+  sha, both regenerated against the branch's own new post-rebase commit sha and
+  verified `--check` clean, diffs scoped to `bo_karanajala`'s own entries only.
+  Full `bo_karanajala` test family (4 files) 42/42 pass. Pushed, back in queue.
+  Verified last cycle's Held-items-table fix (#1903) hasn't reverted again — it
+  simply hasn't merged yet (`git show origin/main:...` still shows the old #1846
+  text, but that's expected since #1903 is still queued, not a fresh regression).
+  — blocked on: nothing new; next action: confirm #1903 actually merges this time
+  and the Held-items fix finally lands on `main` for real, re-check #1713 for a
+  sidecar response, and consider resuming normal W3 work now that hygiene has
+  been clean or near-clean for several consecutive cycles.
 - `2026-09-06T~14:0xZ — L3-W3 — PR hygiene: fully clean fleet sweep this cycle (36
   PRs checked, zero DIRTY/UNMERGEABLE-in-queue — the biggest single improvement
   since this session started; last cycle's 8-PR fix batch held). Queue itself
@@ -1440,7 +1590,11 @@ your layer close.
   things — importability + the documented 7-system constant-set identity — and
   every check carries an explicit `scope` field disclosing it never confirms
   chart_dashas correctness or any live-DB behavior (the ruling's own required
-  condition, §N.8). Migration 811. 13 new tests (7 probe + 7 migration [overlap:
+  condition, §N.8). Migration 841 (renumbered 2026-09-06T~46:0xZ from 811 — a
+  genuine collision with L1's own already-merged 811_nirmana_l1_ga_structural_
+  integrity_contract_lordinhouse.sql, caught by the Unit Tests E2 gate; renamed
+  per the gate's own instruction, max() across both migration directories + 1,
+  test file and internal header comment updated to match). 13 new tests (7 probe + 7 migration [overlap:
   2 shared assertions counted once] + 2 route), full `tests/l3/` 1465
   passed/0 new failures.
   **Also this cycle: fixed a genuine RED — migration collision.** PR #2070's own
