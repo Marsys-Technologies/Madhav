@@ -2536,3 +2536,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   will re-check on a future cycle before considering `bg_dasha_systems` W2-refresh/freeze-eligible.
   `#2013`/`#2014` now at positions 7/8 `AWAITING_CHECKS`, `#2016` at 29. No DIRTY, no RED. 30/40
   frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** 2 more merges (#2007/#2008, L1, not L0's). `#2013`/`#2014` now at
+  positions 3/4, `AWAITING_CHECKS` — very close. `#2016` at 25. No DIRTY, no RED. 30/40 frozen
+  holds.
