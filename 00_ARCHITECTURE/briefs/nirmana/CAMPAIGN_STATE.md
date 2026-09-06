@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T15:24:16Z` — cycle 521: **IDLE-OK.** Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (16). Nothing rose to a bounded unit.
 - `2026-09-06T15:22:14Z` — cycle 520: **IDLE-OK, broader sweep this time.** Fleet DIRTY checked
   two ways: the usual `codex/nirmana-`/`fix/nirmana-` prefix search (empty) and a wider net over
   all open PRs regardless of branch prefix (also empty) — no blind spot found. No new
