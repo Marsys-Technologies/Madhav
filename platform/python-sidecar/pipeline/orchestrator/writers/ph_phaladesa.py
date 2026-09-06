@@ -345,7 +345,17 @@ class PhPhaladesakWriter(WriterBase):
                     LEFT JOIN phala_suddha_sodhana ss ON ss.anchor_id = pa.anchor_id
                     LEFT JOIN phala_pramana pr ON pr.anchor_id = pa.anchor_id
                     WHERE pa.chart_id = %s
-                    ORDER BY pa.domain, pa.confidence_high DESC NULLS LAST
+                    -- L4_W1_ANALYSIS_BATCH_C.md §4.2: confidence_high alone systematically
+                    -- promotes the anchors the purification pass (ph_sodhana/ph_suddha_sodhana)
+                    -- already flagged -- confidence_high is exactly the field ph_sodhana found
+                    -- inflated on 90/139 anchors. A clean anchor now wins the "first row per
+                    -- domain" selection below over any staged_revision/unknown one, at any
+                    -- confidence_high; a domain with no clean anchor honestly falls back to its
+                    -- highest-confidence flagged one (never an empty top_anchor_id).
+                    ORDER BY pa.domain,
+                             CASE WHEN COALESCE(ss.cleanliness_status, 'unknown') = 'clean'
+                                  THEN 0 ELSE 1 END,
+                             pa.confidence_high DESC NULLS LAST
                     """,
                     (chart_id,),
                 )
