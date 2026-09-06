@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- #2088 (migration 704, D-L0-PP fix) went CLEAN and was queued this cycle (confirmed via is:queued, not just autoMergeRequest). No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm merged, confirm deployed live, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) at merge-queue position 14, AWAITING_CHECKS -- still is:queued, still CLEAN, no DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm merged, confirm deployed live, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3285,3 +3285,7 @@ see log). Still 35/40 until that's resolved.
   actually queued via `is:queued` (not just `autoMergeRequest`, which can lie). Now waiting for the
   queue to process it, then merge+deploy. 35/40 frozen unchanged; next cycle: confirm merged, then
   confirm deployed live, then re-dispatch `bg_parihara_rules` → 36/40.
+
+- 2026-09-06 — **IDLE-OK.** `#2088` at merge-queue position 14, `AWAITING_CHECKS` — still
+  `is:queued`, still CLEAN, no DIRTY/RED. Just hasn't reached the front yet. 35/40 frozen
+  unchanged.
