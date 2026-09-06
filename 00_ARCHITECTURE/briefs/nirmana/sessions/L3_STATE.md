@@ -458,6 +458,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~21:0xZ — L3-W3 — IDLE-OK (verified: `is:queued` PR sweep clean;
+  `egate.sql` re-run live — still exactly `ka_graha_sancara` OPEN-PENDING-PIN +
+  `ka_gochara_resonance` BLOCKED-NO-ROUTE, every other L3 asset BLOCKED-ANCESTORS on
+  `ga_positions`/L0-L1-L2 freezes, unchanged; #1770's tail re-read — `bo_laksana` still
+  correctly NOT dispatched, 15 unfrozen ancestors, same finding as prior cycles; the
+  Cost ledger and Red-contracts tables checked for a legitimate prep item — neither has
+  anything to add without fabricating placeholder data, since no W4 build has actually
+  run yet for any blocked asset).** First full read of `CYCLE_CONTRACT_C8_V23.md` this
+  session (previously worked from memory/summary) — confirms the established idle-cycle
+  practice this session has followed (PR hygiene → E-gate/held-items/adjudication
+  re-verification → print IDLE-OK and exit) matches the contract's own Step 2 IDLE
+  guidance exactly; no correction needed. `#1903`/`#2060` both still genuinely queued,
+  unmerged; migration 731 still not deployed.
+  `CYCLE — L3: IDLE-OK (verified: PR hygiene clean, E-gate unchanged, #1770/#1903/#2060
+  unchanged, no legitimate prep item without fabricating data) → next: re-verify same
+  set next cycle.`
+
 - `2026-09-06T~20:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` still queued
   unmerged.** `origin/main` advanced one commit (`#1975`, L1 migration 750 — unrelated),
   migration 731 confirmed still not deployed. Coordination issue #1713 unchanged since
