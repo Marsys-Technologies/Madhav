@@ -107,6 +107,13 @@ export const getTajikCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 68, always_include: false },
   },
+  // F-E28 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.6 item 4): was undeclared. empty_reason:
+  // true is a genuine claim -- this handler already sets content.empty_reason (see below).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'include_varsha', 'include_hadda', 'year_min', 'year_max', 'varsha_year', 'varsha_date'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chartId       = args.chart_id as string

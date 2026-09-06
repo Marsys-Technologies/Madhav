@@ -59,6 +59,14 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 35, always_include: false },
   },
+  // F-E28 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.6 item 4): was undeclared. empty_reason:
+  // true is a genuine claim -- the handler below now sets content.empty_reason whenever
+  // total_matching === 0 (this file previously had NO empty_reason at all).
+  density_contract: {
+    paginated: true,
+    facets: ['graha', 'direction', 'ayanamsha_id', 'indication_tier'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -117,6 +125,9 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { graha, direction, ayanamsha_id, indication_tier, limit },
+          ...(total_matching === 0
+            ? { empty_reason: `No vastu direction-impact rows for chart ${chart_id}${graha ? ` graha '${graha}'` : ''}${direction ? ` direction '${direction}'` : ''}${ayanamsha_id ? ` ayanamsha '${ayanamsha_id}'` : ''}${indication_tier ? ` tier '${indication_tier}'` : ''}.` }
+            : {}),
           provenance: {
             tables: ['ga_vastu_planet_direction_map', 'bg_vastu_direction_remedials'],
             source: 'L1 Gaṇita vastu direction map; served chart-scoped.',
