@@ -457,6 +457,33 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T18:45Z (C8 v2.3 cycle 492) — **Milestone: `#2111` MERGED — the sixth state-recovery
+  PR closed out.** Sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482, now
+  492). 9 more local-only commits (cycles 483-491, 22 lines, single-file) recovered via
+  patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-7`. `mi_kula`'s remaining
+  ancestors unchanged.
+- 2026-09-06T18:40Z (C8 v2.3 cycle 491) — **IDLE-OK, #2111 now at queue position 1** — next in
+  line. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:35Z (C8 v2.3 cycle 490) — **IDLE-OK.** L1's new continuation range confirmed:
+  migration 841 landed as "second in 840-859 range" — starts right after L5's own 820-839 with no
+  overlap, resolving the risk noted at cycle 470. #2111 still queued, no failures. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T18:30Z (C8 v2.3 cycle 489) — **IDLE-OK.** #2111 at queue position 2. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T18:25Z (C8 v2.3 cycle 488) — **IDLE-OK.** #2111 still queued, no failures. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T18:20Z (C8 v2.3 cycle 487) — **#2111 CLEAN-but-unqueued, fixed.** All checks passed,
+  queued immediately, re-verified re-entry. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:15Z (C8 v2.3 cycle 486) — **IDLE-OK.** #2111's Governance Gates job checked at the
+  job level (~9.2 min elapsed, within the normal 7-12 min range) — genuine progress, not stalled.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:10Z (C8 v2.3 cycle 485) — **IDLE-OK.** #2111 down to its last check (Governance
+  Gates), no failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:05Z (C8 v2.3 cycle 484) — **IDLE-OK.** #2111 down to 2 checks pending, no
+  failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T18:00Z (C8 v2.3 cycle 483) — **IDLE-OK.** #2111 (L5's only open PR) down to 3 checks
+  pending, no failures — holding, not touching it while it runs. `mi_kula`'s remaining ancestors
+  unchanged.
 - 2026-09-06T17:55Z (C8 v2.3 cycle 482) — **Milestone: `#2108` MERGED — the fifth state-recovery
   PR closed out.** Fifth recurrence of the exact same pattern (cycles 442, 453, 461, 473, now
   482). 8 more local-only commits (cycles 474-481, 18 lines, single-file) recovered via
