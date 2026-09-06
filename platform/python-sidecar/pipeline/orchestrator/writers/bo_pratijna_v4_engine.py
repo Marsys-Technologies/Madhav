@@ -400,11 +400,27 @@ class SlotWeight:
     weight: F
 
 
+#: EVENT_CLASS_ONTOLOGY_v1_0.md §5: of the 6 classes carrying kill_switch_criteria,
+#: `birth_anchor.epoch_tautology` is the only UNCONDITIONAL one — "always
+#: kill-switched... never scored, it defines t=0" — vs. the other 5, which
+#: disqualify a specific INSTANCE from a downstream λ_e scoring harness (A-3/A-5)
+#: only when their per-instance criterion fires. Because compute_class_weights
+#: operates at the class level, not the instance level, only birth_anchor's
+#: always-true exclusion is relevant here: its own citations already document it
+#: as a chart-epoch definitional anchor, not a predicted/scored event, so the
+#: divisional/yoga axes (which score how strongly a predicted event's timing
+#: manifests) are a category error for it, not merely inapplicable data.
+_EPOCH_TAUTOLOGY_CLASSES = frozenset({"birth_anchor"})
+
+
 def compute_class_weights(karyatva: KaryatvaMap) -> list[SlotWeight]:
     """§3.1's ONE mechanical rule, applied identically to all 27 classes:
     populate whichever slots this class's own KaryatvaMap carries, split
     multi-item slots evenly, renormalize the populated subset to sum to
-    exactly 1 (Fraction, no float drift)."""
+    exactly 1 (Fraction, no float drift). Exception: classes in
+    _EPOCH_TAUTOLOGY_CLASSES never activate divisional/yoga regardless of
+    whether their KaryatvaMap happens to carry those fields (see the
+    constant's own docstring)."""
     if karyatva.dusthana_required:
         core_houses = [karyatva.primary_bhava[0]]
         dusthana_houses = karyatva.primary_bhava[1:]
@@ -412,13 +428,15 @@ def compute_class_weights(karyatva: KaryatvaMap) -> list[SlotWeight]:
         core_houses = list(karyatva.primary_bhava)
         dusthana_houses = []
 
+    epoch_tautology = karyatva.event_class_id in _EPOCH_TAUTOLOGY_CLASSES
+
     active: dict[str, F] = {
         "bhava_lord": BASE_WEIGHTS["bhava_lord"],
         "karaka": BASE_WEIGHTS["karaka"],
     }
-    if karyatva.divisional:
+    if karyatva.divisional and not epoch_tautology:
         active["divisional"] = BASE_WEIGHTS["divisional"]
-    if karyatva.yoga_keywords:
+    if karyatva.yoga_keywords and not epoch_tautology:
         active["yoga"] = BASE_WEIGHTS["yoga"]
     if karyatva.dusthana_required:
         active["dusthana"] = BASE_WEIGHTS["dusthana"]
