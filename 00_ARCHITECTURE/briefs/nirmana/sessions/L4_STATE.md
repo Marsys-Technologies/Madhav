@@ -4789,3 +4789,18 @@ CYCLE 236 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~10:00Z` — L4 — **CYCLE 237 (v2.3) — second flat cycle; verified via
+`merge_group` run list that `#1959`'s merge-group is genuinely still in progress at ~6 min
+(normal range), not stalled.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits. `nirmana-adjudication` count dropped 16→15
+(closed elsewhere), nothing new names L4. E-gate still uncheckable, 227th consecutive cycle
+DB access down.
+
+CYCLE 237 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1959` confirmed genuinely mid-CI at normal duration via `merge_group` run list; E-gate
+uncheckable, DB access down 227 cycles; nothing new) → next: watch queue positions resume
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
