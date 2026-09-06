@@ -472,3 +472,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   only runs) before shipping. Also confirmed my manual `workflow_dispatch` redeploy was "the right
   call — the intended escape hatch, not a workaround." Nothing for L0 to action — #2172 is
   Conductor's PR, not mine to manage. `bg_cohort`'s own C12 carve-out still unmoved. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. No open L0 PR, #1713 tail
+  unchanged, `bg_cohort` carve-out file untouched. Nothing eligible.
