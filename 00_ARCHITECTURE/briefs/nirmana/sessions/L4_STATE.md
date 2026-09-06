@@ -4835,3 +4835,39 @@ cycles; nothing new) → next: if still flat next cycle, treat as a genuine stal
 escalate per contract; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~10:15Z` — L4 — **CYCLE 240 (v2.3) — a burst of ~60 duplicate identical
+"Continue" nudges arrived stacked in one turn; treated as a single cycle rather than 60,
+since real elapsed time (confirmed via fresh `git fetch` showing several new `main` commits)
+was consistent with one cycle's worth of upstream progress, not 60. `#1959` confirmed merged
+(resolving last cycle's at-upper-bound diagnosis as correctly not-stalled). Two more genuine
+DIRTY PRs found and fixed: `#1842` and `#1839`, both dequeued after upstream merges — this
+cycle's bounded unit of work.**
+
+**PR hygiene:** full sweep found `#1842` (`codex/nirmana-l4-w3-3g-pramana-domain-normalize`)
+and `#1839` (`codex/nirmana-l4-w3-3f-phaladesa-top-anchor`) both `DIRTY`/dequeued. Rebased
+both onto `origin/main`, each with the routine generated-file conflicts (digest regen +
+pin re-splice); for both, re-derived `writer_inventory_sha256` by hand via the script's own
+algorithm and verified `--check` **from the final rebased state**, not mid-rebase (the
+cycle-226 lesson, applied consistently since). Cross-verified both via a fresh
+`provenance_inventory` diff (`IDENTICAL` both times). Confirmed via `git diff origin/main`
+that each branch's own writer fix survived (`ph_pramana.py`'s domain-vocabulary fix + new
+migration 684; `ph_phaladesa.py`'s headline-anchor fix). Tests: 32/32
+(`test_ph_wave6.py`) for `#1842`; 97/97 (`test_ph_wave7.py` + `test_phala_phaladesa.py` +
+`test_nar_ph_phaladesa.py`) for `#1839`. Both force-pushed with `--force-with-lease`,
+`mergeStateStatus` confirmed `MERGEABLE`/`BLOCKED`-on-checks (not `DIRTY`) within 15s, both
+re-armed via `gh pr merge --auto`.
+
+Remaining 7 own PRs (`#1870` 82, `#1864` 71, `#1849` 6, `#1845` 7, `#1834` 116, `#1831` 107,
+`#1808` 112) all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** several new `main` commits landed during the burst window (L1 W3 F-A14
+migrations 746-749, one L3 fix), none L4-relevant. No new adjudications name L4 (count
+unchanged at 15). E-gate still uncheckable, 230th consecutive cycle DB access down.
+
+CYCLE 240 L4: rebased+repushed 2 DIRTY PRs (`#1842`, `#1839` — dequeued after upstream
+merges; both writer fixes verified intact through rebase, 32+97 tests pass, both re-armed
+for auto-merge; `#1959` confirmed merged resolving last cycle's stall diagnosis) → next:
+confirm `#1842`/`#1839` re-enter the merge queue next cycle; watch remaining 7 PRs'
+positions continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1
+remains deferred.
+
