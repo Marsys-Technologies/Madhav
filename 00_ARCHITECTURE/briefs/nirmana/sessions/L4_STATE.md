@@ -5059,3 +5059,19 @@ diagnosis) → next: confirm `#1849`/`#1845` re-enter the merge queue next cycle
 remaining 7 PRs' positions continue advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~11:15Z` — L4 — **CYCLE 252 (v2.3) — genuinely IDLE; `#1849`/`#1845` both
+still `null`-queue but legitimately pending their own post-rebase CI runs, nothing failed.**
+
+**PR hygiene:** remaining 7 own PRs unchanged/genuinely queued. `#1849` and `#1845` each
+re-swept via `gh pr checks`: only `pending` checks (`Governance Gates`, `Build Check`, `Unit
+Tests`), none failed — legitimate in-progress CI, no action needed this cycle.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 242nd consecutive cycle DB access down.
+
+CYCLE 252 L4: IDLE-OK (verified: PR hygiene clean — `#1849`/`#1845` legitimately pending
+fresh CI with nothing failed, remaining 7 unchanged/queued; E-gate uncheckable, DB access
+down 242 cycles; nothing new) → next: confirm `#1849`/`#1845` go green and re-enter the
+queue; watch all 9 positions continue advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
