@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:10Z (C8 v2.3 cycle 224) — **IDLE-OK.** Both own PRs still `isInMergeQueue:
+  true`, clean. #1844=42, #1901=68 unchanged for 2nd cycle — confirmed not a stall (new PR
+  #1933 now at position 1, turnover active, just hasn't reached these positions yet).
+  #1869 unchanged at 3 comments. 4 cycles now batched locally unpushed.
 - 2026-09-06T02:07Z (C8 v2.3 cycle 223) — **IDLE-OK, verified #1869's blocker directly
   (not just comment-count).** Queried `information_schema.role_table_grants` live:
   `nirmana_evidence_ingress_writer` has `SELECT` on `life_events`/`charts` (#1873's fix,
