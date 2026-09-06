@@ -2107,3 +2107,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Main advanced again (`1ef6267e9`, Conductor's UUID crash fix, not
   L0's). `#2016`'s checks re-triggered again against the new base, mid-CI, no reds. No DIRTY, no
   RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (`#2016` still mid-CI, no reds; queue head #1881, not L0's,
+  ~8min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
