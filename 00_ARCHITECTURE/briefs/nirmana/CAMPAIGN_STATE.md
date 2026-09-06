@@ -379,6 +379,33 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T13:42:07Z` — cycle 479: **ONE bounded unit (ran long — genuinely campaign-wide,
+  worth it): root-caused and fixed #2096, the sidecar's silent stuck-traffic mystery reported to
+  #1713 many cycles ago.** #2094 (prior cycle's chart_grants fix) merged clean in the interim —
+  confirmed. New adjudication #2096 (L3): `amjis-sidecar`'s release-smoke gate has been correctly
+  refusing to promote traffic on **every single deploy** since ≥2026-09-06T10:02Z because
+  `ka_graha_sancara`'s live-compute path can't import `temporal.compute_transits` inside the
+  deployed image (Docker build context never included the sibling `platform/scripts/` dir). L3
+  filed two options (widen context to repo root + adjust COPY/WORKDIR; vendor a local copy) but
+  correctly declined to pick either unilaterally — both have a real cost (blanket repo-root
+  `COPY .  .` drags in ~70MB+ unrelated content; vendoring duplicates 259 lines of computation,
+  violating the very `single_engine_importable` doctrine the gate exists to enforce).
+  **Ruling: neither literal option — a narrower third path**, built from this repo's own two
+  existing Dockerfile precedents (`Dockerfile.pipeline` already uses `context: .`; the frontend
+  Dockerfile already uses `context: ./platform`): widen sidecar context to `./platform` only (not
+  repo root), nest its `WORKDIR` one level deeper (`/app/python-sidecar`) so `engine.py`'s existing
+  4-parents-up path arithmetic resolves correctly with **zero code change**, `COPY` only
+  `scripts/temporal/` (148K, not all 7.3M of `platform/scripts/`), merged
+  `python-sidecar/.dockerignore`'s excludes into `platform/.dockerignore` since that root now
+  serves both Dockerfiles. **Verified live, not just reasoned**: ran a real `docker build` locally
+  with the exact new context/file/WORKDIR, then in the real container confirmed both pre-existing
+  CI packaging checks pass AND the actual defect under test — `engine.py`'s own real
+  `scripts_path` computation → `temporal.compute_transits` import → the real
+  `services.ka_graha_sancara.engine` module importing end-to-end — all passed for real. Shipped as
+  **PR #2104** (fresh branch off `origin/main`), auto-merge armed. Posted the full ruling + fix
+  writeup on #2096 (not closing until #2104 merges and the next release-smoke execution confirms
+  `ka_graha_sancara` GREEN and traffic actually promoting). No fleet DIRTY re-sweep this cycle
+  (single bounded unit spent here). Adjudication count back to 15 once #2096 closes.
 - `2026-09-06T13:11:40Z` — cycle 478: **IDLE-OK.** Own PR #2094: still `BLOCKED`/pending on
   Governance Gates + Build Check (~9 min in, within documented normal variance), not yet
   `is:queued`. Fleet DIRTY: #1898/#1853 back (L1's own known push/rebase churn — both already
