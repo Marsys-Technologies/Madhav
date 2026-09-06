@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:00Z (C8 v2.3 cycle 424) — **IDLE-OK, but real progress: #1844 has entered the
+  merge queue** (`isInMergeQueue: true`) — the first time either PR has genuinely reached the
+  queue since the #2086 renumber. #1826 down to its last 1 check (Governance Gates), no failures,
+  armed. Main's migration tip (812) still well clear of L5's dedicated 820-839 range. #1869 and
+  `mi_kula`'s remaining 2 ancestors both unchanged.
 - 2026-09-06T12:55Z (C8 v2.3 cycle 423) — **IDLE-OK** (verified, not assumed): both PRs down to 2
   checks each (Build Check, Governance Gates), no failures, close to CLEAN. Main's migration tip
   unchanged. #1869 and `mi_kula`'s remaining 2 ancestors both unchanged.
