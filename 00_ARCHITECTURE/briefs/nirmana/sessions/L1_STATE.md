@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 122; closed F-E28 (PR #2152), the LAST remaining NOW-tier finding from the W1 sweep -- 3 of 5 named files (get_vastu_directions/get_tajik/get_prashna_lagna) needed density_contract; the other 2 (get_ayurdaya/get_medical_indications) were already closed earlier this same sweep via their own more-specific fixes. The entire NOW-tier is now CLOSED
+last_updated: 2026-09-07 — C8 v2.3 cycle 123; started sweeping remaining MUST-tier findings (correctness, gates the capsule) now that the NOW-tier is closed. Closed F-B28 (PR #2155) — get_panchanga.ts/get_tara_chandra_bala.ts both reported total=page-size; confirmed the panchanga half was ACTIVELY manifesting live (221 rows vs 200 default limit, a real silent truncation). Hit and worked through a real self-inflicted branch/backup mixup this cycle (documented in the heartbeat) -- recovered cleanly, no data lost
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3363,8 +3363,8 @@ none accepted yet (blocked on #1736).
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds) |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
-| ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48) |
-| ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for |
+| ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract` |
+| ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for. F-B28 (`get_panchanga.ts` half) **FIXED (cycle 123, PR #2155)** — `total` was the PAGE size, not the true matching count; confirmed live this was ACTIVELY manifesting (221 real rows vs 200-row default limit — a genuine silent truncation, not hypothetical); added a real `COUNT(*)`, `total_matching`, `more_available`, `empty_reason`, `density_contract` |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963). F-B14 **FIXED (cycle 112, PR #2133)** — `get_sensitive_degrees.ts` never selected `verification_pass_status`, flattening 225 `single` + 50 `pending_w3_verification` + 60 `two_pass_verified` rows into one undifferentiated array (§N.6 item 1 violation); now selects the tier on every row and adds `tier_breakdown`/`unverified_rows_in_page` to the response, no rows dropped |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there. F-C21 **FIXED (cycle 113, PR #2136)** — `get_strength.ts` (this asset) plus `get_argala.ts`/`get_ashtakavarga.ts`/`get_dignity.ts`/`get_avasthas.ts` (all serve `ga_structural` categories below) and `get_condition_composite.ts` (`ga_condition`) all declared 0 occurrences of `density_contract` (§N.6 item 4) — no census harness could assert their byte-cap/facet/empty-reason discipline; now all 6 declare it, honestly (`empty_reason: false` for the 5 with no real detector, `true` only for `get_condition_composite.ts`, the one that genuinely implements it) |
@@ -7392,3 +7392,53 @@ L1 must satisfy rather than a feature it consumes.
   own Step 2 order (E-gate dispatch / W5 verification rank ABOVE W3 implement work) before
   assuming the next unit is another W3 finding; if nothing ranks higher, the remaining MUST-
   tier findings (not yet swept this segment) or W1/W2 gaps are the next candidates.
+- 2026-09-07T00:2xZ -- CYCLE 123 (C8 v2.3). PR hygiene: #2148 genuinely `is:queued`; #2152/
+  #2151/#2132 all mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Re-derived
+  priority per cycle 122's own instruction: checked #2113 (chart-rebuild adjudication) first --
+  still OPEN, last comment (15:00:13Z, an earlier cycle) is an unanswered question about a
+  NEW campaign-wide `asset_freshness` gate blocking ALL L1 asset_set rebuilds; W4 dispatch is
+  genuinely not eligible right now for any L1 asset. W5 has nothing pending either (nothing
+  can build). Fell to priority 3 (unheld W3 item) -- since the NOW tier is closed, swept the
+  W2 DECIDE MUST-tier table for findings with ZERO mentions anywhere in this state file (a
+  cheap proxy for "never yet triaged this segment"): F-B2/F-B3/F-B9/F-B12/F-B28/F-B35/F-C3/
+  F-C4/F-C5/F-C10/F-C14/F-C15 all came back 0. Cross-referenced each against the actual W2
+  DECIDE tier table (not just the raw W1 batch labels) -- F-C3/F-C4/F-C5 are the D-SALIENCE
+  feed group, living in `bo_laksana.py`, an L2 (bo_*) file, not L1's to touch. F-B35/F-C15 are
+  folded into the already-ongoing, already-tracked `integrity_check_sql` rollout (F-A14/A15,
+  tracked via per-asset issues since early cycles). F-C14 needs modifying the shared governance
+  scanner script itself (higher blast radius, deferred). F-B2/F-B3/F-B9/F-B12/F-C10 need DB/
+  registry investigation not yet done this cycle. F-B28 (`get_panchanga`+`get_tara_chandra_bala`,
+  MUST, §N.6 items 3&4) was the cleanest, most directly analogous match to this segment's
+  established fix pattern -- confirmed still live: both tools return `total: result.rows.length`
+  (page size, not the true count). Checked live row counts BEFORE writing any code: panchanga
+  has 221 rows against its 200-row default limit -- this was not a hypothetical defect, it was
+  ACTIVELY truncating today. tara/chandra has 195 rows (under the default, so not truncating
+  by default, but genuinely would with any smaller limit). Fixed both: real `COUNT(*)` query,
+  `total_matching`, `more_available`, `empty_reason`, `density_contract`.
+  **Self-inflicted detour this cycle (fully recovered, no data lost, documented here so a
+  future cycle recognizes the pattern faster)**: mid-fix, `git checkout -b` for the new feature
+  branch was run while still effectively anchored to stale state -- ended up building the PR on
+  top of an outdated pre-fetch snapshot of `fact_category_pin_allowlist.json` that predated the
+  cycle-121/122 F-C21/F-D18 merges (still showing get_ashtakavarga.ts/get_sade_sati.ts at their
+  OLD pre-fix line numbers). This surfaced as a confusing intermittent RED (`check_...py` exit
+  1) that took real investigation to trace (stdout/stderr interleaving under `2>&1` initially
+  hid WHICH 2 violations were actually failing). Root-caused by diffing the local file against
+  a fresh `git show origin/main:...`, confirmed the discrepancy, then rebuilt the allowlist
+  fix cleanly from a fresh origin/main pull rather than trying to patch the stale copy.
+  Also discovered (not a regression, a pre-existing gap): refactoring the inline WHERE-clause
+  into a shared `where` variable makes the `fact_category` filter invisible to the scanner's
+  regex, matching the SAME unflagged pattern already used in ~10 other files this campaign
+  (get_ayurdaya, get_sensitive_degrees, get_vastu_directions, get_medical_indications, etc.) --
+  removed the 2 now-permanently-dead allowlist entries for hygiene rather than leaving stale
+  pointers. 4 live-DB integration tests confirm both the real-truncation and reached-the-end
+  behaviors against production data. `npx tsc --noEmit` + `npx eslint` clean; `check_...py`
+  exits 0 (verified against a KNOWN-FRESH origin/main this time, not assumed); `npx vitest run
+  --project node src/lib/retrieval/registry/layers/L1_ganita/` -- 159 passed, no regressions.
+  No writer touched. Opened PR #2155, armed auto-merge, confirmed genuine CI dispatch (35
+  check-runs) AND specifically confirmed the Fact-Category Pinning Gate came back `pass` on
+  the real CI run before ending the cycle. CYCLE 123 L1: PR hygiene clean, closed the first
+  MUST-tier finding this segment (F-B28) after a real mid-cycle branch/backup mixup that was
+  fully traced and recovered -- next: continue the MUST-tier sweep (F-B2/F-B3/F-B9/F-B12/F-C10
+  need DB/registry investigation; F-C14 needs the shared scanner script; F-B35/F-C15 likely
+  already covered by the ongoing integrity_check_sql rollout -- verify before assuming; F-C3/
+  F-C4/F-C5 are L2's `bo_laksana.py` to fix, not L1's).
