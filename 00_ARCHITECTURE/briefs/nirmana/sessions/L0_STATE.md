@@ -378,3 +378,12 @@ a RED-fix (see heartbeat).
   migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
   `from_moon_view` is correctly wired end-to-end in production. Then IDLE-OK pending Conductor's C12
   carve-out for `bg_cohort`.
+- 2026-09-07 — **IDLE-OK (verified).** #2153 still `is:queued` (confirmed), `mergedAt: null` — not
+  merged yet. **Noted, no action:** L3 filed `#2159` (TIME-CRITICAL → CONDUCTOR) — `deploy.yml`'s
+  `migrate` job checked out a STALE commit for one deploy (a `workflow_run.head_sha` race under fast
+  merges), silently skipping migration 850 while the deploy reported success; `deploy-web` already
+  self-checks `ACTUAL_SHA` vs `DEPLOY_SHA`, `migrate` doesn't. This is shared CI infra (L3 correctly
+  scoped it to Conductor, not unilateral) — **directly validates** why my own NEXT step already reads
+  "verify migrations 705+706 applied live via direct DB check, not CI-conclusion alone" rather than
+  trusting the deploy job's green checkmark. No action needed from L0 now; will factor this into the
+  post-merge verification once #2153 actually merges. Nothing else eligible.
