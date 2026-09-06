@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 142; still no reply on #2180/#2113 (3 quiet cycles). Extended the DAG audit round 4 (PR #2185): both-directions re-verified 4 more assets already carrying a hidden-edge finding (ga_dashas, ga_sensitive_degree, ga_nakshatra, ga_condition) -- all confirmed clean on every declared edge, an honest negative result this time. 15/19 L1 assets now fully re-verified; 4 remain (ga_structural's 7 edges, ga_sade_sati's 5, ga_medical's 2, ga_tajaka's 1)
+last_updated: 2026-09-07 — C8 v2.3 cycle 143; still no reply on #2180/#2113 (4 quiet cycles). Extended the DAG audit round 5 (PR #2185): checked ga_structural's own 7 declared edges (the largest declaration in L1) -- 6 confirmed genuinely read (2 via specific chart_facts fact_category filters, not just table names, since they share the table with other assets), 1 new genuine false edge found (ga_panchanga). 16/19 L1 assets now fully re-verified; 3 remain (ga_sade_sati's 5, ga_medical's 2, ga_tajaka's 1)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8156,3 +8156,30 @@ record — they are the only entries in this table with a real wall-clock behind
   4 assets remain for this check (`ga_structural`'s 7 edges is the largest single remaining
   gap, `ga_sade_sati`'s 5, `ga_medical`'s 2, `ga_tajaka`'s 1) -- worth finishing if #2180 stays
   quiet; otherwise a nudge becomes reasonable after one or two more silent cycles.
+- 2026-09-06T2xZ -- CYCLE 143 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. #2180/#2113: same
+  comment counts/timestamps as last cycle -- 4 quiet cycles on #2180 now; still holding off a
+  nudge, since there's genuinely productive bounded work left and a bare status ping wouldn't
+  add information. Tackled the largest remaining piece from cycle 142's own list:
+  `ga_structural`'s 7 declared edges (`ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`,
+  `ga_sensitive`, `ga_strength`, `ga_vargas`). 4 confirmed immediately via dedicated-table grep
+  (`chart_dashas`, `chart_facts`, `chart_divisionals`, `graha_shadbala_total` -- 5/41/37/5
+  matches). The remaining 3 (`ga_nakshatra`, `ga_panchanga`, `ga_sensitive`) all share
+  `chart_facts` as their OWN target table with `ga_positions`, so table-name matching alone
+  can't distinguish them -- had to check SPECIFIC `fact_category` filters instead. Found
+  `bhava_arudha` (confirmed `ga_sensitive`'s own category, established fact from cycle 124's own
+  investigation this segment) and `graha_nakshatra_join` (confirmed `ga_nakshatra`'s via a
+  targeted grep across all writer files for who else references/writes it) both genuinely
+  present as real `fact_category` filters in `ga_structural_writer.py` -- both declared edges
+  real. **Enumerated the COMPLETE list of 10 distinct `fact_category` filters the writer
+  actually uses** (not sampling a few candidates) to check the last one, `ga_panchanga` --
+  **zero matches for any panchanga-anga category name** (`tithi`/`vara`/`karana`/`disha_shul`/
+  `solar_context`/`calendrical`/`sun_moon_dynamics`) anywhere in that complete list. A genuine
+  new false edge (finding #16). `ga_structural` turns out to be the MOST accurate multi-edge
+  asset checked so far (6/7 correct) -- a useful contrast to `ga_yoga`'s 1/2. Updated
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` (version 0.4->0.5, new "Round 5" block) and the register's L1 row
+  (16/19 assets now fully re-verified, 3 remain), pushed onto the same open PR #2185 (4th commit),
+  confirmed fresh CI dispatch and auto-merge still armed. CYCLE 143 L1: PR hygiene clean, closed
+  the largest remaining declared-edge gap with 1 more genuine finding -- next: 3 assets remain
+  for this check (`ga_sade_sati`'s 5 edges, `ga_medical`'s 2, `ga_tajaka`'s 1) -- small enough to
+  likely finish in one more cycle; a nudge on #2180 becomes reasonable after that if still quiet.
