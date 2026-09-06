@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:31Z (C8 v2.3 cycle 214) — **IDLE-OK, still waiting on deploy.** Live
+  revision still `938351c657c4…` (#1854), ~9 min since that deploy (01:22:15Z) — within
+  the observed 9-16 min deploy cadence, not stalled. Both own PRs still `isInMergeQueue:
+  true`, clean. #1844=55, #1901=81 unchanged. #1869 unchanged at 3 comments; #1856 still
+  OPEN. 18 cycles now batched locally unpushed.
 - 2026-09-06T01:29Z (C8 v2.3 cycle 213) — **IDLE-OK, waiting on deploy.** Checked
   `amjis-web`'s live revision again: still pinned to `938351c657c4…` (#1854), has not
   caught up to `1ef6267e9` (#1861) yet — expected, short interval since last check.
