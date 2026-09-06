@@ -473,6 +473,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~63:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
+  had fallen out of the queue again — re-queued, verified via `is:queued`.
+  `#1903` healthy, zero failures. Clock threshold (15:52:00Z) very close now
+  (real time 15:48, ~4 min remaining) — next cycle should clear it. —
+  blocked on: real time passing 15:52:00Z; next action: execute the recorded
+  4-step `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1).
 - `2026-09-06T~62:0xZ — L3-W4 — IDLE-OK (verified): `#1903` was 31 commits
   behind `origin/main` — rebased clean, no conflicts, pins/digests both
   `--check`-clean after. Other 3 PRs still queued, healthy. Clock threshold
