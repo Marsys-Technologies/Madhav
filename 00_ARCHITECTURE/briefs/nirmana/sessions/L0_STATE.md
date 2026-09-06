@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_yogas FROZEN -- L0 now 37/40 (D-NATIVE-06 delivered). #2115 deployed, verified live (NIRMANA_DEPLOYED_SHA matched, not just CI conclusion). Found + fixed a local-working-tree gotcha (this heartbeat branch had stale generated JSON files, causing a false evidence-mismatch error -- fixed by syncing just those 2 files from origin/main before dispatching). Found that analysis_digest itself needed refreshing (writer_digest_sha256 feeds it, confirmed from source), not just the aggregate. Full chain (fresh W2 -> implementation_accepted -> dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) completed clean, verified at each step. Remaining 3: bg_cohort (Conductor-owned, C12 carve-out flagged, not yet wired in) and bg_rules/bg_concordance (should auto-unblock now that bg_yogas is frozen -- verify next cycle). No open L0 PRs, no DIRTY/RED.
+last_updated: 2026-09-06 -- MILESTONE: bg_rules FROZEN -- L0 now 38/40. Confirmed all 3 ancestors frozen, existing W2 still valid (no refresh needed). First dispatch attempt's authorization missed its window (run completed before the authorize call landed, extra latency from investigating a new error first) -- no data damage, re-dispatched immediately with authorization right after, completed clean. Full chain verified at each step. bg_concordance is now ALSO fully unblocked (all 4 ancestors frozen) -- deliberately held for next cycle (one bounded unit per cycle). Remaining 2: bg_cohort (Conductor-owned, C12 carve-out flagged, not yet wired in) and bg_concordance (ready to dispatch next cycle -- last freezable asset this phase). No open L0 PRs, no DIRTY/RED.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,22 +33,22 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections — 37/40 frozen, target 40/40 (D-NATIVE-06).**
+**L0-W4 EXECUTE + Conform-stage integrity corrections — 38/40 frozen, target 40/40 (D-NATIVE-06).**
 `bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt re-attribution),
 `bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
 via #2066 + an ordering fix), `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704,
-#2081+#2088), and now `bg_yogas` (D-NATIVE-06, PR #2115 — writer bug fixed and frozen) all FROZEN
-across this cycle-set. `bg_rules`/`bg_concordance` should auto-unblock now that their sole
-remaining ancestor is frozen — verify E-gate next cycle. Only `bg_cohort` remains genuinely
-blocked (Conductor-owned, C12 carve-out flagged, not yet wired in).
+#2081+#2088), `bg_yogas` (D-NATIVE-06, PR #2115 — writer bug fixed and frozen), and now
+`bg_rules` (its sole remaining ancestor, `bg_yogas`, froze this cycle-set) all FROZEN.
+`bg_concordance` is now fully unblocked (all 4 ancestors frozen) — ready to dispatch next cycle,
+the last freezable asset this phase. Only `bg_cohort` remains genuinely blocked (Conductor-owned,
+C12 carve-out flagged, not yet wired in).
 
-## The 3 unfrozen assets
+## The 2 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned — but C12's service-dependency carve-out should resolve it (D-NATIVE-06).** `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (`service_health='healthy'` live) — no writer, so it can never produce a proven receipt via the current path. C12 says a live GREEN service probe should satisfy the dependency instead. Flagged to Conductor on #1713 (WP-6 sibling); once wired in, bg_cohort should freeze without further L0 action. |
-| bg_rules | rebuild_only | E-gate was `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **both now FROZEN** (bg_yogas as of this cycle). Should auto-unblock; check E-gate + dispatch next cycle. |
-| bg_concordance | rebuild_only | E-gate was `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index`/`bg_yogas` now all frozen; only `bg_rules` (itself about to auto-unblock) remains. Check E-gate + dispatch next cycle, likely last in sequence after `bg_rules`. |
+| bg_concordance | rebuild_only | **Fully unblocked** — all 4 ancestors (`bg_reference`, `bg_rules`, `bg_text_index`, `bg_texts`) confirmed frozen this cycle. Deepest DAG node; the last L0 asset this campaign phase can freeze. Dispatch next cycle: check existing W2 evidence validity first (same pattern as `bg_rules`), then dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen` → **39/40**. |
 
 ## Decisions log
 
@@ -3743,3 +3743,28 @@ blocked (Conductor-owned, C12 carve-out flagged, not yet wired in).
     unblock automatically with no separate fix needed.
   - 37/40 frozen. Remaining 3: `bg_cohort` (Conductor-owned, C12 carve-out flagged to #1713,
     not yet wired in), `bg_rules`/`bg_concordance` (should auto-unblock now, verify next cycle).
+
+- 2026-09-06 — **MILESTONE: `bg_rules` FROZEN — L0 now 38/40.** Confirmed all 3 ancestors frozen
+  (`bg_dasha_systems`, `bg_texts`, `bg_yogas`), existing accepted W2 (verdict
+  `examined_and_already_efficient`/`no_change`, from 2026-09-04) still valid against the current
+  live registry contract (bg_rules's own writer untouched by anything this session) — no W2
+  refresh needed, straight to dispatch.
+  - **First dispatch attempt (`208cd4ac`→run `9b8d51eb`) hit a genuine authorization-window
+    miss**: the run completed (`state=complete`, correct output) BEFORE my
+    `build_run_authorized` call landed (extra latency from investigating a new error message
+    first) — `requireBuildRunAuthorizationProvenance` requires `run.started_at IS NULL` at
+    authorization time, and once missed it can never be fixed retroactively (same D-L0-DD-class
+    gotcha as earlier this campaign). No data damage — the run's output was already correct;
+    just its authorization couldn't bind. Re-dispatched immediately (fresh run, authorized right
+    after dispatch this time) — run `74b9a283-2aa7-4bef-9585-7d3660fdb07f` completed clean,
+    receipt `proven`.
+  - Full chain: dispatch → `accepted_rebuild_observed` → `integrity_verified` (verifier
+    identity) → `asset_frozen` (`lifecycle_digest
+    a3447c05a2d68e4e2796b12c75064807189b639cb6053c71a378abca440e06f9`) — confirmed via direct DB
+    query, `recorded_at 16:07:29Z`.
+  - **`bg_concordance` is now ALSO fully unblocked** (all 4 ancestors — `bg_reference`,
+    `bg_rules`, `bg_text_index`, `bg_texts` — confirmed frozen). Deliberately NOT dispatched this
+    cycle (keeping to one bounded unit per cycle) — next cycle's top priority.
+  - 38/40 frozen. Remaining 2: `bg_cohort` (Conductor-owned, C12 carve-out flagged, not yet wired
+    in) and `bg_concordance` (fully unblocked, ready to dispatch next cycle — the LAST asset this
+    campaign phase can freeze without Conductor action).
