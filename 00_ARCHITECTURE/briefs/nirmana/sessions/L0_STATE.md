@@ -7,7 +7,9 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-05 — resumed; 29/40 frozen; 11 remaining; W4 EXECUTE + Conform corrections in flight
+last_updated: 2026-09-07 — 39/40 frozen (bg_yogas/bg_rules/bg_concordance froze via D-NATIVE-06); only
+  bg_cohort remains, held on Conductor's C12 carve-out. PR #2153 (issue #2122, from_moon_view repoint)
+  open, RED-fixed this cycle, awaiting CI green + merge.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -29,24 +31,24 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections.** W1/W2/W3 done for the 29 frozen. **29/40
-frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remaining**, all diagnosed.
+**39/40 frozen.** bg_gochara_arcs, bg_dasha_systems, bg_doshas, bg_vidhi_floors, bg_parihara_rules,
+bg_compendium_index, bg_rules, bg_text_index, bg_concordance, bg_yogas all froze across the sessions
+between the last detailed heartbeat entry below and 2026-09-06/07 (see heartbeat log for the
+bg_yogas/D-NATIVE-06 account — the fullest-documented one; the others' individual W1→freeze accounts
+were not re-transcribed into this file session-by-session and are recoverable from their PRs/issue
+#1713 history if ever needed). **Only `bg_cohort` remains unfrozen**, blocked on Conductor's C12
+carve-out (see Held items). Separately, **issue #2122** (F-D21/F-D23: `bg_vidhi_primitives`'
+`from_moon_view` Vidhi primitive pointed at an inert `reference_point` arg on
+`ganita_chart_facts_get`) surfaced via a Conductor fleet-status post on #1713 — this is NEW L0 work,
+independent of the freeze-tracking count above (it does not un-freeze `bg_vidhi_primitives`; it
+corrects a served primitive's routing). Fixed and shipped as **PR #2153**, currently CI-running after
+a RED-fix (see heartbeat).
 
-## The 11 unfrozen assets
+## The 1 unfrozen asset
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | DEP-ASSERT on service dep `bg_ephemeris_engine` — fixed in #1772 (merged) but **job image `d93d9d0a` predates it**; dispatch held on job-image deploy |
-| bg_gochara_arcs | rebuild_only | count pin stale (33,933 vs 34,553; Rahu/Ketu −310 each; **tiles perfectly**). Verdict: correct check → tiling invariant + derived/floored volume (C12) |
-| bg_yogas | rebuild_only | 4 yogas missing from ontology+reference (fix writer, MUST); `brahma_yoga_source_chunks` 0 vs pin 85 (check pin git-provenance — never-green=proposal). CASCADE parent → snapshot+`--acknowledge-destroys` |
-| bg_dasha_systems | rebuild_only | `kp` missing from `reference_dasha_systems` (19 vs 20) — real referential gap |
-| bg_doshas | rebuild_only | 658 FULL-JOIN violations — catalog/ontology/reference canonical_ids misaligned |
-| bg_vidhi_floors | rebuild_only | `catalog_status=DRAFT` (bundle DRAFT→CURRENT with re-acceptance, D-CND-09); 11/286 vs 14/409, 7 intents don't tile |
-| bg_parihara_rules | **UNROUTED** | only asset with no W2 events — W1/W2 now (never gated); note migration-644 integrity_check_sql drift vs frozen manifest |
-| bg_compendium_index | rebuild_only | wave 2; depends_on normalized; needs wave-1 frozen (E-gate) + own integrity check |
-| bg_rules | rebuild_only | wave 2; depends_on normalized |
-| bg_text_index | rebuild_only | wave 2; depends_on normalized |
-| bg_concordance | rebuild_only | wave 3; depends_on normalized; deepest DAG node |
+| bg_cohort | rebuild_only | held on Conductor's C12 carve-out (dep on `bg_ephemeris_engine` service semantics) — see Held items |
 
 ## Decisions log
 
@@ -97,11 +99,9 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
 
 ## Held items
 
-- **bg_cohort dispatch** — held until the pipeline **job image** carries #1772 (`ee8cf7d09`); current
-  image `d93d9d0a` predates it. Poll deploy each loop.
-- **Wave-2/3 dispatch** (compendium_index, rules, text_index, concordance) — E-gate needs wave-1 frozen.
-- **Destructive rebuilds** (bg_yogas CASCADE parent, any asset with populated descendants) — per C13/WP-6:
-  cascade_check + fresh verified snapshot + `--acknowledge-destroys`. Not a blanket hold post-#1781.
+- **bg_cohort dispatch** — sole remaining unfrozen L0 asset. Held on Conductor's C12 carve-out; nothing
+  eligible for L0 to act on until Conductor rules. IDLE-OK each cycle unless new instructable work
+  (e.g. #2122-class discoveries) surfaces via #1713.
 
 ## CAPABILITIES LANDED
 
@@ -190,3 +190,80 @@ frozen** (verifier-signed 5-event chains, implementer≠verifier). **11 remainin
   `nirmana_batch_runner.py` was the client-side defect — TO REMOVE so gochara/vidhi re-acceptances
   take the same live path). parihara freeze still needs ancestors (bg_doshas, bg_texts) frozen +
   job-image deploy. Heartbeat.
+- **[Honest gap]** Between the entry above and 2026-09-06, `bg_gochara_arcs`, `bg_dasha_systems`,
+  `bg_doshas`, `bg_vidhi_floors`, `bg_parihara_rules`, `bg_compendium_index`, `bg_rules`, `bg_text_index`
+  all froze — real work landed (per PR/issue history and #1713 posts) but the per-asset heartbeat
+  entries for that stretch were not transcribed into this file cycle-by-cycle. Not fabricating them
+  here; recoverable from #1713 + each asset's merged PR if ever needed. This entry exists so the gap
+  itself is visible rather than silently absent (§N.4/§N.8 discipline: an honest gap beats a fabricated
+  one).
+- 2026-09-06 — **D-NATIVE-06: bg_yogas root cause fixed and frozen (native-ratified).** `l0_yogas.py`'s
+  `extract_yogas_from_corpus` had a dict-row-as-tuple bug silently yielding 0 corpus-extracted yogas on
+  every real dispatch (the exact defect class D-L0-G/D-L0-F predicted, now confirmed by actually
+  running the writer once the #1772 job-image blocker cleared). Fixed the writer; rebuild produced the
+  full 233×3 projection + 85 `brahma_yoga_source_chunks` links; migration 630's pin passed as originally
+  authored (no check weakened). This is a **registered writer** — fixing it moved its digest in
+  `nirmana-writer-digests.json`, which moved L0's aggregate `writer_inventory_sha256`. Proved via direct
+  read of `buildLayerReceipts` (`nirmana-analysis-receipts.ts`) that the per-asset
+  `NirmanaAnalysisReceiptBase` hashed into `analysis_digest` consumes only `writer_digest_sha256` +
+  `layer` + two static grounding constants — the aggregate is used ONLY as
+  `assertNirmanaWriterInventoryMatchesConvergence`'s per-layer availability gate, never as digest input
+  — so transparently re-deriving the aggregate cannot retroactively change any OTHER asset's already-
+  accepted `analysis_digest`. Re-pinned via the established procedure: regenerated the writer-digest
+  inventory (confirmed only `bg_yogas` changed, other 35 frozen L0 writers + `probe_digest` byte-
+  identical), re-derived + re-pinned L0's `writer_inventory_sha256` in
+  `nirmana_analysis_layer_pins.py`'s `L0_FROZEN_PINS` (dated comment justifying the re-pin), regenerated
+  `nirmana-analysis-layer-pins.json` (L0-slice-only splice, L1-L5 byte-identical), updated the one
+  hardcoded "L0 preservation" test value in `nirmana-analysis-receipts.test.ts`. bg_yogas, bg_rules,
+  bg_concordance all froze off the back of this. **L0 now 39/40** — only `bg_cohort` remains, held on
+  Conductor's C12 carve-out. NEXT: nothing eligible for L0 until Conductor rules on bg_cohort; watch
+  #1713 for new discoveries in the meantime (this is how #2122 below was found).
+- 2026-09-06/07 — **Extended IDLE-OK streak (60+ cycles).** L0 at 39/40, `bg_cohort` genuinely blocked
+  on Conductor. No fabricated work; heartbeats recorded `noop: true` per cycle. Interrupted by
+  discovering **issue #2122** via a Conductor fleet-status post on #1713.
+- 2026-09-07 — **Issue #2122 (F-D21/F-D23) diagnosed, fixed, shipped as PR #2153.**
+  `bg_vidhi_primitives`' `from_moon_view` Vidhi primitive's `live_tool`/`tool_args` pointed at
+  `ganita_chart_facts_get` with a `reference_point: 'moon'` arg that tool doesn't accept (dead/inert —
+  confirmed via `register_p1_ganita.ts`'s Zod schema, no such param). Re-pointed at the real consumer,
+  `ganita_transit_anchors_get` (chart_id-only), across all 3 sites: canonical `registry_data.ts`, the
+  Python seed-writer mirror `bg_vidhi_primitives.py`, and the generated `platform-mcp` mirror (via
+  `npm run codegen:vidhi`, never hand-edited). Migration 705 fixes the stale LIVE production row
+  (guarded on exact pre-state, verified via rolled-back replay). 5 test/check suites green locally
+  before shipping (registry-completeness, codegen-parity, writer unit test, vidhi-parity census gate,
+  offline governance checks). This does **not** affect the 39/40 freeze count — `bg_vidhi_primitives`
+  was already frozen; this corrects a served primitive's routing.
+- 2026-09-07 — **PR #2153 came back RED on 2 gates; both root-caused and fixed this cycle.**
+  (1) **Governance Gates** ("writer digest inventory is stale") — same gotcha class as bg_yogas:
+  editing `bg_vidhi_primitives.py` (a registered writer) moved its digest. Fixed via the identical
+  re-pin procedure used for D-NATIVE-06 above (regenerated `nirmana-writer-digests.json` — confirmed
+  ONLY `bg_vidhi_primitives` changed, `probe_digest` unchanged; re-derived + re-pinned L0's aggregate
+  to `5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178` in
+  `nirmana_analysis_layer_pins.py`; regenerated `nirmana-analysis-layer-pins.json`, L0-slice-only,
+  L1-L5 byte-identical; updated the hardcoded test value). Both offline governance checks
+  (`provenance_inventory --check`, `nirmana_analysis_layer_pins --check`) pass locally (exit 0).
+  (2) **DB Integration Tests** — a genuinely new discovery, not a repeat of the bg_yogas pattern:
+  `nirmana_l0_wave0_remaining_integrity_contract.test.ts`'s "real PostgreSQL behavior" test failed
+  executing `bg_vidhi_primitives`' stored `integrity_check_sql`. Root cause: migration 628 (already
+  applied, never editable) hardcodes the OLD `from_moon_view` content hash
+  (`41463a2be208bc33c645cc943a242a2cd5b4906e8babd3dc68fe5ef566738cce`); the test's own
+  `connectPrepared()` fixture populates its throwaway `vidhi_primitives` table by dumping the CURRENT
+  (already-corrected) writer via `bg_vidhi_primitives.py --dump-json`, so replaying migration 628 alone
+  leaves a check that legitimately fails against the fresh data. This is the C12 "correct the check,
+  not the writer" pattern applied to a NEW asset: authored **migration 706**
+  (`706_bg_vidhi_primitives_from_moon_view_content_repin.sql`) re-pinning `integrity_check_sql` to the
+  corrected content hash (`cc57ac4d59218bcb818dda0288151f2d72107afa0c0ef664df7520cffea90320`), guarded
+  on the exact migration-628 pre-state, verified twice via rolled-back replay against live production
+  DB (isolation + full 705→706 sequence). Wired `await client.query(migration706)` into the test
+  immediately after the first `client.query(migration)` (line ~273, inside the "transitions exact
+  predecessors..." test) — confirmed via `CONTRACTS` array inspection that this is the ONLY one of the
+  4 `client.query(migration)` call sites in the file whose test reaches `bg_vidhi_primitives` (the
+  other 3 assert only on `bg_muhurta_lattice`). Local vitest run confirms the file compiles clean (no
+  unused-var diagnostic) and the 3 non-DB-gated tests pass (DB-gated ones correctly skip — no local
+  Postgres matching `NIRMANA_L0_WAVE0_REMAINING_TEST_DATABASE_URL`). Committed
+  (`0a22f321b`) + pushed to `fix/nirmana-l0-vidhi-from-moon-view-repoint`. PR #2153 CI re-running as of
+  this heartbeat (`mergeStateStatus: BLOCKED`, most checks IN_PROGRESS including Governance Gates and
+  DB Integration Tests — the two just fixed). NEXT: next cycle's PR-hygiene step re-checks #2153 via
+  `is:queued`; once genuinely CLEAN, queue it (`gh pr merge --auto`); once merged+deployed, verify
+  migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
+  `from_moon_view` is correctly wired end-to-end in production. Then revert to IDLE-OK pending
+  Conductor's C12 carve-out for `bg_cohort`.
