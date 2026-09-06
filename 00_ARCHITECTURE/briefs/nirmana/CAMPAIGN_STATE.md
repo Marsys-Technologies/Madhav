@@ -380,6 +380,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:22:09Z` — cycle 562: **IDLE-OK.** Fleet DIRTY: #2134, still under 3 min old, not
+  yet stale enough to nudge. No new `nirmana-adjudication` issues (18). Nothing rose to a bounded
+  unit.
 - `2026-09-06T17:19:57Z` — cycle 561: **IDLE-OK.** Fleet DIRTY: #2134 (L2, "heartbeat continuation"
   — the same anti-pattern class as #2067's earlier ruling, held pending #2054's own queue turn),
   only ~26 sec old, too fresh to act. No new `nirmana-adjudication` issues (18). Nothing rose to a
