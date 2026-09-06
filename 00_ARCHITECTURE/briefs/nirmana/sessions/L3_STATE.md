@@ -493,6 +493,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~109:0xZ — L3-W4 — IDLE-OK (verified): `#2166` genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — the slow `Governance Gates`
+  check from the last two cycles finished with no failures, confirming it
+  was genuine shared-queue contention, not a stall. Re-ran `egate.sql` full
+  layer sweep (not just the L3 grep): `ka_muhurta_seva` confirmed genuinely
+  absent from the entire not-yet-frozen output now — the freeze holds. No
+  new merges, no new opening anywhere in the layer. Holding this entry
+  local-uncommitted-to-remote — `#2166` is genuinely mid-queue-attempt right
+  now and a push would dequeue it for no reason. — blocked on: nothing
+  genuinely new; next action: let `#2166` clear the queue on its own, then
+  push the accumulated local block.
 - `2026-09-06T~108:0xZ — L3-W4 — IDLE-OK (verified, closer check): same
   `Governance Gates` run ID as last cycle, now ~11-12min — past the typical
   ~10min pattern, so checked step-level progress via `gh run view --job`
