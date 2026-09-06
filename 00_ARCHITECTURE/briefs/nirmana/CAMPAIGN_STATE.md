@@ -380,6 +380,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:10:43Z` — cycle 491: **IDLE-OK.** No own PRs (2104 merged). Deploy workflow
+  (34038183719) still `in_progress` (~3 min, expected — sidecar build alone takes ~19-20 min).
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:08:26Z` — cycle 490: **ONE bounded unit: confirmed #2104 merged (14:07:14Z) and
   the follow-on `Deploy to Cloud Run` workflow triggered (queued 14:07:34Z, right after merge).**
   Not waiting on the full deploy inline — the sidecar image build alone took ~19-20 min locally,
