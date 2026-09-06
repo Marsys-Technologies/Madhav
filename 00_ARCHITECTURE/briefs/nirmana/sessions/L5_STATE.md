@@ -457,6 +457,35 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:05Z (C8 v2.3 cycle 409) — **Three things.** (1) PR hygiene: #1844 fell out of the
+  merge queue a THIRD time this session (genuine CLEAN-but-unqueued), re-armed and confirmed
+  re-entry; #1826 unaffected (`isInMergeQueue: true`). (2) The cycle-408 verifier subagent reported
+  back: `mi_vistara`'s `integrity_verified` submission correctly derived both digests and
+  independently re-ran the real `integrity_check_sql` live (passed), but the API returned HTTP 500
+  — **the exact same `chart_grants` RLS-dependency grant gap already tracked on #1869**
+  (`nirmana_evidence_ingress_writer` needs `SELECT` on `chart_grants` because `charts`' RLS policy
+  evaluates under the querying role, even though the detector SQL never mentions `chart_grants`
+  directly). No fabricated pass — correctly stopped, no partial write (whole thing is one
+  transaction). Added this as a second independent confirmation on #1869 (the fix is now known to
+  unblock two assets' W5, not one) rather than filing a duplicate issue. **`mi_vistara`'s
+  `integrity_verified` stays blocked until #1869 lands** — do not retry until then; payload/digests
+  already computed and ready. (3) Re-ran the L5 E-gate: only `lel_events`, `mi_jivanaghatana`,
+  `mi_vistara` OPEN-PENDING-PIN; `mi_kula` still BLOCKED-ANCESTORS (3, unchanged: `bg_dasha_systems`,
+  `bg_rules`, `bg_yogas`). Checked `mi_jivanaghatana`'s state: same #1840-class gap `mi_vistara` had
+  — `asset_output_digest_specs` has no row for it, receipt_state='unknown'
+  (`unknown_reasons: ["output_digest_spec_unavailable", "output_digest_unavailable"]`). **Authored
+  migration 806** (`806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql`, per-chart scope —
+  unlike `mi_vistara`'s global — using `where_equals: {chart_id: <canonical>}` against
+  `mimamsa_event_provenance`'s real pkey `(chart_id, event_id)`, excluding the one genuine
+  pipeline-bookkeeping column `created_at`). Went further than `692`'s precedent: rehearsed the
+  FULL pipeline live (rollback-only transaction — INSERT the spec row, call the real
+  `compute_output_digest()` against production, ROLLBACK, re-verify 0 rows left) before writing the
+  migration, not just offline `_validate_spec`. Digest computed successfully over the 63 live rows
+  (matches the canary's known row count). Rebased onto origin/main first (was 8 commits behind;
+  clean 411-commit replay, no conflicts) to get the real next migration number (805→806).
+  `migration-guard` subagent dispatched, review in flight — **not applied yet, next cycle picks up
+  the verdict and applies via `migrate.ts` if clean.** PR batching: still holding locally (haven't
+  pushed since cycle 404; will push+rebase-dance once #1826/#1844 both have headroom).
 - 2026-09-06T10:40Z (C8 v2.3 cycle 408) — **Dispatched a fresh-context verifier subagent for
   `mi_vistara`'s `integrity_verified` (W5)**, briefed thoroughly (implementer≠certifier: I
   submitted `accepted_rebuild_observed` last cycle, so I must not also certify it; the verifier
