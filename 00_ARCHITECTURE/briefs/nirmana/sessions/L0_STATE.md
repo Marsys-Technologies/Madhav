@@ -1973,3 +1973,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No movement (positions still 6/14/63, `#2004` still mid-CI no reds,
   queue head #1912 ~7min in_progress, normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Still no movement (positions still 6/14/63, queue head still #1912
+  ~9.7min in_progress; `#2004`'s Build Check/Governance Gates ~7.9min in — both normal). No DIRTY,
+  no RED. 30/40 frozen holds.
