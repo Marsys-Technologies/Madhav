@@ -493,6 +493,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~122:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s own
+  `merge_group` build genuinely `in_progress` (~10.7min, near but not past
+  the known pattern) — confirmed via `gh run list` filtered on `pr-2174`,
+  not assumed. No new merges, no new bounded work. — blocked on: `#2174`
+  finishing; next action: same, check step-level detail next cycle if
+  still on this exact run.
 - `2026-09-06T~121:0xZ — L3-W4 — IDLE-OK (verified): `#2174` advanced to
   position 1, still genuinely queued, healthy. One more unrelated L1 merge,
   no L3 overlap; no new L3 E-gate opening. — blocked on: `#2174` finishing;
