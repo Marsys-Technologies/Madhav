@@ -457,6 +457,23 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:20Z (C8 v2.3 cycle 409 addendum, post-notification) — **Migration 806
+  guard-cleared (`MIGRATION SAFE`) and applied via `migrate.ts` — verified live**
+  (`asset_output_digest_specs` row for `mi_jivanaghatana` confirmed, sha matches). The guard also
+  independently surfaced a real, self-owned finding: **PR #1844's `692_nirmana_l5_mi_vistara_
+  output_digest_spec.sql` collides in NUMBER (not filename) with an unrelated, already-merged
+  `692_bg_doshas_integrity_check_join_scope_fix.sql`** — a genuine authoring-time race (mine
+  authored 2026-09-05T14:28Z, bg_doshas' merged ~1h9m later), both tracked fine in
+  `_migrations_applied` by distinct full filenames (confirmed live, nothing broken today), but
+  #1844 needs renumbering via `migrate.ts`'s RENUMBER GUARD reconciliation path
+  (`migration_renumber_disclosed.json`) before it merges — never a bare rename of an
+  already-applied file. Filed as a comment on #1844 itself (self-owned, no separate adjudication
+  issue needed). **Not fixed this cycle — deliberately deferred to a dedicated future cycle**
+  (touching an already-applied migration's numbering is exactly the kind of thing that deserves
+  its own unhurried pass, not a rushed addendum). **Next: mi_jivanaghatana can now be
+  dry-run/dispatched using the SAME `build_run_authorized`-before-`started_at` recipe that worked
+  for `mi_vistara`** (cycles 407-408) — that's now the top-priority open dispatch task alongside
+  the #1844 renumber and the #1869 `chart_grants` wait.
 - 2026-09-06T11:05Z (C8 v2.3 cycle 409) — **Three things.** (1) PR hygiene: #1844 fell out of the
   merge queue a THIRD time this session (genuine CLEAN-but-unqueued), re-armed and confirmed
   re-entry; #1826 unaffected (`isInMergeQueue: true`). (2) The cycle-408 verifier subagent reported
