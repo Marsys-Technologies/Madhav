@@ -380,6 +380,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:23:30Z` — cycle 495: **IDLE-OK.** Deploy backlog watch: run 34038328904's sidecar
+  job was `skipped` (that commit didn't touch sidecar paths — tells us nothing); run 34038669312's
+  sidecar job still `in_progress`, checkout ref not yet visible in streamed logs — next real
+  checkpoint. Fleet DIRTY: #1929/#1898 known churn; #1903 new to the list but same L3 fast-push
+  class (~12 min old, not stale enough to re-nudge). No new `nirmana-adjudication` issues (17).
+  Nothing rose to a bounded unit.
 - `2026-09-06T14:20:57Z` — cycle 494: **ONE bounded unit: diagnosed a FAILED `Build & Deploy
   Sidecar` job (run 34038183719) — confirmed it's a transient backlog artifact, not a defect in
   #2104's fix.** Root-caused via the actual job logs + git history, not assumed: GitHub's
