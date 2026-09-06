@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- D-L0-PP ROOT-CAUSED + FIXED: migration 703's census_hash pin was computed from stale committed data (predating writer commit 4a78a5c40/#1539's legit evidence_pointer correction). Migration 704 (data-only, no writer touched) syncs the one stale field + re-pins; verified via two independent rolled-back replays + a full closed-loop rehearsal (704 + fresh writer run + check, all in one rolled-back tx) confirming a real dispatch will now pass. Shipped as PR #2088, awaiting CI/merge/deploy. No open L0 PRs besides #2088 (just opened, checks pending). 35/40 frozen unchanged -- next cycle: check #2088 is:queued, then once deployed re-dispatch bg_parihara_rules straight through to asset_frozen (36/40).
+last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) mergeStateStatus=BLOCKED only because its CI checks are still IN_PROGRESS (Build Check, Unit Tests, Governance Gates) -- mergeable=MERGEABLE, no failures, not DIRTY, not RED. Not yet is:queued. No other open L0 PRs. No other L0 asset is currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088's checks/queue status, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3259,3 +3259,8 @@ see log). Still 35/40 until that's resolved.
     to `asset_frozen` (verdict still `examined_and_already_efficient`/`no_change` — no new
     `implementation_accepted` needed) → **36/40**.
   - 35/40 frozen unchanged this cycle (fix shipped, not yet deployed/re-dispatched).
+
+- 2026-09-06 — **IDLE-OK.** `#2088` checks still `IN_PROGRESS` (Build Check, Unit Tests,
+  Governance Gates) — `mergeStateStatus=BLOCKED` is just pending-checks, not DIRTY/RED
+  (`mergeable=MERGEABLE`). Not yet `is:queued`. No other open L0 PRs; no other L0 asset currently
+  eligible. 35/40 frozen unchanged.
