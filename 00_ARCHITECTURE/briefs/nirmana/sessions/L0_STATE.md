@@ -3447,3 +3447,6 @@ session's to resolve.
   has been root-caused and properly filed by another session as **#2096** (shared sidecar
   Docker/CI infra, not L0's) — no action needed here. No open L0 PRs, no new eligible work.
   36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no new eligible work. 36/40 frozen
+  unchanged.
