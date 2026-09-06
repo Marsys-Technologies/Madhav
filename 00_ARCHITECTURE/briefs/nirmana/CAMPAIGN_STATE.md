@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T19:01:12Z` — cycle 606: **IDLE-OK.** Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:58:51Z` — cycle 605: **ONE bounded unit: ruled and closed #2156 — L3 encroached
   on L1's granted migration range (848-850), verified and recorded, not undone.** Confirmed live
   via `git ls-tree origin/main`: 840-847 are L1's own (merged), 848-850 are L3's (`ka_dasha_kala`/
