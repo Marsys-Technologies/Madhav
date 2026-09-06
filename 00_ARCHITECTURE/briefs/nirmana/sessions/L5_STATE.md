@@ -457,6 +457,106 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T17:20Z (C8 v2.3 cycle 528) — **Milestone: `#2128` MERGED — the C-F-01 writer fix is
+  live on main.** Independently re-confirmed via `git show origin/main:...mi_kula.py` — only
+  `fam_msr_signal`/`fam_anchor` carry `MARSYS_DERIVED_CITED`, the other 7 `classical`-class
+  families still correctly `CLASSICAL_CITED`, both `--check` gates that blocked this PR twice
+  (writer digest inventory, L5 analysis-layer pin) are satisfied on main. **Also: `#2126`
+  MERGED — the tenth state-recovery PR closed out** (same pattern, cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, now 528). 8 local-only commits (cycles 520-527, 89 lines, single-file)
+  recovered via patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-11`. `mi_kula`
+  is now ready for its actual W4 global-re-seed dispatch — the writer fix that blocked it is
+  merged; that dispatch is next cycle's bounded unit (not started this cycle, to keep this one
+  to the mechanical recovery + verification it already contains). New PR #2130 confirmed L1's (`F-A11 yogini lord test`), out of scope.
+- 2026-09-06T17:14Z (C8 v2.3 cycle 527) — **IDLE-OK, verified.** #2126 still genuinely queued
+  (`is:queued` confirmed; mergeStateStatus reads UNKNOWN transiently while queue re-evaluates,
+  not a hygiene issue). #2128 down to 2 pending checks (Build Check, Governance Gates), zero
+  failures. New PR #2129 confirmed L1's (`estimated_seconds re-baseline`), out of scope.
+- 2026-09-06T17:08Z (C8 v2.3 cycle 526) — **IDLE-OK, verified.** #2126 still genuinely queued.
+  #2128 down to 3 pending checks (Build Check/Unit Tests/Governance Gates), zero failures —
+  DB Integration Tests cleared since last cycle. Good progress on the fix, holding.
+- 2026-09-06T17:02Z (C8 v2.3 cycle 525) — **IDLE-OK, verified.** #2126 still genuinely queued.
+  #2128's checks re-running fresh on `dd3b56b3b` (the second fix commit) — Build Check/Unit
+  Tests/DB Integration Tests/Governance Gates all freshly PENDING, zero failures yet. New PR
+  spotted (#2127) — confirmed L1's (`ga_vichara target_floor`), out of scope. Not starting a
+  competing unit while #2128's fix verification is in flight.
+- 2026-09-06T16:57Z (C8 v2.3 cycle 524) — **PR hygiene: same RED on #2128, second layer of the
+  same mechanism, fixed at root cause again.** #2126 confirmed genuinely queued (`is:queued`,
+  CLEAN). #2128's Governance Gates failed again on the NEW commit (`fd4c102e3`, confirmed via
+  direct check-run API query against that exact SHA, not a stale/cached read) — but a
+  **different** check within the same job: `nirmana_analysis_layer_pins --check` (not
+  `provenance_inventory --check`, which my prior fix already resolved). Root cause: L5's
+  aggregate `writer_inventory_sha256` in `nirmana-analysis-layer-pins.json` is *derived from* the
+  writer inventory I regenerated last cycle (#1715's receipt-spine design), so fixing the
+  inventory made THIS pin stale too — same mechanism, one layer deeper. Read the generator
+  script's own `--help` first (documents exactly why it exists — #1715, generalizing L0's
+  hand-maintained receipt spine to 6 layers) and found the safety flag built for precisely this:
+  `--layer L5` regenerates ONLY L5's record, preserving L0-L4's committed pins verbatim (#1814 —
+  whole-file regen would falsely restate other sessions' review state). Ran it with
+  `--convergence-commit` set to this branch's own HEAD (`fd4c102e3...`, 40 chars) — confirmed via
+  `git cat-file` that the *existing* L5 pin's `convergence_commit` is itself a real merged-PR SHA
+  from main (#1781), and via reading `check()`'s source that `convergence_commit` is never
+  existence-validated (only `writer_inventory_sha256` is), so pinning to a pre-merge branch HEAD
+  is consistent with how the other layers' committed pins already work. Diff confirmed scoped to
+  L5 only (`fields changed: convergence_commit, writer_inventory_sha256 / layers untouched: L0,
+  L1, L2, L3, L4`). Both `--check` invocations pass clean locally now. Committed (`dd3b56b3b`),
+  pushed. Never weakened either gate.
+- 2026-09-06T16:50Z (C8 v2.3 cycle 523) — **PR hygiene: RED on #2128, fixed at root cause.**
+  Governance Gates failed for real (`conclusion: failure`, confirmed via direct API job-list
+  query, not the flaky "still in progress" log-fetch race). Root cause from the job log:
+  `provenance_inventory --check` — "writer digest inventory is stale" — my C-F-01 commit
+  (`eb2fd720d`) edited `mi_kula.py`'s source without regenerating the checked-in
+  `platform/src/generated/nirmana-writer-digests.json` (the web planner's source of
+  sidecar-owned writer hashes; any Python writer change must regenerate it or a stale receipt
+  could survive deployment as fresh — exactly the mechanism §N.8/#1899 already document). Fixed
+  by running the exact regeneration command the CI log names
+  (`python -m pipeline.orchestrator.provenance_inventory --output
+  platform/src/generated/nirmana-writer-digests.json`), confirmed the diff touches only
+  `mi_kula`'s own digest entry (one line), re-ran `--check` locally (clean), committed
+  (`fd4c102e3`) and pushed to the same branch/PR — never weakened the gate. Checks re-running
+  on #2128 now. #2126 unchanged, still building normally, no failures.
+- 2026-09-06T16:42Z (C8 v2.3 cycle 522) — **C-F-01 fixed: `mi_kula.py`'s `fam_msr_signal`/
+  `fam_anchor` get an honest `evidence_tier`.** Read the writer source directly
+  (`platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py`): both families carried
+  `evidence_tier='CLASSICAL_CITED'` while `citation_refs` pointed at MARSYS's own MSR/Phala
+  methodology docs (`"MARSYS MSR §1"`, `"MARSYS Phala §2"`), not a classical Jyotish text —
+  confirmed against the other 7 `classical`-class families, all of which cite real classical
+  texts (BPHS, Saravali, Phaladeepika, Jaimini Sutras, KP, Sarvartha Chintamani, Mansagari).
+  Checked `integrity_check_sql` first: it only constrains `family_class IN
+  ('classical','negative_control')` and doesn't validate `evidence_tier` string values beyond
+  requiring `NEGATIVE_CONTROL` for the negative-control class — so a new honest tier value
+  doesn't touch the gate. Checked migration 346's column comment (the documented 5-value
+  vocabulary) and confirmed no CHECK constraint exists (plain `text NOT NULL`) — did **not**
+  edit the applied migration (hard floor), documented the new value at the writer call site
+  instead. Grepped serving code (`query_signal_families.ts`) — evidence_tier is passed through
+  raw, no enum-switching, safe to introduce a new value. Introduced `MARSYS_DERIVED_CITED` for
+  these two rows only; `family_class` and `citation_refs` unchanged (citations were already
+  accurate, just mislabeled by tier). Python syntax-checked. No test file exists for `mi_kula.py`
+  yet (untested writer, consistent with never having been dispatched). **PR #2128 opened and
+  auto-merge armed** — this is real W3 implementation work, on its own fresh branch off main
+  (not the state-recovery branch). `mi_kula`'s actual W4 global-re-seed dispatch is still the
+  next step after this lands. PR hygiene: neither #2126 nor #2128 queued yet, both freshly
+  running checks, zero failures on either — nothing to fix, holding.
+- 2026-09-06T16:32Z (C8 v2.3 cycle 521) — **Milestone: `mi_kula` reached `OPEN-PENDING-PIN` —
+  the FIRST time this asset's E-gate has been open all session.** W2 subagent
+  (`ae23df5fcb8ae74f2`) reported success; independently re-confirmed via direct DB query (both
+  events landed: `asset_analysis_accepted` 16:16:48Z, `optimization_verdict_accepted`
+  16:16:59Z) and a fresh `egate.sql -v layer=L5` run (`unfrozen_ancestors=0, w2_analysis=t,
+  w2_verdict=t, gate=OPEN-PENDING-PIN`). Scratch files confirmed cleaned up (a stale LSP
+  diagnostic about missing scratch-file imports was just IDE lag, not a real leftover). **Next
+  step is genuine W3 implementation, not a simple W4 dispatch**: the verdict's own basis
+  (`measurement.status='insufficient_history'`) flags that `mi_kula.py`'s `fam_msr_signal`/
+  `fam_anchor` families still carry `evidence_tier='CLASSICAL_CITED'` while citing only
+  MARSYS-internal documents (C-F-01, the grounding-badge finding from W1) — the writer needs a
+  real code/data fix (honest evidence_tier reclassification or a real classical citation) before
+  the global re-seed can be dispatched; the W2 event explicitly records the route decision only,
+  not the implementation. Deferred to a fresh bounded cycle rather than rushed here. PR hygiene:
+  #2126 not yet queued but no failures (Unit Tests/Governance Gates still running).
+- 2026-09-06T16:26Z (C8 v2.3 cycle 520) — **IDLE-OK, verified.** #2126 not yet queued but no
+  failures — Unit Tests/DB Integration Tests/Governance Gates all still IN_PROGRESS, normal
+  pace, holding. `mi_kula` W2 subagent (`ae23df5fcb8ae74f2`) still running (~6-7 min, longer than
+  the W5 dispatch took to start but this is a source-fidelity-heavy digest-derivation task) —
+  zero events landed yet, not starting a competing unit.
 - 2026-09-06T16:20Z (C8 v2.3 cycle 519) — **Milestone: `#2120` MERGED — the ninth state-recovery
   PR closed out.** Ninth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, now 519). 5 local-only commits (cycles 512-518, 71 lines, single-file, plus two
