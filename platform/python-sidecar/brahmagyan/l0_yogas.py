@@ -30,6 +30,8 @@ import time
 import uuid
 from typing import Any
 
+import psycopg.rows
+
 logger = logging.getLogger(__name__)
 
 # ── Citation constants ─────────────────────────────────────────────────────────
@@ -1977,7 +1979,7 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
     extracted: dict[str, dict] = {}  # canonical_id -> yoga dict
 
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             # Chapter filter REMOVED 2026-06-09 (chapter column = PDF page numbers,
             # not classical chapter numbers; old ranges mis-targeted intro/preface pages).
             # Keyword filter `lower(content_en) LIKE '%yoga%'` is the correct gate.
@@ -1993,7 +1995,23 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
         logger.warning("[l0_yogas] corpus extraction query failed: %s", exc)
         return []
 
-    for chunk_id, text_id, chapter, verse_ref, content_en, trad_school in rows:
+    # The orchestrator connection's default row_factory is dict_row
+    # (pipeline/orchestrator/db.py:57) -- rows MUST be indexed by column name,
+    # never numerically/by tuple-unpack. Tuple-unpacking a dict row iterates
+    # its KEYS, not its values (this is the D-L0-QQ defect: chunk_id was
+    # silently bound to the literal string "id", content_en to the literal
+    # string "content_en", so no row ever matched a detection pattern and
+    # corpus extraction yielded 0 for every real dispatch). row_factory is
+    # pinned explicitly here (same trap/fix as bg_parihara_rules.py's
+    # fetch_parihara_rows) so this function is also correct on a tuple-row
+    # test connection.
+    for row in rows:
+        chunk_id = row["id"]
+        text_id = row["text_id"]
+        chapter = row["chapter"]
+        verse_ref = row["verse_ref"]
+        content_en = row["content_en"]
+        trad_school = row["tradition_school"]
         if not content_en:
             continue
 
