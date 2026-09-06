@@ -494,6 +494,31 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~145:0xZ — L3-W3 — PR hygiene: `#2189`'s own `merge_group`
+  build confirmed via full `gh run list` scan (not truncated) — ~5.6min
+  elapsed, all green except `Governance Gates` (normal range). Nothing
+  to fix. Considered the two remaining LARGEST/most-complex F-L3-4
+  candidates first (`ka_gochara_v3_century_materialize`, 2480-line
+  peak-anchored era/month/day hierarchy writer; `ka_kshetra`, the
+  layer's heaviest asset at 8.6M target rows and worst DAG declaration)
+  and correctly judged both too large for one bounded unit rather than
+  force a shallow/risky derivation — picked the smaller `ka_kala_darshana`
+  instead (234-line writer): a top-N-of-qualifying shape, same as
+  `ka_bhavishya_lekha` (migration 857) but simpler (no additional filter
+  beyond chart_id): `LEAST(750, count of kala_convergence rows)`. 14,868
+  eligible rows exist live, so the cap is currently binding, matching
+  `target_floor`/`count_sql` exactly. Migration 862 + paired test
+  authored (no self-transaction wrapper from the start); the live test
+  independently re-derives the eligible-pool count from `kala_convergence`
+  rather than trusting the migration's own number — all 6 tests pass.
+  Migration-number guard PASS (862, confirmed free). Committed locally
+  (`b0b839aee`), held from push — `#2189` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2189` merges or
+  clearly finishes, then tackle `ka_kalasutra`/`ka_sangam`/`ka_yojaka`
+  next (3 of the remaining 5 are more tractable than
+  `ka_gochara_v3_century_materialize`/`ka_kshetra`, which may warrant a
+  dedicated, larger-than-one-cycle investigation rather than a rushed
+  guess).
 - `2026-09-07T~144:0xZ — L3-W3 — PR hygiene: `#2189` now genuinely
   `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
   F-L3-4 with a 10th individual asset (13 total incl. the 4-asset service
