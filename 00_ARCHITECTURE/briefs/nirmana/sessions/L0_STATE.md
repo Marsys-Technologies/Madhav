@@ -461,3 +461,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   posts. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PR. #1713 tail still ends at my own closing posts;
   `#2169` still 0 comments. Nothing new, nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No change: no open L0 PR, `bg_cohort` carve-out file
+  untouched, #1713/#2169 quiet. Entering another extended-idle stretch (same shape as the prior
+  60+-cycle streak) — will keep verifying each cycle rather than assume, per contract.
