@@ -6024,3 +6024,34 @@ hygiene clean, all 7 own PRs genuinely queued and advancing well; E-gate uncheck
 access down 299 cycles; nothing new) → next: watch queue positions continue advancing;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~16:05Z` — L4 — **CYCLE 310 (v2.3) — a full sweep found ALL SEVEN remaining
+own PRs (`#1849`, `#1845`, `#1842`, `#1839`, `#1834`, `#1831`, `#1808`) genuinely
+`UNMERGEABLE` simultaneously — this window's largest single-cycle PR-hygiene batch, fixed
+end-to-end using the established `dequeuePullRequest`-then-push recipe. This cycle's
+bounded unit of work.**
+
+**PR hygiene:** processed all seven in queue order (closest-to-head first: `#1834`, `#1842`,
+`#1839`, `#1845`, `#1849`, then `#1831`, `#1808` from an earlier sweep this same cycle). Each
+rebased onto `origin/main`; conflict shape was uniformly the routine generated-file kind
+(digest byte-identical to fresh regen wherever it conflicted at all; pin hand-derived and
+verified `--check` clean from the final rebased state each time, using a fixed
+`git merge-base HEAD origin/main` reference for isolation checks — learned this cycle that a
+stale hardcoded base commit produces a misleadingly noisy diff once other sessions' PRs land
+in between). For each, confirmed the branch's own writer fix survived intact and ran its
+full test suite: F-3.4 `#1831` (76/76), F-16 `#1849` (53/53), F-12/16 `#1808` (291/291), F3
+`#1834` (49/49), F2 `#1842` (32/32), headline-anchor `#1839` (97/97), LEAKAGE-FIREWALL
+`#1845` (53/53) — all green. For each, checked `mergeQueueEntry` before pushing (all seven
+occupied their slot with `state: UNMERGEABLE`, except `#1849` which had already naturally
+dequeued), called `dequeuePullRequest` via GraphQL where still occupied, then pushed
+successfully and re-armed via `gh pr merge --auto`.
+
+**Priorities 1-4:** several `main` commits landed during this cycle's extended hygiene work
+(not L4-relevant). No new adjudications name L4 (count unchanged at 15). E-gate still
+uncheckable, 300th consecutive cycle DB access down.
+
+CYCLE 310 L4: dequeued+rebased+repushed 7 UNMERGEABLE PRs (`#1849`, `#1845`, `#1842`,
+`#1839`, `#1834`, `#1831`, `#1808` — every remaining own PR, all writer fixes verified
+intact through rebase, 76+53+291+49+32+97+53 tests pass, all re-armed for auto-merge) →
+next: confirm all seven re-enter the merge queue next cycle; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
