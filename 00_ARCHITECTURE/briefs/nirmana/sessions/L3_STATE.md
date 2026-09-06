@@ -493,6 +493,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~137:0xZ — L3-W3 — PR hygiene: `#2187` checks still
+  running pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
+  Integration Tests` pending, nothing red), not yet queued — nothing to
+  fix. Continued F-L3-4 with a fourth asset, `ka_moorti_nirnaya`: same
+  ungated sign/nakshatra-run shape as `ka_kota_chakra` (migration 853),
+  derived from `services/ka_moorti_nirnaya/writer.py`/`logic.py` directly
+  — one row per (graha, sign-run) over the same 460-day horizon, scoped
+  to 8 of 9 grahas (Moon deliberately excluded, disclosed in the writer's
+  own docstring). Live per-graha breakdown (Mercury 20, Venus 17, Sun 16,
+  Mars 9, Jupiter 4, Ketu 2, Rahu 2, Saturn 2) sums to 72, matching
+  `target_floor`/`count_sql` exactly. Migration 855 + paired test
+  authored (no self-transaction wrapper from the start), all 7 tests
+  pass, confirmed live the row is genuinely still NULL after the "rolled
+  back" tests ran. Migration-number guard PASS (855, confirmed free).
+  **Correction to last cycle's own heartbeat entry:** it said "14 of 23
+  L3 assets still NULL" for F-L3-4 — that arithmetic was wrong (20 were
+  NULL at F-L3-4's filing, minus the 3 done by that point = 17, not 14;
+  now 16 after this cycle's `ka_moorti_nirnaya`). Self-caught while
+  re-deriving the count for this entry; not re-editing the prior entry
+  (rolling log), corrected here instead. Committed locally (`4491043da`),
+  held from push — `#2187` still mid-check. — blocked on: nothing new;
+  next action: push once `#2187` clears its checks/queues, then continue
+  F-L3-4 on another asset (16 remain NULL) if still no E-gate work.
 - `2026-09-07T~136:0xZ — L3-W3 — PR hygiene: `#2184` MERGED (squash
   `c14ca7f2a`). Rebased the 9 not-yet-merged local commits (migrations
   852/853/854 + their heartbeat entries, plus 6 pre-#2184 heartbeat
