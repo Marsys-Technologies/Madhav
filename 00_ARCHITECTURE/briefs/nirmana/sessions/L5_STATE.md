@@ -457,6 +457,29 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:15Z (C8 v2.3 cycle 411) — **Fixed the #1844 migration-692 collision deferred from
+  cycle 409.** PR hygiene: #1844 fell out of the queue a 4th time (CLEAN-but-unqueued), re-armed
+  immediately as pure hygiene before the main work. Main unit: worked in an isolated
+  `git worktree` (`/tmp/l5-1844-renumber`, removed when done — never touched this session's own
+  branch/worktree) checked out to #1844's branch, rebased onto current origin/main (tip 807 at the
+  time), `git mv`'d `692_nirmana_l5_mi_vistara_output_digest_spec.sql` →
+  `808_nirmana_l5_mi_vistara_output_digest_spec.sql`, confirmed `sqlIdentityOf()` byte-identical
+  before/after (only the header comment line differs, which the function strips), and added the
+  proper reconciliation entry to `scripts/ci/migration_renumber_disclosed.json`
+  (`disposition: already-applied-under-old-name`, mirroring the two existing 544/543 precedents
+  exactly). **Verified live, not just offline:** ran `migrate.ts --dry-run` (no throw, would-apply
+  list included 808 cleanly) then a REAL `migrate.ts --target 808_...` run, which printed
+  `"Reconciled (not executed): 808_... — already applied as 692_..."` — confirming the shared dev
+  DB's existing row is correctly attributed to the new filename without re-running the INSERT.
+  Force-pushed (dequeue-then-push-then-rearm dance), confirmed #1826 unaffected throughout. **New
+  finding surfaced by this fix, noted for later, not acted on now (scope discipline):** while
+  reconciling, `migrate.ts --dry-run` also showed `806_nirmana_l1_ga_structural_integrity_contract_
+  dispositorchainvarga.sql`/`807_..._centrality.sql` (L1's own migrations) landed on main using the
+  SAME numbers `806`/`807` that I used locally for `mi_jivanaghatana`'s spec (still only on my own
+  branch, in #1826, not yet merged) — **this is the SAME collision class recurring one level up**,
+  and #1826 will need its own renumber-reconciliation pass before/at merge, using this exact cycle
+  as the template. Will action when #1826 gets closer to merging, not now (it's still climbing the
+  queue with unrelated checks pending).
 - 2026-09-06T11:00Z (C8 v2.3 cycle 410) — **`mi_jivanaghatana`'s `accepted_rebuild_observed`
   LANDED live — the campaign's second `mi_*` asset to reach it.** PR hygiene: #1826 `BLOCKED`
   only on pending checks (no failures, armed), not CLEAN-but-unqueued — no action; #1844 confirmed
