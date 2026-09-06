@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:19:34Z` — cycle 587: **IDLE-OK.** Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:17:20Z` — cycle 586: **ONE bounded unit: Step 3.5 fleet status post to #1713**,
   summarizing everything since the last post (cycle 507): #2096/#1869 closed, #2137 fixed, #2124
   independently verified clean + D-CND-35 issued, #2113/#2122/#2123 ruled, L1 migration range
