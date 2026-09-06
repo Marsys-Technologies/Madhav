@@ -338,3 +338,92 @@ describe('C4 A5 gochara_agreement — structural shape invariants', () => {
     expect((a5['note'] as string).length).toBeLessThanOrEqual(120)
   })
 })
+
+// ── N1 (Temporal Concordance Contract): engine_testimony[] attachment ───────
+//
+// L3_W1_ANALYSIS_BATCH_E.md §1.5's first named attachment step — the KP voice
+// and (flag-guarded) A5 gochara voice, mapped onto lib/engine_testimony.ts's
+// canonical shape, additive alongside school_voices/a5_gochara_agreement
+// (neither of which this changes). `concordance` (the composed verdict over
+// this testimony) is a later N1 step, covered separately — these tests only
+// assert the engine_testimony[] shape itself.
+
+describe('N1 engine_testimony[] — additive canonical-shape attachment', () => {
+  it('flag OFF: engine_testimony carries only the KP entry (honest_empty, no KP substrate)', async () => {
+    delete process.env['SM_GAMMA_C4_ENABLED']
+    stubFetchForExplain(PACT_CHAIN_COMPLETE, GOCHARA_GAIN_WINDOWS)
+    const { server, handlers } = makeCapturingServer()
+    const { registerKalaExplainTool } = await import('../tools/kala_views/explain.js')
+    registerKalaExplainTool(server, PRINCIPAL)
+    const handler = handlers.get('kala_explain_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage' })
+    const obj = extractObject(result)
+    expect('a5_gochara_agreement' in obj).toBe(false) // control: flag really is off
+    const testimony = obj['engine_testimony'] as Array<Record<string, unknown>>
+    expect(Array.isArray(testimony)).toBe(true)
+    expect(testimony).toHaveLength(1)
+    expect(testimony[0]!['engine']).toBe('kp')
+    expect(testimony[0]!['state']).toBe('honest_empty') // KP_FACTS_EMPTY fixture
+    expect(testimony[0]!['empty_reason']).not.toBeNull()
+  })
+
+  it('flag ON + concurring gochara windows: engine_testimony carries KP + gochara_v3, agreements match', async () => {
+    process.env['SM_GAMMA_C4_ENABLED'] = 'true'
+    stubFetchForExplain(PACT_CHAIN_COMPLETE, GOCHARA_GAIN_WINDOWS)
+    const { server, handlers } = makeCapturingServer()
+    const { registerKalaExplainTool } = await import('../tools/kala_views/explain.js')
+    registerKalaExplainTool(server, PRINCIPAL)
+    const handler = handlers.get('kala_explain_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage' })
+    const obj = extractObject(result)
+    const a5 = obj['a5_gochara_agreement'] as Record<string, unknown>
+    const testimony = obj['engine_testimony'] as Array<Record<string, unknown>>
+    expect(testimony).toHaveLength(2)
+    const engines = testimony.map((t) => t['engine']).sort()
+    expect(engines).toEqual(['gochara_v3', 'kp'])
+    const gocharaEntry = testimony.find((t) => t['engine'] === 'gochara_v3')!
+    // The same underlying agreement, translated onto the canonical vocabulary
+    // (a5's 'concurs' already IS the canonical value here — this cross-checks
+    // the mapper didn't silently transform it).
+    expect(gocharaEntry['agreement']).toBe(a5['agreement'])
+    expect(gocharaEntry['state']).toBe('computed')
+    expect(gocharaEntry['empty_reason']).toBeNull()
+    expect(typeof gocharaEntry['claim']).toBe('string')
+  })
+
+  it('flag ON + insufficient_data gochara: gochara_v3 entry is honest_empty, not a fabricated agreement', async () => {
+    process.env['SM_GAMMA_C4_ENABLED'] = 'true'
+    stubFetchForExplain(PACT_CHAIN_COMPLETE, GOCHARA_EMPTY)
+    const { server, handlers } = makeCapturingServer()
+    const { registerKalaExplainTool } = await import('../tools/kala_views/explain.js')
+    registerKalaExplainTool(server, PRINCIPAL)
+    const handler = handlers.get('kala_explain_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage' })
+    const obj = extractObject(result)
+    const testimony = obj['engine_testimony'] as Array<Record<string, unknown>>
+    const gocharaEntry = testimony.find((t) => t['engine'] === 'gochara_v3')!
+    expect(gocharaEntry['state']).toBe('honest_empty')
+    expect(gocharaEntry['agreement']).toBe('not_comparable')
+    expect(gocharaEntry['empty_reason']).not.toBeNull()
+  })
+
+  it('every entry has the full canonical shape', async () => {
+    process.env['SM_GAMMA_C4_ENABLED'] = 'true'
+    stubFetchForExplain(PACT_CHAIN_COMPLETE, GOCHARA_GAIN_WINDOWS)
+    const { server, handlers } = makeCapturingServer()
+    const { registerKalaExplainTool } = await import('../tools/kala_views/explain.js')
+    registerKalaExplainTool(server, PRINCIPAL)
+    const handler = handlers.get('kala_explain_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage' })
+    const obj = extractObject(result)
+    const testimony = obj['engine_testimony'] as Array<Record<string, unknown>>
+    for (const t of testimony) {
+      expect(typeof t['engine']).toBe('string')
+      expect(typeof t['engine_label']).toBe('string')
+      expect(['computed', 'honest_empty']).toContain(t['state'])
+      expect(['concurs', 'dissents', 'not_comparable']).toContain(t['agreement'])
+      expect(typeof t['claim']).toBe('string')
+      expect('empty_reason' in t).toBe(true)
+    }
+  })
+})
