@@ -457,6 +457,45 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T15:30Z (C8 v2.3 cycle 453) — **Milestone: `#2092` MERGED — the second state-recovery
+  PR from this session is also closed out.** Same recovery pattern as cycles 442's #1826 discovery:
+  found via routine hygiene check (`mergedAt` set, not just assumed from queue position). 10 more
+  local-only commits (cycles 443-452, 28 lines, single-file) had nowhere to land — recovered
+  identically: diffed against the old branch (confirmed state-file-only again), saved as a patch,
+  applied cleanly onto a fresh branch (`codex/nirmana-l5-heartbeat-recovery-3`) off current
+  `origin/main`. **`codex/nirmana-l5-heartbeat-recovery-2` is now retired**, same as `-recovery`
+  before it — this is now the second time this exact pattern has recurred in one session (a state
+  PR merges, held cycles get orphaned, recover via patch-onto-fresh-branch), so it's a genuinely
+  established procedure now, not a one-off improvisation. #1869 and `mi_kula`'s remaining ancestors
+  both unchanged.
+- 2026-09-06T15:25Z (C8 v2.3 cycle 452) — **IDLE-OK, #2092 now at queue position 1** — next in
+  line. #1839 merged. Still holding. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:20Z (C8 v2.3 cycle 451) — **IDLE-OK.** #2092 unchanged at queue position 3, normal
+  single-cycle pace. Still holding. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:15Z (C8 v2.3 cycle 450) — **IDLE-OK, queue progressing.** #1871 merged, #2092
+  advanced to position 3. Still holding the state push. #1869 and `mi_kula`'s remaining ancestors
+  both unchanged.
+- 2026-09-06T15:10Z (C8 v2.3 cycle 449) — **IDLE-OK, queue progressing.** #2092 advanced to
+  position 4, still queued. Main landed migration 815 (L1, inside its own range) — no collision.
+  Still holding the state push. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:05Z (C8 v2.3 cycle 448) — **IDLE-OK.** #2092 still queued and CLEAN, at position
+  5. Still holding the state push. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:00Z (C8 v2.3 cycle 447) — **#2092 CLEAN and genuinely queued — all 27 checks
+  completed, zero failures, auto-entered the merge queue on its own** (no hygiene action needed,
+  unlike #1826's manual CLEAN-but-unqueued fix). Still holding the state push. #1869 and
+  `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:55Z (C8 v2.3 cycle 446) — **IDLE-OK, checked job-level timing since the same check
+  had shown 3 cycles running.** Governance Gates started 12:50:26Z, ~9.5 min elapsed at check time
+  — within the established 7-12 min normal range for this job's pytest step, not stalled. #1869
+  and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:50Z (C8 v2.3 cycle 445) — **IDLE-OK.** #2092 unchanged, still on its last check
+  (Governance Gates), no failures — consistent with normal long-pytest-step progress, not stalled.
+  #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:45Z (C8 v2.3 cycle 444) — **IDLE-OK.** #2092 down to its last check (Governance
+  Gates), no failures — still holding. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:40Z (C8 v2.3 cycle 443) — **IDLE-OK.** #2092 (the new state-recovery PR, now L5's
+  only open PR) down to 3 checks pending, no failures — holding, not touching it while it runs.
+  #1869 and `mi_kula`'s remaining ancestors both unchanged.
 - 2026-09-06T14:35Z (C8 v2.3 cycle 442) — **Milestone: `#1826` MERGED — both of L5's PRs from this
   session are now closed out.** Discovered via routine hygiene check (main's tip was #1834's
   merge; querying the merge queue directly showed #1826 no longer in the top 6 positions — checked
