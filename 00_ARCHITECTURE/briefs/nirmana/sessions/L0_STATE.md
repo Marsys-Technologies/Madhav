@@ -474,3 +474,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Conductor's PR, not mine to manage. `bg_cohort`'s own C12 carve-out still unmoved. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. No open L0 PR, #1713 tail
   unchanged, `bg_cohort` carve-out file untouched. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** `main` advanced (L3/L5 state PRs, unrelated). #1713's only new
+  comment is L5's own `mi_kula` slot claim. `bg_cohort` carve-out still untouched. Conductor's fix PR
+  `#2172` still open (`mergeStateStatus: UNKNOWN`, not L0's to manage). Nothing eligible.
