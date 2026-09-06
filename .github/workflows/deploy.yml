@@ -250,8 +250,39 @@ jobs:
 
       - name: Detect changed paths
         id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          # #2169: HEAD~1 only sees the single commit this run's DEPLOY_SHA
+          # corresponds to. Under a fast-merging queue, several commits can
+          # land between one deploy run and the next -- each run diffing only
+          # its own immediate parent silently misses changes from earlier,
+          # still-undeployed commits whenever the latest commit's own diff
+          # happens not to touch a given service's paths. Fix: diff from the
+          # most recent PRIOR successful "Deploy to Cloud Run" run's head_sha
+          # instead, accumulating across the whole unfired backlog. That
+          # commit is fetched on demand (this checkout is shallow) rather than
+          # requiring full history -- verified working against this repo's
+          # real remote (GitHub supports fetching an arbitrary historical SHA
+          # directly, confirmed live before this landed).
+          # Restricted to workflow_run/workflow_dispatch on main -- this same
+          # workflow file also runs on pull_request (build-check only, never
+          # deploys), and a PR run can be "conclusion: success" too (its jobs
+          # are all success-or-skipped), which would otherwise pick a PR
+          # branch tip as PRIOR_SHA -- not an ancestor of main, silently
+          # diffing against the wrong reference point instead of the last
+          # real deploy. Confirmed live: this exact false-positive match
+          # exists in this repo's own recent run history.
+          PRIOR_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy.yml/runs?status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and (.event == "workflow_run" or .event == "workflow_dispatch") and .head_branch == "main")] | first | .head_sha // empty' 2>/dev/null || echo "")
+          if [ -n "$PRIOR_SHA" ] && git fetch --depth=1 origin "$PRIOR_SHA" 2>/dev/null \
+             && git cat-file -e "${PRIOR_SHA}^{commit}" 2>/dev/null; then
+            echo "Diffing from last successful deploy run's head_sha: $PRIOR_SHA"
+            CHANGED=$(git diff --name-only "$PRIOR_SHA" HEAD)
+          else
+            echo "No usable prior successful deploy found -- falling back to HEAD~1"
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          fi
           echo "=== Changed files ==="
           printf '%s\n' "$CHANGED"
           echo "====================="
