@@ -381,6 +381,19 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T22:11:30Z` — cycle 638: **ONE bounded unit: ruled #2180 — cross-layer fact_id-scheme
+  rebuild sequencing (L1+L2), verified before ruling.** (#2137 double-checked first — confirmed
+  never actually closed, correctly still open pending L5's retry confirmation; no mystery, my own
+  prior recollection was just imprecise, not an error in the real state.) Confirmed no live build
+  blocks a coordinated wave (`build_runs` all stale/terminal). Checked the actual `depends_on`
+  chain and found a sharper reason to prefer the filer's option (a) over (b): `ga_yoga.depends_on`
+  doesn't declare `ga_positions` at all despite consuming its fact_ids — a real, separate DAG-
+  metadata gap that also proves depends_on-inference can't be trusted alone here. **Ruled**:
+  rebuild the exact five named assets (`ga_positions`, `ga_yoga`, `bo_laksana`, `bo_cgm_paths`,
+  `bo_cgm_motifs`) together in one coordinated `asset_set` dispatch spanning L1+L2 — safer and more
+  complete than a campaign-wide migration re-deriving arbitrary array columns from an admittedly-
+  incomplete scan. Flagged the missing `ga_yoga` depends_on edge separately, not blocking. Fleet
+  DIRTY: empty. Adjudication count 20.
 - `2026-09-06T22:05:58Z` — cycle 637: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T22:03:41Z` — cycle 636: **IDLE-OK.** Fleet DIRTY: empty. No new
