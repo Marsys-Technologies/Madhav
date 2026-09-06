@@ -11,6 +11,15 @@ const migrationPath = path.resolve(
   'supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql',
 )
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
+// Migration 706 re-pins bg_vidhi_primitives' integrity_check_sql content hash after issue
+// #2122's from_moon_view correction (migration 705, which fixes the LIVE production row --
+// not needed here, since this fixture's vidhi_primitives is populated by dumping the CURRENT
+// (already-corrected) writer, so only the re-pinned CHECK needs replaying to match it).
+const migration706Path = path.resolve(
+  process.cwd(),
+  'migrations/706_bg_vidhi_primitives_from_moon_view_content_repin.sql',
+)
+const migration706 = fs.existsSync(migration706Path) ? fs.readFileSync(migration706Path, 'utf8') : ''
 const migration530Path = path.resolve(
   process.cwd(),
   'supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql',
@@ -262,6 +271,12 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
     const client = await connectPrepared()
     try {
       await client.query(migration)
+      // Migration 628's own content re-pins bg_vidhi_primitives.integrity_check_sql to the
+      // OLD from_moon_view content hash. This fixture's vidhi_primitives is populated by
+      // dumping the CURRENT (already-corrected, #2122/F-D21/F-D23) writer, so replay migration
+      // 706 immediately after to re-pin the check to match -- otherwise the CONTRACTS loop
+      // below legitimately fails bg_vidhi_primitives' stored integrity SQL.
+      await client.query(migration706)
       await expect(client.query(
         `SELECT is_generated FROM information_schema.columns
          WHERE table_schema = 'public' AND table_name = 'bg_sky_calendar'
