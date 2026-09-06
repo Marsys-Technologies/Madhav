@@ -517,3 +517,8 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** `main` advanced with an unrelated L3 heartbeat PR (#2181).
   #1713 tail unchanged, `bg_cohort` carve-out file still untouched. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** `main` advanced with L1's `depends_on` DAG audit (#2183) and an
+  unrelated L5 state PR (#2182) -- checked #2183's scope specifically since it touches `depends_on`
+  (bg_cohort's blocker is also depends_on-adjacent), but it's about hidden/false DAG edges within
+  L1's own asset graph, not the orchestrator's service-dependency semantics (D-L0-II) -- unrelated.
+  #1713 tail unchanged, carve-out file still untouched. Nothing eligible.
