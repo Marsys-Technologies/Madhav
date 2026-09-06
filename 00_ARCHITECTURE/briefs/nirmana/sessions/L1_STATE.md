@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 86; ga_structural F-A14 widened to 55/64 (corrected denominator, D-L1-105) (#2085)
+last_updated: 2026-09-06 — C8 v2.3 cycle 87; PR hygiene (3 DIRTY rebases, self-caught D-CND-28 violation, #2087 cross-lane adjudication filed)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -6223,3 +6223,30 @@ L1 must satisfy rather than a feature it consumes.
   also corrected a registry-gap tracking error (D-L1-105: true denominator is 64, not 57) --
   next: continue ga_structural widening (8 categories remain), or ga_positions re-dispatch once
   #1892 lands.
+- 2026-09-06T17:3xZ -- CYCLE 87 (C8 v2.3). PR hygiene surfaced the recurring 3-PR DIRTY batch
+  (#1853, #1871, #1898) plus one CLEAN-but-unqueued (#1950, armed). Fixed #1871 cleanly
+  (rebase + full digest regen + L1-only pin re-derivation; now MERGEABLE/auto-merge armed).
+  While fixing #1853 and #1871, **caught and self-corrected a real process violation**: I had
+  regenerated **L2's** `nirmana-analysis-layer-pins.json` slice myself on both branches,
+  mistaking an already-landed L2-authored re-pin commit on #1853's own history for license to
+  repeat the action -- this directly contradicts the ratified sequencing on #1852 (D-CND-28 +
+  timing correction): "L1 must never touch L2's pin slice itself -- that asserts L2's review,
+  which isn't L1's to assert." Corroborated the corrected occurrence count on #1852 (this
+  coupling, `bo_pratijna_v4_engine.py` -> `ga_condition_writer.py`, now hit on #1853/#1871/#1898
+  this cycle alone; L2's severing fix, PR #1928, is queued but not yet merged). Re-fixed #1898
+  correctly the second time: L1's own pin slice re-derived, L2's left honestly stale and tracked
+  -- the PR stays RED on Governance Gates until L2 re-derives its own slice or #1928 lands first,
+  which is the ratified expected state, not a defect. **Separately discovered and filed a
+  cross-lane incident**: while rebasing #1853, observed `/Users/Dev/nirmana-s/l3` (the L3
+  session's own worktree) actively checked out to my `codex/nirmana-l1-w3-condition-fc8-composite`
+  branch and committing an `L3_STATE.md` heartbeat onto it (HEAD moving live, `f1c3bd379` ->
+  `006482dcac1`, across seconds of observation) -- filed **#2087** (`nirmana-adjudication`) rather
+  than racing an actively-running process by force-pushing over it; parked #1853 untouched this
+  cycle per both #2087 and the pre-existing #1852 "hold" instruction. No new migration authored
+  this cycle -- PR hygiene (3 rebases, a self-caught governance-violation correction, and a
+  filed cross-lane adjudication) was this cycle's bounded unit of work; no writer or migration
+  touched. CYCLE 87 L1: PR hygiene -- fixed #1871 clean, corrected #1898 to respect the L2-pin
+  boundary properly, self-corrected an L2-pin violation on #1853/#1871 and corroborated it on
+  #1852, filed #2087 for an active L3-worktree cross-lane contamination on #1853 (parked, not
+  raced) -- next: continue ga_structural widening (8 categories remain, migration 814) once
+  #1853's contested branch settles, or verify #2087/#1852 for adjudication responses.
