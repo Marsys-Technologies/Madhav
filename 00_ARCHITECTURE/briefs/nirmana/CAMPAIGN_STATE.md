@@ -380,6 +380,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:25:43Z` — cycle 496: **IDLE-OK.** Deploy backlog watch: 34038328904 completed
+  `success` overall but its sidecar job was `skipped` (not the real test). 34038669312 still
+  `in_progress` (~8 min) — this is the one whose sidecar-job outcome actually tests the fix.
+  Fleet DIRTY: same known set (#1929/#1903/#1898). No new `nirmana-adjudication` issues (17).
+  Nothing rose to a bounded unit.
 - `2026-09-06T14:23:30Z` — cycle 495: **IDLE-OK.** Deploy backlog watch: run 34038328904's sidecar
   job was `skipped` (that commit didn't touch sidecar paths — tells us nothing); run 34038669312's
   sidecar job still `in_progress`, checkout ref not yet visible in streamed logs — next real
