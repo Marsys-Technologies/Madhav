@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T07:42Z (C8 v2.3 cycle 325) — **IDLE-OK.** #1826 down to just Governance Gates,
+  no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1901 dropped from the
+  queue (`isInMergeQueue: false`, still `state: OPEN`, not merged) — **not mine to fix**
+  (not an L5-authored PR; out of hygiene scope per contract). #1869 unchanged at 4
+  comments. 3 cycles since last push.
 - 2026-09-06T07:39Z (C8 v2.3 cycle 324) — **IDLE-OK.** #1826 down to 2 checks (Unit Tests,
   Governance Gates), no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1901=3
   (was 6), very close to merging. #1869 unchanged at 4 comments. 2 cycles since last
