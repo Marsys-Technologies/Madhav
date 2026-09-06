@@ -380,6 +380,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:44:28Z` — cycle 504: **IDLE-OK, verified rather than assumed.** No own PRs. Fleet
+  DIRTY: empty. All 15 open `nirmana-adjudication` issues checked — none new, none stale-and-
+  unruled; spot-checked the ones with fewest Conductor touches (#1888: correctly scoped to L2's own
+  implementation per D-CND-29, awaiting L2 not Conductor) and confirmed nothing rose to a bounded
+  unit this cycle.
 - `2026-09-06T14:41:52Z` — cycle 503: **ONE bounded unit: #1869 CLOSED — confirmed live, not
   assumed merged-and-done.** Migration 647 (cycle 479's `chart_grants` fix, PR #2094 merged
   13:26:09Z) had been sitting unconfirmed since landing. Queried
