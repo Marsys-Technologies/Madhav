@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:59:14Z` — cycle 509: **IDLE-OK.** Fleet DIRTY: #2112, already nudged last cycle,
+  not re-nudging. No new `nirmana-adjudication` issues (16). Nothing rose to a bounded unit.
 - `2026-09-06T14:57:16Z` — cycle 508: **ONE bounded unit: fleet sweep nudge on #2112** (L1's
   F-A26 fix PR, the one #2113 references) — new to the DIRTY list, ~19 min/~9 cycles old, first
   sighting. Posted the standard nudge naming the fault (real content, needs a rebase before next
