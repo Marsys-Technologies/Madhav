@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK. Deploy run 34033464028 (includes migration 704) still in_progress ~3min in, no failures. Not yet safe to re-dispatch bg_parihara_rules. No open L0 PRs, no DIRTY/RED. No other L0 asset currently eligible. 35/40 frozen unchanged -- next cycle: confirm this deploy run completed + migration 704 applied live, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- CAUGHT A REAL ANOMALY: run 34033464028's Apply DB Migrations job reported success but migration 704 was NOT actually applied (confirmed via direct _migrations_applied query -- 704 absent, 700-703/710-799 all present; census row still has the OLD stale value). That run's overall conclusion was actually failure (unrelated: L3's ka_graha_sancara smoke probe failed in Build & Deploy Sidecar). Root cause for the migration-apply miss not yet found. A newer commit (a448be8a, confirmed to include 704) triggered a fresh deploy run (34033909025), Apply DB Migrations in_progress -- letting it determine the outcome before escalating. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged, still not safe to re-dispatch bg_parihara_rules -- next cycle: check 34033909025, verify 704 actually applied this time (don't trust job conclusion alone), then re-dispatch.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3322,3 +3322,26 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** Run `34033464028` still `in_progress` (~3min in), no failures. No
   open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **Important correction: migration 704 was NOT actually applied by run
+  `34033464028`, despite that run's `Apply DB Migrations` job reporting `success`.** Direct
+  re-query of `_migrations_applied` shows no row for `704_...sql` (700-703 and 710-799 all
+  present, 704 conspicuously absent); direct query of `bg_muhurta_factor_census` still shows the
+  OLD stale `evidence_pointer` value, and `asset_registry.integrity_check_sql` still does not
+  contain the new hash — confirms 704 genuinely never ran, this is not a stale-read artifact.
+  `34033464028`'s overall conclusion was actually `failure` (an UNRELATED L3 asset's release-smoke
+  probe — `ka_graha_sancara` candidate probe — failed in the `Build & Deploy Sidecar` job; nothing
+  to do with `bg_parihara_rules` or migration 704). Root cause for 704 specifically not applying:
+  **not yet found** — `migrate.ts`'s apply loop (platform/scripts/migrate.ts:688-742) looks correct
+  on inspection (re-queries `applied` per file, throws + exits 1 on any real failure, prints
+  "Applied: X" on success) and the job's log shows neither an error for 704 nor an "Applied:"
+  line for it or anything else — meaning `ran` was empty, i.e. migrate.ts believed there was
+  nothing new to do, which contradicts the DB fact that 704 isn't tracked. **Did not chase this
+  further this cycle** — a NEWER commit (`a448be8a`, confirmed via `git merge-base
+  --is-ancestor` to include migration 704) has since landed and triggered a fresh deploy run
+  (`34033909025`), whose `Apply DB Migrations` job is now `in_progress`. Letting that run
+  determine the outcome first before treating the earlier miss as a genuine bug worth escalating —
+  if this fresh run ALSO fails to apply 704, that would be strong evidence of a real,
+  worth-escalating migrate.ts defect (§N.4/§N.8 territory: a migration job reporting success
+  while silently not applying a file). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged; still
+  not safe to re-dispatch `bg_parihara_rules`.
