@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 63; ga_structural F-A14 widened to 24/57 (#2037)
+last_updated: 2026-09-06 — C8 v2.3 cycle 64; ga_structural F-A14 widened to 25/57 (#2040)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -40,8 +40,8 @@ your `nirmana-adjudication` issues → continue.
   59), 788 (`ga_structural` Group H avastha bundle — 4 categories, cycle 60), 789
   (`ga_structural` nakshatra_dispositor_chain, cycle 61), 790 (`ga_structural`
   chandra_bala_natal_baseline, cycle 62), 791 (`ga_structural` Group O tri-deva bundle — 3
-  categories, cycle 63) used. 792–799
-  remain free.
+  categories, cycle 63), 792 (`ga_structural` graha_functional_class_per_ascendant, cycle 64)
+  used. 793–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2735,6 +2735,55 @@ CYCLE 63 L1: widened `ga_structural`'s F-A14 contract to 24/57 categories (PR #2
 791) — next: continue `ga_structural` widening (33 categories remain), or `ga_positions`
 re-dispatch once #1892 lands.
 
+## CYCLE 64 (C8 v2.3) — ga_structural's F-A14 contract widened to 25/57 categories (PR #2040, migration 792); confirmed BOTH branches of a two-branch classical formula are genuinely exercised live before committing to a full re-derivation, then caught and fixed a self-authored regex-level authoring mistake before it landed
+
+**PR hygiene:** clean sweep (`--limit 200`). Filtered to L1's own 44 `codex/nirmana-l1-*` PRs;
+42/44 confirmed genuinely `is:queued`. #1827 (this state PR) and #2037 (freshly opened last
+cycle) both mid-CI with green/pending checks only, no DIRTY/RED. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `graha_functional_class_per_ascendant`**
+(PR **#2040**, migration 792 — thirteenth in the 780-799 range).
+
+`_build_functional_class_rows` computes both `bphs_canonical` and `raman_variant` via the
+literal same `_get_functional_class_dynamic(g_name, lagna_sign)` call with the same arguments
+(the writer's own STAGE-2 comment already documents this) — a real self-consistency conjunct.
+That function itself is a genuine two-branch classical formula: a hardcoded 7-entry table for
+Aries lagna, or a dynamic kendra/trikona/dusthana/upachaya derivation for any other lagna.
+Before committing to a full re-derivation, checked whether the dynamic branch is actually
+exercised in production rather than assuming the Aries table covers everything — found one of
+the three charts has Cancer lagna across all five ayanamshas, producing real dynamic
+classifications (confirmed Moon and Mars both resolve to "yogakaraka" from Cancer, a genuinely
+different outcome than either would get from Aries), so the re-derivation conjunct is exercising
+live logic, not dead code.
+
+Authoring lesson worth recording: the first attempt at the full re-derivation conjunct
+hand-flattened the two-branch formula into one large nested `CASE` expression and silently
+dropped the dusthana and upachaya branches in the process (only yogakaraka/temporal_benefic/
+neutral survived the manual flattening). Caught this before landing by re-checking the
+hand-flattened SQL against the already-proven-correct CTE-based version used during
+verification, rather than trusting the flattening was faithful. Rebuilt conjunct (bb3) using
+`LATERAL` joins to compute the house/kendra/trikona/dusthana/upachaya intermediates as named
+columns mirroring the writer's own variable names, then re-verified and re-mutation-tested
+against the exact SQL that landed in the migration file (not just the earlier draft) — a
+reminder that a hand-simplification of a multi-branch formula needs its own independent
+verification, the complexity doesn't disappear just because the SQL got shorter.
+
+Lagna sign is read from `ga_positions`' own `graha_position` category (fact_subject LAGNA) —
+the layer-root T0 asset, the canonical D1-position authority per §N.5, not a second independent
+PyJHora invocation of the now-familiar D1 dual-source shape.
+
+Shipped three conjuncts: (zz2) a 5-way domain check, (aa3) the bphs/raman self-consistency
+check, (bb3) the full two-branch re-derivation. All three verified live clean then individually
+mutation-tested via real transactional `UPDATE`+`ROLLBACK`.
+
+Carried the sixty-one prior conjuncts (a)-(yy2) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 280 passed / 91 skipped (51 files). `provenance_inventory --check`: clean.
+
+CYCLE 64 L1: widened `ga_structural`'s F-A14 contract to 25/57 categories (PR #2040, migration
+792) — next: continue `ga_structural` widening (32 categories remain), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2750,7 +2799,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2036 cycle 62 → #2037 cycle 63 — **24/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength; migration range 780-799, 792-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet — reads each chain step's lord directly from `graha_nakshatra_join` (an L1-authority §N.5 reference). `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. **Migration 791 is the arc's SECOND multi-category jump** — bundled THREE tightly-coupled Group O tri-deva categories (`pranic_strength_per_graha`/`jaimini_tri_deva_role_per_graha`/`graha_tri_deva_role_strength`, the third having a genuine cross-field dependency on both siblings), and caught a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership under both "brahma" and "vishnu") — confirmed the writer's deterministic dict-order tie-break against all 135 live rows before encoding it, rather than assuming or loosening the check. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2037 cycle 63 → #2040 cycle 64 — **25/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant; migration range 780-799, 793-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3599,6 +3648,22 @@ whole campaign.
   against all 135 live rows that Jupiter resolves to "brahma" unconditionally before encoding
   that exact deterministic tie-break — the discipline of verifying an assumption against real
   data rather than either guessing or loosening the conjunct to dodge the ambiguity.
+
+- **D-L1-88** — C8 v2.3 cycle 64: widened `ga_structural`'s F-A14 contract (migration 792,
+  PR #2040), 24/57 → 25/57, adding `graha_functional_class_per_ascendant`. Before committing to
+  a full re-derivation of the category's two-branch classical formula (Aries-table vs. dynamic
+  kendra/trikona/dusthana/upachaya), checked whether the dynamic branch is actually exercised
+  live rather than assuming the simpler Aries-table branch covers all three charts — found one
+  chart has Cancer lagna, confirming the dynamic branch is genuinely live logic (Moon and Mars
+  both resolve to "yogakaraka" from Cancer, a real, non-trivial result). Self-caught and fixed
+  an authoring mistake before landing: a first attempt hand-flattened the two-branch formula into
+  one large nested CASE expression and silently dropped the dusthana/upachaya branches in the
+  process; caught this by re-checking the flattened SQL against the already-verified CTE version
+  rather than trusting the simplification, then rebuilt using LATERAL joins with named
+  intermediate columns mirroring the writer's own variable names for auditability, and
+  re-verified/re-mutation-tested against the exact SQL that landed. Lagna sign is read from
+  `ga_positions`' own `graha_position` category — the layer-root T0 asset, not a second
+  independent PyJHora invocation.
 
 ## Held items
 
@@ -4650,3 +4715,25 @@ L1 must satisfy rather than a feature it consumes.
   ga_structural's F-A14 contract to 24/57 categories (PR #2037, migration 791) -- next:
   continue ga_structural widening (33 categories remain), or ga_positions re-dispatch once
   #1892 lands.
+- 2026-09-06T08:4xZ -- CYCLE 64 (C8 v2.3). PR hygiene clean: 42/44 L1 PRs genuinely is:queued,
+  #1827/#2037 both mid-CI green/pending. #1928/#1892 unchanged. Unit of work: widened
+  ga_structural's F-A14 contract to 25/57 (PR #2040, migration 792) --
+  graha_functional_class_per_ascendant. Checked whether the category's dynamic-branch classical
+  formula is actually exercised live before committing to a full re-derivation -- found one
+  chart has Cancer lagna (not just Aries), confirming the dynamic kendra/trikona/dusthana/
+  upachaya branch is genuinely live, not dead code (Moon and Mars both resolve to "yogakaraka"
+  from Cancer). Self-caught an authoring mistake before landing: a first hand-flattened CASE
+  expression silently dropped the dusthana/upachaya branches during manual simplification;
+  caught by re-checking against the already-verified CTE version rather than trusting the
+  flattening, then rebuilt with LATERAL joins and named intermediate columns for auditability,
+  re-verified and re-mutation-tested against the exact SQL that landed. Shipped 3 conjuncts: a
+  5-way domain check, a bphs/raman self-consistency check (both are the literal same function
+  call per the writer's own STAGE-2 comment), and the full two-branch re-derivation reading
+  lagna sign from ga_positions' own graha_position category (layer-root T0 asset, not a second
+  independent PyJHora invocation). All three verified live clean then individually
+  mutation-tested via real transactional UPDATE+ROLLBACK. Carried the 61 prior conjuncts
+  forward verbatim, including the 3 already-tracked genuinely-red ones. No writer touched. Full
+  platform/tests/unit/migrations/ suite: 280 passed / 91 skipped (51 files).
+  provenance_inventory --check: clean. CYCLE 64 L1: widened ga_structural's F-A14 contract to
+  25/57 categories (PR #2040, migration 792) -- next: continue ga_structural widening (32
+  categories remain), or ga_positions re-dispatch once #1892 lands.
