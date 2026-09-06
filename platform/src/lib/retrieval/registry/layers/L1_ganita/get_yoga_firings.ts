@@ -191,12 +191,19 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
              c.classical_citations AS catalog_classical_citations`
 
     async function runQueries(cols: string) {
+      // F-D5 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `strength, yoga_canonical_id`
+      // alone — a non-total order. The same yoga_canonical_id at the same strength can
+      // legitimately repeat across all 5 stored ayanamshas (e.g. a firing rule that never
+      // varies with ayanamsha), so a caller filtering all ayanamshas at once got ties
+      // resolved in undefined/unstable order across pages. ayanamsha_id, id (the PK) make
+      // this a genuine total order — deterministic pagination, same D1-defect-class fix
+      // migration 814/817 already applied to their own tautology-adjacent tiebreaks.
       const sql = `
         SELECT ${cols}
         FROM ga_yoga_firings f
         LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
         WHERE ${where}
-        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id
+        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
         LIMIT $${p} OFFSET $${p + 1}`
       return Promise.all([
         query(sql, [...params, limit, offset]),
