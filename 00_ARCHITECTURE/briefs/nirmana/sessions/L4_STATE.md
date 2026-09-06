@@ -4250,3 +4250,16 @@ confirmed genuinely at the normal upper end, not stuck; E-gate uncheckable, DB a
 196 cycles; nothing new) → next: watch queue positions resume advancing; retry E-gate/dispatch
 dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~07:30Z` — L4 — **CYCLE 207 (v2.3) — `#1939` merged, confirming last cycle's
+diagnosis; `main` advanced by 2, `#1831` now closest at position 9.**
+
+**PR hygiene:** all 9 own PRs genuinely queued and advancing. No DIRTY, no RED.
+
+**Priorities 1-4:** no new L4-relevant `main` commits, no new adjudications name L4. E-gate
+still uncheckable, 197th consecutive cycle DB access down.
+
+CYCLE 207 L4: IDLE-OK (verified: `#1939` merged confirming last cycle's diagnosis; PR hygiene
+clean, all 9 own PRs genuinely queued and advancing, `#1831` now closest at position 9;
+E-gate uncheckable, DB access down 197 cycles; nothing new) → next: watch `#1831` approach
+the queue head; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
