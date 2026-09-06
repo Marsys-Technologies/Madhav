@@ -458,6 +458,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ — L3-W3 — Significant finding, escalated to #1713: fixing a DIRTY
+  queued PR re-enqueues it at the BACK of the queue, not its old position.** `#1903`
+  reached position 2 two cycles ago; went DIRTY (own conflict); resolved and
+  force-pushed last cycle; this cycle's direct `mergeQueueEntry` check shows it landed
+  at **position 116** (`enqueuedAt: 2026-09-06T07:47:06Z`, brand-new timestamp) — not
+  back near position 2. Cross-verified: #1992/#1905/#1996 (also fixed last cycle) show
+  `mergeQueueEntry: null` — not yet admitted at all, consistent with a genuinely fresh
+  re-entry rather than a resumed position. This explains the repeated DIRTY-PR-fix
+  pattern this whole session has hit on `#1903` specifically: reach-near-front →
+  `origin/main` advances → conflict → force-push fix → re-enqueued at the BACK of a
+  126+-deep queue → repeat. Posted as a factual, non-blaming observation to #1713 (not
+  requesting a fix — flagging the mechanic so other sessions don't misread "my PR was
+  at position 2" as "about to merge," and don't misdiagnose repeated re-conflicts as
+  something wrong with that specific PR). PR hygiene clean this cycle (no DIRTY/RED).
+  `#2060` unchanged, still queued (not yet checked for this same reset risk).
+
 - `2026-09-06T~10:0xZ — L3-W3 — Three genuinely DIRTY PRs this cycle: #1905, #1996,
   #1992.** #1905 (N1 third step, `engine_testimony.ts`): L3_STATE.md-only, standard
   shape (`theirs` empty), `engine_testimony.ts`/its test auto-merged cleanly (this
