@@ -5963,3 +5963,19 @@ head; E-gate uncheckable, DB access down 295 cycles; nothing new) → next: watc
 merge; watch remaining positions continue advancing; retry E-gate/dispatch dry-run once DB
 access returns; F1 remains deferred.
 
+`2026-09-06T~15:45Z` — L4 — **CYCLE 306 (v2.3) — `#1870` merged, confirming last cycle's
+diagnosis. All own PR positions moved up accordingly. This window's DIRTY/UNMERGEABLE
+episode count now stands at eleven fully-resolved instances across the session.**
+
+**PR hygiene:** all 7 remaining own PRs genuinely queued and advancing (49→41, 48→40, 44→36,
+45→37, 37→29, 33→25, 34→26). No DIRTY, no RED.
+
+**Priorities 1-4:** two new `main` commits (`#2063` L1, `#1924` L3), `#1870` itself, not
+otherwise L4-relevant. No new adjudications name L4 (count unchanged at 15). E-gate still
+uncheckable, 296th consecutive cycle DB access down.
+
+CYCLE 306 L4: IDLE-OK (verified: `#1870` merged confirming last cycle's diagnosis; PR
+hygiene clean, all 7 remaining own PRs genuinely queued and advancing; E-gate uncheckable,
+DB access down 296 cycles; nothing new) → next: watch queue positions continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
