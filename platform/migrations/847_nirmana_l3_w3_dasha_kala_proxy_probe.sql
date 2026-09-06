@@ -1,11 +1,14 @@
--- 844_nirmana_l3_w3_dasha_kala_proxy_probe.sql
+-- 847_nirmana_l3_w3_dasha_kala_proxy_probe.sql
 --
--- RENUMBERED TWICE (811->841->844): 811 collided with L1's already-merged
--- 811_..._lordinhouse.sql (first cycle); 841 was then independently claimed
--- by L1's own 841_..._virodhaargalanatalmatrix.sql -- both caught by
--- scripts/ci/migration_number_guard.ts's E2 check. Renumbered upward each
--- time (never applied anywhere, safe per CLAUDE.md's "never edit an applied
--- migration" rule not applying here).
+-- RENUMBERED THREE TIMES (811->841->844->847): 811 collided with L1's
+-- already-merged 811_..._lordinhouse.sql; 841 was then independently
+-- claimed by L1's own 841_..._virodhaargalanatalmatrix.sql; 844 was then
+-- independently claimed by L1's own 844_..._tajaka_volume_explanation_fix.sql
+-- -- all caught by scripts/ci/migration_number_guard.ts's E2 check.
+-- Renumbered upward each time (never applied anywhere, safe per CLAUDE.md's
+-- "never edit an applied migration" rule not applying here). L1 is
+-- allocating migrations very fast through the 840s range this session, so
+-- any L3 PR sitting on a number in it is a moving target across cycles.
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_dasha_kala`, F-L3-15's fourth and final slice.
