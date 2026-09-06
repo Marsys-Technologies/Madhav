@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- D-L0-PP OPEN: #2081/migration 703 confirmed applied+correct (live data re-verified twice), W2 refresh for bg_parihara_rules submitted cleanly, but TWO real re-dispatch attempts both failed with an unexplained "post-write integrity check failed: integrity_check_sql -> False" despite the writer's own log and an independent post-rollback re-query both confirming the data is correct. Root cause NOT found from outside asset_runner.py. Posted to #1713 as SLOT RELEASE (not a success). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- do not retry a third time blind; needs Conductor/asset_runner.py-owner investigation.
+last_updated: 2026-09-06 -- D-L0-PP ROOT-CAUSED + FIXED: migration 703's census_hash pin was computed from stale committed data (predating writer commit 4a78a5c40/#1539's legit evidence_pointer correction). Migration 704 (data-only, no writer touched) syncs the one stale field + re-pins; verified via two independent rolled-back replays + a full closed-loop rehearsal (704 + fresh writer run + check, all in one rolled-back tx) confirming a real dispatch will now pass. Shipped as PR #2088, awaiting CI/merge/deploy. No open L0 PRs besides #2088 (just opened, checks pending). 35/40 frozen unchanged -- next cycle: check #2088 is:queued, then once deployed re-dispatch bg_parihara_rules straight through to asset_frozen (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -49,7 +49,7 @@ see log). Still 35/40 until that's resolved.
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
 | bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
-| bg_parihara_rules | rebuild_only | **D-L0-PP OPEN (blocks on D-L0-OO's own success):** migration 703/`#2081` confirmed merged+deployed+correct (live-verified twice); W2 refresh clean (`registry_fingerprint 2e324cd6...`, verdict `examined_and_already_efficient`/`no_change`). But TWO real dispatch attempts (`230ed9e8`, `7a12b137`) both fail with `"post-write integrity check failed: integrity_check_sql → False"` even though the writer's own log reports correct counts (60/329/51) and an independent post-rollback re-query confirms all 6 integrity_check_sql clauses pass. No root cause found in `asset_runner.py`/`_probe_asset` from outside (no obvious bug on inspection; no extra Cloud Logging detail; no `asset_provenance_receipts` row created either run). Both attempts rolled back cleanly, no data damage. Posted to #1713. **Do not retry blind a third time** — needs deeper transaction-internals investigation (Conductor/asset_runner.py owner) before another attempt. |
+| bg_parihara_rules | rebuild_only | **D-L0-PP ROOT-CAUSED + FIXED, awaiting deploy:** migration 703's `census_hash` pin was computed from stale committed data — writer commit `4a78a5c40` (#1539) had already corrected `CENSUS_ROWS`'s `('astronomical','eclipse_proximity')` `evidence_pointer` (`bg_sky_events`→`bg_sky_calendar`, the real asset), but the committed row was never refreshed, so 703 carried the stale value into its pin. Migration 704 (data-only, `#2088`) syncs the one field + re-pins; verified via two independent rolled-back replays (writer path + raw SQL) producing an identical corrected hash, plus a full closed-loop rehearsal (704 + fresh writer run + check, one rolled-back tx) confirming a real dispatch will pass. Once `#2088` merges+deploys: re-dispatch straight through to `asset_frozen` (verdict still `examined_and_already_efficient`/`no_change` — no new `implementation_accepted` needed). |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` (deliberately unfixed) still blocks this. Re-check E-gate if `bg_yogas` ever comes back in scope; otherwise stays blocked indefinitely. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; still gated on `bg_yogas` (and transitively `bg_rules`) regardless. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last; still gated on `bg_yogas` regardless of the others. |
@@ -3215,3 +3215,47 @@ see log). Still 35/40 until that's resolved.
   - 35/40 frozen unchanged. `bg_parihara_rules` stays the 5th open item, now with this specific
     new anomaly logged instead of "waiting on deploy" (which is resolved — deploy is NOT the
     blocker anymore).
+
+- 2026-09-06 — **D-L0-PP ROOT-CAUSED + FIXED: migration 704 shipped as `#2088`.** Continued the
+  investigation logged above by re-reading `asset_runner.py` **from this session's own worktree**
+  (`/Users/Dev/nirmana-s/l0`, not the stale/unrelated `/Users/Dev/Vibe-Coding/Apps/Madhav` checkout
+  I'd accidentally read from earlier — that path is 561 commits behind origin/main and does not
+  reflect deployed code; a `git log -S` search confirmed the `defer_commits`/`"post-write integrity
+  check failed"` machinery exists on real `origin/main`, just not in that stale directory).
+  - **Corrected framing from the earlier SLOT RELEASE**: my "independent post-rollback re-query
+    shows the data is correct" claim was not actually contradictory evidence — after a failed
+    dispatch rolls back, re-querying only shows the PRE-EXISTING (already-correct) committed
+    state, not what the writer's own uncommitted write looked like at check time. Those are
+    different things; conflating them is what made this look unexplainable.
+  - **Real root cause, found via a local reproduction** (`replay_parihara_writer*.py` in
+    scratchpad): ran `BgPariharaRulesWriter().run(ctx)` inside an uncommitted transaction against
+    live prod data (`db_conn` = a real psycopg connection, `row_factory=dict_row`, exactly
+    matching orchestrator config) — reproduced the exact failure locally: writer reports correct
+    counts (60/329/51), but the in-transaction `integrity_check_sql` evaluates `False`. Testing
+    each of the 6 clauses individually isolated it to `census_hash` alone. Diffing pre-write vs
+    post-write `bg_muhurta_factor_census` rows (51=51, no adds/removes) found exactly ONE row
+    differs: `('astronomical','eclipse_proximity')`'s `evidence_pointer` — committed says
+    `bg_sky_events (event_type IN eclipse_solar, eclipse_lunar)`, writer produces `bg_sky_calendar
+    (...)`. `git log -S"bg_sky_events (event_type IN eclipse_solar"` traced this to commit
+    `4a78a5c40` (#1539, "reconcile and pin the 128-asset T0 denominator") — a LEGITIMATE prior fix
+    to the writer's `CENSUS_ROWS` constant (`bg_sky_events` isn't a real asset id; `bg_sky_calendar`
+    is the actual Night-1 sibling asset the row documents) that the committed table was never
+    refreshed to match, and that migration 703 (authored against then-committed data, not a fresh
+    writer replay) carried forward as a stale pin.
+  - **Verified twice independently before shipping**: (1) the writer's Python path and (2) the raw
+    SQL `UPDATE` migration 704 actually runs both produce the identical corrected hash
+    `e5df888ca6fcfd703fd6e9f4f3d50b48738463768bdad01721751fb8346e75c7`. (3) A full closed-loop
+    rehearsal — apply 704, then run the writer fresh, then run the check, all in one rolled-back
+    transaction — confirms `integrity_check_sql` evaluates `True`, proving this resolves a real
+    dispatch, not just the static committed state.
+  - **Shipped as `#2088`** (`fix/nirmana-l0-parihara-census-repin`, based fresh off `origin/main`
+    since this session's own `feat/nirmana-l0-cycle-resume-9` had diverged 147/120 commits and a
+    `git rebase` attempt hit conflicts — aborted cleanly, no data lost, worked around by branching
+    directly off `origin/main` instead). Migration 704: data-only, no writer file touched
+    (adjudication #1715 requirement 3 respected), guards refuse on any unexpected live state,
+    updates exactly 1 census row + re-pins `integrity_check_sql`, postflight-asserted.
+  - **Next cycle**: check `#2088` `is:queued`, fix any DIRTY/RED per contract, merge. Once
+    deployed: confirm live via direct query, then re-dispatch `bg_parihara_rules` straight through
+    to `asset_frozen` (verdict still `examined_and_already_efficient`/`no_change` — no new
+    `implementation_accepted` needed) → **36/40**.
+  - 35/40 frozen unchanged this cycle (fix shipped, not yet deployed/re-dispatched).
