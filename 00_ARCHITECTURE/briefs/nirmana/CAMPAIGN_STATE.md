@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:32:20Z` — cycle 593: **IDLE-OK.** Fleet DIRTY: #2065, known churn already
+  nudged. No new `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:30:17Z` — cycle 592: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:28:11Z` — cycle 591: **IDLE-OK.** #2149 cleared. Fleet DIRTY: #2065, known churn
