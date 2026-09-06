@@ -1,6 +1,7 @@
 """
 tests/test_migration_850_muhurta_seva_health_probe.py — L3 Kāla, F-L3-15 next
-slice: migration 850 populates `asset_registry.health_probe` for
+slice: migration 850 (renumbered from 676 -- see the migration file's own
+header for why) populates `asset_registry.health_probe` for
 `ka_muhurta_seva` (the second of the four L3 service assets found NULL when
 `ka_graha_sancara`'s own gap was fixed in migration 671 — F-CONC-6 investigation
 in L3_STATE.md). Without a non-null contract, `requireProbeProvenance` in
