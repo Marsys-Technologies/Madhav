@@ -461,6 +461,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~03:1xZ — L3-W3 — TENTH DIRTY-PR fix this run: #1921 (N1 fifth step,
+  migration 677 O-10 authority profile) — the OTHER N1 verdict-wiring precondition, an
+  L3_STATE.md-only conflict same family as #1905/#1917/#1919.** Resolved via the
+  established script (verified exactly 1 occurrence of "N1 FIFTH STEP" survived);
+  migration 677 itself and its own test file untouched by the conflict, no writer file
+  touched so no digest/pin regeneration needed. 8/8 migration tests pass (including the 3
+  `@pytest.mark.integration` live-DB ones — ran for real against production, not skipped),
+  full `tests/l3/` 1424 passed/0 failures. Force-pushed, re-armed auto-merge, confirmed
+  `MERGEABLE`.
+  **Both of N1's verdict-wiring preconditions (migration 675 deployed, migration 677 now
+  re-queued after this fix) are converging** — once #1921 actually merges AND deploys,
+  the `kala_explain_get` verdict-wiring step becomes genuinely eligible for the first
+  time this session.
+  Tenth DIRTY-PR fix this run overall. #1903 (F-CONC-6 prerequisite) still not merged.
+  #1958/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~03:0xZ — L3-W3 — ROOT CAUSE FOUND for the "why hasn't #1903 merged yet"
   question carried across many cycles: the repo's merge-queue ruleset is genuinely
   serial.** Pulled `rulesets/20141220` directly (`gh api repos/.../rulesets/20141220`):
