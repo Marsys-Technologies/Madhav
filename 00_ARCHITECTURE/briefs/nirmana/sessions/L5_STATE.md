@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:35Z (C8 v2.3 cycle 430) — **IDLE-OK, both PRs still queued.** No hygiene action
+  needed — still deliberately not pushing to #1826 while it holds its queue position. Main's
+  migration tip unchanged. #1869 and `mi_kula`'s remaining ancestors both unchanged.
 - 2026-09-06T13:30Z (C8 v2.3 cycle 429) — **Milestone: #1826 is now `CLEAN` and in the merge
   queue alongside #1844 — BOTH PRs genuinely queued simultaneously for the first time this
   session.** The hold-and-wait discipline from cycles 425-428 paid off: no further action needed,
