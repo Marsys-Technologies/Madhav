@@ -457,6 +457,15 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:35Z (C8 v2.3 cycle 194) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
+  24/27 checks SUCCESS, only Unit Tests/DB Integration Tests/Governance Gates still
+  IN_PROGRESS, auto-merge armed, not yet re-queued (expected — waiting on those 3). #1844
+  confirmed `isInMergeQueue: true`. Queue positions unchanged a 3rd cycle running
+  (#1861=9, #1844=66, #1901=92) — investigated whether the queue was stalled: position-1
+  PR #1914's three required merge-group workflows (CI/EKV/TAP) all completed SUCCESS at
+  00:23:06Z, only ~12 min before this check (00:35:33Z) — within normal merge-queue
+  processing latency, not a stall. #1869 unchanged at 3 comments; #1856 still OPEN. No
+  eligible dispatch.
 - 2026-09-06T~18:35Z (C8 v2.3 cycle 193) — **IDLE-OK, verified.** PR hygiene: #1844
   confirmed `isInMergeQueue: true` (autoMergeRequest showed null/UNKNOWN — the known lying-field
   pattern; GraphQL is ground truth). #1826 clean, auto-merge armed, pending fresh checks after
