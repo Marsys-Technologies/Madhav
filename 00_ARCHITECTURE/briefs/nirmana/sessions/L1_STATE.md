@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 87; PR hygiene (3 DIRTY rebases, self-caught D-CND-28 violation, #2087 cross-lane adjudication filed)
+last_updated: 2026-09-06 — C8 v2.3 cycle 88; PR hygiene (L3-worktree contamination confirmed + cleaned on #1950/#1853/#1898, #2087 ruled by Conductor)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -6250,3 +6250,36 @@ L1 must satisfy rather than a feature it consumes.
   #1852, filed #2087 for an active L3-worktree cross-lane contamination on #1853 (parked, not
   raced) -- next: continue ga_structural widening (8 categories remain, migration 814) once
   #1853's contested branch settles, or verify #2087/#1852 for adjudication responses.
+- 2026-09-06T17:5xZ -- CYCLE 88 (C8 v2.3). Checked #2087: **Conductor ruled and confirmed the
+  L3-worktree bug is real, escalated, and now stopped.** Conductor traced L3's worktree wandering
+  across L1 -> L2 -> L4 branches within minutes and force-pushed #1853 back to its last
+  L3-free commit; L3 itself then confirmed root cause on the issue (misread its own cycle
+  contract's "PR HYGIENE FIRST: check every open PR you authored" as spanning every layer,
+  since all lanes share one bot account) and confirmed it has stopped touching any non-`codex/
+  nirmana-l3-*` branch. L3 also independently admitted the SAME D-CND-28 violation (regenerating
+  L2's pin slice from a non-L2 branch) on #1898 and #1853 "most recently again this very cycle"
+  -- meaning my cycle-87 fixes to both had already been overwritten by L3's further meddling
+  before this cycle started. Re-verified all 5 open PRs fresh rather than trusting cycle-87's
+  outcome: found **#1853's tip still carried the L2-pin violation** (the Conductor's revert
+  only removed the `L3_STATE.md` contamination, not the earlier violation underneath it) and
+  **#1898's tip had reverted all the way back to an old (but correctly-shaped) commit from much
+  earlier**, which itself turned out to ALSO carry an unauthorized L2 slice value once checked
+  against `origin/main`'s legitimate one (not visible from the commit message alone, only from
+  diffing the actual field). Also found a SIXTH branch nobody had named yet: **#1950** carried
+  an `L3_STATE.md`-only heartbeat commit on top of an otherwise-clean L1 commit -- not on
+  L3's or the Conductor's list. Fixed all three the same way: reverted each branch's L2 pin
+  slice to exactly match `origin/main`'s current legitimate value (never regenerating it),
+  rebased onto latest `origin/main`, re-derived ONLY each branch's own L1 pin slice, verified
+  `provenance_inventory --check` clean on all three, and for #1950 additionally dequeued it
+  from the merge queue (it had somehow entered queued with the contaminated commit) before the
+  protected-branch force-push. All three pushed clean; #1950 auto-merge re-armed. Confirmed
+  #1871 and #1827 (my remaining two PRs) were never touched by either violation (#1827's L2
+  slice matches `origin/main` exactly; #1871's Governance Gates already passed). End-of-cycle
+  state: is:queued shows #1871/#1827 CLEAN and queued; #1950/#1898/#1853 MERGEABLE, CI still
+  catching up post-push (not DIRTY, not confirmed RED). No new migration this cycle -- the
+  cross-lane incident's full resolution (verifying, not assuming, that cycle-87's fixes had
+  survived) was this cycle's bounded unit. CYCLE 88 L1: PR hygiene -- confirmed #2087 ruled and
+  L3 stopped, then found and fixed THREE branches (#1853, #1898, and a previously-undisclosed
+  #1950) still carrying the D-CND-28 L2-pin violation or L3 contamination that cycle-87's fixes
+  had NOT survived intact -- next: continue ga_structural widening (8 categories remain,
+  migration 814) once these three settle in the queue, or re-verify their CI outcome next cycle.
