@@ -493,6 +493,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~124:0xZ — L3-W4 — IDLE-OK (verified): `#2181` still healthy,
+  mergeable, auto-merge armed, 2 checks pending, 0 failures. One more
+  unrelated L5 merge, no L3 overlap; no new L3 E-gate opening. — blocked
+  on: `#2181` finishing; next action: same.
 - `2026-09-06T~123:0xZ — L3-W4 — IDLE-OK (verified): `#2181` healthy,
   mergeable, auto-merge armed, 3 checks pending, 0 failures. One new
   unrelated L4 merge, no L3 overlap; no new L3 E-gate opening. — blocked
