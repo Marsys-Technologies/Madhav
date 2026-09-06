@@ -291,6 +291,12 @@ a RED-fix (see heartbeat).
   check the full `statusCheckRollup`, not just the previously-failing names. Once genuinely CLEAN,
   queue it. Once merged+deployed, verify migrations 705+706 applied live and `from_moon_view` wired
   end-to-end in production, then IDLE-OK pending Conductor's C12 carve-out for `bg_cohort`.
+- 2026-09-07 — **IDLE-OK (verified).** #2153's CI still running against the latest fix (`ab9685e77`,
+  `headRefOid` confirmed match); DB Integration Tests and the plan_bridge Unit Tests fix both no
+  longer appear in the failing-checks list (fixed, as expected), nothing new RED yet, `mergeStateStatus`
+  transient `UNKNOWN` (normal mid-run). Not actionable this cycle — will re-check next cycle. #1713
+  tail unchanged since last check (still ends at the 09-06T18:17Z Conductor fleet post); no Conductor
+  movement on the bg_cohort carve-out. Nothing else eligible.
 - 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
   and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
   (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
