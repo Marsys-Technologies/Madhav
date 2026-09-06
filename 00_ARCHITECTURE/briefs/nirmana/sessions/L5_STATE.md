@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:49Z (C8 v2.3 cycle 199) — **IDLE-OK, still withholding push/rebase (3rd
+  cycle).** #1826 down to ONE remaining check — `Governance Gates`, ~7 min in, no failures —
+  everything else green. origin/main advanced one commit (#1916, unrelated bo_upaya migration)
+  but deliberately NOT rebasing yet: rebasing now would reset the near-complete Governance
+  Gates run for no reason (docs-only diff, trivially rebases later). #1844 confirmed
+  `isInMergeQueue: true`. Queue progressing well: #1861=5 (was 7), #1844=62 (was 64), #1901=88
+  (was 90). #1869 unchanged at 3 comments; #1856 still OPEN.
 - 2026-09-06T00:46Z (C8 v2.3 cycle 198) — **IDLE-OK, still withholding push (batching per
   cycle 197's fix).** #1826's checks progressing for real: `DB Integration Tests` now
   COMPLETED (was in-progress last cycle), only `Unit Tests` + `Governance Gates` remain,
