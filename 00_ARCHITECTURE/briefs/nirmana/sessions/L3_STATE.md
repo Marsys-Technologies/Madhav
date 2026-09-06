@@ -469,6 +469,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~19:0xZ — L3-W3 — First cycle under the corrected L3-only scope.
+  Re-read `CYCLE_CONTRACT_C8_V23.md` fresh — confirms the correction: "Conductor-
+  specific additions" section shows fleet-wide PR sweeps are explicitly the
+  Conductor's own job (§Step 1.5), not every layer session's; "every open PR you
+  author" in the per-session Step 1 was never meant to span lanes despite the
+  shared author account. Checked `#2087`: Conductor confirmed two consecutive
+  clean readings (this worktree staying on its own branch) and CLOSED it —
+  correction held. **PR hygiene, L3-scoped only this time**: 10 L3-owned open
+  PRs checked, zero DIRTY/UNMERGEABLE, but 6 showed `CLEAN`-yet-`isInMergeQueue:
+  false` (#1954/#1949/#1940/#1936/#1929/#1903) — queued all six via `gh pr merge
+  --auto`, then verified via `is:queued` search (not the `autoMergeRequest`
+  message, which again printed its usual "merge strategy is set by the queue"
+  red herring) that all six are now genuinely `isInMergeQueue: true`. **Re-ran
+  the live E-gate batch query** (`egate.sql --layer L3`) rather than trust the
+  asset table's stale W1-open snapshot: confirms `ka_graha_sancara` remains the
+  sole asset with 0 unfrozen declared ancestors AND a recorded W2 route
+  (`OPEN-PENDING-PIN` — still genuinely blocked only by the external sidecar
+  deploy issue, unchanged). `ka_gochara_resonance` now also shows 0 unfrozen
+  DECLARED ancestors but `BLOCKED-NO-ROUTE` (no W2 acceptance recorded) — not a
+  new opportunity, since D-CND-26's ruling (already absorbed, #1734) established
+  true-closure (a hidden, undeclared dependency on unfrozen `ga_sensitive`/
+  `ga_yoga`/`ga_dashas`) governs over the mechanical declared-ancestor count for
+  this specific asset, so it remains genuinely held despite what this one query
+  alone would suggest. Every other asset is `BLOCKED-ANCESTORS`, unchanged.
+  No new dispatchable W3/W4 work found this cycle beyond the hygiene above. —
+  blocked on: nothing new; next action: keep the fleet PR sweep L3-scoped every
+  cycle going forward (never lane-wide again), re-check #1713's sidecar finding
+  and the held items table's other rows for staleness, and watch for the 10
+  L3-owned PRs (6 newly queued this cycle) to actually merge.
 - `2026-09-06T~18:0xZ — L3-W3 — MAJOR PROCESS CORRECTION, cross-lane contamination
   confirmed and stopped.** L1's own session filed `#2087` (adjudication) reporting
   that this L3 worktree was actively checking out and committing to L1/L2-owned PR
