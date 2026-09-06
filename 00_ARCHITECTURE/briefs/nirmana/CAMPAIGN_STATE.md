@@ -380,6 +380,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:01:14Z` — cycle 487: **IDLE-OK.** Own PR #2104: `mergeQueueEntry` checked via
+  GraphQL directly — position 2, `AWAITING_CHECKS`, enqueued 13:53:29Z — genuinely progressing
+  through the queue's own check re-run (which re-triggers the slow sidecar build), not stalled.
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T13:59:03Z` — cycle 486: **IDLE-OK.** Own PR #2104: still `is:queued` (1). Fleet
   DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T13:56:58Z` — cycle 485: **IDLE-OK.** Own PR #2104: still `is:queued` (1), still
