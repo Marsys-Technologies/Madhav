@@ -457,6 +457,19 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:07Z (C8 v2.3 cycle 223) — **IDLE-OK, verified #1869's blocker directly
+  (not just comment-count).** Queried `information_schema.role_table_grants` live:
+  `nirmana_evidence_ingress_writer` has `SELECT` on `life_events`/`charts` (#1873's fix,
+  landed) but **zero grant rows on `chart_grants`** — confirms the deeper RLS dependency
+  from the issue's last comment (15:35Z the prior day) is genuinely still unaddressed, not
+  silently fixed without a linked PR. This is explicitly outside L5's remit per the issue's
+  own text (security-sensitive DB grant, reserved for Conductor authority, not something a
+  verifier or line session should do unilaterally) — no action taken beyond confirming the
+  block is real. `lel_events`'s preserved digests
+  (`registry_fingerprint_sha256=0812ab51…`, `analysis_digest=97da00e1…`) remain valid and
+  ready for instant resubmission once this lands. Both own PRs still `isInMergeQueue:
+  true`, clean. Queue: #1844=42, #1901=68 unchanged (short interval). No push (#1826 still
+  queued).
 - 2026-09-06T02:04Z (C8 v2.3 cycle 222) — **Closed #1856** with the cycle-221 evidence
   (job log, asset_throughput, build_run_assets — all confirming the crash is fixed). This
   is administrative closure of the issue I filed, backed by live reproduction; NOT a claim
