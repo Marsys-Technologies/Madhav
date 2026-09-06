@@ -380,6 +380,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:39:13Z` — cycle 502: **ONE bounded unit: #2096 CLOSED — confirmed fixed live, not
+  inferred.** Run 34038669312 (checkout = `4281a5a8e`, PR #2104's own merge commit) completed fully
+  green end to end: image build, zero-traffic candidate deploy, and the real
+  `amjis-sidecar-release-smoke` Cloud Run job execution all succeeded. Pulled the job's actual log
+  output directly via `gcloud logging read` rather than trusting the CI checkmark:
+  `Nirmana candidate probe passed: ka_graha_sancara` (plus `bg_ephemeris_engine`/`bg_panchanga`,
+  which always passed). Traffic promoted to the new revision at 100%, confirmed in the same job's
+  logs. This closes out the entire #2096→#2104 arc from cycles 479-502: root-caused a campaign-wide
+  silent stuck-traffic bug, fixed it with a narrow verified Docker-context change (not either of the
+  two options offered), rode out one transient backlog-artifact failure without mistaking it for a
+  fix defect, and confirmed the real result live before closing — never closed on a green checkmark
+  alone. Fleet DIRTY: empty. Adjudication count 16 (down from 17).
 - `2026-09-06T14:36:22Z` — cycle 501: **IDLE-OK, very close.** Run 34038669312: candidate deployed
   (zero-traffic), candidate URL resolved, smoke job configured — now on **"Run authenticated real
   probes against candidate"**, the actual release-smoke step that tests `ka_graha_sancara`. This is
