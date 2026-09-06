@@ -477,6 +477,31 @@ your layer close.
   L4-owned blocker cleared under its own session's hygiene, and re-check #1713's
   `amjis-sidecar` finding (still not re-verified for two cycles now — worth doing next
   cycle if no fresher hygiene work is available).
+- `2026-09-06T~11:3xZ — L3-W3 — PR hygiene: re-swept the merge queue after last cycle's
+  #1950 fix — the cascade shrank but didn't fully clear; the queue's new head blocker
+  turned out to be **#1839 (an L4 PR, not L3)**. Checked `git worktree list` before
+  touching it and found its branch (`codex/nirmana-l4-w3-3f-phaladesa-top-anchor`) is
+  actively checked out at `/Users/Dev/nirmana-s/l4` — a different concurrent session's
+  own lane — so deliberately left it alone rather than risk stepping on in-flight work
+  there; that queue segment is that session's own hygiene responsibility, not mine to
+  force. Redirected to the one genuinely-DIRTY (not just cascade-adjacent) PR still
+  outstanding from two cycles ago: **#1940 (F-BHAV-2/F-BHAV-3)**, confirmed via GraphQL
+  (`mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`, not queued) before touching it.
+  Rebased: one conflict, `L3_STATE.md` — genuinely concurrent-entry shaped (both sides
+  non-empty, ~10:1x vs ~10:2x, both describing the SAME #2067 heartbeat-PR-ruling event
+  from two different sessions' independent write-ups) but NOT a case for chronological
+  combination this time: full side-by-side comparison showed `theirs` (this branch's own
+  stale commit) was a complete, fact-for-fact subset of what `ours` (already-landed via
+  #2073) already covered — same 28-PR closure list, same #1905/#2071/sidecar-finding
+  facts, just organized as one merged paragraph instead of two separate entries. Kept
+  `ours` only; safety diff vs `origin/main` confirmed zero lines removed. Pins/digests
+  both verified `--check` clean (no regen needed, resolved automatically by the rebase).
+  45/45 branch tests pass, `migration_number_guard.ts` PASS (same pre-existing advisory
+  warnings as last cycle, no new collision). Pushed, `mergeable: MERGEABLE`. — blocked
+  on: nothing new; next action: re-sweep the queue next cycle once #1950/#1917/#1940 all
+  land, confirm whether #1839's L4-owned blocker has cleared on its own, and re-check
+  #1713's `amjis-sidecar` finding (not re-verified this cycle — hygiene filled the
+  bounded unit again).
 - `2026-09-06T~10:4xZ — L3-W3 — F-L3-15 CLOSED completely (PR #2079): ka_dasha_kala
   gets a DB-free PROXY health_probe per D-CND-34 ruling (#2071).** All four L3
   service assets (ka_graha_sancara, ka_muhurta_seva, ka_tulana, ka_dasha_kala) now
