@@ -461,6 +461,34 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~04:0xZ — L3-W3 — full hygiene sweep this cycle: eight genuinely DIRTY PRs
+  found and fixed. #1917 (N3 moorti data-wiring — `gochara_v3/context.py`'s `ClassContext`
+  threads real `kala_moorti_nirnaya` rows) completed the rebase left mid-flight from the
+  prior cycle: generated-file pair (`nirmana-analysis-layer-pins.json`,
+  `nirmana-writer-digests.json`) regenerated for real (pins: only `writer_inventory_sha256`
+  changed; digests: zero diff, prior auto-merge already correct), moorti-wiring test
+  (8/8), both `tsc --noEmit` clean, full `tests/l3/` suite (1424 passed/0 failed/40
+  skipped/2 xfailed — the 3 previously-known `ka_kshetra` parity failures didn't even
+  select this run). Then #1919 (N1 fourth step, `kala_explain_get` serves
+  `engine_testimony[]` additively — inverted L3_STATE.md shape, 22/22 targeted +
+  195/196 full `kala_views` suite pass, both `tsc` clean), #2018 and #2020 (pure
+  L3_STATE.md-only DIRTY-fix-note PRs for #1917/#1919 respectively, both standard-shape,
+  only the known-safe migration-range line removed). Batch GraphQL sweep across all 54
+  L3-lane open PRs then surfaced four MORE genuinely DIRTY: #1921 (N1 fifth step,
+  migration 677 O-10 authority profile — inverted shape, 8/8 migration tests pass, no
+  file collision), #1924 (N1 sixth step, `composeConcordanceVerdict` — inverted shape,
+  self-contained `engine_testimony.ts` copy auto-merged clean, 19/19 tests, `tsc` clean),
+  #1927 (F-CONC-5, `kala_now_get` density_contract — inverted shape, auto-merged clean,
+  37/37 tests, `tsc` clean), #2025 (heartbeat-lineage branch, 4 commits to rebase,
+  standard shape on the first conflict only, other 3 auto-merged clean, no duplicate-
+  fragment blemish found on inspection). All eight force-pushed, all re-armed
+  auto-merge, all confirmed `MERGEABLE`/not-DIRTY on a final GraphQL recheck. #1913
+  (F-SANGAM-5, fixed last cycle) has now genuinely advanced `isInMergeQueue: true` —
+  its earlier `BLOCKED` reading was mid-CI, not a real conflict, confirmed via
+  `gh pr checks`. — blocked on: nothing; next action: continue the standing W1/W2
+  remainder + N1 seventh-step-and-beyond sequencing next cycle, re-verify #1913 actually
+  merges, and re-run the full is:queued sweep fresh (queue churn between this sweep and
+  next cycle is expected and not itself a signal of anything wrong).`
 - `2026-09-06T~03:2xZ — L3-W3 — ELEVENTH AND TWELFTH DIRTY-PR fixes this run, both
   L3_STATE.md-only, both fixed in one cycle: #1924 (N1 sixth step,
   `composeConcordanceVerdict`) and #1927 (F-CONC-5, `kala_now_get` density_contract).**
