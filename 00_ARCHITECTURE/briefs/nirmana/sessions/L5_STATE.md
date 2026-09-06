@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:20Z (C8 v2.3 cycle 427) — **IDLE-OK, still holding on #1826.** Down to 2 checks
+  pending (Build Check, Governance Gates), no failures. #1844 still genuinely queued. Main's
+  migration tip unchanged. #1869 and `mi_kula`'s remaining ancestors both unchanged.
 - 2026-09-06T13:15Z (C8 v2.3 cycle 426) — **IDLE-OK, still holding on #1826.** Down to 3 checks
   pending (from 4), no failures — progressing normally, still not pushing to it. #1844 still
   genuinely queued. Main's migration tip unchanged. #1869 and `mi_kula`'s remaining ancestors both
