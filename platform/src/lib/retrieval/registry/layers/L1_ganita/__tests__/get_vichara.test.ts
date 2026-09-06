@@ -46,6 +46,21 @@ describe('getVicharaCapability (ganita_vichara_get)', () => {
     expect(rowsSql).toMatch(/UPPER\(subject\) = UPPER\(/)
   })
 
+  // F-D11 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): the ORDER BY was `vichara_family,
+  // domain NULLS FIRST, subject` alone — a non-total order (confirmed live: 1,595
+  // valence_pass rows/ayanamsha share this exact sort key per subject). Pins that the
+  // query text now carries a genuine total order (ayanamsha_id, varga_id, id — the PK).
+  it('rowsSql ORDER BY is a total order (ayanamsha_id, varga_id, id appended after the family/domain/subject key)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    await getVicharaCapability.handler({ chart_id: CHART_ID }, undefined)
+    const rowsSql = mockQuery.mock.calls[0][0] as string
+    expect(rowsSql).toMatch(
+      /ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id/,
+    )
+  })
+
   it('degrades honestly (not an error) when chart_vichara does not exist yet', async () => {
     mockQuery.mockRejectedValueOnce(new Error('relation "chart_vichara" does not exist'))
     const result = await getVicharaCapability.handler({ chart_id: CHART_ID }, undefined)
