@@ -92,6 +92,8 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
         return _probe_tulana(probe_spec)
     elif probe_type == "dasha_kala_proxy_integrity":
         return _probe_dasha_kala(probe_spec)
+    elif probe_type == "muhurta_seva_forensic":
+        return _probe_muhurta_seva(probe_spec)
     else:
         return {"status": "down", "message": f"unknown probe_type: {probe_type}", "checks": []}
 
@@ -963,5 +965,214 @@ def _probe_dasha_kala(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         _add_check(checks, failures, "seven_system_constant_set_intact", False,
                     f"constant-set check failed: {exc}", error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE)
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_muhurta_seva probe ────────────────────────────────────────────────────
+
+# NIRMĀṆA L3-W3 (F-L3-15, next slice after ka_graha_sancara). Independent probe,
+# not a reuse of ka_muhurta_seva/writer.py's own self-test (implementer != certifier,
+# same discipline as the other three probes). KaMuhurtaSevaService.score() is
+# DB-free (composes panchang_engine.compute_panchang + muhurat.finder.score_muhurat,
+# both in-process libraries) — the same "in-process Python library, no network
+# endpoint" class this module's probes are built for; no db_conn parameter exists
+# on run_health_probe(), so a service that genuinely needed live DB rows (e.g.
+# ka_dasha_kala, which reads chart_dashas) cannot be probed through this
+# architecture without a real contract change — out of scope for this slice.
+#
+# The check asserts more than "native_chart is not None": it re-derives BOTH scores
+# (with and without the native overlay) and asserts they differ by the FORENSIC-
+# pinned amount, so a native_chart parameter silently ignored by score_muhurat
+# would fail this check exactly as CLAUDE.md §N.8 requires (a flag/behavior needs a
+# detector that could actually observe its absence, not just "did it crash").
+_MUHURTA_SEVA_REQUIRED_FIELDS = frozenset(
+    {
+        "forensic_date",
+        "forensic_lat",
+        "forensic_lon",
+        "forensic_tz_offset_minutes",
+        "forensic_event",
+        "forensic_birth_nakshatra_id",
+        "forensic_expected_tithi",
+        "forensic_expected_nakshatra",
+        "forensic_expected_score_with_native",
+        "forensic_expected_score_without_native",
+    }
+)
+
+
+def _validated_muhurta_seva_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import date as date_cls
+
+    missing = sorted(_MUHURTA_SEVA_REQUIRED_FIELDS - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_date = probe_spec["forensic_date"]
+    if not isinstance(raw_date, str):
+        raise ValueError("forensic_date must be an ISO-8601 date string")
+    try:
+        forensic_date = date_cls.fromisoformat(raw_date)
+    except ValueError as exc:
+        raise ValueError("forensic_date must be a valid ISO-8601 date") from exc
+
+    lat = probe_spec["forensic_lat"]
+    lon = probe_spec["forensic_lon"]
+    tz_offset = probe_spec["forensic_tz_offset_minutes"]
+    if isinstance(lat, bool) or not isinstance(lat, (int, float)) or not -90 <= lat <= 90:
+        raise ValueError("forensic_lat must be a number in [-90, 90]")
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) or not -180 <= lon <= 180:
+        raise ValueError("forensic_lon must be a number in [-180, 180]")
+    if isinstance(tz_offset, bool) or not isinstance(tz_offset, int) or not -840 <= tz_offset <= 840:
+        raise ValueError("forensic_tz_offset_minutes must be integer minutes in [-840, 840]")
+
+    event = probe_spec["forensic_event"]
+    if not isinstance(event, str) or not event.strip():
+        raise ValueError("forensic_event must be a non-empty string")
+
+    nakshatra_id = probe_spec["forensic_birth_nakshatra_id"]
+    if isinstance(nakshatra_id, bool) or not isinstance(nakshatra_id, int) or not 1 <= nakshatra_id <= 27:
+        raise ValueError("forensic_birth_nakshatra_id must be an integer in [1, 27]")
+
+    expected_tithi = probe_spec["forensic_expected_tithi"]
+    expected_nakshatra = probe_spec["forensic_expected_nakshatra"]
+    if not isinstance(expected_tithi, str) or not expected_tithi.strip():
+        raise ValueError("forensic_expected_tithi must be a non-empty string")
+    if not isinstance(expected_nakshatra, str) or not expected_nakshatra.strip():
+        raise ValueError("forensic_expected_nakshatra must be a non-empty string")
+
+    def _score(field: str) -> float:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{field} must be a number")
+        return float(value)
+
+    return {
+        "date": forensic_date,
+        "lat": float(lat),
+        "lon": float(lon),
+        "tz_offset_minutes": tz_offset,
+        "event": event,
+        "birth_nakshatra_id": nakshatra_id,
+        "expected_tithi": expected_tithi,
+        "expected_nakshatra": expected_nakshatra,
+        "expected_score_with_native": _score("forensic_expected_score_with_native"),
+        "expected_score_without_native": _score("forensic_expected_score_without_native"),
+    }
+
+
+# Float-summation tolerance for score comparisons — the ground-truth values were
+# themselves observed with trailing IEEE-754 noise (e.g. 28.000000000000004), so
+# an exact `==` would be as fragile as the artefact it is tolerating.
+_MUHURTA_SEVA_SCORE_EPSILON = 1e-6
+
+
+def _probe_muhurta_seva(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_muhurta_seva_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid muhurta_seva health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from panchang_engine import compute_panchang  # noqa: F401
+        from panchang_engine.types import NatalChart  # noqa: F401
+        from muhurat.finder import score_muhurat, is_supported_event  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                    f"import failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    if not is_supported_event(config["event"]):
+        _add_check(checks, failures, "forensic_event_supported", False,
+                    f"{config['event']!r} not in EVENTS_MVP")
+        return _aggregate(checks, failures)
+    _add_check(checks, failures, "forensic_event_supported", True)
+
+    # Check 2: compute_panchang's own FORENSIC angas for the pinned date/location —
+    # a genuine re-derivation through THIS module's own import path, independent of
+    # whatever bg_panchanga's probe already asserted.
+    try:
+        from panchang_engine import compute_panchang
+        panchang = compute_panchang(
+            config["date"], config["lat"], config["lon"], config["tz_offset_minutes"]
+        )
+        tithi_ok = panchang.tithi.name == config["expected_tithi"]
+        nakshatra_ok = panchang.nakshatra.name == config["expected_nakshatra"]
+        mismatches = []
+        if not tithi_ok:
+            mismatches.append(f"tithi: got {panchang.tithi.name!r}, expected {config['expected_tithi']!r}")
+        if not nakshatra_ok:
+            mismatches.append(
+                f"nakshatra: got {panchang.nakshatra.name!r}, expected {config['expected_nakshatra']!r}"
+            )
+        _add_check(checks, failures, "forensic_panchang_smoke",
+                    tithi_ok and nakshatra_ok, "; ".join(mismatches),
+                    mismatches=mismatches)
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_panchang_smoke", False,
+                    f"panchang computation failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 3: the native-overlay ("un-floor") contract — score WITH a supplied
+    # native_chart must differ from score WITHOUT one by the FORENSIC-pinned
+    # amount. Proves Tara Bala genuinely activates rather than being silently
+    # skipped (a native_chart param the callee ignores would make both scores
+    # equal, and this check — unlike a bare not-None check — would catch that).
+    try:
+        from panchang_engine.types import NatalChart
+        from muhurat.finder import score_muhurat
+
+        native_chart = NatalChart(
+            birth_nakshatra_id=config["birth_nakshatra_id"],
+            birth_lagna_sign_id=1,
+            moon_sign_id=1,
+            active_dasha_lord="",
+        )
+        score_with = score_muhurat(panchang, config["event"], native_chart=native_chart)
+        score_without = score_muhurat(panchang, config["event"], native_chart=None)
+
+        with_ok = abs(score_with - config["expected_score_with_native"]) < _MUHURTA_SEVA_SCORE_EPSILON
+        without_ok = abs(score_without - config["expected_score_without_native"]) < _MUHURTA_SEVA_SCORE_EPSILON
+        overlay_activated = abs(score_with - score_without) > _MUHURTA_SEVA_SCORE_EPSILON
+        score_failures = []
+        if not with_ok:
+            score_failures.append(
+                f"score_with_native={score_with!r}, expected {config['expected_score_with_native']!r}"
+            )
+        if not without_ok:
+            score_failures.append(
+                f"score_without_native={score_without!r}, expected {config['expected_score_without_native']!r}"
+            )
+        if not overlay_activated:
+            score_failures.append(
+                "native_chart overlay made no difference to the score — Tara Bala "
+                "silently skipped, not activated"
+            )
+        _add_check(
+            checks, failures, "forensic_native_overlay_activates",
+            with_ok and without_ok and overlay_activated,
+            "; ".join(score_failures),
+            score_with_native=score_with, score_without_native=score_without,
+            event=config["event"],
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_native_overlay_activates", False,
+                    f"score computation failed: {exc}", error=str(exc))
 
     return _aggregate(checks, failures)

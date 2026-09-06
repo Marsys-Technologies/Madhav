@@ -69,5 +69,18 @@
       "mudda",
       "kalachakra"
     ]
+  },
+  "ka_muhurta_seva": {
+    "probe_type": "muhurta_seva_forensic",
+    "forensic_date": "1984-02-05",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset_minutes": 330,
+    "forensic_event": "vivah",
+    "forensic_birth_nakshatra_id": 25,
+    "forensic_expected_tithi": "Shukla Tritiya",
+    "forensic_expected_nakshatra": "Purva Bhadrapada",
+    "forensic_expected_score_with_native": 33.0,
+    "forensic_expected_score_without_native": 28.000000000000004
   }
 }
