@@ -457,6 +457,77 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T14:35Z (C8 v2.3 cycle 442) — **Milestone: `#1826` MERGED — both of L5's PRs from this
+  session are now closed out.** Discovered via routine hygiene check (main's tip was #1834's
+  merge; querying the merge queue directly showed #1826 no longer in the top 6 positions — checked
+  its actual state rather than assuming, found `mergedAt` set). Consequence: 10 local-only commits
+  (cycles 432-441's state-file entries, ~56 lines, single-file, never pushed because they were
+  held to avoid dequeuing #1826 while it climbed the queue) had nowhere to land — the branch that
+  merged (via squash) only included content through the last actual push (05764ac0d, cycle 432's
+  merge-conflict-resolution commit, which itself pre-dated cycle 432's own heartbeat entry).
+  **Fixed cleanly:** diffed the local-only delta against the old branch (confirmed pure
+  state-file-only, 56 lines, one file — no risk of carrying forward stale code), saved it as a
+  patch, created a fresh branch (`codex/nirmana-l5-heartbeat-recovery-2`) off current `origin/main`,
+  applied the patch cleanly. This state entry (cycle 442) is being written on that fresh branch.
+  **Old branch `codex/nirmana-l5-heartbeat-recovery` is now retired** — both its PRs merged, no
+  further commits will land there; all future heartbeat entries go to the new branch until it in
+  turn needs a fresh PR. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:30Z (C8 v2.3 cycle 441) — **IDLE-OK, checked for a genuine stall since main hadn't
+  advanced in 2 cycles — confirmed active, not stalled.** `gh run list` shows real `merge_group`
+  workflow activity within the last few minutes (pr-1954, pr-2089 both building) — the queue is
+  processing multiple candidates, just not landing on `main` every cycle. #1826 unchanged at
+  position 4. No ruleset/branch-protection access to act on queue mechanics even if it were stuck
+  (precedent from earlier this campaign). #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:25Z (C8 v2.3 cycle 440) — **IDLE-OK.** #1826 unchanged at queue position 4 (#1834
+  at position 1 still building, normal pace for one cycle). Still queued, still holding the state
+  push. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:20Z (C8 v2.3 cycle 439) — **IDLE-OK, queue progressing.** #1950 (was position 1)
+  merged to main; #1826 advanced to position 4, still queued. Still holding the state push. #1869
+  and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:15Z (C8 v2.3 cycle 438) — **IDLE-OK.** #1826 still queued and CLEAN, now at
+  position 5 (behind #1950/#1834/#1871/#1839). Still deliberately not pushing the held state batch
+  — would dequeue it. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:10Z (C8 v2.3 cycle 437) — **#1826 finally CLEAN — but genuinely CLEAN-but-unqueued
+  (`isInMergeQueue: false`), the exact hygiene case the contract calls out.** All checks completed,
+  zero failures. Queued it immediately (`gh pr merge --auto`), re-verified re-entry
+  (`isInMergeQueue: true`, `mergeStateStatus: CLEAN`). #1869 and `mi_kula`'s remaining ancestors
+  both unchanged. **L5's PR queue is finally down to zero fires to fight** — both #1844 (merged)
+  and #1826 (queued, CLEAN) have cleared every real blocker this session surfaced: the migration
+  races (692/806 → 820/821, adjudication #2086), the canary-test updates, and the post-merge DIRTY
+  resolution. Nothing left but the queue's own pace now.
+- 2026-09-06T14:05Z (C8 v2.3 cycle 436) — **IDLE-OK, still holding on #1826.** Same 2 checks
+  pending as last cycle (Governance Gates' long pytest step consistent with normal progress, not
+  stalled), no failures. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T14:00Z (C8 v2.3 cycle 435) — **IDLE-OK, still holding on #1826.** Down to 2 checks
+  pending (Build Check, Governance Gates), no failures. #1869 and `mi_kula`'s remaining ancestors
+  both unchanged.
+- 2026-09-06T13:55Z (C8 v2.3 cycle 434) — **IDLE-OK, still holding on #1826.** Down to 3 checks
+  pending (from 4), no failures. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T13:50Z (C8 v2.3 cycle 433) — **IDLE-OK. Only one open PR now (#1826).** #1844's merge
+  confirmed final (#2079/#2070/etc. in `gh pr list --author @me` are other lanes sharing the git
+  identity, not L5's — precedent stands). #1826 down to 4 checks pending, no failures, fresh CI
+  from cycle 432's fix still running — not touching it this cycle. #1869 and `mi_kula`'s remaining
+  ancestors both unchanged.
+- 2026-09-06T13:45Z (C8 v2.3 cycle 432) — **#1844 MERGED — `mi_vistara`'s output_digest_spec
+  (migration 821) is live on `main` for real.** Consequence: #1826 turned DIRTY (expected — both
+  PRs touched the same two shared files, `migration_renumber_disclosed.json` and
+  `migrate.test.ts`'s canary, with each PR's own entry). Fixed via `git rebase` first — aborted
+  when it started replaying all 4 of my superseded intermediate renumber commits
+  (809→811→813→820) one at a time, each re-conflicting against the same JSON position; switched to
+  `git merge origin/main` instead, which needed exactly one conflict resolution per file rather
+  than four. Resolved both conflicts by keeping BOTH PRs' entries (mine: `806→820`
+  `mi_jivanaghatana`; #1844's, now on main: `692→821` `mi_vistara`) rather than picking one side —
+  the disclosure file and the canary test both need to know about every real renumber, not just
+  this branch's own. Updated the canary test's title/count from "three" to "four" known
+  disclosures and added both entries' assertions. **Verified thoroughly before pushing:** full
+  `migrate.test.ts` suite (41/41 passed, not just the one canary), `migration_number_guard.ts`
+  (PASS), `migrate.ts --dry-run` against the merged state (no errors, both `820`/`821` already
+  correctly tracked in `_migrations_applied`), confirmed both migration files coexist on disk.
+  Pushed, re-armed, `mergeStateStatus` back to `MERGEABLE`/`BLOCKED`-on-checks (DIRTY resolved).
+  **This was the correct outcome of the migration-race saga, not a new problem** — two PRs
+  legitimately touching the same shared reconciliation file will always need a merge/rebase when
+  the first one lands; the actual collision-prevention fix (L5's dedicated 820-839 range, #2086)
+  worked exactly as intended.
 - 2026-09-06T13:40Z (C8 v2.3 cycle 431) — **IDLE-OK, checked actual queue depth/position since
   nothing had moved in 2 cycles.** `#1844` is at position 1 (next in line, `AWAITING_CHECKS`) —
   main's own migration tip stalling isn't a stall, it's the queue's front entry still finishing
