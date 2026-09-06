@@ -380,6 +380,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:49:22Z` — cycle 573: **ONE bounded unit: fleet sweep nudge on #2065**
+  (F-L3-15 series, `ka_muhurta_seva` health_probe) — ~20 min stale, first sighting, nudged.
+  #2079 (same series, previously nudged) shows a push ~1 min before this check — L3 already
+  responding, not re-nudged. Own PR #2139: still open, previously confirmed queued, progressing
+  normally. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:47:04Z` — cycle 572: **IDLE-OK.** Own PR #2139: **confirmed `is:queued` (1)** —
   properly entered the merge queue. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:44:59Z` — cycle 571: **IDLE-OK.** Own PR #2139: still pending, not yet
