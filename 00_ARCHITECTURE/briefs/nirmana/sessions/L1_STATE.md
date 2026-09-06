@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 135; L2 replied on #2113 confirming + extending the fact_id-orphan-risk finding (bodha_msr_signals 1348 signals, bodha_cgm_edges 45 edges, same no-FK array pattern as L1's ga_yoga_firings) and stated this needs a Conductor/native ruling, not a unilateral layer call. Filed a dedicated adjudication issue #2180 for clean cross-layer triage (distinct from #2113's original asset_freshness topic), cross-linked both issues
+last_updated: 2026-09-07 — C8 v2.3 cycle 136; Conductor RULED on #2180 (coordinated 5-asset wave: ga_positions+ga_yoga+bo_laksana+bo_cgm_paths+bo_cgm_motifs) and flagged a real separate defect (ga_yoga.depends_on missing ga_positions). Did NOT edit depends_on (D-CND-09 immutable) -- published L1_DEPENDS_ON_AUDIT_v1_0.md (PR #2183) consolidating 12 confirmed DAG findings (11 from #1744 + this new one), filling L1's own outstanding row in DAG_CORRECTIONS_REGISTER_v1_0.md
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7949,3 +7949,40 @@ record — they are the only entries in this table with a real wall-clock behind
   wrong thread -- next: watch #2180 for a ruling; #2113's own narrower asset_freshness question
   (whether OTHER L1 assets besides `ga_positions` need a bootstrap step) remains separately open
   and unchanged.
+- 2026-09-06T2xZ -- CYCLE 136 (C8 v2.3). PR hygiene: #2179 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED` with all checks `pass` or still-`pending`, zero `fail` -- clean. **#2180 got a
+  Conductor ruling** -- verified live before ruling (no non-terminal `build_runs` row, no
+  `NIRMANA_HOLD`), traced the actual `depends_on` chain, and found a SHARPER version of my own
+  finding: `bo_laksana.depends_on` DOES include `ga_positions` (the orchestrator would correctly
+  cascade that edge), but **`ga_yoga.depends_on` does NOT** (`{ga_structural,ga_dashas}` only)
+  even though `ga_yoga_firings.constituent_fact_ids` clearly references `ga_positions`' facts --
+  the orchestrator's own dependency metadata is itself incomplete for this specific edge. Ruled:
+  option (a), an EXPLICIT 5-asset list (`ga_positions`, `ga_yoga`, `bo_laksana`,
+  `bo_cgm_paths`, `bo_cgm_motifs`) in one coordinated wave, not a depends_on-inferred set (which
+  would silently miss `ga_yoga`) and not a campaign-wide migration. Execution spans L1+L2,
+  coordinated via #1713. Separately flagged (not blocking): `ga_yoga`'s missing `depends_on` edge
+  is worth its own fix. **Before touching anything**, checked whether D-CND-09 (depends_on/layer
+  immutable inside the frozen definition) actually permits editing this -- it does not, confirmed
+  via `DAG_CORRECTIONS_REGISTER_v1_0.md`, the dedicated Conductor-owned register that exists
+  *specifically* for this exact situation (known-inaccurate depends_on that cannot be corrected
+  this cohort) -- did NOT migrate `ga_yoga.depends_on`, which would have violated a standing
+  ruling the Conductor's own comment didn't explicitly re-litigate. Found L1's own row in that
+  register had sat `⬜ outstanding` since it was created (unlike L3's completed audit) -- pulled
+  together the 11 hidden/false-edge findings L1's own W1 wave already found (issue #1744, full
+  detail recovered from the 5 W1 batch files rather than re-derived) plus this new `ga_yoga ->
+  ga_positions` edge, published `L1_DEPENDS_ON_AUDIT_v1_0.md` (PR #2183, honestly scoped IN
+  PROGRESS not COMPLETE -- does not yet do L3's full systematic per-asset grep sweep), and made a
+  minimal, surgical edit to just L1's own row in the register's index table. Hit and correctly
+  recovered from a real self-inflicted mistake: used a bare `git stash push` (explicitly
+  forbidden by this session's own safety protocol, since the stash stack is shared across
+  worktrees) instead of committing to a branch directly -- caught it immediately, recovered via
+  SHA-based `git stash apply` (not pop) rather than a bare pop, verified the recovered content
+  was complete, then dropped only my own tagged entry by its exact SHA, leaving 3 other
+  sessions' unrelated stash entries untouched. CYCLE 136 L1: PR hygiene clean, real Conductor
+  ruling received and acted on correctly (respected D-CND-09 rather than mutate an immutable
+  field), filled a genuinely outstanding campaign-wide gap (L1's own DAG audit) -- next: the
+  actual 5-asset coordinated dispatch is a bigger, cross-layer undertaking (needs #1713
+  coordination with L2, a fresh backup, careful sequencing) -- deserves its own dedicated
+  cycle(s) rather than being rushed alongside this cycle's other work; also worth reconsidering
+  whether L1's OWN remaining ~11 not-yet-audited assets are worth a full systematic grep pass
+  (matching L3's method exactly) as a future prep item.
