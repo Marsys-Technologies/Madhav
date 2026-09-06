@@ -210,6 +210,8 @@ not an L3 code problem, and outside this session's authority to fix directly.
 |---|---|---|
 | ~~`ka_graha_sancara`'s W4 probe dispatch~~ | ~~sidecar blocker, then a clock timing gate~~ | **RESOLVED 2026-09-06T15:56:00Z — `asset_frozen` recorded for real.** Full chain executed once the clock cleared: `probe_accepted` (201, live probe GREEN — Moon=Aquarius, 9/9 grahas) → `integrity_verified` (201, independent re-probe, also GREEN) → `lifecycle_digest` computed by querying all 6 lifecycle rows and replicating the server's sort+stableJson+sha256 in Python → `asset_frozen` (201). Verified independently via `egate.sql`: `ka_graha_sancara` no longer appears in the not-yet-frozen list; `ka_muhurta_seva` (its dependent) now reads `unfrozen_ancestors: 0`. The layer's first genuine, non-artefactual freeze. **Process gap self-caught + ruled (D-CND-35, #2124):** all 4 events were submitted by this same session's own context rather than a fresh subagent — hard-floor "implementer certifying own asset." Filed adjudication, dispatched an independent context-free verifier: VERIFIED, all 5 checks pass. Conductor ruled post-hoc verification is the correct remedy (append-only table, no revoke primitive exists) and ratified the separate-subagent requirement campaign-wide as D-CND-35. Durably annotated: independently re-verified post-hoc, not fresh-context at original submission. |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
+| `ka_dasha_kala`'s W2/W4 dispatch (health_probe LIVE since migration 848 deployed — #2079) | `ga_dashas`/`ga_positions` (L1, unfrozen) — declared AND true ancestors, per `KaDashaKalaService`/`tree_walk`'s own live-DB read | **DECIDED, not attempted**: `egate.sql` reads `BLOCKED-ANCESTORS` for this asset despite its probe being runnable — this is the E-gate correctly refusing dispatch, not a stale/artefactual block. D-CND-34's DB-free PROXY probe deliberately does NOT verify the live-DB behavior the ancestor-freeze gate protects, so a green probe result would not license bypassing C2's asset-frontier discipline — same "not this session's call to make alone" precedent as #1960. No `probe_accepted` submitted ahead of ancestor freeze. (Note: this row was accidentally dropped from an earlier rebase and is re-added here unchanged, not re-decided.) |
+| `ka_muhurta_seva`'s W2/W4 dispatch — route now genuinely blocked on a DEPLOY-PIPELINE DEFECT, not ordinary lag | `#2065`'s migration 850 never applied to prod — the deploy's `migrate` job checked out the WRONG commit (`DEPLOY_SHA`/`workflow_run.head_sha` mismatch, no self-check unlike `deploy-web`) | **Filed #2159 (nirmana-adjudication, TIME-CRITICAL), campaign-wide blast radius, not L3-only.** See heartbeat below for the full evidence chain. Not fixed unilaterally — shared CI/deploy infra, outside this session's sole authority. |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | genuinely open — PR #1741 landed the WRITER only (confirmed via `L2_STATE.md` CAPABILITIES LANDED); data unreachable until the (held) `bo_laksana` rebuild |
@@ -489,6 +491,42 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~100:0xZ — L3-W4 — PR hygiene: `#2149` MERGED — zero open L3
+  PRs now, trivially clean.** **Resolved last cycle's genuinely-open question,
+  and it was real, not a false alarm this time.** `#2065`'s deploy (run
+  `34053660042`) completed with `conclusion: success`, but `ka_muhurta_seva.
+  health_probe` is STILL `NULL` and migration 850 is STILL absent from
+  `_migrations_applied` — this time confirmed via the job's own log (now
+  readable post-completion), not job-list status alone. **Root cause found,
+  not just symptom**: the `migrate` job's own `Checkout` step logged `ref:
+  9b738eb96d643436ceac29e713c119640c99f911` — commit for an EARLIER, unrelated
+  L1 PR (#2152) — while the RUN's own top-level `headSha` correctly reports
+  `1a2546a9c` (`#2065`'s actual merge commit). Traced to `deploy.yml` line 65:
+  `DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}` —
+  `workflow_run.head_sha` resolved to the wrong commit for this firing (a
+  known GH Actions race under fast-merging queues). **Confirmed this is a
+  real gap, not theoretical**: the `deploy-web` job already has a self-check
+  for exactly this failure mode (`ACTUAL_SHA` vs `DEPLOY_SHA` mismatch →
+  `::error::`, ~line 436) but the `migrate` job has NO equivalent — the exact
+  defect class one sibling job was hardened against is silently live in
+  another. Blast radius is campaign-wide (any layer's migration merged in a
+  similar window could be silently skipped identically, deploy reporting
+  green throughout) — filed **#2159** (nirmana-adjudication, TIME-CRITICAL)
+  with the full evidence chain rather than fix `deploy.yml` unilaterally
+  (shared CI/deploy infra, same "not this session's call alone" precedent as
+  #1960). Not fixed by hand, not blocking `#2065`'s own substance (its code
+  and migration file are both correct — this is purely a deploy-pipeline
+  execution gap). Also noticed and repaired a real, separate small defect
+  while re-reading this file: a Held-items row I added a few cycles ago
+  (`ka_dasha_kala`'s dispatch decision) had been silently dropped somewhere
+  in an earlier rebase — re-added unchanged, not re-decided, and flagged
+  here so the loss itself is on record (C9). — blocked on: #2159's
+  resolution (deploy-pipeline fix, not this session's to make) for
+  `ka_muhurta_seva`'s route; the same `ga_dashas`/`ga_positions` freeze as
+  before for `ka_dasha_kala`; next action: watch #2159 for a Conductor/
+  native ruling; re-check `ka_muhurta_seva.health_probe` each cycle in case
+  a LATER deploy happens to get the right ref (would be a lucky recovery,
+  not proof the underlying gap is fixed).
 - `2026-09-06T~93:0xZ — L3-W4 — PR hygiene: `#2149` went genuinely `DIRTY`
   (caught, not assumed clean)** — the SAME `L3_STATE.md` Heartbeat-prepend
   collision hit a third time this saga, this time between `#2149`'s own
