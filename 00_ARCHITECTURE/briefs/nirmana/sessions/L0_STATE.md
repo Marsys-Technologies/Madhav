@@ -9,7 +9,7 @@ layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
 last_updated: 2026-09-07 — 39/40 frozen (bg_yogas/bg_rules/bg_concordance froze via D-NATIVE-06); only
   bg_cohort remains, held on Conductor's C12 carve-out. PR #2153 (issue #2122, from_moon_view repoint)
-  open, RED-fixed this cycle, awaiting CI green + merge.
+  CLEAN and queued (`is:queued` confirmed) after 3 sequentially-fixed RED gates; awaiting merge.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -364,3 +364,17 @@ a RED-fix (see heartbeat).
   running (~12.5min elapsed, `mergeStateStatus` transitioned to `UNSTABLE` — still-pending, no
   failures). #1713's only new activity is L5's own `mi_kula` SLOT RELEASE (unrelated). Not
   actionable yet.
+- 2026-09-07 — **PR #2153 CLEAN — queued.** All required checks COMPLETED (remainder benign
+  `SKIPPED`), `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`. This was the exact "CLEAN-but-
+  unqueued" case from C8 v2.3 Step 1: `gh pr merge 2153 --auto` (queued on the second call after a
+  `--squash` flag was rejected — "merge strategy for main is set by the merge queue"). **Verified via
+  `is:queued`** (not `autoMergeRequest` — per the standing lesson), confirms #2153 genuinely in the
+  queue now. This closes out the multi-cycle RED-fix arc: 3 sequentially-discovered gates
+  (Governance Gates writer-inventory re-pin, DB Integration Tests migration-ordering, plan_bridge
+  pinned-baseline) all fixed and verified for real (Docker-verified DB tests, direct
+  `getPlanBridgeCoverage()` computation, offline governance checks) — none weakened. #1713: only new
+  activity is L5's own `mi_kula` W4 dispatch success, unrelated to L0. NEXT: next cycle's PR-hygiene
+  step re-verifies #2153 via `is:queued` until it actually merges; once merged+deployed, verify
+  migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
+  `from_moon_view` is correctly wired end-to-end in production. Then IDLE-OK pending Conductor's C12
+  carve-out for `bg_cohort`.
