@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:34Z (C8 v2.3 cycle 389) — **IDLE-OK, still waiting on deploy.** Live
+  revision still `4dd77e21…`, unchanged, hasn't caught up to `0452d1e74` (#1901) yet. #1826
+  down to 2 checks, no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1869
+  unchanged at 4 comments. 3 cycles since last push.
 - 2026-09-06T10:31Z (C8 v2.3 cycle 388) — **#1901 MERGED — mi_vistara delta-skip fix
   finally landed** (the Conductor's fix for #1899, tracked since very early in this
   session). Checked deploy readiness before attempting anything (same lesson as
