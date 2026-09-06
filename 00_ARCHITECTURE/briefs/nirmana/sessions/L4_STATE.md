@@ -8184,3 +8184,18 @@ confirming campaign-wide ancestor closure IS advancing, just very slowly; new ad
 each cycle to catch further movement, especially as `ph_nimitta` (the canary, now at 34)
 approaches zero; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred
 code item.
+
+`2026-09-06T~15:59Z` — L4 — **CYCLE 431 (v2.3) — CONTINUED MOVEMENT: E-gate re-checked
+live, every asset's `unfrozen_ancestors` count dropped by another 1 (canary `ph_nimitta`
+34→33). Still `BLOCKED-ANCESTORS` for all 9, but steady forward progress two cycles
+running.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. No new adjudications name L4
+(count unchanged at 17). No `NIRMANA_HOLD` file present.
+
+CYCLE 431 L4: IDLE-OK on dispatch (no L4 asset yet open) but E-gate shows genuine steady
+progress — `ph_nimitta` canary now at 33 unfrozen ancestors (down from 35 two cycles ago);
+no new L4-relevant adjudications → next: continue re-checking the E-gate each cycle; F1
+(`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
