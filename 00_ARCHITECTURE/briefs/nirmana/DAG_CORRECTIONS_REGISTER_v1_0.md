@@ -49,7 +49,7 @@ rather than copying, so there is one authority per layer and no transcription dr
 |---|---|---|---|
 | **L3 Kāla** | `L3_DEPENDS_ON_AUDIT_v1_0.md` | ✅ **COMPLETE** | 23/23 audited · CLEAN 7 · HIDDEN 4 · FALSE 7 · BOTH 5 · **36 hidden / 17 false edges** · 9 assets HELD under D-CND-07 |
 | **L0 Brahmagyan** | — | ⬜ outstanding | 40 assets, 24 with zero declared deps |
-| **L1 Gaṇita** | `L1_DEPENDS_ON_AUDIT_v1_0.md` | 🟡 IN PROGRESS | 12 confirmed findings (11 self-reported on #1744 + 1 new, `ga_yoga → ga_positions` hidden edge, Conductor-confirmed on #2180) · `ga_dashas → ga_vargas` hidden edge has a MEASURED live correctness consequence (build `6479bb56`, concurrent start, MVCC stale read) · not yet a systematic per-asset grep sweep like L3's (own §3 names the gap) |
+| **L1 Gaṇita** | `L1_DEPENDS_ON_AUDIT_v1_0.md` | ✅ **COMPLETE for coverage** | 19/19 assets fully audited, every declared edge re-verified in both directions (rounds 1-6, cycles ≤144 — matches L3's own coverage bar; own §3 names the one honest methodology gap: no single unified owner-map script, per-asset hand-picked candidate lists instead) · **17 confirmed findings** (11 self-reported on #1744 + 6 new post-W2: `ga_yoga → ga_positions`/`ga_dashas`(false)/`ga_vargas`(hidden, via a reused cross-writer helper), `ga_panchanga`'s 2 false edges, `ga_structural → ga_panchanga` false, `ga_sade_sati → ga_nakshatra` false) · CLEAN 8 · `ga_dashas → ga_vargas` hidden edge has a MEASURED live correctness consequence (build `6479bb56`, concurrent start, MVCC stale read) · `ga_yoga` (2 declared, 1 false, 4 undeclared) and `ga_sade_sati` (7 declared, 3 false) are L1's least-accurate DAG declarations; `ga_structural` (7 declared, 1 false) its most accurate multi-edge one |
 | **L2 Bodha** | — | ⬜ outstanding | 22 assets, avg 3.1 declared deps |
 | **L4 Phala** | — | ⬜ outstanding | 9 assets, avg 4.6 declared deps |
 | **L5 Mīmāṃsā** | — | ⬜ outstanding | 15 assets, 2 with zero declared deps |
@@ -96,7 +96,7 @@ is what will fail — keep it.
 
 ## §5 — Open items owed to this register
 
-* **Five layer audits** (§2) — L0, L1, L2, L4, L5.
+* **Four layer audits** (§2) — L0, L2, L4, L5 (L1 completed cycle 144).
 * **Deliberate non-edges from the other layers** — §3 currently holds one entry, contributed by L5
   and L3 jointly. Any pair closed by a version pin, a resolve-once rule, or a staged read belongs
   here.
