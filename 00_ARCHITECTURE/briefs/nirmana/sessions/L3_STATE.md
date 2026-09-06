@@ -458,6 +458,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~19:3xZ — L3-W3 — Correction to this cycle's own "IDLE-OK" note above: a
+  final PR-hygiene sweep (taken after writing that note) caught #1976 genuinely DIRTY —
+  another #1890-family conflict, same recurring shape.** L3_STATE.md-only conflict,
+  resolved via the established script (single surviving "THIRD DIRTY-PR fix" heading,
+  verified), force-pushed, re-armed auto-merge, confirmed `MERGEABLE`. No writer/generated
+  files touched — this one didn't need digest/pin regeneration. Fixed regardless of
+  having already written this cycle's conclusion, since hygiene is a standing
+  requirement, not a one-time check per cycle. Final sweep after the fix: all 53 L3 PRs
+  clean (queued, or `BLOCKED`/`MERGEABLE` pre-queue). Standing blockers unchanged.
+
 - `2026-09-06T~19:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` still queued
   unmerged, `origin/main` tip unchanged for a third consecutive cycle.** Confirmed this
   is healthy queue cadence, not a stall: last repo-wide merge (`#1974`) was only ~12
