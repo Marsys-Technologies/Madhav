@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 129; drafted `L1_W6_CLOSE_REPORT_v1_0.md` (PR #2164), the exact W6 deliverable PROMPT_L1.md names, mirroring L5's own precedent of starting it early. DRAFT status, no closure claimed -- compiles the 19-asset table, findings-ledger outcome (139 findings, NOW/MUST closed), pillar movement, and 2 findings that outgrew L1 (#2122, #2156). #2113/#2122(#2153) both unchanged again
+last_updated: 2026-09-07 — C8 v2.3 cycle 130; #2113 the ONLY genuinely open item now -- adjudication #2122 CLOSED, PR #2153 (L0's from_moon_view fix) merged, independently re-verified live (not just trusted on the merge): confirmed live_tool/tool_args correct in both origin/main's source and the live vidhi_primitives DB row. Corrected stale "still open" tracking in this file's per-asset table + W3 SNAPSHOT, and in the L1_W6_CLOSE_REPORT_v1_0.md draft (PR #2170)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7705,3 +7705,43 @@ L1 must satisfy rather than a feature it consumes.
   disposition table (§2's own OPEN note) -- prefer the cost ledger next, since the disposition
   table's source data doesn't change until new findings land and is lower marginal value than a
   first honest cost accounting.
+- 2026-09-07T01:3xZ -- CYCLE 130 (C8 v2.3). PR hygiene: genuinely trivial this cycle -- zero open
+  PRs authored by this session (`gh pr list --author "@me"` returns rows, but all belong to
+  other layer sessions sharing the same git identity -- L5/#2162, CONDUCTOR/#2161, L3/#2160+
+  #2166, L0/#2153, L2/#2135+#2165, plus several ancient pre-campaign parked PRs -- confirmed
+  none are mine, since all three of last cycle's own PRs (#2132/#2163/#2164) had already merged
+  by cycle 129's own end). Re-checked the 2 tracked blockers per the standing routine: #2113
+  unchanged (same 15:00:13Z comment) -- BUT #2153 (L0's fix for adjudication #2122) is now
+  **MERGED**, and #2122 itself is **CLOSED**. Did not stop at "the PR merged, must be fine" --
+  read the Conductor's own closing comment in full (fixed both the code, `registry_data.ts`'s
+  `from_moon_view` entry re-pointed from `ganita_chart_facts_get` to
+  `ganita_transit_anchors_get` with the inert `reference_point` argument dropped, AND the
+  already-committed live `vidhi_primitives` row via migration 705, since seed migrations don't
+  re-fire and the code fix alone wouldn't have corrected an already-seeded row), then
+  independently re-verified BOTH halves live myself rather than trust the merge alone: `git show
+  origin/main:platform/src/lib/vidhi/registry_data.ts` confirms `live_tool:
+  'ganita_transit_anchors_get'`/`tool_args: { chart_id: '{chart_id}' }`; a live `psql` query
+  against the actual `vidhi_primitives` table confirms the same values are genuinely in
+  production data, not just in source. This closes F-D21/F-D23 for real, not provisionally.
+  Updated tracking in three places rather than leaving any of them stale: (a) this file's
+  `ga_transit_anchors` per-asset row, (b) this file's W3 STATUS SNAPSHOT (now states #2113 is
+  the ONLY genuinely open item, moved #2122 to the RESOLVED list with the live-verification
+  detail), (c) `L1_W6_CLOSE_REPORT_v1_0.md`'s own DRAFT (PR #2170) -- 4 separate stale "PR #2153
+  ... open" mentions found and corrected (asset table, findings-ledger §2, pillar-movement §3,
+  §3.5, §5 backlog), consistent with that draft's own stated precedent of being filled as
+  evidence lands rather than written once from memory. Hit one genuine "commit lands on wrong
+  branch" near-miss while sequencing these two file edits across two different branches (the
+  now-familiar pitfall from cycles 111/121/123) -- caught it correctly this time BEFORE any
+  commit happened (the `git checkout -b` for the close-report branch failed cleanly twice, first
+  on uncommitted L1_STATE.md changes, then on an untracked working-tree file collision after
+  removing that blocker) -- committed L1_STATE.md on its own correct branch first, then removed
+  the stray untracked close-report copy, then created the close-report branch cleanly, avoiding
+  the mixup entirely rather than recovering from it after the fact. No code change, no writer
+  touched, no migration authored -- pure tracking-accuracy correction, but a load-bearing one
+  (this was a real, previously-recorded MUST-tier item genuinely closing, not busywork). CYCLE
+  130 L1: PR hygiene trivially clean (zero own open PRs at cycle start), verified and recorded a
+  real cross-layer adjudication closure (#2122) that leaves #2113 as the single remaining
+  blocker on this session's entire tracked backlog -- next: re-check #2113 again; if unchanged,
+  proceed with the cost-ledger reconciliation prep item per cycle 129's own "next" pointer, since
+  W1-W3 finding-list work, both adjudications, and one close-report draft update are all now
+  genuinely done.
