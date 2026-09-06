@@ -630,6 +630,14 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~33:0xZ — L3-W3 — PR hygiene: 3 of 8 L3-owned PRs went
+  `UNMERGEABLE`-in-queue (`#1936`/`#1929`/`#1903`) — dequeued, rebased (all
+  clean, no conflicts), pins/digests `--check` clean, tests re-pass
+  (30/36/73), pushed. A couple of the final verification reads came back
+  `UNKNOWN` again — waited and rechecked rather than trust it, both settled
+  to `MERGEABLE`. `#2096` still has no ruling (zero comments). — blocked on:
+  `#2096`'s ruling; next action: keep L3-only sweeps going, check `#2096`
+  each cycle.
 - `2026-09-06T~28:0xZ — L3-W3 — First real merge in a while: `#1954`
   (F-VIGHNA-6) landed (`mergedAt` confirmed via direct GraphQL check, not
   assumed from the queue listing showing it absent). 8 L3-owned PRs remain,
