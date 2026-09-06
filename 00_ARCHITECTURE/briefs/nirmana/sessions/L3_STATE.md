@@ -494,6 +494,66 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~12:0xZ — L3-W3 — Investigation cycle (no code shipped): comprehensive
+  MUST/NOW backlog audit + concrete root-cause diagnosis of both remaining N1 sub-items.**
+  PR hygiene checked first (`is:queued`, `--limit 300`): all 50 L3 open PRs genuinely
+  queued or in expected pre-queue-checks-running state, no DIRTY/RED — one (#1949) showed
+  `mergeStateStatus: UNSTABLE` but every check bar one still-`pending` "Build Check"
+  passed; not a real defect, no action taken.
+  **The audit:** last cycle concluded N2 (score commensurability) and the `kala_now_get`
+  extension were the only open N1 items, but hadn't checked whether OTHER, unrelated
+  MUST/NOW findings from `L3_W1_ANALYSIS_BATCH_A/B/C/D.md` (130+ individually-named
+  `F-XXX-N` findings across the other 17 L3 assets `BATCH_E.md` doesn't cover) were still
+  sitting unaddressed. Traced the numbering: the Position section's early landed-work table
+  (M3/M4/M5/M7/M8/M9/M11) plus M6/M12 (and M1, confirmed fixed inside PR #1751 per an
+  earlier bookkeeping entry) map to a **consolidated 12-item MUST list** drawn from across
+  ALL FOUR batches (not just Batch E) — confirmed via the W2-close summary line itself:
+  "W2 closed 23/23 routed + **12 MUST / 12 NOW / 8 NEVER triaged**". All 12 MUST items:
+  closed (M1-M12, each independently re-verified against its own landing entry this cycle).
+  All 12 NOW items (the N1-N12 series): N3/N4/N4a/N4b/N5/N6/N7/N9/N12 closed,
+  F-SANGAM-5 + moorti-WIRE's data half closed, N8/N10/N11 could not be located as
+  distinct defined items anywhere (flagged honestly, not asserted closed — see last
+  cycle's Position-section correction). **Spot-checked F-VIGHNA-4/F-VIGHNA-7 specifically**
+  (Batch E's own per-asset MUST items, never explicitly cross-referenced in any heartbeat
+  entry) by reading `ka_vighnakara`'s LIVE `integrity_check_sql` directly: clause (b)
+  implements the exact F-VIGHNA-4/7 cascade detector verbatim ("every chart that has
+  convergence windows must have obstruction rows") — already shipped inside the 19-contract
+  migration 670 batch, just never labelled with its F-XXX name in this file. **Conclusion:**
+  the entire 32-item W2 triage (12 MUST + 12 NOW, modulo the 3 unlocatable N-numbers) is
+  closed. The 8 NEVER items are by definition not actionable. Nothing outside N1's own
+  scope stands open.
+  **N1's two remaining sub-items, root-caused rather than left as "needs more design":**
+  (1) `kala_now_get` extension — read `now.ts` (2278 lines) in full: it has no PACT-chain
+  analog at all (no single "operative reading" a testimony could concur/dissent with) —
+  it's an aggregation of independent time-slices (kota chakra, sudarshana varsha, moorti,
+  vedha, tithi pravesha, panchanga, disha shula, gulika kalam, hora). The `engine_testimony`/
+  `concordance` CONCEPT doesn't structurally transfer without first deciding what a
+  "verdict" even means for a dashboard rather than a chain — a genuine design task, not a
+  wiring task like `explain.ts`'s was. (2) **N2 (score commensurability) is not merely
+  under-designed — it is structurally blocked on a DIFFERENT, already-diagnosed campaign
+  issue.** Read `ka_sangam/engine.py`'s `SUPPORTING_WEIGHTS`/`convergence_score` (a
+  continuous [0,1] weighted average, not `composeConcordanceVerdict`'s categorical
+  concurs/dissents/not_comparable vote) and its two existing score→label functions:
+  `confidence_label()` (I-21's RATIFIED absolute thresholds, 0.75/0.45) and
+  `relative_confidence_labels()` (JL-014's within-chart percentile tier). JL-014's own
+  docstring states I-21's absolute thresholds are **known-degenerate** for this native's
+  chart ("observed range ~0.04-0.16... every row collapses to 'speculative'") and that
+  recalibrating them is **explicitly deferred to P5A** ("needs a multi-chart side-by-side
+  review, not a one-chart fix"). Mapping `convergence_score` onto a concurs/dissents vote
+  for N2 would need exactly the kind of threshold I-21 already got wrong once — inventing
+  a fresh one now would risk repeating JL-014's own diagnosed defect, and using the
+  percentile tier is structurally wrong for a single-score judgment (it's a batch-relative
+  ranking device, not a fixed bar). **N2 is therefore correctly blocked on P5A, not on L3's
+  own design effort** — this is new information, not previously recorded this precisely.
+  **Next action:** N1 is now, honestly, at a stable interim state — the O-10 categorical
+  scope (parts 1-7) is fully wired and queued; both further-expansion paths are genuinely
+  blocked (P5A for N2; a fresh design decision, not yet scoped, for `kala_now_get`). Future
+  cycles: re-check P5A's status each cycle as a new standing watch item; do not attempt N2
+  or the `kala_now_get` extension until P5A lands or a native/Conductor ruling authorizes
+  a one-chart interim threshold for N2 specifically (that would itself need adjudication,
+  not a unilateral L3 call, given JL-014's own explicit deferral).
+  #1903 (F-CONC-6 prerequisite), #1958, sidecar-traffic, #1960 all unchanged.
+
 - `2026-09-06T~11:0xZ — L3-W3 — FOURTH DIRTY-PR this cycle, caught on a second hygiene
   sweep: #1954 (F-VIGHNA-6).** A re-check after landing this cycle's other work found
   #1954 had gone genuinely `DIRTY`/`CONFLICTING` (it was clean at the cycle's opening
