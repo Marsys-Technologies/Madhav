@@ -6966,3 +6966,23 @@ access down 340 cycles) → next: watch `#1808`/`#1839` finish CI and reach `QUE
 E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
 remains deferred — once these last 2 own PRs land, all 9 `ph_*` W3 correctness fixes will be
 fully shipped to `main`.
+
+`2026-09-06T~13:00Z` — L4 — **CYCLE 351 (v2.3) — `#1839` finished its own CI and
+self-enqueued cleanly (`AWAITING_CHECKS` position 3), no force needed. `#1808` confirmed
+still genuinely mid-own-CI within normal range.**
+
+**PR hygiene:** `#1839` — `gh pr checks` summary had gone stale showing `Governance Gates`
+pending; direct job-level API check confirmed it had actually `completed`/`success`;
+`mergeStateStatus` was `CLEAN` and `mergeQueueEntry` showed genuinely `AWAITING_CHECKS`
+(self-enqueued, no disable-then-auto needed this time). `#1808`'s `Governance Gates`
+confirmed genuinely `in_progress` via direct job API (`started_at` 12:52:06Z, ~8.2 min
+elapsed), well within normal range, not stalled.
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+341st consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 351 L4: `#1839` finished CI and self-enqueued cleanly (`AWAITING_CHECKS` position 3,
+no force needed); confirmed `#1808` still genuinely mid-CI within normal range, not stalled
+→ next: watch `#1839` reach full `QUEUED`; watch `#1808` finish CI; retry E-gate/dispatch
+dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
