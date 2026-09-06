@@ -6077,3 +6077,21 @@ access down 301 cycles; nothing new) → next: confirm the remaining five go gre
 re-enter the queue; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~16:15Z` — L4 — **CYCLE 312 (v2.3) — `#1842`/`#1834` confirmed re-entered the
+merge queue. `#1849`/`#1845`/`#1839` still pending (second consecutive cycle), drilled into
+the oldest one: `Governance Gates` for `#1839` started `10:11:51Z`, ~11.2 min elapsed — near
+the established upper bound but not yet past it, not escalated.**
+
+**PR hygiene:** `#1842`/`#1834` genuinely `QUEUED`. `#1849`/`#1845`/`#1839` confirmed
+genuinely in-progress via direct job inspection, no RED. `#1831`/`#1808` unchanged/queued.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+15). E-gate still uncheckable, 302nd consecutive cycle DB access down.
+
+CYCLE 312 L4: IDLE-OK (verified: PR hygiene clean — `#1842`/`#1834` confirmed re-queued;
+`#1849`/`#1845`/`#1839` legitimately mid-CI at ~11.2 min (near but not past upper bound),
+remaining unchanged/queued; E-gate uncheckable, DB access down 302 cycles; nothing new) →
+next: if the three pending PRs still pending next cycle, treat as genuine stall candidates
+and escalate per contract; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
