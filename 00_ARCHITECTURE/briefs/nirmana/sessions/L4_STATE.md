@@ -6379,3 +6379,25 @@ stale backlog entry in my own W6 close-report scaffold (`ph_sodhana` F-12 alread
 `#1870`, backlog list hadn't caught up) → next: watch `#1845` reach `QUEUED`; watch the
 4 queued PRs drain in position order; retry E-gate/dispatch dry-run once DB access returns;
 F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~11:36Z` — L4 — **CYCLE 324 (v2.3) — IDLE-OK. PR hygiene clean, nothing to
+fix; priorities 1-4 exhausted; no new prep item identified beyond last cycle's fix.**
+
+**PR hygiene:** `#1831`/`#1808`/`#1834`/`#1839` confirmed genuinely `QUEUED` via `gh pr list
+--search "is:queued"`. `#1845` confirmed legitimately mid-own-CI (~6.3 min elapsed, within
+the established 8-12 min normal range, drilled into via direct job inspection — not stalled),
+auto-merge already armed, self-enqueues on green.
+
+**Priorities 1-4:** one new `main` commit (`#1837`, L2's own PR) confirmed not L4-relevant.
+Adjudication count unchanged at 15; the one L4-adjacent item (`#1770`, L2→L3/L4/L5 cascade
+notice) is a cross-layer informational cc about L3 rows, not an L4 action item. E-gate still
+uncheckable — `mcp__postgres__query` unavailable via `ToolSearch`, 314th consecutive cycle DB
+access down. No `NIRMANA_HOLD` file present. No new prep item found (last cycle's stale
+backlog correction was the available one; re-scanned `L4_W6_CLOSE_REPORT_v1_0.md` and
+`L4_STATE.md` for further staleness — none found).
+
+CYCLE 324 L4: IDLE-OK (verified: PR hygiene clean — 4 own PRs genuinely queued, 1
+legitimately mid-CI within normal range; no new adjudications name L4; E-gate uncheckable,
+DB access down 314 cycles; no new prep item) → next: watch `#1845` reach `QUEUED`; watch the
+4 queued PRs drain in position order; retry E-gate/dispatch dry-run once DB access returns;
+F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
