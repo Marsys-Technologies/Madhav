@@ -494,6 +494,37 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~143:0xZ — L3-W3 — PR hygiene: `#2189` down to 1 pending
+  check (`Governance Gates`, ~7.6min, within normal range),
+  `mergeStateStatus: UNKNOWN` is normal async settling lag, not a
+  problem. Nothing to fix. Continued F-L3-4 with a different shape of
+  bounded unit this cycle: rather than a 9th individual data-writer
+  migration, closed the finding for L3's 4 `asset_kind='service'`
+  assets (`ka_dasha_kala`/`ka_graha_sancara`/`ka_muhurta_seva`/
+  `ka_tulana`) TOGETHER in one migration (860), since all four share an
+  identical, verified-live reason: `target_table`/`count_sql` are both
+  NULL (health-probe assets, no per-chart table at all), and build
+  completion runs through `asset_runner.py`'s probe-based path, not the
+  row-count path — confirmed by reading the actual code branch
+  (`is_service` → `_probe_asset`/`_mark_probe_green`), not assumed from
+  the asset_kind label alone. Documented `expected_volume_formula = N/A`
+  with an honest reason for all 4, deliberately left `target_floor`
+  untouched (checked the one place it could matter,
+  `zero_rows_is_complete`, and confirmed these 4 don't take that branch).
+  Migration 860 + paired test authored (no self-transaction wrapper from
+  the start), all 7 tests pass — including a live re-verification of
+  the asset_kind/target_table/count_sql premise against `asset_registry`
+  itself, not trusted from the migration text. Migration-number guard
+  PASS (860, confirmed free). Committed locally (`8a4d343be`), held from
+  push — `#2189` still finishing its last check. — blocked on: nothing
+  new; next action: push once `#2189` clears/queues. **F-L3-4 status: 9
+  of 20 originally-NULL L3 assets now closed** (7 data-writer migrations
+  852-855/857-859 + migration 856 + the 4-asset service batch 860 — 13
+  assets total across 9 migrations); 7 data-writer assets remain
+  (`ka_gochara_resonance`, `ka_gochara_v3_century_materialize`,
+  `ka_kala_darshana`, `ka_kalasutra`, `ka_kshetra`, `ka_sangam`,
+  `ka_yojaka`) plus the still-retired `ka_gochara_sweep` (correctly not
+  attempted, HARD-FLOOR PROTECTED).
 - `2026-09-07T~142:0xZ — L3-W3 — PR hygiene: `#2189` checks running
   pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
   Integration Tests`/`Build Check` pending, nothing red), not yet
