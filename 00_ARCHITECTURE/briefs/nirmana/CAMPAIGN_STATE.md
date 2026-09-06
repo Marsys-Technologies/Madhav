@@ -379,6 +379,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T13:04:56Z` — cycle 475: **ONE bounded unit: closed the `chart_grants` RLS-grant gap
+  from #1869 (confirmed twice independently — `lel_events`, `mi_vistara`).** Migration 647
+  (`GRANT SELECT ON chart_grants TO nirmana_evidence_ingress_writer`), additive-only, mirrors
+  632/645/646's idempotent/self-verifying pattern exactly. `migration-guard`-reviewed: PASS
+  (confirmed 647 a genuine open gap on `origin/main`; confirmed via `001_baseline.sql`'s
+  `chart_grant_policy` that `charts`' RLS predicate subqueries `chart_grants`, substantiating the
+  issue's own root-cause claim against schema source). Own range check: Conductor 645-649, 645/646
+  already used, 647 free — used it, logged in MIGRATION RANGES table (below) unchanged since this
+  doesn't exhaust the range (648-649 still open). Shipped as **PR #2094** on a fresh branch off
+  `origin/main` (not `wip-cascade-hold`, which is 182 commits behind and reserved for state-file
+  commits only) — auto-merge armed, CI running, not yet `is:queued` (checks still pending as of
+  this log). No own PRs otherwise. Fleet DIRTY: not re-swept this cycle (single bounded unit spent
+  on this fix). No new `nirmana-adjudication` issues (15) — will follow up on #1869 (comment +
+  eventual close) once #2094 merges and L2/L5 confirm their preserved digests resubmit clean.
 - `2026-09-06T12:58:35Z` — cycle 474: **IDLE-OK.** No own PRs to check. Fleet DIRTY sweep found
   #1936/#1929/#1917 CONFLICTING, but all three `updatedAt` within the last ~15 minutes (12:46-12:58Z)
   — L3 actively rebasing against fast-moving `main`, not stalled/negligent; below the >2-cycle-stale
