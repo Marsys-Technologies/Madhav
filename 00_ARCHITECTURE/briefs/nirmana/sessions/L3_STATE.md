@@ -489,6 +489,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~79:0xZ — L3-W4 — IDLE-OK (verified): `#2079` showed `UNKNOWN`
+  mergeability (async lag — resolved to healthy on recheck, not a real
+  issue). `#2070`/`#2065` were `CLEAN`-but-unqueued — re-queued, verified
+  via `is:queued`. `#2079` itself was 11 commits behind — rebased clean, NO
+  new migration collision this time (a first, after four rounds), pins/
+  digests/migration-guard all re-verified clean. `#2065` still hasn't
+  merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
+  action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~78:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
   queued, `#2079` healthy, zero failures, still building fresh CI. `#2065`
   still hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging;
