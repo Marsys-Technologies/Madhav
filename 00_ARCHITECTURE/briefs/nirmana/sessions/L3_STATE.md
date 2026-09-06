@@ -489,6 +489,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~78:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
+  queued, `#2079` healthy, zero failures, still building fresh CI. `#2065`
+  still hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging;
+  next action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~77:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
   queued, held this time. `#2079` healthy, zero failures, still building
   fresh CI. `#2065` still hasn't merged. `egate.sql` unchanged. — blocked
