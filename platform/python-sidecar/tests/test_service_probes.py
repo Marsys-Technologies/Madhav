@@ -98,6 +98,14 @@ _TULANA_SPEC = {
     "forensic_expected_decisive_factor": "proximity_factor",
 }
 
+_DASHA_KALA_SPEC = {
+    "probe_type": "dasha_kala_proxy_integrity",
+    "expected_systems": [
+        "vimshottari", "yogini", "ashtottari", "chara_karaka",
+        "naisargika", "mudda", "kalachakra",
+    ],
+}
+
 _EPHEMERIS_CORPUS_FILES = tuple(_EPHEMERIS_SPEC["ephemeris_file_sha256"])
 _EPHEMERIS_CORPUS_PATH = pathlib.Path(os.environ.get("SWE_EPHE_PATH", "/app/ephe"))
 _HAS_PINNED_EPHEMERIS_CORPUS = all(
@@ -114,6 +122,8 @@ def _probe(kind: str) -> dict:
         spec = _GRAHA_SANCARA_SPEC
     elif kind == "tulana_ranking_forensic":
         spec = _TULANA_SPEC
+    elif kind == "dasha_kala_proxy_integrity":
+        spec = _DASHA_KALA_SPEC
     else:
         spec = {"probe_type": kind}
     return sp.run_health_probe("bg_x", spec)
@@ -422,6 +432,39 @@ def test_tulana_probe_rejects_a_malformed_window():
     assert _check(res, "probe_config_valid")["passed"] is False
 
 
+# ── ka_dasha_kala probe (D-CND-34 ruling, #2071 — F-L3-15's fourth slice) ────
+
+def test_dasha_kala_probe_returns_green():
+    res = _probe("dasha_kala_proxy_integrity")
+    assert res["status"] == "GREEN", (
+        f"got {res['status']}: {res['message']}"
+    )
+
+
+def test_dasha_kala_probe_every_check_discloses_proxy_scope():
+    """The ruling's own required condition: no check may omit the scope
+    disclosure, so a caller reading a single check in isolation still sees
+    that this measured importability + constant-set identity only, never
+    live-DB correctness."""
+    res = _probe("dasha_kala_proxy_integrity")
+    for check in res["checks"]:
+        assert "scope" in check, f"check {check['check']!r} missing scope disclosure"
+        assert "PROXY" in check["scope"]
+
+
+def test_dasha_kala_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("ka_dasha_kala", {"probe_type": "dasha_kala_proxy_integrity"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_dasha_kala_probe_rejects_duplicate_expected_systems():
+    wrong = dict(_DASHA_KALA_SPEC, expected_systems=["vimshottari", "vimshottari"])
+    res = sp.run_health_probe("ka_dasha_kala", wrong)
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
 def test_tulana_probe_detects_a_broken_composite_formula(monkeypatch):
     """The 'un-floor' contract for this probe: if the I-11 weighted-sum
     formula ever regressed to an unweighted average (or any other wrong
@@ -445,3 +488,46 @@ def test_tulana_probe_detects_a_broken_composite_formula(monkeypatch):
     res = sp.run_health_probe("ka_tulana", _TULANA_SPEC)
     assert res["status"] != "GREEN"
     assert _check(res, "forensic_composite_and_rank_order")["passed"] is False
+
+
+def test_dasha_kala_probe_fails_on_a_missing_system():
+    """CAN-FAIL proof: dropping one of the 7 documented systems from the
+    expected set must not be swallowed."""
+    six_only = [s for s in _DASHA_KALA_SPEC["expected_systems"] if s != "kalachakra"]
+    wrong = dict(_DASHA_KALA_SPEC, expected_systems=six_only)
+    res = sp.run_health_probe("ka_dasha_kala", wrong)
+    assert res["status"] != "GREEN"
+    check = _check(res, "seven_system_constant_set_intact")
+    assert check["passed"] is False
+    assert "kalachakra" in check["actual_systems"]
+
+
+def test_dasha_kala_probe_fails_on_an_extra_system(monkeypatch):
+    """CAN-FAIL proof: an 8th, undocumented system silently added to the
+    LIVE constant set must be caught, not tolerated as 'at least these 7'
+    (an exact-set match, not a subset check)."""
+    import services.ka_dasha_kala.tree_walk as tree_walk_module
+
+    with_extra = frozenset(tree_walk_module.ALL_DASHA_SYSTEMS) | {"an_undocumented_8th_system"}
+    monkeypatch.setattr(tree_walk_module, "ALL_DASHA_SYSTEMS", with_extra)
+    res = sp.run_health_probe("ka_dasha_kala", _DASHA_KALA_SPEC)
+    assert res["status"] != "GREEN"
+    check = _check(res, "seven_system_constant_set_intact")
+    assert check["passed"] is False
+    assert "an_undocumented_8th_system" in check["actual_systems"]
+
+
+def test_dasha_kala_probe_detects_a_renamed_system(monkeypatch):
+    """The 'un-floor' contract for this probe: if one of the 7 canonical
+    system names were ever silently renamed in tree_walk.py, this must be
+    caught rather than the probe reporting GREEN on an accidental 7-out-of-7
+    count that no longer matches the documented set."""
+    import services.ka_dasha_kala.tree_walk as tree_walk_module
+
+    renamed = frozenset(
+        {"vimshottari_v2" if s == "vimshottari" else s for s in tree_walk_module.ALL_DASHA_SYSTEMS}
+    )
+    monkeypatch.setattr(tree_walk_module, "ALL_DASHA_SYSTEMS", renamed)
+    res = sp.run_health_probe("ka_dasha_kala", _DASHA_KALA_SPEC)
+    assert res["status"] != "GREEN"
+    assert _check(res, "seven_system_constant_set_intact")["passed"] is False

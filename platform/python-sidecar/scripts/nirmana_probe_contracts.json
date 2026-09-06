@@ -57,5 +57,17 @@
     "forensic_expected_composite_b": 0.4234,
     "forensic_expected_winner_window_id": "test-window-a",
     "forensic_expected_decisive_factor": "proximity_factor"
+  },
+  "ka_dasha_kala": {
+    "probe_type": "dasha_kala_proxy_integrity",
+    "expected_systems": [
+      "vimshottari",
+      "yogini",
+      "ashtottari",
+      "chara_karaka",
+      "naisargika",
+      "mudda",
+      "kalachakra"
+    ]
   }
 }

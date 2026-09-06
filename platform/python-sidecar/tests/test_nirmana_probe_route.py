@@ -102,6 +102,22 @@ def test_contract_digest_matches_javascript_bytes_for_tulana():
     )
 
 
+DASHA_KALA_PROBE = {
+    "probe_type": "dasha_kala_proxy_integrity",
+    "expected_systems": [
+        "vimshottari", "yogini", "ashtottari", "chara_karaka",
+        "naisargika", "mudda", "kalachakra",
+    ],
+}
+
+
+def test_contract_digest_matches_javascript_bytes_for_dasha_kala():
+    # Same independent-node-execution discipline as the graha_sancara test above.
+    assert nirmana_probe._contract_digest(DASHA_KALA_PROBE) == (
+        "b50fa62f11c4b61b841c5d23db1324bcafa5831c11ec306d8d800a178feac9bd"
+    )
+
+
 def test_full_frozen_release_contracts_match_javascript_digests():
     contracts_path = (
         Path(__file__).resolve().parents[1] / "scripts" / "nirmana_probe_contracts.json"
@@ -118,6 +134,9 @@ def test_full_frozen_release_contracts_match_javascript_digests():
     )
     assert nirmana_probe._contract_digest(contracts["ka_tulana"]) == (
         "91acf68050266b9415b1ae28d7e4b8566f1ff380e3046626ab96eaf3dee321aa"
+    )
+    assert nirmana_probe._contract_digest(contracts["ka_dasha_kala"]) == (
+        "b50fa62f11c4b61b841c5d23db1324bcafa5831c11ec306d8d800a178feac9bd"
     )
 
 
@@ -207,6 +226,8 @@ def test_probe_route_rejects_digest_mismatch_before_execution(
         ("bg_panchanga", "graha_sancara_forensic"),
         ("ka_tulana", "graha_sancara_forensic"),
         ("bg_panchanga", "tulana_ranking_forensic"),
+        ("ka_dasha_kala", "graha_sancara_forensic"),
+        ("bg_panchanga", "dasha_kala_proxy_integrity"),
     ],
 )
 def test_probe_route_rejects_asset_probe_type_mismatch(
