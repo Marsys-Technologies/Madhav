@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 124; audited F-B2/F-B3/F-B9/F-B12 (all already fixed, unrecorded) and F-B35/F-C15 (already covered by the ongoing integrity_check_sql rollout — confirmed live, all 19 assets non-NULL). Closed F-C10 (migration 851) — ga_condition's target_floor was already correct, expected_volume_formula was NULL; populated with the live-verified derivation. Discovered + filed adjudication #2156: L3 has encroached on L1's granted 840-859 migration range (848-850 already used by L3 branches)
+last_updated: 2026-09-07 — C8 v2.3 cycle 125; verification-only cycle (no code change) -- confirmed F-C14 was already fixed in an earlier campaign (the exact scanner tightening cited in every fact-category-pin violation message all segment), closing the last open MUST-tier item this session had flagged. Cross-checked every remaining MUST id group in W2_DECIDE against live state/PR history -- THE ENTIRE MUST TIER IS NOW CLOSED for L1's own scope (F-C2/C3/C4/C5/C7 correctly remain L2's bo_laksana.py; F-D21/D22/D23 correctly remain L0's PR #2153, still open, not L1's action item)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7475,3 +7475,40 @@ L1 must satisfy rather than a feature it consumes.
   are the only MUST-tier items left from this cycle's shortlist; worth a fresh W2 DECIDE
   re-scan for any MUST finding not yet covered by this cycle's checks before assuming the
   MUST tier is fully closed.
+- 2026-09-07T00:4xZ -- CYCLE 125 (C8 v2.3). PR hygiene: #2155 genuinely `is:queued`; #2157/
+  #2132 both mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Unit of work:
+  did the fresh W2 DECIDE re-scan cycle 124's own note called for, before touching F-C14
+  (the item flagged as "higher blast radius, needs the shared governance scanner script").
+  Read `check_fact_category_pinning.py`'s own docstring top-to-bottom rather than assuming
+  the finding was still open -- found "TIGHTENED 2026-09-05 (F-C14, issue #1750, Conductor
+  ruling)" as a section header, describing EXACTLY this finding's own defect (a query that
+  reduces to one row via `ORDER BY ... LIMIT 1` alone, with no `fact_key` pin, was previously
+  accepted as safe -- conflating determinism with correctness, the precise F-C1 shape) already
+  fixed: the rule now requires `fact_key` on any single-row reduction, AND TS SQL template
+  literals are now scanned (`scan_ts_sql_text`) where they previously weren't -- this is, in
+  fact, the SAME scanner tightening cited by name in literally every fact-category-pin
+  violation message printed all segment (`F-C14 / issue #1750`) -- the citation had been
+  sitting in plain sight the whole time without me connecting it back to closing the finding
+  itself. No code change needed -- F-C14 was already closed before this segment began.
+  With F-C14 confirmed closed, did a full sweep of every remaining MUST id group in
+  L1_W2_DECIDE_v1_0.md's own tier table against live state file mentions + full context reads
+  (not just the 0-mention proxy, which cycle 124 already proved unreliable): F-A1/F-A2/F-A3
+  (ga_vargas, fixed cycle 1 PR #1766), F-A10 (fixed cycle 16 PR #1908, migration 652),
+  F-A12 (fixed cycle 20 PR #1926), F-B24 (fixed writer level), F-C1 (fixed serving-side,
+  L2's query_ucd.ts), F-C8 (fixed writer level), F-B18/F-B19 (fixed cycle 103 PR #2118),
+  F-B26/F-B31 (B31 fixed migration 843, B26 correctly non-defect), F-D1/F-D2 (fixed cycle
+  101), F-D9 (fixed, catalog_status DRAFT->CURRENT), F-E5 (fixed writer level), F-E10/F-E11
+  (fixed/routed), F-E16/F-E17 (fixed), F-E21/F-E22 (recorded/corrected) -- all confirmed
+  closed. F-C2/F-C3/F-C4/F-C5/F-C7 (D-SALIENCE feed) correctly remain L2's `bo_laksana.py`,
+  not L1's file to touch. F-D21/F-D22/F-D23 correctly remain escalated to L0 (adjudication
+  #2122, PR #2153 still open -- L0's action item, not L1's, checked but not touched). **Every
+  MUST-tier finding in L1_W2_DECIDE_v1_0.md is now closed for L1's own scope.** No code
+  change this cycle -- this was a verification pass, not a fix, and is reported honestly as
+  one (§N.8: a claim needs a real check behind it; this entry IS that check, run to
+  completion rather than assumed). CYCLE 125 L1: PR hygiene clean, verified (did not fix,
+  nothing left to fix) that the entire MUST tier is closed -- combined with the NOW tier's
+  closure at cycle 122, both W1-sourced finding tiers are now fully swept. Next: re-derive
+  priority fresh again -- check W4/W5 eligibility (adjudication #2113 still open, may have
+  moved), then fall back to genuinely new W1/W2/prep work per Step 2's own order if nothing
+  ranks higher; the NEVER-LATER tier and the "Open questions carried into W3" section (§5) of
+  L1_W2_DECIDE_v1_0.md are worth a read for anything that has since become actionable.
