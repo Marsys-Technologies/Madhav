@@ -7189,3 +7189,24 @@ CYCLE 362 L4: IDLE-OK (verified: PR hygiene fully clean — `#1808` genuinely qu
 DIRTY/RED; no new L4-relevant adjudications; E-gate uncheckable, DB access down 352
 cycles) → next: watch `#1808` drain to merge; retry E-gate/dispatch dry-run once DB access
 returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~13:30Z` — L4 — **CYCLE 363 (v2.3) — IDLE-OK. `#1808` still genuinely
+`QUEUED`/`AWAITING_CHECKS`; confirmed the merge queue itself is actively processing (not
+wedged) via fresh `merge_group` run activity.**
+
+**PR hygiene:** `#1808` confirmed genuinely queued via `gh pr list --search "is:queued"` and
+via GraphQL `mergeQueueEntry` (`AWAITING_CHECKS`, position 2). Given several consecutive
+identical-looking cycles, cross-checked `gh run list --event merge_group` — fresh activity
+at 13:25:36Z (~4.5 min ago) plus a completed `merge_group` run for `#1808` itself at
+13:23:36Z — confirms the queue is genuinely advancing, not a silent wedge. Zero DIRTY, zero
+RED, zero unqueued.
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 16). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+353rd consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 363 L4: IDLE-OK (verified: PR hygiene fully clean — `#1808` genuinely queued and the
+merge queue itself confirmed actively processing via fresh `merge_group` runs, not wedged;
+no new L4-relevant adjudications; E-gate uncheckable, DB access down 353 cycles) → next:
+watch `#1808` drain to merge; retry E-gate/dispatch dry-run once DB access returns; F1
+(`ph_phaladesa` zero MCP consumers) remains deferred.
