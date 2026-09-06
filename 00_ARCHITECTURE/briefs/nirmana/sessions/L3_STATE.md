@@ -473,6 +473,42 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~47:0xZ — L3-W3 — SECOND-ORDER DEPLOY BUG found and diagnosed (not
+  a regression in `#2104`).** After `#2104` merged, the very next `Deploy to
+  Cloud Run` run (34038183719, fired 20s later) FAILED with `COPY requirements.txt
+  .`: `"/requirements.txt": not found`, looking like `#2104`'s fix hadn't taken.
+  Root-caused instead to GitHub's own `workflow_run` semantics: the workflow
+  FILE (`deploy.yml`'s `context: ./platform`) is interpreted from main's tip at
+  run-start, but the CHECKOUT is pinned to `DEPLOY_SHA = github.event.workflow_
+  run.head_sha` (deploy.yml:65, working exactly as its own inline comment
+  intends) — the exact commit the *triggering CI run* validated. CI for `#1936`
+  (merged well before `#2104`) apparently completed *after* `#2104` had already
+  advanced main, so its `workflow_run` event fired a deploy mixing NEW deploy.yml
+  (post-`#2104`) with OLD checked-out tree (pre-`#2104` Dockerfile) — confirmed
+  via the job's raw checkout log (`ref: 9244c942e9...`, `#1936`'s own commit) vs.
+  `headSha` metadata reporting `#2104`'s commit. An inherent GH Actions gap
+  (workflow definition ≠ pinned to DEPLOY_SHA), not a bug in our SHA-resolution
+  code. Self-resolving: a later commit (e8ad7db7, descends from `#2104`, verified
+  via `merge-base --is-ancestor`) triggered its own deploy run through the same
+  concurrency group, which should build correctly. Posted full diagnosis to
+  `#2096` rather than filing a new adjudication — no code fix needed, this is a
+  documented-not-mysterious answer to "why is sidecar still stale." **PR hygiene
+  this cycle (the bulk of it): rebased `#1903` (16-commit-deep, every conflict a
+  genuinely-additive concurrent-entry heartbeat splice, zero data loss verified
+  via the standing `git diff origin/main | grep '^-'` check each time) and
+  `#1929` (standard ka_sangam-family pin+digest regen). Then found 3 more L3-owned
+  PRs genuinely RED, not just async-lag `UNKNOWN`: `#2079` had a real migration-
+  number collision (811 collided with L1's already-merged 811_..._lordinhouse.sql)
+  — fixed at root per the gate's own instruction (renumbered to 841, max() across
+  both migration dirs + 1, renamed the paired test file, updated both header
+  comments), confirmed clean via `migration_number_guard.ts` locally before
+  pushing. `#2070`/`#2065` both had a genuinely stale writer-digest inventory
+  (pins were fine) — regenerated via `provenance_inventory --output` on each,
+  re-verified pins/digests both `--check`-clean. All 5 pushed, all confirmed
+  `MERGEABLE` (still `BLOCKED` on fresh CI at push time, expected).** — blocked
+  on: nothing new for L3; next action: watch all 5 PRs actually queue/merge next
+  cycle, keep checking `#2096` for Conductor's live-GREEN confirmation and the
+  sidecar's actual serving revision, resume normal W3 work once hygiene holds.
 - `2026-09-06T~41:0xZ — L3-W3 — `#1936` (F-DARSH-2) merged. Post-push `#1917`
   showed genuinely `DIRTY` (not the usual async lag — confirmed via a real
   `merge-base` check that `origin/main` had advanced past the rebase base),
