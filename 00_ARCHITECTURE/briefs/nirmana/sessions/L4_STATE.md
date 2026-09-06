@@ -6111,3 +6111,30 @@ CYCLE 313 L4: IDLE-OK (verified: PR hygiene fully clean — all 7 own PRs genuin
 uncheckable, DB access down 303 cycles; nothing new) → next: watch queue positions continue
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~16:25Z` — L4 — **CYCLE 314 (v2.3) — a fourth wave of the "own PRs
+UNMERGEABLE simultaneously" pattern: five PRs (`#1842`, `#1839`, `#1834`, `#1831`, `#1808`)
+found genuinely `UNMERGEABLE`; `#1849`/`#1845` unaffected, confirmed genuinely queued. Fixed
+all five using the established recipe — this cycle's bounded unit of work. Notably, all
+five rebased **cleanly with zero conflicts** this time (a first this window) — the routine
+generated-file collision only bites when two own-PR rebases land in the same narrow window;
+this wave's predecessor merges had already fully propagated.**
+
+**PR hygiene:** processed `#1831`, `#1808`, `#1834`, `#1842`, `#1839` in that order. Each
+rebase was conflict-free; verified pin `--check` and a fresh `provenance_inventory` diff
+both already matched post-rebase (no hand-derivation needed this time), confirmed each
+branch's own writer fix survived via a `git merge-base`-anchored diff, and ran full test
+suites: F-3.4 (76/76), F-12/16 (291/291), F3 (49/49), F2 (32/32), headline-anchor (97/97) —
+all green. Each PR still occupied its queue slot with `state: UNMERGEABLE`; called
+`dequeuePullRequest` via GraphQL for each before pushing, then re-armed via `gh pr merge
+--auto`.
+
+**Priorities 1-4:** several `main` commits landed during this cycle's hygiene work (not
+L4-relevant). No new adjudications name L4 (count unchanged at 15). E-gate still
+uncheckable, 304th consecutive cycle DB access down.
+
+CYCLE 314 L4: dequeued+rebased+repushed 5 UNMERGEABLE PRs (`#1842`, `#1839`, `#1834`,
+`#1831`, `#1808` — all conflict-free rebases this time, all writer fixes verified intact,
+76+291+49+32+97 tests pass, all re-armed for auto-merge; `#1849`/`#1845` confirmed
+unaffected/queued) → next: confirm all five re-enter the merge queue next cycle; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
