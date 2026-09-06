@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T08:23Z (C8 v2.3 cycle 340) — **IDLE-OK.** #1826 CLEAN, all checks passed,
+  self-queued — 19th successful full CI cycle, confirming cycle 339's watched pytest step
+  finished fine (just a longer-than-usual run, not a real stall). #1844 confirmed
+  `isInMergeQueue: true`. #1869 unchanged at 4 comments. 6 cycles since last push —
+  pushing now.
 - 2026-09-06T08:20Z (C8 v2.3 cycle 339) — **IDLE-OK, watching closely.** #1826's
   Governance Gates job at ~11.4 min on the same `pytest` step (same job id as last 2
   cycles) — upper end of the previously observed 7-12 min range for this step, not yet
