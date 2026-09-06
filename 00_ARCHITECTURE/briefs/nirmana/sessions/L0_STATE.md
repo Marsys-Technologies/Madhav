@@ -3442,3 +3442,8 @@ session's to resolve.
   pins.py` refuses to re-derive L0's pins), not at risk of silently reopening. No new eligible
   work: all 4 remaining assets confirmed still genuinely blocked/held. No open L0 PRs, no
   DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** The recurring `ka_graha_sancara` smoke-probe failure I flagged earlier
+  has been root-caused and properly filed by another session as **#2096** (shared sidecar
+  Docker/CI infra, not L0's) — no action needed here. No open L0 PRs, no new eligible work.
+  36/40 frozen unchanged.
