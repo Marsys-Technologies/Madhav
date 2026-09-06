@@ -3672,3 +3672,7 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
   dedicated merge-group batch (`pr-2115-7a2fdb59...`) with Ganga Quality Gate genuinely
   `in_progress` (~9min elapsed, TAP/EKV already passed for this batch) -- normal duration for
   this suite this session, confirmed healthy not stalled. No DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2115`'s own merge-group Ganga Quality Gate run (`34041957403`)
+  still `in_progress` (~13min), confirmed via direct run lookup. No DIRTY/RED. 36/40 frozen
+  unchanged.
