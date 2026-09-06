@@ -493,6 +493,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~116:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s last check
+  (`Governance Gates`) genuinely `in_progress` at ~7min — within normal
+  range, not stuck. 0 failures. No new `origin/main` merges, no new bounded
+  work. — blocked on: `#2174` finishing; next action: same.
 - `2026-09-06T~115:0xZ — L3-W4 — IDLE-OK (verified): `#2174` still healthy,
   mergeable, auto-merge armed, 2 checks pending, 0 failures. No new
   `origin/main` merges; `ga_positions`/`ka_gochara_resonance` unchanged. No
