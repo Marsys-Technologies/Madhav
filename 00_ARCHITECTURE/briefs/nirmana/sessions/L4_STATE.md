@@ -6908,3 +6908,24 @@ fixed a genuine DIRTY on `#1839` (pin re-derived, 97/97 tests green, re-armed); 
 `#1808` still genuinely queued and untouched → next: watch `#1808`/`#1839` (the last two
 remaining own PRs) drain in position order; retry E-gate/dispatch dry-run once DB access
 returns; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~12:52Z` — L4 — **CYCLE 348 (v2.3) — `#1808` found genuinely DIRTY a sixth
+time (real conflict, `main` had advanced past it); rebased, resolved the routine pin
+conflict, 110/110 tests green, re-armed.**
+
+**PR hygiene:** `#1808` (`ph_nimitta` F-12/F-16) — pin-only conflict, digest already correct,
+hand-derived to `f998fba2...cf2f7e13`; isolation confirmed; full `test_ph_nimitta_*` suite
+(110 tests) green; not occupying a queue slot, pushed directly, re-armed via
+disable-then-auto. `#1839` confirmed genuinely mid-own-CI at ~3.6 min elapsed (a fresh CI run
+from its own last-cycle re-arm), well within normal range, not stalled, no action needed.
+
+**Priorities 1-4:** one new `main` commit (`#1895`, L2's own PR) confirmed not L4-relevant.
+No new adjudications name L4 (count unchanged at 15). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 338th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 348 L4: found and fixed a sixth genuine DIRTY recurrence on `#1808` (pin re-derived,
+110/110 tests green, re-armed); confirmed `#1839` genuinely mid-CI within normal range, not
+stalled → next: watch `#1839` finish CI and reach `QUEUED`; watch both remaining own PRs
+(`#1808`/`#1839`) drain in position order; retry E-gate/dispatch dry-run once DB access
+returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
