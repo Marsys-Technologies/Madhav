@@ -1,12 +1,14 @@
 ---
 artifact: L1_DEPENDS_ON_AUDIT_v1_0.md
 canonical_id: NIRMANA_L1_DEPENDS_ON_AUDIT
-version: "0.3"
+version: "0.4"
 status: IN PROGRESS — 15 confirmed findings + 7 assets confirmed CLEAN via a direct grep sweep
   (round 2); 1 asset (ga_positions) trivially clean by construction (zero declared deps). All 19
-  L1 assets now have at least one pass of coverage; ga_yoga's own remaining declared edges (round
-  3, cycle 141) fully verified in both directions. See §3 for what a fuller L3-style sweep would
-  still add.
+  L1 assets now have at least one pass of coverage; ga_yoga's own declared edges (round 3, cycle
+  141) and 4 more assets' declared edges (round 4, cycle 142) fully re-verified in both
+  directions, all clean beyond their existing findings. See §3 for what a fuller L3-style sweep
+  would still add — 4 assets (`ga_structural`, `ga_sade_sati`, `ga_medical`, `ga_tajaka`) remain
+  to be re-verified this way.
 owner: L1 session
 campaign_id: nirmana-elevation
 produced_on: 2026-09-07
@@ -81,6 +83,29 @@ was found:
   defect). **Verified before reporting a false positive** — the near-miss is recorded here
   precisely so a future pass doesn't need to re-derive this.
 
+**Round 4 (cycle 142) — declared-edge re-verification for 4 more assets already carrying a
+hidden-edge finding** (following round 3's own lesson that "already has a finding" ≠ "fully
+audited"): all 4 confirmed clean on every declared edge, no new false edges found.
+- `ga_dashas` (`depends_on={ga_positions}`, already carries F-A13's 3 hidden findings) — real
+  `chart_facts` reads confirmed (28 matches).
+- `ga_sensitive_degree` (`depends_on={ga_positions}`, already carries F-B15's hidden findings) —
+  real `chart_facts` reads confirmed (14 matches).
+- `ga_nakshatra` (`depends_on={bg_nakshatra,ga_positions,bg_kp_sublord_division}`, already
+  carries F-B23's hidden `reference_signs` finding) — all 3 declared edges confirmed genuinely
+  read in the main writer (`pipeline/orchestrator/writers/ga_nakshatra.py`: `bg_nakshatra` 4
+  matches, `chart_facts` 8 matches, `bg_kp_sublord_division` 4 matches).
+- `ga_condition` (`depends_on={ga_positions,ga_vargas,ga_dashas}`, already carries F-C23's 4
+  hidden L0 findings) — all 3 declared edges confirmed genuinely read (`chart_facts` 15,
+  `chart_divisionals` 12, `chart_dashas` 6 matches).
+
+**Still not re-verified in both directions** (declared-edge validity, beyond their own already-
+known hidden/false findings): `ga_structural` (7 declared edges — the largest), `ga_sade_sati`
+(2 of 7 already confirmed false via F-D15, 5 remain), `ga_medical` (2 declared edges, not yet
+checked beyond its own hidden-edge finding), `ga_tajaka` (1 of 3 already confirmed genuinely read
+via F-E18's own text, `ga_sensitive`; 2 already confirmed false). `ga_vargas` and `ga_sensitive`
+need no further declared-edge check — F-A7 and F-B11 already cover their single declared edge
+each exhaustively.
+
 **Summary: 9 assets with at least one confirmed hidden/false/semantic-mismatch edge (of L1's 19);
 10 distinct hidden-edge findings, 8 false/over-declared, 1 semantic-clarification-only, 1
 shared-ownership gap. 8 assets confirmed clean** (7 via direct grep + `ga_positions` trivially).
@@ -98,14 +123,17 @@ All 19 L1 assets now have at least one pass of coverage (round 1's 11 existing f
 2's direct grep sweep of the remaining 8 + round 3's full both-directions verification of
 `ga_yoga`'s own declared edges, which found 2 more genuine findings round 1 had not surfaced —
 proof that "already has a finding" is not the same as "fully audited," the same lesson L3's own
-method embeds by checking every asset regardless of prior findings). What a fuller, L3-grade
-systematic pass would still add, not yet done here:
-- **The same both-directions re-verification round 3 did for `ga_yoga`, repeated for every other
-  asset that already has at least one finding** (`ga_vargas`, `ga_dashas`, `ga_sensitive`,
-  `ga_sensitive_degree`, `ga_nakshatra`, `ga_structural`, `ga_condition`, `ga_sade_sati`,
-  `ga_medical`, `ga_tajaka`) — round 3 shows this is not redundant with round 1's own findings;
-  each of those was checked for its OWN specific hidden/false edges but not necessarily for
-  *every* declared edge's own validity in both directions the way `ga_yoga` just was.
+method embeds by checking every asset regardless of prior findings). Round 4 (cycle 142) applied
+the same both-directions check to 4 more assets (`ga_dashas`, `ga_sensitive_degree`,
+`ga_nakshatra`, `ga_condition`) — all confirmed clean beyond their existing findings, no new
+edges found this time. `ga_vargas` and `ga_sensitive` need no further check (F-A7/F-B11 already
+cover their single declared edge each exhaustively). What a fuller, L3-grade systematic pass
+would still add, not yet done here:
+- **The same both-directions re-verification, still owed to 4 assets**: `ga_structural` (7
+  declared edges — the largest declaration in L1), `ga_sade_sati` (5 of 7 declared edges not yet
+  re-checked beyond F-D15's 2 confirmed false), `ga_medical` (2 declared edges, not yet checked
+  beyond its own hidden-edge finding), `ga_tajaka` (its 3rd declared edge, `ga_sensitive`, already
+  confirmed genuinely read via F-E18's own text — only the 2 already-false ones are settled).
 - **A true `target_table → asset_id` owner map** built once and reused (rounds 2/3 checked
   against a hand-picked list of dedicated tables + `bg_*` patterns per asset, not the full live
   table universe L3's method scans).
