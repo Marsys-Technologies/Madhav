@@ -494,6 +494,30 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~146:0xZ — L3-W3 — PR hygiene: `#2189` MERGED (squash
+  `c678bec95`). Also picked up `ka_kalasutra`'s F-L3-4 slice this cycle
+  before the rebase: migration 863 — one row per (predicate, matched
+  in-life dasha period) per CR-109, live bimodal breakdown for the
+  canonical chart (9347 of 50104 predicates resolve to exactly 1 row,
+  40757 resolve to exactly 8, summing to 335403 exactly), independently
+  re-verified live in the paired test, all 7 pass. Rebased the 12
+  not-yet-merged local commits (migrations 859/860/861/862/863 +
+  heartbeat, plus 9 pre-#2189 commits already absorbed into #2189's
+  squash) onto fresh `origin/main`. Hit the standard empty-theirs
+  prepend-conflict pattern once (auto-resolved), no non-standard
+  conflicts. Verified zero conflict markers, migration-number guard
+  PASS, all 35 tests across the 5 new migrations still pass post-rebase,
+  `ka_dasha_kala` held row + the new `chara`/`chara_karaka` held row both
+  intact. Renamed branch to `codex/nirmana-l3-f-l3-4-batch-3`, pushed,
+  opened **PR #2192**, armed auto-merge (checks running now, not yet
+  queued — normal). **F-L3-4 status: 14 of 20 originally-NULL L3 assets
+  now closed** across 12 migrations (852-863); `ka_gochara_v3_century_
+  materialize`, `ka_kshetra`, `ka_sangam`, `ka_yojaka` remain (the first
+  two deliberately deferred as too large for one bounded unit; `ka_sangam`
+  /`ka_yojaka` not yet attempted), plus the correctly-untouched retired
+  `ka_gochara_sweep`. — blocked on: nothing new; next action: verify
+  `#2192` clears its checks and queues cleanly next cycle, then continue
+  F-L3-4 on `ka_sangam`/`ka_yojaka` if still no E-gate work.
 - `2026-09-07T~145:0xZ — L3-W3 — PR hygiene: `#2189`'s own `merge_group`
   build confirmed via full `gh run list` scan (not truncated) — ~5.6min
   elapsed, all green except `Governance Gates` (normal range). Nothing
