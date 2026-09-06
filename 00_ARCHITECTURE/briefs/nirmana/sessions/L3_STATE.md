@@ -493,6 +493,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~135:0xZ — L3-W3 — PR hygiene: `#2184` still genuinely
+  `isInMergeQueue: true` (position 1), own `merge_group` build (run
+  `34065366576`) confirmed via full `gh run list` scan (not a truncated
+  sweep) — 15/16 checks green, only `Governance Gates` `in_progress` at
+  ~6.3min, within the confirmed normal range. Nothing to fix. Re-ran
+  `egate.sql`: unchanged, no new E-gate opening. Continued F-L3-4 with a
+  third asset, `ka_gochara` (the GOCHARA-2.0/W2G materialization,
+  CLEAN in the depends_on audit): derived from `services/w2g/
+  materialize.py` directly — candidates from the Tier-A/point-class
+  subset of the global contact stream (`bg_gochara_arcs`), scored via
+  `compute_lambda_e` against `ka_gochara_resonance` targets + dasha
+  periods over a progressive +/-3yr horizon, sub-threshold candidates
+  produce no row (honest inactivity). Live per-event-class breakdown
+  (illness_acute 15 ... childbirth 3) sums to 83, matching
+  `target_floor`/`count_sql` (chart_id + generation='2.0' filtered)
+  exactly. Migration 854 + paired test authored, no self-transaction
+  wrapper from the start; all 6 tests pass; confirmed live the row is
+  genuinely still NULL after the "rolled back" tests ran. Migration-
+  number guard PASS (854, confirmed free). Committed locally
+  (`6eafcd23f`), held from push — `#2184` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2184` merges or
+  clearly finishes, then continue F-L3-4 (17 of 23 L3 assets still NULL)
+  if still no E-gate work.
 - `2026-09-07T~134:0xZ — L3-W3 — PR hygiene: `#2184` now genuinely
   `isInMergeQueue: true` (position 1, `CLEAN`) — its checks cleared since
   last cycle. Nothing to fix. Continued F-L3-4 with a second asset,
