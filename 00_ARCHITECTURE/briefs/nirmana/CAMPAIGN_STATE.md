@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:00:01Z` — cycle 578: **IDLE-OK.** #2079 cleared. Fleet DIRTY: #2065, already
+  nudged. No new `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T17:57:53Z` — cycle 577: **ONE bounded unit: PR #2139 confirmed MERGED, posted
   confirmation on #2137.** `mergeQueueEntry` went null and `gh pr view` confirmed
   `state=MERGED` (17:57:39Z) — the fix for the frozen-manifest `depends_on`-order false-positive
