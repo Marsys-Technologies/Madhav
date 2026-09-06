@@ -3682,3 +3682,7 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
   not yet safe to dispatch bg_yogas. No open L0 PRs, no DIRTY/RED. 36/40 frozen unchanged; next
   cycle: find/wait for a deploy run whose headSha includes `be987b68e`, confirm it completes,
   then dispatch bg_yogas → 37/40.
+
+- 2026-09-06 — **IDLE-OK.** No change: main tip still `eb5aa07be` (includes my fix), deploy run
+  for the prior commit (`7a2fdb59c`) still `in_progress`. No open L0 PRs, no DIRTY/RED. 36/40
+  frozen unchanged.
