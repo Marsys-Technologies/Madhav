@@ -3644,3 +3644,9 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 
 - 2026-09-06 — **IDLE-OK.** No change on `#2115`, no failures. No DIRTY/RED. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **PR HYGIENE: `#2115` went CLEAN, queued it.** All checks passed. Queued via
+  `gh pr merge --auto`; the `is:queued` text search came back empty (brief indexing lag), so
+  confirmed via direct GraphQL `mergeQueueEntry` instead (position 5, state `QUEUED`) — genuinely
+  queued. 36/40 frozen unchanged; next cycle: confirm merged, confirm deployed live, then dispatch
+  bg_yogas (37/40).
