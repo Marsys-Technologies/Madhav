@@ -457,6 +457,37 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T20:20Z (C8 v2.3 cycle 511) — **Milestone: `#2117` MERGED — the eighth state-recovery
+  PR closed out.** Eighth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, now 511). Found via a fresh `origin/main` fetch showing tip
+  `9b1c2c22b` (L5 state — heartbeat recovery #8, #2114 also merged). Confirmed the local worktree
+  held 8 commits beyond the merged boundary (cycles ~503-510), all touching only `L5_STATE.md`
+  (pure single-file, pure-addition diff, 20 insertions) — extracted as a patch, applied cleanly on
+  a fresh branch off `origin/main`. `mi_kula`'s E-gate re-checked live via direct SQL
+  (`nirmana_evidence.nirmana_elevation_campaign_events`, `asset_frozen` for `bg_rules`/`bg_yogas`)
+  — still zero rows, unchanged from every prior check this session; depends entirely on L0's own
+  progress, no L5 action possible. No `NIRMANA_HOLD` file present. New recovery PR (successor to
+  `#2117`) opened for this branch and armed for auto-merge.
+- 2026-09-06T20:15Z (C8 v2.3 cycle 510) — **IDLE-OK.** #2117 unchanged at position 2 for 2 cycles
+  — checked its actual build directly (~11 min elapsed, two checks already SUCCESS, one
+  IN_PROGRESS) — genuine progress, upper end of normal range but not stalled. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T20:10Z (C8 v2.3 cycle 509) — **IDLE-OK.** #2117 unchanged at queue position 2, normal
+  single-cycle pace. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T20:05Z (C8 v2.3 cycle 508) — **IDLE-OK.** #2117 at queue position 2, still queued.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T20:00Z (C8 v2.3 cycle 507) — **IDLE-OK, #2117 now genuinely queued.** All checks
+  passed. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:55Z (C8 v2.3 cycle 506) — **IDLE-OK.** #2117's Governance Gates job checked at the
+  job level (~9.2 min elapsed, within the normal 7-12 min range) — genuine progress, not stalled.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:50Z (C8 v2.3 cycle 505) — **IDLE-OK.** #2117 down to its last check (Governance
+  Gates), no failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:45Z (C8 v2.3 cycle 504) — **IDLE-OK.** #2117 down to 2 checks pending, no
+  failures. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T19:40Z (C8 v2.3 cycle 503) — **IDLE-OK.** #2117 (L5's only open PR) down to 3 checks
+  pending, no failures — holding, not touching it while it runs. `mi_kula`'s remaining ancestors
+  unchanged.
 - 2026-09-06T19:35Z (C8 v2.3 cycle 502) — **Milestone: `#2114` MERGED — the seventh state-recovery
   PR closed out.** Seventh recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, now 502). Found via a `push` event to `main` at 15:19:46Z plus new candidates (#2112,
