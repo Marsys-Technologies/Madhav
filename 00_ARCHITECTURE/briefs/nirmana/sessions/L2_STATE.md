@@ -420,6 +420,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 365 | 2026-09-06T17:29Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE` after resolving a transient `UNKNOWN`. Main advanced (`#2131`, L5's own state PR). Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 366 | 2026-09-06T17:33Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged. New adjudication issue (`#2137`, L5's own `mi_kula` frozen-manifest dispatch-mechanics finding) -- confirmed no L2 relevance. Nothing new eligible -- printing IDLE-OK |
 | 367 | 2026-09-06T17:37Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
+| 368 | 2026-09-06T17:41Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged. `#2137`'s new comment still L5's own matter, no relevance. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
