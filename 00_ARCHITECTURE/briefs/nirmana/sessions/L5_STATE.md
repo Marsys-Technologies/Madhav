@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:04Z (C8 v2.3 cycle 222) — **Closed #1856** with the cycle-221 evidence
+  (job log, asset_throughput, build_run_assets — all confirming the crash is fixed). This
+  is administrative closure of the issue I filed, backed by live reproduction; NOT a claim
+  about `mi_jivanaghatana`'s own `asset_frozen` readiness, which still needs W5 from a
+  fresh-context verifier (implementer≠certifier stays intact). Both own PRs still
+  `isInMergeQueue: true`, clean, no hygiene action needed. Queue: #1844=42 (was 48),
+  #1901=68 (was 74). #1869 unchanged at 3 comments. No push (#1826 still queued, deep).
 - 2026-09-06T02:01Z (C8 v2.3 cycle 221) — **mi_jivanaghatana DISPATCH SUCCEEDED — first
   clean build since #1861 landed.** Deploy confirmed live at exact commit `1ef6267e96f6…`
   (#1861). Claimed the run slot, took a fresh snapshot (`cloudsql-backup:1788659272974`).
