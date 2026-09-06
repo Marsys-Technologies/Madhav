@@ -2465,3 +2465,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** `#1987`'s checks all completed — should merge imminently. Shortened
   next wakeup to catch the expected drop. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1987 merged (`dfc7b0a7c`, L1, not L0's).
+  Positions dropped by 1 (26/33/34/55). No DIRTY, no RED, no new eligible work. 30/40 frozen
+  holds.
