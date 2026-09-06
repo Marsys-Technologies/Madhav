@@ -108,6 +108,85 @@ class TestWeights:
         assert SUPPORTING_WEIGHTS[key] > 0.0
 
 
+# ── C8 eclipse_proximity ─────────────────────────────────────────────────────
+
+class TestEclipseProximity:
+    """
+    L3-W3 (F-SANGAM-7). _c8_eclipse_score used to pass node_planet='TrueNode' —
+    not a real planet name anywhere in this codebase (transit_search.PLANET_IDS
+    only has 'Rahu'/'Ketu') — so every call raised ValueError inside
+    _get_planet_pos, silently swallowed by a blanket except-Exception, scoring
+    0.0 on all 14,868 of 14,868 kala_convergence rows for the canonical chart.
+    Fixed to check both real lunar nodes, matching the established
+    gochara_grammar.primitives.eclipse_degree four-pair pattern.
+    """
+
+    @staticmethod
+    def _fake_event(orb_at_event_deg, applying_separating='applying'):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            orb_at_event_deg=orb_at_event_deg,
+            applying_separating=applying_separating,
+        )
+
+    def test_never_queries_the_fictional_true_node(self):
+        from services.ka_sangam.engine import _c8_eclipse_score
+        service = MagicMock()
+        service.find_eclipse_proximity.return_value = []
+        _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, service, target_lon=100.0)
+        queried_nodes = {
+            c.kwargs['node_planet'] for c in service.find_eclipse_proximity.call_args_list
+        }
+        assert 'TrueNode' not in queried_nodes
+        assert queried_nodes == {'Rahu', 'Ketu'}
+
+    def test_rahu_only_event_is_scored(self):
+        from services.ka_sangam.engine import _c8_eclipse_score
+        service = MagicMock()
+        service.find_eclipse_proximity.side_effect = (
+            lambda node_planet, **kw: [self._fake_event(1.0)] if node_planet == 'Rahu' else []
+        )
+        score = _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, service, target_lon=100.0, orb=5.0)
+        assert score > 0.0
+
+    def test_ketu_only_event_is_scored(self):
+        """Regression: an eclipse near Ketu must not be silently missed —
+        the bug this fix closes would have scored this 0.0 even after the
+        planet-name fix alone, since only Rahu was ever queried."""
+        from services.ka_sangam.engine import _c8_eclipse_score
+        service = MagicMock()
+        service.find_eclipse_proximity.side_effect = (
+            lambda node_planet, **kw: [self._fake_event(1.0)] if node_planet == 'Ketu' else []
+        )
+        score = _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, service, target_lon=100.0, orb=5.0)
+        assert score > 0.0
+
+    def test_no_events_scores_zero(self):
+        from services.ka_sangam.engine import _c8_eclipse_score
+        service = MagicMock()
+        service.find_eclipse_proximity.return_value = []
+        score = _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, service, target_lon=100.0)
+        assert score == pytest.approx(0.0)
+
+    def test_none_service_returns_zero(self):
+        from services.ka_sangam.engine import _c8_eclipse_score
+        score = _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, None, target_lon=100.0)
+        assert score == pytest.approx(0.0)
+
+    def test_exception_from_one_node_does_not_suppress_the_other(self):
+        """A real failure on one node's lookup must not silently zero out a
+        genuine event found via the other node."""
+        from services.ka_sangam.engine import _c8_eclipse_score
+        service = MagicMock()
+        def side_effect(node_planet, **kw):
+            if node_planet == 'Rahu':
+                raise ValueError("simulated ephemeris failure")
+            return [self._fake_event(1.0)]
+        service.find_eclipse_proximity.side_effect = side_effect
+        score = _c8_eclipse_score('Jupiter', 2451545.0, 2451546.0, service, target_lon=100.0, orb=5.0)
+        assert score > 0.0
+
+
 # ── convergence_score bounds ─────────────────────────────────────────────────
 
 class TestScoreBounds:

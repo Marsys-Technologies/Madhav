@@ -146,29 +146,41 @@ def _c8_eclipse_score(
     """
     C8: eclipse_proximity — solar/lunar eclipse near the transit trigger point.
     Uses ka_gochara.find_eclipse_proximity over the window.
-    Score = max orb-strength across found events; 0.0 if none.
+    Score = max orb-strength across found events; 0.0 if none genuinely found.
+
+    NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This used to pass node_planet='TrueNode',
+    which is not a recognised planet name anywhere in this codebase — the real
+    vocabulary is 'Rahu'/'Ketu' (transit_search.PLANET_IDS; its own comment
+    notes 'Rahu' IS swe.TRUE_NODE under the hood). Every call raised ValueError
+    inside _get_planet_pos, silently swallowed by this function's blanket
+    except-Exception, so C8 was 0.0 on all 14,868 of 14,868 kala_convergence
+    rows for the canonical chart — not a real "no eclipse nearby" result on a
+    single one of them. Fixed by checking BOTH lunar nodes (an eclipse can
+    occur near either), matching the established
+    gochara_grammar.primitives.eclipse_degree pattern, which already
+    enumerates all four Rahu/Ketu × Sun/Moon node-luminary pairs.
     """
     if gochara_service is None:
         return 0.0
-    try:
-        events = gochara_service.find_eclipse_proximity(
-            node_planet='TrueNode',
-            luminary='Sun' if planet not in ('Moon',) else 'Moon',
-            orb=orb,
-            start_jd=window_start_jd,
-            end_jd=window_end_jd,
-        )
-        if not events:
-            return 0.0
-        max_score = 0.0
+    luminary = 'Sun' if planet not in ('Moon',) else 'Moon'
+    max_score = 0.0
+    for node_planet in ('Rahu', 'Ketu'):
+        try:
+            events = gochara_service.find_eclipse_proximity(
+                node_planet=node_planet,
+                luminary=luminary,
+                orb=orb,
+                start_jd=window_start_jd,
+                end_jd=window_end_jd,
+            )
+        except Exception as exc:
+            logger.debug("C8 eclipse_proximity failed (node=%s): %s", node_planet, exc)
+            continue
         for ev in events:
             orb_deg = getattr(ev, 'orb_at_event_deg', orb)
             s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
             max_score = max(max_score, s)
-        return min(1.0, max_score)
-    except Exception as exc:
-        logger.debug("C8 eclipse_proximity failed: %s", exc)
-        return 0.0
+    return min(1.0, max_score)
 
 
 def _c9_transit_to_transit_score(
