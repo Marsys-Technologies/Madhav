@@ -105,6 +105,16 @@ export const getStrengthCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 85, always_include: false },
   },
+  // F-C21 (L1_W1_ANALYSIS_BATCH_C.md, NOW, §N.6 item 4): was undeclared, so no census
+  // harness could assert this surface's byte caps/facet/empty-reason discipline.
+  // empty_reason: false is an honest gap, not a violation — the handler below has no
+  // empty_reason field (unlike get_condition_composite.ts's real implementation); the
+  // total_available_basis disclosure this file IS known for is a separate mechanism.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'graha_key', 'frame', 'all'],
+    empty_reason: false,
+  },
   async handler(args, _ctx) {
     try {
       const chartId       = args.chart_id as string

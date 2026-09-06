@@ -54,6 +54,15 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 55, always_include: false },
   },
+  // F-C21 (L1_W1_ANALYSIS_BATCH_C.md, NOW, §N.6 item 4): was undeclared. empty_reason:
+  // true is a genuine claim here (unlike this migration's other 5 files) — the handler
+  // below sets content.empty_reason whenever total_matching === 0, naming the exact
+  // filter combination that matched no rows.
+  density_contract: {
+    paginated: true,
+    facets: ['graha', 'ayanamsha_id'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
