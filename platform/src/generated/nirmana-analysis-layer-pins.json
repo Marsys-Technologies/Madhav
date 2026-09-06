@@ -14,17 +14,17 @@
     },
     "L1": {
       "asset_prefix": "ga_",
-      "convergence_commit": "77bfc1165b105541451be52c95cc46443b9ea901",
+      "convergence_commit": "f9eaa807042c1e17cfcbf07f2c0073c6e215378f",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "83406d87cf76fd0e0b2407cfd92bd92a83c9cc647126162406424b80c0b70bd4"
+      "writer_inventory_sha256": "195ac108c3d425b438a3f82c6ef53f2aa0d27564aebe681109ac7aec28bfa750"
     },
     "L2": {
       "asset_prefix": "bo_",
-      "convergence_commit": "1ed35250a5d9239c832a50dbc5899b334e28f3f8",
+      "convergence_commit": "f9eaa807042c1e17cfcbf07f2c0073c6e215378f",
       "non_writer_assets": [],
       "receipt_count": 22,
-      "writer_inventory_sha256": "a1af62e964e8df48cbabee011797d52809d694cc24fc36003d556ccf1d5fcd6d"
+      "writer_inventory_sha256": "d07c13638691b58e63afe178596552d71f20a45f9851c1d51b81a9b429952977"
     },
     "L3": {
       "asset_prefix": "ka_",
