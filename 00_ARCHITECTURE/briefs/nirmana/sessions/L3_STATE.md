@@ -458,6 +458,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~13:0xZ — L3-W3 — Two genuinely DIRTY PRs this cycle (#2001, #2002), both
+  standard shape; also cleaned up a second pre-existing duplicate fragment (same class
+  as last cycle's #1992 finding, this time on #2002's own branch).** Both L3_STATE.md-
+  only, `theirs` empty, resolved via the established script, single surviving heading
+  verified for each. #2002's own prior content carried a duplicated "Routing to a fresh
+  branch since..." sentence (two near-identical tails back to back) from its own
+  earlier authoring — removed while already touching the region; confirmed via
+  `git diff origin/main` it was never part of shared history. Both force-pushed,
+  re-armed auto-merge, confirmed `MERGEABLE`. Real, gradual queue progress confirmed:
+  `#1903` advanced 116→109, `#2060` advanced 90→83 (`mergeQueueEntry.position`,
+  cross-checked directly, not assumed). `origin/main` advanced several more merges;
+  this state-tracking branch rebased cleanly (22 commits). No reply yet on the #1713
+  queue-reset finding.
+
 - `2026-09-06T~12:0xZ — L3-W3 — IDLE-OK: `#1903` unchanged at position 116, `#2060` at
   position 90 (closer, noted for the record). No reply yet on the #1713 finding.`
   Migration 731 still not deployed. PR hygiene clean. `origin/main` tip unchanged.
