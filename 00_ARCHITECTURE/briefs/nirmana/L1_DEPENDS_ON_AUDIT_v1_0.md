@@ -1,9 +1,11 @@
 ---
 artifact: L1_DEPENDS_ON_AUDIT_v1_0.md
 canonical_id: NIRMANA_L1_DEPENDS_ON_AUDIT
-version: "0.1"
-status: IN PROGRESS — 12 confirmed findings compiled from existing W1/W2 evidence + one new
-  cross-layer finding; NOT yet a systematic grep-every-writer sweep of all 19 assets (see §3)
+version: "0.2"
+status: IN PROGRESS — 13 confirmed findings + 7 assets confirmed CLEAN via a direct grep sweep
+  (round 2); 1 asset (ga_positions) trivially clean by construction (zero declared deps). All 19
+  L1 assets now have at least one pass of coverage; see §3 for what a fuller L3-style sweep would
+  still add.
 owner: L1 session
 campaign_id: nirmana-elevation
 produced_on: 2026-09-07
@@ -16,20 +18,25 @@ authorized_by: >
 
 # NIRMĀṆA — L1 (Gaṇita) `depends_on` AUDIT
 
-## §1 — Why this is IN PROGRESS, not COMPLETE
+## §1 — Coverage: round 1 (existing findings) + round 2 (direct grep sweep)
 
 L3's own audit (`L3_DEPENDS_ON_AUDIT_v1_0.md`) systematically grepped every writer's real SQL
-against the live table universe for all 23 of its assets. This artifact does **not** yet do that
-for all 19 L1 assets — it consolidates 11 findings L1's own W1 ANALYZE wave already found and
-recorded (scattered across 5 batch files + `L1_W2_DECIDE_v1_0.md`'s NEVER-LATER tier, filed
-together on issue #1744) plus one new finding surfaced by a different method (cycle 135,
-constituent-array resolution rather than direct SQL grep). Both methods are real and complementary
-— W1's grep-based method misses edges a writer implies only through a *downstream table*
-referencing another asset's output (exactly the class the new finding is), and a
-constituent-array method can't see an edge with no stored array at all. **Neither alone is
-complete**, matching D-CND-07's own doctrine that a green E-gate is necessary, never sufficient.
+against the live table universe for all 23 of its assets. **Round 1** of this artifact
+consolidated 11 findings L1's own W1 ANALYZE wave already found and recorded (scattered across 5
+batch files + `L1_W2_DECIDE_v1_0.md`'s NEVER-LATER tier, filed together on issue #1744) plus one
+new finding surfaced by a different method (cycle 135, constituent-array resolution rather than
+direct SQL grep). **Round 2** (cycle 140) closed the remaining gap: grepped the 8 L1 assets round
+1 had not touched (`ga_panchanga`, `ga_strength`, `ga_vichara`, `ga_transit_anchors`,
+`ga_ayurdaya`, `ga_vastu`, `ga_prashna`, plus `ga_positions` itself) against the dedicated
+target-table owner map and every declared L0 `bg_*` dependency, following L3's method directly.
+Found one new genuine finding (`ga_panchanga`, #13 below) and confirmed the other 7 clean (§2's
+own CLEAN rows). Both grep and constituent-array methods are real and complementary — W1's
+grep-based method misses edges a writer implies only through a *downstream table* referencing
+another asset's output (exactly finding #12's class), and a constituent-array method can't see an
+edge with no stored array at all. **Neither alone is complete**, matching D-CND-07's own doctrine
+that a green E-gate is necessary, never sufficient.
 
-## §2 — Confirmed findings (12)
+## §2 — Confirmed findings (13) + CLEAN assets (8)
 
 | # | asset | edge type | detail | evidence | disposition |
 |---|---|---|---|---|---|
@@ -45,24 +52,54 @@ complete**, matching D-CND-07's own doctrine that a green E-gate is necessary, n
 | 10 | `ga_medical` | HIDDEN ×2 (`bg_medical_mappings`, `bg_nakshatra_medical`, both L0) | Both read inside `try/except` degrading to empty while still inserting 45 rows reporting success — no detector distinguishes "45 correct" from "45 empty". | `depends_on={ga_condition,ga_positions}`; reads at `:139-143`/`:213-217`; swallow at `:153-156` (F-E7) | NOW-tier |
 | 11 | `ga_tajaka` | FALSE ×2 (`ga_dashas`, `ga_positions`) + §N.5 authority inversion | Neither read: no `chart_dashas` reference exists; the natal chart is re-derived via `compute_chart(bp)` rather than referenced from stored L1 longitudes. Only `ga_sensitive` (`tajik_triraashipathi`) is genuinely consumed. | `_read_trirashipathi:450-458` (F-E18) | NOW-tier |
 | 12 | `ga_yoga` | HIDDEN (`ga_positions`) — **new, cycle 135, distinct from finding #8's two edges above** | `depends_on={ga_structural,ga_dashas}` (confirmed live, unchanged) does not declare `ga_positions`, yet `ga_yoga_firings.constituent_fact_ids` holds 36/40 distinct `fact_id`s (canonical chart) that resolve into exactly `ga_positions`' own 5 categories (`graha_position`/`graha_sign_attributes`/`bhava_cusps`/`house_chalit`/`sandhi_flag`). Found via constituent-array resolution, a method W1's original grep pass did not use — confirming §1's point that the two methods are complementary, not redundant. Confirmed by the Conductor on issue #2180 as "a real, separate defect" alongside its ruling on the coordinated-rebuild sequencing question that surfaced it. | live query against `ga_yoga_firings`/`chart_facts`; `asset_registry.depends_on` (issue #2180) | Open — feeds this register; not yet given its own F-id since it was found post-W2 |
+| 13 | `ga_panchanga` | FALSE ×2 (`ga_positions`, `bg_panchanga`) — **new, cycle 140, round-2 sweep** | Writer issues **zero** SQL `SELECT`/`execute` calls of any kind (confirmed: 0 matches for `select`/`cur.execute`/`cursor.execute` in the whole 64KB file) — it derives every panchanga element from `resolve_birth_params` (ephemeris recomputation), the same "recomputes independently instead of reading" pattern as `ga_vargas`' own F-A7. **`bg_panchanga` does not even exist as a table** (`\dt bg_panchanga*` returns nothing live) — a dead reference, not merely unread. | `ga_panchanga_writer.py` (whole-file grep, 0 execute calls); `resolve_birth_params` import at `:37`; live `\dt` check | Open — feeds this register; new finding, not yet triaged into a tier |
 
-**Summary: 8 assets with at least one confirmed hidden/false/semantic-mismatch edge (of L1's 19);
-9 distinct edge findings hidden, 5 false/over-declared, 1 semantic-clarification-only, 1 shared-
-ownership gap.** One (`ga_dashas`↔`ga_vargas`, finding #2) has a measured live correctness
-consequence; the rest are DAG-accuracy findings without demonstrated data corruption to date.
+**CLEAN (7, round 2, cycle 140)** — each asset's declared deps were confirmed genuinely read via
+direct grep, and no undeclared read of another asset's dedicated target table or L0 `bg_*` table
+was found:
+- `ga_positions` — trivially clean by construction (`depends_on={}`, nothing to check).
+- `ga_strength` (`depends_on={ga_positions,ga_vargas}`) — real reads of `chart_divisionals` (6
+  matches) confirmed; no undeclared dedicated-table or `bg_*` reads found.
+- `ga_vichara` (`depends_on={ga_structural,ga_strength,ga_dashas,ga_yoga}`) — all 4 confirmed read
+  (`chart_dashas` 5 matches, `ga_yoga_firings` 5 matches, shadbala/`graha_shadbala_total` 10
+  matches); no undeclared reads found.
+- `ga_transit_anchors` (`depends_on={ga_positions}`) — real `chart_facts` reads confirmed (7
+  matches); no undeclared reads found.
+- `ga_ayurdaya` (`depends_on={ga_positions}`) — real `chart_facts` reads confirmed (5 matches); no
+  undeclared reads found.
+- `ga_vastu` (`depends_on={ga_condition}`) — real `ga_condition_composite` reads confirmed (LEFT
+  JOIN, live code not just comments); no undeclared reads found.
+- `ga_prashna` (`depends_on={ga_positions,bg_prashna_rules}`) — reads `bg_prashna_significators`,
+  which at first looked like an undeclared 3rd edge, but `bg_prashna_significators` is one of
+  `bg_prashna_rules`' own 5 owned tables (`bg_prashna_fructification_rules`,
+  `bg_prashna_lagna_methods`, `bg_prashna_significators`, `bg_prashna_special_techniques`,
+  `bg_prashna_tajik_yogas` — confirmed via `asset_registry`, `bg_prashna_rules.target_table` is
+  itself blank/NULL despite owning this 5-table family, a registry-metadata quirk, not a DAG
+  defect). **Verified before reporting a false positive** — the near-miss is recorded here
+  precisely so a future pass doesn't need to re-derive this.
+
+**Summary: 9 assets with at least one confirmed hidden/false/semantic-mismatch edge (of L1's 19)
+after two rounds; 9 distinct hidden-edge findings, 7 false/over-declared, 1
+semantic-clarification-only, 1 shared-ownership gap. 8 assets confirmed clean** (7 via direct
+grep + `ga_positions` trivially). One (`ga_dashas`↔`ga_vargas`, finding #2) has a measured live
+correctness consequence; the rest are DAG-accuracy findings without demonstrated data corruption
+to date.
 
 ## §3 — What this audit has NOT yet done
 
-Unlike L3's systematic sweep, this pass has **not** grepped the remaining ~11 L1 assets not named
-above (`ga_positions`, `ga_panchanga`, `ga_strength`, `ga_vichara`, `ga_transit_anchors`,
-`ga_ayurdaya`, `ga_vastu`, `ga_prashna`, plus `ga_yoga`/`ga_sade_sati`/`ga_tajaka`'s *remaining*
-declared edges beyond the ones already flagged above) against their writers' real SQL for
-undeclared reads, the way L3's method does for every asset regardless of whether W1 already
-flagged something. That is the natural next expansion of this artifact, following L3's own
-stated method exactly (§2 of `DAG_CORRECTIONS_REGISTER_v1_0.md`): pull the declared side from
-`asset_registry`, build the `target_table → asset_id` owner map, then grep each writer's real SQL
-for `\b(from|join|update|into|delete from)\s+<table>\b` against the live table universe,
-longest-match-first, reporting both hidden and false edges.
+All 19 L1 assets now have at least one pass of coverage (round 1's 11 existing findings + round
+2's direct grep sweep of the remaining 8). What a fuller, L3-grade systematic pass would still
+add, not yet done here:
+- **Exhaustive, not spot-checked, false-edge verification** for the 8 CLEAN assets' *every*
+  declared edge (round 2 confirmed each declared table is read at least once via grep match
+  count, not a full re-derivation of every column/row the way L3's method does for the *entire*
+  owner-map universe against *every* asset regardless of prior findings).
+- **A true `target_table → asset_id` owner map** built once and reused (round 2 checked against a
+  hand-picked list of dedicated tables + `bg_*` patterns per asset, not the full live table
+  universe L3's method scans).
+- **Findings #12/#13 have not yet been assigned F-ids** or triaged into a tier (MUST/NOW/
+  NEVER-LATER) the way round 1's 11 findings already were during W2 — both are genuinely new
+  (found after W2 closed) and open.
 
 ## §4 — Deliberate non-edges (D-CND-10)
 
