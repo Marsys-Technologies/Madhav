@@ -8,8 +8,9 @@ session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
 last_updated: 2026-09-07 — 39/40 frozen (bg_yogas/bg_rules/bg_concordance froze via D-NATIVE-06); only
-  bg_cohort remains, held on Conductor's C12 carve-out. PR #2153 (issue #2122, from_moon_view repoint)
-  CLEAN and queued (`is:queued` confirmed) after 3 sequentially-fixed RED gates; awaiting merge.
+  bg_cohort remains, held on Conductor's C12 carve-out. PR #2153 (issue #2122) MERGED; migrations
+  705/706 confirmed live; found + filed a NEW deploy gap (#2169, distinct from #2159) and closed it
+  via manual force-deploy (run 34059983414, in progress) — production rollout not yet fully verified.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -395,3 +396,30 @@ a RED-fix (see heartbeat).
   since last check, but confirmed not stalled: Conductor's `#2161` (DEPLOY_SHA provenance guard fix
   for #2159, also queued) has CI genuinely `IN_PROGRESS` right now — the queue is processing its
   order normally, just hasn't reached #2153 yet. #1713 tail unchanged. Nothing else eligible.
+- 2026-09-07 — **PR #2153 MERGED (`c39345c7b`, confirmed on `main`). Production-rollout verification
+  found a real, NEW gap — investigated to root cause and remediated.** Migrations 705+706 confirmed
+  applied live via direct `psql` query against production (`_migrations_applied` rows present, exact
+  timestamps 19:52:17/18Z; `vidhi_primitives.from_moon_view` row content correct;
+  `asset_registry.integrity_check_sql` for `bg_vidhi_primitives` evaluates literally TRUE when
+  executed against live data). **But** the serving code itself was stale: `amjis-mcp`'s live Cloud
+  Run revision ran image `70dbe58b7cb7f54083dbef22adfef395ca62eeac`, confirmed via
+  `git merge-base --is-ancestor` to PREDATE my merge — despite PR CI green, the merge landing, and
+  multiple subsequent "Deploy to Cloud Run" workflow runs reporting `success`. Root-caused via the
+  actual job log (not assumed): `deploy.yml`'s "Gate & detect changed paths" step computes
+  `git diff --name-only HEAD~1 HEAD` (a SINGLE commit's diff) to decide whether to rebuild
+  sidecar/MCP/pipeline-job — under the fast-merge queue, a deploy run firing for a LATER commit whose
+  own single-commit diff doesn't touch `platform-mcp/` silently never rebuilds it, even though MY
+  commit (2 merges earlier) genuinely did. **Distinct root cause from `#2159`/`#2161`** (that's the
+  `migrate` job's `DEPLOY_SHA`/`workflow_run.head_sha` checkout race; this is the `changes` gate's
+  diff-base window) — filed as its own adjudication, **`#2169`**, rather than assumed-covered by
+  #2161. Did NOT patch `deploy.yml` myself (shared infra, same precedent as `#1960`/`#2159`) —
+  instead closed MY OWN instance of the gap using the workflow's EXISTING, documented
+  `workflow_dispatch` escape hatch (`force_all_services: true`, `ci_gate: require-ci-green` — the
+  safe default since main's CI already passed): run `34059983414`, dispatched, in progress as of this
+  heartbeat. Posted the finding + action to `#1713`. NEXT: verify run `34059983414` completes
+  successfully; once it does, re-check `amjis-mcp`'s live image SHA is now a descendant of `c39345c7b`
+  (or later) and re-confirm `from_moon_view`'s SERVED behavior (not just the DB row) is correct —
+  e.g. via a live MCP tool call exercising the primitive, not just the migration/DB check. Only then
+  is "from_moon_view correctly wired end-to-end in production" genuinely closed. Then IDLE-OK pending
+  Conductor's C12 carve-out for `bg_cohort` (and #2169's ruling, if any, though that's Conductor's
+  clock not L0's blocker).
