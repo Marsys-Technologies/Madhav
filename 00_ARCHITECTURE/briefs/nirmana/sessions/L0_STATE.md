@@ -1998,3 +1998,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Positions unchanged (5/13/62/112), but #1914's all 26 real check-runs
   now `completed` (22 success, 4 skipped-by-design) — should merge imminently. Shortened next
   wakeup to catch the expected drop. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1914 merged (`f45b29389`), positions dropped by 2
+  (3/11/60/110). `#1915` now at queue position 3 — very close. No DIRTY, no RED, no merges of my
+  own PRs yet. 30/40 frozen holds.
