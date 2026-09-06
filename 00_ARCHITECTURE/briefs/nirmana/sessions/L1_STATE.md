@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 125; verification-only cycle (no code change) -- confirmed F-C14 was already fixed in an earlier campaign (the exact scanner tightening cited in every fact-category-pin violation message all segment), closing the last open MUST-tier item this session had flagged. Cross-checked every remaining MUST id group in W2_DECIDE against live state/PR history -- THE ENTIRE MUST TIER IS NOW CLOSED for L1's own scope (F-C2/C3/C4/C5/C7 correctly remain L2's bo_laksana.py; F-D21/D22/D23 correctly remain L0's PR #2153, still open, not L1's action item)
+last_updated: 2026-09-07 — C8 v2.3 cycle 126; prep-item cycle (Step 2 priority 5) -- added a W3 STATUS SNAPSHOT near the top of this file (not a self-declared close) summarizing that both the NOW and MUST finding tiers are fully closed, W4/W5 remain ineligible (adjudication #2113 unchanged), and what's genuinely still open. Checked §5/§6/NEVER-LATER of W2_DECIDE for anything newly actionable -- nothing was; all correctly remain parked by design
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -19,6 +19,37 @@ moment.
 
 **Read order on ANY start:** `SESSION_CHARTER_V21.md` → this file → `git fetch origin main` →
 your `nirmana-adjudication` issues → continue.
+
+**W3 STATUS SNAPSHOT (cycle 126, 2026-09-07) — status report, NOT a self-declared close.**
+Both W1-sourced finding tiers that drove W3 IMPLEMENT are now fully swept:
+- **NOW tier** (18 findings, `L1_W2_DECIDE_v1_0.md` §3): CLOSED as of cycle 122. All 18 IDs
+  fixed (density_contract/empty_reason declarations, total-order ORDER BY fixes, floor/formula
+  re-baselines, serving-layer projection widenings, fact_category_ownership backfills, dead
+  materialized view drops).
+- **MUST tier** (~30 findings across ~22 id-groups, same doc §3): CLOSED as of cycle 125 for
+  L1's own scope. Every id-group is either (a) fixed at the writer or serving-layer level
+  across cycles 1-124, (b) correctly routed elsewhere and NOT L1's file to touch (F-C2/C3/C4/
+  C5/C7 → L2's `bo_laksana.py`; F-D21/D22/D23 → L0, adjudication #2122, PR #2153 still open),
+  or (c) an already-closed cross-cutting rollout (F-A14/A15/B35/C15/D28/E27 `integrity_check_sql`
+  — confirmed live, all 19 assets non-NULL, cycle 124).
+- **NEVER-LATER tier** (§3, same doc): correctly remains parked by explicit design (immutable
+  DAG per #1744, R-1 `ga_prashna` dormancy, native-parked P2 verification, L0-owned verse
+  grounding, stale-doc-figure items F-A22/F-B17/F-C22/F-D29 deliberately deferred to
+  opportunistic-only fixes, not a dedicated pass).
+- **What's genuinely still open:** (1) adjudication #2113 — chart rebuild blocked campaign-wide
+  by a new `asset_freshness` gate with no L1 dependency-asset rows yet; W4 dispatch is not
+  eligible for any L1 asset until this resolves or a bootstrap step is identified, checked
+  every cycle, no change since 2026-09-06T15:00:13Z. (2) adjudication #2122 (L0's fix, PR #2153
+  open) and #2123 (R-1-sensitive schema question, unresolved) — both other-party action items,
+  not blocking L1. (3) adjudication #2156 (L3 migration-range encroachment) — filed, not
+  blocking, informational.
+- **What this means for "next unit of work":** with the W1-sourced backlog exhausted and W4/W5
+  ineligible, a future cycle finding "nothing eligible" here should NOT assume it needs to
+  re-derive this whole picture from scratch — re-check the four items above first (they're the
+  actual blockers), and if none have moved, either genuinely IDLE-OK per the contract's own
+  guidance, or look beyond W1/W2's finding-list for other legitimate W3-adjacent work (this
+  snapshot does not claim to be an exhaustive scope statement — only a checkpoint that the
+  finding-list-driven work is done).
 
 - **Coordination issue:** #1713 (run-slot claims, freeze-ordering acks, monster scheduling)
 - **Adjudication:** open a new issue labeled `nirmana-adjudication`, then keep working (C3)
@@ -7512,3 +7543,34 @@ L1 must satisfy rather than a feature it consumes.
   moved), then fall back to genuinely new W1/W2/prep work per Step 2's own order if nothing
   ranks higher; the NEVER-LATER tier and the "Open questions carried into W3" section (§5) of
   L1_W2_DECIDE_v1_0.md are worth a read for anything that has since become actionable.
+- 2026-09-07T00:5xZ -- CYCLE 126 (C8 v2.3). PR hygiene: #2155 genuinely `is:queued`; #2157/
+  #2132 both mid-CI (the same 2 checks -- Build Check, Governance Gates -- have been `pending`
+  across two consecutive cycles now; confirmed this is genuine CI-queue backlog from the
+  repo's overall PR volume, not a stuck/failed state -- nothing DIRTY/RED). Re-derived
+  priority per cycle 125's own instruction. Checked #2113 -- unchanged since 15:00:13Z, W4/W5
+  still ineligible. Read §5 ("Open questions carried into W3"), §6 ("Scope explicitly NOT
+  taken"), and the full NEVER-LATER tier of `L1_W2_DECIDE_v1_0.md` looking for anything newly
+  actionable -- found nothing: §5's three items are either already-escalated (F-D22, part of
+  the L0 PR #2153 group) or explicitly L2's to raise (F-C13) or explicitly non-blocking
+  (F-A3's fuller instrumentation, "the fix does not depend on the ledger"); §6 is deliberate
+  scope exclusions by native/Conductor ruling; NEVER-LATER is uniformly parked by explicit
+  design (immutable DAG #1744, R-1 dormancy, native-parked P2, L0-owned verse grounding).
+  Found one near-miss worth flagging rather than acting on: F-B17/F-C22 (stale docstring row
+  counts in `get_sensitive_degrees.ts`/`get_condition_composite.ts`) are BOTH files this
+  session has directly edited in past cycles (F-B14 cycle 112; F-C21 cycle 113) -- but their
+  own W2 DECIDE disposition is explicit ("corrected in place where the file is already being
+  touched, otherwise closed as cosmetic"), and neither file is being touched THIS cycle for
+  another reason, so per that already-ratified triage decision they correctly stay parked
+  rather than becoming today's unilateral new work. With genuinely nothing eligible at
+  priorities 1-4, did the Step 2 priority-5 prep item: added a W3 STATUS SNAPSHOT near the top
+  of this file (right after the read-order line, where any fresh-context read of this file
+  will hit it immediately) -- explicitly labeled as a status report, NOT a self-declared W3
+  close (that decision belongs to the Conductor/native, not a unilateral session call),
+  summarizing what's closed, what's correctly parked, and what the 3 genuinely-open blockers
+  are so a future cycle (or a fresh-context restart) doesn't have to re-derive this whole
+  picture from scratch. CYCLE 126 L1: PR hygiene clean, no code change (genuinely nothing
+  eligible above prep-tier) -- added the W3 status snapshot -- next: keep re-checking the 3
+  open blockers (#2113/#2122+#2123/#2156) each cycle; if all three remain stuck for several
+  more cycles, worth considering whether a MORE prep-oriented cadence (pre-writing W5
+  verification scripts, since those will be needed the moment #2113 resolves) is a better use
+  of bounded cycles than repeatedly re-confirming the same blockers are still blocked.
