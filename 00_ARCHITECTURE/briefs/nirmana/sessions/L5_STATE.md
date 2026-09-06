@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:06Z (C8 v2.3 cycle 401) — **IDLE-OK, verified mi_kula's E-gate again.**
+  #2066 merged (L0: bg_dasha_systems D-L0-GG follow-up, real commit vs rolled-back
+  replay). Checked live: still 0 of 3 asset_frozen events for
+  bg_dasha_systems/bg_rules/bg_yogas — still a rebuild fix, not a freeze; E-gate remains
+  closed. #1826 down to just Governance Gates, no failures, armed. #1844 confirmed
+  `isInMergeQueue: true`. #1869 unchanged at 4 comments. 3 cycles since last push.
 - 2026-09-06T11:03Z (C8 v2.3 cycle 400) — **IDLE-OK.** #1826 unchanged (Unit Tests +
   Governance Gates, no failures, armed). #1844 confirmed `isInMergeQueue: true`. Deploy
   sha unchanged. #1869 unchanged at 4 comments. 2 cycles since last push.
