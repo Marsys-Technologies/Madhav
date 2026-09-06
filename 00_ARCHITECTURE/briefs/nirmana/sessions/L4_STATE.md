@@ -5930,3 +5930,19 @@ uncheckable, DB access down 293 cycles; nothing new) → next: watch `#1870` mer
 remaining positions continue advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~15:35Z` — L4 — **CYCLE 304 (v2.3) — third flat cycle (own PR positions
+advanced by 1 each via benign reshuffling); `#1870`'s merge-group still the same run,
+~8.8 min elapsed — within normal range, not stalled.**
+
+**PR hygiene:** all 8 own PRs unchanged/genuinely queued, positions all improved slightly.
+No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+15). E-gate still uncheckable, 294th consecutive cycle DB access down.
+
+CYCLE 304 L4: IDLE-OK (verified: PR hygiene clean, all 8 own PRs unchanged/queued and
+slightly advancing; `#1870`'s merge-group confirmed genuinely mid-CI at ~8.8 min via run
+list, not stalled; E-gate uncheckable, DB access down 294 cycles; nothing new) → next: watch
+`#1870` merge; watch remaining positions continue advancing; retry E-gate/dispatch dry-run
+once DB access returns; F1 remains deferred.
+
