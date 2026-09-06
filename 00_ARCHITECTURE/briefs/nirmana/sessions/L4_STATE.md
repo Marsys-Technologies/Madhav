@@ -8199,3 +8199,17 @@ CYCLE 431 L4: IDLE-OK on dispatch (no L4 asset yet open) but E-gate shows genuin
 progress — `ph_nimitta` canary now at 33 unfrozen ancestors (down from 35 two cycles ago);
 no new L4-relevant adjudications → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~16:01Z` — L4 — **CYCLE 432 (v2.3) — IDLE-OK. E-gate re-checked live,
+unchanged from last cycle — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta`
+still at 33.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** one new `main` commit (`#2118`, L1's own PR) confirmed not L4-relevant.
+No new adjudications name L4 (count unchanged at 17). No `NIRMANA_HOLD` file present.
+
+CYCLE 432 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged
+from last cycle; no new L4-relevant adjudications) → next: continue re-checking the E-gate
+each cycle; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code
+item.
