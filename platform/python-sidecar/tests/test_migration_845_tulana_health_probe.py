@@ -1,14 +1,15 @@
 """
-tests/test_migration_842_tulana_health_probe.py — L3 Kāla, F-L3-15 third
-slice: migration 842 populates `asset_registry.health_probe` for `ka_tulana`.
+tests/test_migration_845_tulana_health_probe.py — L3 Kāla, F-L3-15 third
+slice: migration 845 populates `asset_registry.health_probe` for `ka_tulana`.
 
-RENUMBERED 764→810→842 (across two cycles): 764 collided with L2's own
-760-779 range (`764_bo_cgm_paths_volume_formula.sql`, merged first); 810 was
-then independently claimed by L1's own already-merged 810_..._houcompstrength.sql
-— both caught by `scripts/ci/migration_number_guard.ts`'s E2 check. Fixed each
-time by renumbering upward (842 chosen over the guard's own 841 suggestion to
-avoid colliding with a sibling open PR, #2079, that claimed 841 in the same
-cycle) since this migration had never been applied anywhere.
+RENUMBERED THREE TIMES 764→810→842→845 (across three cycles): 764 collided
+with L2's own 760-779 range; 810 was independently claimed by L1's own
+already-merged 810_..._houcompstrength.sql; 842 was independently claimed by
+L1's own already-merged 842_..._bhava_bala_backfill.sql — all three caught
+by `scripts/ci/migration_number_guard.ts`'s E2 check. Fixed each time by
+renumbering upward, each time skipping the guard's own suggestion when a
+sibling open L3 PR had already claimed it in the same cycle, since this
+migration had never been applied anywhere.
 
 Corrects a scoping error made in this migration's own F-L3-15 predecessor
 (#2065's PR description, for `ka_muhurta_seva`): `ka_tulana` was described
@@ -41,13 +42,13 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )
 _MIGRATION_PATH = os.path.join(
-    _REPO_ROOT, "platform", "migrations", "842_nirmana_l3_w3_tulana_health_probe.sql"
+    _REPO_ROOT, "platform", "migrations", "845_nirmana_l3_w3_tulana_health_probe.sql"
 )
 
 
 def _read_migration() -> str:
     if not os.path.exists(_MIGRATION_PATH):
-        pytest.skip(f"migration 842 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
+        pytest.skip(f"migration 845 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
     with open(_MIGRATION_PATH, encoding="utf-8") as f:
         return f.read()
 
