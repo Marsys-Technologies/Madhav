@@ -2005,3 +2005,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No movement (positions still 3/11/60/110). New queue head #1916, ~4.6min
   into CI, normal — one more ahead of `#1915` still to clear. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read (positions still 3/11/60/110), queue head still #1916,
+  ~7min in_progress — normal. No DIRTY, no RED. 30/40 frozen holds.
