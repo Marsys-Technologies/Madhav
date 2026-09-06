@@ -4379,3 +4379,19 @@ clean, all 9 own PRs genuinely queued and advancing; #1770 re-checked, no L4 act
 E-gate uncheckable, DB access down 205 cycles; nothing new) → next: watch queue positions
 continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~08:15Z` — L4 — **CYCLE 216 (v2.3) — genuinely IDLE; first flat cycle, queue
+head (`#1948`, not mine) checked directly, confirmed `AWAITING_CHECKS` — actively
+processing.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued (positions 113/102/37/38/28/16/12/
+6/7, identical to cycle 215's post-merge snapshot). No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits since `#1944`. `nirmana-adjudication` label count
+dropped 16→15 (one closed elsewhere), no new issue names L4. E-gate still uncheckable, 206th
+consecutive cycle DB access down.
+
+CYCLE 216 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1948` actively processing; E-gate uncheckable, DB access down 206 cycles; nothing new) →
+next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
