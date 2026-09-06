@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 59; ga_structural F-A14 widened to 15/57 (#2031)
+last_updated: 2026-09-06 — C8 v2.3 cycle 60; ga_structural F-A14 widened to 19/57 (#2033); 1 DIRTY PR fixed (#1871)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -37,7 +37,8 @@ your `nirmana-adjudication` issues → continue.
   conjunction_within_orb, cycle 55), 784 (`ga_structural` aspect_tajik, cycle 56), 785
   (`ga_structural` graha_yoga_karaka_flag, cycle 57), 786 (`ga_structural`
   graha_dispositor_chain, cycle 58), 787 (`ga_structural` composite_dispositor_strength, cycle
-  59) used. 788–799 remain free.
+  59), 788 (`ga_structural` Group H avastha bundle — 4 categories, cycle 60) used. 789–799
+  remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2561,6 +2562,51 @@ CYCLE 59 L1: widened `ga_structural`'s F-A14 contract to 15/57 categories (PR #2
 787) — next: continue `ga_structural` widening (42 categories remain), or `ga_positions`
 re-dispatch once #1892 lands.
 
+## CYCLE 60 (C8 v2.3) — 1 real DIRTY PR found and fixed (#1871); ga_structural's F-A14 contract widened to 19/57 categories in ONE migration (PR #2033, migration 788) by bundling four tightly-coupled Group H avastha categories
+
+**PR hygiene:** filtered to L1's own 43 `codex/nirmana-l1-*` PRs. Found ONE genuine DIRTY PR
+(#1871, `ga_medical` build-fatal Sun gate F-E5) — real merge conflicts against current main in
+BOTH `nirmana-writer-digests.json` and `nirmana-analysis-layer-pins.json` (this PR touches
+`ga_medical_writer.py` directly, so the digest itself needed real regeneration, same shape as
+cycle 57's #1926). Rebased, took main's version of both conflicting derived files, regenerated
+the writer digest fresh, chained the L1-scoped pin regeneration on top per D-L1-64, ran the 4
+`ga_medical` F-E5 tests (all pass), force-pushed, re-armed auto-merge (had gone to `null`).
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — Group H Avastha bundle**
+(PR **#2033**, migration 788 — ninth in the 780-799 range).
+
+Investigated `graha_avastha_baladi` first (a clean, classical degree-based 5-state formula) and
+found its underlying degree-in-sign/sign-number data is never independently queryable outside
+chart_output — the only route to a full re-derivation would mean cross-referencing ga_vargas'
+D1 `chart_divisionals`, re-surfacing the tracked D1 dual-source disagreement as a false "new
+defect" exactly the failure mode this arc has learned to avoid. Read the full `_build_avastha_rows`
+function (Group H) and recognized FOUR categories — `graha_avastha_baladi`,
+`graha_avastha_jagrad`, `graha_avastha_deepta`, `graha_avastha_lifetime_exposure_summary` — are
+all emitted by the SAME loop, and that `graha_avastha_lifetime_exposure_summary`'s own
+`value_jsonb` literally re-quotes the other three's current values as a same-loop-iteration copy.
+Judged this a genuinely bounded, cohesive unit (not scope creep) and widened all four in one
+migration — the arc's first multi-category jump (15/57 → 19/57 in a single pass).
+
+Shipped seven conjuncts: three domain checks (fixing `deepta_state`'s true domain at 7 reachable
+values against the writer's own stale "9 states" comment, confirmed against all 135 live rows
+rather than trusted); three same-loop-iteration copy checks against
+`graha_avastha_lifetime_exposure_summary`; and one genuine cross-branch-logic re-derivation
+(`jagrad_state='jagrad'` iff `deepta_state IN ('deepta','svastha')`, hand-traced from both
+functions sharing the same first-branch dignity condition) — deliberately scoped as an iff only
+for the provably-iff case, not forced into a broader claim for the sushupta/swapna split (which
+doesn't map 1:1 to a single deepta value, since a debilitated graha can still hit an earlier
+house/retro branch in the deepta chain). All seven verified live clean (0/135 each) then
+individually mutation-tested via real transactional `UPDATE`+`ROLLBACK`.
+
+Carried the forty-two prior conjuncts (a)-(pp) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched by this migration. Full
+`platform/tests/unit/migrations/` suite: 248 passed / 91 skipped (47 files).
+`provenance_inventory --check`: clean.
+
+CYCLE 60 L1: fixed 1 DIRTY PR (#1871); widened `ga_structural`'s F-A14 contract to 19/57
+categories (PR #2033, migration 788) — next: continue `ga_structural` widening (38 categories
+remain), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2576,7 +2622,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2029 cycle 58 → #2031 cycle 59 — 15/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength; migration range 780-799, 788-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape: `graha_yoga_karaka_flag` (migration 785) and `graha_dispositor_chain` (migration 786). `composite_dispositor_strength` (migration 787) is a cross-category dependent of `graha_dispositor_chain` — its dignity_status source is never independently persisted (unlike `graha_dignity_per_varga`'s separate 5-way scheme, a genuine vocabulary mismatch per cycle 49), so a full re-derivation was judged disproportionate (same call as `kala_sarpa_per_varga`); shipped domain + bidirectional-correspondence + a 0.125-multiple cross-category re-derivation instead — the FIRST conjunct in this arc requiring explicit reasoning about the writer's own float-rounding precision (a length-scaled tolerance tied to `round(mean,4)` storage loss, derived by diagnosing 24 false-positive violations from an initially-too-tight tolerance rather than loosening it blindly). `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category — its full modulo formula WAS re-derived, proactively applying the D-L1-55 mod-sign-bug margin. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2031 cycle 59 → #2033 cycle 60 — **19/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary; migration range 780-799, 789-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape: `graha_yoga_karaka_flag` (migration 785) and `graha_dispositor_chain` (migration 786). `composite_dispositor_strength` (migration 787) is a cross-category dependent of `graha_dispositor_chain` — the FIRST conjunct in this arc requiring explicit reasoning about the writer's own float-rounding precision. **Migration 788 is the arc's first multi-category jump** — bundled FOUR tightly-coupled Group H avastha categories (baladi/jagrad/deepta/lifetime_exposure_summary, all emitted by the same loop, with lifetime_exposure_summary literally re-quoting the other three) into one migration, including a genuine cross-branch-logic iff re-derivation (jagrad='jagrad' iff deepta IN (deepta,svastha)) deliberately scoped to only the provably-iff case. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3371,6 +3417,21 @@ whole campaign.
   tolerance as length-scaled and tied to that specific, verified source of imprecision. First
   conjunct in this arc requiring explicit reasoning about the writer's own floating-point
   rounding rather than assuming byte-exact equality.
+
+- **D-L1-84** — C8 v2.3 cycle 60: PR hygiene found and fixed one real DIRTY PR, #1871
+  (`ga_medical` build-fatal Sun gate F-E5) — same shape as cycle 57's #1926 (real conflicts in
+  both derived digest/pin artifacts, this PR touches `ga_medical_writer.py` directly so the
+  digest itself needed real regeneration, not just take-and-move-on). Then widened
+  `ga_structural`'s F-A14 contract (migration 788, PR #2033), 15/57 → **19/57** in a single
+  migration — the arc's first multi-category jump, bundling FOUR tightly-coupled Group H
+  avastha categories (baladi/jagrad/deepta/lifetime_exposure_summary) that are all emitted by
+  the same loop and where one category's own value_jsonb literally re-quotes the other three.
+  Judged as a genuinely bounded, cohesive unit rather than scope creep — the deciding test was
+  whether the categories share a real structural dependency (they do: same loop, same-iteration
+  copy), not merely convenient adjacency. Shipped a genuine cross-branch-logic iff
+  re-derivation (jagrad='jagrad' iff deepta IN (deepta,svastha)) by hand-tracing both
+  functions' branch order, deliberately scoped to only the provably-iff relationship rather
+  than forcing a broader, false claim for the non-1:1 sushupta/swapna split.
 
 ## Held items
 
@@ -4335,3 +4396,28 @@ L1 must satisfy rather than a feature it consumes.
   provenance_inventory --check: clean. CYCLE 59 L1: widened ga_structural's F-A14 contract to
   15/57 categories (PR #2031, migration 787) -- next: continue ga_structural widening (42
   categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T08:0xZ -- CYCLE 60 (C8 v2.3). PR hygiene found 1 real DIRTY PR: #1871 (ga_medical
+  F-E5, conflicts in both nirmana-writer-digests.json and nirmana-analysis-layer-pins.json --
+  touches ga_medical_writer.py directly, same shape as cycle 57's #1926). Rebased onto main,
+  took main's version of both conflicting derived files, regenerated the writer digest fresh
+  then chained the L1 pin regen on top, ran 4 ga_medical F-E5 tests (pass), force-pushed,
+  re-armed auto-merge (had gone to null). Unit of work: investigated graha_avastha_baladi first,
+  found its degree/sign data unavailable outside chart_output without re-surfacing the tracked
+  D1 dual-source disagreement via ga_vargas' chart_divisionals; read the full
+  _build_avastha_rows function and recognized FOUR categories (baladi/jagrad/deepta/
+  lifetime_exposure_summary) are emitted by the same loop, with lifetime_exposure_summary's own
+  value_jsonb re-quoting the other three -- judged this a genuinely bounded, cohesive unit and
+  widened all four in ONE migration (PR #2033, migration 788), the arc's first multi-category
+  jump: ga_structural's F-A14 contract 15/57 -> 19/57. Shipped 3 domain checks (fixing deepta's
+  true 7-value domain against the writer's stale "9 states" comment), 3 same-loop-iteration
+  copy checks against lifetime_exposure_summary, and 1 genuine cross-branch-logic iff
+  re-derivation (jagrad='jagrad' iff deepta IN (deepta,svastha), hand-traced from both
+  functions' shared first-branch dignity condition, deliberately scoped to only the provably-iff
+  case rather than a broader false claim for the non-1:1 sushupta/swapna split). All seven
+  verified live clean (0/135 each) then individually mutation-tested via real transactional
+  UPDATE+ROLLBACK. Carried the 42 prior conjuncts forward verbatim, including the 3
+  already-tracked genuinely-red ones. No writer touched by this migration. Full
+  platform/tests/unit/migrations/ suite: 248 passed / 91 skipped (47 files).
+  provenance_inventory --check: clean. CYCLE 60 L1: fixed 1 DIRTY PR, widened ga_structural's
+  F-A14 contract to 19/57 categories (PR #2033, migration 788) -- next: continue ga_structural
+  widening (38 categories remain), or ga_positions re-dispatch once #1892 lands.
