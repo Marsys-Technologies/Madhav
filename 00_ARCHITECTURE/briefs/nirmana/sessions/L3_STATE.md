@@ -630,6 +630,13 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~43:0xZ — L3-W3 — IDLE-OK (verified): all 6 L3-owned PRs
+  healthy. `#2104` (the sidecar Docker-context fix) confirmed genuinely
+  progressing — checked its queue entry directly (`isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 2), not stuck, just still building. `#2096`
+  unchanged. Nothing new to act on. — blocked on: `#2104` merging; next
+  action: keep L3-only hygiene sweeps going, watch `#2104`/`#2096` each
+  cycle.
 - `2026-09-06T~42:0xZ — L3-W3 — PR hygiene: 2 of 6 L3-owned PRs went DIRTY
   (`#1929`/`#1903`) — #1929's rebase showed a large migration file + test
   "deleted" (matching the known rebase-target-staleness pattern, not
