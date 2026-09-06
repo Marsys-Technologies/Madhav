@@ -461,6 +461,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~03:2xZ — L3-W3 — ELEVENTH AND TWELFTH DIRTY-PR fixes this run, both
+  L3_STATE.md-only, both fixed in one cycle: #1924 (N1 sixth step,
+  `composeConcordanceVerdict`) and #1927 (F-CONC-5, `kala_now_get` density_contract).**
+  Both resolved via the established script (verified single occurrences of "N1 SIXTH
+  STEP" and the F-CONC-5 entry heading survived, no duplication). `engine_testimony.ts`
+  auto-merged cleanly on #1924 (19/19 tests pass, the fully self-contained final version);
+  `kala_now_get.ts`/its test auto-merged cleanly on #1927 (37/37 pass). Both `tsc --noEmit`
+  clean. Both force-pushed, both re-armed auto-merge, both confirmed `MERGEABLE`.
+  Twelve DIRTY-PR fixes total this run now — the L3_STATE.md-only sub-class (independent
+  of which writer/file a PR touches) now clearly outnumbers the `ka_sangam` generated-file
+  sub-class (7 vs 5), confirming it as the single most common recurring hygiene issue this
+  session, driven purely by this state file's own size and the volume of concurrently-
+  queued PRs each carrying a stale copy.
+  #1903 (F-CONC-6 prerequisite) still not merged. #1958/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~03:1xZ — L3-W3 — TENTH DIRTY-PR fix this run: #1921 (N1 fifth step,
   migration 677 O-10 authority profile) — the OTHER N1 verdict-wiring precondition, an
   L3_STATE.md-only conflict same family as #1905/#1917/#1919.** Resolved via the
