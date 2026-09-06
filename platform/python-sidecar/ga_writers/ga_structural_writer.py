@@ -6112,6 +6112,7 @@ def _build_convergence_count_per_varga_rows(
 
 def _build_karaka_bhava_concordance_per_varga_rows(
     varga_state: dict[str, Any],
+    lagna_sign_num: int,
     varga: str,
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
@@ -6119,16 +6120,15 @@ def _build_karaka_bhava_concordance_per_varga_rows(
     """Compare natural karaka vs bhava lord for each significance in this varga.
 
     For each significance in KARAKATVA_SIGNIFICANCES: look up the classical bhava
-    number, find that bhava's sign (whole-sign from varga lagna), find the sign lord,
-    compare to the natural karaka via the Parashari friendship table.
+    number, find that bhava's sign (whole-sign from D1 lagna, varga-independent per
+    §N.4 — F-A24 fix: `lagna_sign_num` is now threaded in from the caller's own
+    `chart_output`-derived value, the same source `_build_lord_relationship_rows`
+    (migration 811) already uses correctly, rather than read from `varga_state`
+    (which only ever carries a Lagna entry for D1)), find the sign lord, compare to
+    the natural karaka via the Parashari friendship table.
     """
     rows: list[dict[str, Any]] = []
     varga_prefix = f"{varga}_"
-
-    lagna_data = varga_state.get("Lagna") or varga_state.get("LAGNA")
-    lagna_sign_num = int(lagna_data.get("sign_num", 1)) if lagna_data else 1
-    if lagna_sign_num == 0:
-        lagna_sign_num = 1
 
     for signif in KARAKATVA_SIGNIFICANCES:
         bhava_num = SIGNIFICANCE_TO_BHAVA.get(signif, 1)
@@ -6180,6 +6180,13 @@ def _build_varga_aspect_rows(
     Each row carries varga + sign + ayanamsha + position — no unqualified rows.
     """
     rows: list[dict[str, Any]] = []
+    # D1's own ascendant, read directly from chart_output — the SAME source
+    # `_build_lord_relationship_rows` (migration 811) already uses correctly. This is
+    # varga-independent (§N.4 "structural approximation" for higher vargas) and must
+    # NEVER be re-derived from `varga_state`, which only carries a Lagna entry for D1
+    # (F-A24/F-A25: two prior per-varga builders tried reading it from `varga_state`
+    # instead and silently defaulted to Aries for every varga that lacked the key).
+    lagna_sign_num = int(chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM))
 
     for varga in ALL_30_VARGAS:
         if varga == "D1":
@@ -6221,12 +6228,8 @@ def _build_varga_aspect_rows(
         rows.extend(_build_sambandha_per_varga_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
-        # Compute lagna_sign_num for bhava web
-        _varga_lagna_sn = int(varga_state.get("Lagna", {}).get("sign_num", 1) if hasattr(varga_state.get("Lagna", {}), "get") else 1)
-        if _varga_lagna_sn == 0:
-            _varga_lagna_sn = 1
         rows.extend(_build_bhava_web_per_varga_rows(
-            varga_state, _varga_lagna_sn, varga,
+            varga_state, lagna_sign_num, varga,
             chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
         rows.extend(_build_net_argala_per_varga_rows(
@@ -6262,7 +6265,7 @@ def _build_varga_aspect_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
         rows.extend(_build_karaka_bhava_concordance_per_varga_rows(
-            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+            varga_state, lagna_sign_num, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
 
     return rows
