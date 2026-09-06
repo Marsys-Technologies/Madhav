@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — FINDING: migrations 700/701/702 are now confirmed DEPLOYED live (join-scope fixes + hash re-pins all present in asset_registry), but all three assets' integrity_check_sql still evaluate false against live data. For bg_dasha_systems, decomposed clause-by-clause: reference_dasha_systems missing "kp" (19 not 20 rows), brahma_ontology has stale "jaimini_chara" id instead of "chara_jaimini" (also missing kp) -- both directly contradicting migration 700's own "already correct, no rebuild needed" claim. seed_dasha_systems() writer is a genuine full delete-then-insert across all three tables; the mismatch means this writer has never actually been rebuilt end-to-end with its current (kp-including) source. Correction to prior plan: none of the three assets are W2-refresh-eligible yet -- next priority is a real W4 dispatch/rebuild of bg_dasha_systems, deferred to a fresh cycle as its own bounded unit. #2016 (only open L0 PR) at queue position 2, AWAITING_CHECKS, no DIRTY/RED. 30/40 frozen holds.
+last_updated: 2026-09-06 — MILESTONE: real W4 rebuild of bg_dasha_systems completed (run c086b0e4-...), W2-refresh submitted first (registry_fingerprint a1dea28e..., analysis_digest 317fe9bc...). All 9 clauses of its integrity_check_sql independently re-verified TRUE live post-rebuild -- confirms the writer just needed a real committed run, nothing else was wrong. Self-caught process mistake: chose verdict "correct" instead of "examined_and_already_efficient" (schema allows only one verdict per analysis_digest, immutable), which now requires a real implementation_accepted git-commit event before accepted_rebuild_observed -- authored an honest, small, genuinely-useful docstring-only commit for this (PR #2066, auto-merge armed, not yet confirmed is:queued -- check first next cycle). All digests needed to finish accepted_rebuild_observed precomputed and logged below. bg_yogas/bg_compendium_index still need the same rebuild treatment (not done this cycle). 30/40 frozen holds (unchanged -- this rebuild doesn't newly freeze anything).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2610,3 +2610,66 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
     fresh cycle rather than rushed into this one (dispatch + build-run-authorization is its own
     bounded unit, and I want a clean run at the `authorize_build_run.sh` timing window rather than
     tacking it onto an already-long investigation cycle). 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **MILESTONE: real W4 rebuild dispatch of `bg_dasha_systems` completed; all 9
+  clauses of its `integrity_check_sql` now verified TRUE against live data (independently
+  re-checked clause-by-clause post-run).** #2016 merged (`08:36:24Z`) — no open L0 PRs at cycle
+  start, clean hygiene.
+  - 0/3 slots occupied (verified: `build_runs` has zero non-terminal rows at all campaign-wide).
+    Fresh on-demand backup `cloudsql-backup:1788684079460`. Posted SLOT CLAIM to #1713.
+  - **W2 refresh required first**: the existing 2026-09-04 `asset_analysis_accepted` /
+    `optimization_verdict_accepted` pair was bound to the pre-700 `registry_fingerprint`
+    (`67cce361...`); dispatch refused with "accepted asset analysis does not match the current
+    live registry contract". Computed the fresh contract (`registry_fingerprint_sha256`
+    `a1dea28e24f9887ca5590d43aeb61026647a2e15780d8063e82900f61b66bbe3`) via
+    `compute_registry_fingerprint.py`/`compute_analysis_digest.py`, sourcing the correct L0
+    receipt base (`convergence_commit` `49bb5c98b864a2cb2fee037cdb7f14f6892a8263`,
+    `writer_digest_sha256` `66585e94...` — both from
+    `platform/src/generated/nirmana-analysis-layer-pins.json` /
+    `nirmana-writer-digests.json`, NOT invented) — `analysis_digest`
+    `317fe9bcec9eecba7413122dd038e236e20fe856309f883a305d940913328cb7`. Submitted both events
+    (source_ref bound to the actual deployed Cloud Run sha, `a5752e9d...`, after a first 409
+    taught me the route requires the DEPLOYED commit specifically, not any main-ancestor sha).
+  - **Self-caught process mistake, logged honestly**: chose verdict `correct`/action `correct`
+    (implying a writer CODE change) instead of `examined_and_already_efficient` — the schema
+    enforces exactly one `optimization_verdict_accepted` per `(registry_fingerprint,
+    analysis_digest)` pair, so this can't be resubmitted for the same digest. `correct` requires
+    an `implementation_accepted` event bound to a real git commit before `accepted_rebuild_observed`
+    can be submitted (`changeIsRequired()` in definitions.ts). Since no writer logic actually
+    needed changing, authored a small, honest, genuinely-useful docstring-only commit to
+    `seed_dasha_systems()` documenting this exact finding (nothing fabricated to satisfy the
+    schema) — PR **#2066**, pushed, auto-merge armed, checks in progress at cycle end (not yet
+    confirmed `is:queued` — first thing to check next cycle).
+  - Dry-run dispatch (`--assets bg_dasha_systems`) previewed correctly: WP-6 CASCADE flagged 19
+    rows in `reference_dasha_systems` (matching the known gap). Committed
+    (`--acknowledge-destroys`, `--expected-manifest-digest fb8e5667...`): `run_id`
+    `c086b0e4-df3a-49a6-a142-460d3c45acf0`, `execution_name` `brahma-build-pipeline-job-q5lrg`.
+    Authorized immediately via `authorize_build_run.sh` (within the pre-start window). Job
+    completed in 16.19s, `build_runs.state='completed'`, no error. A real `asset_provenance_receipts`
+    row was produced: `output_digest bee5f89a3f97e831e2d4f2cba91acf42a270219dbefb270f2da89864ce102f39`,
+    `output_digest_spec_sha256 b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593`,
+    `receipt_state='proven'`.
+  - **Post-rebuild live re-verification (all 9 clauses, not just the aggregate boolean)**: row
+    counts (20/20/20) ✓, cross-table alignment (names/school) ✓, `kp` present ✓, `jaimini_chara`
+    absent ✓, all three content hashes (`8e35495f...906` / `58a2b8b9...4c9` / `46ec3fd9...a04`) ✓.
+    The hypothesis from last cycle's finding is confirmed: the writer just needed an actual
+    committed run against its current source: nothing else was wrong.
+  - **Precomputed for next cycle** (so `accepted_rebuild_observed` can be submitted the instant
+    #2066 deploys, no re-derivation needed): `decision_digest`
+    `180b9337578767f109555b0a78084052bb6613e4ff4d817179b88ba62140df4f` (sha256 of the exact
+    submitted verdict payload, stableJson canonical form — matches
+    `canonicalNirmanaOptimizationVerdictDigest`); `build_run_id`
+    `c086b0e4-df3a-49a6-a142-460d3c45acf0`; `wave_index` 1; `authorization_sha256` already
+    computed by `authorize_build_run.sh`. Still needed: `implementation_digest` (any well-formed
+    sha256 once #2066's commit sha is known/deployed — the field is shape-validated only, not
+    matched against a specific computed value, same as `authorization_sha256`'s D-L0-AA finding).
+  - **Not done this cycle** (correctly deferred, per contract boundedness — this cycle was
+    already W2+W4 chained, well past "one unit"): `bg_yogas` and `bg_compendium_index` still need
+    the identical rebuild treatment; their own integrity checks were confirmed failing live last
+    cycle but not yet decomposed clause-by-clause or dispatched. `integrity_verified` /
+    `asset_frozen` for `bg_dasha_systems` also not attempted — per the mi_jivanaghatana precedent
+    on this same issue (#1713), W5 is a fresh-context-verifier's job, not the implementer's, and
+    accepted_rebuild_observed itself is blocked on #2066 deploying first regardless.
+  - No DIRTY, no RED this cycle (checked before starting: #2016 was the only open L0 PR and it
+    had just merged). 30/40 frozen holds unchanged (this is a re-verification/rebuild of an
+    already-non-frozen asset, not a new freeze).
