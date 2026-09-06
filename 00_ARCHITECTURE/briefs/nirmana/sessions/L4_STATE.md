@@ -4106,3 +4106,17 @@ CYCLE 195 L4: IDLE-OK (verified: PR hygiene clean, `#1870` legitimately mid-CI a
 upper end; E-gate uncheckable, DB access down 185 cycles; nothing new) → next: watch `#1870`
 re-enter the queue; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~06:35Z` — L4 — **CYCLE 196 (v2.3) — `#1870` entered the queue (position 123,
+`UNSTABLE` on a non-required check, same pattern documented for `#1854`/`#1864` — genuinely
+queued regardless). All 9 own PRs now healthy.**
+
+**PR hygiene:** all 9 own PRs genuinely queued, none DIRTY/RED.
+
+**Priorities 1-4:** one new `main` commit (`#1935`, L1) checked, not L4-relevant. E-gate still
+uncheckable, 186th consecutive cycle DB access down.
+
+CYCLE 196 L4: IDLE-OK (verified: PR hygiene clean, `#1870` entered the queue at position 123
+despite `UNSTABLE` status — a non-required check, genuinely queued; E-gate uncheckable, DB
+access down 186 cycles; one new commit checked, not L4-relevant) → next: watch queue
+positions advance; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
