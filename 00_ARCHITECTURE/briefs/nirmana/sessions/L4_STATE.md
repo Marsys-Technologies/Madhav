@@ -5093,3 +5093,20 @@ unchanged/queued; E-gate uncheckable, DB access down 243 cycles; nothing new) �
 `#1849`/`#1845` go green and re-enter the queue; watch all 9 positions continue advancing;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~11:25Z` — L4 — **CYCLE 254 (v2.3) — `#1845` confirmed re-entered the merge
+queue (position 121). `#1849` still `BLOCKED` on the same `Governance Gates` job (third
+consecutive cycle), now ~10.5 min elapsed — still within normal range, not yet at the
+established upper bound.**
+
+**PR hygiene:** remaining 7 own PRs unchanged/genuinely queued. `#1845` genuinely `QUEUED`.
+`#1849` re-swept via direct job inspection, confirmed genuinely still in-progress, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 244th consecutive cycle DB access down.
+
+CYCLE 254 L4: IDLE-OK (verified: PR hygiene clean — `#1845` confirmed re-queued, `#1849`
+legitimately mid-CI at ~10.5 min (normal range) via direct job inspection, remaining 7
+unchanged/queued; E-gate uncheckable, DB access down 244 cycles; nothing new) → next: confirm
+`#1849` goes green and re-enters the queue; watch all 9 positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
