@@ -2518,3 +2518,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** `#2004`'s own queue-entry checks now `in_progress` (~3.4min, no
   failures) — its migration is actually being tested in the merge queue's batch evaluation right
   now. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; `#2004`'s queue checks still `in_progress` (~5.9min, no
+  failures). No DIRTY, no RED. 30/40 frozen holds.
