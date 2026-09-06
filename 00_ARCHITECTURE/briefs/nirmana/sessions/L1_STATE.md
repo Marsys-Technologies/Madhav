@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 138; before claiming the #1713 slot, verified the actual scope of the #2180-ruled coordinated dispatch -- it's much bigger than 5 assets. ga_yoga's own declared deps (ga_structural, ga_dashas) also lack asset_freshness rows, AND the frozen manifest assigns every asset a fixed wave_index that can't be mixed in one dispatch call -- ga_yoga is wave 4, meaning waves 0-3 (15 of L1's 19 assets) need fresh dispatches first, in strict sequence. Posted the corrected scope to #2180; did not claim the slot or dispatch anything this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 139; no reply yet on #2180. While re-tracing why PR #1898 only fixed ga_positions' fact_id, found the ORIGINAL ask (issue #1747) named "ga_positions_writer.py and siblings" -- confirmed live that 7 more L1 writers (ga_ayurdaya, ga_panchanga, ga_sensitive, ga_sensitive_degree, ga_sade_sati, ga_strength, ga_vargas, ga_structural) still bake build_id into their own fact_id, the exact same D-CND-29-class defect, already Conductor-pre-authorized to fix but never done beyond ga_positions. Posted as a scoping input to #2180 (not proposing to fix now -- would compound an already-large rebuild scope)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8049,3 +8049,29 @@ record — they are the only entries in this table with a real wall-clock behind
   cycle 133 -- next: watch #2180 for confirmation of the revised (much larger) scope, or a
   correction if there's a way to satisfy the freshness check without a full-layer rebuild that
   this session hasn't found.
+- 2026-09-06T2xZ -- CYCLE 139 (C8 v2.3). PR hygiene: #2183 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180: no
+  reply yet since cycle 138's scope-correction post. Rather than a bare re-check, dug into a
+  loose thread from cycle 133's own investigation -- why did PR #1898 fix ONLY
+  `ga_positions_writer.py`'s `fact_id` derivation, when the underlying "a fact's identity should
+  exclude `build_id`" principle applies equally to any writer using the same pattern? Traced PR
+  #1898's own title reference (issue #1747) back to its full comment history, not just its body
+  (the body is about an UNRELATED bug, the `ga_vargas` 5h30m longitude defect -- the fact_id/
+  build_id topic was tacked onto the same thread by a later Conductor pass). **Found the
+  ORIGINAL ask (2026-09-05T06:08Z) explicitly said "from `ga_positions_writer.py:92-95` AND
+  SIBLINGS"** -- confirmed live that 7 more L1 writers (`ga_ayurdaya`, `ga_panchanga`,
+  `ga_sensitive`, `ga_sensitive_degree`, `ga_sade_sati`, `ga_strength`, `ga_vargas`,
+  `ga_structural`) still bake `build_id` into their own `fact_id`, the exact same pattern --
+  confirmed this is D-CND-29's own named recurring-defect class (4th+ instance), and that the
+  Conductor's own follow-up comment (2026-09-05T16:44Z) already pre-authorized fixing it ("if
+  it's a defect: fix it in your own migration range, same division of labor as every prior
+  instance") -- it just never got done beyond `ga_positions`. **Decided NOT to fix these 7
+  writers this cycle** -- doing so would compound the already-large, already-uncertain
+  coordinated-rebuild scope with 7 more potential orphan-risk surfaces, each needing its own
+  downstream-reference diligence check the way `ga_positions` got. Posted the finding to #2180
+  as a scoping input for whoever plans the eventual rebuild (leave as-is for now vs. fix
+  alongside), not as new work to do immediately. CYCLE 139 L1: PR hygiene clean, surfaced a
+  second genuinely campaign-relevant, Conductor-already-authorized-but-never-executed defect
+  class while investigating why the original fix was incomplete -- next: keep watching #2180;
+  if it stays quiet, the 7-writer fact_id question and the wave-0-3 rebuild scope both remain
+  open decisions worth a nudge if several more cycles pass with no reply.
