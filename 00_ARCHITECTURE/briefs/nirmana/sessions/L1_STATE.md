@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 134; kept L1_W6_CLOSE_REPORT_v1_0.md accurate (PR #2179) -- rewrote §0/§3.5/§5 to reflect the #2113 re-diagnosis (ga_positions immune to the original asset_freshness framing; real open question is now the ga_yoga orphan-risk coordinated-rebuild question). No reply yet on #2113 as of this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 135; L2 replied on #2113 confirming + extending the fact_id-orphan-risk finding (bodha_msr_signals 1348 signals, bodha_cgm_edges 45 edges, same no-FK array pattern as L1's ga_yoga_firings) and stated this needs a Conductor/native ruling, not a unilateral layer call. Filed a dedicated adjudication issue #2180 for clean cross-layer triage (distinct from #2113's original asset_freshness topic), cross-linked both issues
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7928,3 +7928,24 @@ record — they are the only entries in this table with a real wall-clock behind
   whether the cost-ledger/full-disposition-table prep items (still the two remaining
   charter-named options) are a better use of a cycle than a bare re-check with nothing new to
   report.
+- 2026-09-06T2xZ -- CYCLE 135 (C8 v2.3). PR hygiene: #2179/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Re-checked #2113: **a
+  genuine, substantive reply had landed** -- L2 independently checked the two `bodha_*` candidate
+  columns cycle 133's abandoned `cascade_check.sql` scan had surfaced (never got to check them
+  myself), and confirmed the SAME no-FK orphan-risk pattern extends further:
+  `bodha_msr_signals.constituent_facts_array` (1074 distinct fact_ids, 1348 signals) and
+  `bodha_cgm_edges.constituent_fact_ids_array` (45 fact_ids, 45 edges) both resolve into
+  `ga_positions`' own categories, same as L1's own `ga_yoga_firings` finding. L2 explicitly
+  stated this needs a Conductor/native ruling, not something either layer can decide
+  unilaterally. Given the growing cross-layer scope and stakes, decided this deserved its own
+  clearly-labeled tracking issue rather than staying buried as a sub-thread on #2113 (which was
+  originally about a DIFFERENT topic, the asset_freshness gate) -- filed **#2180**
+  (`nirmana-adjudication`), summarizing both L1's and L2's findings in one place with an explicit
+  three-option framing (coordinated multi-layer rebuild wave / a documented campaign-wide
+  fact_id-migration step / something neither layer has identified) and a direct request for a
+  ruling on ownership + sequencing. Cross-linked #2113 and #2180 so neither thread loses context.
+  CYCLE 135 L1: PR hygiene clean, escalated a genuinely cross-layer, now-multi-party-confirmed
+  finding to a properly-scoped adjudication issue rather than letting it keep accumulating in the
+  wrong thread -- next: watch #2180 for a ruling; #2113's own narrower asset_freshness question
+  (whether OTHER L1 assets besides `ga_positions` need a bootstrap step) remains separately open
+  and unchanged.
