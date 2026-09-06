@@ -73,6 +73,31 @@ _GRAHA_SANCARA_SPEC = {
     "forensic_expected_moon_sign": "Aquarius",
 }
 
+_TULANA_SPEC = {
+    "probe_type": "tulana_ranking_forensic",
+    "forensic_reference_date": "2026-01-01",
+    "forensic_window_a": {
+        "window_id": "test-window-a",
+        "mode": "A",
+        "peak_date": "2026-01-01",
+        "convergence_score": 0.8,
+        "confidence_label": "high",
+        "rarity_years": 15.0,
+    },
+    "forensic_window_b": {
+        "window_id": "test-window-b",
+        "mode": "A",
+        "peak_date": "2026-06-01",
+        "convergence_score": 0.5,
+        "confidence_label": "moderate",
+        "rarity_years": 5.0,
+    },
+    "forensic_expected_composite_a": 0.795,
+    "forensic_expected_composite_b": 0.4234,
+    "forensic_expected_winner_window_id": "test-window-a",
+    "forensic_expected_decisive_factor": "proximity_factor",
+}
+
 _EPHEMERIS_CORPUS_FILES = tuple(_EPHEMERIS_SPEC["ephemeris_file_sha256"])
 _EPHEMERIS_CORPUS_PATH = pathlib.Path(os.environ.get("SWE_EPHE_PATH", "/app/ephe"))
 _HAS_PINNED_EPHEMERIS_CORPUS = all(
@@ -87,6 +112,8 @@ def _probe(kind: str) -> dict:
         spec = _EPHEMERIS_SPEC
     elif kind == "graha_sancara_forensic":
         spec = _GRAHA_SANCARA_SPEC
+    elif kind == "tulana_ranking_forensic":
+        spec = _TULANA_SPEC
     else:
         spec = {"probe_type": kind}
     return sp.run_health_probe("bg_x", spec)
@@ -340,3 +367,81 @@ def test_add_check_makes_a_silent_false_structurally_impossible():
     sp._add_check(checks, failures, "y", True)
     assert len(failures) == 1 and len(checks) == 2
     assert sp._aggregate(checks, failures)["status"] == "degraded"
+
+
+# ── ka_tulana probe (NIRMĀṆA L3-W3, F-L3-15 third slice) ─────────────────────
+
+def test_tulana_probe_returns_green():
+    res = _probe("tulana_ranking_forensic")
+    assert res["status"] == "GREEN", (
+        f"got {res['status']}: {res['message']}"
+    )
+
+
+def test_tulana_probe_fails_closed_on_missing_registry_contract_fields():
+    res = sp.run_health_probe("ka_tulana", {"probe_type": "tulana_ranking_forensic"})
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_tulana_probe_fails_on_wrong_expected_composite():
+    """CAN-FAIL proof: a wrong pinned composite score must not be swallowed."""
+    wrong = dict(_TULANA_SPEC, forensic_expected_composite_a=0.5)
+    res = sp.run_health_probe("ka_tulana", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_composite_and_rank_order")["passed"] is False
+
+
+def test_tulana_probe_fails_on_wrong_expected_winner():
+    """CAN-FAIL proof: window-b is a valid window_id (passes config
+    validation) but is not the real winner — must fail at the verdict check,
+    not be silently accepted."""
+    wrong = dict(_TULANA_SPEC, forensic_expected_winner_window_id="test-window-b")
+    res = sp.run_health_probe("ka_tulana", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "probe_config_valid")["passed"] is True
+    assert _check(res, "forensic_compare_verdict")["passed"] is False
+
+
+def test_tulana_probe_fails_on_wrong_expected_decisive_factor():
+    """CAN-FAIL proof: compare()'s decisive_factor is independently checked
+    from rank_windows()'s composite scores — a wrong pin here must not be
+    swallowed even when the composite/rank-order check above passes."""
+    wrong = dict(_TULANA_SPEC, forensic_expected_decisive_factor="rarity_years")
+    res = sp.run_health_probe("ka_tulana", wrong)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_composite_and_rank_order")["passed"] is True
+    assert _check(res, "forensic_compare_verdict")["passed"] is False
+
+
+def test_tulana_probe_rejects_a_malformed_window():
+    wrong = dict(_TULANA_SPEC)
+    wrong["forensic_window_a"] = {"window_id": "test-window-a"}  # missing fields
+    res = sp.run_health_probe("ka_tulana", wrong)
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
+
+
+def test_tulana_probe_detects_a_broken_composite_formula(monkeypatch):
+    """The 'un-floor' contract for this probe: if the I-11 weighted-sum
+    formula ever regressed to an unweighted average (or any other wrong
+    formula), the pinned composite scores would stop matching — this proves
+    the check actually re-derives the math rather than trusting whatever
+    rank_windows() returns."""
+    import services.ka_tulana.ranker as ranker_module
+
+    def broken_composite(w, reference_date):
+        # Unweighted average instead of the real I-11 weighted sum.
+        fb = ranker_module._composite(w, reference_date)
+        n = 4
+        avg = (fb.convergence_score + fb.rarity_norm + fb.confidence_score + fb.proximity_factor) / n
+        return ranker_module.FactorBreakdown(
+            convergence_score=fb.convergence_score, rarity_norm=fb.rarity_norm,
+            confidence_score=fb.confidence_score, proximity_factor=fb.proximity_factor,
+            composite=round(avg, 4),
+        )
+
+    monkeypatch.setattr(ranker_module, "_composite", broken_composite)
+    res = sp.run_health_probe("ka_tulana", _TULANA_SPEC)
+    assert res["status"] != "GREEN"
+    assert _check(res, "forensic_composite_and_rank_order")["passed"] is False

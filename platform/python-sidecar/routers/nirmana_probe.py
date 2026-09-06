@@ -21,6 +21,7 @@ _ASSET_PROBE_TYPES = {
     "bg_panchanga": "panchanga_engine",
     "bg_ephemeris_engine": "ephemeris_engine",
     "ka_graha_sancara": "graha_sancara_forensic",
+    "ka_tulana": "tulana_ranking_forensic",
 }
 
 
