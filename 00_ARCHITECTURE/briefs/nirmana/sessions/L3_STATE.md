@@ -493,6 +493,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~120:0xZ — L3-W4 — IDLE-OK (verified): `#2174` advanced to
+  position 2, still genuinely queued, healthy (`UNKNOWN` mergeability is
+  normal mid-queue async lag, not a defect). One new unrelated L5 merge,
+  no L3 overlap; no new L3 E-gate opening. — blocked on: `#2174` finishing;
+  next action: same.
 - `2026-09-06T~119:0xZ — L3-W4 — IDLE-OK (verified): `#2174` still genuinely
   `isInMergeQueue: true` (position 3, `CLEAN`), healthy. No new merges, no
   new bounded work. — blocked on: `#2174` finishing; next action: same.
