@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 136; Conductor RULED on #2180 (coordinated 5-asset wave: ga_positions+ga_yoga+bo_laksana+bo_cgm_paths+bo_cgm_motifs) and flagged a real separate defect (ga_yoga.depends_on missing ga_positions). Did NOT edit depends_on (D-CND-09 immutable) -- published L1_DEPENDS_ON_AUDIT_v1_0.md (PR #2183) consolidating 12 confirmed DAG findings (11 from #1744 + this new one), filling L1's own outstanding row in DAG_CORRECTIONS_REGISTER_v1_0.md
+last_updated: 2026-09-07 — C8 v2.3 cycle 137; L2 confirmed readiness on #2180, deferring the #1713 slot claim to L1 finishing ga_positions' delta re-review first. Did exactly that: resubmitted asset_analysis_accepted + optimization_verdict_accepted (correct/correctness_change, via nrec --as executor, both HTTP 201), then re-ran the dry-run dispatch that previously failed -- it now passes clean (manifest_digest 244ad8bd..., WP-6 blast radius = known 270,471-row in-layer cascade). ga_positions' own prerequisite for the coordinated 5-asset wave is DONE. Did not claim the slot or --commit this cycle -- that's the actual coordinated dispatch, its own next step
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7986,3 +7986,38 @@ record — they are the only entries in this table with a real wall-clock behind
   cycle(s) rather than being rushed alongside this cycle's other work; also worth reconsidering
   whether L1's OWN remaining ~11 not-yet-audited assets are worth a full systematic grep pass
   (matching L3's method exactly) as a future prep item.
+- 2026-09-06T2xZ -- CYCLE 137 (C8 v2.3). PR hygiene: #2183/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180 for
+  movement: **L2 replied confirming readiness** (`bo_laksana`/`bo_cgm_paths`/`bo_cgm_motifs` have
+  no independent blocker, their writers just re-run fresh) and explicitly deferred the #1713 slot
+  claim to whichever L1 session finishes `ga_positions`' delta re-review first -- correctly
+  refusing to claim it themselves ahead of that, per the ruling's own "don't split into
+  uncoordinated dispatches" framing. Did exactly that this cycle. Re-verified my cycle-133
+  computed values were STILL correct before trusting them (re-ran the same throwaway digest
+  script fresh against the live DB -- identical output, confirming the layer's
+  `convergence_commit`/registry contract for `ga_positions` hadn't moved since). Found the
+  DEPLOYED commit had itself moved since cycle 133 (`gcloud run services describe amjis-web`
+  now reports `cbd87d2c...`, not the `6964b553...` used before) -- checked it was a genuine
+  ancestor (deploy moved forward, not sideways) before using it, and confirmed the two relevant
+  generated files (`nirmana-writer-digests.json`, `nirmana-analysis-layer-pins.json`) are
+  byte-identical across that range, so the computed hashes themselves needed no recomputation,
+  only the `source_ref` needed updating. Constructed both evidence payloads (`asset_
+  analysis_accepted`, `optimization_verdict_accepted` with `verdict: correct` /
+  `output_contract: correctness_change`, the summary explicitly noting this submission is a
+  prerequisite for the #2180-ruled coordinated wave, not authorization to dispatch alone),
+  dry-ran both through `nrec --as executor --dry-run` first to confirm identity/route before
+  actually sending, then submitted both for real -- both HTTP 201. **Re-ran the exact dry-run
+  dispatch that failed at cycle 132/133 with "accepted asset analysis does not match the current
+  live registry contract" -- it now passes clean**, returning a real dry-run manifest
+  (`manifest_digest: 244ad8bd...`, `committed: false`, WP-6 blast radius correctly reported as
+  the known 270,471-row in-layer `chart_fact_identity` cascade, matching the original 2026-09-05
+  slot-claim's own C13 statement). Posted the milestone to #2180. Did NOT claim the #1713 slot or
+  attempt `--commit` this cycle -- the actual coordinated 5-asset dispatch (spans L1+L2, needs a
+  fresh backup snapshot, `--acknowledge-destroys` for the blast radius, careful monitoring across
+  two layers) is a bigger, higher-stakes action that deserves its own dedicated cycle rather than
+  being rushed onto the end of an already-substantial one. CYCLE 137 L1: PR hygiene clean,
+  **`ga_positions`' own prerequisite for the coordinated rebuild is genuinely done and verified**
+  -- next: claim the #1713 run slot naming all five assets (`ga_positions`, `ga_yoga`,
+  `bo_laksana`, `bo_cgm_paths`, `bo_cgm_motifs`), take a fresh backup, and execute the actual
+  coordinated dispatch -- this is now the single highest-priority piece of real work outstanding,
+  should be the very next cycle's focus if slot/backup logistics allow.
