@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:51Z (C8 v2.3 cycle 200) — **IDLE-OK, still withholding push/rebase (4th
+  cycle).** #1826's `Governance Gates` job checked at STEP level (not just wall-clock) to
+  confirm real progress, not staleness: 12/15 steps completed successfully, currently on
+  `pytest — pyjhora_adapter + pipeline`, 2 steps left after. No failures anywhere. #1844
+  confirmed `isInMergeQueue: true`. Queue: #1861=4 (was 5, very close now), #1844=59 (was 62),
+  #1901=85 (was 88). #1869 unchanged at 3 comments; #1856 still OPEN.
 - 2026-09-06T00:49Z (C8 v2.3 cycle 199) — **IDLE-OK, still withholding push/rebase (3rd
   cycle).** #1826 down to ONE remaining check — `Governance Gates`, ~7 min in, no failures —
   everything else green. origin/main advanced one commit (#1916, unrelated bo_upaya migration)
