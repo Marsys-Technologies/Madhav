@@ -305,6 +305,10 @@ a RED-fix (see heartbeat).
   DB Integration Tests). Only 2 checks left genuinely running (`Governance Gates`, `Build Check` —
   confirmed via `gh run view` job `startedAt`/`status: in_progress`, not stalled), everything else
   green or benign `skipping`. Not actionable yet. #1713 tail unchanged.
+- 2026-09-07 — **IDLE-OK (verified).** Same 2 checks (`Governance Gates`, `Build Check`) still
+  `in_progress`, same `startedAt` (19:11:58Z) — ~10min elapsed now, plausible not stalled given this
+  pipeline's typical runtimes (Unit Tests alone took ~7min earlier this PR). #1713's only new comment
+  is L5's own `mi_kula` slot claim — not L0's concern. Nothing actionable.
 - 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
   and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
   (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
