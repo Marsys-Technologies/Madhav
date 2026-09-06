@@ -628,7 +628,7 @@ your layer close.
   step-level re-investigation needed for this exact concern — it's now
   answered with evidence, not just repeated faith.
 - `2026-09-06T~126:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s last check,
-  same run, ~9.5min, checked step-level detail directly (`gh run view
+  same run, ~9.5min, checked step-level detail directly (`gh run view`
   --job`) — still on the same consistently-slow `pytest` step, genuine
   progress not a stall, matches every prior instance of this step this
   session. 0 failures. No new merges, no new bounded work. — blocked on:
