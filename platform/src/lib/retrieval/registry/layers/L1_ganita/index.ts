@@ -15,6 +15,9 @@ import { getDispositorsCapability }      from './get_dispositors'
 import { getSadeSatiCapability }         from './get_sade_sati'
 import { getPanchangaCapability }        from './get_panchanga'
 import { getSensitivePointsCapability }  from './get_sensitive_points'
+// F-B18/F-B19: ga_nakshatra had no dedicated serving face at all (ganita_nakshatra_get
+// never existed) — closes the gap.
+import { getNakshatraCapability }        from './get_nakshatra'
 import { getKarakasCapability }          from './get_karakas'
 import { getDignityCapability }          from './get_dignity'
 import { getAvasthsCapability }          from './get_avasthas'
@@ -69,6 +72,7 @@ registerCapability(getDispositorsCapability)
 registerCapability(getSadeSatiCapability)
 registerCapability(getPanchangaCapability)
 registerCapability(getSensitivePointsCapability)
+registerCapability(getNakshatraCapability)
 registerCapability(getKarakasCapability)
 registerCapability(getDignityCapability)
 registerCapability(getAvasthsCapability)
