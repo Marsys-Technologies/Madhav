@@ -489,6 +489,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~86:0xZ — L3-W4 — IDLE-OK (verified): queue progressed —
+  `#2070` now position 1 (`AWAITING_CHECKS`), `#2065` position 2
+  (`UNMERGEABLE`, still the not-yet-tried placeholder since position 1
+  hasn't finished its own merge-group build). `#2079` was 18 commits
+  behind — rebased clean, no conflicts, pins/digests/migration-guard all
+  re-verified clean. Zero failures anywhere. `#2065` still hasn't merged.
+  `egate.sql` unchanged. — blocked on: `#2065` merging; next action: once
+  it lands, `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path
+  item — route any verifier-role submissions through a fresh subagent per
+  D-CND-35.
 - `2026-09-06T~85:0xZ — L3-W4 — IDLE-OK (verified): `#2065` read
   `UNMERGEABLE` in the queue at position 3 — checked directly rather than
   assume a new collision: `#2070` (position 2) is genuinely `AWAITING_
