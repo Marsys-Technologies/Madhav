@@ -3492,3 +3492,17 @@ uncheckable, DB access down 141 cycles; one new adjudication checked, not L4-rel
 next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~02:55Z` — L4 — **CYCLE 152 (v2.3) — genuinely IDLE; queue head (`#1912`, not
+mine) checked directly given 2 flat cycles, confirmed actively processing.**
+
+**PR hygiene:** all 10 own PRs unchanged/genuinely queued for a second cycle. `mergeQueue` head
+`#1912` is `AWAITING_CHECKS` — actively processing.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 142nd consecutive cycle DB access down.
+
+CYCLE 152 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queued; queue head
+actively processing; E-gate uncheckable, DB access down 142 cycles; nothing new) → next: watch
+queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
+remains deferred.
+
