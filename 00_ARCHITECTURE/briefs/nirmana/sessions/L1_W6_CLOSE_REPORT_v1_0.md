@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.1-DRAFT"
+version: "0.2-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -61,7 +61,7 @@ Routes are W2-final. Full per-asset findings/fix history (every F-id, PR, migrat
 | 11 | `ga_yoga` | 63 / 5 | fixed (PR #1865) | F-D1/F-D2 fixed serving-side; F-A16 fixed at writer level (PR #1979, pending rebuild); F-D5 fixed (PR #2140) |
 | 12 | `ga_vichara` | 8,249 / 8,249 | `rebuild_only` | `catalog_status` DRAFT→CURRENT fixed; F-D11 fixed (PR #2141) |
 | 13 | `ga_sade_sati` | 6,287 / 11,019 | `rebuild_only` | F-A14 contract complete 15/15 categories; F-D18/F-D20 fixed (PR #2142/#2144) |
-| 14 | `ga_transit_anchors` | 45 / 45 | fixed (PR #1950) | F-D22 FORENSIC assertion fixed; F-D25 fixed (PR #2145); F-D21/D23 escalated to L0, adjudication #2122, PR #2153 open |
+| 14 | `ga_transit_anchors` | 45 / 45 | fixed (PR #1950) | F-D22 FORENSIC assertion fixed; F-D25 fixed (PR #2145); F-D21/D23 **fixed** — L0's PR #2153 merged, adjudication #2122 closed, verified live cycle 130 |
 | 15 | `ga_ayurdaya` | 130 / 130 | `rebuild_only` | F-E4 fixed (migration 845); F-E2/E3 fixed (PR #2146) |
 | 16 | `ga_medical` | 45 / 45 | fixed (PR #1871) | F-E5 fixed at writer level; F-E8 fixed (PR #2148) |
 | 17 | `ga_vastu` | 40 / 40 | `rebuild_only` | F-E10/E11 fixed; F-E28 fixed (PR #2152) |
@@ -96,8 +96,9 @@ id-groups.**
 - **MUST** — CLOSED for L1's own scope (cycle 125). Disposition breakdown: the large majority
   fixed at the writer or serving-layer level across cycles 1-124; five id-groups (F-C2/C3/C4/C5/
   C7, the D-SALIENCE feed) correctly routed to L2's `bo_laksana.py` — confirmed not an L1 file;
-  three id-groups (F-D21/D22/D23) escalated to L0 via adjudication #2122 (PR #2153 open, other
-  party's action item); one cross-cutting rollout (F-A14/A15, F-B35, F-C15, F-D28, F-E27 —
+  three id-groups (F-D21/D22/D23) escalated to L0 via adjudication #2122, **fixed and closed**
+  (PR #2153 merged, verified live cycle 130 — root cause was one layer up, L0's own
+  `from_moon_view` vidhi primitive); one cross-cutting rollout (F-A14/A15, F-B35, F-C15, F-D28, F-E27 —
   `integrity_check_sql` NULL on all 19) closed via the ongoing per-asset campaign, confirmed
   complete cycle 124; F-C14 (the CI scanner gap) confirmed already closed by an independent
   scanner-tightening commit (issue #1750, Conductor ruling) predating this session's own
@@ -140,7 +141,8 @@ anchors, panchanga) that L3 Kāla's timing arbitration and L2/L4+ synthesis buil
 anchors` is the direct D-TIME-adjacent case: F-D21/D22/D23 (a primitive dispatching an argument
 no tool reads; a FORENSIC assertion contradicting a correct value; zero data-plane consumers)
 turned out to be a serving-layer defect one layer UP (L0's `from_moon_view` primitive), correctly
-escalated rather than patched locally — adjudication #2122, PR #2153 (L0's fix) still open.
+escalated rather than patched locally — adjudication #2122, PR #2153 (L0's fix) merged and
+verified live (cycle 130), closing F-D21/F-D23.
 
 **D-SERVICE (P8).** The Serving Density Principle (CLAUDE.md §N.6) rollout is L1's largest
 cross-cutting D-SERVICE contribution this wave: `density_contract`/`empty_reason` declared on
@@ -152,16 +154,20 @@ MUST tiers). Two named built-but-unplugged instances found and fixed: `ga_naksha
 
 ## §3.5 — Findings that outgrew L1
 
-Two L1 findings became cross-layer adjudications rather than in-layer fixes — recording them
-here in the same spirit as L5's §3.5, since Phase Z's interest in this layer is partly *not*
-confined to L1's own assets:
+Two L1 findings became cross-layer adjudications rather than in-layer fixes (both now resolved)
+— recording them here in the same spirit as L5's §3.5, since Phase Z's interest in this layer is
+partly *not* confined to L1's own assets:
 
 1. **Adjudication #2122 (F-D21/D22/D23, `ga_transit_anchors`) — a serving-layer defect whose
-   root cause is L0's, not L1's.** `from_moon_view`'s primitive passes `reference_point:"moon"`
-   to `ganita_transit_anchors_get`, which never reads it — traced to the actual call site
-   (`platform/src/lib/tools/...`, L0-owned) rather than patched at the L1 asset it appeared to
-   implicate. L0's fix (PR #2153) re-points the primitive at the correct tool; still open as of
-   cycle 129, not L1's action item.
+   root cause is L0's, not L1's. CLOSED.** `from_moon_view`'s primitive passed
+   `reference_point:"moon"` to `ganita_transit_anchors_get`, which never read it — traced to the
+   actual call site (`platform/src/lib/vidhi/registry_data.ts`, L0-owned) rather than patched at
+   the L1 asset it appeared to implicate. L0's fix (PR #2153, merged) re-points the primitive at
+   the correct tool and dropped the inert argument, fixing both the code AND the already-
+   committed live `vidhi_primitives` row (migration 705). Independently re-verified live by this
+   session (cycle 130) rather than trusted on the merge alone: confirmed `live_tool=
+   'ganita_transit_anchors_get'` / `tool_args={"chart_id":"{chart_id}"}` in both `origin/main`'s
+   source and the live database row.
 2. **Adjudication #2156 (migration-range encroachment) — L3 mistakenly used 3 of L1's granted
    840-859 migration numbers (848-850) for its own `ka_*` health-probe migrations.** Filed
    decide-and-log (cycle 124) rather than blocking; RULED and CLOSED by the Conductor (cycle
@@ -191,9 +197,10 @@ awaits either a dedicated prep cycle or genuine W6 close.
   covering only 34 assets (all `bg_*`/L0 plus 2 `mi_*`/L5), zero for any L1/L2/L3/L4 asset. This
   affects every non-L0/L5 layer identically, not an L1-specific problem — worth Phase Z
   confirming whether a bootstrap step exists or is needed campaign-wide.
-- **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — if still
-  open at Phase Z time, the L1-visible symptom (F-D21/D23) stays correctly attributed to L0, not
-  re-litigated as an L1 defect.
+- **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
+  merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
+  L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
+  as an L1 defect nor silently forgotten once fixed.
 - **The `l1_integrity_check_dry_run.sql` script** (PR #2163) is ready for immediate use the
   moment #2113 clears — it needs no changes to serve as the mechanical-check half of L1's real
   W5 pass.
