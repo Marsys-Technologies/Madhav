@@ -493,6 +493,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~139:0xZ — L3-W3 — PR hygiene: `#2187` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
+  F-L3-4 with a sixth asset, `ka_bhavishya_lekha` (probabilistic forward
+  projection artifact) — a top-N-of-qualifying shape, the same as L5's
+  `mi_adhilepa` (migration 690), simpler than the last two fan-out shapes
+  in this batch: `LEAST(100, count of eligible kala_darshana windows in
+  the rolling next-5y horizon, net_label != obstructed_severe)`. Verified
+  live that 110 eligible windows currently exist, so the 100-row cap is
+  currently binding, matching `target_floor`/`count_sql` exactly.
+  Migration 857 + paired test authored (no self-transaction wrapper from
+  the start); the live integration test independently re-derives the
+  eligibility query from source tables rather than trusting the
+  migration's own recorded number — all 6 tests pass, confirmed live the
+  row is genuinely still NULL after the "rolled back" tests ran.
+  Migration-number guard PASS (857, confirmed free). Committed locally
+  (`4c2c05e8c`), held from push — `#2187` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2187` merges or
+  clearly finishes, then continue F-L3-4 on another asset (14 remain
+  NULL) if still no E-gate work.
 - `2026-09-07T~138:0xZ — L3-W3 — PR hygiene: `#2187` still mid-check
   pre-queue (`Governance Gates`/`Build Check` pending at ~6.7min, within
   normal range, nothing red). Continued F-L3-4 with a fifth asset,
