@@ -4757,3 +4757,20 @@ uncheckable, DB access down 224 cycles; nothing new) → next: confirm `#1834` r
 queue once Build Check completes; watch all 9 positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~09:50Z` — L4 — **CYCLE 235 (v2.3) — `#1834` confirmed re-entered the merge
+queue (position 133); this window's third DIRTY-PR episode fully closed out. All 9 own PRs
+genuinely queued, clean sweep.**
+
+**PR hygiene:** all 9 own PRs genuinely `QUEUED` via GraphQL `mergeQueueEntry` — `#1870` 99,
+`#1864` 88, `#1849` 23, `#1845` 24, `#1842` 14, `#1839` 2, `#1834` 133, `#1831` 124, `#1808`
+129. No DIRTY, no RED.
+
+**Priorities 1-4:** one new `main` commit (`#1958`, cockpit fix, not L4-relevant). No new
+adjudications name L4 (count unchanged at 16). E-gate still uncheckable, 225th consecutive
+cycle DB access down.
+
+CYCLE 235 L4: IDLE-OK (verified: PR hygiene fully clean — all 9 own PRs genuinely queued,
+`#1834` fully recovered from its DIRTY episode; E-gate uncheckable, DB access down 225
+cycles; nothing new) → next: watch all 9 positions continue advancing; retry E-gate/dispatch
+dry-run once DB access returns; F1 remains deferred.
+
