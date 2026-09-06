@@ -3676,3 +3676,9 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** `#2115`'s own merge-group Ganga Quality Gate run (`34041957403`)
   still `in_progress` (~13min), confirmed via direct run lookup. No DIRTY/RED. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **`#2115` MERGED** (merge commit `be987b68e`, `mergedAt 15:31:58Z`). Deploy run
+  `34042590581` currently in progress is for an EARLIER commit (`7a2fdb59c`, my commit's parent) --
+  not yet safe to dispatch bg_yogas. No open L0 PRs, no DIRTY/RED. 36/40 frozen unchanged; next
+  cycle: find/wait for a deploy run whose headSha includes `be987b68e`, confirm it completes,
+  then dispatch bg_yogas → 37/40.
