@@ -7210,3 +7210,26 @@ merge queue itself confirmed actively processing via fresh `merge_group` runs, n
 no new L4-relevant adjudications; E-gate uncheckable, DB access down 353 cycles) → next:
 watch `#1808` drain to merge; retry E-gate/dispatch dry-run once DB access returns; F1
 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~13:32Z` — L4 — **CYCLE 364 (v2.3) — `#1808` reached the queue head
+(`AWAITING_CHECKS` position 1) — the last own PR is now one merge-group build away from
+landing.**
+
+**PR hygiene:** `#1808` confirmed genuinely `QUEUED`/`AWAITING_CHECKS` at position 1 via
+GraphQL `mergeQueueEntry`. `autoMergeRequest` now reads `null` — not a red flag: once a PR
+is the queue's active build candidate, GitHub's `mergeQueueEntry` (not `autoMergeRequest`)
+is the sole ground truth, consistent with this session's whole-window finding. Nothing to
+fix.
+
+**Priorities 1-4:** one new `main` commit (`#2095`, L1's own PR, batch-built alongside
+`#1808`'s own merge-group run per the shared head SHA) confirmed not L4-relevant. No new
+adjudications name L4 (count unchanged at 16). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 354th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 364 L4: IDLE-OK (verified: PR hygiene fully clean — `#1808` now at the queue head,
+position 1, `AWAITING_CHECKS`, one build away from landing; no new L4-relevant
+adjudications; E-gate uncheckable, DB access down 354 cycles) → next: watch `#1808` merge —
+once it lands, all shipped `ph_*` W3 correctness fixes will be fully merged to `main`; retry
+E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
+remains the layer's one deferred code item.
