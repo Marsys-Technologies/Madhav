@@ -3479,3 +3479,16 @@ advancing; E-gate uncheckable, DB access down 140 cycles; nothing new) → next:
 positions continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~02:50Z` — L4 — **CYCLE 151 (v2.3) — genuinely IDLE; no change from cycle 150.**
+
+**PR hygiene:** all 10 own PRs unchanged/genuinely queued, no net `main` movement. No
+DIRTY/RED.
+
+**Priorities 1-4:** one new adjudication (`#2005`, L2 migration-range exhaustion) checked, not
+L4-relevant. E-gate still uncheckable, 141st consecutive cycle DB access down.
+
+CYCLE 151 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queued; E-gate
+uncheckable, DB access down 141 cycles; one new adjudication checked, not L4-relevant) →
+next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
