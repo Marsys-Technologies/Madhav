@@ -5532,3 +5532,19 @@ actively processing, remaining 8 unchanged/queued; E-gate uncheckable, DB access
 cycles; nothing new) → next: watch `#1864` merge, confirm remaining PRs continue advancing;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~13:50Z` — L4 — **CYCLE 283 (v2.3) — `#1864` still `AWAITING_CHECKS`, position
+12; drilled into its specific `merge_group` run: started `08:21:08Z`, checked at
+`08:25:24Z` (~4.3 min elapsed) — within normal range, genuinely still processing, not
+stalled.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** one new `main` commit (`#2021`, L2, not L4-relevant). No new
+adjudications name L4 (count unchanged at 14). E-gate still uncheckable, 273rd consecutive
+cycle DB access down.
+
+CYCLE 283 L4: IDLE-OK (verified: PR hygiene clean, `#1864`'s merge_group run confirmed
+genuinely still processing at ~4.3 min via direct job inspection, remaining 8
+unchanged/queued; E-gate uncheckable, DB access down 273 cycles; nothing new) → next: watch
+`#1864` merge; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
