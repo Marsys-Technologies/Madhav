@@ -4673,3 +4673,36 @@ including both `#1831`/`#1808` fully recovered from last cycle's DIRTY+RED episo
 uncheckable, DB access down 220 cycles; nothing new) → next: watch all 9 positions continue
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~09:30Z` — L4 — **CYCLE 231 (v2.3) — third DIRTY PR this window: `#1834`
+dequeued (`mergeQueueEntry: null`, `mergeStateStatus: DIRTY`) after upstream merges — this
+cycle's bounded unit of work. Applied the cycle-226 lesson correctly this time: verified the
+re-derived pin from the FINAL rebased state, not mid-rebase.**
+
+**PR hygiene:** `#1834` (`codex/nirmana-l4-w3-3e-rectification-gate`) rebased onto
+`origin/main`. Two conflicts, both routine generated-file conflicts: `nirmana-writer-digests.json`
+(regenerated via `provenance_inventory --output`) and `nirmana-analysis-layer-pins.json` (the
+branch's own prior re-splice commit, conflicting with the fresh regen). This time, resolved
+the pin conflict by computing the correct `writer_inventory_sha256` by hand
+(`24e9f50413a9...`, via the script's own byte-for-byte algorithm) and setting it directly, THEN
+ran `--check` **from the fully rebased state** (not mid-rebase) to confirm — passed clean.
+Independently cross-verified with a fresh `provenance_inventory` regen diffed against the
+committed digest file (`IDENTICAL`). Confirmed via `git diff origin/main -- ...
+ph_rectification/__init__.py` that the branch's own F3 fix (`_apply_discrimination_gate` —
+`load_bearing` now consults `win_margin`, not just event-count availability) survived intact.
+49/49 tests pass (`test_ph_rectification*.py`). Force-pushed with `--force-with-lease`,
+re-armed via `gh pr merge --auto`; `mergeStateStatus` confirmed `MERGEABLE`/`BLOCKED`-on-checks
+(not `DIRTY`) within 15s of push.
+
+Remaining 8 own PRs (`#1870` 100, `#1864` 89, `#1849` 24, `#1845` 25, `#1842` 15, `#1839` 3,
+`#1831` 125, `#1808` 130) all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** one new `main` commit (`#1955`, L1, not L4-relevant). No new
+adjudications name L4 (count unchanged at 16). E-gate still uncheckable, 221st consecutive
+cycle DB access down.
+
+CYCLE 231 L4: rebased+repushed 1 DIRTY PR (`#1834` — dequeued after upstream merges; F3 fix
+verified intact, pin re-derivation this time double-checked from the final rebased state per
+the cycle-226 lesson, 49/49 tests pass, re-armed for auto-merge) → next: confirm `#1834`
+re-enters the merge queue next cycle; watch remaining 8 PRs' positions continue advancing;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
