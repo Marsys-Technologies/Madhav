@@ -458,6 +458,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~07:0xZ — L3-W3 — IDLE-OK: `#1903` still at position 2, confirmed genuinely
+  active not stalled (live CI run on #1988's merge-group branch, started ~8min prior via
+  `gh run list`).` PR hygiene clean. `#2060`/`origin/main` tip unchanged.
+
 - `2026-09-06T~06:0xZ — L3-W3 — Confirmed real progress: #1987 (position 1 last cycle)
   MERGED, `#1903` advanced from position 3 to position 2 — one step from the front.**
   `origin/main` tip advanced to `dfc7b0a7c`. This state-tracking branch rebased cleanly
