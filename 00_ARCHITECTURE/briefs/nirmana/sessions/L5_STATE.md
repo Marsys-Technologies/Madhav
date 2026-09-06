@@ -457,6 +457,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:30Z (C8 v2.3 cycle 419) — **Filed #2086: escalated the migration-number race as a
+  structural, cross-cutting finding rather than continuing to fix it per-cycle forever.** PR
+  hygiene clean, no new collision this cycle (main's migration tip unchanged at 811 — the one new
+  commit was L1 non-migration work). Rather than treat the quiet cycle as pure IDLE-OK, used it to
+  step back: 4 renumbers each for `mi_vistara` (#1844) and `mi_jivanaghatana` (#1826) in ~90
+  minutes is a pattern, not noise, and it's genuinely cross-layer (any two lanes authoring
+  migrations in the same few-minute window race for the same number — L5 just happens to notice
+  because two of its PRs have stayed open long enough to keep re-racing). Filed
+  `nirmana-adjudication` #2086 documenting the evidence, why it's not L5-specific, and two
+  directions for Conductor to consider (accept as bounded campaign-velocity cost vs. a lightweight
+  reservation mechanism) — deliberately did not propose a fix to the guard tooling myself (orchestrator/
+  tooling changes are native/Conductor territory per CLAUDE.md §N.2). Neither #1826 nor #1844 is
+  blocked; this is a pattern report, not an active-blocker escalation. #1869 and `mi_kula`'s
+  remaining 2 ancestors (`bg_rules`, `bg_yogas`) both unchanged.
 - 2026-09-06T12:25Z (C8 v2.3 cycle 418) — **#1826's `mi_jivanaghatana` spec renumbered a THIRD
   time (806→809→811→813), caught with #1826 down to its very last pending check.** Main's tip had
   advanced to `811` (yet another L1 migration), colliding with cycle 416's 809→811 fix — spotted
