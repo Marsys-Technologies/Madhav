@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 48; F-A17 fixed at the writer level, 3rd occurrence found+fixed (#2003)
+last_updated: 2026-09-06 — C8 v2.3 cycle 49; ga_structural F-A14 widened to 5/57, ships F-157 residual (#2007)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -27,7 +27,8 @@ your `nirmana-adjudication` issues → continue.
   cycle 40), 752 (`ga_sade_sati` Dhaiya widening, cycle 43), 753 (`ga_sade_sati` Phase widening,
   cycle 44), 754 (`ga_sade_sati` FINAL widening — 15/15 complete, cycle 45), 755 (`ga_structural`
   bhadra/panchaka flags, cycle 46), 756 (`ga_structural` vargottama_per_varga, F-A17 found, cycle
-  47) used. 757–759 remain free.
+  47), 757 (`ga_structural` parivartana_per_varga, ships F-157 residual, cycle 49) used. 758–759
+  remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2082,6 +2083,57 @@ class discovered and fixed in the same pass — next: continue `ga_structural`'s
 (53 categories remain — migration 756's conjunct (e) will clear once the 2 affected charts
 rebuild), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 49 (C8 v2.3) — ga_structural's F-A14 contract widened to 5/57 categories (PR #2007, migration 757); ships the known F-157 residual as a real conjunct
+
+**PR hygiene:** clean sweep, using a wider `--limit 200` this time after last cycle's pagination
+near-miss (the shared bot identity's `is:queued` search can silently truncate at the default 100).
+`#2003` was the only genuinely non-queued PR, confirmed clean/mid-CI, nothing to fix. All other
+34 L1 PRs confirmed genuinely `is:queued`. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `parivartana_per_varga`** (PR
+**#2007**, migration 757 — seventh used in the 752-759 range).
+
+**First investigated `graha_dignity_per_varga`** (a natural next target given `vargottama`'s
+successful cross-check pattern against `ga_vargas`) but found the disagreement rate against
+`ga_vargas`' own `varga_dignity` is 2064/3915 — far too high to be a boundary-precision bug like
+F-A15/F-A17. Checked the actual value vocabularies on each side: `ga_structural`'s
+`classify_dignity()` uses a 5-way scheme (exalted/debilitated/own/moolatrikona/neutral) while
+`ga_vargas`' `_compute_dignity()` uses 7-way (adds friend/enemy) — a **vocabulary granularity
+mismatch, not a computation defect**. Correctly recognized this before writing a conjunct that
+would have flagged thousands of legitimate friend/enemy-collapsed-to-neutral rows as false
+violations, and moved on rather than forcing a bad fit.
+
+**Landed on `parivartana_per_varga` instead — the KNOWN, already-fixed-at-the-writer-level F-157
+finding.** `test_f157_parivartana_self_exchange.py` already documents this exactly: the writer used
+to fabricate self-paired "exchange" rows (a graha "exchanging" with itself) for any graha sitting in
+its own sign, since `lord1 == g1` made the `OWN_SIGNS` test trivially true against itself. The
+writer fix (a `lord1 != g1` guard) already landed — but that fix's own "Materialization note"
+explicitly states the already-stored buggy rows were never retroactively corrected, deferring that
+to a future `ga_structural` rebuild. Confirmed live: **439/624 rows are still self-paired**, across
+all 3 built charts × 5 ayanamshas, each under a single build_id (the one canonical build — not a
+stale-old-build artifact, simply not yet rebuilt since the fix landed).
+
+Two conjuncts: (f) `planet_a != planet_b`, re-deriving the writer's own guard as a data check —
+**GENUINELY RED TODAY on 439/624 rows**, matching the F-A15/F-A17 disposition exactly (tracked,
+expected, clears on rebuild); (g) the classical parivartana condition itself (sign_a's lord is
+planet_b AND sign_b's lord is planet_a, via the writer's own `SIGN_LORDS` table) for the genuinely
+non-self-paired rows — 0/185 violations, both directions independently verified. Proved (f) is a
+real, clearing detector via a synthetic post-fix proof: deleted all 439 self-paired rows inside a
+transaction (simulating what a rebuild under the already-fixed writer would produce), confirmed the
+isolated conjunct then reads `true`, rolled back. Mutation-tested (g) via a real transactional
+corruption of a clean row.
+
+Carried the five prior conjuncts (a)-(e) forward verbatim, including (b)/(e), already genuinely red
+and tracked. No writer touched. Full `platform/tests/unit/migrations/` suite: 192 passed / 91
+skipped (40 files).
+
+CYCLE 49 L1: widened `ga_structural`'s F-A14 contract to 5/57 categories (PR #2007, migration 757)
+— next: continue `ga_structural` widening (52 categories remain), or `ga_positions` re-dispatch
+once #1892 lands (note: once that dispatch/rebuild pipeline unblocks, it would also clear THREE
+now-tracked contract residuals at once — migration 745's conjunct (b)/F-A15, migration 756's
+conjunct (e)/F-A17, and migration 757's conjunct (f)/F-157 — all waiting on the same underlying
+rebuild).
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2097,7 +2149,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 — 4/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — vargottama_per_varga now reads ga_vargas' varga_vargottama_flag for every varga instead of re-deriving; also fixed a 3rd, previously-untracked instance of the same bug (graha_special_state_rollup.is_vargottama, its own hardcoded navamsha formula); migration 756's conjunct (e) will clear once the 2 affected charts rebuild |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 → #2007 cycle 49 — 5/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** (self-paired parivartana rows, pre-existing writer bug already fixed elsewhere) shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows, all three conjuncts clear once the affected charts rebuild |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -2753,6 +2805,23 @@ whole campaign.
   retargeting straight to `main` surfaced a real conflict from `main` having advanced) by rebasing
   the combined branch and regenerating both digest/pin artifacts fresh afterward — same discipline
   as `#1898`'s cycle-44 rebase.
+
+- **D-L1-73** — C8 v2.3 cycle 49: widened `ga_structural`'s F-A14 contract (migration 757,
+  PR #2007), 4/57 → 5/57. Investigated `graha_dignity_per_varga` first, found a 2064/3915
+  disagreement rate against `ga_vargas`' `varga_dignity` — checked the actual value vocabularies
+  on both sides before assuming a defect, found a genuine 5-way vs 7-way scheme mismatch
+  (`ga_structural` collapses friend/enemy into neutral), correctly recognized this as NOT a
+  computation bug and moved on rather than writing a conjunct that would misfire on thousands of
+  legitimate rows. Landed instead on `parivartana_per_varga` — the already-known, already-fixed-
+  at-the-writer-level F-157 finding (`test_f157_parivartana_self_exchange.py`'s own
+  "Materialization note" already documents that fixed-writer, unfixed-data disposition). Shipped
+  the re-derived writer guard as a genuinely-red data conjunct (439/624 rows), proved it a real
+  clearing detector via a synthetic post-fix proof (deleted the self-paired rows inside a
+  transaction, confirmed the conjunct then reads true, rolled back) — same discipline as F-A15's/
+  F-A17's synthetic-overlay proofs, now applied a third time to a pre-existing (not newly
+  discovered) tracked defect rather than a fresh one. `ga_structural` now carries three
+  independently-tracked genuinely-red conjuncts (F-A15/F-A17/F-157), all clearing on the same
+  future rebuild.
 
 ## Held items
 
@@ -3509,3 +3578,26 @@ L1 must satisfy rather than a feature it consumes.
   601 passed, 1 skipped, matching baseline. CYCLE 48 L1: fixed F-A17 (PR #2003) plus a third
   occurrence of the same bug class found in the same pass -- next: continue ga_structural's F-A14
   widening (53 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T05:5xZ -- CYCLE 49 (C8 v2.3). PR hygiene clean: used --limit 200 this time (learned
+  from a pagination near-miss last cycle where the shared bot identity's is:queued search
+  silently truncated at 100). #2003 the only non-queued PR, confirmed clean/mid-CI. All other 34
+  L1 PRs genuinely is:queued. #1928/#1892 unchanged. Unit of work: widened ga_structural's F-A14
+  contract to 5/57 (PR #2007, migration 757). Investigated graha_dignity_per_varga first (natural
+  next target given vargottama's cross-check pattern), found a 2064/3915 disagreement rate against
+  ga_vargas' varga_dignity -- checked the actual value vocabularies on both sides before assuming
+  a defect, found a genuine 5-way vs 7-way scheme mismatch (friend/enemy collapsed to neutral),
+  correctly recognized this as NOT a computation bug and moved on. Landed on parivartana_per_varga
+  instead -- the already-known, already-fixed-at-the-writer-level F-157 finding
+  (test_f157_parivartana_self_exchange.py's own "Materialization note" already documents the
+  fixed-writer/unfixed-data disposition). Shipped the re-derived writer guard as a genuinely-red
+  conjunct (439/624 self-paired rows), proved it a real clearing detector via a synthetic
+  post-fix proof (deleted the self-paired rows inside a transaction, confirmed it then reads true,
+  rolled back) -- same discipline as F-A15's/F-A17's proofs, now applied to a pre-existing tracked
+  defect rather than a fresh one. Second conjunct re-derives the classical parivartana condition
+  via SIGN_LORDS for the genuinely clean rows (0/185 violations), mutation-tested. Carried the 5
+  prior conjuncts forward verbatim. No writer touched. Full platform/tests/unit/migrations/ suite:
+  192 passed / 91 skipped (40 files). CYCLE 49 L1: widened ga_structural's F-A14 contract to 5/57
+  categories (PR #2007, migration 757) -- ga_structural now carries three independently-tracked
+  genuinely-red conjuncts (F-A15/F-A17/F-157), all clearing on the same future rebuild -- next:
+  continue ga_structural widening (52 categories remain), or ga_positions re-dispatch once #1892
+  lands.
