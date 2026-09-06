@@ -489,6 +489,24 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~81:0xZ — L3-W4 — PR hygiene: a FIFTH round of migration-
+  number collisions hit `#2070`/`#2065` (not `#2079` this time).** Both
+  went `UNMERGEABLE`-in-queue. `#2070`: 845→849 (collided with L1's newly-
+  merged `845_..._ayurdaya_category_ownership_backfill.sql` — its fourth
+  renumber overall: 764→810→842→845→849). `#2065`: 846→850 (collided with
+  L1's newly-merged `846_..._vichara_target_floor.sql` — its third
+  renumber: 676→843→846→850). `#2079` itself rebased clean with no new
+  collision this round. Deliberately serialized 848/849/850 across all
+  three sibling PRs again (checked each other's already-claimed numbers
+  first). Both fixed: rebased, dequeued (both had already auto-dequeued
+  before my mutation call, not an error), header/docstring/test-path
+  references updated, `migration_number_guard.ts` re-verified clean, tests
+  re-pass (28/47), pushed, re-queue requested. `#2065` still hasn't merged.
+  — blocked on: nothing new; next action: watch all 3 F-L3-15 PRs actually
+  merge this time — L1's 840s-range churn shows no sign of slowing, so a
+  sixth round wouldn't be surprising; `#2065` landing unblocks
+  `ka_muhurta_seva`'s W2 acceptance, the next genuine W4-path item (route
+  verifier-role submissions through a fresh subagent per D-CND-35).
 - `2026-09-06T~80:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` still
   queued, `#2079` healthy, zero failures, fresh CI run. `#2065` still
   hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
