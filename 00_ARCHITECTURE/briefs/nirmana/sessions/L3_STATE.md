@@ -493,6 +493,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~111:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
+  `isInMergeQueue: true`, position 1, healthy — its own `merge_group` build
+  hasn't started yet, but `main` genuinely advanced by 2 more commits since
+  last cycle (`#2163`, `#2162`, both other layers), confirming the shared
+  queue is actively merging, just hasn't reached mine — not a stall. No new
+  bounded work. — blocked on: nothing; next action: same, wait for `#2166`.
 - `2026-09-06T~110:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
   `isInMergeQueue: true`, healthy — confirmed the shared queue itself is
   actively processing (other PRs' `merge_group` builds `in_progress`/
