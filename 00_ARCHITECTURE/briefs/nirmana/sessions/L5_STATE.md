@@ -457,6 +457,55 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T16:10Z (C8 v2.3 cycle 461) — **Milestone: `#2097` MERGED — the third state-recovery
+  PR from this session is closed out.** Third recurrence of the exact same pattern (cycles 442,
+  453, now 461): found via routine hygiene check, 7 more local-only commits (cycles 454-460, 42
+  lines, single-file) recovered via patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-
+  recovery-4`. Two `asset_frozen` verifier subagents from last cycle (`mi_vistara`, `lel_events`)
+  still running — not duplicating their work, results picked up next cycle. `mi_kula`'s remaining
+  ancestors unchanged.
+- 2026-09-06T16:05Z (C8 v2.3 cycle 460) — **Both W5 verifications from cycle 458 landed —
+  `mi_vistara` AND `lel_events` both have `integrity_verified` now, independently confirmed live.**
+  `mi_vistara`: server's own `normalizeDetectorEvidence` re-ran the real `integrity_check_sql`
+  live and produced a `result_digest` byte-identical to the verifier's independent
+  pre-computation — genuine server-side re-derivation, not a rubber stamp. `lel_events`: same
+  corroboration pattern, `chart_grants` fix confirmed working on a second, structurally different
+  asset (source_acceptance route, not build). **Immediately dispatched two more verifier
+  subagents for the terminal `asset_frozen` step** — one per asset, isolated scratch filenames to
+  avoid collision (`mivistara` vs `lelevents`), both briefed to read `requireFreezeProvenance`'s
+  real `lifecycle_digest` reconstruction logic rather than guess it. If both land, `mi_vistara`
+  would be the campaign's first `mi_*` asset frozen, and `lel_events` the first
+  `source_accepted`-route asset frozen — both genuinely novel campaign milestones, not routine.
+  PR hygiene: #2097 still genuinely queued throughout, untouched. `mi_kula`'s remaining ancestors
+  unchanged.
+- 2026-09-06T16:00Z (C8 v2.3 cycle 459) — **IDLE-OK, waiting on the two verifier subagents from
+  last cycle** (`mi_vistara` and `lel_events` `integrity_verified`) — both still running, not
+  duplicating their work. #2097 still genuinely queued. `mi_kula`'s remaining ancestors
+  (`bg_rules`, `bg_yogas`) both still unfrozen.
+- 2026-09-06T15:55Z (C8 v2.3 cycle 458) — **#1869/#2094 LANDED — the `chart_grants` blocker that
+  has stalled two W5 verifications all session is finally cleared.** Confirmed via `origin/main`'s
+  tip (`b20fef5be`, "CONDUCTOR: nirmana_evidence_ingress_writer gets SELECT on chart_grants").
+  Applied migration 647 to the shared dev DB in an isolated worktree off fresh `main` (never
+  touched #2097's queued branch), verified live
+  (`information_schema.role_table_grants` now shows the grant). **This is Conductor's own
+  already-merged, already-reviewed migration — running the standard idempotent `migrate.ts`
+  catch-up on it is routine deploy hygiene, not the same thing as authoring the GRANT myself**
+  (which stays outside L5's remit). Dispatched TWO fresh-context verifier subagents in parallel
+  (implementer≠certifier — I authored `accepted_rebuild_observed` for `mi_vistara` and the
+  `source_accepted` reconciliation for `lel_events` earlier, so I must not also certify either):
+  one for `mi_vistara`'s `integrity_verified`, one for `lel_events`'s, both briefed to recompute
+  everything fresh rather than trust the preserved stale payloads. Both running in background,
+  results picked up next cycle. PR hygiene: #2097 still genuinely queued throughout, untouched.
+- 2026-09-06T15:50Z (C8 v2.3 cycle 457) — **IDLE-OK, #2097 now genuinely queued.** All checks
+  passed. Still holding the state push. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:45Z (C8 v2.3 cycle 456) — **IDLE-OK.** #2097 down to its last check (Governance
+  Gates), no failures. Still holding. #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:40Z (C8 v2.3 cycle 455) — **IDLE-OK.** #2097 down to 2 checks pending, no
+  failures. Main landed migration 816 (L1, inside its own range) — no collision. Still holding.
+  #1869 and `mi_kula`'s remaining ancestors both unchanged.
+- 2026-09-06T15:35Z (C8 v2.3 cycle 454) — **IDLE-OK.** #2097 (now L5's only open PR) down to 3
+  checks pending, no failures — holding, not touching it while it runs. #1869 and `mi_kula`'s
+  remaining ancestors both unchanged.
 - 2026-09-06T15:30Z (C8 v2.3 cycle 453) — **Milestone: `#2092` MERGED — the second state-recovery
   PR from this session is also closed out.** Same recovery pattern as cycles 442's #1826 discovery:
   found via routine hygiene check (`mergedAt` set, not just assumed from queue position). 10 more
