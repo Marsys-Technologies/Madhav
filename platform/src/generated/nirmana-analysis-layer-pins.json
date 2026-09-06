@@ -10,21 +10,21 @@
         "bg_sarvatobhadra_grid"
       ],
       "receipt_count": 40,
-      "writer_inventory_sha256": "8650e7a7e85beb27adbb66087344a13f3ee77b3fb1c84ebbb6170b9d7ad1c2ae"
+      "writer_inventory_sha256": "dd4500b6526b68b13d60dc447bcc57f76e4ba1cb1dd6782bd60f3a21017e90a3"
     },
     "L1": {
       "asset_prefix": "ga_",
-      "convergence_commit": "2ed8059dc7d2944c28ed25b231010e31c067fce3",
+      "convergence_commit": "d93a07a7c2572c0bf60dcb7d80a5e88b91bae8aa",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "ae213d2826075fa83c995237e7ea71977b56c0d492b4bba4150bd0ddfd86a550"
+      "writer_inventory_sha256": "387c1bdb7cc12b7dc99ec3d9bc2e44c4f9eaf1f4e2a6c9c6184a195351eb8a79"
     },
     "L2": {
       "asset_prefix": "bo_",
-      "convergence_commit": "af3c6ba5576c517b792c61b81c7b650a3ff9555a",
+      "convergence_commit": "22ee1a0128f6a1fd1aef3c6902c15a03bf293b3a",
       "non_writer_assets": [],
       "receipt_count": 22,
-      "writer_inventory_sha256": "0e58ad48e74d51708151c9060b903555afece2beb9af380219989deeaf8b54dd"
+      "writer_inventory_sha256": "610d22787a594dc2c5d3bf743a2489785cbec58a3d2cf8953027ea8771598797"
     },
     "L3": {
       "asset_prefix": "ka_",
@@ -33,14 +33,14 @@
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "writer_inventory_sha256": "f3217766cea6ee55f11d968b17e7f9a84b86db45ff614a80a763fe4cb46c6064"
+      "writer_inventory_sha256": "91883b3e73b5152d22c1a074617c74d020a6cebc3947145e0bb719278a87b910"
     },
     "L4": {
       "asset_prefix": "ph_",
-      "convergence_commit": "d7cd104b3939a6c19e386d947e7cf32de9cf1f9a",
+      "convergence_commit": "be470cb8fa289c65fe4e273abe1cd1210e96f805",
       "non_writer_assets": [],
       "receipt_count": 9,
-      "writer_inventory_sha256": "a71d2568da17ea947263651225f92310a1a52800d940ed9841227916a5a5467a"
+      "writer_inventory_sha256": "486959b1df74015873b326c2b5d58aa00865a47e6116b3b0c39f479f978d66f9"
     },
     "L5": {
       "asset_prefix": "mi_",

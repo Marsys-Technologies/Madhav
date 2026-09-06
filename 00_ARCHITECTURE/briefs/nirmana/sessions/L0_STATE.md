@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- D-NATIVE-06 (native-ratified): L0 does NOT freeze at 36/40. bg_yogas's writer bug (0/233 corpus-extracted yogas ever firing) is a real defect; the pin protecting it is transparently re-derivable, not immutable. Re-investigated fresh, fixed (dict-row-as-tuple bug in extract_yogas_from_corpus, same class as the historical bg_parihara_rules fix), verified via rolled-back replay (85 corpus yogas extracted, existing integrity_check_sql satisfied exactly, no re-pin of the check needed). Shipped as PR #2115, with the mandatory guardrails verified: only bg_yogas's writer digest changed (35 others byte-identical), L0's aggregate writer_inventory_sha256 re-pinned transparently, L1-L5 pins byte-identical, all offline governance checks + 318 TS + 134 python tests pass. bg_cohort's C12 service-dependency carve-out flagged to Conductor. bg_rules/bg_concordance auto-unblock once bg_yogas freezes. No open L0 PRs, no DIRTY/RED. 36/40 frozen unchanged pending #2115 merge+deploy+dispatch.
+last_updated: 2026-09-06 -- MILESTONE: bg_yogas FROZEN -- L0 now 37/40 (D-NATIVE-06 delivered). #2115 deployed, verified live (NIRMANA_DEPLOYED_SHA matched, not just CI conclusion). Found + fixed a local-working-tree gotcha (this heartbeat branch had stale generated JSON files, causing a false evidence-mismatch error -- fixed by syncing just those 2 files from origin/main before dispatching). Found that analysis_digest itself needed refreshing (writer_digest_sha256 feeds it, confirmed from source), not just the aggregate. Full chain (fresh W2 -> implementation_accepted -> dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) completed clean, verified at each step. Remaining 3: bg_cohort (Conductor-owned, C12 carve-out flagged, not yet wired in) and bg_rules/bg_concordance (should auto-unblock now that bg_yogas is frozen -- verify next cycle). No open L0 PRs, no DIRTY/RED.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,25 +33,22 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections — 36/40 frozen, target now 40/40 (D-NATIVE-06).**
+**L0-W4 EXECUTE + Conform-stage integrity corrections — 37/40 frozen, target 40/40 (D-NATIVE-06).**
 `bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt re-attribution),
 `bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
-via #2066 + an ordering fix), and `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704,
-#2081+#2088) all FROZEN across this cycle-set. **D-NATIVE-06 (native-ratified) then overrode the
-prior "3 held, 1 deferred to a future phase" position**: there is no future L0 phase (L0→L5→close),
-so `bg_yogas`'s real writer defect (0/233 corpus yogas ever firing) must be fixed now, and the pin
-that was blocking it is transparently re-derivable, not immutable — verified from source, not
-assumed. Fix shipped as `#2115`; `bg_cohort`'s C12 carve-out flagged to Conductor. See the
-D-NATIVE-06 milestone entry below for the full guardrail verification.
+via #2066 + an ordering fix), `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704,
+#2081+#2088), and now `bg_yogas` (D-NATIVE-06, PR #2115 — writer bug fixed and frozen) all FROZEN
+across this cycle-set. `bg_rules`/`bg_concordance` should auto-unblock now that their sole
+remaining ancestor is frozen — verify E-gate next cycle. Only `bg_cohort` remains genuinely
+blocked (Conductor-owned, C12 carve-out flagged, not yet wired in).
 
-## The 4 unfrozen assets
+## The 3 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned — but C12's service-dependency carve-out should resolve it (D-NATIVE-06).** `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (`service_health='healthy'` live) — no writer, so it can never produce a proven receipt via the current path. C12 says a live GREEN service probe should satisfy the dependency instead. Flagged to Conductor on #1713 (WP-6 sibling); once wired in, bg_cohort should freeze without further L0 action. |
-| bg_yogas | rebuild_only | **FIXED AND SHIPPED as `#2115` (D-NATIVE-06).** Root cause: `extract_yogas_from_corpus` tuple-unpacked a `dict_row` cursor's rows positionally, iterating KEYS not values — every variable was silently bound to a column-name string, so 0 corpus yogas ever extracted. Fixed (index by column name); verified via rolled-back replay (85 corpus yogas, 233 total, existing `integrity_check_sql` satisfied exactly, no check re-pin needed). Aggregate `writer_inventory_sha256` re-pinned transparently — confirmed via source read that this aggregate is NOT part of any per-asset `analysis_digest`, and via diff that only `bg_yogas`'s writer digest changed (35 others byte-identical). Once `#2115` merges+deploys: W2 refresh (may not be needed, registry contract itself unchanged — check first) → dispatch → `accepted_rebuild_observed` → `integrity_verified` (verifier identity) → `asset_frozen`. |
-| bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` blocks this, and that's now fixed/shipped (pending deploy). Will unblock automatically once `bg_yogas` freezes — no separate action needed. |
-| bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; will unblock automatically once `bg_yogas` (and transitively `bg_rules`) freeze — no separate action needed. |
+| bg_rules | rebuild_only | E-gate was `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **both now FROZEN** (bg_yogas as of this cycle). Should auto-unblock; check E-gate + dispatch next cycle. |
+| bg_concordance | rebuild_only | E-gate was `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index`/`bg_yogas` now all frozen; only `bg_rules` (itself about to auto-unblock) remains. Check E-gate + dispatch next cycle, likely last in sequence after `bg_rules`. |
 
 ## Decisions log
 
@@ -3714,3 +3711,35 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** Deploy `34043050211`: Pipeline Job Image also succeeded, only Build
   & Deploy Web left `in_progress`, no failures. No open L0 PRs, no DIRTY/RED. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **MILESTONE: `bg_yogas` FROZEN — L0 now 37/40 (D-NATIVE-06 delivered).** Deploy
+  `34043050211` completed `success`; directly verified `NIRMANA_DEPLOYED_SHA=be987b68e...` (my
+  exact commit) serving 100% of traffic — not trusting the CI conclusion alone.
+  - **Discovered a working-tree gotcha before dispatching**: this heartbeat branch
+    (`feat/nirmana-l0-cycle-resume-9`) is long-diverged from `origin/main` and still had the
+    OLD (pre-fix) `nirmana-writer-digests.json`/`nirmana-analysis-layer-pins.json` checked out
+    locally — the dispatch script reads these from the local working tree, so it computed a
+    STALE `canonical_analysis_digests` and rejected my (correct) submitted evidence with
+    "accepted asset analysis does not match the current live registry contract". Root-caused
+    (not just retried) by diffing my local copy against `origin/main`'s; fixed by
+    `git checkout origin/main -- <those 2 files>` before dispatching — a local-tooling issue,
+    not a real evidence/data problem.
+  - **Discovered the analysis_digest itself needed a full refresh, not just the aggregate**:
+    the writer_digest_sha256 is part of the per-asset receipt base hashed into `analysis_digest`
+    (confirmed from source, same as the D-NATIVE-06 guardrail check) — so bg_yogas's OWN
+    analysis_digest from the prior accepted W2 (computed with the pre-fix writer digest) was
+    stale even though the registry_fingerprint (schema/SQL side) was unchanged. Submitted a
+    fresh W2 pair (`asset_analysis_accepted`/`optimization_verdict_accepted`, verdict `correct`)
+    with the new `analysis_digest f265708f...`, then `implementation_accepted` (required for a
+    `correct` verdict, per this session's established ordering discipline), THEN dispatched.
+  - **Full chain, all real, all verified**: dispatch → run `376c21b7-a592-4904-bf81-413494562535`
+    completed clean (`state=complete`, no error, `receipt_state=proven`) →
+    `accepted_rebuild_observed` → `integrity_verified` (verifier identity, not self-certified) →
+    `asset_frozen` (`lifecycle_digest 38ff2c40ddeb9ed4d12cfe775c2b14000b49f501d60fc70801f60e2beb8952ec`,
+    reconstructed from 9 matching lifecycle events across this asset's whole W2 history) —
+    confirmed via direct DB query this event exists, `recorded_at 15:58:26Z`.
+  - **This closes D-NATIVE-06's second requirement.** `bg_rules`/`bg_concordance`'s sole
+    remaining unfrozen ancestor is now frozen — check their E-gate next cycle; they should
+    unblock automatically with no separate fix needed.
+  - 37/40 frozen. Remaining 3: `bg_cohort` (Conductor-owned, C12 carve-out flagged to #1713,
+    not yet wired in), `bg_rules`/`bg_concordance` (should auto-unblock now, verify next cycle).
