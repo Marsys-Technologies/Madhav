@@ -6584,3 +6584,27 @@ L4-relevant; E-gate uncheckable, DB access down 321 cycles) → next: watch
 `#1831`/`#1834`/`#1839` finish CI and check for CLEAN-but-not-self-enqueued recurrence
 (cycle 328 lesson); retry E-gate/dispatch dry-run once DB access returns; F1
 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~12:06Z` — L4 — **CYCLE 332 (v2.3) — `#1808` found genuinely DIRTY again (a
+fourth recurrence — real conflict, `main` had advanced past it since last cycle's re-arm);
+rebased, resolved the routine pin conflict, 110/110 tests green, re-armed.**
+
+**PR hygiene:** `#1808` (`ph_nimitta` F-12/F-16) — pin-only conflict, digest already correct
+(byte-identical to fresh regen), hand-derived to `4d9ac4ba...43effd7d6`; isolation confirmed;
+full `test_ph_nimitta_*` suite (110 tests) green; not occupying a queue slot, pushed directly,
+re-armed via disable-then-auto. `#1831` confirmed genuinely `QUEUED` via `gh pr list --search
+"is:queued"`. `#1834`/`#1839` both confirmed genuinely mid-own-CI via direct job inspection
+(~9-10 min elapsed, near but within the established 8-12 min upper bound — all steps green
+except `Governance Gates`/`Build Check` still running) — not stalled, no action possible yet.
+
+**Priorities 1-4:** one new `main` commit (`#1922`, L2's own PR) confirmed not L4-relevant.
+Adjudication count unchanged at 16 (last cycle's `#2087` still the newest, still not
+L4-relevant). E-gate still uncheckable — `mcp__postgres__query` unavailable, 322nd
+consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 332 L4: found and fixed a fourth genuine DIRTY recurrence on `#1808` (pin re-derived,
+110/110 tests green, re-armed); confirmed `#1831` still genuinely `QUEUED`; `#1834`/`#1839`
+confirmed genuinely mid-CI near the normal upper bound, not stalled → next: watch
+`#1834`/`#1839` finish CI and check for CLEAN-but-not-self-enqueued recurrence; watch all 4
+own PRs drain in position order; retry E-gate/dispatch dry-run once DB access returns; F1
+(`ph_phaladesa` zero MCP consumers) remains deferred.
