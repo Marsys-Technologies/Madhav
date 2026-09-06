@@ -2393,3 +2393,10 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Positions still flat (44/51/52/73). Queue head #1974, ~11.4min
   in_progress, normal. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1974 merged (`6c7398224`, Conductor's, not L0's) — **note:** this PR's
+  title is "serialize SAMĪKṢĀ DB-integration test files to remove a DDL race" — a direct fix for the
+  exact class of transient flake diagnosed earlier this session on `#2016`'s `DB Integration Tests`
+  failure (duplicate-key on `message_parts`/`CREATE TABLE` race). Independent confirmation the
+  earlier root-cause read (test-isolation race, not an L0 defect) was correct. Positions dropped by
+  2 (42/49/50/71). No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
