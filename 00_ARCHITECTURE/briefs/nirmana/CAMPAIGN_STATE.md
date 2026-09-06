@@ -380,6 +380,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:34:18Z` — cycle 500: **IDLE-OK — real progress.** Run 34038669312's `Build and
+  push sidecar image` step **succeeded** — the actual defect from #2096 (Dockerfile/context
+  mismatch) did not recur on this checkout, first real evidence the fix works end-to-end in CI.
+  Now on `Deploy sidecar candidate to Cloud Run (zero traffic)` — next steps (resolve candidate URL,
+  authenticated smoke probes, promote) are the actual test of whether `ka_graha_sancara` goes GREEN.
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). 500 cycles this session.
 - `2026-09-06T14:32:10Z` — cycle 499: **IDLE-OK.** Sidecar build still `in_progress` (~12 min).
   Fleet DIRTY: #1898 known churn. No new `nirmana-adjudication` issues (17). Nothing rose to a
   bounded unit.
