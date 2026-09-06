@@ -2127,3 +2127,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Third flat read (`#2016` still mid-CI, no reds). No DIRTY, no RED, no
   new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Fourth flat read. `#2016`'s CI has now re-triggered ~5 times this
+  session without completing — a normal side-effect of a very active merge queue (each main advance
+  restarts its checks before they finish), not a defect. Still no reds. No DIRTY, no RED. 30/40
+  frozen holds.
