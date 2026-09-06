@@ -493,6 +493,48 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~133:0xZ — L3-W3 — PR hygiene: `#2184` healthy, all checks
+  green except `Governance Gates` (still `pending`, within the confirmed
+  ~11min normal range for its pytest step), not yet queued (checks still
+  finishing). Re-ran `egate.sql`: unchanged — `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`
+  (correctly HELD per D-CND-26 true-closure ruling — checked its
+  `depends_on` fix is NOT mine to make: `DAG_CORRECTIONS_REGISTER_v1_0.md`
+  §2 already shows L3's row ✅ COMPLETE, and `depends_on` is campaign-wide
+  IMMUTABLE inside a frozen definition per D-CND-09/#1744 — confirmed by
+  reading migration 690's own header before nearly repeating that mistake).
+  With no E-gate-eligible W4 work available, did tier-5 prep instead:
+  **F-L3-4** (23 L3 assets with NULL `expected_volume_formula`) — picked
+  ONE asset, `ka_vedha_gochara` (fully CLEAN in the depends_on audit, no
+  ancestor entanglement), and derived its formula from
+  `services/ka_vedha_gochara/writer.py` directly: not a flat count (unlike
+  `ga_condition`, migration 851) — one row per (graha, transit-run) triple
+  gated by live reference-table sizes (41 vedha-checkable `bg_transit_rules`
+  rows, 8 `bg_phaladeepika_latta` rows) over a 460-day build-time-anchored
+  horizon, matching L5's `mi_adhilepa`/`mi_bhara` non-flat-count convention
+  (migration 690). Live-measured 176 (132 house_vedha + 24 sarvatobhadra +
+  20 latta) matches `target_floor`/`count_sql` exactly. Migration 852 +
+  paired DB-free/live-integration test authored, all 6 tests pass.
+  **Self-caught a real process defect while authoring it:** the first draft
+  wrapped the UPDATE in its own `BEGIN;`/`COMMIT;` (mirroring migration
+  851's style) while the paired test used the execute-then-`conn.rollback()`
+  pattern (mirroring migration 850's, which requires NO self-transaction
+  wrapper) — the migration's own `COMMIT;` closed the transaction before
+  the test's outer rollback ran, so the first "passing" test run silently
+  persisted real values into `asset_registry` against the local Cloud SQL
+  proxy, outside any deploy. Caught immediately by re-querying the live row
+  after the test claimed success (found it non-NULL when it should have
+  rolled back); reverted by hand
+  (`UPDATE asset_registry SET expected_volume_formula = NULL, ... WHERE
+  asset_id = 'ka_vedha_gochara'`, confirmed NULL again); fixed at root by
+  removing the `BEGIN;`/`COMMIT;` wrapper (matching 670/850's convention
+  for this range, not 851's) and re-ran all 6 tests — genuinely rolled
+  back this time, re-verified live. Migration-number guard PASS (852,
+  confirmed free). Committed locally
+  (`516728400`), held from push — `#2184`'s own checks still finishing on
+  the same branch; will push once it clears. — blocked on: nothing new;
+  next action: push once `#2184` finishes its checks/queues, then continue
+  F-L3-4 on another CLEAN asset next cycle if still no E-gate work.
 - `2026-09-07T~132:0xZ — L3-W4 — PR HYGIENE: `#2181` had merged
   (squash `c1e68c385`, 22:36:48Z) since last cycle — it was no longer in
   the open-PR list. Rebased the 9 not-yet-merged local heartbeat commits
