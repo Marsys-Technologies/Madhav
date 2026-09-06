@@ -672,7 +672,9 @@ def _build_dispositor_edges(
             # M-22 fix: a single deterministic construction pass (sign-lord
             # table lookup) over already-computed upstream data — real, but
             # not independently cross-checked by a second pass. Demoted to
-            # "single_pass" (formulas.py VERIFICATION_RESCALE 0.85 vs 1.00).
+            # "single_pass" -- verification_vocab.py's declared alias of
+            # "single", both resolving to formulas.py VERIFICATION_RESCALE
+            # 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
             "verification_pass_status":        "single_pass",
             "citation_ref":                    f"parashari/sign_lordship/{graha}",
             "citation_human":                  f"Dispositor: {graha} (sign {sign_num}) → lord {lord}",

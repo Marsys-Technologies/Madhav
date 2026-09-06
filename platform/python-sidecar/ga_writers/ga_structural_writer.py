@@ -2410,9 +2410,10 @@ def _build_yoga_rows(
                 # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
                 # not the redundant two-pass cross-check the rest of this writer's
                 # categories perform — it must not claim the top verification tier.
-                # "single_pass" is a real, already-wired distinct tier (formulas.py
-                # VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified), so this
-                # correctly demotes catalog label rows in bo_laksana's salience_formula_v2
+                # "single_pass" is verification_vocab.py's declared spelling alias of
+                # "single" (both resolve to formulas.py VERIFICATION_RESCALE = 0.85,
+                # vs 1.00 for two_pass_verified — #1729/D-CND-05), so this correctly
+                # demotes catalog label rows in bo_laksana's salience_formula_v2
                 # rather than inventing a new fabricated status string.
                 verif="single_pass",
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",

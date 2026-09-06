@@ -29,6 +29,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from brahmagyan.verification_vocab import ALL_STATUSES, canonical as _vocab_canonical
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Version constants — writers stamp these on each row
 # ──────────────────────────────────────────────────────────────────────────────
@@ -508,11 +510,52 @@ def centrality_formula_v1(node: CentralityInputs) -> dict[str, float]:
 VERSION_SALIENCE_FORMULA_V2 = "v2.0"
 
 # verification_rescale lookup — replaces log(1+corroboration)/log(10)
+#
+# Nirmāṇa #1729 / D-CND-05. Was 3 keys with everything else silently falling
+# through to 0.60 (10 of 13 vocabulary members, 85.2% of live facts) — a
+# decision disguised as a default (§N.7 item 3). Two defects that fix closes:
+#   1. `single` (80.7% of live facts, the UNVERIFIED_DEFAULT) fell through to
+#      0.60 while its OWN DECLARED ALIAS `single_pass` (verification_vocab.py:
+#      deprecated_alias_of="single") was priced at 0.85 — a 42% relative
+#      difference between two strings the vocabulary calls synonyms.
+#   2. `not_defined_for_nodes` and 4 siblings describe the ABSENCE of a value
+#      (an N/A, a skip, a floor) rather than a value's verification state.
+#      Pricing an N/A at 0.60 is not conservative, it is a category error
+#      (§N.7 item 6) — see EXCLUDED_NO_VALUE_STATUSES below.
+#
+# Every key here is a CANONICAL vocabulary member (never an alias — aliases
+# resolve through verification_vocab.canonical() in salience_formula_v2, so a
+# second copy of the shadowing defect cannot be added by listing `single_pass`
+# here too). Together with EXCLUDED_NO_VALUE_STATUSES this covers exactly the
+# 12 canonical members of ALL_STATUSES (13 total members minus the 1 alias);
+# tests/l2/test_verification_rescale_vocab_coverage.py asserts this stays true.
+#
+# Weights ruled on #1729 (L1 proposed, Conductor approved in full):
 VERIFICATION_RESCALE: dict[str, float] = {
-    "two_pass_verified":        1.00,
-    "single_pass":              0.85,
-    "documented_approximation": 0.60,
+    "two_pass_verified":        1.00,  # independently re-derived; could have disagreed
+    "classical_match":          0.90,  # relay-fidelity check ran, real but not re-derivation
+    "single":                   0.85,  # UNVERIFIED_DEFAULT; the alias single_pass resolves here
+    "pending_w3_verification":  0.85,  # epistemically IS a single pass; deferral is PM, not evidence
+    "computed_extension":       0.75,  # derived by extension; inherits base's uncertainty + adds a step
+    "documented_approximation": 0.60,  # anchor of the scale: knowingly approximate, named in citation
+    "divergent_flagged":        0.40,  # only status carrying evidence AGAINST its value
 }
+
+#: These 5 canonical statuses describe the ABSENCE of a computed value, not a
+#: value's verification state — applying a confidence multiplier to "there is
+#: nothing here" is a category error, not a conservative choice (#1729,
+#: L1's Group B proposal, Conductor-approved). A row with one of these
+#: statuses is still stored, served, and visible (B.10) — it is excluded only
+#: from salience RANKING (top_k_salience_rank / salience_pctl_in_class stay
+#: None for it, and it does not occupy a rank position other rows compete
+#: against). See bo_laksana.py's _set_top_k_ranks / _set_salience_pctl_in_class.
+EXCLUDED_NO_VALUE_STATUSES: frozenset[str] = frozenset({
+    "floored",                       # source unreachable; writer refused to fabricate
+    "not_defined_for_nodes",         # N/A — formula structurally undefined for this subject
+    "scope_cap_sentinel",            # marks where a scope cap truncated emission
+    "skipped_malformed_source",      # records a skipped, malformed source row
+    "external_computation_required", # §B.10 marker — deliberately not invented
+})
 
 # Varga weight by divisional chart suffix
 VARGA_WEIGHT: dict[str, float] = {
@@ -575,11 +618,41 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
     verification_rescale eliminates the 0.778 ceiling of log(1+corroboration)/log(10).
     bala_gate: yoga signals with weak constituent planets are demoted, not excluded.
     specificity and salience_pctl_in_class are filled in a second pass by bo_laksana.
+
+    #1729/D-CND-05: verification_pass_status resolves through
+    verification_vocab.canonical() FIRST (so `single_pass` and `single` are
+    provably the same lookup, not two keys that happen to hold the same
+    number), then either VERIFICATION_RESCALE (a real weight) or
+    EXCLUDED_NO_VALUE_STATUSES (the row carries no value to weight —
+    verification_rescale is 0.0 and excluded_from_ranking is True). A status
+    outside the settled vocabulary entirely is vocabulary drift and raises —
+    §N.8 forbids a silent lowest-weight guess standing in for "unrecognized".
     """
-    verification_rescale = VERIFICATION_RESCALE.get(
-        s.verification_pass_status,
-        VERIFICATION_RESCALE["documented_approximation"],
-    )
+    _canonical_status = _vocab_canonical(s.verification_pass_status)
+    if _canonical_status in EXCLUDED_NO_VALUE_STATUSES:
+        verification_rescale = 0.0
+        excluded_from_ranking = True
+    elif _canonical_status in VERIFICATION_RESCALE:
+        verification_rescale = VERIFICATION_RESCALE[_canonical_status]
+        excluded_from_ranking = False
+    elif s.verification_pass_status not in ALL_STATUSES:
+        raise ValueError(
+            f"salience_formula_v2: verification_pass_status={s.verification_pass_status!r} "
+            "is not a member of the settled vocabulary (brahmagyan/verification_vocab.py) — "
+            "vocabulary drift. Add it to the vocabulary AND to VERIFICATION_RESCALE or "
+            "EXCLUDED_NO_VALUE_STATUSES in this module (#1729/D-CND-05) before emitting it."
+        )
+    else:
+        # A legal, non-alias vocabulary member reached here without a price —
+        # the table+set stopped covering ALL_STATUSES. This is this module's
+        # own bug, not the caller's, and test_verification_rescale_vocab_
+        # coverage.py exists to catch it before it ships.
+        raise ValueError(
+            f"salience_formula_v2: verification_pass_status={s.verification_pass_status!r} "
+            f"(canonical {_canonical_status!r}) is a legal vocabulary member with no entry "
+            "in VERIFICATION_RESCALE or EXCLUDED_NO_VALUE_STATUSES — this module's coverage "
+            "of the settled vocabulary has drifted (#1729/D-CND-05)."
+        )
     varga_weight = VARGA_WEIGHT.get(s.varga_id or "D1", 1.00)
     house_wt = HOUSE_WEIGHT.get(s.house_number, 1.00)
     av_mult = _av_multiplier(s.ashtakavarga_bindus)
@@ -630,6 +703,13 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
         "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_inputs_complete": s.inputs_complete,
         "present_but_enfeebled":    present_but_enfeebled,
+        # #1729/D-CND-05: the row's verification_pass_status is one of
+        # EXCLUDED_NO_VALUE_STATUSES — it carries no computed value to rank,
+        # so the CALLER (bo_laksana._set_top_k_ranks / _set_salience_pctl_
+        # in_class) must exclude it from the ranking pool entirely rather
+        # than assign it a rank. Not a stored DB column — an in-memory-only
+        # signal for the caller's ranking pass.
+        "excluded_from_ranking":    excluded_from_ranking,
         # v1 compat keys — callers that stored these column names still work.
         # Unmeasured terms are returned as None (not their identity) so the stored
         # row distinguishes "no detector ran" from "detector ran and found neutral".

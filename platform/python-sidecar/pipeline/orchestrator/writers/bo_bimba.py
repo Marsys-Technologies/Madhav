@@ -341,8 +341,9 @@ def _build_nodes_for_aya(
             # M-22 fix: these graph nodes are a single deterministic
             # construction pass over already-computed upstream L1/L2 data
             # (bodha_msr_signals) — real, but not independently cross-checked
-            # by a second pass. Demoted to "single_pass" (formulas.py
-            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified).
+            # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
+            # declared alias of "single", both resolving to formulas.py
+            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
             "verification_pass_status": "single_pass",
             "citation_ref": f"bo_bimba/graha/{graha}",
             "citation_human": f"Graha node: {graha}",
@@ -393,8 +394,9 @@ def _build_nodes_for_aya(
             # M-22 fix: these graph nodes are a single deterministic
             # construction pass over already-computed upstream L1/L2 data
             # (bodha_msr_signals) — real, but not independently cross-checked
-            # by a second pass. Demoted to "single_pass" (formulas.py
-            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified).
+            # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
+            # declared alias of "single", both resolving to formulas.py
+            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
             "verification_pass_status": "single_pass",
             "citation_ref": f"bo_bimba/bhava/{h}",
             "citation_human": f"Bhava node: house {h}",
@@ -440,8 +442,9 @@ def _build_nodes_for_aya(
             # M-22 fix: these graph nodes are a single deterministic
             # construction pass over already-computed upstream L1/L2 data
             # (bodha_msr_signals) — real, but not independently cross-checked
-            # by a second pass. Demoted to "single_pass" (formulas.py
-            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified).
+            # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
+            # declared alias of "single", both resolving to formulas.py
+            # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
             "verification_pass_status": "single_pass",
             "citation_ref": f"bo_bimba/domain/{domain}",
             "citation_human": f"Domain node: {domain}",
