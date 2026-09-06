@@ -2185,3 +2185,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   `#2016` back out right before it lands. Staying conservative: keep committing locally, hold the
   push until `gh pr view 2016 --json mergedAt` shows a real timestamp, then push everything
   accumulated in one go. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK (on new branch `-9`).** All four L0 PRs (`#2004`/`#2013`/`#2014`/`#2016`)
+  still genuinely `is:queued`. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
