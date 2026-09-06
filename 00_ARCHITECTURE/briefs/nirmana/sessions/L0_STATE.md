@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, not stalled -- main advanced and #2081 is now position 1 (frontmost), AWAITING_CHECKS. No DIRTY/RED. Very close now. 35/40 frozen unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, #2081 still position 1 but queue confirmed actively cycling other candidates -- healthy. No DIRTY/RED. 35/40 frozen unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3167,5 +3167,7 @@ the milestone entries in the log below for full chains + every gotcha found alon
   `no_change`, so no `implementation_accepted` needed this time — straight dispatch →
   `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`). 35/40 frozen unchanged.
 
-- 2026-09-06 — **IDLE-OK.** Not stalled — `main` advanced (confirmed) and `#2081` is now
-  position 1 (frontmost), `AWAITING_CHECKS`. No DIRTY/RED. Very close now. 35/40 frozen unchanged.
+- 2026-09-06 — **IDLE-OK.** `#2081` still position 1; its own batch hasn't started evaluating yet
+  but the queue is actively cycling other candidates (several batches completed/in-progress in
+  the last ~10 min) — healthy, just hasn't reached the front's own build yet. No DIRTY/RED.
+  35/40 frozen unchanged.
