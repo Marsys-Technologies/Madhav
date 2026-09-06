@@ -2059,3 +2059,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (main HEAD unchanged, `#2004` still `is:queued`, `#2013` now
   `CLEAN`). `#2014`/`#2016` still mid-CI, no reds. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Main advanced with an L4 merge (`938351c65`, not L0's). `#2014` now
+  genuinely `is:queued` too. `#2016` still mid-CI, no reds. No DIRTY, no RED. 30/40 frozen holds.
