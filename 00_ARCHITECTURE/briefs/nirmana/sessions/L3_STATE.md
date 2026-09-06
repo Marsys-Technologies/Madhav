@@ -469,6 +469,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~38:0xZ — L3-W3 — RULING LANDED on `#2096`.** Conductor fixed it
+  directly rather than choosing between the two options offered — a third,
+  better approach built from this repo's own existing precedents: widen the
+  sidecar's Docker build context to `./platform` (one level, not repo root —
+  narrow enough to reach `scripts/` without bloating every sidecar image with
+  the whole monorepo), nest `WORKDIR` one level deeper so `engine.py`'s
+  existing path arithmetic lands correctly with **zero code changes**, and
+  `COPY` only `scripts/temporal/` (148K, not all 7.3M of `platform/scripts/`).
+  Verified live via a real local `docker build`, not just reasoned about.
+  Shipped as PR `#2104`, auto-merge armed, not yet merged. **Nothing left for
+  L3 to implement** — Conductor will confirm live `ka_graha_sancara` GREEN +
+  actual traffic promotion on `#2096` once `#2104` merges and the next smoke
+  run completes; watching, not acting. This cycle's hygiene: 2 of 7 L3-owned
+  PRs went `UNMERGEABLE`-in-queue (`#1929`/`#1917`) — fixed both (clean
+  rebases, tests re-pass 36/8), confirmed `MERGEABLE`. — blocked on: nothing
+  for L3; next action: watch `#2104` merge and `#2096` close with live
+  confirmation, keep L3-only hygiene sweeps going.
 - `2026-09-06T~32:0xZ — L3-W3 — PR hygiene: initial sweep showed `UNKNOWN`
   status on all 8 L3-owned PRs — waited and rechecked rather than trust it,
   revealing 4 genuinely `CLEAN`-but-unqueued (`#1940`/`#1936`/`#1929`/`#1903`)
