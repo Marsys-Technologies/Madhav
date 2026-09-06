@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 121; closed F-E19 (PR #2151) — ga_tajaka_writer.py's _read_trirashipathi LIMIT 1 had no ORDER BY (latent, 15/15 chart×ayanamsha combos have exactly 1 row today); added ORDER BY fact_id + stopped silently swallowing the zero-row case; first WRITER-file fix this whole NOW-sweep, required regenerating writer-digests + re-pinning L1 analysis layer pins
+last_updated: 2026-09-07 — C8 v2.3 cycle 122; closed F-E28 (PR #2152), the LAST remaining NOW-tier finding from the W1 sweep -- 3 of 5 named files (get_vastu_directions/get_tajik/get_prashna_lagna) needed density_contract; the other 2 (get_ayurdaya/get_medical_indications) were already closed earlier this same sweep via their own more-specific fixes. The entire NOW-tier is now CLOSED
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3376,9 +3376,9 @@ none accepted yet (blocked on #1736).
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows |
 | ga_ayurdaya | 130 / 130 | rebuild_only | F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99. F-E8 **FIXED (cycle 120, PR #2148)** — `get_medical_indications.ts` had no `empty_reason` (0-row response looked populated) and no `density_contract`; added both, and named both upstream authorities (`chart_facts` + `bg_medical_mappings`) in `provenance.tables`, not just `ga_medical` itself |
-| ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
-| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix. F-E19 **FIXED (cycle 121, PR #2151)** — `_read_trirashipathi`'s `LIMIT 1` had no `ORDER BY` (latent today since every chart×ayanamsha has exactly 1 row, confirmed live 15/15); added `ORDER BY fact_id` and stopped silently swallowing the zero-row case to `None` with no log |
-| ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted (F-E21, 2 real prashna casts 2026-06-18, `POST /api/compute/prashna/cast` reachable). F-E22's "5 orphaned served rows" **CORRECTED cycle 107** — re-investigated before acting on its own MUST instruction and found the rows are NOT orphaned: `ga_prashna_lagna`'s 5 rows for chart `b35046d8` are real, well-formed lagna computations for a genuine prashna cast that exists in `prashna_charts` (not `charts` — the table F-E22 checked); `ga_prashna_writer.py`'s own docstring confirms `prashna_charts` is the intended parent table. The actual finding: `ga_prashna_judgment`'s FK points at `charts(id)`, contradicting its own writer's design — likely why judgment rows for this chart never insert while lagna rows (no FK) do. R-1-sensitive schema question filed as #2123, not acted on unilaterally. F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only) |
+| ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955). F-E28 (`get_vastu_directions.ts` share) **FIXED (cycle 122, PR #2152)** — 0 `density_contract` occurrences AND no `empty_reason` at all (one of the finding's two named exceptions); added both |
+| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix. F-E19 **FIXED (cycle 121, PR #2151)** — `_read_trirashipathi`'s `LIMIT 1` had no `ORDER BY` (latent today since every chart×ayanamsha has exactly 1 row, confirmed live 15/15); added `ORDER BY fact_id` and stopped silently swallowing the zero-row case to `None` with no log. F-E28 (`get_tajik.ts` share) **FIXED (cycle 122, PR #2152)** — 0 `density_contract` occurrences; `empty_reason` already genuinely implemented, now declared honestly |
+| ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted (F-E21, 2 real prashna casts 2026-06-18, `POST /api/compute/prashna/cast` reachable). F-E22's "5 orphaned served rows" **CORRECTED cycle 107** — re-investigated before acting on its own MUST instruction and found the rows are NOT orphaned: `ga_prashna_lagna`'s 5 rows for chart `b35046d8` are real, well-formed lagna computations for a genuine prashna cast that exists in `prashna_charts` (not `charts` — the table F-E22 checked); `ga_prashna_writer.py`'s own docstring confirms `prashna_charts` is the intended parent table. The actual finding: `ga_prashna_judgment`'s FK points at `charts(id)`, contradicting its own writer's design — likely why judgment rows for this chart never insert while lagna rows (no FK) do. R-1-sensitive schema question filed as #2123, not acted on unilaterally. F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only). F-E28 (`get_prashna_lagna.ts` share) **FIXED (cycle 122, PR #2152)** — 0 `density_contract` occurrences; a metadata-only fix to an already-existing serving surface, not new prashna-facility work, so not R-1-gated |
 
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
 21-40)**: ga_dashas, ga_vargas, ga_strength, ga_positions, ga_panchanga, ga_condition, ga_tajaka,
@@ -7365,3 +7365,30 @@ L1 must satisfy rather than a feature it consumes.
   next: F-E28 is the last remaining NOW claim in this sweep; after that the sweep is
   genuinely done and the next priority should be re-derived from the contract (W3 remaining
   MUST findings, or W1/W2 work, per Step 2's own priority order).
+- 2026-09-07T00:1xZ -- CYCLE 122 (C8 v2.3). PR hygiene: #2146/#2145 genuinely `is:queued`;
+  #2151/#2148/#2132 all mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Unit
+  of work: F-E28, the LAST NOW-tier finding in this entire sweep (started cycle 111, F-A11).
+  Re-checked all 5 files the finding names before touching anything -- `get_ayurdaya.ts` and
+  `get_medical_indications.ts` already show `density_contract` declared, because F-E2/F-E3
+  (cycle 119, PR #2146) and F-E8 (cycle 120, PR #2148) each independently added it as PART of
+  a more specific fix, closing this finding's scope for those two without me realizing it at
+  the time -- confirmed by grepping origin/main directly rather than assuming from memory.
+  The other 3 (`get_vastu_directions.ts`, `get_tajik.ts`, `get_prashna_lagna.ts`) were still
+  genuinely at 0 occurrences. `get_vastu_directions.ts` matched one of the finding's own two
+  named "no empty_reason at all" exceptions -- added a real one (`total_matching===0`,
+  naming every filter). `get_tajik.ts`/`get_prashna_lagna.ts` already implement empty_reason
+  correctly, so `empty_reason:true` is an honest declaration on both. Applied the cycle-116
+  proactive-fix lesson to `get_tajik.ts`, which turned out to have TWO existing pin-allowlist
+  entries (not one, like prior cases) -- computed both new line numbers via the checker's own
+  reported output (124->131, 135->142) before running it for real, confirmed exit 0 and the
+  live CI's own Fact-Category Pinning Gate check came back `pass`. `npx tsc --noEmit` + `npx
+  eslint` clean; `--self-test` passes; `npx vitest run --project node
+  src/lib/retrieval/registry/layers/L1_ganita/` -- 152 passed, no regressions. No writer
+  touched. Opened PR #2152 directly off `origin/main`, armed auto-merge, confirmed genuine CI
+  dispatch (35 check-runs) before ending the cycle. CYCLE 122 L1: PR hygiene clean, closed
+  F-E28 -- **the entire NOW-tier sweep across all five W1 analysis batches (A-E) is now
+  CLOSED**, cycles 111-122, twelve findings (F-A11, F-B14, F-C21, F-D5, F-D11, F-D18, F-D20,
+  F-D25, F-E2/F-E3, F-E8, F-E19, F-E28) -- next: re-derive priority fresh from the contract's
+  own Step 2 order (E-gate dispatch / W5 verification rank ABOVE W3 implement work) before
+  assuming the next unit is another W3 finding; if nothing ranks higher, the remaining MUST-
+  tier findings (not yet swept this segment) or W1/W2 gaps are the next candidates.
