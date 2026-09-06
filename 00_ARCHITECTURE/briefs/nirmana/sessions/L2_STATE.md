@@ -396,6 +396,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 341 | 2026-09-06T16:05Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Nothing changed since loop 340: main static, both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 342 | 2026-09-06T16:08Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Nothing changed since loop 341: main static, both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 343 | 2026-09-06T16:11Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (3 cycles) but `gh-readonly-queue` chain active with a new entry (`pr-2118`) -- genuine ongoing activity, not a stall. Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
+| 344 | 2026-09-06T16:14Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (4 cycles) but `gh-readonly-queue` has a new entry (`pr-2119`) -- genuine ongoing activity, not a stall. Both E-gates unchanged. One new `nirmana-adjudication` issue (`#2122`, L0's own `bg_vidhi_primitives.py` dispatch bug) -- confirmed no L2 relevance. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
