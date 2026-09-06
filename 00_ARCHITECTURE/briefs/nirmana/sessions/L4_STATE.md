@@ -5274,3 +5274,19 @@ hygiene clean, all 9 own PRs genuinely queued and advancing; E-gate uncheckable,
 down 255 cycles; nothing new) → next: watch queue positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~12:25Z` — L4 — **CYCLE 266 (v2.3) — genuinely IDLE; first flat cycle, queue
+head (`#1990`, not mine) checked directly, confirmed `AWAITING_CHECKS` — actively
+processing. Two unrelated `UNMERGEABLE` entries elsewhere in the queue (`#1853`, `#1992`) —
+not mine.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued for a second cycle. No DIRTY, no
+RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 256th consecutive cycle DB access down.
+
+CYCLE 266 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1990` actively processing; E-gate uncheckable, DB access down 256 cycles; nothing new) →
+next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
