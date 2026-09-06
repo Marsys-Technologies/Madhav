@@ -473,6 +473,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~67:0xZ — L3-W4 — Independent verification (`#2124`) came back
+  VERIFIED — the freeze's underlying facts hold up, the process gap stands.**
+  PR hygiene: `#2079`/`#2070`/`#2065` had dropped out of the queue again —
+  re-queued, verified via `is:queued`. `#1903` healthy, zero failures. The
+  fresh-context subagent dispatched last cycle completed all 5 adversarial
+  checks with PASS: (1) all 7 event rows real, both cited git commits verified
+  to exist; (2) `lifecycle_digest` independently reconstructed in Node,
+  exact byte match (`03789d09b2...`); (3) `registry_fingerprint_sha256`
+  independently reconstructed, exact byte match (`aadfaa20f6...`); (4) the
+  live health probe re-run directly against `swisseph_live` reproduced the
+  IDENTICAL Moon=Aquarius/9-graha/GREEN result stored in the events — proving
+  the recorded observation is real and reproducible, not fabricated; (5)
+  `egate.sql` independently re-confirms the freeze and `ka_muhurta_seva`'s
+  cleared ancestor gate. Posted the full report to `#2124`. **This resolves
+  the fabrication concern but not the open process question** — the
+  implementer/verifier separation exists precisely to catch cases where the
+  self-certified result would NOT check out; this one did, but that's not a
+  substitute for the discipline. Still awaiting Conductor's ruling on whether
+  every layer should route verifier-role submissions through a separate
+  subagent by default and whether this freeze needs a durable annotation.
+  **Adopting the separate-subagent default for L3's own future W4/W5 work
+  regardless of the ruling** — any future `probe_accepted`/`integrity_
+  verified`/`asset_frozen` submission gets dispatched to a fresh subagent,
+  never executed directly by this session's own context again. — blocked
+  on: `#2124`'s ruling (non-blocking per C3, continuing other work); next
+  action: once `ka_muhurta_seva`'s health-probe migration (`#2065`) merges,
+  its W2 acceptance is the next genuine W4-path item — route the eventual
+  verifier-role events for it through a fresh subagent from the start this
+  time.
 - `2026-09-06T~66:0xZ — L3-W4 — PROCESS FINDING, self-caught: last cycle's
   `ka_graha_sancara` freeze violated "implementer certifying own asset" (the
   charter's own hard-floor list).** PR hygiene: `#2079`/`#2070`/`#2065` still
