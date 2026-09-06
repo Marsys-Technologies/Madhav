@@ -630,6 +630,14 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~35:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs
+  healthy (waited out a transient `UNKNOWN` batch read before trusting it —
+  settled to clean `BLOCKED`/`MERGEABLE`). Merge queue's 4 entries all
+  non-L3, left alone. `#2096` still has no ruling. Re-ran the freeze check
+  for the standing E-gate blockers (`ga_positions`/`ga_sensitive`/`ga_yoga`/
+  `ga_dashas`) — zero rows, no progress, nothing newly dispatchable. — blocked
+  on: `#2096`'s ruling; next action: keep L3-only hygiene sweeps going, check
+  `#2096` each cycle.
 - `2026-09-06T~34:0xZ — L3-W3 — PR hygiene: 5 of 8 L3-owned PRs went DIRTY
   (`#2079`/`#1936`/`#1929`/`#1917`/`#1903`) — fixed all five (standard L3-pin
   regen, several genuinely-additive concurrent-entry `L3_STATE.md` conflicts
