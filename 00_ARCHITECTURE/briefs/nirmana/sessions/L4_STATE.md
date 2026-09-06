@@ -6513,3 +6513,33 @@ stalled → next: re-check the three in-progress PRs next cycle for the same
 CLEAN-but-not-self-enqueued pattern once their CI finishes; watch all 5 drain in position
 order; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
 consumers) remains deferred.
+
+`2026-09-06T~11:58Z` — L4 — **CYCLE 329 (v2.3) — `#1845` MERGED (own PR, `ph_sodhana`
+LEAKAGE-FIREWALL fix). `#1831`/`#1834`/`#1839` all found genuinely DIRTY simultaneously
+(real conflicts from `#1845` landing), all rebased/resolved/tested/re-armed via the standard
+recipe plus the disable-then-auto force-enqueue step.**
+
+**PR hygiene this cycle, in order:** `#1831` (`ph_pratikara` F-3.4) — pin-only conflict, hand
+-derived to `12738f60...985fe2`; 76/76 tests green. `#1834` (`ph_rectification` F3) —
+pin-only conflict, hand-derived to `d80d8263...9cdde9`; 49/49 tests green. `#1839`
+(`ph_phaladesa` headline-anchor) — pin-only conflict, hand-derived to `55067f57...825bc1b2`;
+97/97 tests green. All three: digest auto-merged clean and confirmed byte-identical to a
+fresh regen in each case; `--check` and isolation (`git diff $(git merge-base HEAD
+origin/main) HEAD --stat`) verified from each fully-rebased final state; `mergeQueueEntry`
+null before each push (not occupying a slot); pushed directly, then force-enqueued via
+disable-then-auto per the cycle-328 lesson (don't assume plain re-`--auto` or a fresh push
+alone is sufficient). `#1808` re-confirmed still genuinely `QUEUED`, untouched by this
+cycle's fixes.
+
+**Priorities 1-4:** `#1845` merged (own PR) — the seventh of the layer's shipped `ph_*` W3
+fixes to land on `main` (prior: `#1870`, `#1849`, `#1842`). No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+319th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 329 L4: `#1845` MERGED (ph_sodhana LEAKAGE-FIREWALL — 7th shipped fix to land); found
+and fixed three simultaneous genuine DIRTY PRs (`#1831`, `#1834`, `#1839` — all pin-only
+conflicts, all rebased/tested green/force-enqueued); confirmed `#1808` still genuinely
+queued and untouched → next: watch all 4 remaining own PRs drain in position order; watch for
+the CLEAN-but-not-self-enqueued pattern (cycle 328 lesson) recurring on any of them once
+their own CI finishes; retry E-gate/dispatch dry-run once DB access returns; F1
+(`ph_phaladesa` zero MCP consumers) remains deferred.
