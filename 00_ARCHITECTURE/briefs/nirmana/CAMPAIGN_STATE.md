@@ -380,6 +380,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:32:10Z` — cycle 499: **IDLE-OK.** Sidecar build still `in_progress` (~12 min).
+  Fleet DIRTY: #1898 known churn. No new `nirmana-adjudication` issues (17). Nothing rose to a
+  bounded unit.
 - `2026-09-06T14:30:07Z` — cycle 498: **IDLE-OK.** Run 34038669312's sidecar image build still
   `in_progress` (~10 min, matches expected ~19-20 min build time). Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
