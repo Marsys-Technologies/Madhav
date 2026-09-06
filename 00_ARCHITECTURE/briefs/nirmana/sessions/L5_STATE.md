@@ -457,6 +457,16 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:05Z (C8 v2.3 cycle 424 addendum) — **Self-inflicted pacing mistake, small but
+  worth recording.** Pushed the routine 4-cycle state batch to #1826 right when it was down to its
+  LAST pending check (Governance Gates) — the push reset its CI run, so it's now back to 8 checks
+  pending instead of 1. #1844 (already genuinely queued) confirmed unaffected. **Lesson for the
+  rest of this session: when a PR is down to its last 1-2 checks, HOLD the batch push an extra
+  cycle or two rather than pushing on the routine ~5-cycle schedule** — the near-complete CI run is
+  worth more than the state file being one cycle fresher. This is the same class of cost as the
+  original cycle-197 CI-restart-loop bug, just far smaller (one wasted run, not a structural
+  never-completes loop) — the batching discipline itself remains correct, it just needs to also
+  check "is this PR about to finish" before firing, not just "how many cycles since last push."
 - 2026-09-06T13:00Z (C8 v2.3 cycle 424) — **IDLE-OK, but real progress: #1844 has entered the
   merge queue** (`isInMergeQueue: true`) — the first time either PR has genuinely reached the
   queue since the #2086 renumber. #1826 down to its last 1 check (Governance Gates), no failures,
