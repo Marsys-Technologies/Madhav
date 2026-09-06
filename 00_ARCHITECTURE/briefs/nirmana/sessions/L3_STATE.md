@@ -493,6 +493,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~141:0xZ — L3-W3 — PR hygiene: `#2187` MERGED (squash
+  `4598773ef`). Rebased the 11 not-yet-merged local commits (migrations
+  856/857/858 + heartbeat, plus 7 pre-#2187 commits whose content was
+  already absorbed into #2187's squash) onto fresh `origin/main`. Hit
+  the standard empty-theirs prepend-conflict pattern once (auto-resolved
+  via the marker-strip script after confirming empty theirs), no
+  non-standard conflicts this time. Verified zero conflict markers,
+  migration-number guard PASS, all 20 migration-856/857/858 tests still
+  pass post-rebase, `ka_dasha_kala` held row intact. Renamed branch to
+  `codex/nirmana-l3-f-l3-4-batch-2`, pushed, opened **PR #2189**, armed
+  auto-merge (checks running now, not yet queued — normal). No new
+  bounded work this cycle beyond the rebase/PR-open itself
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: nothing new;
+  next action: verify `#2189` clears its checks and queues cleanly next
+  cycle, then continue F-L3-4 (12 of 23 L3 assets still NULL) if still
+  no E-gate work.
 - `2026-09-07T~140:0xZ — L3-W3 — PR hygiene: `#2187`'s own `merge_group`
   build (run `34066593959`) confirmed via full `gh run list` scan
   (not truncated) — ~5.5min elapsed, 8/9 jobs green, only `Governance
