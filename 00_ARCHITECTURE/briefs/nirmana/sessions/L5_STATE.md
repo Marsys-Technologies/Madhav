@@ -484,8 +484,11 @@ L5 on a colliding identity would bake it into my prediction ids.
   (matches the canary's known row count). Rebased onto origin/main first (was 8 commits behind;
   clean 411-commit replay, no conflicts) to get the real next migration number (805→806).
   `migration-guard` subagent dispatched, review in flight — **not applied yet, next cycle picks up
-  the verdict and applies via `migrate.ts` if clean.** PR batching: still holding locally (haven't
-  pushed since cycle 404; will push+rebase-dance once #1826/#1844 both have headroom).
+  the verdict and applies via `migrate.ts` if clean.** **Pushed this cycle** (404→409 batch): the
+  migration-806 rebase replayed 411 commits onto origin/main (clean, no conflicts, needed to get
+  the real next migration number 805→806), which rewrote history — dequeued #1826 first, force-
+  pushed with lease, re-armed, confirmed fresh CI started (`autoMerge` re-enabled 10:44:06Z);
+  #1844 confirmed unaffected (`isInMergeQueue: true` throughout).
 - 2026-09-06T10:40Z (C8 v2.3 cycle 408) — **Dispatched a fresh-context verifier subagent for
   `mi_vistara`'s `integrity_verified` (W5)**, briefed thoroughly (implementer≠certifier: I
   submitted `accepted_rebuild_observed` last cycle, so I must not also certify it; the verifier
