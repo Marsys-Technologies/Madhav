@@ -1932,3 +1932,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No movement since last cycle (positions still 4/10/18/67, queue head
   still #1908, ~5.4min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1908 merged (`9083e8dd2`), positions dropped to 2/8/16/65. `#1910` is
+  now at queue position 2 — very close to merging. No DIRTY, no RED. 30/40 frozen holds.
