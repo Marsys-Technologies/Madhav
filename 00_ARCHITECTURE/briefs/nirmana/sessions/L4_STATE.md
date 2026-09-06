@@ -4983,3 +4983,17 @@ CYCLE 247 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~10:55Z` — L4 — **CYCLE 248 (v2.3) — second flat cycle; verified via
+`merge_group` run list that `#1977`'s merge-group is genuinely still in progress at ~7 min
+(normal range), not stalled.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 238th consecutive cycle DB access down.
+
+CYCLE 248 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1977` confirmed genuinely mid-CI at normal duration via `merge_group` run list; E-gate
+uncheckable, DB access down 238 cycles; nothing new) → next: watch queue positions resume
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
