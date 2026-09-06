@@ -493,6 +493,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~108:0xZ — L3-W4 — IDLE-OK (verified, closer check): same
+  `Governance Gates` run ID as last cycle, now ~11-12min — past the typical
+  ~10min pattern, so checked step-level progress via `gh run view --job`
+  rather than trust "in_progress" alone: still on the same step (`pytest —
+  pyjhora_adapter + pipeline`), but `gh run list` shows 3+ OTHER runs
+  genuinely `in_progress` concurrently right now (other layer sessions'
+  PRs) — a busy, contended shared CI runner queue, not a stall unique to
+  this run. No hard evidence of a stuck job (no error, no repeated-identical
+  timestamp signature to compare against); treating as slow-but-progressing
+  rather than escalating on a borderline elapsed time alone. No new
+  `origin/main` merges, no new E-gate opening. — blocked on: `#2166`
+  finishing; next action: if it's STILL on this exact run next cycle with
+  no further evidence of progress, check the actual step start-time via the
+  log once available (or reconsider) rather than repeat the same "probably
+  fine" read a third time.
 - `2026-09-06T~107:0xZ — L3-W4 — IDLE-OK (verified): `#2166`'s last check
   (`Governance Gates`) confirmed genuinely `in_progress` at ~8.5min via
   `gh run view` — within the known pattern, not stuck. No new `origin/main`
