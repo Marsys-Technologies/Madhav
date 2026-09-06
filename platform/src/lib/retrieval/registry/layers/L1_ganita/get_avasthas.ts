@@ -47,6 +47,14 @@ export const getAvasthsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 72, always_include: false },
   },
+  // F-C21 (L1_W1_ANALYSIS_BATCH_C.md, NOW, §N.6 item 4): was undeclared. empty_reason:
+  // false is an honest gap, not a violation — no empty_reason field exists in the
+  // handler below.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories'],
+    empty_reason: false,
+  },
   async handler(args, _ctx) {
     try {
       const chartId    = args.chart_id as string
