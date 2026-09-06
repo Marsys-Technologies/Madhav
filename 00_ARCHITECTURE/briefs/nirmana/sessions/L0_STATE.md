@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_rules FROZEN -- L0 now 38/40. Confirmed all 3 ancestors frozen, existing W2 still valid (no refresh needed). First dispatch attempt's authorization missed its window (run completed before the authorize call landed, extra latency from investigating a new error first) -- no data damage, re-dispatched immediately with authorization right after, completed clean. Full chain verified at each step. bg_concordance is now ALSO fully unblocked (all 4 ancestors frozen) -- deliberately held for next cycle (one bounded unit per cycle). Remaining 2: bg_cohort (Conductor-owned, C12 carve-out flagged, not yet wired in) and bg_concordance (ready to dispatch next cycle -- last freezable asset this phase). No open L0 PRs, no DIRTY/RED.
+last_updated: 2026-09-06 -- MILESTONE: bg_concordance FROZEN -- L0 now 39/40. This is the LAST asset L0 can freeze on its own -- only bg_cohort remains, genuinely Conductor-owned. Confirmed all 4 ancestors frozen, existing W2 from 2026-09-04 still valid (no refresh needed). Applied the lesson from bg_rules's near-miss: dispatched + authorized in one tight back-to-back sequence, clean on the first attempt. Full chain (dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) verified at each step; independently confirmed via a direct COUNT query that L0 now has exactly 39 asset_frozen events. D-NATIVE-06 is now fully delivered except for bg_cohort. No open L0 PRs, no DIRTY/RED. L0 is IDLE-OK pending only Conductor's C12 carve-out for bg_cohort.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,21 +33,22 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections — 38/40 frozen, target 40/40 (D-NATIVE-06).**
-`bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt re-attribution),
-`bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
-via #2066 + an ordering fix), `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704,
-#2081+#2088), `bg_yogas` (D-NATIVE-06, PR #2115 — writer bug fixed and frozen), and now
-`bg_rules` (its sole remaining ancestor, `bg_yogas`, froze this cycle-set) all FROZEN.
-`bg_concordance` is now fully unblocked (all 4 ancestors frozen) — ready to dispatch next cycle,
-the last freezable asset this phase. Only `bg_cohort` remains genuinely blocked (Conductor-owned,
-C12 carve-out flagged, not yet wired in).
+**L0-W4 EXECUTE + Conform-stage integrity corrections — 39/40 frozen. D-NATIVE-06 fully
+delivered except for the one genuinely-Conductor-owned item.** Every asset L0 itself can act on
+is now frozen: `bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt
+re-attribution), `bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict path, via
+#2066 + an ordering fix), `bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704, #2081+#2088),
+`bg_yogas` (D-NATIVE-06, PR #2115 — writer bug fixed), and `bg_rules` + `bg_concordance` (both
+auto-unblocked once `bg_yogas` froze, dispatched cleanly this cycle-set). **Only `bg_cohort`
+remains** — a genuine structural gap (D-L0-II) that requires Conductor to wire in C12's
+service-dependency carve-out (flagged on #1713, WP-6 sibling); not something L0 can implement
+itself. L0 is now IDLE-OK until that lands.
 
-## The 2 unfrozen assets
+## The 1 unfrozen asset
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned — but C12's service-dependency carve-out should resolve it (D-NATIVE-06).** `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (`service_health='healthy'` live) — no writer, so it can never produce a proven receipt via the current path. C12 says a live GREEN service probe should satisfy the dependency instead. Flagged to Conductor on #1713 (WP-6 sibling); once wired in, bg_cohort should freeze without further L0 action. |
+| bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned — but C12's service-dependency carve-out should resolve it (D-NATIVE-06).** `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (`service_health='healthy'` live) — no writer, so it can never produce a proven receipt via the current path. C12 says a live GREEN service probe should satisfy the dependency instead. Flagged to Conductor on #1713 (WP-6 sibling); once wired in, bg_cohort should freeze without further L0 action — that would close L0 at a true 40/40. |
 | bg_concordance | rebuild_only | **Fully unblocked** — all 4 ancestors (`bg_reference`, `bg_rules`, `bg_text_index`, `bg_texts`) confirmed frozen this cycle. Deepest DAG node; the last L0 asset this campaign phase can freeze. Dispatch next cycle: check existing W2 evidence validity first (same pattern as `bg_rules`), then dispatch → `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen` → **39/40**. |
 
 ## Decisions log
@@ -3768,3 +3769,22 @@ C12 carve-out flagged, not yet wired in).
   - 38/40 frozen. Remaining 2: `bg_cohort` (Conductor-owned, C12 carve-out flagged, not yet wired
     in) and `bg_concordance` (fully unblocked, ready to dispatch next cycle — the LAST asset this
     campaign phase can freeze without Conductor action).
+
+- 2026-09-06 — **MILESTONE: `bg_concordance` FROZEN — L0 now 39/40. This is the LAST asset L0
+  can freeze on its own — only `bg_cohort` remains, genuinely Conductor-owned.** Confirmed all 4
+  ancestors frozen (`bg_reference`, `bg_rules`, `bg_text_index`, `bg_texts`); existing W2 from
+  2026-09-04 still valid (registry_fingerprint matched exactly, writer untouched). No refresh
+  needed. Applied the lesson from `bg_rules`'s near-miss: dispatched and authorized in one
+  tight back-to-back sequence this time (no intervening investigation) — authorization landed
+  cleanly on the first attempt.
+  - Full chain: dispatch (run `3007f775-2851-42a9-b267-5148a0ad29b6`, completed clean, receipt
+    `proven`) → `accepted_rebuild_observed` → `integrity_verified` (verifier identity) →
+    `asset_frozen` (`lifecycle_digest c5057eaad7669cd3a9e17c77a7fe5cb9a1dbd371d2857c8f5d5002efbc1231b8`)
+    — confirmed via direct DB query, `recorded_at 16:13:29Z`. Also independently confirmed via a
+    direct count query: `SELECT COUNT(DISTINCT entity_id) ... WHERE layer='L0' AND
+    event_type='asset_frozen'` → **39**.
+  - **D-NATIVE-06 is now fully delivered** except for the one item genuinely outside L0's
+    authority (`bg_cohort`, Conductor-owned). L0 is now IDLE-OK pending only Conductor wiring in
+    the C12 service-dependency carve-out (flagged on #1713) — once that lands, `bg_cohort`
+    should freeze without further L0 action, closing L0 at a true 40/40.
+  - 39/40 frozen. Remaining 1: `bg_cohort` only.
