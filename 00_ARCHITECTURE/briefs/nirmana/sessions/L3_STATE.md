@@ -493,6 +493,9 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~130:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
+  run, now ~7.1min, still within known range. No new merges, no new bounded
+  work. — blocked on: `#2181` finishing; next action: same.
 - `2026-09-06T~129:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s own
   `merge_group` build genuinely `in_progress` (~4.9min, well within range).
   No new merges, no new bounded work. — blocked on: `#2181` finishing;
