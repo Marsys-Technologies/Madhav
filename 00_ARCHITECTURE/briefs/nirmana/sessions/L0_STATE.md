@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK, #2066 at position 20 (steady progress), no DIRTY/RED. #1901 still not deployed but active deploy.yml runs confirmed against main -- genuinely mid-catch-up, not stalled again. Standing priorities unchanged: once #1901 deploys, dispatch bg_doshas + bg_gochara_arcs + bg_text_index (all three confirmed fully data-correct + W2-current, should go straight through to asset_frozen). Once #2066 deploys, complete implementation_accepted + accepted_rebuild_observed for bg_dasha_systems + bg_compendium_index. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, #2066 at queue position 18, steady progress. #1901 still not deployed (deploy pipeline catching up). No DIRTY/RED. Standing priorities unchanged: bg_doshas+bg_gochara_arcs+bg_text_index ready for #1901 deploy; bg_dasha_systems+bg_compendium_index ready for #2066 deploy. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2950,3 +2950,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   deployed (deployed sha unchanged from last cycle) but active `deploy.yml` runs against `main`
   confirmed queued/pending — genuinely mid-catch-up, not stalled again. 30/40 frozen holds
   unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2066` position 18, `main` advanced again, deployed sha still behind
+  `#1901`. No DIRTY/RED. Steady progress, nothing to act on yet. 30/40 frozen holds unchanged.
