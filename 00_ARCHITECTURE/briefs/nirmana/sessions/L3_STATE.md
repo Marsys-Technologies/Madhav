@@ -622,6 +622,34 @@ your layer close.
   PRs merge — `#2065` landing unblocks `ka_muhurta_seva`'s W2 acceptance,
   the next genuine W4-path item (route verifier-role submissions through a
   fresh subagent per D-CND-35).
+- `2026-09-06T~74:0xZ — L3-W4 — PR hygiene: finished #2065's rebase (the one still
+  mid-flight across a context compaction).** `#2065` (`ka_muhurta_seva` health-probe)
+  had hit the SAME real-code-conflict shape as `#2079`'s prior rebase — `#2070`
+  (`ka_tulana`) merged in the meantime, so `#2065`'s own `muhurta_seva` additions now
+  interleaved against tulana's already-landed code across the same 5 files
+  (`service_probes.py` 7 hunks, `nirmana_probe.py`, `nirmana_probe_contracts.json`,
+  `test_nirmana_probe_route.py` 3 hunks, `test_service_probes.py` 5 hunks). Resolved
+  with the established "reconstruct two complete separate functions/entries in
+  sequence, never pick one side" pattern. **New sub-pattern found this cycle**: the
+  rebase then hit 3 MORE conflicts on this same PR's OWN prior self-inflicted
+  migration-renumbering commits (676→843→846→850, each a real historical collision
+  with an L1 file landing in turn) — each surfaced as a rename/rename conflict
+  against my fresh 850 rename, resolved by discarding the now-superseded intermediate
+  filename (843, then 846) and keeping 850, folding the collision history into one
+  coherent header-comment note rather than three stacked ones. Migration number this
+  time: 676 collided with L1's own already-landed
+  `676_nirmana_l3_n5_muhurta_seva_depends_on.sql` — renumbered to **850** (past both
+  #2079's claimed 848 and the merged #2070's 849, serialized correctly). Verified at
+  final HEAD: `migration_number_guard.ts` PASS, `provenance_inventory --check` exit 0,
+  `nirmana_analysis_layer_pins.py --check` exit 0 (no diff vs origin/main outside
+  L3's own hash field), full relevant suite 66 passed / 3 skipped / 1 pre-existing
+  env-only `asyncpg` failure (documented, not a regression — same as `#2079`'s run).
+  Force-pushed, re-armed auto-merge (`enabledAt` fresh); `mergeStateStatus: BLOCKED`
+  at push time is pure async CI-in-flight, not a real block — `autoMergeRequest`
+  present and CI checks running clean so far. — blocked on: nothing; next action:
+  confirm `#2065` actually reaches `isInMergeQueue: true` next cycle, then its merge
+  unblocks `ka_muhurta_seva`'s W2 acceptance (route any verifier-role submissions
+  through a fresh subagent per D-CND-35, same as every other asset this campaign).
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
