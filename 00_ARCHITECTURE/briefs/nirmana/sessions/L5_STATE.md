@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:46Z (C8 v2.3 cycle 198) — **IDLE-OK, still withholding push (batching per
+  cycle 197's fix).** #1826's checks progressing for real: `DB Integration Tests` now
+  COMPLETED (was in-progress last cycle), only `Unit Tests` + `Governance Gates` remain,
+  no failures, ~4.5 min into that run. Deliberately not pushing yet — want this run to
+  finish uninterrupted. #1844 confirmed `isInMergeQueue: true`. Queue unchanged (#1861=7,
+  #1844=64, #1901=90). No local changes to push this cycle beyond this entry (kept local,
+  stacked on cycle 197's uncommitted-push state).
 - 2026-09-06T00:44Z (C8 v2.3 cycle 197) — **SELF-INFLICTED HYGIENE BUG FOUND AND FIXED.**
   Pattern across cycles 194-197: #1826's CI checks restart from 0:00 on EVERY cycle's push
   (00:38:xx → 00:39:xx → 00:41:xx → now), because I've been committing+force-pushing the
