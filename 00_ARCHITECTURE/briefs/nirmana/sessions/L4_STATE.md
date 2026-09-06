@@ -7157,3 +7157,19 @@ DB access down 350 cycles) → next: watch `#1808` merge — once it lands, all 
 `ph_*` W3 correctness fixes will be fully merged to `main` and the layer's outstanding work
 is F1 (deferred) plus the E-gate-blocked W4 EXECUTE wave; retry E-gate/dispatch dry-run once
 DB access returns.
+
+`2026-09-06T~13:25Z` — L4 — **CYCLE 361 (v2.3) — IDLE-OK. `#1808` still genuinely
+`QUEUED`, nothing to fix.**
+
+**PR hygiene:** `#1808` confirmed genuinely `QUEUED` via `gh pr list --search "is:queued"`.
+Zero DIRTY, zero RED, zero unqueued.
+
+**Priorities 1-4:** one new `main` commit (`#1940`, L3's own PR) confirmed not L4-relevant.
+No new adjudications name L4 (count unchanged at 16). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 351st consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 361 L4: IDLE-OK (verified: PR hygiene fully clean — `#1808` genuinely queued, zero
+DIRTY/RED; no new L4-relevant adjudications; E-gate uncheckable, DB access down 351
+cycles) → next: watch `#1808` drain to merge; retry E-gate/dispatch dry-run once DB access
+returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
