@@ -473,6 +473,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~57:0xZ — L3-W4 — IDLE-OK (verified): all 3 PRs still queued,
+  `#1903` healthy, zero failures. Clock threshold (15:52:00Z) still not
+  reached (real time 15:31). `egate.sql` unchanged. — blocked on: real time
+  passing 15:52:00Z; next action: execute the recorded 4-step
+  `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1) once past it.
 - `2026-09-06T~56:0xZ — L3-W4 — IDLE-OK (verified): all 3 PRs still queued,
   `#1903` healthy, zero failures. Clock threshold (15:52:00Z) still not
   reached (real time 15:28). `egate.sql` unchanged. — blocked on: real time
