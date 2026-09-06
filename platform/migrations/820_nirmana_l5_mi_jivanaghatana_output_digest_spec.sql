@@ -1,4 +1,4 @@
--- 813_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql
+-- 820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql
 --
 -- NIRMANA v2.1 -- L5 (Mimamsa) W4 EXECUTE.
 -- Transaction ownership belongs to platform/scripts/migrate.ts.
