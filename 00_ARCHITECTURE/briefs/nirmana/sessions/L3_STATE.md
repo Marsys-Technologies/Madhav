@@ -494,6 +494,31 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~11:0xZ — L3-W3 — FOURTH DIRTY-PR this cycle, caught on a second hygiene
+  sweep: #1954 (F-VIGHNA-6).** A re-check after landing this cycle's other work found
+  #1954 had gone genuinely `DIRTY`/`CONFLICTING` (it was clean at the cycle's opening
+  sweep — main advanced in between). Branch carried 4 commits (this session's own earlier
+  state-sync/re-pin commits stacked on the actual fix); only the first conflicted
+  (L3_STATE.md-only, writer-digests auto-merged cleanly), the remaining 3 rebased with no
+  further conflicts. Verified single surviving "F-VIGHNA-6" heading (2 other mentions are
+  older body references, not duplicates). Regenerated both digest/pins files for real —
+  zero diff on both (the carried-forward re-pin commit already had it right). `test_ka_
+  vighnakara.py` 35/35 pass. Force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  Also fixed **this cycle's own Position-section correction**: the "Also open"/"Not
+  started" paragraphs (Position section, ~line 83) had gone stale — every item they named
+  (M1, M6, M12, N3-N7, N9, N12, F-SANGAM-5, moorti-WIRE's data half) is now confirmed
+  closed via cross-reference against this file's own later entries. N8/N10/N11 could not
+  be located as distinct defined items anywhere (honestly flagged, not asserted closed).
+  Checked whether extending N1's `engine_testimony`/`concordance` pattern to
+  `kala_now_get` was this cycle's eligible next unit: `now.ts` (2278 lines) has ZERO
+  existing KP/A5/agnivasa voice infrastructure, unlike `explain.ts` before N1's third/
+  fourth steps — a materially bigger, not-yet-designed unit; correctly not attempted
+  blind. Superseded paragraphs kept in a collapsed `<details>` block, this file's own
+  established pattern. All four DIRTY-PR fixes this cycle force-pushed and re-armed;
+  final sweep confirms all 50 L3 open PRs clean (queued, checks pending, or genuinely
+  `MERGEABLE`/awaiting queue turn) — no DIRTY/RED remaining.
+  #1903 (F-CONC-6 prerequisite), #1958, sidecar-traffic, #1960 all unchanged.
+
 - `2026-09-06T~10:3xZ — L3-W3 — N1 seventh step part B landed (#2049) + three DIRTY-PR
   fixes this cycle (#1949, #1951, #1952).** PR hygiene checked first (GraphQL `is:queued`,
   `--limit 300`): found #1949 (F-PARVA-3/F-PARVA-4), #1951 (F-VIGHNA-8/F-DARSH-8), #1952
