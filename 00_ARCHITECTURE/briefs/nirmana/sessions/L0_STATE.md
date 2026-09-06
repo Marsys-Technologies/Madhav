@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Full DIRTY-branch sweep: #1915/#1923/#1925 all also went DIRTY (same stale-branch-point pattern as #1910/#1969) — fixed all three (closed, resubmitted as #2013/#2014, #1915 needed no replacement since its sole content was already superseded). Then discovered my OWN active working branch (-7, carrying #1985) was equally stale (would have deleted migrations 652/716/718/719/720/721) — proactively replaced with fresh branch -8 (#2016) before it could surface as DIRTY. All five resubmissions auto-merge-armed. 30/40 frozen holds.
+last_updated: 2026-09-06 — MILESTONE: #2004 (migration 700, bg_dasha_systems integrity_check_sql fix, D-L0-GG) MERGED to main — first genuine L0 migration merge of this queue-drain campaign. Verified live it has NOT yet deployed (old FULL-JOIN-scope bug + stale catalog_hash pin still active); will re-check before treating bg_dasha_systems as freeze-eligible. #2013/#2014 now at queue positions 7/8, #2016 at 29. 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2524,3 +2524,15 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change; `#2004`'s queue checks still `in_progress` (~8.5min, no
   failures). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **MILESTONE: `#2004` MERGED** (`57dfa058e`, `2026-09-06T08:04:22Z`) — migration 700
+  (`bg_dasha_systems` `integrity_check_sql` join-scope fix + catalog_hash re-pin, D-L0-GG) is on
+  `main`. **Verified live via `mcp__postgres__query` that it has NOT yet deployed**: the currently
+  live `integrity_check_sql` for `bg_dasha_systems` still has the old FULL-JOIN-scope bug (the
+  `entity_class='dasha_system'` filter still sitting in the `ON` clause) and the stale
+  `catalog_hash` pin (`30742da6...b3173a`, the exact value the migration comment flags as wrong).
+  Ran the old check's join-scope clause directly against live data — confirmed it still returns
+  `false`, matching the known bug. Per "surgical migrations, verified" discipline: merge ≠ deploy;
+  will re-check on a future cycle before considering `bg_dasha_systems` W2-refresh/freeze-eligible.
+  `#2013`/`#2014` now at positions 7/8 `AWAITING_CHECKS`, `#2016` at 29. No DIRTY, no RED. 30/40
+  frozen holds.
