@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 126; prep-item cycle (Step 2 priority 5) -- added a W3 STATUS SNAPSHOT near the top of this file (not a self-declared close) summarizing that both the NOW and MUST finding tiers are fully closed, W4/W5 remain ineligible (adjudication #2113 unchanged), and what's genuinely still open. Checked §5/§6/NEVER-LATER of W2_DECIDE for anything newly actionable -- nothing was; all correctly remain parked by design
+last_updated: 2026-09-07 — C8 v2.3 cycle 127; adjudication #2156 (migration-range encroachment) RULED and CLOSED -- no L1 action required, L3's 848-850 recorded as a permanent authorized exception, L1's own next free number confirmed 852. Updated the top-of-file migration-range tracking block (stale since cycle 86/819) to reflect the full 840-859 grant + the #2156 ruling. #2113/#2122/#2123 all unchanged
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -39,10 +39,12 @@ Both W1-sourced finding tiers that drove W3 IMPLEMENT are now fully swept:
 - **What's genuinely still open:** (1) adjudication #2113 — chart rebuild blocked campaign-wide
   by a new `asset_freshness` gate with no L1 dependency-asset rows yet; W4 dispatch is not
   eligible for any L1 asset until this resolves or a bootstrap step is identified, checked
-  every cycle, no change since 2026-09-06T15:00:13Z. (2) adjudication #2122 (L0's fix, PR #2153
-  open) and #2123 (R-1-sensitive schema question, unresolved) — both other-party action items,
-  not blocking L1. (3) adjudication #2156 (L3 migration-range encroachment) — filed, not
-  blocking, informational.
+  every cycle, no change since 2026-09-06T15:00:13Z. (2) adjudication #2122 — L0's fix, PR
+  #2153, still open — an other-party action item, not blocking L1.
+  **RESOLVED since this snapshot was first written**: #2123 RULED (cycle 107, re-confirmed
+  cycle 127) — out of scope under R-1, L1's own documentation-accuracy action already done;
+  #2156 RULED and CLOSED (cycle 127) — no L1 action required, L3's 848-850 recorded as a
+  permanent authorized exception, L1's next free number is 852.
 - **What this means for "next unit of work":** with the W1-sourced backlog exhausted and W4/W5
   ineligible, a future cycle finding "nothing eligible" here should NOT assume it needs to
   re-derive this whole picture from scratch — re-check the four items above first (they're the
@@ -88,7 +90,17 @@ Both W1-sourced finding tiers that drove W3 IMPLEMENT are now fully swept:
   cycle 81), 809 (`ga_structural` dispositor_tree, cycle 82), 810 (`ga_structural`
   graha_in_house_composite_strength, cycle 83), 811 (`ga_structural` lord_in_house_per_varga,
   cycle 84), 812 (`ga_structural` net_argala_per_varga, cycle 85), 813 (`ga_structural`
-  contradiction_pair, cycle 86) used. 814-819 remain free.
+  contradiction_pair, cycle 86) used. 814-819 remain free. 814-819 used cycles 87-97
+  (`ga_structural` convergence_count/karaka_bhava_concordance/aspect_jaimini_per_varga/
+  aspect_parashari_per_varga/bhava_significance_link/sambandha_grade) — **800-819 FULLY
+  EXHAUSTED.** Adjudication **#2101 RULED (cycle 97): L1 continuation 5, 840-859 granted**
+  (NOT 820-839, already granted to L5 by #2086). 840-847 used (cycles 97-110, see per-migration
+  notes in the `ga_structural`/`ga_panchanga`/`ga_tajaka`/`ga_ayurdaya`/`ga_vichara` rows
+  below), 851 used (cycle 124, `ga_condition`). **848-850 are a permanently-authorized L3
+  exception** inside this block (adjudication #2156 RULED, cycle 127) — L3 mistakenly used
+  three of L1's numbers for its own `ka_*` health-probe migrations (all three already applied,
+  cannot be renumbered per §N.4); L3 has been redirected to its own 730-739 range (732-739
+  free) for anything further. **L1's own next free number in 840-859: 852.**
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -7574,3 +7586,28 @@ L1 must satisfy rather than a feature it consumes.
   more cycles, worth considering whether a MORE prep-oriented cadence (pre-writing W5
   verification scripts, since those will be needed the moment #2113 resolves) is a better use
   of bounded cycles than repeatedly re-confirming the same blockers are still blocked.
+- 2026-09-07T01:0xZ -- CYCLE 127 (C8 v2.3). PR hygiene: #2157/#2149 genuinely `is:queued`
+  (confirmed #2155 also fully MERGED since last check); #2132 mid-CI, nothing failing --
+  nothing DIRTY/RED/unqueued-but-clean. Re-checked all 4 tracked items per the standing
+  routine: #2113 unchanged (still the same 15:00:13Z comment). **#2123 re-read in full --
+  same ruling text as cycle 107's own account, already fully actioned (confirmed live: the
+  ga_prashna row's "orphaned" framing was already corrected to "NOT orphaned...
+  correctly-grounded"), nothing new pending there.** **#2156 RULED and CLOSED** -- the
+  Conductor confirmed the collision live (848-850 genuinely L3's, all three already applied,
+  cannot be renumbered per §N.4), root-caused it (L3 had 8 free numbers in its OWN
+  already-granted 730-739 range and used the wrong block by mistake, not a legitimate
+  exhaustion case like L5's #2086 precedent), and ruled: 848-850 recorded as a permanent
+  authorized L3 exception inside L1's 840-859 block, L3 redirected to 732-739 for anything
+  further, **no action required from L1** (851+ already correct on my own prior judgment).
+  Unit of work: pure documentation/bookkeeping -- updated the top-of-file migration-range
+  tracking block, which had gone stale since cycle 86 (stopped at "814-819 remain free" even
+  though 814-819 were used cycles 87-97 and the whole 840-859 grant happened afterward) --
+  brought it current through the #2156 ruling, explicitly recording L1's next free number
+  (852) so a future cycle never has to re-derive it from scattered per-migration notes again.
+  No code change -- this is a state-file-only cycle, correctly reported as such (§N.8: this
+  entry does not claim a fix that didn't happen). CYCLE 127 L1: PR hygiene clean, #2156 ruled
+  closed (no L1 action needed), fixed a real stale-tracking gap in this file's own top block
+  -- next: 2 of the original 4 tracked items are now resolved/closed (#2156 ruled, #2123
+  confirmed already-actioned) -- only #2113 (W4 gate) and #2122 (L0's PR #2153, still open)
+  remain genuinely open; re-check both next cycle before falling back to the W3 snapshot's own
+  suggestion (pre-writing W5 verification scripts) if neither has moved.
