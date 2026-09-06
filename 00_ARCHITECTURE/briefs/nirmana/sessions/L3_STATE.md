@@ -469,6 +469,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~40:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
+  (`#1903` showed `UNSTABLE` — checked `gh pr checks 1903` directly, only
+  `Build Check (PR only)` still `pending`, not failed — no action). `#2104`
+  still hasn't merged, `#2096` unchanged. Nothing new to act on. — blocked
+  on: `#2104` merging; next action: keep L3-only hygiene sweeps going, watch
+  `#2104`/`#2096` each cycle.
 - `2026-09-06T~39:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
   (`#1936` genuinely progressing in queue, rest `BLOCKED`/`MERGEABLE`). `#2104`
   (the sidecar Docker-context fix) still hasn't merged; `#2096` unchanged
