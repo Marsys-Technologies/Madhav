@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:10Z (C8 v2.3 cycle 425) — **IDLE-OK, deliberately not touching #1826.** Heeding
+  last cycle's own pacing lesson: #1826 is mid fresh-CI-run (4 checks pending, no failures) after
+  the accidental reset, so no push/commit-adjacent action on it this cycle regardless of the
+  normal batching schedule — let it finish. #1844 still genuinely queued. Main landed migration
+  813 (L1, inside its own range) — no collision. #1869 and `mi_kula`'s remaining ancestors both
+  unchanged.
 - 2026-09-06T13:05Z (C8 v2.3 cycle 424 addendum) — **Self-inflicted pacing mistake, small but
   worth recording.** Pushed the routine 4-cycle state batch to #1826 right when it was down to its
   LAST pending check (Governance Gates) — the push reset its CI run, so it's now back to 8 checks
