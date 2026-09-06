@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 147; closed the F-B33 half of last cycle's reconfirmed-open finding: concept_aliases.ts's docstring no longer claims a CI check (schema_map_alias_coverage_check.ts) that does not exist -- corrected to state the honest current reality instead (PR #2191, queued). F-B32 (coverage_matrix.ts's stale 169-vs-223 category list) remains open -- deliberately not attempted this cycle, since a real fix needs to settle the live-category-count question once, and doing that properly is its own bounded unit. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 148; quantified F-B32 precisely AND caught a real error in my own cycle-146 measurement: the live category count must be scoped to chart_id=native per coverage_matrix.ts's own stated purpose (219, not the unscoped cross-chart 223 I used cycle 146) -- the gap has NOT widened, it is flat at 169-vs-219, unchanged since the original W1 measurement. Ran a full comm diff: 57 live categories missing from the 169-list, 6 phantom entries in the list that don't exist for ANY chart (ashtakavarga_anubindu, dosha_fires, esoteric_point_chatushphuta/panchasphuta/trisphuta, yoga_fires), 1 more (karaka_web_per_varga) real but not yet built for the canonical chart. Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, 0.5-DRAFT->0.6-DRAFT) with the corrected count and the full diff. Did not attempt the actual 57-category tool-mapping edit -- needs per-category serving-code verification, still not a single bounded unit. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8319,3 +8319,45 @@ record — they are the only entries in this table with a real wall-clock behind
   (re-deriving `coverage_matrix.ts`'s category list against the live, still-growing count) is now
   the standing highest-priority unheld W3 item; keep re-checking #2113/#2180 every cycle
   regardless.
+- 2026-09-07T2xZ -- CYCLE 148 (C8 v2.3). PR hygiene: `#2191` and `#2178` (only own open PRs, `#2185`
+  merged since last cycle) both `BLOCKED`/`MERGEABLE`, `autoMergeRequest` armed on both, remaining
+  checks all `pending` or `pass`, zero `fail` -- clean, nothing to fix. #2113/#2180: identical
+  comment counts/timestamps to cycle 147 -- still no reply.
+  Started F-B32's real fix (the standing highest-priority unheld W3 item per cycle 147). First
+  step: re-derive the TRUE live category count, since the actual edit depends on getting this
+  right. Extracted the 169-list via grep into a scratchpad file (169 lines, matches). Ran the live
+  count query -- but this time noticed `coverage_matrix.ts:13`'s own docstring says "Every
+  `chart_facts.fact_category` that exists **for chart_id=native**", i.e. the comparison should be
+  scoped to the CANONICAL chart specifically, not an unscoped count across the whole table.
+  Checked: `chart_facts` currently holds THREE distinct chart_ids (canonical `482012f1-...` = 219
+  categories, `1c826d5a-...` [Abhinandan] = 220, `cb73cd3d-...` = 217) -- cycle 146's own "223"
+  query had no `WHERE chart_id=...` clause and so summed categories across all three charts
+  together, which is NOT what this file's own stated scope calls for. Re-ran scoped to the
+  canonical chart_id: **219** -- identical to the ORIGINAL W1 measurement. **The gap has not
+  widened at all; it is flat at 169-vs-219, unchanged since the finding was first made.** Corrected
+  this explicitly rather than let my own cycle-146 "worsened to 223" claim stand uncorrected --
+  the same §N.8 discipline applied to cycle 125's error applies to my own prior cycle's error.
+  With the correct baseline established, ran a `comm` diff between the 169-list and the live
+  canonical-chart category list: **57 categories present live are absent from the 169-list**
+  (spans nearly every section of the file -- ashtakavarga, graha_avastha-per-varga, KP,
+  nakshatra-relationship, special-lagna, and more, not concentrated in one owner); **7 entries in
+  the 169-list are not live for the canonical chart**, of which of 6
+  (`ashtakavarga_anubindu`, `dosha_fires`, `esoteric_point_chatushphuta`,
+  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`, `yoga_fires`) genuinely do not exist
+  as a `fact_category` value for ANY chart in the table (checked via a live query across all
+  chart_ids) -- these look like stale or renamed phantom entries (the real live yoga/dosha
+  categories are `yoga_label`/`dosha_label`, already correctly listed separately), not merely
+  chart-specific absences; the 7th (`karaka_web_per_varga`) is real (2,945 live rows) but simply
+  not yet built for the canonical chart, so not itself a list defect.
+  Decided NOT to attempt the actual 57-category tool-mapping edit this cycle: assigning each
+  missing category to its verified real serving tool requires checking actual serving code
+  per-category (the same rigor the DAG audit applied to depends_on edges), and rushing that risks
+  introducing NEW false claims -- exactly the defect class this whole investigation exists to
+  catch. Instead wrote up the verified, corrected diff into `L1_W6_CLOSE_REPORT_v1_0.md`
+  (§0/§2/§5/§6, version 0.5-DRAFT->0.6-DRAFT): corrected the "223"/"widened" claim to "219/flat",
+  and recorded the full 57-missing/6-phantom/1-not-yet-built breakdown as the concrete
+  prerequisite for the real fix. CYCLE 148 L1: PR hygiene clean; corrected my own prior cycle's
+  measurement error and produced a precise, verified diff for F-B32 rather than a vague "it's
+  stale" restatement -- next: the actual tool-mapping edit (57 additions + resolving 6 phantom
+  entries) remains the standing highest-priority unheld W3 item, now with a concrete worklist
+  instead of an estimate; keep re-checking #2113/#2180 every cycle regardless.

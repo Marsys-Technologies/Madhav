@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.5-DRAFT"
+version: "0.6-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -23,8 +23,11 @@ routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed c
 was claimed closed for L1's own scope cycle 125, but that claim was **wrong for one id-group**:
 F-B32/F-B33 (`coverage_matrix.ts`'s 169-entry hand-maintained list vs. live `chart_facts` category
 count, plus `concept_aliases.ts`'s citation of a CI check that does not exist) was independently
-re-verified LIVE cycle 146 and is genuinely **still open** — the drift has in fact worsened (169
-vs. 219 at original measurement, 169 vs. **223** live cycle 146). See §2 for the corrected
+re-verified LIVE cycle 146 and is genuinely **still open**. F-B33 (the false CI-check citation)
+CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quantified precisely
+cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
+canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
+— 57 categories missing, 6 phantom entries found in the 169-list. See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
@@ -107,24 +110,39 @@ per-asset table in §1 above. Structural milestones:
 
 139 findings total (`L1_W2_DECIDE_v1_0.md` §3). **~24 MUST id-groups · 18 NOW · 11 NEVER-LATER
 id-groups.**
-- **MUST** — CLOSED for L1's own scope (cycle 125) **with one correction found cycle 146**:
-  F-B32/F-B33 was carried in cycle 125's own closure sweep as closed, but was never actually
-  fixed — it was, and still is, genuinely OPEN. Re-verified LIVE cycle 146:
+- **MUST** — CLOSED for L1's own scope (cycle 125) **with one correction found cycle 146, F-B33
+  half closed cycle 147, F-B32 half quantified cycle 148**: F-B32/F-B33 was carried in cycle 125's
+  own closure sweep as closed, but was never actually fixed. Re-verified LIVE cycle 146:
   `platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts` still declares
-  exactly 169 hand-maintained `fact_category` entries (file header unchanged since 2026-06-16),
-  against a live `SELECT count(DISTINCT fact_category) FROM chart_facts` of **223** (the gap has
-  widened since the original 169-vs-219 measurement — consistent with the F-A14 `ga_structural`
-  campaign's category additions this segment). Separately, `concept_aliases.ts:14` still cites
-  `platform/scripts/census/schema_map_alias_coverage_check.ts` as an existing CI regression check
-  ("asserts every LIVE fact_category has at least one alias entry"); that file **does not exist**
-  anywhere in the repo (confirmed by direct path check and a repo-wide grep for
-  `alias_coverage`, cycle 146) — the same false-citation defect the original W1 finding
-  described, unchanged. Both halves are un-fixed; cycle 125's "closed" note for this id-group was
-  incorrect and is corrected here rather than carried forward silently (§N.8: an unverified "all
-  clear" is null, not a fact). Handed forward as the next unheld MUST-tier item in §5 — the fix
-  (re-deriving the 169-item list against the live 223 categories, and either implementing the
-  cited CI check or correcting the docstring to stop citing a file that doesn't exist) is
-  substantial enough that it was not attempted as this cycle's bounded unit.
+  exactly 169 hand-maintained `fact_category` entries (file header unchanged since 2026-06-16).
+  **Correction to cycle 146's own count** (cycle 148): the file's own stated scope is
+  "every `chart_facts.fact_category` that exists **for chart_id=native**" (line 13) — the
+  correct comparison is therefore the canonical chart's own category count, not an unscoped
+  count across all charts in the table. Cycle 146 used an unscoped `SELECT count(DISTINCT
+  fact_category) FROM chart_facts` (223, spanning three charts with 217-220 categories each) —
+  the right, scope-matched query is `... WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'`,
+  which returns **219** — identical to the original W1 measurement. **The gap has not widened;
+  it is flat at 169-vs-219**, exactly as first measured. (Cycle 146's "widened to 223" claim is
+  itself corrected here — the same discipline applied to catching cycle 125's error applies to
+  catching this session's own.) A full `comm`-based diff (cycle 148) found: **57 categories live
+  for the canonical chart are absent from the 169-list** (e.g. `ayurdaya`, `bhava_cusps`,
+  `graha_nakshatra_join`, `special_lagna`, `upapada_lagna`, `kp_house_significators` — the full
+  57 are diverse, spanning nearly every section of the file); **7 entries in the 169-list are NOT
+  live for the canonical chart**, of which 6 (`ashtakavarga_anubindu`, `dosha_fires`,
+  `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`,
+  `yoga_fires`) do not exist as a `fact_category` value **anywhere in the table, for any chart**
+  — genuinely phantom/stale names, not just chart-specific absences (`yoga_label`/`dosha_label`
+  are the real live categories the file already separately and correctly lists) — and the 7th
+  (`karaka_web_per_varga`) is a real category with 2,945 live rows, just not yet built for the
+  canonical chart specifically, so not itself a defect. Separately, `concept_aliases.ts:14` cited
+  `platform/scripts/census/schema_map_alias_coverage_check.ts` as an existing CI regression check;
+  that file did not exist — **fixed cycle 147, PR #2191** (docstring corrected to state reality
+  honestly rather than build the check against a still-unsettled category count). F-B32's own fix
+  (updating the 169-list to the true 219, and removing/investigating the 6 phantom entries) is
+  handed forward as the next unheld MUST-tier item in §5 — assigning each of the 57 missing
+  categories to its correct serving tool requires per-category verification against real serving
+  code, which is out of scope for any single bounded cycle; this cycle's contribution is the
+  verified, corrected diff itself, not the edit.
   The remaining MUST-tier disposition: the large majority
   fixed at the writer or serving-layer level across cycles 1-124; five id-groups (F-C2/C3/C4/C5/
   C7, the D-SALIENCE feed) correctly routed to L2's `bo_laksana.py` — confirmed not an L1 file;
@@ -263,13 +281,25 @@ awaits either a dedicated prep cycle or genuine W6 close.
   check — corrected to state honestly that no such gate exists yet. This closes the
   false-citation half; it does not build the check itself (see F-B32 below, which the check
   would need to share a live-category derivation with anyway).
-- **F-B32 — still OPEN**: re-derive `coverage_matrix.ts`'s `CHART_FACTS_CATEGORIES` against the
-  live `chart_facts` universe (223 at cycle 146; drift is monotonically growing as writers add
-  categories, so re-checking the live count at fix-time rather than trusting this report's 223 is
-  required). Once that re-derivation exists, a real CI check (the one F-B33's docstring used to
-  falsely claim) becomes buildable on top of it — building the check before settling the count
-  would just inherit the same staleness. Not attempted cycle 146/147 — scoped as substantial (a
-  real category audit against a live, still-growing count), not a single-cycle bounded unit.
+- **F-B32 — still OPEN, now precisely quantified (cycle 148)**: the correct comparison is the
+  canonical chart's own live category count (219, `WHERE chart_id='482012f1-...'` — NOT an
+  unscoped cross-chart count; cycle 146's "223" was mis-scoped and is corrected in §2). The gap
+  has NOT grown since the original W1 measurement — it is flat at 169-vs-219. Concrete diff
+  (`comm` against the live canonical-chart category list, cycle 148): **57 categories present
+  live are missing from the 169-list** (full list recorded in this session's cycle-148
+  scratchpad; spans nearly every section of the file — ashtakavarga, graha_avastha-per-varga,
+  KP, nakshatra-relationship, special-lagna, and more — not concentrated in one area, so no
+  single section owner can absorb the whole fix); **6 entries in the 169-list are phantom** —
+  `ashtakavarga_anubindu`, `dosha_fires`, `esoteric_point_chatushphuta`,
+  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`, `yoga_fires` do not exist as a
+  `fact_category` value for ANY chart in the table (not just the canonical one) — these look like
+  stale/renamed names (the real live categories are `yoga_label`/`dosha_label`, already
+  separately and correctly listed) and should be investigated (real category that was renamed?
+  never-implemented aspiration?) before either removing or re-pointing them; one entry
+  (`karaka_web_per_varga`) is real (2,945 live rows) but not yet built for the canonical chart —
+  not a list defect. The actual edit (assigning each of the 57 to a verified real serving tool,
+  and resolving the 6 phantoms) needs per-category verification against real serving code and is
+  still too large for one bounded cycle — this cycle's contribution is the verified diff itself.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -281,7 +311,8 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 itself still open, unheld, does not need #2113)** · W4 execution (blocked, #2113) · W5
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories, edit itself still
+open, unheld, does not need #2113)** · W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.
