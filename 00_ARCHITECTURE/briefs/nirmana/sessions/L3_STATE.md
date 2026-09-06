@@ -493,6 +493,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~107:0xZ — L3-W4 — IDLE-OK (verified): `#2166`'s last check
+  (`Governance Gates`) confirmed genuinely `in_progress` at ~8.5min via
+  `gh run view` — within the known pattern, not stuck. No new `origin/main`
+  merges. Re-ran `egate.sql`: no new E-gate opening — `ga_positions` still
+  `OPEN-PENDING-PIN` (not yet `asset_frozen`, L1's own asset); everything
+  else genuinely `BLOCKED-ANCESTORS` on it, unchanged. `ka_gochara_resonance`
+  still `BLOCKED-NO-ROUTE`, deliberately held per D-CND-26/#1734 (true
+  closure needs `ga_sensitive`/`ga_yoga`/`ga_dashas`/`bo_arudha`, not just
+  the mechanical E-gate). Nothing new eligible. — blocked on: `#2166`'s last
+  check; next action: push the accumulated local block once it clears, then
+  watch for `ga_positions` freezing (the layer's single highest-leverage
+  unlock) each cycle.
 - `2026-09-06T~106:0xZ — L3-W4 — `ka_muhurta_seva` is FROZEN. Layer's second
   genuine, non-artefactual `asset_frozen`, and the first one done cleanly
   end-to-end.** The redispatched fresh subagent completed successfully (51
