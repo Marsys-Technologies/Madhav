@@ -458,6 +458,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~15:0xZ — L3-W3 — IDLE-OK: `#1903`/`#2060` advanced slightly (105/79, from
+  109/83) — real, steady gradual progress.` PR hygiene clean. Migration 731 still not
+  deployed; no reply yet on the #1713 finding.
+
 - `2026-09-06T~14:0xZ — L3-W3 — IDLE-OK: `#1903`/`#2060` positions unchanged (109/83),
   queue confirmed healthy (front actively `AWAITING_CHECKS`, last merges ~7min prior).`
   PR hygiene clean. No reply yet on the #1713 finding.
