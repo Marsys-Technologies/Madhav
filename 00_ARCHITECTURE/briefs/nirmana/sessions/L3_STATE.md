@@ -473,6 +473,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~54:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
+  had fallen out of the queue again (`CLEAN`-but-unqueued, recurring churn
+  pattern this cycle-band, not a new defect) — re-queued all three, verified
+  via `is:queued`. `#1903` healthy, zero failures. Clock threshold
+  (15:52:00Z) still not reached (real time 15:22). `egate.sql` unchanged —
+  `ka_graha_sancara` remains the sole `OPEN-PENDING-PIN` asset. — blocked on:
+  real time passing 15:52:00Z; next action: execute the recorded 4-step
+  `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1) once past it.
 - `2026-09-06T~53:0xZ — L3-W4 — IDLE-OK (verified): `#1903` (this branch) was
   22 commits behind `origin/main` — rebased clean, no conflicts; pins/digests
   both `--check`-clean after. `#2079`/`#2070`/`#2065` still open (queued, not
