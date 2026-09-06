@@ -6688,3 +6688,28 @@ L4-relevant adjudications; E-gate uncheckable, DB access down 326 cycles) → ne
 `#1808` finish CI and reach `QUEUED`; watch all 4 own PRs drain in position order; retry
 E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
 remains deferred.
+
+`2026-09-06T~12:19Z` — L4 — **CYCLE 337 (v2.3) — all 4 own PRs now genuinely queued.
+`#1808`'s `Governance Gates` finished at 11m28s (right at the established upper bound,
+confirmed genuine — not a stall) and it self-enqueued cleanly this time (`QUEUED` position
+17), no disable-then-auto force needed.**
+
+**PR hygiene:** `#1831`/`#1834`/`#1839` confirmed genuinely `QUEUED` via `gh pr list --search
+"is:queued"`. `#1808` was mid-CI across the last several cycles' checks (the earlier
+`gh pr checks` summary output had gone stale — the live job-level API check via
+`gh api repos/.../actions/jobs/<id>` showed `Governance Gates` had actually already
+`completed`/`success` while the cached checks summary still said `pending`); once confirmed
+complete, `mergeQueueEntry` showed genuinely `QUEUED` without needing the disable-then-auto
+force from earlier cycles — self-enqueue does work once the PR's own CI is truly finished,
+consistent with the cycle-328/332 findings that the trap only bites while CI is still
+finishing or on a stale re-arm, not after a clean completion.
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+327th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 337 L4: `#1808` finished its own CI (`Governance Gates` at 11m28s, within the
+established upper bound) and self-enqueued cleanly (`QUEUED` position 17) — all 4 remaining
+own PRs (`#1831`/`#1808`/`#1834`/`#1839`) now genuinely queued, none DIRTY/RED → next: watch
+all 4 drain in position order; retry E-gate/dispatch dry-run once DB access returns; F1
+(`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
