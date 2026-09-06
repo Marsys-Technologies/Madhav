@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — IDLE-OK cycle with a useful find: bg_doshas re-confirmed fully data-correct (8/8 clauses) and its W2 evidence still current, but blocked on the exact D-L0-FF/#1899 structural bind (no build_run_authorized event can bind retroactively to its already-completed, already-proven receipt). Good news: #1899 already has a Conductor ruling implemented in PR #1901 (receipt re-attribution on skip_no_delta) -- not yet merged, but once it deploys it should unblock bg_doshas + bg_gochara_arcs + bg_text_index in one shot (same root cause, three assets). Watch #1901 alongside #2066 every cycle now. No new dispatch attempted (would hit a known dead end). 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — #1901 (Conductor's delta-skip receipt re-attribution fix) MERGED but verified NOT yet deployed (merge commit not an ancestor of the currently-deployed sha). Once it deploys, should unblock bg_doshas + bg_gochara_arcs + bg_text_index in one shot (same D-L0-FF root cause). #2066 (own PR) at queue position 42, is:queued confirmed, no DIRTY/RED. Nothing newly actionable this cycle -- watching both PRs' deploy status. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2894,3 +2894,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
     unrelated service-kind-dependency issue already posted to #1713; `bg_parihara_rules`/
     `bg_rules`/`bg_concordance` remain blocked on their own unfrozen ancestors). 30/40 frozen
     holds unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2066` at queue position 42 (`is:queued` confirmed), no DIRTY/RED.
+  `#1901` (Conductor's delta-skip fix) **MERGED** (`0452d1e7...`, 2026-09-06T09:36:35Z) but
+  **verified NOT yet deployed** — its merge commit is not an ancestor of the currently-deployed
+  sha (`4dd77e21...`), correctly per "merge ≠ deploy" discipline. Nothing newly actionable yet;
+  will re-check both PRs' deploy status next cycle. 30/40 frozen holds unchanged.
