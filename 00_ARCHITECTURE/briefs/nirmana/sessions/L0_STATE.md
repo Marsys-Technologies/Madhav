@@ -2390,3 +2390,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Main advanced by 3 more merges (#1971/#1968/#1967, all L1, not L0's),
   but my positions held flat (44/51/52/73) — new PRs entering the queue behind mine at roughly the
   same rate others drain ahead. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions still flat (44/51/52/73). Queue head #1974, ~11.4min
+  in_progress, normal. No DIRTY, no RED. 30/40 frozen holds.
