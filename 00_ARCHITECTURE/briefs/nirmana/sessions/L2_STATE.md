@@ -407,6 +407,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 352 | 2026-09-06T16:42Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main advanced (`#2121`, L1's own `ga_tajaka` fix -- unrelated to L2). Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 353 | 2026-09-06T16:45Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 354 | 2026-09-06T16:49Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
+| 355 | 2026-09-06T16:52Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (3 cycles) but `gh-readonly-queue` chain active with new entries (`pr-2125`, `pr-2126`) -- genuine ongoing activity, not a stall. Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
