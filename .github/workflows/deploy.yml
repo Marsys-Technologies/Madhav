@@ -326,6 +326,21 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues (the triggering event's own reported head_sha can
+      # lag/misreport); deploy-web already guards against this (see its own
+      # "Verify deployment source provenance" step below) but this job never
+      # did, so a migration introduced by the very commit that triggered this
+      # run could silently never apply while the job still reports success.
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Migrating against immutable source SHA $ACTUAL_SHA"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -616,6 +631,18 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -782,6 +809,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -993,6 +1032,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
