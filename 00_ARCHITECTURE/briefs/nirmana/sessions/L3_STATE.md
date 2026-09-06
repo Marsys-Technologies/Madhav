@@ -489,6 +489,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~87:0xZ — L3-W4 — IDLE-OK (verified, deeper check): `#2070`
+  stuck at queue position 1 for 2 full cycles prompted a closer look —
+  searched the last 30 workflow runs for `#2070`'s own `gh-readonly-queue`
+  merge-group build: **it hasn't started at all.** Checked whether the
+  queue itself is stalled (a real, campaign-wide concern) rather than just
+  my own PRs waiting: pulled `main`'s recent commit history — merges from
+  L1 and L5 landed within the last few minutes, confirming the shared
+  queue is actively processing, just busy with heavy concurrent traffic
+  from other layer sessions. My `position: 1`/`position: 2` readings
+  reflect standing in a genuinely large, active shared queue, not a stall
+  — no action needed, no adjudication warranted. `#2079` healthy, zero
+  failures. `#2065` still hasn't merged. `egate.sql` unchanged. — blocked
+  on: `#2065` merging; next action: once it lands, `ka_muhurta_seva`'s W2
+  acceptance is the next genuine W4-path item — route any verifier-role
+  submissions through a fresh subagent per D-CND-35.
 - `2026-09-06T~86:0xZ — L3-W4 — IDLE-OK (verified): queue progressed —
   `#2070` now position 1 (`AWAITING_CHECKS`), `#2065` position 2
   (`UNMERGEABLE`, still the not-yet-tried placeholder since position 1
