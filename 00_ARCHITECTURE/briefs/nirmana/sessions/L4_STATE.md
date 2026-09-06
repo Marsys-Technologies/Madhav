@@ -8976,3 +8976,17 @@ No new adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file pre
 CYCLE 494 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-07T~00:40Z` — L4 — **CYCLE 495 (v2.3) — IDLE-OK. E-gate re-checked live,
+unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still at 32.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. One new adjudication, `#2156`
+(L1: migration range 840-859 encroached by L3) — confirmed unrelated to L4's own 680-689
+range, not L4-relevant; count now 20. No `NIRMANA_HOLD` file present.
+
+CYCLE 495 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
+new adjudication `#2156` confirmed not L4-relevant, own migration range unaffected) → next:
+continue re-checking the E-gate each cycle; F1 (`ph_phaladesa` zero MCP consumers) remains
+the layer's one deferred code item.
