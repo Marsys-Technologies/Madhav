@@ -1965,3 +1965,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   — their `UNKNOWN` mergeStateStatus is just not-yet-recomputed (GitHub only recomputes at/near
   queue head), not a DIRTY signal; will re-verify each as it nears the queue head. 30/40 frozen
   holds.
+
+- 2026-09-06 — **IDLE-OK.** `#1911` merged (already reflected above); positions for 1915/1923/1925
+  unchanged (6/14/63). `#2004` (the migration-700 replacement) is CLEAN-but-mid-CI (Build
+  Check/Unit Tests/Governance Gates pending, no reds, auto-merge already armed) — will self-queue.
+  No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
