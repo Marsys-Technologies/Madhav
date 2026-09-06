@@ -457,6 +457,28 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:26Z (C8 v2.3 cycle 212) — **#1861 MERGED — retry attempted, correctly
+  aborted on deploy-lag (not a wasted attempt, a real safety catch).** origin/main now at
+  `1ef6267e9` (#1861). Did a full live-DB check via Cloud SQL Auth Proxy + secret-manager
+  credential (established path): W2 acceptance confirmed recorded (2026-09-05), migration
+  690's registry corrections confirmed landed, E-gate confirmed OPEN (`bg_ghatana` frozen
+  2026-09-04, `mi_jivanaghatana`'s only dependency). Prior failed attempt confirmed on the
+  canonical chart (`482012f1-…`, `state='error'`, `rows_written=64`,
+  `last_error="provenance: Object of type UUID is not JSON serializable"` — exactly what
+  #1861 fixes). Claimed the run slot, took a fresh verified snapshot
+  (`cloudsql-backup:1788657831435`, confirmed SUCCESSFUL) — then, **before dispatching**,
+  checked whether the fix was actually live: `amjis-web`'s currently-serving revision
+  (`amjis-web-01936-fg6`) is pinned to commit `938351c657c4…` (#1854), which
+  `git merge-base --is-ancestor` confirms does NOT include `1ef6267e9`. Dispatching now
+  would have re-hit the identical crash for nothing. **Released the slot rather than hold
+  it idle** across cycles waiting on the deploy pipeline (observed cadence: a new revision
+  roughly every merge, ~10-15 min apart) — full account on #1713. The snapshot taken this
+  cycle stays valid and reusable for the retry once a live revision descends from
+  `1ef6267e9`. Both own PRs still `isInMergeQueue: true`, clean — no push (would eject
+  #1826, still queued). #1844=56, #1901=82 (checked pre-investigation, unchanged). #1869
+  unchanged at 3 comments; #1856 still OPEN despite #1861 merging with a "(#1856)" mention
+  in its title (not a `Fixes #1856` closing keyword, so no auto-close — cosmetic, not
+  blocking).
 - 2026-09-06T01:19Z (C8 v2.3 cycle 211) — **IDLE-OK.** #1861 still position 1: TAP+EKV
   both SUCCESS, only CI-Ganga in_progress (~5.5 min), normal — not stuck. Both own PRs
   still `isInMergeQueue: true`, clean. #1844=56, #1901=82 unchanged. #1869 unchanged at
