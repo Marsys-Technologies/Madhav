@@ -461,8 +461,23 @@ your layer close.
 
 ## Heartbeat
 
-- `2026-09-06T~04:2xZ — L3-W3 — IDLE-OK: full house again — all 44 open L3 PRs
-  genuinely `is:queued`, `#1903` still among them but still not merged.** #1958/
+- `2026-09-06T~04:3xZ — L3-W3 — THIRTEENTH, FOURTEENTH, FIFTEENTH DIRTY-PR fixes this
+  run — three at once: #1929 (F-VIGHNA-3), #1931 (F-KALA-1 first slice), #1932 (F-KALA-1
+  second slice).** #1929 was the `ka_sangam`-adjacent-family shape (L3_STATE.md + the
+  generated pins file; `ka_vighnakara.py` itself and the writer-digests file both
+  auto-merged cleanly, confirmed correct by regenerating anyway — zero diff); #1931/#1932
+  were both L3_STATE.md-only, on two DIFFERENT files (`register_d9_judgment.ts` and
+  `query_temporal_activation.ts` respectively) neither previously in this session's
+  conflict history. Resolved all three via the established patterns (each verified for
+  exactly 1 surviving occurrence of its own heading text — "F-VIGHNA-3", "F-KALA-1 fix
+  (first slice)", "F-KALA-1 fix (second slice)"). Verified: `test_ka_vighnakara.py`
+  (34/34) + full `tests/l3/` (1425 passed, 0 failures) for #1929, both `--check`
+  invocations exit 0; `register_d9_judgment.f_kala_1_activation_rank.test.ts` (11/11) for
+  #1931; `f_kala_1_query_temporal_activation_order_by.test.ts` (4/4) for #1932; `tsc
+  --noEmit` clean on all three. All three force-pushed, all three re-armed auto-merge, all
+  three confirmed `MERGEABLE`.
+  Fifteen DIRTY-PR fixes total this run now. #1903 (F-CONC-6 prerequisite) still not
+  merged. #1958/sidecar-traffic/#1960 unchanged.
   sidecar-traffic/#1960 unchanged. Routing to a fresh branch since `#2025` just locked.
   cycle's fixes) all `MERGEABLE`, pending checks. #1903/#1958/sidecar-traffic/#1960
   unchanged.
