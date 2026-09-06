@@ -489,6 +489,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~85:0xZ — L3-W4 — IDLE-OK (verified): `#2065` read
+  `UNMERGEABLE` in the queue at position 3 — checked directly rather than
+  assume a new collision: `#2070` (position 2) is genuinely `AWAITING_
+  CHECKS`, and position 1 (`#2132`, not mine) has its own `merge_group` CI
+  run actively in progress — so the queue simply hasn't attempted #2065's
+  own merge-group build yet, `UNMERGEABLE` reads as a not-yet-tried
+  placeholder here, not a real conflict. Confirmed via a fresh local
+  `migration_number_guard.ts` run: clean, no new collision. `#2079` healthy,
+  zero failures. `#2065` still hasn't merged. `egate.sql` unchanged. —
+  blocked on: `#2065` merging; next action: once it lands, `ka_muhurta_
+  seva`'s W2 acceptance is the next genuine W4-path item — route any
+  verifier-role submissions through a fresh subagent per D-CND-35.
 - `2026-09-06T~84:0xZ — L3-W4 — IDLE-OK (verified): `#2070`/`#2065` now
   genuinely queued (`UNSTABLE` = checks pending, not failed). `#2079`
   healthy, zero failures, fresh CI run. `#2065` still hasn't merged.
