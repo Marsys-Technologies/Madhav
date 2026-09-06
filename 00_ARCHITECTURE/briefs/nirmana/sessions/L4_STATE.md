@@ -5882,3 +5882,21 @@ next cycle, treat as a genuine stall candidate and escalate per contract; watch 
 positions continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1
 remains deferred.
 
+`2026-09-06T~15:20Z` — L4 — **CYCLE 301 (v2.3) — `#1849` confirmed re-entered the merge
+queue, resolving cycle 300's at-normal-duration diagnosis. All 9 own PRs genuinely queued —
+full clean sweep, all recent DIRTY/UNMERGEABLE episodes closed out.**
+
+**PR hygiene:** all 8 own PRs genuinely `QUEUED`/`AWAITING_CHECKS` via GraphQL
+`mergeQueueEntry` — `#1870` 20 (`AWAITING_CHECKS`, nearing queue head), `#1849` 63, `#1845`
+62, `#1842` 58, `#1839` 59, `#1834` 51, `#1831` 47, `#1808` 48. No DIRTY, no RED.
+
+**Priorities 1-4:** several new `main` commits confirmed not L4-relevant. No new
+adjudications name L4 (count unchanged at 15). E-gate still uncheckable, 291st consecutive
+cycle DB access down.
+
+CYCLE 301 L4: IDLE-OK (verified: PR hygiene fully clean — all 8 own PRs genuinely queued,
+`#1849` fully recovered confirming last cycle's diagnosis; `#1870` nearing the queue head;
+E-gate uncheckable, DB access down 291 cycles; nothing new) → next: watch `#1870` merge;
+watch remaining positions continue advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
