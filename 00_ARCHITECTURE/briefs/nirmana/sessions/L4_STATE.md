@@ -7956,3 +7956,16 @@ CYCLE 412 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked,
 confirmed merge queue itself is actively processing, not wedged; no new L4-relevant
 adjudications) → next: continue re-checking the E-gate each cycle; F1 (`ph_phaladesa` zero
 MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~15:20Z` — L4 — **CYCLE 413 (v2.3) — IDLE-OK. `main` advanced (new tip
+`7a2fdb5...`, L5's own state PR). E-gate re-checked live, unchanged — all 9 assets still
+`BLOCKED-ANCESTORS`, canary `ph_nimitta` still at 35.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** one new `main` commit confirmed not L4-relevant. No new adjudications
+name L4 (count unchanged at 16). No `NIRMANA_HOLD` file present.
+
+CYCLE 413 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
+no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
+(`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
