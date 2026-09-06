@@ -493,6 +493,30 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~136:0xZ — L3-W3 — PR hygiene: `#2184` MERGED (squash
+  `c14ca7f2a`). Rebased the 9 not-yet-merged local commits (migrations
+  852/853/854 + their heartbeat entries, plus 6 pre-#2184 heartbeat
+  entries whose content was already absorbed into #2184's squash) onto
+  fresh `origin/main`. Hit the standard empty-theirs prepend-conflict
+  pattern 5x (auto-resolved via the marker-strip script after confirming
+  each), plus ONE genuine non-standard conflict this time: the `~126:0xZ`
+  heartbeat entry appeared corrupted on the HEAD side (a stray extra
+  backtick truncating it mid-sentence, `` `gh run view`  `` instead of
+  continuing into `--job`) `` — an artifact from an earlier cycle's own
+  conflict-resolution script) while the incoming commit carried the full,
+  correct text; resolved by keeping the correct/complete version and
+  dropping the corrupted duplicate, re-read the surrounding 50 lines
+  afterward to confirm no other entry was lost or duplicated. Verified
+  zero conflict markers, migration-number guard PASS, all 18
+  migration-852/853/854 tests still pass post-rebase, `ka_dasha_kala`
+  held row intact. Renamed branch to
+  `codex/nirmana-l3-f-l3-4-volume-derivations`, pushed, opened **PR
+  #2187**, armed auto-merge (checks running now, not yet queued — normal).
+  No new bounded work this cycle beyond the rebase/PR-open itself
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: nothing new;
+  next action: verify `#2187` clears its checks and queues cleanly next
+  cycle, then continue F-L3-4 (14 of 23 L3 assets still NULL) if still no
+  E-gate work.
 - `2026-09-07T~135:0xZ — L3-W3 — PR hygiene: `#2184` still genuinely
   `isInMergeQueue: true` (position 1), own `merge_group` build (run
   `34065366576`) confirmed via full `gh run list` scan (not a truncated
