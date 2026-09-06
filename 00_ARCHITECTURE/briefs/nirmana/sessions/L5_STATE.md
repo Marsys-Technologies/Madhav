@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:02Z (C8 v2.3 cycle 377) — **IDLE-OK.** #1826 unchanged (Unit Tests +
+  Governance Gates, Fact-Category Pinning Gate now passed, no failures, armed). #1844
+  confirmed `isInMergeQueue: true`. #1869 unchanged at 4 comments. 2 cycles since last
+  push.
 - 2026-09-06T09:59Z (C8 v2.3 cycle 376) — **IDLE-OK.** #1826's fresh CI progressing
   normally (4 checks pending — including a newly-added "Fact-Category Pinning Gate"
   compared to prior cycles' 2-3, likely reflecting main's own workflow changes since
