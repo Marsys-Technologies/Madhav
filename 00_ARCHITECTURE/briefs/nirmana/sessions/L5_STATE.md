@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:36Z (C8 v2.3 cycle 234) — **IDLE-OK.** #1826 down to just Governance Gates,
+  no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1844=38, #1901=64 unchanged
+  (short interval). #1869 unchanged at 3 comments. 3 cycles since last push.
 - 2026-09-06T02:33Z (C8 v2.3 cycle 233) — **IDLE-OK.** #1826 unchanged (Unit Tests +
   Governance Gates still pending, no failures, armed). #1844 confirmed `isInMergeQueue:
   true`. #1844=38, #1901=64 unchanged (short interval). #1869 unchanged at 3 comments.
