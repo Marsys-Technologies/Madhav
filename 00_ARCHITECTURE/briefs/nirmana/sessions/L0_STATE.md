@@ -2562,3 +2562,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (position still 15). Batch queue now 5 entries, frontmost
   just started. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; frontmost queue entry ~3min in, normal. No DIRTY, no RED.
+  30/40 frozen holds.
