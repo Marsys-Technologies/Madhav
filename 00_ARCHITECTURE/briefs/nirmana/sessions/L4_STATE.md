@@ -6289,3 +6289,39 @@ merge-base-anchored diff, every test suite green, all re-armed and confirmed
 next: watch the queue drain own PRs in position order; retry E-gate/dispatch dry-run once DB
 access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred pending MCP-verification
 capability or native review.
+
+`2026-09-06T~11:26Z` — L4 — **CYCLE 321 (v2.3) — new hygiene trap identified and fixed:
+`autoMergeRequest` can report `enabled` (stale, from a prior cycle's arm) while the PR is
+NOT actually in the merge queue (`mergeQueueEntry: null`) — a sharper case of "autoMergeRequest
+lies" than the previously-documented transient null-immediately-after-arming race. Ground
+truth per the contract's own instruction (`gh pr list --search "is:queued"`) showed only
+`#1842` of 6 own PRs was genuinely queued at cycle open; `#1831`/`#1808`/`#1834`/`#1845`/`#1839`
+all showed `autoMergeRequest` enabled from cycle 320's re-arm but `mergeQueueEntry: null`.**
+
+**Fix discovered this cycle:** a plain repeat `gh pr merge <n> --auto` is a no-op when
+`autoMergeRequest` is already (stale-)enabled — it doesn't force re-evaluation. The working
+fix: `gh pr merge <n> --disable-auto` (clears the stale flag) immediately followed by
+`gh pr merge <n> --auto` (forces a fresh evaluation against current mergeability/CI state).
+Applied to all 5; `#1808` and `#1839` confirmed genuinely `QUEUED` (positions 10, 17) within
+the cycle. `#1831`/`#1834`/`#1845` remained `mergeQueueEntry: null` after the same fix,
+traced via `gh pr view --json statusCheckRollup` to the PR's own CI (`Build Check`,
+`Governance Gates`) still `IN_PROGRESS` from the force-push two cycles ago — confirmed via
+`gh run list` timestamps at ~11 min elapsed, within the established normal range, not
+stalled. Auto-merge is freshly re-armed on all three; expected to self-enqueue once their own
+checks complete. New recipe step added to the standing playbook: **when `autoMergeRequest`
+is enabled but `mergeQueueEntry` is null and own-PR checks are already green, disable then
+re-enable auto-merge to force re-evaluation** — a plain re-`--auto` call is insufficient.
+
+**Priorities 1-4:** no new `main`-landed own-PR merges this cycle. No new adjudications name
+L4 (count unchanged at 15, fresh list re-pulled). E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 311th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 321 L4: diagnosed+fixed a new hygiene-trap variant (`autoMergeRequest` stale-enabled
+but not actually queued on 5/6 own PRs — ground-truthed via `is:queued` search per the
+contract's own instruction); `disable-auto` then `auto` force-re-enqueued `#1808`/`#1839`
+(confirmed `QUEUED`); `#1831`/`#1834`/`#1845` re-armed and confirmed genuinely mid-own-CI
+(~11 min, normal range) rather than stuck, expected to self-enqueue → next: confirm
+`#1831`/`#1834`/`#1845` reach `QUEUED`; watch queue drain in position order; retry
+E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
+remains deferred.
