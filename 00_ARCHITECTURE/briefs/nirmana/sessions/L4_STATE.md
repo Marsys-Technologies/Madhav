@@ -4621,3 +4621,21 @@ stalled; remaining 7 own PRs unchanged/queued → next: confirm `#1808` goes gre
 re-enters the queue; watch all 9 positions continue advancing; retry E-gate/dispatch dry-run
 once DB access returns; F1 remains deferred.
 
+`2026-09-06T~09:15Z` — L4 — **CYCLE 228 (v2.3) — `#1831` genuinely `QUEUED` (pos 128);
+`#1808` still `BLOCKED`, but only on two genuinely-pending checks (`Governance Gates`,
+`Build Check`) — every other check green, not stalled.**
+
+**PR hygiene:** all 7 non-affected own PRs unchanged/genuinely queued. `#1831` confirmed
+`CLEAN`/`QUEUED` at position 128. `#1808` re-swept via `gh pr checks`: every check green
+except `Governance Gates` and `Build Check`, both still `pending` from the cycle-226 fix's
+fresh CI run — no RED, no action needed.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+16). E-gate still uncheckable, 218th consecutive cycle DB access down.
+
+CYCLE 228 L4: IDLE-OK (verified: PR hygiene clean — `#1831` genuinely queued, `#1808`
+legitimately pending 2 checks with everything else green, remaining 7 unchanged/queued;
+E-gate uncheckable, DB access down 218 cycles; nothing new) → next: confirm `#1808` goes
+green and re-enters the queue; watch all 9 positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
