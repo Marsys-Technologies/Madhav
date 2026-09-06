@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 128; wrote and shipped `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only prep item running all 19 ga_* integrity_check_sql contracts live: 15 PASS, 4 expected FAIL (ga_yoga F-A16, ga_structural's 7 tracked-red conjuncts, ga_condition F-C8, ga_vargas F-A1 -- all pre-existing writer-fixed defects awaiting the blocked #2113 rebuild, no new findings). #2113/#2122 unchanged
+last_updated: 2026-09-07 — C8 v2.3 cycle 129; drafted `L1_W6_CLOSE_REPORT_v1_0.md` (PR #2164), the exact W6 deliverable PROMPT_L1.md names, mirroring L5's own precedent of starting it early. DRAFT status, no closure claimed -- compiles the 19-asset table, findings-ledger outcome (139 findings, NOW/MUST closed), pillar movement, and 2 findings that outgrew L1 (#2122, #2156). #2113/#2122(#2153) both unchanged again
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7657,3 +7657,47 @@ L1 must satisfy rather than a feature it consumes.
   sanity checks it could reasonably also report on, or continue the "pre-write W5" cadence with
   a second concrete prep artifact (e.g. drafting the close-report section per charter priority-5's
   other named option) once this one's value is confirmed unique and not redundant.
+- 2026-09-07T01:2xZ -- CYCLE 129 (C8 v2.3). PR hygiene: neither #2163 nor #2132 (my only two
+  genuinely-mine open PRs -- `gh pr list --author "@me"` returns many more rows, but they belong
+  to other layer sessions sharing the same git identity: L5/#2162, CONDUCTOR/#2161, L3/#2160,
+  L0/#2153, L2/#2135, plus several ancient pre-campaign PRs -- none of those are mine to touch)
+  were in `is:queued`; both showed `mergeStateStatus: BLOCKED` with all checks either `pass` or
+  still-`pending` (no `fail`) -- genuinely mid-CI, not DIRTY, not RED, nothing to fix. Re-checked
+  the 2 tracked blockers: #2113 unchanged (same 15:00:13Z comment); #2153 still OPEN (now
+  `mergeStateStatus: CLEAN`, still not merged). Neither moved -- third consecutive cycle in this
+  disposition, so continued the priority-5 prep cadence cycle 128's own "next" note offered as
+  its second option: drafted `L1_W6_CLOSE_REPORT_v1_0.md`. Confirmed first that this is the
+  EXACT deliverable `PROMPT_L1.md` names for W6 ("publish `L1_W6_CLOSE_REPORT_v1_0.md` per C11"),
+  and found L5 had already set a live precedent (`L5_W6_CLOSE_REPORT_v1_0.md`, started early per
+  its own session prompt) -- read it in full before writing anything, both for structure (§0
+  status / §1 asset table / §1.5 PR outcome / §2 findings ledger / §3 pillar movement / §3.5
+  findings-that-outgrew-the-layer / §4 cost actuals / §5 backlog / §6 OPEN) and to confirm what
+  "the five doctrines" (C11's own phrase) actually resolve to -- traced them via the L0 W1 batch
+  files' own "Pillars" callouts to D-GROUNDING(P3)/D-SYNTHESIS(P4)/D-SALIENCE(P5)/D-TIME(P6)/
+  D-SERVICE(P8), not guessed. Wrote the draft compiling ONLY what W1-W3 have already determined
+  (no new analysis): condensed 19-asset table (cross-checked live counts/routes against this
+  file's own per-asset table, caught nothing wrong), findings-ledger tier counts pulled directly
+  from `L1_W2_DECIDE_v1_0.md` §3 (139 findings, MUST/NOW/NEVER-LATER dispositions), a genuine
+  live PR count (115, via `gh pr list --search "is:pr is:merged head:codex/nirmana-l1-"`, stated
+  as an approximation bounded by branch-naming rather than hand-enumerated or guessed), pillar
+  movement framed as "L1 is a substrate provider for 4 of 5 doctrines" (the D-SALIENCE-feed
+  findings F-C2/C3/C4/C5/C7 correctly cited as L2's to consume, not L1's to fix), and a §3.5
+  naming the two findings that genuinely outgrew L1's own scope (#2122 L0 escalation, #2156 L3
+  migration collision) -- the same "findings that outgrew the layer" framing L5's own report
+  used. Left §4 cost actuals and the full 139-row per-finding table explicitly OPEN rather than
+  fabricate either (§N.8: an unmeasured claim is null, not a plausible-looking estimate).
+  Double-checked one specific factual claim before shipping (both `ga_positions` F-A16 and
+  `ga_condition` F-C12 citing the SAME migration 847) by re-reading the source lines verbatim
+  rather than trusting recall -- confirmed correct, a genuine same-migration batch, not a
+  transcription error. Committed on a fresh branch off `origin/main`
+  (`codex/nirmana-l1-w3-prep-close-report`), opened PR #2164, armed auto-merge, confirmed
+  genuine CI dispatch (real run IDs, all `pending`, not a stub). No code change, no writer
+  touched, no migration authored -- pure documentation. CYCLE 129 L1: PR hygiene clean, second
+  consecutive prep-tier cycle (both blockers unchanged for a third straight cycle now), shipped
+  a genuinely useful, source-verified DRAFT close-report artifact that will save real
+  reconstruction effort whenever W4/W5/W6 actually become eligible -- next: re-check #2113/#2153
+  again; if both remain stuck for several more cycles, the two remaining charter-named prep
+  items are cost-ledger reconciliation (§4's own OPEN note) or the full 139-row per-finding
+  disposition table (§2's own OPEN note) -- prefer the cost ledger next, since the disposition
+  table's source data doesn't change until new findings land and is lower marginal value than a
+  first honest cost accounting.
