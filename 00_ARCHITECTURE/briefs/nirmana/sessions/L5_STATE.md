@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T08:30Z (C8 v2.3 cycle 343) — **IDLE-OK.** #1826 unchanged (Unit Tests +
+  Governance Gates, no failures, armed). #1844 confirmed `isInMergeQueue: true`. #1869
+  unchanged at 4 comments. 2 cycles since last push.
 - 2026-09-06T08:27Z (C8 v2.3 cycle 342) — **IDLE-OK, verified mi_kula's E-gate directly.**
   #2004 merged (L0: bg_dasha_systems integrity_check_sql fix, D-L0-GG) — checked live
   whether this moved mi_kula's E-gate (blocked on 3 unfrozen L0 ancestors:
