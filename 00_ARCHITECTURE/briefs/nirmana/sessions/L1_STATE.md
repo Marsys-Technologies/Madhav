@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 47; ga_structural F-A14 widened to 4/57, F-A17 found (#2000)
+last_updated: 2026-09-06 — C8 v2.3 cycle 48; F-A17 fixed at the writer level, 3rd occurrence found+fixed (#2003)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -2023,6 +2023,65 @@ the remaining "per_varga" family — `aspect_jaimini_per_varga`, `net_argala_per
 own data), consider a bounded pass investigating F-A17's root cause, or `ga_positions` re-dispatch
 once #1892 lands.
 
+## CYCLE 48 (C8 v2.3) — F-A17 fixed at the writer level (PR #2003); a third occurrence of the same bug class found and fixed in the same pass
+
+**PR hygiene:** clean sweep. `#1827`/`#2000` both CLEAN-but-unqueued (mid-CI/queue-catchup,
+matched the established pattern) — nothing actionable. All other 33 L1 PRs confirmed genuinely
+`is:queued`. #1928/#1892 unchanged.
+
+**Unit of work: root-caused and fixed F-A17**, rather than continuing to widen `ga_structural`'s
+contract further — two genuine defects discovered while widening (F-A15, F-A17) made this the
+higher-priority call this cycle.
+
+**Root cause, precisely identified**: `vargottama_per_varga` compares `ga_structural`'s own
+in-memory `chart_output` D1 sign against the current varga's sign — but `ga_vargas`' OWN internal
+D1 computation (`_compute_varga_positions`' own `"D1"` entry, used for its own
+`varga_vargottama_flag`) is a SEPARATE PyJHora invocation from `chart_output`, and the two can
+disagree near sign boundaries. Confirmed directly: compared `chart_facts.graha_position` (GA3's
+D1) against `chart_divisionals` `varga='D1'` (`ga_vargas`' own D1) for all 13 F-A17 rows — every
+single one showed the two D1 sources landing on ADJACENT signs (Pisces/Aquarius, Taurus/Aries,
+Scorpio/Libra), the classic signature of two independent close-boundary computations disagreeing.
+
+**Fix mirrors F-A15 exactly** (the low-risk path, sidestepping the harder "which D1 computation is
+more astronomically correct" question entirely): stop re-deriving vargottama, read `ga_vargas`' own
+precomputed `varga_vargottama_flag`. Generalized F-A15's own `_get_d9_vargottama_flag` helper to
+`_get_varga_vargottama_flag(conn, chart_id, ayanamsha_id, varga, graha)`, taking `varga` as a
+parameter instead of hardcoding `'D9'` — the existing D9 call site (`graha_vargottama_
+amplification_factor`) now just passes `'D9'` explicitly, no behavior change there.
+
+**Found a THIRD, previously-untracked instance of the identical bug while making this fix**:
+`graha_special_state_rollup.is_vargottama` used its OWN separate hardcoded navamsha-degree formula
+(`nav_starts` sign-cycling table + float arithmetic) — byte-identical to F-A15's ORIGINAL bug
+pattern, just never touched by that fix (it only fixed `graha_vargottama_amplification_factor`).
+Grepped the whole file for the formula's signature constants (`nav_starts`/`nav_para`/`nav_sign`)
+to confirm this was the only remaining occurrence before fixing it too, with the same helper and
+honest-floor discipline.
+
+Threaded `conn` through both fixed functions and their call sites (`_build_varga_relationship_rows`
+← `_build_varga_aspect_rows`; `_build_special_state_rows` ← both the main build loop AND the
+modularized `family_call` registry — two call sites, both updated). Fixed one pre-existing test
+that relied on the old self-contained computation to pass a fake conn instead; added 4 new tests
+(2 per fixed site: a real-conn-read proof asserting both `true`/`false` genuinely flow through, and
+an honest-floor-without-conn proof). **Mutation-tested via a saved-diff revert-and-reapply** (not
+git stash, to avoid the shared-stash-stack risk): saved the writer diff to a patch file, reverted
+the writer only (kept the new tests), confirmed all 4 new/modified tests genuinely fail against the
+pre-fix code, reapplied the patch, confirmed all pass again.
+
+**PR complication handled**: this fix had to build on top of F-A15's own branch (still-unmerged
+PR #1981, since the needed helper only exists there) — creating a stacked-branch situation. A PR
+against that branch can't be auto-merge-queued (queue targets `main`), so retargeted to `main`
+directly, which surfaced a real merge conflict (main had advanced past where the F-A15 branch
+diverged) — rebased the combined 4-commit branch onto current `main`, resolved two conflicts in
+`nirmana-analysis-layer-pins.json` (took base, regenerated fresh afterward, same discipline as
+`#1898`'s cycle-44 rebase), then regenerated both the writer-digest inventory and the `--layer L1`
+pin fresh against the rebased tree. Full `ga_writers/`+`pipeline/orchestrator/writers/__tests__/`
+suite: 601 passed, 1 skipped, matching baseline exactly.
+
+CYCLE 48 L1: fixed F-A17 at the writer level (PR #2003), plus a third occurrence of the same bug
+class discovered and fixed in the same pass — next: continue `ga_structural`'s F-A14 widening
+(53 categories remain — migration 756's conjunct (e) will clear once the 2 affected charts
+rebuild), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2038,7 +2097,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 — 4/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; **NEW: F-A17** — vargottama_per_varga's re-derived boolean disagrees with ga_vargas' own varga_vargottama_flag on 13/3780 rows across all vargas (not yet root-caused) |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → #1997 cycle 46 → #2000 cycle 47 — 4/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — vargottama_per_varga now reads ga_vargas' varga_vargottama_flag for every varga instead of re-deriving; also fixed a 3rd, previously-untracked instance of the same bug (graha_special_state_rollup.is_vargottama, its own hardcoded navamsha formula); migration 756's conjunct (e) will clear once the 2 affected charts rebuild |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -2675,6 +2734,25 @@ whole campaign.
   not investigate root cause (whether `ga_vargas`' own two columns disagree with each other, or
   `ga_structural`'s re-derivation has its own bug) — followed the F-C8/F-A15 precedent of shipping
   the real detector now, root-causing later.
+
+- **D-L1-72** — C8 v2.3 cycle 48: fixed **F-A17** at the writer level (PR #2003) — chose to
+  root-cause and fix rather than continue F-A14 widening, given two genuine defects (F-A15,
+  F-A17) had now surfaced from the same category family. Root cause: `ga_vargas`' own internal D1
+  computation (`_compute_varga_positions`) is a separate PyJHora invocation from the `chart_output`
+  ga_structural receives, and the two can disagree near sign boundaries — confirmed by directly
+  comparing GA3's D1 (`chart_facts.graha_position`) against ga_vargas' own D1
+  (`chart_divisionals` varga='D1') for all 13 affected rows, every one landing on adjacent signs.
+  Fix mirrors F-A15 exactly (generalized `_get_d9_vargottama_flag` → `_get_varga_vargottama_flag`
+  with a `varga` parameter) rather than adjudicating which D1 source is more astronomically
+  correct — sidesteps that harder question entirely. **Found and fixed a third occurrence of the
+  identical bug while making this fix**: `graha_special_state_rollup.is_vargottama` had its own
+  separate hardcoded navamsha formula, never touched by F-A15's original fix — grepped for the
+  formula's signature constants to confirm no further occurrences remained. Mutation-tested via a
+  saved-diff revert/reapply (not git stash) to avoid the shared-stash-stack risk. Handled a
+  stacked-PR complication (had to build on F-A15's still-unmerged branch for the shared helper;
+  retargeting straight to `main` surfaced a real conflict from `main` having advanced) by rebasing
+  the combined branch and regenerating both digest/pin artifacts fresh afterward — same discipline
+  as `#1898`'s cycle-44 rebase.
 
 ## Held items
 
@@ -3408,3 +3486,26 @@ L1 must satisfy rather than a feature it consumes.
   migration 756), discovered and documented F-A17 -- next: continue ga_structural widening (53
   categories remain, the "per_varga" family), consider a bounded pass investigating F-A17's root
   cause, or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T05:4xZ -- CYCLE 48 (C8 v2.3). PR hygiene clean: #1827/#2000 CLEAN-but-unqueued
+  (mid-CI/queue-catchup, not stuck), all other 33 L1 PRs confirmed genuinely is:queued.
+  #1928/#1892 unchanged. Unit of work: root-caused and fixed F-A17 rather than continuing F-A14
+  widening (two genuine defects from the same family warranted a fix pass). Root cause: ga_vargas'
+  own internal D1 computation (_compute_varga_positions) is a separate PyJHora invocation from the
+  chart_output ga_structural receives -- confirmed by comparing GA3's D1
+  (chart_facts.graha_position) against ga_vargas' own D1 (chart_divisionals varga='D1') for all 13
+  affected rows, every one landing on adjacent signs (Pisces/Aquarius, Taurus/Aries,
+  Scorpio/Libra). Fix mirrors F-A15 exactly: generalized _get_d9_vargottama_flag to
+  _get_varga_vargottama_flag(conn, chart_id, ayanamsha_id, varga, graha), sidestepping the harder
+  "which D1 source is correct" question entirely. Found and fixed a THIRD occurrence of the
+  identical bug while making this fix: graha_special_state_rollup.is_vargottama had its own
+  separate hardcoded navamsha formula, never touched by F-A15's original fix -- grepped to confirm
+  no further occurrences remained. Fixed one pre-existing test, added 4 new (2 per site: real-read
+  proof + honest-floor proof). Mutation-tested via a saved-diff revert/reapply (not git stash, to
+  avoid the shared-stash-stack risk) -- all 4 genuinely fail against pre-fix code. Handled a
+  stacked-PR complication: had to build on F-A15's still-unmerged branch (#1981) for the shared
+  helper; retargeting to main surfaced a real conflict from main having advanced -- rebased the
+  combined branch, resolved two pin-file conflicts (took base, regenerated fresh after), same
+  discipline as #1898's cycle-44 rebase. Full ga_writers/+orchestrator writers/__tests__/ suite:
+  601 passed, 1 skipped, matching baseline. CYCLE 48 L1: fixed F-A17 (PR #2003) plus a third
+  occurrence of the same bug class found in the same pass -- next: continue ga_structural's F-A14
+  widening (53 categories remain), or ga_positions re-dispatch once #1892 lands.
