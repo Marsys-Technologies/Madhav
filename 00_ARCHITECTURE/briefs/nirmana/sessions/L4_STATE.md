@@ -4501,3 +4501,21 @@ direct job inspection; E-gate uncheckable, DB access down 213 cycles; nothing ne
 watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns;
 F1 remains deferred.
 
+`2026-09-06T~08:55Z` — L4 — **CYCLE 224 (v2.3) — `#1946` merged, confirming last cycle's
+diagnosis (slow-but-normal, not stalled); a first `git fetch` raced the merge and briefly
+under-read `main`, caught and corrected by re-fetching before concluding anything — `main`
+advanced by 1, own PR positions moved up accordingly (some already reflected the shift from
+a mergeQueueEntry read taken between the merge and the stale fetch).**
+
+**PR hygiene:** all 9 own PRs genuinely queued and advancing (112→112/101/36/37/27/13/9/3/4
+across the sweep — see raw reads below). No DIRTY, no RED.
+
+**Priorities 1-4:** no new L4-relevant `main` commits, no new adjudications name L4 (count
+unchanged at 15). E-gate still uncheckable, 214th consecutive cycle DB access down.
+
+CYCLE 224 L4: IDLE-OK (verified: `#1946` merged confirming last cycle's diagnosis after
+re-fetch corrected an initially-stale `main` read; PR hygiene clean, all 9 own PRs genuinely
+queued and advancing; E-gate uncheckable, DB access down 214 cycles; nothing new) → next:
+watch queue positions continue advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
