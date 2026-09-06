@@ -18,7 +18,8 @@
  * seed pattern, brief §2.5.4). Schema: chart_id × factor_family × convention_id ×
  * school_tag × constraint_role × convention_status × provenance × corpus_gap_ref ×
  * native_confirmed × awaiting_native_confirmation × version (zero-padded) ×
- * confirmation_provenance (nullable, migration 534).
+ * confirmation_provenance (nullable, migration 534) × arbitration_role ×
+ * precedence (both nullable, migration 675 — N1's Temporal Concordance Contract).
  *
  * ── ADJUDICATION-8 RAILS (binding, both enforced here) ──────────────────────
  *
@@ -73,7 +74,12 @@ export const queryKalaPaddhatiProfileCapability: CapabilityDescriptor = {
     'provenance, corpus_gap_ref, native_confirmed, awaiting_native_confirmation,',
     'version (zero-padded, e.g. paddhati_v01/paddhati_v02 — version selection is',
     'string-sort client-side; paddhati_v10 would sort below paddhati_v2 without padding),',
-    'confirmation_provenance (set iff native_confirmed=TRUE, migration 534).',
+    'confirmation_provenance (set iff native_confirmed=TRUE, migration 534),',
+    'arbitration_role (this convention\'s role for a concordance-verdict arbiter — primary,',
+    'corroborating, a future veto-gate role, or a non-voting role — NULL on rows seeded',
+    'before migration 675) and precedence (tie-break rank, migration 675) — read by a',
+    'concordance-verdict arbiter (N1, Temporal Concordance Contract) to decide which',
+    'engine testimony is the reference point vs. a corroborating vote.',
     'Returns all versions for the chart; client applies ORDER BY version DESC to get latest.',
     'native_confirmed and confirmation_provenance are served verbatim — ADJUDICATION-8 rail 3.',
   ].join(' '),
@@ -121,14 +127,17 @@ export const queryKalaPaddhatiProfileCapability: CapabilityDescriptor = {
     const where = filters.join(' AND ')
 
     // All columns the consumer (kala_sky_pattern.ts's PaddhatiConventionRow) needs,
-    // including confirmation_provenance (nullable, added in migration 534).
+    // including confirmation_provenance (nullable, added in migration 534) and
+    // arbitration_role/precedence (nullable, added in migration 675 — N1's
+    // Temporal Concordance Contract; NULL on every row seeded before that
+    // migration, since no factor_family had an arbiter role until O-10).
     // ORDER BY version ASC, factor_family, convention_id — deterministic, so
     // the client's string-sort version selection is stable across calls.
     const sql = `
       SELECT factor_family, convention_id, school_tag, constraint_role,
              convention_status, provenance, corpus_gap_ref,
              native_confirmed, awaiting_native_confirmation, version,
-             confirmation_provenance
+             confirmation_provenance, arbitration_role, precedence
       FROM kala_paddhati_profile
       WHERE ${where}
       ORDER BY version ASC, factor_family, convention_id`
