@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Possible merge-queue stall flagged (visibility only, #1713): origin/main's tip hasn't moved in 2+ hours despite continuous merge_group CI activity, including a batch where all required checks passed and nothing landed; the existing watchdog's heuristic doesn't catch this (checks for activity, not completed merges). Not my infra to fix. #2066 still queued (position 42), no DIRTY/RED. #1901 (Conductor's delta-skip fix) merged but not deployed -- once main advances and it deploys, should unblock bg_doshas + bg_gochara_arcs + bg_text_index. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — Merge-queue stall still ongoing (unchanged, not re-flagging as noise). Used the wait to verify bg_gochara_arcs AND bg_text_index (not just bg_doshas) are ALSO fully data-correct live and W2-current -- all three D-L0-FF-family assets are now confirmed fully primed, blocked on nothing but #1901's deploy. Once #1901 deploys, dispatching any of the three should skip_no_delta + receipt-reattribute straight through to asset_frozen -- no rebuild, no new W2 needed. This is now the top-priority action once #1901 lands (3 assets in one mechanism). #2066 still queued (position 42, unmoved), no DIRTY/RED. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2911,3 +2911,29 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   adjudication — no ruleset/branch-protection access to act on this myself, and it's Conductor-
   owned infra per C5). Not blocking my own work; continuing normal cycles. No DIRTY/RED on my
   own PR. 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **Merge-queue stall still ongoing (unchanged since last flag — `origin/main` tip
+  still `0452d1e74`, `#2066` still at queue position 42, no forward movement at all this cycle,
+  not just slow). Not re-flagging (would be noise); watchdog process itself confirmed still alive
+  and on its normal cadence.** Used the wait productively: verified all three D-L0-FF-family
+  assets, not just `bg_doshas`, are fully primed and waiting on nothing but `#1901`'s deploy.
+  - **`bg_gochara_arcs`: all 7 clauses of its `integrity_check_sql` pass live** (gapless tiling
+    per body, floor ≥33933 met). W2 evidence (2026-09-05, PR #1836) independently re-verified
+    current: recomputed `registry_fingerprint_sha256
+    c9388e0462ab26817689be57f42311b08be7bba33832f19fcaa9df67abf71576` from the live registry row
+    matches the accepted evidence exactly. `action=no_change` — no implementation_accepted needed.
+  - **`bg_text_index`: all 7 clauses pass live** (10651/7010/3641/361 counts, topic_tag FK
+    integrity, content hash). W2 evidence (2026-09-04) independently re-verified current:
+    recomputed `registry_fingerprint_sha256
+    eb5109f2370b49291b539eeb046bea46dcc27ad5be5ef94812c3c77722067017` matches exactly — this
+    asset's registry contract has never needed a refresh. `action=no_change`.
+  - **Consolidated status: `bg_doshas` + `bg_gochara_arcs` + `bg_text_index` are ALL data-correct,
+    ALL W2-current, ALL blocked purely on the same `#1899`/D-L0-FF evidence-chain mechanism.**
+    None need a rebuild in the ordinary sense — the moment `#1901` deploys, a dispatch attempt
+    against any of them should `skip_no_delta` (data already matches) and, per the Conductor's own
+    fix, get its existing matching receipt re-attributed to whichever run holds a valid
+    authorization — no new W2, no data change, straight through to
+    `accepted_rebuild_observed`→`integrity_verified`→`asset_frozen`. **This is now the single
+    highest-priority action the moment `#1901` deploys** — three assets in one mechanism, more
+    valuable than the two already in progress behind `#2066`.
+  - 30/40 frozen holds unchanged.
