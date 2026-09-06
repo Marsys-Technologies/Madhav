@@ -7940,3 +7940,19 @@ CYCLE 411 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked,
 `main` itself quiet for several cycles running, confirmed via fresh fetch each time; no new
 L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~15:18Z` — L4 — **CYCLE 412 (v2.3) — IDLE-OK. E-gate re-checked live,
+unchanged. `main`'s apparent quiet (6 checks at the same tip) confirmed as normal merge
+-queue processing latency, not a stall — `gh run list --event merge_group` showed fresh
+activity 1-3 min prior and 6 PRs currently `is:queued`.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (merge queue genuinely active,
+just hasn't landed the next commit yet). No new adjudications name L4 (count unchanged at
+16). No `NIRMANA_HOLD` file present.
+
+CYCLE 412 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
+confirmed merge queue itself is actively processing, not wedged; no new L4-relevant
+adjudications) → next: continue re-checking the E-gate each cycle; F1 (`ph_phaladesa` zero
+MCP consumers) remains the layer's one deferred code item.
