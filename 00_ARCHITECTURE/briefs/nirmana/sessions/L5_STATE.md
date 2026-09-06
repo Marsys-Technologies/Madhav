@@ -457,6 +457,82 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T01:02Z (C8 v2.3 cycle 600) — **Cycle 600. `#2168` MERGED — the eighteenth
+  state-recovery PR closed out.** Eighteenth recurrence of the exact same pattern (cycles 442,
+  453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, now 600). 8
+  local-only commits (cycles 592-599, 67 lines, single-file) recovered via patch-onto-fresh-branch
+  onto `codex/nirmana-l5-heartbeat-recovery-19`. `#2167` (migration 822 PR) still genuinely
+  queued, no failures. `mi_kula` redispatch subagent (`a467e77872c8adb5e`) still running (~2
+  min) — the eighteenth state-recovery PR in a row of the SAME underlying push-vs-pull pattern
+  that has held all session; not treating the sheer count as itself a problem — each recurrence
+  is being closed correctly and costs one cheap, mechanical cycle.
+- 2026-09-07T00:56Z (C8 v2.3 cycle 599) — **Found the exact mechanism and dispatched the fix.**
+  Read `create_campaign_run`/`dispatch_campaign_run`/`main()` in `dispatch_nirmana_campaign_
+  wave.py` directly: `--commit` chains row-creation ('planned' insert + transaction commit) and
+  job-execution (`gcloud run jobs execute`) back-to-back in one CLI call with no pause — that's
+  structurally why authorization can never land in time via the stock CLI path. Read
+  `BuildRunAuthorizationEvidenceSchema` (`definitions.ts:1169-1173`, just `wave_index`,
+  `asset_ids`, `authorization_sha256`) and confirmed `authorization_sha256` has NO canonical
+  formula server-side (only cross-checked for exact-match against `accepted_rebuild_observed`'s
+  own copy of the same field) — must still be honestly derived from real content, not
+  fabricated. Dispatched a subagent (`a467e77872c8adb5e`) with the precise procedure: import
+  `create_campaign_run` directly (bypassing `main()`'s auto-chaining) to get a fresh run in
+  `'planned'` state, submit `build_run_authorized` in that window, THEN execute the job, THEN
+  submit `accepted_rebuild_observed` referencing the new run. Explicitly told to reuse the
+  already-valid `implementation_accepted` (source_ref `git:6964b5538...`) rather than resubmit
+  it. #2167/#2168 PR hygiene unchanged, both still genuinely queued.
+- 2026-09-07T00:46Z (C8 v2.3 cycle 598) — **Real structural finding: `mi_kula`'s completed run
+  (`343fe4fa-...`) can never satisfy `build_run_authorized` — the authorization window closed
+  when the run finished.** Subagent report: `implementation_accepted` submitted successfully
+  (independently re-confirmed live: `event_id=bb198e18-...`, `source_ref=git:6964b5538...` — the
+  CURRENTLY deployed sha, not the fix-commit sha itself; the subagent self-corrected this via
+  live verification of the deployed image before submitting, a good catch). `build_run_authorized`
+  for `run_id=343fe4fa-...` was correctly REFUSED (HTTP 409: "requires an exact non-canary
+  rebuild scoped to the frozen definition") — read `requireBuildRunAuthorizationProvenance`
+  directly: it unconditionally requires `build_runs.state='planned' AND started_at IS NULL`, i.e.
+  authorization must exist BEFORE the run starts. `343fe4fa-...` already completed
+  (`started_at`/`ended_at` both set) before this session ever tried to submit authorization for
+  it — an immutable historical fact, no payload can satisfy this retroactively.
+  **Independently re-verified the subagent's correction to my own earlier claim**: `mi_vistara`
+  DOES have a `build_run_authorized` event, but for run `e812179e-9aac-4dbb-bc99-2840bcaa711d` —
+  NOT the original canary run `e45e343b-...` I'd checked before. Confirmed via direct query that
+  `mi_vistara`'s actual `accepted_rebuild_observed.build_run_id` references `e812179e-...`, the
+  authorized run — meaning `mi_vistara` was quietly re-dispatched at some point with correct
+  authorization ordering, superseding the original canary run's evidence path. This is the
+  correct model `mi_kula` now needs to follow: **a fresh dispatch, with `build_run_authorized`
+  submitted while the new run is still `state='planned'`, before `--commit`.** Next cycle:
+  investigate the dispatch script for how to reference a not-yet-committed run's UUID at
+  `'planned'` state (need to determine whether `--commit` itself creates the row or whether a
+  prior step does), then execute the correctly-ordered redispatch. #2167/#2168 both still
+  genuinely queued, no failures.
+- 2026-09-07T00:40Z (C8 v2.3 cycle 597) — **IDLE-OK, verified.** Both #2167/#2168 unchanged,
+  still genuinely queued. Evidence-chain subagent still running (~10 min, the longest yet but
+  matches the scope: three sequential evidence submissions, each independently re-verified) —
+  holding.
+- 2026-09-07T00:34Z (C8 v2.3 cycle 596) — **IDLE-OK, verified.** Both #2167 and #2168 now
+  genuinely queued, no failures. Evidence-chain subagent still running (~8 min) — holding.
+- 2026-09-07T00:28Z (C8 v2.3 cycle 595) — **IDLE-OK, verified.** #2168 now genuinely queued.
+  #2167 still building, no failures. Evidence-chain subagent still running (~6 min) — holding.
+- 2026-09-07T00:22Z (C8 v2.3 cycle 594) — **IDLE-OK, verified.** #2167/#2168 both still building
+  cleanly, no failures. Evidence-chain subagent still running (~4 min, expected — three
+  sequential submissions with independent DB re-verification after each) — holding.
+- 2026-09-07T00:16Z (C8 v2.3 cycle 593) — **IDLE-OK, verified.** #2167/#2168 both still building
+  cleanly, no failures. Evidence-chain subagent still running (~2 min) — holding.
+- 2026-09-07T00:10Z (C8 v2.3 cycle 592) — **PR hygiene: #2167/#2168 both building cleanly, no
+  failures.** Investigated whether `build_run_authorized` is genuinely required before
+  dispatching the next evidence step — read `requireAcceptedRebuildProvenance` directly
+  (`definitions.ts` ~2209-2270): it unambiguously queries for a `build_run_authorized` row keyed
+  by the run's own UUID. Checked `mi_vistara`'s precedent run (`e45e343b-...`) — it ALSO has zero
+  `build_run_authorized` rows, despite its `accepted_rebuild_observed` having succeeded;
+  concluded this validator was very likely tightened after those two canaries went through
+  (fast-moving campaign, many parallel lanes) — not something to route around, just a genuinely
+  new requirement `mi_kula` must satisfy under current code. Confirmed `dispatch_nirmana_
+  campaign_wave.py` never submits this itself (no mention anywhere in the script). Dispatched an
+  executor subagent (`a4575f50636d54c8a`) to complete the full remaining chain in order —
+  `implementation_accepted` → `build_run_authorized` → `accepted_rebuild_observed` — reading each
+  schema from `definitions.ts` directly, never hand-guessing payload shapes, with instructions to
+  report partial progress honestly if a later step fails rather than treating it as erasing
+  earlier real progress.
 - 2026-09-07T00:04Z (C8 v2.3 cycle 591) — **Root-caused and fixed the deeper blocker behind
   `mi_kula`'s missing `accepted_rebuild_observed`; `#2162` MERGED (seventeenth state-recovery
   PR).** The executor subagent (`a3119d1452ef053be`) dispatched to submit
