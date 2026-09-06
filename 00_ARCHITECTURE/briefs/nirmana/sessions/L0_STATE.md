@@ -2075,3 +2075,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Fourth flat read (`#2016` still mid-CI no reds, queue head still #1920,
   ~11.3min in_progress — still under the 30min hang threshold). No DIRTY, no RED. 30/40 frozen
   holds.
+
+- 2026-09-06 — **IDLE-OK.** #1920 merged (`21f6dda67`, not L0's). `#2016`'s checks re-triggered
+  against the new base, mid-CI again, no reds. No DIRTY, no RED, no new eligible work. 30/40 frozen
+  holds.
