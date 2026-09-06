@@ -5171,3 +5171,17 @@ CYCLE 258 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 uncheckable, DB access down 248 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~11:50Z` — L4 — **CYCLE 259 (v2.3) — `#1987` merged, confirming last cycle's
+diagnosis; `main` advanced by 1, all 9 own PRs' positions moved up accordingly.**
+
+**PR hygiene:** all 9 own PRs genuinely queued and advancing (65→64, 54→53, 121→120,
+119→118, 111→110, 115→114, 99→98, 90→89, 95→94). No DIRTY, no RED.
+
+**Priorities 1-4:** no new L4-relevant `main` commits, no new adjudications name L4 (count
+unchanged at 14). E-gate still uncheckable, 249th consecutive cycle DB access down.
+
+CYCLE 259 L4: IDLE-OK (verified: `#1987` merged confirming last cycle's diagnosis; PR
+hygiene clean, all 9 own PRs genuinely queued and advancing; E-gate uncheckable, DB access
+down 249 cycles; nothing new) → next: watch queue positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
