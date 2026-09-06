@@ -1994,3 +1994,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Positions essentially unchanged (5/13/62/112, `#2004` inched down by 1),
   queue head still #1914, ~10min in_progress — still under the 30min hang threshold. No DIRTY, no
   RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions unchanged (5/13/62/112), but #1914's all 26 real check-runs
+  now `completed` (22 success, 4 skipped-by-design) — should merge imminently. Shortened next
+  wakeup to catch the expected drop. No DIRTY, no RED. 30/40 frozen holds.
