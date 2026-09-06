@@ -477,6 +477,41 @@ your layer close.
   L4-owned blocker cleared under its own session's hygiene, and re-check #1713's
   `amjis-sidecar` finding (still not re-verified for two cycles now — worth doing next
   cycle if no fresher hygiene work is available).
+- `2026-09-06T~10:4xZ — L3-W3 — F-L3-15 CLOSED completely (PR #2079): ka_dasha_kala
+  gets a DB-free PROXY health_probe per D-CND-34 ruling (#2071).** All four L3
+  service assets (ka_graha_sancara, ka_muhurta_seva, ka_tulana, ka_dasha_kala) now
+  have a real, honestly-scoped health_probe. This probe verifies exactly two
+  things — importability + the documented 7-system constant-set identity — and
+  every check carries an explicit `scope` field disclosing it never confirms
+  chart_dashas correctness or any live-DB behavior (the ruling's own required
+  condition, §N.8). Migration 811. 13 new tests (7 probe + 7 migration [overlap:
+  2 shared assertions counted once] + 2 route), full `tests/l3/` 1465
+  passed/0 new failures.
+  **Also this cycle: fixed a genuine RED — migration collision.** PR #2070's own
+  migration 764 (ka_tulana health_probe, landed last cycle) collided with L2's
+  independently self-assigned 760-779 range, caught by CI's own
+  `scripts/ci/migration_number_guard.ts` E2 check (`migration number 764 is
+  claimed 2 times`). Fixed at the root by renumbering 764→810 (never applied
+  anywhere, so safe) rather than disclosing/allowlisting — confirmed via
+  `npx tsx scripts/ci/migration_number_guard.ts` exiting PASS. **Lesson for any
+  future migration-range self-assignment: `gh search` alone is not sufficient
+  (it missed L2's file); check the actual migrations/ directory listing and
+  re-run the guard locally before considering a number claimed.**
+  **PR hygiene: ten more genuinely DIRTY/UNMERGEABLE-in-queue PRs found and
+  fixed this cycle: #1903, #1913, #1917, #1929, #1936, #1940, #1943, #1949,
+  #1951 (UNMERGEABLE-in-queue, needed `dequeuePullRequest` first), #1954** — the
+  ka_sangam-family generated-file pattern recurred on #1903/#1913 (both
+  resolved: pins+digests regenerated for real, only `ka_sangam`'s own hash
+  changed each time); the rest were pins-only or clean rebases. All ten force-
+  pushed, re-armed, confirmed `MERGEABLE`. Full L3-lane sweep (15 PRs) clean
+  after: zero DIRTY, zero UNMERGEABLE-in-queue.
+  This heartbeat entry itself follows the new no-heartbeat-PR discipline
+  (#2067's ruling, discovered/acted on last cycle) — attached to #1954 (a real
+  code PR, not a fresh heartbeat PR).
+  — blocked on: nothing; next action: continue N1's remaining chain once
+  #1919/#1917/#1913/#1903/#1929/#1887 (all fixed this session) actually merge,
+  re-verify the fleet fresh next cycle, and check #1713 (sidecar deploy
+  finding) for any response.
 - `2026-09-06T~10:1xZ — L3-W3 — MAJOR PROCESS CHANGE: discovered #2067's standing ruling
   (Conductor, cycle 367) that heartbeats must NEVER be a PR — post as a comment on #1713
   or update this file directly, no PR/merge/DIRTY-fleet noise.** Found this while fighting
