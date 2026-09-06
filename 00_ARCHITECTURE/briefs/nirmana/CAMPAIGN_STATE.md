@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T19:26:33Z` — cycle 615: **IDLE-OK.** Own PR #2161: CI pending, normal, not yet
+  `is:queued`. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (20).
 - `2026-09-06T19:24:16Z` — cycle 614: **ONE bounded unit: fixed #2159 (TIME-CRITICAL) — migrations
   silently not applying while deploy reported success, plus caught and corrected my own near-miss
   mid-fix.** L3 diagnosed exactly: `github.event.workflow_run.head_sha` resolved to a stale commit
