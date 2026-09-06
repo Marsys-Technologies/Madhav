@@ -469,6 +469,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~25:0xZ — L3-W3 — PR hygiene: 3 of 9 L3-owned PRs were `CLEAN`
+  but `isInMergeQueue: false` (`#1954`/`#1940`/`#1903`) — queued all three via
+  `gh pr merge --auto`, then verified via `is:queued` search (the authoritative
+  truth per the contract, not the `autoMergeRequest` message which again
+  printed its usual red herring) that all three are now genuinely queued.
+  `#2079` (the `#2071`/D-CND-34 implementation) still hasn't merged — not
+  closing that adjudication yet. `#1713`'s sidecar finding unchanged. — blocked
+  on: nothing new; next action: keep L3-only hygiene sweeps going, close
+  `#2071` once `#2079` merges, recheck `#1713`.
 - `2026-09-06T~24:0xZ — L3-W3 — IDLE-OK (verified, not assumed): all 9 L3-owned
   PRs healthy again (one showed `UNSTABLE` — checked `gh pr checks 1940`
   directly rather than assume: every check passes, `Build Check (PR only)` was
