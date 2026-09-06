@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — MILESTONE: bg_compendium_index rebuilt and verified live (all 6 integrity_check_sql clauses pass) -- migration 702 confirmed deployed, the 33-row chapter-scoped gap was simple staleness (unlike bg_yogas) and a real committed dispatch fixed it cleanly. All digests recorded (decision_digest b2fb4c0eb54122752a1e30866212bb4be5b3fc112fb7691a96be363dc1594fda, output_digest 8fda033a..., output_digest_spec_sha256 f66dba53...). Status across the three C12 assets: bg_dasha_systems rebuilt+verified (accepted_rebuild_observed blocked on #2066 deploying), bg_yogas BLOCKED on a real separate extraction-yield=0 defect (needs W3 investigation, not another dispatch), bg_compendium_index rebuilt+verified (same implementation-record block as bg_dasha_systems). Plan: once #2066 deploys, one small doc-only PR can serve as the implementation_accepted record for BOTH bg_dasha_systems and bg_compendium_index. #2066 at queue position 81, no DIRTY/RED. 30/40 frozen holds unchanged (evidence chains still open on both).
+last_updated: 2026-09-06 — bg_yogas extraction-yield defect ROOT-CAUSED and FIX VERIFIED (dict-row-as-tuple unpacking bug in extract_yogas_from_corpus -- confirmed live: fix yields exactly 85 extracted/233 total, matching integrity_check_sql exactly) but DELIBERATELY NOT SHIPPED: it would change L0's writer_inventory_sha256, which nirmana_analysis_layer_pins.py explicitly and permanently refuses to re-pin for L0 (adjudication #1715 requirement 3 -- "no L0 writer change is in scope for this campaign", protects 29 frozen capsules). Full diff + regression test preserved verbatim in the entry below for a future campaign phase. Decided not to file a new adjudication (the boundary is already settled, not an open question) -- posted to #1713 for visibility instead. Local git state cleaned up, nothing pushed. Prior milestone unchanged: bg_dasha_systems + bg_compendium_index both rebuilt+verified live; both still need the same implementation_accepted record once #2066 deploys (queue position 68). 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2790,3 +2790,75 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
       different `implementation_digest`s, or the same one — the field is shape-validated only).
       Then submit both `implementation_accepted` + `accepted_rebuild_observed` pairs.
   - 30/40 frozen holds unchanged (neither asset is frozen yet — evidence chain still open).
+
+- 2026-09-06 — **`bg_yogas` extraction-yield defect: ROOT CAUSE FOUND, FIX VERIFIED, but
+  DELIBERATELY NOT SHIPPED — it collides with adjudication #1715 requirement 3.** `#2066` at
+  queue position 68, no DIRTY/RED. This is the day's most important finding; recorded in full so
+  it isn't lost across sessions/campaign phases.
+  - **Root cause**: `extract_yogas_from_corpus()` in `l0_yogas.py` does
+    `for chunk_id, text_id, chapter, verse_ref, content_en, trad_school in rows:` — but the
+    orchestrator's connection uses `row_factory=psycopg.rows.dict_row`
+    (`pipeline/orchestrator/db.py:57`), so `rows` is a list of **dicts**, not tuples. Unpacking a
+    dict via a tuple-style `for` loop iterates its **keys**, not its values — every iteration
+    silently assigned the literal column names (`'id'`, `'text_id'`, `'content_en'`, …) to the
+    loop variables instead of the real row content. `content_en` was therefore always the literal
+    string `"content_en"`, which matches none of `SARAVALI_YOGA_LOOKUP` / `YOGA_NAME_LEXICON` /
+    `NAMED_YOGA_RE` — hence "0 distinct yogas found" against a real corpus that has 403 matching
+    chunks. Confirmed empirically: a standalone Python repro
+    (`for a,b,c in [{'a':1,'b':2,'c':3}]` → `a='a', b='b', c='c'`) reproduces the exact failure
+    mode; the deployed code is byte-identical to `origin/main` (no version-skew explanation).
+  - **Fix verified live (read-only)**: replacing the tuple-unpack with `row["id"]`/`row["text_id"]`
+    /etc. and re-running `extract_yogas_from_corpus(conn)` directly against the live DB (real
+    connection, rolled back — no commit) yields **exactly 85** extracted rows, for a total of
+    **233** (144 inline + 4 detector + 85 extracted) — matching `integrity_check_sql`'s own pinned
+    expectations exactly. Added a regression test
+    (`test_extract_yogas_from_corpus_reads_dict_row_values_not_keys`) to
+    `test_bg_yogas_source_contract.py`; full file (6 tests) + related yoga test files (67 tests)
+    all pass locally.
+  - **Why this is NOT being shipped this cycle**: fixing the writer changes
+    `nirmana-writer-digests.json#bg_yogas`'s content hash, which changes L0's aggregate
+    `writer_inventory_sha256`, which `nirmana_analysis_layer_pins.py` **explicitly and permanently
+    refuses to re-pin for L0** — its own source comment: *"L0's three pins are frozen against 29
+    accepted capsules. Re-deriving them would invalidate every one of them, and no L0 writer
+    change is in scope for this campaign."* This is not a technical blocker I can work around —
+    it is adjudication **#1715**'s binding requirement 3 ("L0's pinned constants stay byte-
+    identical. No L0 re-acceptance, no invalidation of the 29 frozen capsules."), a native-
+    ratified Conductor ruling. Forcing this through (e.g. hand-editing the pin file, or
+    bypassing the generator) would violate that ruling and risk invalidating 29 unrelated frozen
+    L0 capsules for a fix to one asset.
+  - **Disposition: decide-and-log, not filed as a new adjudication** — the "no L0 writer change
+    in scope" boundary is already settled (codified directly in the generator script, not an open
+    question), so there is nothing for the Conductor to rule on right now; re-litigating a closed
+    ruling would be noise. Posted to #1713 for visibility (informational, matching the
+    "not filing as adjudication, just visibility" convention other sessions have used). **The fix
+    itself is fully specified below so a future campaign phase (once L0 writer changes ARE in
+    scope) can apply it without re-deriving anything:**
+    ```diff
+    --- a/platform/python-sidecar/brahmagyan/l0_yogas.py
+    +++ b/platform/python-sidecar/brahmagyan/l0_yogas.py
+    @@ -1993,7 +1993,18 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
+             logger.warning("[l0_yogas] corpus extraction query failed: %s", exc)
+             return []
+
+    -    for chunk_id, text_id, chapter, verse_ref, content_en, trad_school in rows:
+    +    for row in rows:
+    +        # conn uses row_factory=psycopg.rows.dict_row (pipeline/orchestrator/db.py) --
+    +        # rows are dicts, not tuples. Unpacking a dict via `for a, b, ... in rows`
+    +        # iterates its KEYS (assigning column names, not values) and silently never
+    +        # matches any yoga pattern -- this was the actual cause of the 2026-09-06
+    +        # "0 distinct yogas found" defect, not a corpus/data gap.
+    +        chunk_id = row["id"]
+    +        text_id = row["text_id"]
+    +        chapter = row["chapter"]
+    +        verse_ref = row["verse_ref"]
+    +        content_en = row["content_en"]
+    +        trad_school = row["tradition_school"]
+             if not content_en:
+                 continue
+    ```
+    Plus the regression test in `test_bg_yogas_source_contract.py` (constructs a fake `Conn`/
+    `Cursor` whose `fetchall()` returns a dict row containing "Vajra Yoga" and asserts extraction
+    finds it — proves the fix reads real values, not keys).
+  - **Do NOT re-attempt this dispatch or write this code change until this is explicitly
+    back in scope** (a native/Conductor decision, or a future NIRMANA campaign phase). Local git
+    state cleaned up — no dangling branch, no uncommitted diff left on disk.
