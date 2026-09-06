@@ -457,6 +457,68 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T20:27Z (C8 v2.3 cycle 557) — **Milestone: `#2143` MERGED — the thirteenth
+  state-recovery PR closed out.** Thirteenth recurrence of the exact same pattern (cycles 442,
+  453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, now 557). 11 local-only commits (cycles
+  546-556, 55 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-14`. Pipeline job image still `d29e0cf0...`, still
+  predates the `depends_on` ordering fix (`d9a5ca807`) — checked before starting recovery,
+  unchanged.
+- 2026-09-06T20:21Z (C8 v2.3 cycle 556) — **IDLE-OK, final diagnostic pass on the deploy
+  gap.** Confirmed the pattern: `"Gate & detect changed paths"` itself shows `skipped` (not
+  "ran, found nothing") on every completed deploy run touched so far, including the one whose
+  headSha includes the fix — consistent with rapid-fire main commits (many L1 PRs landing every
+  few minutes) causing each intermediate deploy run's downstream jobs to be superseded/skipped
+  before completing, a classic CI debounce pattern, not a genuine stall or a new bug. This is
+  infrastructure/CI-cadence territory, not an L5-actionable defect — not filing an adjudication
+  for "deploy backlog is busy," per contract's own "IDLE cycles are cheap and honest" guidance.
+  Will keep monitoring the ground-truth check (`gcloud run jobs describe`) each cycle; will
+  reconsider escalating only if this remains stuck across many more cycles. #2143 unchanged,
+  still queued.
+- 2026-09-06T20:16Z (C8 v2.3 cycle 555) — **IDLE-OK, verified.** #2143 unchanged, still queued.
+  Pipeline job image unchanged, still predates the fix. New PR #2145 confirmed L1's, out of
+  scope.
+- 2026-09-06T20:10Z (C8 v2.3 cycle 554) — **IDLE-OK, dug one level deeper on why deploy hasn't
+  caught up.** Confirmed the fix (`d9a5ca807`) IS an ancestor of at least one deploy run's
+  headSha that completed `success` (`7ce5f10b...`), but that specific run's own
+  `Build & Deploy Pipeline Job Image` step shows `skipped` (along with `Gate & detect changed
+  paths` and everything else — looks like the whole build/deploy chain was skipped for that run,
+  possibly superseded by a later push before it built anything, standard CI debounce behavior,
+  not a real failure). No deploy run for the exact `d9a5ca807` sha itself found in the last 30 —
+  consistent with deploys chasing the latest tip rather than running per-commit. **Continuing to
+  trust the direct ground-truth check** (`gcloud run jobs describe brahma-build-pipeline-job`)
+  over reasoning about individual workflow runs — it still shows the old image
+  (`d29e0cf0...`). #2143 unchanged, still queued. Nothing actionable — this is CI/CD
+  infrastructure outside L5's control.
+- 2026-09-06T20:04Z (C8 v2.3 cycle 553) — **IDLE-OK, verified deploy is genuinely active, not
+  stalled.** Deploy has looked unchanged for several cycles, so checked `gh run list --workflow
+  "Deploy to Cloud Run"` directly rather than assuming — several runs `in_progress` for
+  different head SHAs (the deploy pipeline is actively churning through the backlog of commits
+  since the fix landed, this is normal CI/CD activity, not a stall, and outside L5's control to
+  accelerate). #2143 unchanged, still queued.
+- 2026-09-06T19:58Z (C8 v2.3 cycle 552) — **IDLE-OK, verified.** #2143 unchanged, still
+  genuinely queued. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:52Z (C8 v2.3 cycle 551) — **IDLE-OK, verified.** #2143 now genuinely queued.
+  Pipeline job image still unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:46Z (C8 v2.3 cycle 550) — **IDLE-OK, verified.** #2143's Governance Gates job
+  checked at the job level (~10.6 min elapsed, within normal 7-12 min range) — genuine progress,
+  not stalled. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:40Z (C8 v2.3 cycle 549) — **IDLE-OK, verified.** #2143 still building, no
+  failures. Pipeline job image unchanged (`d29e0cf0...`), still predates the fix. Nothing
+  eligible.
+- 2026-09-06T19:34Z (C8 v2.3 cycle 548) — **IDLE-OK, verified.** #2143 building cleanly, no
+  failures. Pipeline job image still `d29e0cf0...`, still predates the fix — deploy hasn't
+  caught up yet. Nothing eligible.
+- 2026-09-06T19:28Z (C8 v2.3 cycle 547) — **`#2139` MERGED (the `depends_on` ordering fix), but
+  NOT YET DEPLOYED — checked before attempting a retry, not assumed.** `amjis-web`'s deployed sha
+  (`aeab76aa6...`) and, more importantly, the `brahma-build-pipeline-job` Cloud Run Job's actual
+  image tag (`d29e0cf0...` — the code that executes `runner.py` during a build) both predate the
+  fix commit `d9a5ca807`, confirmed via `git merge-base --is-ancestor`. Retrying `mi_kula`'s
+  dispatch now would hit the exact same false-positive failure again. Nothing eligible until
+  deploy catches up — this is genuinely nothing L5 can accelerate (deploy is CI/CD-driven, not
+  a manual trigger this session controls). #2143 building cleanly, no failures.
+- 2026-09-06T19:22Z (C8 v2.3 cycle 546) — **IDLE-OK, verified.** #2143 building cleanly, no
+  failures, not yet queued. #2139 still not merged. Nothing eligible.
 - 2026-09-06T19:16Z (C8 v2.3 cycle 545) — **Milestone: `#2138` MERGED — the twelfth
   state-recovery PR closed out.** Twelfth recurrence of the exact same pattern (cycles 442, 453,
   461, 473, 482, 492, 502, 511, 519, 528, 534, now 545). 10 local-only commits (cycles 535-544,
