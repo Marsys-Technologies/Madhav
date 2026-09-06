@@ -630,6 +630,17 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~34:0xZ — L3-W3 — PR hygiene: 5 of 8 L3-owned PRs went DIRTY
+  (`#2079`/`#1936`/`#1929`/`#1917`/`#1903`) — fixed all five (standard L3-pin
+  regen, several genuinely-additive concurrent-entry `L3_STATE.md` conflicts
+  on `#1917` and `#1903` — each combined chronologically, verified zero data
+  loss every time). `#1940` showed persistent `UNKNOWN` across multiple
+  rechecks — investigated directly via `gh pr view` rather than keep waiting:
+  it had **merged**, which is why mergeability fields read `UNKNOWN` (they
+  don't apply post-merge). 7 L3-owned PRs remain, all confirmed `MERGEABLE`
+  on a final batched recheck. `#2096` still has no ruling. — blocked on:
+  `#2096`'s ruling; next action: keep L3-only sweeps going, check `#2096`
+  each cycle.
 - `2026-09-06T~33:0xZ — L3-W3 — PR hygiene: 3 of 8 L3-owned PRs went
   `UNMERGEABLE`-in-queue (`#1936`/`#1929`/`#1903`) — dequeued, rebased (all
   clean, no conflicts), pins/digests `--check` clean, tests re-pass
