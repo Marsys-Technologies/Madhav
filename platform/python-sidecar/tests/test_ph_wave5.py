@@ -510,3 +510,28 @@ class TestSuddhaSodhanaAntiDrift:
         assert 'INSERT INTO phala_suddha_sodhana' in src
         assert 'INSERT INTO phala_anchors' not in src
         assert 'INSERT INTO phala_sodhana ' not in src
+
+    def test_flags_load_fails_loud_not_silently_clean(self):
+        # F-16 (L4_W1_ANALYSIS_BATCH_C.md §2.4, N-5): a phala_sodhana read failure
+        # must never be swallowed into "no flags found" -- that made every anchor
+        # classify 'clean' on error. Same class the sibling ph_pratikara names
+        # "the bug pattern" after F-173 removed it.
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_suddha_sodhana.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        method_start = src.index('def _load_flags_grouped')
+        rest = src[method_start + 1:]
+        next_def = rest.find('\n    def ')
+        method_body = src[method_start:] if next_def == -1 else src[method_start:method_start + 1 + next_def]
+        # Strip the docstring (which discusses "except" in prose describing the
+        # OLD, now-removed behaviour) before checking the actual code.
+        doc_start = method_body.index('"""')
+        doc_end = method_body.index('"""', doc_start + 3) + 3
+        code_only = method_body[:doc_start] + method_body[doc_end:]
+        assert 'except' not in code_only, (
+            "_load_flags_grouped must fail loud on query errors, not silently "
+            "return an empty flags dict (F-16)"
+        )
