@@ -489,6 +489,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~72:0xZ — L3-W4 — IDLE-OK (verified, not assumed): same run
+  IDs as last cycle on `#2070`/`#2065`/`#1903` — checked the FULL check list
+  rather than trust "no failures" alone, since 2 cycles with no new run
+  warranted a closer look. Confirmed genuinely progressing, not stuck:
+  almost every job now shows `pass` with real durations (e.g. Unit Tests
+  5m26s), only `Build Check (PR only)` and `Governance Gates` still
+  `pending` — matches the known ~10min pattern for those two jobs, not a
+  stall. `#2065` still hasn't merged. `egate.sql` unchanged. — blocked on:
+  `#2065` merging; next action: once it lands, `ka_muhurta_seva`'s W2
+  acceptance is the next genuine W4-path item — route any verifier-role
+  submissions through a fresh subagent per D-CND-35.
 - `2026-09-06T~71:0xZ — L3-W4 — IDLE-OK (verified): `#2079` confirmed
   genuinely `isInMergeQueue: true` (`UNSTABLE` = checks still pending, not
   failed). `#2070`/`#2065`/`#1903` still `BLOCKED`, zero failures on any —
