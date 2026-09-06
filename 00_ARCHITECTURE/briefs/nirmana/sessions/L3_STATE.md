@@ -489,6 +489,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
+  number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
+  `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
+  merged `844_..._tajaka_volume_explanation_fix.sql` — its third renumber:
+  811→841→844→847). `#2070`/`#2065` rebased clean this round with NO new
+  collision (their 845/846 both still held) — confirms this isn't a
+  systemic problem with my own numbers, just `#2079` repeatedly landing on
+  whatever L1 claims next in the 840s range. All three: rebased, dequeued,
+  pins/digests/migration-guard re-verified clean, tests re-pass (5/28/47),
+  pushed, re-queue requested (still `BLOCKED` on fresh CI at push time,
+  expected). `#1903` healthy, rebased 42 commits forward, zero failures. —
+  blocked on: nothing new; next action: watch all 4 PRs actually merge —
+  `#2065` merging unblocks `ka_muhurta_seva`'s W2 acceptance, the next
+  genuine W4-path item (route any verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~72:0xZ — L3-W4 — IDLE-OK (verified, not assumed): same run
   IDs as last cycle on `#2070`/`#2065`/`#1903` — checked the FULL check list
   rather than trust "no failures" alone, since 2 cycles with no new run
