@@ -89,6 +89,26 @@ PROVISIONAL_SALIENCE_TERMS_NOTE = (
     "provisional_constant_pending_design_ruling=orb_tightness,specificity(see #2052/D-CND-33)"
 )
 
+# D-CND-33 (Conductor ruling on adjudication #2102, 2026-09-06 — applying the
+# #2052 ruling above rather than minting a new one): divisional_corroboration_count
+# is an unconditional NULL on every row (already honest per N.8 — never
+# fabricated), pending a native design ruling on "reinforce" semantics that
+# A10_MSR_SPEC_v1_0.md's own spec gestures at ("how many vargas reinforce")
+# but never completes — does the anchor varga's predicate need to be TRUE
+# first, before counting other TRUE vargas as corroboration? which
+# signal_type_classes does cross-varga persistence classically apply to?
+# Both are design-authority questions, not engineering gaps — see #2102 for
+# the full analysis. Reuses the identical disposition label #2056/D-CND-33
+# already established above for orb_tightness/specificity, per the ruling's
+# own instruction not to invent a second label for the same disposition —
+# kept as its own constant (not folded into PROVISIONAL_SALIENCE_TERMS_NOTE)
+# because this is an MSR corroboration metric, not a salience_formula_v2
+# multiplicand; the two constants' own docstrings would otherwise misdescribe
+# what each covers.
+PROVISIONAL_MSR_TERMS_NOTE = (
+    "provisional_constant_pending_design_ruling=divisional_corroboration_count(see #2102/D-CND-33)"
+)
+
 # ── D-1.5b hotfix: bo_laksana's ownership allowlist for bodha_msr_signals ────
 # `bodha_msr_signals` is a shared table: bo_laksana projects ALL L1
 # chart_facts into it (category-agnostic), and bo_sudarshana (an independent
@@ -2503,7 +2523,7 @@ def _build_signal_row(
         "dignity_score":                            sal["dignity_score"],
         "deterministic_strength":                   sal.get("condition_terms"),   # v2 name
         "verification_certainty":                   sal.get("verification_rescale"),  # v2 replaces v1
-        "divisional_corroboration_count":           None,
+        "divisional_corroboration_count":           None,  # provisional_constant_pending_design_ruling — see #2102
         "dasha_activation_proximity_score":         None,   # L3-fill hook
         "house_weight_multiplier":                  sal["house_weight_multiplier"],
         "ashtakavarga_support_multiplier":          sal["ashtakavarga_support_multiplier"],
@@ -3664,6 +3684,7 @@ class BoLaksanaWriter(WriterBase):
             f";vichara_valence_available={vichara_valence_available}"
             f";divergence_signals={len(divergence_signals)}"
             f";{PROVISIONAL_SALIENCE_TERMS_NOTE}"
+            f";{PROVISIONAL_MSR_TERMS_NOTE}"
         )
 
         return WriterResult(
