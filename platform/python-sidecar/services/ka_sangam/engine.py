@@ -676,6 +676,34 @@ def convergence_score(
     return max(0.0, min(1.0, result))
 
 
+def _current_stance(value: Optional[float], empty_reason: Optional[str] = None) -> dict:
+    """
+    N1/N2 precursor (Temporal Concordance Contract, L3-W3). Surfaces, as an
+    explicit per-current testimony record, the honest-null distinction the
+    supporting dict already encodes structurally (an ABSENT key vs a present
+    0.0 — see the `**({k: v} if v is not None else {})` sites above). This is
+    the first concrete step toward the "stance vocabulary" F-SANGAM's own W1
+    analysis named as the layer's headline-mandate precondition (L3_W1_
+    ANALYSIS_BATCH_E.md §1.4): "Every current is [0,1] supporting. There is
+    no way to say 'this engine actively contradicts'. A dissent and an
+    absent engine are the same number."
+
+    Reuses the state vocabulary already established elsewhere in this
+    codebase (KpSchoolVoice.state, kala_now_get's `*_reachable` flags:
+    'computed'|'honest_empty') rather than inventing a fresh one — the same
+    W1 analysis flags "three implementations, one shape, three
+    vocabularies — unify" as the pattern to follow, not repeat.
+
+    Does NOT yet cover the 'this engine actively dissents' half of the
+    stance vocabulary (none of these currents are bipolar today — a
+    genuinely bipolar current is a design question for N1 proper, not this
+    additive step) and does NOT change convergence_score's math in any way.
+    """
+    if value is not None:
+        return {'state': 'computed'}
+    return {'state': 'honest_empty', 'empty_reason': empty_reason}
+
+
 # ── I-17: orb_strength_score ─────────────────────────────────────────────────
 
 def orb_strength_score(
@@ -1204,6 +1232,30 @@ def mode_a_search(
                          "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
+                # N1/N2 precursor (§ _current_stance docstring) — per-current
+                # testimony state, keyed the same as SUPPORTING_WEIGHTS.
+                'current_stances': {
+                    'constituent_lord_transit':     _current_stance(dasha_score),
+                    'ashtakavarga_transit_potency': _current_stance(
+                        c7, 'graha-vocabulary mismatch AND an unresolved '
+                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                    'cross_dasha_agreement':        _current_stance(c_cross),
+                    'benefic_dristi':                _current_stance(c_dristi),
+                    'transit_to_transit':            _current_stance(c9),
+                    'panchanga_quality':             _current_stance(
+                        c_pancha, "event='general' not in muhurat EVENTS_MVP (N4a)"),
+                    'tara_bala':                     _current_stance(c_tara),
+                    'eclipse_proximity':             _current_stance(c8),
+                    'nakshatra_subsystem':           _current_stance(c_nak),
+                    'station_retrograde':            _current_stance(c10),
+                    'tajika_annual_reinforcement':   _current_stance(
+                        c12, 'no varṣa row covers this window, or no domain_lord '
+                             'to compare (F-SANGAM-7)'),
+                    'school_consensus':              _current_stance(
+                        c13, 'school-consensus build does not exist yet; '
+                             'signature_class is a signal-TYPE taxonomy, not '
+                             'life-domain (F-SANGAM-6)'),
+                },
             },
             'source_citation': (
                 f"mode_a/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -1393,6 +1445,35 @@ def mode_b_sweep(
                          "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
+                # N1/N2 precursor — see _current_stance docstring (mode_a_search).
+                'current_stances': {
+                    'constituent_lord_transit': {
+                        'state': 'honest_empty',
+                        'empty_reason': 'mode B has no dasha prior — structural, not per-window',
+                    },
+                    'ashtakavarga_transit_potency': _current_stance(
+                        c7, 'graha-vocabulary mismatch AND an unresolved '
+                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                    'cross_dasha_agreement': {
+                        'state': 'honest_empty',
+                        'empty_reason': 'no dasha context in mode B — structural, not per-window',
+                    },
+                    'benefic_dristi':                _current_stance(c_dristi),
+                    'transit_to_transit':            _current_stance(c9),
+                    'panchanga_quality':             _current_stance(
+                        c_pancha, "event='general' not in muhurat EVENTS_MVP (N4a)"),
+                    'tara_bala':                     _current_stance(c_tara),
+                    'eclipse_proximity':             _current_stance(c8),
+                    'nakshatra_subsystem':           _current_stance(c_nak),
+                    'station_retrograde':            _current_stance(c10),
+                    'tajika_annual_reinforcement':   _current_stance(
+                        c12, 'no varṣa row covers this window, or no domain_lord '
+                             'to compare (F-SANGAM-7)'),
+                    'school_consensus':              _current_stance(
+                        c13, 'school-consensus build does not exist yet; '
+                             'signature_class is a signal-TYPE taxonomy, not '
+                             'life-domain (F-SANGAM-6)'),
+                },
             },
             'source_citation': (
                 f"mode_b/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"

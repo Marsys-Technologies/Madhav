@@ -37,6 +37,7 @@ from services.ka_sangam.engine import (
     _jd_to_date,
     _date_to_jd,
     _resolve_transit_planet,
+    _current_stance,
 )
 
 
@@ -259,6 +260,27 @@ class TestSupportingWeights:
 
 # ─── Mode A ───────────────────────────────────────────────────────────────────
 
+class TestCurrentStance:
+    """N1/N2 precursor (Temporal Concordance Contract). _current_stance is the
+    first concrete step of the stance vocabulary L3_W1_ANALYSIS_BATCH_E.md §1.4
+    calls the headline mandate's precondition."""
+
+    def test_computed_when_value_present(self):
+        assert _current_stance(0.0) == {'state': 'computed'}
+        assert _current_stance(0.73) == {'state': 'computed'}
+
+    def test_honest_empty_when_none(self):
+        result = _current_stance(None, 'some reason')
+        assert result == {'state': 'honest_empty', 'empty_reason': 'some reason'}
+
+    def test_honest_empty_reason_passthrough_none(self):
+        """A None value with no reason still yields a well-formed honest_empty
+        record — never silently promoted to 'computed'."""
+        result = _current_stance(None)
+        assert result['state'] == 'honest_empty'
+        assert result['empty_reason'] is None
+
+
 class TestModeA:
 
     def _make_predicate(self, dignity_score=0.7, dasha_score=0.6):
@@ -350,6 +372,44 @@ class TestModeA:
         for w in result:
             assert w['is_off_dasha_discovery'] is False
 
+    def test_mode_a_current_stances_present_for_every_supporting_key(self):
+        """N1/N2 precursor: every Mode A window's constituent_factors carries a
+        current_stances entry for every SUPPORTING_WEIGHTS key, each a
+        well-formed {state: computed} or {state: honest_empty, empty_reason}."""
+        s, e = self._horizon_jd()
+        result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
+            predicate=self._make_predicate(),
+            horizon_start_jd=s,
+            horizon_end_jd=e,
+            dasha_kala_service=None,
+            gochara_service=None,
+            muhurta_service=None,
+            chart_id='482012f1-710e-4a25-994a-93821f5871aa',
+        )
+        for w in result:
+            stances = w['constituent_factors']['current_stances']
+            missing = set(SUPPORTING_WEIGHTS) - set(stances)
+            assert not missing, f"current_stances missing keys: {missing}"
+            for key, stance in stances.items():
+                assert stance['state'] in ('computed', 'honest_empty'), (key, stance)
+                if stance['state'] == 'honest_empty':
+                    assert 'empty_reason' in stance, key
+            # No enrichment_context/muhurta_service was passed in this fixture, so
+            # these MUST read honest_empty, not a fabricated 'computed' — this is
+            # what actually distinguishes a real fix from a helper that always
+            # returns {'state': 'computed'} regardless of its input. Limited to
+            # the two currents whose Optional[float]/honest-null contract this
+            # base commit already has (c7 ashtakavarga, panchanga) — tajika (c12)
+            # and school_consensus (c13) still return a plain float on an empty
+            # context as of this commit; their honest-null fixes are separate,
+            # not-yet-merged PRs (#1883, #1877), and this test asserts what THIS
+            # commit actually does, not a future state another PR delivers.
+            for always_empty_here in (
+                'ashtakavarga_transit_potency', 'panchanga_quality',
+            ):
+                assert stances[always_empty_here]['state'] == 'honest_empty', always_empty_here
+
 
 # ─── Mode B ───────────────────────────────────────────────────────────────────
 
@@ -414,6 +474,38 @@ class TestModeB:
             magnitude_threshold=0.8,
         )
         assert len(high_threshold_result) <= len(low_threshold_result)
+
+    def test_mode_b_current_stances_present_for_every_supporting_key(self):
+        """N1/N2 precursor: Mode B's structurally-absent currents
+        (constituent_lord_transit, cross_dasha_agreement — no dasha prior in
+        an un-gated sweep) must be honest_empty, not silently 'computed' at 0.0."""
+        s, e = self._horizon_5yr()
+        result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
+            signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
+            predicate=self._make_predicate(dignity_score=0.9),
+            horizon_start_jd=s,
+            horizon_end_jd=e,
+            gochara_service=None,
+            magnitude_threshold=0.1,
+        )
+        for w in result:
+            stances = w['constituent_factors']['current_stances']
+            missing = set(SUPPORTING_WEIGHTS) - set(stances)
+            assert not missing, f"current_stances missing keys: {missing}"
+            assert stances['constituent_lord_transit']['state'] == 'honest_empty'
+            assert stances['cross_dasha_agreement']['state'] == 'honest_empty'
+            for key, stance in stances.items():
+                assert stance['state'] in ('computed', 'honest_empty'), (key, stance)
+                if stance['state'] == 'honest_empty':
+                    assert 'empty_reason' in stance, key
+            # See the matching comment in TestModeA — limited to the two
+            # currents whose honest-null contract this base commit already
+            # has; c12/c13's fixes are separate, not-yet-merged PRs.
+            for always_empty_here in (
+                'ashtakavarga_transit_potency', 'panchanga_quality',
+            ):
+                assert stances[always_empty_here]['state'] == 'honest_empty', always_empty_here
 
     def test_mode_b_windows_have_required_fields(self):
         """All Mode B windows must have required fields."""
