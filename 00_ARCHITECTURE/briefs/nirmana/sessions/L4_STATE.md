@@ -7724,3 +7724,30 @@ unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still 
 CYCLE 395 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~14:36Z` — L4 — **CYCLE 396 (v2.3) — E-gate re-checked live, unchanged. Dug one
+level deeper this cycle: sampled `nirmana_evidence.nirmana_elevation_campaign_events` for a
+handful of `ph_nimitta`'s blocking ancestors to understand WHY closure has shown zero
+movement across five consecutive live-checked cycles.**
+
+**Finding (grounding, not actionable by L4):** of 10 sampled ancestor asset_ids
+(`bg_rules`, `bg_yogas`, `ga_structural`, `ga_vargas`, `bo_laksana`, `bo_pratijna`,
+`ka_dasha_kala`, `ka_gochara`, `bo_bimba`, `bo_karanajala`), only 3 have ANY campaign
+events at all (`bg_rules` — 2 events, stalled since 2026-09-04; `bg_yogas` — 4 events, most
+recent today 09:04Z; `ga_structural` — 2 events, most recent yesterday 13:59Z), and **none
+of the 10 are frozen**. The other 6 have zero campaign-evidence-trail activity whatsoever —
+not merely unfrozen, but not yet started. This confirms the E-gate's `BLOCKED-ANCESTORS`
+verdict is grounded in genuine cross-layer pacing (L0/L2/L3 assets not yet reaching their
+own elevation milestones), not a stale/wedged reading on L4's side. Not L4's to unblock —
+noted for grounding only, per charter C2/C10 this is other layers' remit.
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. Adjudication count dropped to 15
+(no new L4-relevant items). No `NIRMANA_HOLD` file present.
+
+CYCLE 396 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
+sampled ancestor campaign-evidence trail directly — confirmed genuine cross-layer stall, not
+an L4-side reading error; no new L4-relevant adjudications) → next: continue re-checking the
+E-gate each cycle; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred
+code item.
