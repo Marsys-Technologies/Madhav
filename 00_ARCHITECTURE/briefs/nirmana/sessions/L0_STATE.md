@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — #2066 confirmed is:queued (CLEAN). Attempted the same rebuild playbook on bg_yogas -- this time it's a GENUINELY different, real, pre-existing defect: the writer's own extraction step (extract_yogas_from_corpus) yields 0 (not the expected 85), confirmed live via job logs ("corpus extraction: 0 distinct yogas found ... seeding 148 yogas"), matching an earlier session's own diagnosis (commit ffeb5e2ea, 2026-09-05) that had been unable to actually run the writer to confirm it. Build failed cleanly, rolled back, no data damage (233/229/229/0 unchanged). My own W2 verdict summary for bg_yogas wrongly assumed the D-L0-GG rolled-back-replay pattern -- corrected here since the evidence itself is immutable. This needs real W3 investigation into the extraction pipeline, not another dispatch attempt -- deferred, not attempted this cycle (unbounded scope). bg_dasha_systems' accepted_rebuild_observed still blocked on #2066 deploying (now queued, watch for merge). bg_compendium_index rebuild not yet attempted. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — MILESTONE: bg_compendium_index rebuilt and verified live (all 6 integrity_check_sql clauses pass) -- migration 702 confirmed deployed, the 33-row chapter-scoped gap was simple staleness (unlike bg_yogas) and a real committed dispatch fixed it cleanly. All digests recorded (decision_digest b2fb4c0eb54122752a1e30866212bb4be5b3fc112fb7691a96be363dc1594fda, output_digest 8fda033a..., output_digest_spec_sha256 f66dba53...). Status across the three C12 assets: bg_dasha_systems rebuilt+verified (accepted_rebuild_observed blocked on #2066 deploying), bg_yogas BLOCKED on a real separate extraction-yield=0 defect (needs W3 investigation, not another dispatch), bg_compendium_index rebuilt+verified (same implementation-record block as bg_dasha_systems). Plan: once #2066 deploys, one small doc-only PR can serve as the implementation_accepted record for BOTH bg_dasha_systems and bg_compendium_index. #2066 at queue position 81, no DIRTY/RED. 30/40 frozen holds unchanged (evidence chains still open on both).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2744,3 +2744,49 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
     rebuild also still not attempted.
   - Posted an honest SLOT RELEASE to #1713 correcting my own SLOT CLAIM's assumption. 30/40 frozen
     holds unchanged.
+
+- 2026-09-06 — **MILESTONE: `bg_compendium_index` rebuilt and verified live — all 6 clauses of its
+  `integrity_check_sql` now pass.** `#2066` confirmed queued (position 81) at cycle start, no
+  DIRTY/RED.
+  - Migration 702 is now confirmed DEPLOYED (new content-hash pins `cdffa67d.../fdbaca9e...` live
+    in `asset_registry`, replacing the old `6994a142.../093884a7...`). Live re-check found: total
+    9538 rows (not 9571) — topic-scoped partition exactly correct (7969/7969), chapter-scoped
+    short by 33 (1569/1602). Same "rolled-back replay cited in the commit message, never actually
+    committed" pattern as 700/701.
+  - W2 refresh: `registry_fingerprint_sha256
+    b1a6da615f334540f838aa4cf371a02759fd6d657ae6dd8fa4fcdb90fa7b920c`, `analysis_digest
+    2f760eb6c4446d669220baefcbd1e76334b4fcab30170ae243222256b479f790`, verdict `correct`
+    (source_ref bound to the newly-observed deployed sha `1fac5ac61c98ae54ac5c356eec1c1cde92c0aad2`
+    — deploy pipeline had advanced twice more since the last two cycles). **This time the verdict
+    summary was written honestly hedged** ("not yet known which" — simple staleness vs. a
+    structural gap like `bg_yogas`) rather than assuming the D-L0-GG pattern applies, since the
+    `bg_yogas` attempt this same cycle-set proved that assumption can be wrong.
+  - Fresh backup `cloudsql-backup:1788686166909`, SLOT CLAIM, dry-run (**zero** blast radius — no
+    asset depends on `bg_compendium_index` at all, and it's a single-table target with no CASCADE
+    children), committed dispatch (`run_id e8630a71-63a9-489f-bfde-5f5aa501eeb5`), authorized
+    immediately, completed in 18.25s, `state='completed'`, no error.
+  - **Post-rebuild live re-verification, all 6 clauses**: row counts (9571/7969/1602) ✓, mutual
+    exclusivity ✓, both content hashes (`cdffa67d.../fdbaca9e...`) ✓. **This one WAS the simple
+    staleness case** — confirms the D-L0-GG pattern isn't universal (bg_yogas showed the opposite)
+    and each of the three needs its own real-dispatch confirmation, not an assumption from one
+    data point.
+  - `asset_provenance_receipts`: `output_digest 8fda033a96672e2edf9d1bb2f38628661ff64c5aaf25afb33fb4cb6529c36a87`,
+    `output_digest_spec_sha256 f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806`,
+    `receipt_state='proven'`. `decision_digest`
+    `b2fb4c0eb54122752a1e30866212bb4be5b3fc112fb7691a96be363dc1594fda` precomputed (same
+    stableJson/`canonicalNirmanaOptimizationVerdictDigest` method as the other two).
+  - **Evidence-chain status across all three C12 assets, summarized for the next cycle that
+    tackles this:**
+    - `bg_dasha_systems`: rebuilt+verified ✓; `accepted_rebuild_observed` blocked on `#2066`
+      deploying (implementation record). Digests: see the earlier milestone entry.
+    - `bg_yogas`: rebuild BLOCKED on a real, separate defect (extraction yield=0) — do NOT retry
+      dispatch until that's actually fixed; needs its own W3 investigation first.
+    - `bg_compendium_index`: rebuilt+verified ✓ (this entry); `accepted_rebuild_observed` blocked
+      on the same implementation-record requirement as `bg_dasha_systems`.
+    - **Plan for next cycle**: once `#2066` merges/deploys, do ONE more small doc-only PR (same
+      pattern as `D-L0-GG-FOLLOWUP_v1_0.md`, touching no writer file) that serves as the real git
+      commit backing implementation_accepted for BOTH `bg_dasha_systems` and `bg_compendium_index`
+      in one shot (two separate `implementation_accepted` events can cite the same commit sha with
+      different `implementation_digest`s, or the same one — the field is shape-validated only).
+      Then submit both `implementation_accepted` + `accepted_rebuild_observed` pairs.
+  - 30/40 frozen holds unchanged (neither asset is frozen yet — evidence chain still open).
