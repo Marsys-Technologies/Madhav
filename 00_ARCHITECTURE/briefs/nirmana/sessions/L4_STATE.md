@@ -6668,3 +6668,23 @@ queued, `#1808` genuinely mid-CI within normal range; adjudication count back to
 new L4-relevant; E-gate uncheckable, DB access down 325 cycles) → next: watch `#1808` finish
 CI and reach `QUEUED`; watch all 4 own PRs drain in position order; retry E-gate/dispatch
 dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~12:16Z` — L4 — **CYCLE 336 (v2.3) — IDLE-OK. PR hygiene clean, nothing to
+fix.**
+
+**PR hygiene:** `#1831`/`#1834`/`#1839` all confirmed genuinely `QUEUED`. `#1808` confirmed
+genuinely mid-own-CI at ~8.9 min elapsed — drilled into the actual job's step list this time
+(not just the check summary) and confirmed step 13/28 (`pytest — pyjhora_adapter + pipeline`)
+`in_progress`, all 12 prior steps completed — a known slow step seen consistently at this
+stage for other PRs this session, not stuck.
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+326th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 336 L4: IDLE-OK (verified: PR hygiene clean — `#1831`/`#1834`/`#1839` genuinely
+queued, `#1808` genuinely mid-CI confirmed via job-step-level inspection, not stalled; no new
+L4-relevant adjudications; E-gate uncheckable, DB access down 326 cycles) → next: watch
+`#1808` finish CI and reach `QUEUED`; watch all 4 own PRs drain in position order; retry
+E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
+remains deferred.
