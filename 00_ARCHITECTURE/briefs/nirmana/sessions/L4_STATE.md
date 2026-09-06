@@ -4275,3 +4275,17 @@ CYCLE 208 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 uncheckable, DB access down 198 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~07:40Z` — L4 — **CYCLE 209 (v2.3) — genuinely IDLE; queue head (`#1941`, not
+mine) checked directly given 2 flat cycles, confirmed actively processing.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued for a second cycle. `mergeQueue` head
+`#1941` is `AWAITING_CHECKS` — actively processing.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 199th consecutive cycle DB access down.
+
+CYCLE 209 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+actively processing; E-gate uncheckable, DB access down 199 cycles; nothing new) → next: watch
+queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
+remains deferred.
+
