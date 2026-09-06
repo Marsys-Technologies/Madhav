@@ -6795,3 +6795,23 @@ upper bound, not stalled; no new L4-relevant adjudications; E-gate uncheckable, 
 down 331 cycles) → next: watch `#1834`/`#1839` finish CI and reach `QUEUED`; watch `#1808`
 progress; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
 consumers) remains deferred.
+
+`2026-09-06T~12:36Z` — L4 — **CYCLE 342 (v2.3) — `#1839` found genuinely `CLEAN` but
+unqueued (the cycle-328 trap recurring); fixed via disable-then-auto, confirmed genuinely
+`QUEUED` (position 3).**
+
+**PR hygiene:** `#1834` confirmed genuinely `QUEUED` via `gh pr list --search "is:queued"`.
+`#1839` was `CLEAN`/`MERGEABLE` with stale-enabled auto-merge but `mergeQueueEntry: null` —
+fixed with the standard disable-then-auto force, confirmed genuinely `QUEUED` immediately
+after. `#1808` confirmed genuinely mid-own-CI at ~6 min elapsed, well within normal range,
+not stalled, no action possible yet.
+
+**Priorities 1-4:** no new `main` commits since last check. No new adjudications name L4
+(count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query` unavailable,
+332nd consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 342 L4: found and fixed a `CLEAN`-but-unqueued recurrence on `#1839` (disable-then
+-auto force-enqueued, confirmed `QUEUED` position 3); confirmed `#1834` still genuinely
+queued and `#1808` genuinely mid-CI within normal range → next: watch `#1808` finish CI and
+reach `QUEUED`; watch all 3 own PRs drain in position order; retry E-gate/dispatch dry-run
+once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
