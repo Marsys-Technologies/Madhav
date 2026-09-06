@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 68; ga_structural F-A14 widened to 28/57 (#2051)
+last_updated: 2026-09-06 — C8 v2.3 cycle 69; ga_structural F-A14 widened to 36/57 (#2053)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -43,7 +43,8 @@ your `nirmana-adjudication` issues → continue.
   categories, cycle 63), 792 (`ga_structural` graha_functional_class_per_ascendant, cycle 64),
   793 (`ga_structural` graha_effective_dignity_modified_by_aspects, cycle 65), 794 (`ga_structural`
   graha_composite_state_classification, cycle 67), 795 (`ga_structural`
-  karaka_house_lord_overlap_flag, cycle 68) used. 796–799 remain free.
+  karaka_house_lord_overlap_flag, cycle 68), 796 (`ga_structural` Group C Bhava Bala extended
+  bundle — 8 categories, cycle 69) used. 797–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2969,6 +2970,52 @@ pin-advance commit) and widened `ga_structural`'s F-A14 contract to 28/57 catego
 migration 795, `karaka_house_lord_overlap_flag`) — next: continue `ga_structural` widening (29
 categories remain), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 69 (C8 v2.3) — ga_structural's F-A14 contract widened to 36/57 categories in ONE migration (PR #2053, migration 796) by bundling all EIGHT tightly-coupled Group C Bhava Bala extended categories — the arc's largest bundle jump yet
+
+**PR hygiene:** clean sweep (`--limit 200`, `is:queued` truth-check). 42/45 of L1's own PRs
+confirmed genuinely `is:queued`. The 3 not queued (#1827, #1950, #2051) all checked directly via
+`gh api .../commits/<sha>/check-runs`: all three showed real, healthy, non-zero check-run
+activity (success/skipped/in_progress mix, zero failures) — genuinely mid-CI, not stuck. No
+action needed. #1928/#1892 unchanged (still OPEN, still outside L1 scope).
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — Group C Bhava Bala extended bundle**
+(PR **#2053**, migration 796 — seventeenth in the 780-799 range).
+
+Investigated `house_strength_classification_rollup` (next-smallest uncovered category after the
+`eclipse_proximity_natal` placeholder, skipped again) and found it sits inside
+`_build_bhava_bala_extended_rows`, a per-house loop that ALSO emits six sibling sub-score
+categories (`bhava_bala_positional`/`directional`/`temporal`/`aspectual`/`occupant`/`lord`) plus
+`bhava_bala_total_extended` — the mean of those six, with the classification itself a threshold
+function of that mean. Recognized this as the arc's third qualifying multi-category bundle (per
+the established discipline: same emission loop + genuine cross-field dependency, not mere
+adjacency) and the largest yet at 8 categories, versus migration 788's 4 and migration 791's 3.
+
+Three of the six sub-scores (positional, directional, temporal) turned out to be PURE FUNCTIONS
+OF HOUSE NUMBER ALONE — no chart data needed, fully classical/static — so their conjuncts are
+complete re-derivations with zero cross-reference risk, the strongest possible conjunct shape.
+The other three (aspectual, occupant, lord) got domain-bound conjuncts derived directly from the
+writer's own formula structure (`0.5 + 0.125*n` for 0-3 aspecting benefics; `0.5 + 0.1*n` for
+0-9 occupants; the writer's own 4-value dignity-strength set) rather than a full re-derivation,
+since they genuinely depend on runtime chart data the writer computes inline.
+
+Shipped 8 conjuncts total, all verified against ALL 180 live rows per category (not a sample)
+before committing, then individually mutation-tested via real transactional
+`UPDATE`+`ROLLBACK` against the EXACT SQL landed in the migration file (per cycle 64's lesson) —
+production confirmed untouched (180 rows per category) after all eight rollbacks. The
+classification threshold re-derivation was explicitly confirmed non-vacuous: all three branches
+fire live (strong=15, normal=111, weak=54), not a degenerate single-value column.
+
+Carried the seventy-two prior conjuncts (a)-(b5) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 307 passed / 91 skipped (55 files). `provenance_inventory --check`: clean (exit 0). PR
+#2053 opened with `base: main` directly (per D-L1-90) and confirmed CI genuinely triggered (31
+real check-runs) before ending the cycle.
+
+CYCLE 69 L1: widened `ga_structural`'s F-A14 contract to 36/57 categories in ONE migration (PR
+#2053, migration 796, Group C Bhava Bala extended bundle — 8 categories, the arc's largest
+bundle jump yet) — next: continue `ga_structural` widening (21 categories remain), or
+`ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2984,7 +3031,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2048 cycle 67 → #2051 cycle 68 — **28/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification, karaka_house_lord_overlap_flag; migration range 780-799, 796-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `karaka_house_lord_overlap_flag` (migration 795) fully re-derives its boolean flag from Lagna sign + the classical `SIGN_LORDS` table, reusing migration 792's house-from-lagna arithmetic, hardcoding the writer's own `NATURAL_KARAKAS`/`significance_to_house` classical dicts as the authority. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2051 cycle 68 → #2053 cycle 69 — **36/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification, karaka_house_lord_overlap_flag, bhava_bala_positional, bhava_bala_directional, bhava_bala_temporal, bhava_bala_aspectual, bhava_bala_occupant, bhava_bala_lord, bhava_bala_total_extended, house_strength_classification_rollup; migration range 780-799, 797-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `karaka_house_lord_overlap_flag` (migration 795) fully re-derives its boolean flag from Lagna sign + the classical `SIGN_LORDS` table, reusing migration 792's house-from-lagna arithmetic, hardcoding the writer's own `NATURAL_KARAKAS`/`significance_to_house` classical dicts as the authority. Migration 796 bundled all EIGHT Group C Bhava Bala extended categories in one migration — the arc's largest bundle jump yet — with three sub-scores (positional/directional/temporal) re-derived as PURE FUNCTIONS OF HOUSE NUMBER ALONE (zero cross-reference risk) and the total/classification pair re-derived via genuine cross-category mean/threshold checks within the bundle. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3919,6 +3966,23 @@ whole campaign.
   `SIGN_LORDS`, reusing migration 792's house-from-lagna arithmetic; `NATURAL_KARAKAS`/
   `significance_to_house` hardcoded as the writer's own classical authority. Verified against
   ALL 180 live rows, confirmed non-vacuous (50 real `true` rows).
+
+- **D-L1-93** — C8 v2.3 cycle 69: widened `ga_structural`'s F-A14 contract (migration 796,
+  PR #2053), 28/57 → 36/57, bundling ALL EIGHT Group C Bhava Bala extended categories in one
+  migration — the arc's largest bundle jump yet (previous largest: migration 788's 4 categories).
+  Justified per the established multi-category bundling discipline: all eight are emitted by the
+  SAME per-house loop (`_build_bhava_bala_extended_rows`) with a genuine cross-field dependency
+  chain (`bhava_bala_total_extended` is the mean of six sibling sub-scores;
+  `house_strength_classification_rollup` is a threshold function of that mean), not mere
+  adjacency. Discovered three of the six sub-scores (positional/directional/temporal) are PURE
+  FUNCTIONS OF HOUSE NUMBER ALONE — no chart data needed, fully classical/static — giving the
+  strongest possible conjunct shape (a complete re-derivation with zero cross-reference risk) for
+  three of the eight categories in one stroke. The other three (aspectual/occupant/lord) got
+  domain-bound conjuncts derived directly from the writer's own formula structure rather than a
+  full re-derivation, since they genuinely depend on runtime chart data. Verified all eight
+  conjuncts against ALL 180 live rows per category (not a sample), and explicitly confirmed the
+  classification threshold conjunct non-vacuous across all three branches (strong=15, normal=111,
+  weak=54) before committing.
 
 ## Held items
 
@@ -5094,3 +5158,28 @@ L1 must satisfy rather than a feature it consumes.
   fixed a genuine DIRTY PR (#1950) and widened ga_structural's F-A14 contract to 28/57
   categories (PR #2051, migration 795, karaka_house_lord_overlap_flag) -- next: continue
   ga_structural widening (29 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T10:0xZ -- CYCLE 69 (C8 v2.3). PR hygiene clean: 42/45 L1 PRs genuinely is:queued
+  (--limit 200). The 3 not queued (#1827, #1950, #2051) all checked directly via check-runs:
+  all three genuinely healthy mid-CI (success/skipped/in_progress mix, zero failures), no
+  action needed. #1928/#1892 unchanged. Unit of work: widened ga_structural's F-A14 contract to
+  36/57 in ONE migration (PR #2053, migration 796) -- bundled ALL EIGHT Group C Bhava Bala
+  extended categories (bhava_bala_positional/directional/temporal/aspectual/occupant/lord,
+  bhava_bala_total_extended, house_strength_classification_rollup), the arc's largest bundle
+  jump yet (previous largest: migration 788's 4 categories). All eight emitted by the same
+  per-house loop with a genuine cross-field dependency (total_extended = mean of six siblings;
+  classification = threshold of total_extended) -- justified per the established bundling
+  discipline, not mere adjacency. Discovered three of the six sub-scores
+  (positional/directional/temporal) are PURE FUNCTIONS OF HOUSE NUMBER ALONE -- no chart data
+  needed -- giving complete, zero-cross-reference-risk re-derivations for three categories in
+  one stroke. The other three (aspectual/occupant/lord) got domain-bound conjuncts from the
+  writer's own formula structure. Shipped 8 conjuncts total, all verified against ALL 180 live
+  rows per category (not a sample), classification threshold confirmed non-vacuous across all
+  three branches (strong=15, normal=111, weak=54). All 8 individually mutation-tested via real
+  transactional UPDATE+ROLLBACK against the exact SQL landed in the file. Carried the 72 prior
+  conjuncts forward verbatim, including the 3 already-tracked genuinely-red ones. No writer
+  touched. Full platform/tests/unit/migrations/ suite: 307 passed / 91 skipped (55 files).
+  provenance_inventory --check: clean. Opened PR #2053 with base:main directly and confirmed CI
+  genuinely triggered (31 real check-runs) before ending the cycle. CYCLE 69 L1: widened
+  ga_structural's F-A14 contract to 36/57 categories in ONE migration (PR #2053, migration 796,
+  Group C Bhava Bala extended bundle -- 8 categories) -- next: continue ga_structural widening
+  (21 categories remain), or ga_positions re-dispatch once #1892 lands.
