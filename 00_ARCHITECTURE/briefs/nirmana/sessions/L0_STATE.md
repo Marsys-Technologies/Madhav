@@ -2044,3 +2044,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   commits. Re-check `git diff origin/main <own-working-branch> --stat` periodically even when
   nothing has flagged DIRTY yet, not only when GitHub surfaces it. 30/40 frozen holds; no writer
   code touched, no data risk — this was entirely a git-hygiene incident on my own PR branches.
+
+- 2026-09-06 — **IDLE-OK.** All four resubmissions healthy: `#2004` genuinely `is:queued`;
+  `#2013`/`#2014`/`#2016` CLEAN-but-mid-CI (Build Check/Unit Tests/Governance Gates pending, no
+  reds, auto-merge armed) — will self-queue. No DIRTY, no RED, no new eligible work. 30/40 frozen
+  holds.
