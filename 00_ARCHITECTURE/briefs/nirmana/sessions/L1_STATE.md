@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 145; assigned F-ids to all 6 new post-W2 DAG findings (F-D30-33, F-B36, F-C25), all NEVER-LATER-equivalent per D-CND-09, recorded in L1_DEPENDS_ON_AUDIT_v1_0.md §5 (did not retroactively touch the frozen L1_W2_DECIDE_v1_0.md). Posted a light status nudge on #2180 given 6 quiet cycles, summarizing the completed DAG audit as related context. Still no direct reply as of this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 146; began the 139-row disposition-table prep item, and while reconstructing MUST-tier statuses caught that cycle 125's "MUST tier fully closed" claim was WRONG for one id-group (F-B32/F-B33) -- independently re-verified LIVE that it is still genuinely open (coverage_matrix.ts still 169 hand-maintained categories vs. live chart_facts now at 223, up from 219 at original measurement; concept_aliases.ts:14 still cites a CI check file, schema_map_alias_coverage_check.ts, that still does not exist anywhere in the repo). Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, version 0.2-DRAFT->0.4-DRAFT) rather than silently propagating the wrong "closed" claim forward. Did not attempt the real fix this cycle (re-deriving the category list + either building the cited CI check or correcting the docstring) -- too large for one bounded unit; recorded as the new highest-priority unheld W3 item. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8249,3 +8249,50 @@ record — they are the only entries in this table with a real wall-clock behind
   a reply; with the DAG audit and its own triage now both genuinely finished, the full 139-row
   per-finding disposition table is the last remaining charter-named prep item if #2180 stays
   quiet further.
+- 2026-09-07T0xZ -- CYCLE 146 (C8 v2.3). PR hygiene: only own open PRs are `#2185` and `#2178`.
+  `#2185` is genuinely `is:queued` (GraphQL search confirmed) with every check `pass` -- will
+  merge on its own. `#2178` is `BLOCKED`/`MERGEABLE`, `autoMergeRequest` armed since
+  2026-09-06T21:53:01Z, one check (`Governance Gates`) still `pending`, zero `fail` -- the
+  already-diagnosed mid-CI pattern, not DIRTY/RED/clean-but-unqueued. Nothing to fix. #2180/#2113:
+  same comment counts as cycle 145, still no reply.
+  Picked up cycle 145's own last-named prep item: the full 139-row per-finding disposition table.
+  Began by adding a status column to the MUST-tier table, reconstructing each of the ~22
+  id-groups' current status from established campaign knowledge (F-A1/A2/A3, F-A10, F-A12,
+  F-A4/B2/B12/C9, F-A9/B1/D14/E1/E15, F-B24, F-C1, F-C2-C5/C7, F-C8, F-C14, F-B18/B19, F-B26/B31,
+  F-D1/D2, F-D9, F-D21-D23, F-E5, F-E10/E11, F-E16/E17, F-E21/E22, F-A14/A15+family all confirmed
+  closed from prior cycles' own records). Hit the last id-group, F-B32/F-B33, and could not recall
+  its status with the same confidence -- grepped this file and found it explicitly flagged TWICE
+  earlier in this segment as "deliberately left as its own separate follow-up, not folded in
+  here," with no later closure entry anywhere, directly contradicting cycle 125's own blanket
+  "MUST tier fully closed" claim. Rather than trust either claim, **re-verified LIVE**: (1)
+  `platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts` -- file header still
+  reads "Authored: Wave 3 Phase R1/R2 (2026-06-16)" / "Phase R1 finding: 0 of 158 fact_categories
+  were covered before this wave," unchanged; `CHART_FACTS_CATEGORIES` still has exactly 169
+  entries by grep count. Live `psql`: `SELECT count(DISTINCT fact_category) FROM chart_facts;` ->
+  **223** (not the original 219 -- the drift has widened, consistent with the F-A14 `ga_structural`
+  campaign's category additions this whole segment). (2) `concept_aliases.ts:14` still states
+  verbatim: "The CI regression check in `platform/scripts/census/schema_map_alias_coverage_check.ts`
+  asserts every LIVE fact_category has at least one alias entry" -- confirmed via direct path
+  check (`ls` -> No such file) AND a repo-wide grep for `alias_coverage` (only this docstring's own
+  mention, zero implementation anywhere in `platform/scripts/census/` or elsewhere) that the file
+  genuinely does not exist. **Both halves of F-B32/F-B33 are confirmed still open** -- this is
+  exactly the §N.8 defect class (an unmeasured "all clear" is null, not a fact), one layer up from
+  the finding's own original subject: a *prior cycle's own closure claim* turned out to be the
+  unearned signal this time, not a build-system flag.
+  Given the scale of the real fix (re-deriving a 169-item list against a live, still-growing
+  223-category universe, plus either implementing a real CI gate or correcting a false docstring
+  citation) is substantial and not a single bounded unit, decided NOT to attempt it this cycle.
+  Instead corrected the record honestly: edited `L1_W6_CLOSE_REPORT_v1_0.md` (version 0.2-DRAFT ->
+  0.4-DRAFT) -- §0's status line now names the exception instead of claiming blanket MUST-tier
+  closure; §2's MUST-tier disposition paragraph now carries the full correction in place of the
+  silent "closed" claim; §5 adds F-B32/F-B33's real fix as a new backlog bullet explicitly marked
+  "does NOT need #2113 -- genuinely unheld"; §6 lists it as a named OPEN item. Did not touch the
+  frozen `L1_W2_DECIDE_v1_0.md` (same discipline as cycle 145's F-id assignment -- W2's own
+  historical record is not retroactively rewritten; the correction lives in the close report,
+  which is explicitly DRAFT and exists to carry exactly this kind of update). Committed on
+  `codex/nirmana-l1-state-cycle4` (same branch as #2178, still open) alongside this state update.
+  CYCLE 146 L1: PR hygiene clean; caught and corrected a real false "all clear" from cycle 125 --
+  F-B32/F-B33 is genuinely open, not closed, verified live rather than assumed -- next: F-B32/F-B33's
+  real fix is now the highest-priority unheld W3 item (does not need #2113); the 139-row
+  disposition table itself remains open pending either a dedicated future cycle or #2180 staying
+  quiet long enough to justify one; keep re-checking #2113/#2180 every cycle regardless.
