@@ -6,8 +6,13 @@
  *   query_convergence_windows  — ka_sangam (kala_convergence)
  *   query_life_arc             — ka_jivana_parva (biographical chapters)
  *   query_projections          — ka_bhavishya_lekha (forward projections)
- *   query_obstruction_periods  — ka_vighnakara (STUBBED-PENDING-DATA, 0 rows)
- *   query_temporal_view        — ka_kala_darshana (STUBBED-PENDING-DATA, 0 rows)
+ *   query_obstruction_periods  — ka_vighnakara (F-VIGHNA-8: this header used to claim
+ *                                zero rows / build-pending — measured live, it serves
+ *                                536-741 rows per canonical chart; live counts belong in
+ *                                kala_obstruction, not a static comment here)
+ *   query_temporal_view        — ka_kala_darshana (F-DARSH-8: same stale claim — measured
+ *                                live, it serves 750 rows per canonical chart; live counts
+ *                                belong in kala_darshana, not a static comment here)
  *   query_kota_chakra          — ka_kota_chakra (W3 item 16, fort chart)
  *   query_sudarshana_varsha    — ka_sudarshana_varsha (W3 item 17, year-wheel)
  *   query_moorti_nirnaya       — ka_moorti_nirnaya (W3 item 4, moorti-nirṇaya)
