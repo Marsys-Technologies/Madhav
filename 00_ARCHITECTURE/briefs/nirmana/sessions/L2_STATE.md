@@ -442,6 +442,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 387 | 2026-09-06T18:55Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`, transient `UNKNOWN` resolved on its own. Main advanced (`#2079`, L3's own fix -- unrelated to L2). Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 388 | 2026-09-06T18:59Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 389 | 2026-09-06T19:03Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Main advanced (`#2145`, L1's own fix -- unrelated to L2). Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
+| 390 | 2026-09-06T18:31Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2135` healthy `BLOCKED`/`MERGEABLE`. Main advanced (`#2146`, L1's own fix -- unrelated to L2). Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
