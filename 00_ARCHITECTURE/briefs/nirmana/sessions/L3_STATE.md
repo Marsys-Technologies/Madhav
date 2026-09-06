@@ -489,6 +489,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~83:0xZ — L3-W4 — IDLE-OK (verified, not assumed): same run
+  IDs on `#2070`/`#2065` as last cycle — checked run status directly via
+  `gh run view` rather than trust "no failures" alone (2 cycles same run
+  IDs warranted it). Confirmed genuinely `in_progress`, ~6-7 min elapsed —
+  matches the known ~10min `Build Check`/`Governance Gates` pattern, not a
+  stall. `#2079` progressed to a fresh run, zero failures. `#2065` still
+  hasn't merged. `egate.sql` unchanged. — blocked on: `#2065` merging; next
+  action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~82:0xZ — L3-W4 — IDLE-OK (verified): all 3 PRs healthy, zero
   failures, fresh CI runs on each. `#2065` still hasn't merged. `egate.sql`
   unchanged. — blocked on: `#2065` merging; next action: once it lands,
