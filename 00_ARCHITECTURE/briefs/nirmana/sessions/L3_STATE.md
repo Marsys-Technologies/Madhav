@@ -473,6 +473,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~51:0xZ — L3-W4 — IDLE-OK (verified, not assumed).** PR hygiene:
+  `#2079`/`#2070`/`#2065` had fallen back out of the queue (`CLEAN`-but-
+  unqueued again — queue churn, not a new defect) — re-queued all three,
+  verified via `is:queued`. `#1903` healthy, no new failures. Clock threshold
+  (2026-09-06T15:52:00Z) still not reached (real time 15:13). Ran a fresh
+  `egate.sql --layer L3` batch query rather than trust last cycle's read:
+  `ka_graha_sancara` remains the ONLY `OPEN-PENDING-PIN` asset, everything
+  else genuinely `BLOCKED-ANCESTORS`/`BLOCKED-NO-ROUTE` — no new dispatch
+  opportunity opened elsewhere. Re-checked N1's next step (D-TIME item 1,
+  per-engine question/granularity/range declarations) before deferring it
+  again: grepped every W1 batch file for "granularity" — the "34 engines
+  catalogued with question/table/granularity/range" claim in this file's own
+  intro does not correspond to any actually-persisted structured table; that
+  data would need re-deriving from 34 engines' live code, not transcribing
+  from an existing artifact, confirming last cycle's call that it is
+  genuinely too unbounded for one cycle, not a false excuse. Re-verified
+  `ka_graha_sancara`'s registry contract is byte-identical to last cycle's
+  read — all four precomputed digests (Held items, row 1) remain valid,
+  nothing to redo. No genuinely new bounded W3 unit and no further useful
+  prep beyond what's already recorded — declaring this cycle idle rather
+  than manufacturing filler work. — blocked on: real time passing 15:52:00Z;
+  next action: execute the recorded 4-step `probe_accepted` →
+  `integrity_verified` → read-back → `asset_frozen` sequence once past it.
 - `2026-09-06T~50:0xZ — L3-W4 — PR hygiene: `#1929` merged since last cycle;
   `#2079`/`#2070`/`#2065` were all `CLEAN`-but-unqueued — queued all three,
   verified via `is:queued`. `#1903` healthy, just still building CI. **Priority
