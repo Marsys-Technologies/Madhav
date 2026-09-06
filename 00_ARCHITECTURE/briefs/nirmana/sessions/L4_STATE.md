@@ -7287,3 +7287,18 @@ L4-relevant adjudications; E-gate uncheckable, DB access down 356 cycles) → ne
 E-gate/dispatch dry-run every cycle until DB access returns; F1 (`ph_phaladesa` zero MCP
 consumers) remains the layer's one deferred code item; no other own-remit work currently
 eligible.
+
+`2026-09-06T~13:38Z` — L4 — **CYCLE 367 (v2.3) — IDLE-OK. Zero own PRs open.**
+
+**PR hygiene:** trivially clean — zero open `codex/nirmana-l4*` PRs.
+
+**Priorities 1-4:** one new `main` commit (`#2097`, L5's own PR) confirmed not L4-relevant.
+One new adjudication, `#2102` (ADJUDICATION L2: `divisional_corroboration_count` "reinforce"
+semantics under-specified) — confirmed L2's own item, not L4-relevant; count now 18. E-gate
+still uncheckable — `mcp__postgres__query` unavailable, 357th consecutive cycle DB access
+down. No `NIRMANA_HOLD` file present.
+
+CYCLE 367 L4: IDLE-OK (verified: zero own PRs open; new adjudication `#2102` confirmed
+L2's own item, not L4-relevant; E-gate uncheckable, DB access down 357 cycles) → next: retry
+E-gate/dispatch dry-run every cycle until DB access returns; F1 (`ph_phaladesa` zero MCP
+consumers) remains the layer's one deferred code item.
