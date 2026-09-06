@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:41Z (C8 v2.3 cycle 392) — **Pushed 5-cycle batch (387-391).** #1826 was
+  NOT queued at push time (no dequeue dance needed), rebased 394 commits clean, pushed,
+  re-armed. #1844 confirmed unaffected (`isInMergeQueue: true`). Starting a new local
+  batch.
 - 2026-09-06T10:40Z (C8 v2.3 cycle 391) — **IDLE-OK, deploy advanced but still short — a
   minor mystery resolved.** Deploy jumped to `492f32f0…`, which `git merge-base` shows
   PREDATES `0452d1e74` (#1901) — briefly looked anomalous, but confirmed via
