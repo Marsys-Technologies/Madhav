@@ -90,9 +90,9 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-      "line": 802,
+      "line": 805,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_bhava_lordship_facts`: fact_subject LIKE 'D1\\_H%%' already scopes to exactly one row per house number (subject IS the D1_H<n> key); no fact_key dimension exists for this category per the function's own docstring."
+      "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_bhava_lordship_facts`: fact_subject LIKE 'D1\\_H%%' already scopes to exactly one row per house number (subject IS the D1_H<n> key); no fact_key dimension exists for this category per the function's own docstring. Line corrected 802 -> 805 (2026-09-06, #1837 rebase, loop 246): further unrelated insertions elsewhere in the file shifted this pre-existing, unchanged violation's position again; the line-exact allowlist match broke on drift, not on any change to this SELECT. Confirmed via a fresh `check_fact_category_pinning.py` run against current `main` -- same query text, same function, only the line number moved."
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
