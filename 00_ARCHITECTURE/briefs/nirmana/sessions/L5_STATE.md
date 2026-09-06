@@ -457,6 +457,27 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:35Z (C8 v2.3 cycle 407) — **`mi_vistara`'s `accepted_rebuild_observed` LANDED
+  live — the campaign's first `mi_*` asset to reach it.** Deploy caught up to #1901's
+  receipt-re-attribution fix (`abe1f610…` confirmed a live ancestor of `0452d1e74`); #1713 showed
+  L0 already proved the mechanism live (`bg_doshas` → FROZEN). Retried `mi_vistara`: first attempt
+  (`run_id=174aed28…`) missed the authorization window — `--commit` triggers execution immediately
+  with no natural pause, so it completed (`started_at` already set) before I could submit
+  `build_run_authorized`, making that run unusable for this purpose (the exact same "authorize
+  before started_at" trap H-L5-06/#1899 describes). **Fixed by pre-computing everything (decision
+  digest via the real `canonicalNirmanaOptimizationVerdictDigest`, throwaway vitest test, deleted
+  after) before the second dispatch**, then firing `build_run_authorized` the instant the second
+  commit returned its `run_id` (`e812179e…`) — recorded at 10:31:33, `started_at` at 10:31:44,
+  window confirmed live. Run completed (`skip_no_delta`, output unchanged as expected — content is
+  identical, only the receipt's `build_id` needed re-attribution), receipt re-attributed correctly
+  to `e812179e…` (`receipt_state='proven'`), then `accepted_rebuild_observed` submitted and
+  **independently re-verified via direct DB read**, not the HTTP 201 alone. Full account +
+  SLOT CLAIM/RELEASE on #1713. **Next: dispatch a fresh-context verifier subagent for
+  `mi_vistara`'s `integrity_verified` (W5)** — implementer≠certifier, not doing it myself, same
+  pattern as `bg_doshas`'s W5. PR hygiene: #1826 progressing (Governance Gates still the one
+  outstanding check, `mergeStateStatus=BLOCKED` only because CI isn't done yet, armed, no
+  failures); #1844 confirmed `isInMergeQueue: true`. #1869 unchanged at 4 comments. 3 cycles since
+  last push (404→407).
 - 2026-09-06T11:19Z (C8 v2.3 cycle 406) — **IDLE-OK.** #1826 down to 2 checks (Unit Tests,
   Governance Gates), no failures, armed. #1844 confirmed `isInMergeQueue: true`. #1869
   unchanged at 4 comments. 2 cycles since last push.
