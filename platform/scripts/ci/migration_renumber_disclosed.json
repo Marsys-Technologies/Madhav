@@ -43,6 +43,15 @@
       "reason": "bg_muhurta_lattice was initially filed as 484_bg_muhurta_lattice.sql and applied to production in the pre-ṢAḌ-DARŚANA build phase. During the ṢAḌ-DARŚANA campaign it was renumbered to 543 to reflect its actual dependency order relative to migrations 485–542. The SQL content is identical (only the -- Migration NNN: header comment differs, which is stripped by sqlIdentityOf). Production already has this table; the runner should record 543 as applied without re-executing.",
       "disclosed_via": "ṢAḌ-DARŚANA campaign post-merge deploy failure 2026-08-07 — MigrationRenumberedError blocked deploy run 31140238243; DVA RULING 73 disclosure discipline (same pattern as migration_hash_disclosed_residuals.json)",
       "disclosed_on": "2026-08-07"
+    },
+    {
+      "new_filename": "809_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
+      "applied_filename": "806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
+      "sql_identity": "2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102",
+      "disposition": "already-applied-under-old-name",
+      "reason": "mi_jivanaghatana's output_digest_spec was authored and applied to the shared dev DB (amjis-postgres, tracked in _migrations_applied under this exact filename, applied on the L5 NIRMANA campaign lane's own unmerged branch) as 806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql, the next available number at the time it was authored (main tip was then 805). That number collided with an unrelated, independently-authored L1 migration also numbered 806 (806_nirmana_l1_ga_structural_integrity_contract_dispositorchainvarga.sql, and its sibling 807_..._centrality.sql), which merged to main first — a genuine authoring-time numbering race between two parallel NIRMANA campaign lanes, the same class this session already reconciled once this cycle-window for PR #1844's 692->808 (see the entry above this one). Anticipated proactively (this branch is not yet merged, so no deploy failure has occurred) rather than waiting for a blocked deploy, to keep the fix cheap. Renumbered to 809 -- the next number free of both main's tip (807) and PR #1844's still-pending 808 at the time of this reconciliation. The SQL content is byte-identical apart from the -- Migration NNN: header comment (stripped by sqlIdentityOf, confirmed identical sql_identity before and after rename). The shared dev DB already has this row; the runner should record 809 as applied without re-executing.",
+      "disclosed_via": "L5 NIRMANA campaign lane, self-diagnosed proactively while reconciling the sibling #1844 692->808 collision (this same disclosure file, same cycle), 2026-09-06 — filed on the session's own state PR (#1826) before merge, not a post-merge deploy failure",
+      "disclosed_on": "2026-09-06"
     }
   ]
 }
