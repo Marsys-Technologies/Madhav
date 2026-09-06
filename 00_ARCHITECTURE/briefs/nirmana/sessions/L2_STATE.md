@@ -348,6 +348,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 293 | 2026-09-06T13:33Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: 2/2 healthy. Main unchanged, but batch chain grew deeper again (3 -> 4 entries), confirming continuing activity. E-gate reconfirmed CLOSED (14/21 unfrozen, unchanged). No new activity on `#2052`/`#2058`. Nothing eligible this cycle -- printing IDLE-OK |
 | 294 | 2026-09-06T13:37Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: both PRs showed transient `UNKNOWN` (zero failures) -- confirmed genuinely queued via the definitive tiebreaker. 2/2 L2 PRs healthy. Main advanced to `#2091` (L1). E-gate reconfirmed CLOSED (14/21 unfrozen, unchanged). No new activity on `#2052`/`#2058`. Nothing eligible this cycle -- printing IDLE-OK |
 | 295 | 2026-09-06T13:41Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: 2/2 healthy. Main advanced to `#1871` (L1). E-gate reconfirmed CLOSED (14/21 unfrozen, unchanged). No new activity on `#2052`/`#2058`. Nothing eligible this cycle -- printing IDLE-OK |
+| 296 | 2026-09-06T13:45Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` resolved transient `UNKNOWN` on its own (zero failures). 2/2 L2 PRs healthy. Main advanced to `#1839` (L4). E-gate reconfirmed CLOSED (14/21 unfrozen, unchanged). No new activity on `#2052`/`#2058`. Nothing eligible this cycle -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
