@@ -702,6 +702,18 @@ def seed_dasha_systems(
       brahma_dasha_systems, brahma_ontology, reference_dasha_systems
 
     autocommit=False: caller (asset_runner) owns the transaction.
+
+    2026-09-06 (D-L0-GG follow-up): migration 700's own commit message asserted
+    the live data was "already correct... once ontology is scoped correctly" --
+    that assertion was based on a rolled-back replay of this function, not a
+    committed run. A live re-check found ontology/reference actually stale
+    (missing "kp", a lingering "jaimini_chara" id) relative to this module's
+    current DASHA_SYSTEMS content, meaning this writer had not actually
+    committed a run since "kp" was added here. A fresh commit of this exact
+    function against this exact source resolved it (verified: all clauses of
+    bg_dasha_systems' integrity_check_sql now pass live). No logic in this
+    function changed -- the lesson is "verified live" evidence must cite a
+    committed state, not a rolled-back one.
     """
     if dry_run:
         logger.info(
