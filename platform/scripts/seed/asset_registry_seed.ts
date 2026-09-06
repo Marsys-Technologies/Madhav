@@ -1367,7 +1367,12 @@ export const ASSETS: AssetDef[] = [
     target_floor: 240,
     expected_volume_formula: null, // non-parametric — target_floor = 240 (A7 hybrid window varsha 1..48 × 5 ayanamshas)
     expected_volume_inputs: null,
-    volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
+    // F-E17 (cycle 106): the prior text claimed varshas outside the precomputed window are
+    // "computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha()" --
+    // compute_varsha() exists but has zero callers (3 repo hits total: its own def, its own
+    // self-referential comment, this line). get_tajik.ts is a pure SELECT; its own
+    // empty_reason honestly discloses out-of-window varshas as genuinely not computed.
+    volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Windowed storage — only varshas inside the precomputed window (1..48) are stored; varshas outside that window are NOT computed on-demand (get_tajik.ts honestly reports them via its own empty_reason disclosure).',
     depends_on: ['ga_positions', 'ga_dashas', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
