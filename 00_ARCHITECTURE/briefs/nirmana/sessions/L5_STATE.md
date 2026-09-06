@@ -457,6 +457,11 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:41Z (C8 v2.3 cycle 218) — **IDLE-OK.** #1826's fresh CI run progressing
+  normally (same 3 checks pending, no failures, auto-merge armed). #1844 confirmed
+  `isInMergeQueue: true`. Deploy still one cycle short (`21f6dda67`, not yet `1ef6267e9`).
+  Queue: #1844=48 (was 53), #1901=74 (was 79). #1869 unchanged at 3 comments; #1856 still
+  OPEN. Local batch restarted (1 cycle since last push).
 - 2026-09-06T01:38Z (C8 v2.3 cycle 217) — **Pushed the 20-cycle batch; revised the
   batching policy.** #1826 had drifted beyond queue position 100 with no merge in sight —
   waiting for a full merge before ever pushing again (the cycle-197 fix's original
