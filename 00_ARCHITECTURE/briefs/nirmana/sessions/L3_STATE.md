@@ -461,6 +461,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~12:0xZ — L3-W3 — PR hygiene: re-swept the queue after #1950/#1940 landed —
+  cascade shrank further (#1839, #1845, #1844 also cleared since last cycle). New head
+  blocker: **#1951 (F-VIGHNA-8/F-DARSH-8, TypeScript-only, no writer/generated-file
+  surface)**. Confirmed my own branch (not another worktree's), dequeued, rebased: one
+  `L3_STATE.md` conflict, genuinely concurrent-entry shaped again — but this time truly
+  additive, not a duplicate: `theirs` (this branch's own ~08:0x entry, a real 12-DIRTY-
+  PR-fix cycle including the original #1940 fix and the `ka_tulana` F-L3-15 probe work)
+  was chronologically OLDER than `ours`'s earliest entry (~09:0x) and covered genuinely
+  different ground — combined in order (`ours` then `theirs`, oldest-to-newest reading
+  top-down as newest-first), verified zero lines removed vs `origin/main`. No pins/
+  digests to regenerate (TS-only change, no writer touched). 2/2 branch tests pass,
+  `tsc --noEmit` clean. Pushed, `mergeable: MERGEABLE`. — blocked on: nothing new; next
+  action: re-sweep the queue next cycle (should keep shrinking), re-check whether #1839's
+  L4-owned blocker cleared under its own session's hygiene, and re-check #1713's
+  `amjis-sidecar` finding (still not re-verified for two cycles now — worth doing next
+  cycle if no fresher hygiene work is available).
 - `2026-09-06T~10:1xZ — L3-W3 — MAJOR PROCESS CHANGE: discovered #2067's standing ruling
   (Conductor, cycle 367) that heartbeats must NEVER be a PR — post as a comment on #1713
   or update this file directly, no PR/merge/DIRTY-fleet noise.** Found this while fighting
