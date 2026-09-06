@@ -560,6 +560,7 @@ def _build_argala_edges(
                 cancelled = virodha_h in virodha_occupied if virodha_h else False
 
             _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
+            _traditions = ["parashari"]
             edges.append({
                 "edge_id": str(uuid.uuid4()),
                 "chart_id": chart_id,
@@ -584,9 +585,9 @@ def _build_argala_edges(
                 "active_duration_class": "natal_permanent",
                 "active_dasha_periods_jsonb": None,
                 "underlying_msr_signal_ids_array": [],
-                "cross_system_consensus_count": 1,
+                "cross_system_consensus_count": len(_traditions),
                 "cancelled_flag": cancelled,
-                "present_in_traditions_array": ["parashari"],
+                "present_in_traditions_array": _traditions,
                 "graph_compute_library": GRAPH_LIB,
                 "graph_compute_library_version": GRAPH_LIB_VER,
                 "is_cross_subsystem": False,
@@ -637,6 +638,7 @@ def _build_dispositor_edges(
         if not from_node or not to_node:
             continue
         _strength, _vichara_ids = _edge_strength_v1(0.6, graha, None, lookups)
+        _traditions = ["parashari"]
         edges.append({
             "edge_id":                         str(uuid.uuid4()),
             "chart_id":                        chart_id,
@@ -660,9 +662,9 @@ def _build_dispositor_edges(
             "active_duration_class":           "natal_permanent",
             "active_dasha_periods_jsonb":      None,
             "underlying_msr_signal_ids_array": [],
-            "cross_system_consensus_count":    1,
+            "cross_system_consensus_count":    len(_traditions),
             "cancelled_flag":                  False,
-            "present_in_traditions_array":     ["parashari"],
+            "present_in_traditions_array":     _traditions,
             "graph_compute_library":           GRAPH_LIB,
             "graph_compute_library_version":   GRAPH_LIB_VER,
             "is_cross_subsystem":              False,
@@ -749,6 +751,7 @@ def _graha_bhava_edge(
 ) -> dict:
     verb, sem_class, base_strength, cite_root = _BHAVA_EDGE_META[edge_type]
     _strength, _vichara_ids = _edge_strength_v1(base_strength, graha, None, lookups)
+    _traditions = ["parashari"]
     return {
         "edge_id":                         str(uuid.uuid4()),
         "chart_id":                        chart_id,
@@ -775,9 +778,9 @@ def _graha_bhava_edge(
         "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
         "underlying_msr_signal_ids_array": [],
         "constituent_fact_ids_array":      fact_ids,
-        "cross_system_consensus_count":    1,
+        "cross_system_consensus_count":    len(_traditions),
         "cancelled_flag":                  False,
-        "present_in_traditions_array":     ["parashari"],
+        "present_in_traditions_array":     _traditions,
         "graph_compute_library":           GRAPH_LIB,
         "graph_compute_library_version":   GRAPH_LIB_VER,
         "is_cross_subsystem":              False,
@@ -984,6 +987,7 @@ def _membership_edge(
 ) -> dict:
     _graha_subject = member_subject if member_kind == "graha" else None
     _strength, _vichara_ids = _edge_strength_v1(0.5, _graha_subject, None, lookups)
+    _traditions = ["parashari"]
     return {
         "edge_id":                         str(uuid.uuid4()),
         "chart_id":                        chart_id,
@@ -1010,9 +1014,9 @@ def _membership_edge(
         "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
         "underlying_msr_signal_ids_array": [],
         "constituent_fact_ids_array":      fact_ids,
-        "cross_system_consensus_count":    1,
+        "cross_system_consensus_count":    len(_traditions),
         "cancelled_flag":                  False,
-        "present_in_traditions_array":     ["parashari"],
+        "present_in_traditions_array":     _traditions,
         "graph_compute_library":           GRAPH_LIB,
         "graph_compute_library_version":   GRAPH_LIB_VER,
         "is_cross_subsystem":              False,
@@ -1111,6 +1115,7 @@ def _build_edges_and_contradictions(
                 to_node = _get_node("domain", domain)
                 if from_node and to_node:
                     _strength, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
+                    _traditions = [tradition]
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -1130,9 +1135,9 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
-                        "cross_system_consensus_count": 1,
+                        "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
-                        "present_in_traditions_array": [tradition],
+                        "present_in_traditions_array": _traditions,
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
                         "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
@@ -1160,6 +1165,7 @@ def _build_edges_and_contradictions(
                     # DR-7 clamp (which would otherwise clamp a negative value
                     # up to +0.1 and silently flip an antagonist edge positive).
                     _magnitude, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
+                    _traditions = [tradition]
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -1179,9 +1185,9 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
-                        "cross_system_consensus_count": 1,
+                        "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
-                        "present_in_traditions_array": [tradition],
+                        "present_in_traditions_array": _traditions,
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
                         "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
@@ -1226,6 +1232,7 @@ def _build_edges_and_contradictions(
                     # which for a single signal cannot happen; we record same→same here.
                     _strength, _vichara_ids = _edge_strength_v1(
                         round(salience, 6), graha, list(domains), lookups)
+                    _traditions = [tradition]
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -1245,9 +1252,9 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
-                        "cross_system_consensus_count": 1,
+                        "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
-                        "present_in_traditions_array": [tradition],
+                        "present_in_traditions_array": _traditions,
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
                         "is_cross_subsystem": False,
@@ -1530,6 +1537,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
         base = 0.6
         _strength, _vichara_ids = _edge_strength_v1(base, lord, None, lookups)
         edge_type = "arudha_house" if node_type == "arudha" else "special_lagna_house"
+        _traditions = ["jaimini" if node_type == "arudha" else "parashari"]
         edges.append({
             "edge_id": str(uuid.uuid4()),
             "chart_id": chart_id,
@@ -1550,9 +1558,9 @@ def _build_arudha_special_lagna_nodes_and_edges(
             "active_dasha_periods_jsonb": None,
             "underlying_msr_signal_ids_array": [],
             "constituent_fact_ids_array": [rec["fact_id"]] if rec.get("fact_id") else [],
-            "cross_system_consensus_count": 1,
+            "cross_system_consensus_count": len(_traditions),
             "cancelled_flag": False,
-            "present_in_traditions_array": ["jaimini" if node_type == "arudha" else "parashari"],
+            "present_in_traditions_array": _traditions,
             "graph_compute_library": GRAPH_LIB,
             "graph_compute_library_version": GRAPH_LIB_VER,
             "is_cross_subsystem": False,

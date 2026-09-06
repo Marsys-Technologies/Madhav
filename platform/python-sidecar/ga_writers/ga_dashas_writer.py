@@ -50,7 +50,6 @@ from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
     compute_independent_vimshottari_tree as _iv_compute_independent_tree,
 )
-from ga_writers.ga_condition_writer import _DIVISIONAL_DIGNITY_NORMALIZE
 from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as _BP_CANONICAL_CHART_ID, resolve_birth_params
 
 logger = logging.getLogger(__name__)
@@ -556,7 +555,16 @@ def _load_natal_context_inner(
         for graha, dignity_text in cur.fetchall():
             entry = ctx.setdefault(graha, {"house_d1": None, "sign": None, "nakshatra": None,
                                             "dignity_d1": None, "shadbala_total": None})
-            entry["dignity_d1"] = _DIVISIONAL_DIGNITY_NORMALIZE.get(dignity_text, dignity_text.lower() if dignity_text else None)
+            # F-A12: lowercase the oracle's own Title-cased tier name directly — do NOT
+            # route through ga_condition_writer's _DIVISIONAL_DIGNITY_NORMALIZE. That map
+            # exists for a different consumer (avastha_deeptaadi_from_dignity_and_state's
+            # own "*_sign" vocabulary) and was never the right translation for this field;
+            # get_dashas.ts's own serve-time authority (chart_facts.graha_dignity_per_varga,
+            # written by ga_structural from the same brahmagyan.dignity_oracle.classify_dignity
+            # this asset's own upstream ga_vargas delegates to) stores the bare lowercase tier
+            # name with no suffix — this is what dignity_d1 must match to stop the two L1
+            # surfaces disagreeing (§N.5).
+            entry["dignity_d1"] = dignity_text.lower() if dignity_text else None
 
         cur.execute(
             """

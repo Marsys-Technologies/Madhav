@@ -752,21 +752,25 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; three known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06)', () => {
+  it('the checked-in allowlist parses; four known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 3.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 4.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31143327280).
-    // Entry 3: 806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql applied to the shared dev
+    // Entry 3: 692_nirmana_l5_mi_vistara_output_digest_spec.sql applied to the shared dev DB,
+    //   renumbered 808->810->812->821 (final -- into L5's dedicated 820-839 range per adjudication #2086) after colliding with an unrelated 692_bg_doshas_... migration that
+    //   merged to main first. Disclosed 2026-09-06 (self-diagnosed by the L5 NIRMANA campaign
+    //   lane via an independent migration-guard review of a sibling migration, PR #1844).
+    // Entry 4: 806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql applied to the shared dev
     //   DB, renumbered 809->811->813->820 (final -- into L5's dedicated 820-839 range per adjudication #2086) after colliding with an unrelated L1 806 migration that merged to
     //   main first. Disclosed 2026-09-06 (self-diagnosed proactively by the L5 NIRMANA campaign
     //   lane while reconciling the sibling 692->808 collision on PR #1844, same session).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(3)
+    expect(map.size).toBe(4)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -779,6 +783,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry544!.sql_identity).toBe('42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08')
     expect(entry544!.disposition).toBe('already-applied-under-old-name')
     expect(entry544!.disclosed_on).toBe('2026-08-07')
+    const entry821 = map.get('821_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry821).toBeDefined()
+    expect(entry821!.applied_filename).toBe('692_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry821!.sql_identity).toBe('24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8')
+    expect(entry821!.disposition).toBe('already-applied-under-old-name')
+    expect(entry821!.disclosed_on).toBe('2026-09-06')
     const entry820 = map.get('820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
     expect(entry820).toBeDefined()
     expect(entry820!.applied_filename).toBe('806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')

@@ -73,6 +73,22 @@ CANONICAL_AYANAMSHAS = [
 
 ENGINE_VERSION = "bo_laksana_v2.2"
 
+# D-CND-33 (Conductor ruling on adjudication #2052, 2026-09-06): two
+# salience_formula_v2 multiplicands — orb_tightness and specificity — are
+# unconditional multiplicative-identity placeholders (1.0) on every row,
+# pending a native design ruling on a formula input their own spec document
+# never completes (orb_tightness's max-orb reference; specificity's "value"
+# term). This is a design-authority question, not an engineering gap — see
+# #2052 for the full analysis. Per the ruling, this placeholder is honestly
+# flagged rather than presented identically to a genuinely computed sibling
+# term: surfaced in WriterResult.notes on every bo_laksana run (never a
+# per-row DB flag — both terms are unconditionally 1.0 for 100% of rows,
+# so a per-row flag would carry no information a build-level note doesn't
+# already convey).
+PROVISIONAL_SALIENCE_TERMS_NOTE = (
+    "provisional_constant_pending_design_ruling=orb_tightness,specificity(see #2052/D-CND-33)"
+)
+
 # ── D-1.5b hotfix: bo_laksana's ownership allowlist for bodha_msr_signals ────
 # `bodha_msr_signals` is a shared table: bo_laksana projects ALL L1
 # chart_facts into it (category-agnostic), and bo_sudarshana (an independent
@@ -2055,7 +2071,19 @@ def _compute_salience(
     # frozen at their defaults on all 150,150 rows: four detectors that could not
     # fire (CLAUDE.md §N.8). Two now read the L1 authority that always existed;
     # two remain honestly unmeasured.
-    orb = _safe_float(tags.get("orb_tightness"), 1.0)
+    #
+    # D-CND-33 (Conductor ruling on adjudication #2052): orb_tightness has a real
+    # L1 data source (conjunction_per_varga.orb_deg) for a narrow signal slice, but
+    # the FORMULA's own "1 = exact, 0 = at max orb" spec is missing a max-orb
+    # reference this codebase does not define anywhere (searched: bg_combustion_orbs
+    # and L3's _ACTIVITY_MAX_ORB_DEG are both real but different classical concepts —
+    # borrowing either would be a wrong-domain N.7 item-6 substitute). This is a
+    # design-authority question, not an engineering one — flagged for the native via
+    # #2052, not guessed. Until resolved, this multiplicative-identity placeholder
+    # (1.0 = "no orb narrowing effect") is honestly labeled below and in
+    # PROVISIONAL_SALIENCE_TERMS_NOTE — never presented identically to a genuinely
+    # computed sibling term.
+    orb = _safe_float(tags.get("orb_tightness"), 1.0)  # provisional_constant_pending_design_ruling — see #2052
 
     vargottama_amp = (
         (vargottama_lookup or {}).get(primary_graha) if primary_graha is not None else None
@@ -2106,7 +2134,16 @@ def _compute_salience(
         verification_pass_status=tier,
         class_prior=class_prior,
         varga_id=varga_id,
-        specificity=1.0,        # filled in second pass by percentile UPDATE
+        # D-CND-33 (Conductor ruling on adjudication #2052): the spec formula
+        # (BA_BRIEF_PACK_P2_P7_v1_0.md §C: specificity = 1 + 0.5 x extremity_pctl)
+        # never defines "value" in extremity_pctl = percentile(|value - family
+        # median|) — and it cannot mean computed_salience itself, since specificity
+        # is one of salience_formula_v2's own multiplicands (circular). No
+        # disambiguating doc found. Flagged for the native via #2052, not guessed.
+        # The stale "filled in second pass by percentile UPDATE" comment referred to
+        # a pass that was confirmed never to exist — removed rather than left as a
+        # false claim.
+        specificity=1.0,        # provisional_constant_pending_design_ruling — see #2052
         bala_gate=bala_gate_val,
         functional_context=functional_context,
         inputs_complete=inputs_complete,
@@ -3626,6 +3663,7 @@ class BoLaksanaWriter(WriterBase):
             f";ratification_available={ratification_available}"
             f";vichara_valence_available={vichara_valence_available}"
             f";divergence_signals={len(divergence_signals)}"
+            f";{PROVISIONAL_SALIENCE_TERMS_NOTE}"
         )
 
         return WriterResult(

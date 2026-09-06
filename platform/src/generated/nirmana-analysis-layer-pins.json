@@ -14,17 +14,17 @@
     },
     "L1": {
       "asset_prefix": "ga_",
-      "convergence_commit": "3832ad3f33086166292811b4fdc0eafe563892c1",
+      "convergence_commit": "477f1afdcdee3e106813762d75171f53e636397e",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "2ca01fa97da2a6bc983e3c8ba8fab668cb1593580eb32e04528f61513daa45e3"
+      "writer_inventory_sha256": "9ee8ae9f2dd43505db1d33fc61827b07393df4a404b771110fa3c3bfd1ae1ed4"
     },
     "L2": {
       "asset_prefix": "bo_",
-      "convergence_commit": "6b6a9626febe755aa9ff93294fc26acfaba587be",
+      "convergence_commit": "6adb0e6e54910243219450dd5332920d7dc7161c",
       "non_writer_assets": [],
       "receipt_count": 22,
-      "writer_inventory_sha256": "50b928de7321656ac421ac491e102da062f5d2ae9a3594c7b6f2af51dca124f5"
+      "writer_inventory_sha256": "8a168dbc680a1a9f9fa46dc43c9c6054f583f6d58c0d05b2e21fc8297875572b"
     },
     "L3": {
       "asset_prefix": "ka_",
@@ -33,14 +33,14 @@
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "writer_inventory_sha256": "75bda1c4a4505e7aaa56011ddfde29eff1ba856a1fdc339493bfabb0cf0e05b0"
+      "writer_inventory_sha256": "28eb782c83c1d2ba42a37f857da88e1c0c9e0ce02ad37bd427096e291f6aa2e8"
     },
     "L4": {
       "asset_prefix": "ph_",
       "convergence_commit": "be470cb8fa289c65fe4e273abe1cd1210e96f805",
       "non_writer_assets": [],
       "receipt_count": 9,
-      "writer_inventory_sha256": "a20234f198e91844dae55155a912f3647b84ec0cef761f879fa3ec5cdc82e457"
+      "writer_inventory_sha256": "12738f606e5cb29be5440c6a4f2ed7b48b4beb4799c33ae508e7e94497985fe2"
     },
     "L5": {
       "asset_prefix": "mi_",

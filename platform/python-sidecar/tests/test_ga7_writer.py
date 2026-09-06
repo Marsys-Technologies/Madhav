@@ -630,13 +630,18 @@ class TestKalachakraSystem(unittest.TestCase):
 # ground truth queried live from chart_facts (graha_position) + chart_divisionals
 # (varga_dignity, D1) for chart 482012f1 / lahiri_chitrapaksha — NOT the old
 # hardcoded dict this fix replaced, which was wrong for 6 of 9 grahas.
+# F-A12 (L1 W3): dignity_d1 values updated from the old "*_sign"-suffixed vocabulary
+# (a leftover of routing through ga_condition_writer's deeptaadi-specific
+# _DIVISIONAL_DIGNITY_NORMALIZE map) to the bare lowercase oracle tier name — the
+# vocabulary get_dashas.ts's own serve-time authority (chart_facts.graha_dignity_per_varga)
+# already used, so the two L1 surfaces stop disagreeing.
 FORENSIC_NATAL_FIXTURE: dict[str, dict[str, Any]] = {
-    "Sun":     {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",        "dignity_d1": "enemy_sign",   "shadbala_total": 3.225},
-    "Moon":    {"house_d1": 11, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada", "dignity_d1": "neutral_sign", "shadbala_total": 2.5607},
-    "Mars":    {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Swati",            "dignity_d1": "neutral_sign", "shadbala_total": 3.106},
-    "Mercury": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha",   "dignity_d1": "neutral_sign", "shadbala_total": 2.5},
+    "Sun":     {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",        "dignity_d1": "enemy",        "shadbala_total": 3.225},
+    "Moon":    {"house_d1": 11, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada", "dignity_d1": "neutral",      "shadbala_total": 2.5607},
+    "Mars":    {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Swati",            "dignity_d1": "neutral",      "shadbala_total": 3.106},
+    "Mercury": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha",   "dignity_d1": "neutral",      "shadbala_total": 2.5},
     "Jupiter": {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",             "dignity_d1": "moolatrikona", "shadbala_total": 2.6598},
-    "Venus":   {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Purva Ashadha",    "dignity_d1": "neutral_sign", "shadbala_total": 2.3592},
+    "Venus":   {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Purva Ashadha",    "dignity_d1": "neutral",      "shadbala_total": 2.3592},
     "Saturn":  {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Vishakha",         "dignity_d1": "exalted",      "shadbala_total": 3.611},
     "Rahu":    {"house_d1": 2,  "sign": "Taurus",      "nakshatra": "Rohini",           "dignity_d1": "exalted",      "shadbala_total": 0.375},
     "Ketu":    {"house_d1": 8,  "sign": "Scorpio",     "nakshatra": "Jyeshtha",         "dignity_d1": "exalted",      "shadbala_total": 0.625},

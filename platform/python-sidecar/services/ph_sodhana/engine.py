@@ -268,8 +268,15 @@ def detect_layer_leakage(anchor: AnchorRow) -> Optional[SodhanaRecord]:
     Returns a record with leakage_class = 'l5_calibration_attempted'.
     The WRITER raises LeakageFirewallError when it sees this record type.
     """
+    # F-14 (L4_W1_ANALYSIS_BATCH_C.md §1.5(c)): the prior `if basis and basis != ...`
+    # let a NULL/empty confidence_basis pass silently -- the truthy check on `basis`
+    # short-circuited before the inequality ever ran. A writer that omits
+    # confidence_basis entirely is exactly the failure mode this firewall exists to
+    # catch (§N.8: a detector that watches a proxy of the claim, not the claim
+    # itself -- here the claim is "confidence_basis IS 'structural_not_yet_empirical'",
+    # and NULL/empty is not that, same as any other wrong value).
     basis = (anchor.confidence_basis or '').strip()
-    if basis and basis != 'structural_not_yet_empirical':
+    if basis != 'structural_not_yet_empirical':
         return SodhanaRecord(
             anchor_id=anchor.anchor_id,
             anomaly_type='layer_leakage',

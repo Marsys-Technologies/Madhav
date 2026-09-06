@@ -5,9 +5,10 @@ Headline deliverable: SIGNED SUPPRESSIVE currents that can SUBTRACT from a
 window's net activation — genuine destructive interference, which
 `services.ka_sangam.engine` (T-3/prior waves' "12 currents") cannot express:
 every current in `ka_sangam.engine.SUPPORTING_WEIGHTS` is additive/saturating,
-and `_c11_vedha_factor` is a NECESSARY-side multiplicative veto (0..1), never
-negative. This module is the first place in the L3 stack a current can push
-a score DOWN below what the additive terms alone would produce (CR-89).
+and `services.ka_sangam.engine._c11_vedha_factor` is a NECESSARY-side
+multiplicative veto (0..1), never negative. This module is the first place
+in the L3 stack a current can push a score DOWN below what the additive
+terms alone would produce (CR-89).
 
 Composition contract for the caller (T-6, serving-layer wiring):
 
@@ -25,16 +26,17 @@ standalone; `compute_trigger_currents` also reports `net` for this module's
 own scope (`additive + suppressive`, unclamped) for direct testing.
 
 READ-ONLY reuse (imports only, zero writes, zero modification):
-  - services.ka_sangam.engine — orb_strength_score, EnrichmentContext,
-    HIGH_CONFIDENCE_ORB_THRESHOLD, and (for the vedha-filter-gap
-    demonstration) the module's own `_c11_vedha_factor`.
+  - services.ka_sangam.engine — orb_strength_score, HIGH_CONFIDENCE_ORB_THRESHOLD.
   - chart_facts saham_position rows written by ga_writers/ga_sensitive_writer.py
     (read via fetch_saham_facts — a plain SELECT with SAVEPOINT guard, no
     writes, mirroring the read pattern in
     pipeline/orchestrator/writers/ka_sangam.py::_build_enrichment_context).
-  - bg_transit_rules vedha rows (passed in by the caller as `vedha_rules`,
-    same shape ka_sangam.py already fetches — this module does not query
-    bg_transit_rules itself, avoiding any duplicate-writer collision).
+
+`vedha_rules`/`vedha_planet` parameters on `compute_trigger_currents` are
+accepted but currently unused (F-SANGAM-5, L3-W3, removed this module's own
+vedha-filter-gap diagnostic — see that function's docstring) — kept on the
+signature rather than removed, to avoid rippling a signature change out to
+`apply_trigger_suppression`'s own caller in ka_sangam.py.
 
 NEVER calls conn.commit()/rollback() — the one DB-reading helper here
 (`fetch_saham_facts`) only ever issues a SAVEPOINT-guarded SELECT; the caller
@@ -53,10 +55,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from services.ka_sangam.engine import (
-    EnrichmentContext,
     HIGH_CONFIDENCE_ORB_THRESHOLD,
     orb_strength_score,
-    _c11_vedha_factor,
 )
 
 logger = logging.getLogger(__name__)
@@ -311,68 +311,20 @@ def saham_current(
     return min(1.0, score)
 
 
-# ── T-5.4: Gochara vedha filter extension (CR-102) ────────────────────────────
-#
-# THE GAP: services.ka_sangam.engine._c11_vedha_factor(planet, transit_house, ctx)
-# treats its `transit_house` argument as "the N-th house counted FROM THE MOON"
-# — that is what bg_transit_rules.primary_house actually encodes (see
-# brahmagyan/l0_transit.py comments: "Jupiter 2nd from Moon", "Saturn 3rd from
-# Moon", etc. — classical Chandra Gochara). But BOTH call sites in
-# services/ka_sangam/engine.py (mode_a_search line ~973, mode_b_sweep line
-# ~1139) pass `transit_sign` — the RASI SIGN NUMBER (1=Aries..12=Pisces) of
-# the transiting planet's absolute zodiacal position — as `transit_house`.
-# Sign number and "house-from-Moon" are the same value only when the native's
-# Moon happens to sit in Aries (sign 1); for every other Moon sign the two
-# numbers diverge, so the vedha lookup is comparing the wrong reference frame
-# and will almost always fail to match a real rule — silently dropping the
-# NECESSARY-side veto for the majority of charts. This is directly consistent
-# with CR-102's "~1/3 of served favourable windows are classically void":
-# the existing filter isn't broken in its DATA (bg_transit_rules is a correct
-# classical table) or its LOGIC (0.3 damp / 1.0 neutral is right) — it is fed
-# the wrong argument at both call sites. This module cannot fix the call
-# sites (ka_sangam/engine.py and ka_sangam.py are out of scope for this
-# lane) — it provides the CORRECTED computation as a standalone function a
-# caller (T-6) can apply alongside (or instead of) `_c11_vedha_factor`.
-
-def house_from_moon(transit_sign_idx_1based: Optional[int], moon_sign_idx_0based: Optional[int]) -> Optional[int]:
-    """
-    Classical Chandra Gochara house number (1-12) of a transiting sign,
-    counted from the natal Moon's sign. CR-87: moon_sign_idx_0based is
-    REQUIRED (0-based index, Aries=0..Pisces=11) — no default, resolved
-    per-chart by the caller (mirrors NativeChartContext.moon_sign in
-    ka_sangam.engine, just expressed as the 0-based index it already implies).
-    """
-    if transit_sign_idx_1based is None or moon_sign_idx_0based is None:
-        return None
-    return ((transit_sign_idx_1based - 1 - moon_sign_idx_0based) % 12) + 1
-
-
-def vedha_factor_corrected(
-    planet: str,
-    transit_sign_idx_1based: Optional[int],
-    moon_sign_idx_0based: Optional[int],
-    vedha_rules: Optional[list[dict]],
-) -> float:
-    """
-    Re-derivation of `_c11_vedha_factor`'s NECESSARY-side veto using the
-    CORRECT house-from-Moon reference frame (see module-level note above).
-    Same output contract as the original: 1.0 = no vedha (neutral),
-    0.3 = vedha rule matched (strongly damp). Read-only re-derivation — does
-    not import or call `_c11_vedha_factor` for its result (imported above
-    only so tests can directly contrast old-vs-corrected on the same input).
-    """
-    if not vedha_rules:
-        return 1.0
-    h = house_from_moon(transit_sign_idx_1based, moon_sign_idx_0based)
-    if h is None:
-        return 1.0
-    for rule in vedha_rules:
-        rule_planet = rule.get("graha") or rule.get("planet")
-        to_house = rule.get("transit_to_house") or rule.get("to_house")
-        vedha_h = rule.get("vedha_house")
-        if rule_planet == planet and to_house == h and vedha_h:
-            return 0.3
-    return 1.0
+# T-5.4 (Gochara vedha filter extension, CR-102) formerly lived here:
+# house_from_moon() + vedha_factor_corrected(), a standalone re-derivation of
+# services.ka_sangam.engine._c11_vedha_factor using the correct house-from-
+# Moon reference frame, for a call site that fed it the wrong (raw sign-
+# number) argument. F-SANGAM-5 (L3-W3) found and fixed a DEEPER defect in
+# the same current: the vedha_rules data source itself
+# (bg_transit_rules WHERE rule_type='vedha') never matched any row at all —
+# 0 of 0, regardless of which reference frame the house number used — and
+# replaced the whole house-number approach with date-range matching against
+# kala_vedha_gochara (the real, populated, per-chart source). That fix
+# supersedes T-5.4's premise entirely (there is no longer a house number for
+# CR-102's "sign vs house-from-Moon" distinction to apply to), so both
+# functions and the diagnostic block that compared them were removed rather
+# than updated to a comparison that would now always show identical values.
 
 
 # ── T-5.5: school_consensus repair-or-honest-flag ─────────────────────────────
@@ -561,8 +513,9 @@ def compute_trigger_currents(
         (a caller composing with ka_sangam should use compose_with_ka_sangam
         instead; `net` here is for standalone testing of this module).
       - components: full per-current breakdown, including the honest
-        school_consensus flag and the vedha-filter-gap comparison
-        (old_vedha_factor vs corrected_vedha_factor) for explainability.
+        school_consensus flag. (F-SANGAM-5, L3-W3: the vedha-filter-gap
+        comparison this used to report was removed — see the comment at
+        this function's former vedha_filter block.)
 
     CR-87: chart_id is REQUIRED (keyword-only, no default) — every entry
     point in this module that could resolve to a specific chart enforces
@@ -628,23 +581,19 @@ def compute_trigger_currents(
         additive_w,
     )
 
-    # ── Vedha-filter extension (CR-102), reported for explainability ──
-    if vedha_planet is not None:
-        old_factor = _c11_vedha_factor(
-            vedha_planet,
-            transit_sign_idx_1based,
-            EnrichmentContext(vedha_rules=vedha_rules),
-        )
-        corrected_factor = vedha_factor_corrected(
-            vedha_planet, transit_sign_idx_1based, moon_sign_idx_0based, vedha_rules
-        )
-        components["vedha_filter"] = {
-            "old_factor_sign_number_bug": round(old_factor, 4),
-            "corrected_factor_house_from_moon": round(corrected_factor, 4),
-            "gap_caught": bool(corrected_factor < old_factor - 1e-9),
-        }
-    else:
-        components["vedha_filter"] = None
+    # F-SANGAM-5 (L3-W3) removed the vedha-filter-gap diagnostic this section
+    # used to report (old_factor_sign_number_bug vs corrected_factor_house_
+    # from_moon): _c11_vedha_factor no longer takes a house/sign-number
+    # argument at all — it matches peak_date against real kala_vedha_gochara
+    # date windows — so the CR-102 "sign-number vs house-from-Moon" contrast
+    # this block existed to demonstrate no longer applies to either function
+    # being compared, and computing it would either crash (wrong argument
+    # type passed to the new _c11_vedha_factor signature) or compare two
+    # calls that are now identical. `vedha_rules`/`vedha_planet` parameters
+    # are kept (not removed from this function's signature) to avoid
+    # rippling a signature change out to apply_trigger_suppression's own
+    # caller in ka_sangam.py — currently unused here, flagged as a
+    # follow-up cleanup rather than silently left unexplained.
 
     # ── school_consensus honest flag (informational — NOT folded into
     #    additive/suppressive; it duplicates ka_sangam's own C13 current and

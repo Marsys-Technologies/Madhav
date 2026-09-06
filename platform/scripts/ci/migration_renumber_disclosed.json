@@ -45,6 +45,15 @@
       "disclosed_on": "2026-08-07"
     },
     {
+      "new_filename": "821_nirmana_l5_mi_vistara_output_digest_spec.sql",
+      "applied_filename": "692_nirmana_l5_mi_vistara_output_digest_spec.sql",
+      "sql_identity": "24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8",
+      "disposition": "already-applied-under-old-name",
+      "reason": "mi_vistara's output_digest_spec was authored and applied to the shared dev DB (amjis-postgres, tracked in _migrations_applied under this exact filename, applied_at 2026-09-05T14:28:13.291668Z) as 692_nirmana_l5_mi_vistara_output_digest_spec.sql on the L5 NIRMANA campaign lane's branch. That number collided with an unrelated, independently-authored L0 migration also numbered 692 (692_bg_doshas_integrity_check_join_scope_fix.sql), which merged to main first (2026-09-05T15:37:05Z) — a genuine authoring-time numbering race between two parallel campaign lanes, not a mistake on either side; both are tracked fine in _migrations_applied by their distinct full filenames, so nothing was ever functionally broken. Found by an independent migration-guard subagent review dispatched for an unrelated migration (806) and self-filed by the L5 session on its own PR (#1844). Renumbered to 808 initially (main tip was then 807), then AGAIN to 810 after main independently claimed 808 too (a fast-moving concurrent L1 lane landed 806/807/808 within minutes), then AGAIN to 812 after main claimed 810 too -- each time caught live before this PR's checks reached the guard. Root cause diagnosed by Conductor ruling on adjudication #2086: L5 was falling back to 'next free number globally' instead of using its own granted range (690-699), landing repeatedly inside L1's actively-churning 780-819 continuation block. Conductor granted L5 a fresh continuation, 820-839 (#2086 ruling, 2026-09-06), and this is the FINAL renumber into that safe range -- 821, L5's own reserved territory, distinct from sibling PR #1826's 820 in the same range. The SQL content is byte-identical apart from the -- Migration NNN: header comment (stripped by sqlIdentityOf, confirmed identical sql_identity before and after rename). The shared dev DB already has this row; the runner should record 821 as applied without re-executing.",
+      "disclosed_via": "L5 NIRMANA campaign lane, self-diagnosed via migration-guard subagent review of an unrelated sibling migration (806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql), 2026-09-06 — filed on PR #1844 before merge, not a post-merge deploy failure",
+      "disclosed_on": "2026-09-06"
+    },
+    {
       "new_filename": "820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
       "applied_filename": "806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
       "sql_identity": "2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102",
