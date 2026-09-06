@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:41Z (C8 v2.3 cycle 196) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
+  fresh check run from cycle 195's push (started 00:38-00:39Z, only ~2 min old at check time),
+  same 3 checks in-progress (Unit/DB Integration/Governance Gates), no failures, auto-merge
+  armed. #1844 confirmed `isInMergeQueue: true`. Queue positions unchanged from cycle 195
+  (#1861=7, #1844=64, #1901=90) — expected given the short interval. #1869 unchanged at 3
+  comments; #1856 still OPEN. No eligible dispatch.
 - 2026-09-06T00:40Z (C8 v2.3 cycle 195) — **IDLE-OK, verified.** PR hygiene: #1826 clean —
   same 3 checks pending (Unit/DB Integration/Governance Gates), no failures, auto-merge armed.
   #1844 confirmed `isInMergeQueue: true`. Queue resumed moving: #1861=7 (was 9), #1844=64
