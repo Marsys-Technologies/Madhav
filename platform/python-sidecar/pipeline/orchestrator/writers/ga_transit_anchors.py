@@ -8,7 +8,11 @@ Each sub-step:
   2. INSERT natal position anchors from chart_facts
 
 FORENSIC assertion (canonical chart only):
-  Moon natal_sign must be 'aquarius' for chart_id 482012f1-710e-4a25-994a-93821f5871aa.
+  Moon natal_nakshatra must be 'purva bhadrapada' for chart_id
+  482012f1-710e-4a25-994a-93821f5871aa (F-D22: nakshatra is the true ayanamsha-invariant
+  anchor; Moon's sign varies legitimately between Aquarius/Pisces across the 5 ayanamshas
+  since Purva Bhadrapada straddles that sign boundary -- the prior sign-based assertion was
+  build-fatal for a correct value under surya_siddhanta_classical).
 
 Conforms to the FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2).
 """
@@ -110,7 +114,7 @@ class GaTransitAnchorsWriter(WriterBase):
                 WHERE chart_id     = %s
                   AND ayanamsha_id = %s
                   AND fact_category IN ('graha_position', 'graha_sign_attributes')
-                  AND fact_key IN ('sign', 'longitude_sidereal')
+                  AND fact_key IN ('sign', 'longitude_sidereal', 'nakshatra')
                 """,
                 (chart_id, ayanamsha_id),
             )
@@ -124,6 +128,8 @@ class GaTransitAnchorsWriter(WriterBase):
                     positions[graha]["natal_sign"] = val_text.lower()
                 elif key == "longitude_sidereal" and val_num is not None:
                     positions[graha]["natal_degree_absolute"] = float(val_num)
+                elif key == "nakshatra" and val_text:
+                    positions[graha]["natal_nakshatra"] = val_text.lower()
 
         if not positions:
             logger.warning(
@@ -138,14 +144,22 @@ class GaTransitAnchorsWriter(WriterBase):
             )
 
         # ── FORENSIC assertion for canonical native chart ─────────────────────
+        # F-D22 (L1_W2_DECIDE_v1_0.md §5.1): this used to assert Moon natal_sign == 'aquarius',
+        # but Moon's nakshatra (Purva Bhadrapada) straddles the Aquarius/Pisces sign boundary --
+        # under surya_siddhanta_classical the Moon correctly falls in Pisces (confirmed live: the
+        # other four ayanamshas agree on Aquarius, this one alone on Pisces, while all five agree
+        # on nakshatra=Purva Bhadrapada). A sign-based assertion is ayanamsha-dependent and was
+        # build-fatal for a value that varies for a correct reason; CLAUDE.md's own FORENSIC
+        # anchor for the Moon is nakshatra, not sign. Asserting the true ayanamsha-invariant
+        # anchor instead.
         if chart_id == CANONICAL_CHART_ID:
-            moon_sign = positions.get("moon", {}).get("natal_sign", "")
-            if not moon_sign or moon_sign != "aquarius":
+            moon_nakshatra = positions.get("moon", {}).get("natal_nakshatra", "")
+            if not moon_nakshatra or moon_nakshatra != "purva bhadrapada":
                 raise AssertionError(
-                    f"FORENSIC VIOLATION: Moon natal_sign={moon_sign!r} "
-                    f"but expected 'aquarius' for chart_id={CANONICAL_CHART_ID} "
+                    f"FORENSIC VIOLATION: Moon natal_nakshatra={moon_nakshatra!r} "
+                    f"but expected 'purva bhadrapada' for chart_id={CANONICAL_CHART_ID} "
                     f"ayanamsha={ayanamsha_id}. "
-                    "Moon absent or wrong sign — check ga_positions build for this chart."
+                    "Moon absent or wrong nakshatra — check ga_positions build for this chart."
                 )
 
         # ── Resolve Moon sign for house-from-Moon computation ─────────────────
