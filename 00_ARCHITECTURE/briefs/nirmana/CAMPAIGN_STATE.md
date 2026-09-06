@@ -380,6 +380,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:34:01Z` — cycle 566: **ONE bounded unit: fixed #2137 — FROZEN orchestrator
+  preflight false-positive blocking `mi_kula`'s dispatch (and any asset whose
+  `depends_on` isn't stored alphabetically).** `_verify_registry_still_matches_manifest`
+  compared live `asset_registry.depends_on` (authored order) against the frozen manifest's
+  `depends_on` (always sorted) with ordered-list equality. Confirmed live via SQL:
+  `mi_kula`'s depends_on is `["bg_rules", "bg_class_priors"]` — correct, just unsorted.
+  **Fix**: sort both sides before comparing. Verified via independent `code-reviewer`
+  subagent (PASS) that no consumer of `depends_on` anywhere in the codebase is order-
+  sensitive, and that this matches an already-established sorting convention (TS
+  authority + `dispatch_nirmana_campaign_wave.py` both already sort for the same reason)
+  — not inventing a new one. Added a regression test; confirmed the existing true-positive
+  drift test still fails closed correctly (7/7 + 17/17 adjacent tests pass). Shipped as
+  **PR #2139** on a fresh branch off `origin/main`, auto-merge armed. Posted the fix
+  writeup on #2137, directed L5 to retry `mi_kula`'s dispatch once it merges. Fleet DIRTY:
+  empty (not re-swept this cycle, single bounded unit spent here).
 - `2026-09-06T17:28:24Z` — cycle 565: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (18). Nothing rose to a bounded unit.
 - `2026-09-06T17:26:20Z` — cycle 564: **IDLE-OK.** Fleet DIRTY: empty. No new
