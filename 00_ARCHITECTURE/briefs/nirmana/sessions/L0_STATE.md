@@ -2430,3 +2430,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** #1977 merged (`f5434867b`, L1, not L0's) — resolved normally. Positions
   dropped by 2 (38/45/46/67). No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (main HEAD unchanged, no active merge-queue entry found
+  momentarily). No DIRTY, no RED. 30/40 frozen holds.
