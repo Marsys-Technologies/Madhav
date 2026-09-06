@@ -2449,3 +2449,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **RESOLVED: runner backlog cleared, queue moving again.** New queue head #1986
   appeared with 9 checks freshly `in_progress` (~1min in), positions dropped by 2 (28/35/36/57) —
   confirms the earlier self-resolving prediction. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; queue head still #1986, ~3min in_progress, normal. No
+  DIRTY, no RED. 30/40 frozen holds.
