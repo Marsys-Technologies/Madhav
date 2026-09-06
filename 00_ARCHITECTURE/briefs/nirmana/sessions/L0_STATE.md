@@ -3469,3 +3469,6 @@ session's to resolve.
   (`unknown_reasons: ['output_digest_spec_unavailable']`), not `'proven'`, so
   `accepted_rebuild_observed`'s requirement is still genuinely unmet. Blocker confirmed still
   valid, no change in eligibility. No open L0 PRs, no new eligible work. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no new eligible work. 36/40 frozen
+  unchanged.
