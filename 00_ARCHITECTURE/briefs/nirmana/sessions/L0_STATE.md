@@ -3650,3 +3650,7 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
   confirmed via direct GraphQL `mergeQueueEntry` instead (position 5, state `QUEUED`) — genuinely
   queued. 36/40 frozen unchanged; next cycle: confirm merged, confirm deployed live, then dispatch
   bg_yogas (37/40).
+
+- 2026-09-06 — **IDLE-OK.** `#2115` queue entry showed `UNMERGEABLE` transiently (position 5) --
+  checked its own merge-group CI directly: 2/3 checks passed, 1 in progress, genuinely healthy.
+  Not a real conflict, just a mid-evaluation snapshot. No DIRTY/RED. 36/40 frozen unchanged.
