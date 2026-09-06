@@ -461,6 +461,61 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~08:0xZ — L3-W3 — NINETEENTH DIRTY-PR fix this run: #1940 (F-BHAV-2/
+  F-BHAV-3, ka_bhavishya_lekha tier_basis/order-by).** Triple conflict same shape as
+  #1903/#1913: L3_STATE.md + the layer-pins file conflicted, `ka_bhavishya_lekha.py`
+  itself and the writer-digests file both auto-merged cleanly (confirmed correct by
+  regenerating anyway, zero diff). Resolved via the established script (verified exactly
+  1 surviving occurrence of the PR's own heading, no duplication of the body reference).
+  Verified `test_ka_bhavishya_lekha.py` + `test_ka_bhavishya_a4_fixes.py` (45/45), full
+  `tests/l3/` (1428 passed, 0 failures), both `--check` invocations exit 0, `tsc --noEmit`
+  clean. Force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  Also re-learned this cycle's own lesson: a stash captured before a rebase does NOT
+  reapply cleanly onto content that has since been resolved differently (same orphaning
+  as the #2034/#1934 cycle) — caught it again via `git diff` before committing, correctly
+  discarded and wrote this entry fresh rather than trust the stash.
+  Nineteen DIRTY-PR fixes total this run. #1903 (F-CONC-6 prerequisite) still not merged.
+  #1958/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~07:1xZ — L3-W3 — SEVENTEENTH AND EIGHTEENTH DIRTY-PR fixes this run:
+  #1936 (F-DARSH-2, ka_kala_darshana mode label) and #1938 (F-PARVA-2, registry volume
+  explanation).** #1936 was the `ka_kala_darshana`-writer generated-file shape
+  (`ka_kala_darshana.py` itself + writer-digests auto-merged cleanly, only the pins file
+  conflicted — confirmed correct by regenerating, zero diff); #1938 was migration-only +
+  L3_STATE.md, no writer file so no re-pin needed. Both had 2-3 commits to rebase (this
+  session's own earlier state-sync commits stacked on top of the actual fixes), both
+  resolved cleanly with no further conflicts after the first. Verified:
+  `test_ka_kala_darshana.py` (30/30) + full `tests/l3/` (1427 passed, 0 failures) for
+  #1936, both `--check` invocations exit 0; `test_migration_678_parva_volume_
+  explanation.py` (6/6 incl. 2 live-DB integration tests) for #1938. `tsc --noEmit` clean
+  on #1936. Both force-pushed, both re-armed auto-merge, both confirmed `MERGEABLE`.
+  Eighteen DIRTY-PR fixes total this run. #1903 (F-CONC-6 prerequisite) still not merged.
+  #1958/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~06:5xZ — L3-W3 — SIXTEENTH DIRTY-PR fix this run, and a real merge:
+  #1934 (F-KALA-1 third slice, kala_ahead_get recurrence-ladder) genuinely MERGED**
+  (`2026-09-06T02:33:50Z`, the first confirmed merge since #1935 several cycles ago) —
+  and its own merge conflicted this cycle's own state PR (`#2034`) on `L3_STATE.md`, same
+  established shape. Fixed via the usual pattern: stashed the held local edit first, then
+  discovered the stash didn't reapply cleanly post-rebase (same orphaning risk as the
+  original L3_STATE.md conflicts) — correctly discarded it and wrote this entry fresh
+  rather than fight a bad reapply. Force-pushed, re-armed auto-merge, confirmed
+  `MERGEABLE`.
+  #1903 (F-CONC-6 prerequisite) still not merged. #1958/sidecar-traffic/#1960 unchanged.
+
+- `2026-09-06T~06:3xZ — L3-W3 — IDLE-OK: full house again — all 46 open L3 PRs
+  genuinely `is:queued`, `#1903` still among them but still not merged.** Refined the
+  drain-rate finding: `git log origin/main` shows the tip has only advanced ONE commit
+  (#1935) since the last check several cycles ago (`18:22:05Z` → `19:31:22Z`, ~69 minutes
+  for one merge) — slower than the raw per-PR CI duration alone would suggest (6-12min),
+  meaning the queue's real-world throughput includes additional overhead beyond CI time
+  (batch coordination, `min_entries_to_merge_wait_minutes: 5`, or contention from other
+  repos'/lanes' PRs sharing the same queue). Not a new escalation — already covered by
+  the #1713 post — just a more precise number for expectations going forward: at ~1
+  merge/hour with 46+ PRs queued, #1903 reaching the front could genuinely take many
+  hours. #1958/sidecar-traffic/#1960 unchanged.
+  Routing to a fresh branch since `#2032` just locked.
+
 - `2026-09-06T~04:3xZ — L3-W3 — THIRTEENTH, FOURTEENTH, FIFTEENTH DIRTY-PR fixes this
   run — three at once: #1929 (F-VIGHNA-3), #1931 (F-KALA-1 first slice), #1932 (F-KALA-1
   second slice).** #1929 was the `ka_sangam`-adjacent-family shape (L3_STATE.md + the
