@@ -2459,3 +2459,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** #1986 dropped out of queue (back to `CLEAN`/`OPEN`, not merged, not
   L0's — an L1 integrity-check PR); replaced at head by #1987, ~2min into CI. Positions dropped by
   1 (27/34/35/56). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change (positions flat, queue head still #1987, ~4.7min in_progress,
+  normal). No DIRTY, no RED. 30/40 frozen holds.
