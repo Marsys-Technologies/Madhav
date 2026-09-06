@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:09Z (C8 v2.3 cycle 402) — **IDLE-OK.** #1826 unchanged (Governance Gates,
+  ~9.4 min in, no failures, armed — normal duration). #1844 confirmed `isInMergeQueue:
+  true`. #1869 unchanged at 4 comments. 4 cycles since last push.
 - 2026-09-06T11:06Z (C8 v2.3 cycle 401) — **IDLE-OK, verified mi_kula's E-gate again.**
   #2066 merged (L0: bg_dasha_systems D-L0-GG follow-up, real commit vs rolled-back
   replay). Checked live: still 0 of 3 asset_frozen events for
