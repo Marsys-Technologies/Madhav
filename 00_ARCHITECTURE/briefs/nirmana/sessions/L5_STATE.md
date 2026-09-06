@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:14Z (C8 v2.3 cycle 209) — **#1861 IS NOW POSITION 1 — imminent merge.**
+  origin/main advanced (#1920 merged), confirming last cycle's job-level progress read was
+  correct. #1861 (Conductor's fix for #1856/mi_jivanaghatana blocker) has climbed to the
+  very front of the queue; once it merges, `mi_jivanaghatana`'s solo dispatch can be
+  retried. Both own PRs still `isInMergeQueue: true`, clean, no hygiene action needed.
+  #1844=56 (was 57), #1901=82 (was 83). #1869 unchanged at 3 comments; #1856 still OPEN
+  (expected — will close only when #1861 actually merges). 13 cycles now batched locally
+  unpushed.
 - 2026-09-06T01:12Z (C8 v2.3 cycle 208) — **IDLE-OK, verified not stalled (4th static
   cycle).** Position-1 PR #1920's `Governance Gates` job checked at job level: 14/16
   sub-jobs completed SUCCESS, only that one job in_progress (on the pytest step), ~10 min
