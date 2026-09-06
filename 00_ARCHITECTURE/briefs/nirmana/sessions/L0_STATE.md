@@ -2400,3 +2400,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   failure (duplicate-key on `message_parts`/`CREATE TABLE` race). Independent confirmation the
   earlier root-cause read (test-isolation race, not an L0 defect) was correct. Positions dropped by
   2 (42/49/50/71). No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; new queue head #1975, ~4min in, normal. No DIRTY, no RED.
+  30/40 frozen holds.
