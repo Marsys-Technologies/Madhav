@@ -457,6 +457,17 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:54Z (C8 v2.3 cycle 201) — **#1826 QUEUED — the cycle-197 fix worked.**
+  `mergeStateStatus: CLEAN`, all checks passed (0 `notDone`, 0 failed), and it self-armed and
+  entered the queue on its own (`isInMergeQueue: true`) without any push from me this cycle —
+  confirms withholding push across cycles 197-200 let the run finish for the first time in
+  this stretch. Position beyond the top-100 GraphQL page (freshly queued at the back, as
+  expected for any fresh entry). **Still deliberately NOT pushing this cycle** — pushing now
+  while it's genuinely queued would eject it via the known push-while-queued dequeue pattern,
+  and there's nothing new to push anyway (this heartbeat entry is the only local change).
+  #1844 still confirmed `isInMergeQueue: true`. Queue: #1861=4, #1844=59, #1901=85 (all
+  unchanged — short interval since last check). #1869 unchanged at 3 comments; #1856 still
+  OPEN. No eligible new dispatch.
 - 2026-09-06T00:51Z (C8 v2.3 cycle 200) — **IDLE-OK, still withholding push/rebase (4th
   cycle).** #1826's `Governance Gates` job checked at STEP level (not just wall-clock) to
   confirm real progress, not staleness: 12/15 steps completed successfully, currently on
