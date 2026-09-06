@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 102; closed D-L1-105's own deferred follow-up — migration 842 backfills fact_category_ownership's 7 missing ga_structural Bhava Bala rows, closing F-C9 (count_sql undercount) at its root
+last_updated: 2026-09-06 — C8 v2.3 cycle 103; closed F-B18/F-B19 — ga_nakshatra's named tool (ganita_nakshatra_get) never had an implementation; added get_nakshatra.ts (PR #2118), ~2,847 rows/16 categories now directly servable for the first time this campaign
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3363,7 +3363,7 @@ none accepted yet (blocked on #1736).
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A) |
-| ga_nakshatra | 2,847 / 1,802 | rebuild_only | `ganita_nakshatra_get` does not serve it (F-B18); F-A14 integrity_check_sql (#1959) |
+| ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959) |
 | ga_panchanga | 437 / 221 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99 |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
@@ -6791,3 +6791,53 @@ L1 must satisfy rather than a feature it consumes.
   summary table already tracked -- next: continue checking L1_W2_DECIDE_v1_0.md §3's remaining
   MUST findings (F-A9/F-B1/F-D14/F-E1/F-E15 floor re-baselines, F-C2 through F-C7's D-SALIENCE
   feed items) for any others left similarly half-closed.
+- 2026-09-06T21:0xZ -- CYCLE 103 (C8 v2.3). PR hygiene: #2116/#2112 both healthy mid-CI
+  (`mergeable: MERGEABLE`, `autoMergeRequest` armed, only IN_PROGRESS checks) -- nothing DIRTY/
+  RED/unqueued-but-clean. No ruling yet on #2113's asset_freshness follow-up -- not blocking.
+  Unit of work: continued the W2 DECIDE findings sweep cycle 102 flagged as its own follow-up.
+  Checked the 5 floor re-baselines (F-A9/F-B1/F-D14/F-E1/F-E15) FIRST via direct `asset_registry.
+  target_floor` + live `count_sql` re-execution for all 5 assets (`ga_dashas`/`ga_sensitive`/
+  `ga_sade_sati`/`ga_ayurdaya`/`ga_tajaka`) -- all 5 confirmed ALREADY genuinely re-baselined
+  (achieved >= floor in every case, live-verified, not assumed): e.g. `ga_dashas` floor is
+  471,767 in the registry today, not the OLD asset table's stale 536,471 (achieved 483,859 either
+  way) -- these were done long ago; only the decorative "Asset table (19 assets)" section's OWN
+  numbers (a frozen W1/W2-era snapshot whose own header still says "Routes are W2 proposals from
+  W1 -- none accepted yet (blocked on #1736)", itself long-resolved) never got refreshed. Judged
+  this a lower-priority cosmetic staleness (the numbers shown are informational only -- live
+  behavior reads `asset_registry` directly, not this markdown table) and moved on rather than
+  chase a full table-number refresh. Checked the D-SALIENCE cluster (F-C2/C3/C4/C5/C7) next --
+  traced each to its ACTUAL code location via `L1_W1_ANALYSIS_BATCH_C.md`'s own evidence column:
+  every one of them is `bo_laksana.py`/`formulas.py` (L2 Bodha consumer code), not any L1 writer.
+  Per §N.5 ("L1 is the authority; consumer must inherit, not reinterpret") and this session's own
+  mandate framing ("argala/AV/vargottama source facts VERIFIED"), L1's obligation here is that
+  the SOURCE FACTS are correct -- already established via `argala_natal_matrix`/
+  `vargottama_per_varga`/`net_argala_per_varga`'s own F-A14 integrity contracts -- not fixing an
+  L2 consumption bug; correctly out of L1's lane, not a gap. Checked F-D9 (`ga_vichara` DRAFT
+  status) directly: `catalog_status` is `CURRENT` live, already fixed (just filed under a
+  shortened "(F-D)" tag in the log rather than "F-D9" verbatim). **Found a genuinely open one**:
+  F-B18/F-B19 -- confirmed live that NO `get_nakshatra.ts`-equivalent file exists anywhere in
+  `platform/src/lib/retrieval/registry/layers/L1_ganita/` (every other major L1 asset has its own
+  dedicated `get_*.ts`; `ga_nakshatra` has none), and that 15 of its 16 owned fact_categories
+  don't appear ANYWHERE in `coverage_matrix.ts` (the 16th, `nakshatra_cross_ayanamsha`, is mapped
+  to the wrong tool, `get_positions`) -- the tool named for this asset genuinely never existed,
+  not merely misrouted. Shipped `get_nakshatra.ts` (PR #2118), mirroring `get_sensitive_points.
+  ts`'s shape (category/domain/ayanamsha filters, offset/limit pagination) -- domain groups
+  (identity/kp/relational/strength/meta) exist specifically because the full unfiltered row count
+  (~2,847) exceeds the shared 2000-row page cap, discovered live while writing the companion test
+  (first draft asserted all categories reachable in one flat call; `nakshatra_dispositor` fell
+  outside the page window purely from alphabetical ordering -- fixed the TEST to reflect the
+  REAL, intended usage pattern -- partition by domain -- rather than raise the cap past what
+  sibling tools share). Companion integration test (3 cases, live DB) confirmed all 16 categories
+  reachable via their domain, ayanamsha/domain filters both narrow correctly. `tsc --noEmit`
+  clean; full `src/lib/retrieval/registry/` suite (161 files, 1490 passed, 146 skipped) clean;
+  `provenance_inventory --check` + L1 pin: clean (TS-only, no writer touched). Deliberately did
+  NOT touch `coverage_matrix.ts`'s broader drift (169 vs 219 live categories, F-B32/F-B33) --
+  same "close the concrete gap, leave the documented larger follow-up for its own cycle"
+  discipline as D-L1-105/842. Opened PR #2118 with base:main directly, armed auto-merge, confirmed
+  genuine CI dispatch via actions/runs (6 runs) before ending the cycle. CYCLE 103 L1: PR hygiene
+  clean, swept 5 floor findings (already closed, just cosmetically stale) + 5 D-SALIENCE findings
+  (correctly out of L1's lane, L2's to fix) + 1 catalog_status finding (already closed) in one
+  pass, then closed a genuinely open one (F-B18/F-B19, ga_nakshatra's missing serving face) --
+  next: continue the sweep with F-B26/F-B31 (ga_panchanga FORENSIC anchors), F-D21/D22/D23
+  (ga_transit_anchors), F-E16/E17 (ga_tajaka), F-E21/E22 (ga_prashna) -- the remaining
+  zero-mention findings from cycle 102's initial scan.
