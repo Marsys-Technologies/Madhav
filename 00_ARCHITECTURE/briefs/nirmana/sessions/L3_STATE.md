@@ -458,6 +458,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~08:0xZ — L3-W3 — Two genuinely DIRTY PRs this cycle, including `#1903`
+  itself (the F-CONC-6 prerequisite this whole session has been tracking) — same
+  inverted conflict shape as `#1897`, correctly diagnosed rather than assumed.**
+  `#1903` finally reached the front of the queue and, at its turn, apparently hit a
+  conflict against `origin/main`'s advanced tip (`dfc7b0a7c` merged since last check) —
+  triple conflict: `L3_STATE.md` (the same `ours`-real/`theirs`-empty inverted shape as
+  #1897 — diagnosed via `git checkout --conflict=merge` before touching anything, kept
+  `ours`' 540 real lines, confirmed zero lines lost vs `origin/main`) + both generated
+  pin/digest files (`ka_sangam` family, same as #1883/#1887/#1890 — `engine.py`/its test
+  auto-merged cleanly, only `ka_sangam`'s hash actually changed on regeneration, both
+  `--check` invocations exit 0). `test_ka_sangam.py` + `test_u3_convergence_currents.py`
+  138/138 pass, `tsc --noEmit` clean on both packages, full `tests/l3/` 1425 passed (same
+  3 pre-existing unrelated `ka_kshetra` failures). **`#1989`** (this cycle's own earlier
+  DIRTY-fix-note PR) also went DIRTY as a knock-on — standard shape, L3_STATE.md-only,
+  resolved the same way. Both force-pushed, re-armed auto-merge, confirmed `MERGEABLE`.
+  `#1903` not yet re-queued as of this entry (expected — checks re-running after the
+  force-push); will re-verify next cycle. This state-tracking branch itself rebased
+  cleanly (17 commits) onto `origin/main`'s new tip before this entry.
+
 - `2026-09-06T~07:0xZ — L3-W3 — IDLE-OK: `#1903` still at position 2, confirmed genuinely
   active not stalled (live CI run on #1988's merge-group branch, started ~8min prior via
   `gh run list`).` PR hygiene clean. `#2060`/`origin/main` tip unchanged.
