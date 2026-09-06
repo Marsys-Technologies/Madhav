@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:15Z (C8 v2.3 cycle 426) — **IDLE-OK, still holding on #1826.** Down to 3 checks
+  pending (from 4), no failures — progressing normally, still not pushing to it. #1844 still
+  genuinely queued. Main's migration tip unchanged. #1869 and `mi_kula`'s remaining ancestors both
+  unchanged.
 - 2026-09-06T13:10Z (C8 v2.3 cycle 425) — **IDLE-OK, deliberately not touching #1826.** Heeding
   last cycle's own pacing lesson: #1826 is mid fresh-CI-run (4 checks pending, no failures) after
   the accidental reset, so no push/commit-adjacent action on it this cycle regardless of the
