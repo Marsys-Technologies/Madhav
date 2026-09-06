@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 118; closed F-D25 (PR #2145) — get_transit_anchors.ts genuinely grounds to L1 facts now: re-derived the writer's own chart_facts filter at serve time (the writer doesn't persist source fact_id) rather than fabricating grounds_to.l1_fact_ids:true; verified live every served row's constituent_fact_ids resolve to real matching rows
+last_updated: 2026-09-06 — C8 v2.3 cycle 119; closed F-E2/F-E3 (PR #2146) — get_ayurdaya.ts omitted fact_value_jsonb (maraka_grahas/per_graha/lagna_years all unreachable); added it and promoted harana_status from buried-in-jsonb to an honestly-derived top-level field
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3374,7 +3374,7 @@ none accepted yet (blocked on #1736).
 | ga_vichara | 8,249 / 8,249 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D), already fixed (`catalog_status` confirmed `CURRENT` live, cycle 103); F-A14 integrity_check_sql (#1967). F-D10 **FIXED (cycle 109, migration 846)** — `target_floor` was 8,240, nine short of the finding's own derived model (8,249); never surfaced as a build failure since achieved already exceeded the stale floor. F-D12 (`ga_vichara` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 307s (n=18). F-D11 **FIXED (cycle 115, PR #2141)** — `get_vichara.ts`'s `ORDER BY vichara_family, domain NULLS FIRST, subject` was a non-total order; confirmed live 1,595 `valence_pass` rows/ayanamsha share this exact sort key (SAT/MAR/JUP each 1,595-way tied); added `ayanamsha_id, varga_id NULLS FIRST, id` (PK) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists). F-D20 **FIXED (cycle 117, PR #2144)** — the shared `ORDER BY fact_category, ayanamsha_id, fact_key` (both `all:true` and the default path's underlying fetch) was a non-total order; confirmed live 48 rows share the sort key for several combinations (e.g. `sade_sati_phase_quarter`/krishnamurti/`quarter_end_iso`); added `fact_subject, fact_id` (PK). Same file as F-D18's still-open PR #2142 -- expect a small merge conflict on whichever lands second |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows |
-| ga_ayurdaya | 130 / 130 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed |
+| ga_ayurdaya | 130 / 130 | rebuild_only | F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix |
@@ -7284,3 +7284,28 @@ L1 must satisfy rather than a feature it consumes.
   grounding claim rather than asserting it -- next: continue the remaining ~5 NOW claims
   (F-E2/F-E8/F-E19/F-E28) plus F-D18/F-D20's expected merge-order conflict once one of them
   actually queues.
+- 2026-09-06T23:4xZ -- CYCLE 119 (C8 v2.3). PR hygiene: no PR genuinely `is:queued` at check
+  time, but all open mine (#2145/#2144/#2132) confirmed mid-CI with nothing failing -- nothing
+  DIRTY/RED/unqueued-but-clean. Unit of work: tenth of the remaining NOW claims -- F-E2 +
+  F-E3 together (`ga_ayurdaya`, both NOW, same root cause, same file). F-E2: confirmed still
+  live that `get_ayurdaya.ts`'s SELECT never included `fact_value_jsonb`, making
+  `maraka_grahas` (2nd/7th significators), `per_graha` contributions, and `lagna_years`
+  completely unreachable despite the writer already computing and storing all of it --
+  closed by adding the column. F-E3: `harana_status` (a real, correct "reductive haranas not
+  yet applied" disclosure) lived ONLY inside that same omitted jsonb, so no consumer could
+  ever see it -- verified live first (all 3 methods' total_years rows carry the identical
+  string `base_only_haranas_deferred_to_w3` on the canonical chart) before promoting it to a
+  top-level response field, honestly DERIVED from the actual served rows each call (never
+  hardcoded) -- reports as an array rather than silently collapsing if a future page ever
+  carries divergent values across methods, and is simply absent (not fabricated) when no
+  total_years row happens to be on the page. 3 mock unit tests (including the divergent-
+  values honesty case) + 1 live-DB integration test confirming both the jsonb reachability
+  and the harana_status match against production. No allowlist entry existed for this file,
+  so no line-drift risk to check this time. `npx tsc --noEmit` + `npx eslint` clean;
+  `check_fact_category_pinning.py` exits 0, `--self-test` passes; `npx vitest run --project
+  node src/lib/retrieval/registry/layers/L1_ganita/` -- 129 passed, no regressions. No writer
+  touched. Opened PR #2146 directly off `origin/main`, armed auto-merge, confirmed genuine CI
+  dispatch (35 check-runs) before ending the cycle. CYCLE 119 L1: PR hygiene clean, closed two
+  findings in one migration since they shared a root cause and a file -- next: continue the
+  remaining ~3 NOW claims (F-E8/F-E19/F-E28); keep watching for the F-D18/F-D20 merge-order
+  conflict.
