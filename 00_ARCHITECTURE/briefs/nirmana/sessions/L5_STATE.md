@@ -457,6 +457,64 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T17:10Z (C8 v2.3 cycle 473) — **Milestone: `#2103` MERGED — the fourth state-recovery
+  PR closed out.** Fourth recurrence of the exact same pattern (cycles 442, 453, 461, now 473):
+  found via routine hygiene check (`mergedAt` set, right at the same moment as the check —
+  confirmed via the queue's own `merge_group` runs completing SUCCESS moments before). 11 more
+  local-only commits (cycles 462-472, 49 lines, single-file) recovered via patch-onto-fresh-branch
+  onto `codex/nirmana-l5-heartbeat-recovery-5`. `mi_kula`'s remaining ancestors unchanged. **Both
+  frozen assets (`mi_vistara`, `lel_events`) and this state-file recovery are now the entirety of
+  this cycle's L5-specific news** — no other outstanding blockers remain open for L5 this session
+  beyond `mi_kula`'s E-gate wait.
+- 2026-09-06T17:05Z (C8 v2.3 cycle 472) — **IDLE-OK, verified genuine active build not a stall.**
+  #2103 held position 1 for 3 cycles, so checked `gh run list` for its actual `merge_group` runs
+  directly (by branch name `gh-readonly-queue/main/pr-2103-*`) rather than trusting position alone
+  — found a real IN_PROGRESS build (started 13:55:32Z) with two sibling checks already SUCCESS for
+  the same merge-base sha, plus an earlier full-SUCCESS attempt at 13:50:57Z that must have been
+  superseded when another candidate landed ahead and shifted the speculative merge base. Genuine
+  ongoing queue mechanics, not a wedge. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T17:00Z (C8 v2.3 cycle 471) — **IDLE-OK.** #2103 still at queue position 1,
+  `AWAITING_CHECKS` — building, not stalled. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T16:55Z (C8 v2.3 cycle 470) — **IDLE-OK.** #2103 still queued, no failures. Noted:
+  main's own commit message flags migration 819 as "LAST in 800-819 range" — L1's continuation
+  block is now exhausted; they'll presumably need their own new grant soon (same #2086 pattern
+  L5 already went through). Not L5's problem to solve, just worth watching in case whatever range
+  L1 gets next happens to overlap L5's 820-839. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T16:50Z (C8 v2.3 cycle 469) — **IDLE-OK, #2103 now at queue position 1** — next in
+  line. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T16:45Z (C8 v2.3 cycle 468) — **IDLE-OK.** #2103 at queue position 4, still queued.
+  `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T16:40Z (C8 v2.3 cycle 467) — **IDLE-OK.** #2103 still queued, no failures. `mi_kula`'s
+  remaining ancestors unchanged.
+- 2026-09-06T16:35Z (C8 v2.3 cycle 466) — **#2103 CLEAN-but-unqueued, fixed.** All checks passed,
+  queued immediately, re-verified re-entry (`isInMergeQueue: true`, `CLEAN`). `mi_kula`'s remaining
+  ancestors unchanged.
+- 2026-09-06T16:30Z (C8 v2.3 cycle 465) — **IDLE-OK.** #2103 unchanged, still on its last check, no
+  failures — consistent with normal Governance Gates timing. `mi_kula`'s remaining ancestors
+  unchanged.
+- 2026-09-06T16:25Z (C8 v2.3 cycle 464) — **IDLE-OK.** #2103 down to its last check, no failures.
+  Main landed migration 818 (L1, inside its own range) — no collision. `mi_kula`'s remaining
+  ancestors (`bg_rules`, `bg_yogas`) still unfrozen, no change.
+- 2026-09-06T16:20Z (C8 v2.3 cycle 463) — **`lel_events` is ALSO FROZEN — the campaign's first
+  `source_accepted`-route asset to reach `asset_frozen`**, independently re-confirmed via direct DB
+  read. L5 now has 2 frozen assets (`mi_vistara`, `lel_events`), both reached entirely through the
+  chart_grants-unblock chain this cycle-window: migration 647 applied → two independent
+  `integrity_verified` submissions → two independent `asset_frozen` submissions, implementer≠
+  certifier held throughout (I authored the build/reconciliation steps; fresh-context verifier
+  subagents did every `server_reconstructed`-identity submission). Posted a summary to #1713
+  (coordination issue) flagging the chart_grants fix for any other lane hitting the same
+  `permission denied for table chart_grants` signature. PR hygiene: #2103 progressing, no
+  failures. `mi_kula` remains L5's only other open E-gate path, still blocked on 2 unfrozen L0
+  ancestors (`bg_rules`, `bg_yogas`) — confirmed unchanged this cycle too.
+- 2026-09-06T16:15Z (C8 v2.3 cycle 462) — **`mi_vistara` is FROZEN — the campaign's first `mi_*`
+  asset (and first L5/Mīmāṃsā asset) to reach `asset_frozen`, independently re-confirmed via a
+  direct DB read** (not just trusting the subagent's report): `event_type='asset_frozen'`,
+  `source_ref='nirmana-elevation:freeze:mi_vistara'` present live. `lifecycle_digest` was computed
+  from the real `reconstructedDigest` reconstruction logic (4-event allowlist, sorted, hashed),
+  not guessed — the subagent read the private `stableJson` helper's source and replicated it
+  byte-for-byte rather than approximating. PR hygiene: #2103 running fresh CI, no failures. Still
+  waiting on the `lel_events` `asset_frozen` subagent (not duplicating its work). `mi_kula`'s
+  remaining ancestors unchanged.
 - 2026-09-06T16:10Z (C8 v2.3 cycle 461) — **Milestone: `#2097` MERGED — the third state-recovery
   PR from this session is closed out.** Third recurrence of the exact same pattern (cycles 442,
   453, now 461): found via routine hygiene check, 7 more local-only commits (cycles 454-460, 42
