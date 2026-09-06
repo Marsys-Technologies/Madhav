@@ -1,11 +1,12 @@
 """
-tests/test_migration_764_tulana_health_probe.py — L3 Kāla, F-L3-15 third
-slice: migration 764 populates `asset_registry.health_probe` for `ka_tulana`.
+tests/test_migration_810_tulana_health_probe.py — L3 Kāla, F-L3-15 third
+slice: migration 810 populates `asset_registry.health_probe` for `ka_tulana`.
 
-Opens a NEW migration range (764-773): the previously-assigned 670-679 range
-is now fully consumed across this session's cycles. 764 confirmed unclaimed
-via `gh search code`/`gh search` (empty across both merged content and
-open-PR titles/bodies) before use.
+RENUMBERED 764→810 (same cycle it was authored): 764 collided with L2's own
+760-779 range (`764_bo_cgm_paths_volume_formula.sql`, merged first) — caught
+by `scripts/ci/migration_number_guard.ts`'s E2 check on this PR's own CI.
+Fixed by renumbering to 810 (above the campaign-wide highest at the time,
+802) since this migration had never been applied anywhere.
 
 Corrects a scoping error made in this migration's own F-L3-15 predecessor
 (#2065's PR description, for `ka_muhurta_seva`): `ka_tulana` was described
@@ -38,20 +39,20 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )
 _MIGRATION_PATH = os.path.join(
-    _REPO_ROOT, "platform", "migrations", "764_nirmana_l3_w3_tulana_health_probe.sql"
+    _REPO_ROOT, "platform", "migrations", "810_nirmana_l3_w3_tulana_health_probe.sql"
 )
 
 
 def _read_migration() -> str:
     if not os.path.exists(_MIGRATION_PATH):
-        pytest.skip(f"migration 764 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
+        pytest.skip(f"migration 810 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
     with open(_MIGRATION_PATH, encoding="utf-8") as f:
         return f.read()
 
 
 # ── DB-free static guards ────────────────────────────────────────────────────
 
-def test_migration_764_updates_exactly_one_asset():
+def test_migration_810_updates_exactly_one_asset():
     sql = _read_migration()
     code_only = re.sub(r"--[^\n]*", "", sql)
     updates = re.findall(r"UPDATE asset_registry\s+SET.*?;", code_only, re.S)
@@ -59,19 +60,19 @@ def test_migration_764_updates_exactly_one_asset():
     assert "WHERE asset_id = 'ka_tulana'" in updates[0]
 
 
-def test_migration_764_sets_the_expected_probe_type():
+def test_migration_810_sets_the_expected_probe_type():
     sql = _read_migration()
     assert '"probe_type": "tulana_ranking_forensic"' in sql
 
 
-def test_migration_764_no_self_transaction_wrapper():
+def test_migration_810_no_self_transaction_wrapper():
     sql = _read_migration()
     code_only = re.sub(r"--[^\n]*", "", sql)
     assert not re.search(r"\bBEGIN\s*;", code_only)
     assert not re.search(r"\bCOMMIT\s*;", code_only)
 
 
-def test_migration_764_contract_matches_the_probe_module_field_names():
+def test_migration_810_contract_matches_the_probe_module_field_names():
     """The JSONB literal's keys must be exactly what
     service_probes._validated_tulana_probe_config requires — a typo here
     would pass this migration's own SQL syntax check yet fail the probe
@@ -104,7 +105,7 @@ def _live_conn_or_skip():
 
 
 @pytest.mark.integration
-def test_migration_764_sets_health_probe_and_drives_a_real_green_live():
+def test_migration_810_sets_health_probe_and_drives_a_real_green_live():
     """Runs the actual migration file against the real asset_registry table
     inside a transaction that is ALWAYS rolled back. Proves the stored
     contract round-trips through the real probe dispatcher to GREEN."""
@@ -130,7 +131,7 @@ def test_migration_764_sets_health_probe_and_drives_a_real_green_live():
 
 
 @pytest.mark.integration
-def test_migration_764_is_idempotent_live():
+def test_migration_810_is_idempotent_live():
     """Running the migration twice inside one transaction produces a byte-
     identical stored contract the second time. Rolled back at the end; never
     persists."""

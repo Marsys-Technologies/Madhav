@@ -1,4 +1,4 @@
--- 764_nirmana_l3_w3_tulana_health_probe.sql
+-- 810_nirmana_l3_w3_tulana_health_probe.sql
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_tulana`, F-L3-15's third slice. Corrects a scoping error made in this
@@ -11,18 +11,25 @@
 -- construction, the same architecture class the other three probes
 -- (bg_panchanga, bg_ephemeris_engine, ka_graha_sancara) are built for.
 --
--- `ka_dasha_kala` remains genuinely out of scope: its own
--- `KaDashaKalaService.query()` reads `chart_dashas` through `db_conn` inside
--- `tree_walk.walk_eligible_intervals`, a real architecture question for a
--- future slice (`run_health_probe()` has no `db_conn` parameter).
+-- `ka_dasha_kala` remains genuinely out of scope for a DB-free probe (ruled
+-- D-CND-34, #2071): its own `KaDashaKalaService.query()` reads `chart_dashas`
+-- through `db_conn` inside `tree_walk.walk_eligible_intervals`, and the
+-- authenticated `nirmana_probe.py` route has zero DB infrastructure by design
+-- — giving it one is a live security-posture decision, not an engineering
+-- call. It gets its own DB-free PROXY-check probe (migration 811) instead.
 --
--- NEW MIGRATION RANGE: the previously-assigned 670-679 range is now fully
--- consumed (670-679 all claimed across this session's cycles). This
--- migration opens 764-773 as this session's next self-assigned block — 764
--- confirmed unclaimed via `gh search code`/`gh search` (empty results across
--- both merged content and open-PR titles/bodies) before use, following the
--- same "collision-free by construction" discipline the 670-679 range
--- documented for itself.
+-- RENUMBERED 764→810 (this session, same cycle it was first authored):
+-- 764 was claimed independently by L2's own 760-779 range
+-- (`764_bo_cgm_paths_volume_formula.sql`, merged first) — a genuine cross-
+-- lane collision `scripts/ci/migration_number_guard.ts`'s E2 check caught on
+-- this PR's own CI (`FAIL [E2 NEW-COLLISION] migration number 764 is claimed
+-- 2 times`). Fixed at the root by renumbering to 810 (comfortably above the
+-- highest number in use campaign-wide at the time, 802) rather than
+-- disclosing/allowlisting the collision — this migration had not been
+-- applied anywhere yet, so renumbering is safe (CLAUDE.md's "never edit an
+-- applied migration" rule does not apply). The self-assigned-range
+-- convention (this session's own 670-679, now 810+) is a coordination
+-- courtesy, not a guarantee; the guard is the actual authority.
 --
 -- The contract below is consumed by a NEW, INDEPENDENT probe implementation
 -- (`_probe_tulana`, platform/python-sidecar/pipeline/orchestrator/service_probes.py)
