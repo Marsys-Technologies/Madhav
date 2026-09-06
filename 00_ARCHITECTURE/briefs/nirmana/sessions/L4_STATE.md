@@ -9352,3 +9352,18 @@ unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still 
 CYCLE 524 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-07T~03:05Z` — L4 — **CYCLE 525 (v2.3) — IDLE-OK. E-gate re-checked live,
+unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still at 31.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** `main` advanced to `7e72abc5` ("L5: mi_kula output_digest_spec
+(migration 822) — closes the receipt-state blocker (#2167)") — L5 migration 822, outside
+L4's 680-689 range, not L4-relevant. No new adjudications name L4 (count unchanged at 19;
+newest two, #2169 L0→CONDUCTOR deploy-gate bug and #2137 L5→CONDUCTOR frozen-manifest
+order-sensitivity, both re-confirmed not L4-scoped). No `NIRMANA_HOLD` file present.
+
+CYCLE 525 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
+no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
+(`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
