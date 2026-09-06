@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 71; ga_structural F-A14 widened to 39/57 (#2059); filed #2057 for range continuation
+last_updated: 2026-09-06 — C8 v2.3 cycle 72; ga_structural F-A14 widened to 40/57 (#2063); 780-799 range EXHAUSTED, F-A18 found; 3 DIRTY PRs fixed, 1 stale PR closed
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -45,9 +45,10 @@ your `nirmana-adjudication` issues → continue.
   graha_composite_state_classification, cycle 67), 795 (`ga_structural`
   karaka_house_lord_overlap_flag, cycle 68), 796 (`ga_structural` Group C Bhava Bala extended
   bundle — 8 categories, cycle 69), 797 (`ga_structural` aspect_matrix_summary, cycle 70), 798
-  (`ga_structural` aspect_parashari_given/received bundle — 2 categories, cycle 71) used. **799 is
-  the LAST free number** — adjudication **#2057** filed cycle 71 requesting the continuation
-  range, still open.
+  (`ga_structural` aspect_parashari_given/received bundle — 2 categories, cycle 71), 799
+  (`ga_structural` graha_special_state_rollup, discovers F-A18, cycle 72) used. **780-799 is now
+  FULLY EXHAUSTED** — adjudication **#2057** (filed cycle 71) still open requesting the
+  continuation range; no further migration work possible until it is ruled.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -3131,6 +3132,75 @@ number) and widened `ga_structural`'s F-A14 contract to 39/57 categories (PR #20
 FINAL free number) for one more widening pass, then wait on #2057's ruling before authoring any
 further migration, or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 72 (C8 v2.3) — 3 real DIRTY PRs fixed, 1 stale/superseded PR closed; ga_structural's F-A14 contract widened to 40/57 categories (PR #2063, migration 799 — the LAST migration in the 780-799 range) discovering F-A18, a genuinely-red new finding
+
+**PR hygiene:** open-PR count dropped sharply this cycle (46 → 28) as the merge queue processed
+a large backlog since the last check. Of the L1 PRs remaining open, 4 were NOT genuinely
+`is:queued`: #1853, #1898, #1979 all showed `mergeStateStatus: UNKNOWN` / `mergeable:
+CONFLICTING` — genuinely DIRTY despite stale green check-runs from before main advanced past
+them. **#1981 was a DIFFERENT case: a rebase attempt surfaced a genuine SOURCE conflict** (not
+just derived-artifact) in `ga_structural_writer.py` — investigation confirmed current `main`
+ALREADY contains this exact fix (near word-for-word identical `_get_varga_vargottama_flag`
+read-ga_vargas'-authority implementation), landed via a different path months ago (this
+session's own state log already cited it as "F-A15 FIXED at the writer level, #1981, cycle 42").
+Closed #1981 with a documenting comment rather than force-merging stale duplicate code — a
+decide-and-log call, not a rebase-and-ship one.
+
+For #1853/#1898/#1979: rebased each onto current `main`, resolving derived-artifact conflicts
+(writer-digests + analysis-layer-pins) via the now-established pattern — take "ours" during
+conflict resolution, then regenerate BOTH artifacts fresh against the final rebased tip rather
+than trust the conflict-resolution result (per D-L1-90's/D-L1-92's lesson: an empty/dropped
+commit during rebase is not evidence nothing needs doing). All three PRs' L2 pin conflicts were
+resolved by keeping `main`'s own more-current L2 value (out of L1 scope) — `#1853`/`#1898` both
+had an accompanying "L2: re-pin ... Governance Gates fix" commit whose content was itself already
+stale against current main. Force-pushed all three, re-armed auto-merge, confirmed CI genuinely
+dispatched (33 real check-runs each, zero failures) before moving to the cycle's unit of work.
+#1928/#1892 unchanged (still OPEN, still outside L1 scope).
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `graha_special_state_rollup`**
+(PR **#2063**, migration 799 — twentieth and LAST in the 780-799 range).
+
+Four of five boolean flags (`is_combust`, `is_retrograde`, `is_debilitated`, `is_exalted`)
+re-derived cleanly against `ga_positions`' own `graha_position` category and the classical
+dignity tables already embedded since migration 794. The fifth, `is_vargottama`, was flagged as
+suspicious on sight: `_build_special_state_rows` computes it via the SAME inline navamsha-degree
+formula (`nav_starts` sign-cycling table + float division) that F-A15 already found buggy and
+fixed — but in a DIFFERENT function (`_build_shadbala_extension_rows`'s
+`graha_vargottama_amplification_factor`). Checked it against `ga_vargas`' D9 authority anyway
+rather than assuming it was already covered by F-A15's fix, since the two are separate call
+sites. **Found it genuinely disagrees on the EXACT SAME 4/105 rows as F-A15's own tracked
+residual** — confirming this second call site was never updated, a live duplicate of the same
+root cause. Named this **F-A18** (next free number after F-A14/F-A15/F-A16/F-A17) and shipped
+the detector honestly RED, per the never-weaken-a-gate doctrine established across F-A15/F-A17/
+F-157 — not suppressed, narrowed, or deferred out of the migration. The writer fix itself
+(mirroring F-A15's own fix: swap the inline formula for the already-existing
+`_get_varga_vargottama_flag` helper) is deliberately deferred to a future bounded unit of work,
+matching this campaign's established discover-then-fix-later cadence (F-A15/F-A16/F-A17 were all
+discovered during F-A14 authoring, fixed in later separate cycles).
+
+Shipped 5 conjuncts total, all verified against the exact SQL landed in the file then
+individually mutation-tested via real transactional `UPDATE`+`ROLLBACK` — including a deliberate
+"add corruption on top of the already-red baseline" mutation for the F-A18 conjunct (confirmed it
+correctly rose from 4 to 5 caught violations, proving the detector catches NEW corruption on top
+of the tracked-red floor, not just a static count). Production confirmed untouched (675 rows)
+after all five rollbacks.
+
+Carried the ninety prior conjuncts (a)-(h6) forward verbatim, including the three
+already-tracked genuinely-red ones (now four, with F-A18). No writer touched. Full
+`platform/tests/unit/migrations/` suite: 326 passed / 91 skipped (58 files).
+`provenance_inventory --check`: clean (exit 0). PR #2063 opened with `base: main` directly (per
+D-L1-90) and confirmed CI genuinely triggered (31 real check-runs) before ending the cycle.
+
+**Migration range 780-799 is now FULLY EXHAUSTED.** No further `ga_structural` F-A14 migration
+work is possible until adjudication #2057 (filed cycle 71, still open) is ruled.
+
+CYCLE 72 L1: fixed 3 genuine DIRTY PRs and closed 1 stale/superseded PR, then widened
+`ga_structural`'s F-A14 contract to 40/57 categories (PR #2063, migration 799 — the range's LAST
+migration, discovering F-A18) — next: wait on adjudication #2057's ruling for the next migration
+range before any further `ga_structural` widening, or `ga_positions` re-dispatch once #1892
+lands, or a non-migration bounded unit (e.g. investigating the F-A18 writer fix itself as prep
+work, or a broader PR-hygiene sweep given the fleet's large recent merge-queue churn).
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -3146,7 +3216,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2055 cycle 70 → #2059 cycle 71 — **39/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification, karaka_house_lord_overlap_flag, bhava_bala_positional, bhava_bala_directional, bhava_bala_temporal, bhava_bala_aspectual, bhava_bala_occupant, bhava_bala_lord, bhava_bala_total_extended, house_strength_classification_rollup, aspect_matrix_summary, aspect_parashari_given, aspect_parashari_received; migration range 780-799, **799 is the LAST free number — adjudication #2057 open requesting the continuation**); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `karaka_house_lord_overlap_flag` (migration 795) fully re-derives its boolean flag from Lagna sign + the classical `SIGN_LORDS` table, reusing migration 792's house-from-lagna arithmetic, hardcoding the writer's own `NATURAL_KARAKAS`/`significance_to_house` classical dicts as the authority. Migration 796 bundled all EIGHT Group C Bhava Bala extended categories in one migration — the arc's largest bundle jump yet — with three sub-scores (positional/directional/temporal) re-derived as PURE FUNCTIONS OF HOUSE NUMBER ALONE (zero cross-reference risk) and the total/classification pair re-derived via genuine cross-category mean/threshold checks within the bundle. `aspect_matrix_summary` (migration 797) re-derives its per-house count from the stored `aspect_parashari_received` sibling category rather than trusting the writer's own in-memory tally. Migration 798 bundled `aspect_parashari_given`/`aspect_parashari_received` — the classical `brahmagyan/aspects.py` Parashari offset table hardcoded as authority, plus a bidirectional given↔received correspondence closing the loop without re-deriving twice; self-caught a label-collision authoring mistake ((m)-(t) already used by migrations 780-784) before landing, relabeled to `(a6)`-`(h6)`. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2059 cycle 71 → #2063 cycle 72 — **40/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification, karaka_house_lord_overlap_flag, bhava_bala_positional, bhava_bala_directional, bhava_bala_temporal, bhava_bala_aspectual, bhava_bala_occupant, bhava_bala_lord, bhava_bala_total_extended, house_strength_classification_rollup, aspect_matrix_summary, aspect_parashari_given, aspect_parashari_received, graha_special_state_rollup; migration range 780-799 **FULLY EXHAUSTED — adjudication #2057 open requesting the continuation, no further migration possible until ruled**); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `karaka_house_lord_overlap_flag` (migration 795) fully re-derives its boolean flag from Lagna sign + the classical `SIGN_LORDS` table, reusing migration 792's house-from-lagna arithmetic, hardcoding the writer's own `NATURAL_KARAKAS`/`significance_to_house` classical dicts as the authority. Migration 796 bundled all EIGHT Group C Bhava Bala extended categories in one migration — the arc's largest bundle jump yet — with three sub-scores (positional/directional/temporal) re-derived as PURE FUNCTIONS OF HOUSE NUMBER ALONE (zero cross-reference risk) and the total/classification pair re-derived via genuine cross-category mean/threshold checks within the bundle. `aspect_matrix_summary` (migration 797) re-derives its per-house count from the stored `aspect_parashari_received` sibling category rather than trusting the writer's own in-memory tally. Migration 798 bundled `aspect_parashari_given`/`aspect_parashari_received` — the classical `brahmagyan/aspects.py` Parashari offset table hardcoded as authority, plus a bidirectional given↔received correspondence closing the loop without re-deriving twice; self-caught a label-collision authoring mistake ((m)-(t) already used by migrations 780-784) before landing, relabeled to `(a6)`-`(h6)`. `graha_special_state_rollup` (migration 799, the range's LAST) discovered **F-A18**: `is_vargottama` in `_build_special_state_rows` still uses the SAME buggy inline navamsha formula F-A15 already fixed in a DIFFERENT function, disagreeing with `ga_vargas`' D9 authority on the exact same 4/105 rows as F-A15's own residual — a live, still-unfixed second occurrence, shipped honestly RED per the never-weaken-a-gate doctrine. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -4134,6 +4204,31 @@ whole campaign.
   conjunct label, grep the ENTIRE accumulated migration chain for that exact label first — the
   a-z alphabet exhausts far sooner than intuition suggests once double-letter and numeric-suffix
   rounds are counted.
+
+- **D-L1-96** — C8 v2.3 cycle 72: PR hygiene found 3 genuine DIRTY PRs (#1853/#1898/#1979,
+  `mergeable: CONFLICTING` despite stale green check-runs) and 1 PR whose rebase surfaced a
+  genuine SOURCE conflict rather than a mere derived-artifact one (#1981). Investigated #1981
+  before touching it: confirmed current `main` already contains this exact fix (near
+  word-for-word identical `_get_varga_vargottama_flag` implementation reading `ga_vargas`'
+  authority) — this session's own state log already cited it as landed ("F-A15 FIXED at the
+  writer level, #1981, cycle 42"), confirming the underlying commit merged via a different path
+  months ago while this PR object itself was never closed. Closed #1981 with a documenting
+  comment rather than force-merging stale duplicate code — decide-and-log, not
+  rebase-and-force-push, is the correct move when a rebase conflict signals "this work already
+  landed elsewhere," not "this branch is merely behind." Fixed the other 3 via the established
+  rebase + regenerate-both-derived-artifacts-fresh pattern; two of them additionally carried a
+  now-stale "L2: re-pin ... Governance Gates fix" commit from a prior DIRTY-PR fix cycle, whose
+  L2 pin value was itself superseded by `main`'s own more-current L2 pin — kept `main`'s value
+  both times (out of L1 scope). Also widened `ga_structural`'s F-A14 contract (migration 799,
+  PR #2063), 39/57 → 40/57, adding `graha_special_state_rollup` and discovering **F-A18**: its
+  `is_vargottama` flag uses the SAME buggy inline navamsha formula F-A15 already fixed, but in a
+  DIFFERENT function (`_build_special_state_rows` vs. `_build_shadbala_extension_rows`) — a
+  second, still-unfixed occurrence of the identical root cause, confirmed by disagreeing with
+  `ga_vargas`' D9 authority on the EXACT SAME 4/105 rows as F-A15's own tracked residual. Shipped
+  the detector honestly RED per the never-weaken-a-gate doctrine, explicitly deferring the writer
+  fix itself to a future cycle (matching the campaign's established discover-then-fix-later
+  cadence for F-A15/F-A16/F-A17). **Migration range 780-799 is now fully exhausted** — no further
+  `ga_structural` F-A14 work is possible until adjudication #2057 (open since cycle 71) is ruled.
 
 ## Held items
 
@@ -5383,3 +5478,32 @@ L1 must satisfy rather than a feature it consumes.
   aspect_parashari_given/received bundle) -- next: use migration 799 (the FINAL free number) for
   one more widening pass, then wait on #2057's ruling, or ga_positions re-dispatch once #1892
   lands.
+- 2026-09-06T13:9xZ -- CYCLE 72 (C8 v2.3). PR count dropped 46->28 (merge queue processed a
+  large backlog). Found 4 genuinely non-queued L1 PRs: #1853/#1898/#1979 were DIRTY (mergeable
+  CONFLICTING despite stale green checks); #1981's rebase surfaced a genuine SOURCE conflict.
+  Investigated #1981 before acting: confirmed current main already contains this exact fix
+  (near word-for-word identical _get_varga_vargottama_flag implementation) -- the underlying
+  commit landed via a different path months ago, this PR object was simply never closed. Closed
+  #1981 with a documenting comment rather than force-merging stale duplicate code. Fixed
+  #1853/#1898/#1979 via rebase + regenerate-both-derived-artifacts-fresh (writer-digests +
+  analysis-layer-pins), keeping main's own more-current L2 pin value each time two of them also
+  carried a stale "L2 re-pin Governance Gates fix" commit. Force-pushed all three, re-armed
+  auto-merge, confirmed CI genuinely dispatched (33 real check-runs each). #1928/#1892
+  unchanged. Unit of work: widened ga_structural's F-A14 contract to 40/57 (PR #2063, migration
+  799, the range's LAST) -- graha_special_state_rollup. Four of five boolean flags re-derived
+  cleanly; the fifth, is_vargottama, discovered as a NEW genuinely-red finding -- F-A18 -- using
+  the SAME buggy inline navamsha formula F-A15 already fixed, but in a DIFFERENT function
+  (_build_special_state_rows vs _build_shadbala_extension_rows), disagreeing with ga_vargas' D9
+  authority on the EXACT SAME 4/105 rows as F-A15's own tracked residual. Shipped honestly RED
+  per the never-weaken-a-gate doctrine; writer fix deferred to a future cycle. Shipped 5
+  conjuncts, all mutation-tested against the exact landed SQL (F-A18's conjunct confirmed to
+  correctly rise from 4 to 5 caught violations when additional corruption was introduced on top
+  of the already-red baseline). Carried the 90 prior conjuncts forward verbatim. No writer
+  touched. Full platform/tests/unit/migrations/ suite: 326 passed / 91 skipped (58 files).
+  provenance_inventory --check: clean. Opened PR #2063 with base:main directly and confirmed CI
+  genuinely triggered (31 real check-runs). Migration range 780-799 is now FULLY EXHAUSTED --
+  adjudication #2057 (open since cycle 71) must rule before any further ga_structural F-A14
+  work. CYCLE 72 L1: fixed 3 DIRTY PRs + closed 1 stale/superseded PR, then widened
+  ga_structural's F-A14 contract to 40/57 categories (PR #2063, migration 799, discovering
+  F-A18) -- next: wait on #2057's ruling for the next migration range, or ga_positions
+  re-dispatch once #1892 lands, or a non-migration prep unit.
