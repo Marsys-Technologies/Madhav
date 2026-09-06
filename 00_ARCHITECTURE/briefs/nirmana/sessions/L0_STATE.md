@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2081 still position 2 (2 cycles unchanged, but active merge_group confirmed 2.5 min ago -- not stalled). No DIRTY/RED. 35/40 frozen unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, not stalled -- main advanced and #2081 is now position 1 (frontmost), AWAITING_CHECKS. No DIRTY/RED. Very close now. 35/40 frozen unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3167,6 +3167,5 @@ the milestone entries in the log below for full chains + every gotcha found alon
   `no_change`, so no `implementation_accepted` needed this time — straight dispatch →
   `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`). 35/40 frozen unchanged.
 
-- 2026-09-06 — **IDLE-OK.** `#2081` still position 2 (unchanged 2 cycles now, but active
-  merge_group evaluation confirmed as recent as 2.5 min ago — not stalled, position-2 just means
-  one candidate ahead of it hasn't merged yet). No DIRTY/RED. 35/40 frozen unchanged.
+- 2026-09-06 — **IDLE-OK.** Not stalled — `main` advanced (confirmed) and `#2081` is now
+  position 1 (frontmost), `AWAITING_CHECKS`. No DIRTY/RED. Very close now. 35/40 frozen unchanged.
