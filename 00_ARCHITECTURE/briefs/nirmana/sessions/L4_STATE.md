@@ -3785,3 +3785,17 @@ CYCLE 173 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 uncheckable, DB access down 163 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~04:45Z` — L4 — **CYCLE 174 (v2.3) — genuinely IDLE; queue head (`#1861`, not
+mine) checked directly given 2 flat cycles, confirmed actively processing.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued for a second cycle. `mergeQueue` head
+`#1861` is `AWAITING_CHECKS` — actively processing.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 164th consecutive cycle DB access down.
+
+CYCLE 174 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+actively processing; E-gate uncheckable, DB access down 164 cycles; nothing new) → next: watch
+queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1
+remains deferred.
+
