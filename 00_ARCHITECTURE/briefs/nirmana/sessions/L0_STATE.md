@@ -2568,3 +2568,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** #2021 merged (L2, not L0's), `#2016` at position 14. No DIRTY, no RED.
   30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** 3 more merges (#2022/#2024/#2026, L1, not L0's). `#2016` now at
+  position 12, `AWAITING_CHECKS`. No DIRTY, no RED. 30/40 frozen holds.
