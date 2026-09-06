@@ -457,6 +457,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:38Z (C8 v2.3 cycle 217) — **Pushed the 20-cycle batch; revised the
+  batching policy.** #1826 had drifted beyond queue position 100 with no merge in sight —
+  waiting for a full merge before ever pushing again (the cycle-197 fix's original
+  strategy) would let local state diverge from origin indefinitely, which is its own
+  violation of "never let state lag more than a few cycles behind main." **Revised policy:**
+  dequeue before push (GraphQL `dequeuePullRequest`), rebase (219 commits, clean), push,
+  re-arm via `gh pr merge 1826 --auto --squash` (autoMergeRequest `enabledAt` confirmed
+  reset) — same dequeue/push/re-arm dance used earlier this campaign, but now applied on a
+  **time basis (~15-20 min / one CI cycle's worth)** instead of "wait for full merge."
+  This keeps state fresh without either resetting CI before it can finish (the original
+  cycle-197 bug) or waiting indefinitely (this cycle's near-miss). #1826 will self-re-queue
+  once this fresh run passes, as seen in cycles 197-201. #1844 confirmed `isInMergeQueue:
+  true` (unaffected by this — never touched). Live deploy revision still one cycle short of
+  `1ef6267e9` per cycle 216's check.
 - 2026-09-06T01:36Z (C8 v2.3 cycle 216) — **IDLE-OK, still waiting on deploy.** Live
   revision unchanged at `21f6dda67` (#1920) — still one deploy cycle short of `1ef6267e9`
   (#1861). Both own PRs still `isInMergeQueue: true`, clean. #1844=53, #1901=79 unchanged.
