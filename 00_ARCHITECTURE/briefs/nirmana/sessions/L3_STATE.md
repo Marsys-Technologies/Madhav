@@ -489,6 +489,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~90:0xZ — L3-W4 — IDLE-OK (verified): all three PRs healthy —
+  `#2147` genuinely `isInMergeQueue: true` (position 3, `AWAITING_CHECKS`);
+  `#2065`/`#2149` both `mergeable: MERGEABLE`, `autoMergeRequest` armed, 0 CI
+  failures (checked `gh pr checks` directly, not inferred from status alone)
+  — `#2149`'s last remaining check (`Governance Gates`) confirmed genuinely
+  `in_progress` at ~11min via `gh run view`, matching the known pattern, not
+  stuck. Neither `ka_dasha_kala` nor `ka_muhurta_seva` has its `health_probe`
+  live yet (re-checked `asset_registry` directly) and no new `origin/main`
+  commit landed since last cycle, so no new dispatch opportunity opened.
+  Noted an `egate.sql` oddity worth a future look, not acted on this cycle:
+  `ka_dasha_kala` reads `kind=(data)`/`BLOCKED-ANCESTORS` in that view despite
+  `asset_registry.asset_type='service'` (confirmed directly) — the other
+  three service assets read correctly; likely a `kind`-classification quirk
+  in the query itself rather than a registry-data problem, since the actual
+  blocker (null `health_probe`, pending deploy) is the same regardless of
+  which gate label it shows. Continuing to hold this and the prior 2 entries
+  LOCAL-UNCOMMITTED-TO-REMOTE — `#2149`'s own remote HEAD is still mid-CI on
+  its last check, so pushing now would reset it for no reason this close to
+  done. — blocked on: nothing genuinely new; next action: push the
+  accumulated local block once `#2149` clears, then watch `#2065`/`#2147`
+  merge — `ka_muhurta_seva`'s W2 acceptance is the next genuine W4-path item
+  once `#2065` lands and deploys (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~89:0xZ — L3-W4 — PR hygiene: `#2065` went genuinely `DIRTY`/
   `CONFLICTING` too** (caught on the very next check after fixing `#2147`/
   `#2149` last cycle) — `#2079`'s merge (ka_dasha_kala's proxy probe code, not
