@@ -2363,3 +2363,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Fourth flat read; queue head still #1958, ~9.3min in_progress — still
   under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Fifth flat read; queue head still #1958, ~11.6min in_progress — still
+  under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen holds.
