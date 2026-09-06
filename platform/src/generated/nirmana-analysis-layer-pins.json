@@ -44,12 +44,12 @@
     },
     "L5": {
       "asset_prefix": "mi_",
-      "convergence_commit": "72bb87821bd2d976b5230bc439f7b38114a86234",
+      "convergence_commit": "fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5",
       "non_writer_assets": [
         "lel_events"
       ],
       "receipt_count": 15,
-      "writer_inventory_sha256": "ea465326c6d5114baf6f56dc765a6b38dccb3849c0376a6e78d7417d88cff35b"
+      "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
     }
   },
   "version": "nirmana-analysis-layer-pins/v1"
