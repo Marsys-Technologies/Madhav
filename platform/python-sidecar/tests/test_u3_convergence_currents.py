@@ -249,12 +249,21 @@ class TestDirectionC8C10:
 # ── C11 vedha_cancellation NECESSARY-side veto ───────────────────────────────
 
 class TestVedhaVeto:
+    """
+    L3-W3 (F-SANGAM-5). _c11_vedha_factor used to match an abstract house
+    number against rules fetched from bg_transit_rules WHERE rule_type='vedha'
+    — a filter value that doesn't exist on that table (0 rows ever matched),
+    so this NECESSARY-side veto was permanently neutral (1.0) on every
+    window. Fixed to match peak_date against real [window_start, window_end)
+    date ranges from kala_vedha_gochara, the populated per-chart source.
+    """
+
     def test_vedha_rule_suppresses_score(self, dignity, orb_s, base_supporting):
         from services.ka_sangam.engine import convergence_score, _c11_vedha_factor, EnrichmentContext
         ctx = EnrichmentContext(
-            vedha_rules=[{'graha': 'Jupiter', 'transit_to_house': 1, 'vedha_house': 7}]
+            vedha_rules=[{'graha': 'Jupiter', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)}]
         )
-        vedha_f = _c11_vedha_factor('Jupiter', 1, ctx)
+        vedha_f = _c11_vedha_factor('Jupiter', date(2026, 4, 1), ctx)
         assert vedha_f < 1.0, "Vedha rule should produce factor < 1.0"
         nec_no_vedha  = [dignity, orb_s, 1.0]
         nec_with_vedha = [dignity, orb_s, vedha_f]
@@ -264,23 +273,31 @@ class TestVedhaVeto:
 
     def test_no_vedha_rule_returns_one(self, empty_ctx):
         from services.ka_sangam.engine import _c11_vedha_factor
-        f = _c11_vedha_factor('Jupiter', 1, empty_ctx)
+        f = _c11_vedha_factor('Jupiter', date(2026, 4, 1), empty_ctx)
         assert f == pytest.approx(1.0), "No vedha rules → factor 1.0 (neutral)"
 
     def test_mismatched_planet_returns_one(self):
         from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
         ctx = EnrichmentContext(
-            vedha_rules=[{'graha': 'Saturn', 'transit_to_house': 1, 'vedha_house': 7}]
+            vedha_rules=[{'graha': 'Saturn', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)}]
         )
-        f = _c11_vedha_factor('Jupiter', 1, ctx)  # Jupiter != Saturn
+        f = _c11_vedha_factor('Jupiter', date(2026, 4, 1), ctx)  # Jupiter != Saturn
         assert f == pytest.approx(1.0)
 
-    def test_mismatched_house_returns_one(self):
+    def test_peak_date_outside_window_returns_one(self):
         from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
         ctx = EnrichmentContext(
-            vedha_rules=[{'graha': 'Jupiter', 'transit_to_house': 2, 'vedha_house': 8}]
+            vedha_rules=[{'graha': 'Jupiter', 'window_start': date(2020, 1, 1), 'window_end': date(2020, 2, 1)}]
         )
-        f = _c11_vedha_factor('Jupiter', 1, ctx)  # house 1 != 2
+        f = _c11_vedha_factor('Jupiter', date(2026, 4, 1), ctx)  # real window, wrong date
+        assert f == pytest.approx(1.0)
+
+    def test_peak_date_none_returns_one(self):
+        from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
+        ctx = EnrichmentContext(
+            vedha_rules=[{'graha': 'Jupiter', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)}]
+        )
+        f = _c11_vedha_factor('Jupiter', None, ctx)
         assert f == pytest.approx(1.0)
 
 

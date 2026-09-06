@@ -839,13 +839,15 @@ class TestPerSignaturePlanet:
 # services/kala_trigger/trigger.py (that module's own test suite already
 # covers the isolated function; this proves it's actually WIRED).
 #
-# Scenario mirrors test_kala_trigger.py's TestVedhaFilterGap fixture exactly:
-# Moon in Cancer (0-based idx 3), Jupiter transiting Taurus (1-based sign
-# idx 2) -> house-from-Moon = ((2-1-3) % 12)+1 = 11. A vedha rule keys off
-# transit_to_house=11 (Jupiter's classical best transit, 11th-from-Moon,
-# vedha from the 8th — BPHS Gochara). Before the fix, both call sites fed
-# the RASI SIGN NUMBER (2) as transit_house -> rule never matches -> vedha
-# reported as neutral (1.0) even though this transit IS vedha-eligible.
+# F-SANGAM-5 (L3-W3) superseded the scenario this comment originally described
+# (a moon_sign/house-from-Moon wiring test for CR-102): _c11_vedha_factor no
+# longer takes an abstract house number at all — see its own docstring.
+# transit_house/_house_from_moon are still computed at both call sites (kept,
+# not deleted, to avoid widening that fix's blast radius) but are DEAD as far
+# as vedha is concerned; moon_sign no longer changes the served vedha factor.
+# TestCR102VedhaWired below is replaced by TestFSangam5VedhaWired, which
+# proves the NEW wiring: peak_dt threaded through to a real
+# kala_vedha_gochara-shaped date window.
 
 class _FakeTransitEvent:
     """Minimal stand-in for pipeline.transit_search.TransitEvent — only the
@@ -863,17 +865,25 @@ class _FakeTransitEvent:
         self.event_datetime_ist = '2024-06-01T00:00:00+05:30'
 
 
-class TestCR102VedhaWired:
-    """CR-102 fix demonstrated at the actual served call sites, both bugs:
-    (1) house-from-Moon reference frame, (2) graha-name case mismatch
-    (bg_transit_rules stores lowercase; the engine passes 'Jupiter')."""
+class TestFSangam5VedhaWired:
+    """F-SANGAM-5 (L3-W3) fix demonstrated at the actual served call sites:
+    peak_dt is threaded through mode_a_search/mode_b_sweep into
+    _c11_vedha_factor's date-range match, and a covering
+    kala_vedha_gochara-shaped window genuinely lowers the served
+    convergence_score (necessary-side veto), not just the reported factor.
+    Supersedes TestCR102VedhaWired, whose moon_sign-based scenario this fix
+    made obsolete (see the module comment above)."""
 
     _VEDHA_RULE_LOWERCASE_GRAHA = {
-        'graha': 'jupiter',            # bg_transit_rules stores lowercase (real seed data)
-        'transit_to_house': 11,
-        'vedha_house': 8,
+        'graha': 'jupiter',            # case-normalization still defensively covered
+        'window_start': date(2024, 5, 20),
+        'window_end': date(2024, 6, 10),
     }
-    _MOON_SIGN_CANCER = 'Cancer'       # 0-based idx 3
+    _NON_COVERING_VEDHA_RULE = {
+        'graha': 'jupiter',
+        'window_start': date(2020, 1, 1),
+        'window_end': date(2020, 2, 1),
+    }
     _TAURUS_LON = 35.0                 # sign idx = int(35//30)+1 = 2 (Taurus)
 
     def _predicate(self):
@@ -892,7 +902,7 @@ class TestCR102VedhaWired:
             'derivation_ledger_jsonb': {},
         }
 
-    def test_mode_a_search_vedha_factor_changes_with_moon_sign_wired(self, monkeypatch):
+    def test_mode_a_search_vedha_factor_changes_with_covering_window(self, monkeypatch):
         from services.ka_sangam.engine import EnrichmentContext
 
         event = _FakeTransitEvent(self._TAURUS_LON, _date_to_jd(date(2024, 6, 1)))
@@ -903,51 +913,49 @@ class TestCR102VedhaWired:
         monkeypatch.setattr(
             'pipeline.transit_search.find_aspect_events', fake_find_aspect_events
         )
-        ctx = EnrichmentContext(vedha_rules=[self._VEDHA_RULE_LOWERCASE_GRAHA])
         s, e = self._horizon_jd_local()
 
-        # WITHOUT moon_sign (old call-site shape, pre-T-6): falls back to the
-        # bugged sign-number behavior -> vedha rule missed -> factor 1.0.
+        # A vedha rule whose window does NOT cover this transit's peak_date
+        # (2024-06-01): served vedha factor must stay neutral.
+        ctx_no_cover = EnrichmentContext(vedha_rules=[self._NON_COVERING_VEDHA_RULE])
         windows_before = mode_a_search(
             janma_nakshatra_idx=3,
             predicate=self._predicate(),
             horizon_start_jd=s, horizon_end_jd=e,
             dasha_kala_service=None, gochara_service=None, muhurta_service=None,
             chart_id='482012f1-710e-4a25-994a-93821f5871aa',
-            enrichment_context=ctx,
-            # moon_sign omitted
+            enrichment_context=ctx_no_cover,
         )
         assert len(windows_before) == 1
         assert windows_before[0]['constituent_factors']['c11_vedha_factor'] == pytest.approx(1.0), (
-            "control: without moon_sign, the served vedha factor must still show the OLD "
-            "(bugged) neutral 1.0 — proves the difference below is caused by the fix, not a fixture artifact"
+            "control: a real vedha rule whose window does not cover this peak_date must "
+            "still show neutral 1.0 — proves the difference below is caused by date "
+            "coverage, not a fixture artifact"
         )
 
-        # WITH moon_sign (T-6 fix wired through mode_a_search -> _house_from_moon
-        # -> _c11_vedha_factor): the SAME transit event now correctly resolves
-        # house-from-Moon=11, matches the rule, and the SERVED vedha factor
-        # drops to 0.3 (also proves the case-normalization fix: the rule's
-        # 'graha': 'jupiter' (lowercase) matches the engine's 'Jupiter').
+        # SAME transit event, a vedha rule whose window DOES cover 2024-06-01
+        # (also proves the case-normalization fix: the rule's 'graha': 'jupiter'
+        # (lowercase) matches the engine's 'Jupiter').
+        ctx_cover = EnrichmentContext(vedha_rules=[self._VEDHA_RULE_LOWERCASE_GRAHA])
         windows_after = mode_a_search(
             janma_nakshatra_idx=3,
             predicate=self._predicate(),
             horizon_start_jd=s, horizon_end_jd=e,
             dasha_kala_service=None, gochara_service=None, muhurta_service=None,
             chart_id='482012f1-710e-4a25-994a-93821f5871aa',
-            enrichment_context=ctx,
-            moon_sign=self._MOON_SIGN_CANCER,
+            enrichment_context=ctx_cover,
         )
         assert len(windows_after) == 1
         assert windows_after[0]['constituent_factors']['c11_vedha_factor'] == pytest.approx(0.3), (
-            "FIX PROOF: same transit event, same vedha rule, only moon_sign wired in -> "
-            "the SERVED c11_vedha_factor now correctly drops to 0.3 (vedha caught)"
+            "FIX PROOF: same transit event, a vedha window covering its peak_date -> "
+            "the SERVED c11_vedha_factor correctly drops to 0.3 (vedha caught)"
         )
         # The fix also lowers the served convergence_score (vedha enters the
         # NECESSARY side multiplicatively) — proves the wiring reaches the
         # final scored output, not just the reported constituent factor.
         assert windows_after[0]['convergence_score'] < windows_before[0]['convergence_score']
 
-    def test_mode_b_sweep_vedha_factor_changes_with_moon_sign_wired(self, monkeypatch):
+    def test_mode_b_sweep_vedha_factor_changes_with_covering_window(self, monkeypatch):
         from services.ka_sangam.engine import EnrichmentContext
 
         event = _FakeTransitEvent(self._TAURUS_LON, _date_to_jd(date(2024, 6, 1)))
@@ -958,9 +966,9 @@ class TestCR102VedhaWired:
         monkeypatch.setattr(
             'pipeline.transit_search.search_long_horizon', fake_search_long_horizon
         )
-        ctx = EnrichmentContext(vedha_rules=[self._VEDHA_RULE_LOWERCASE_GRAHA])
         s, e = self._horizon_jd_local()
 
+        ctx_no_cover = EnrichmentContext(vedha_rules=[self._NON_COVERING_VEDHA_RULE])
         windows_before = mode_b_sweep(
             janma_nakshatra_idx=3,
             signal_id='dddddddd-0000-0000-0000-000000000000',
@@ -968,12 +976,12 @@ class TestCR102VedhaWired:
             horizon_start_jd=s, horizon_end_jd=e,
             gochara_service=None,
             magnitude_threshold=0.0,
-            enrichment_context=ctx,
-            # moon_sign omitted
+            enrichment_context=ctx_no_cover,
         )
         assert len(windows_before) == 1
         assert windows_before[0]['constituent_factors']['c11_vedha_factor'] == pytest.approx(1.0)
 
+        ctx_cover = EnrichmentContext(vedha_rules=[self._VEDHA_RULE_LOWERCASE_GRAHA])
         windows_after = mode_b_sweep(
             janma_nakshatra_idx=3,
             signal_id='dddddddd-0000-0000-0000-000000000000',
@@ -981,8 +989,7 @@ class TestCR102VedhaWired:
             horizon_start_jd=s, horizon_end_jd=e,
             gochara_service=None,
             magnitude_threshold=0.0,
-            enrichment_context=ctx,
-            moon_sign=self._MOON_SIGN_CANCER,
+            enrichment_context=ctx_cover,
         )
         assert len(windows_after) == 1
         assert windows_after[0]['constituent_factors']['c11_vedha_factor'] == pytest.approx(0.3)
@@ -996,38 +1003,41 @@ class TestCR102VedhaWired:
 
 
 class TestCR102VedhaCaseNormalization:
-    """Isolated proof of the SECOND CR-102 bug (case mismatch) independent of
-    the reference-frame bug, directly on _c11_vedha_factor."""
+    """Isolated proof of the case-normalization guarantee, independent of the
+    date-range matching, directly on _c11_vedha_factor. F-SANGAM-5 (L3-W3)
+    switched the matched field from an abstract house number to a
+    [window_start, window_end) date range; case-insensitivity on `graha`
+    itself is unchanged and still covered here."""
 
     def test_lowercase_rule_graha_matches_capitalized_call_planet(self):
         from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
 
         ctx = EnrichmentContext(vedha_rules=[
-            {'graha': 'saturn', 'transit_to_house': 5, 'vedha_house': 11},
+            {'graha': 'saturn', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)},
         ])
         # Before the fix this would have returned 1.0 (neutral) because
         # 'Saturn' != 'saturn' under a bare == comparison.
-        factor = _c11_vedha_factor('Saturn', 5, ctx)
+        factor = _c11_vedha_factor('Saturn', date(2026, 4, 1), ctx)
         assert factor == pytest.approx(0.3), (
-            "case-insensitive match must catch a lowercase-seeded bg_transit_rules row "
-            "against a capitalized engine-side planet name"
+            "case-insensitive match must catch a lowercase-seeded rule row against a "
+            "capitalized engine-side planet name"
         )
 
     def test_mixed_case_and_whitespace_still_matches(self):
         from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
 
         ctx = EnrichmentContext(vedha_rules=[
-            {'graha': ' Mars ', 'transit_to_house': 3, 'vedha_house': 9},
+            {'graha': ' Mars ', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)},
         ])
-        factor = _c11_vedha_factor('mars', 3, ctx)
+        factor = _c11_vedha_factor('mars', date(2026, 4, 1), ctx)
         assert factor == pytest.approx(0.3)
 
     def test_non_matching_planet_still_neutral(self):
         from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
 
         ctx = EnrichmentContext(vedha_rules=[
-            {'graha': 'venus', 'transit_to_house': 5, 'vedha_house': 11},
+            {'graha': 'venus', 'window_start': date(2026, 3, 1), 'window_end': date(2026, 5, 1)},
         ])
-        factor = _c11_vedha_factor('Saturn', 5, ctx)
+        factor = _c11_vedha_factor('Saturn', date(2026, 4, 1), ctx)
         assert factor == pytest.approx(1.0)
 

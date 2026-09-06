@@ -1034,23 +1034,40 @@ class KaSangamWriter(WriterBase):
             except Exception:
                 pass
 
-        # C11: vedha rules from bg_transit_rules
+        # C11: vedha windows from kala_vedha_gochara
+        #
+        # NIRMĀṆA L3-W3 (F-SANGAM-5, §N.8). This query used to read
+        # `bg_transit_rules WHERE rule_type = 'vedha'` — a filter value that does
+        # not exist on that table (its real rule_type vocabulary is
+        # {unfavourable, favourable, double_transit}; measured live: 0 rows ever
+        # matched), so `_c11_vedha_factor` — the NECESSARY-side veto — was
+        # permanently neutral (1.0) on every window, on every chart, forever.
+        # `kala_vedha_gochara` (354 rows, catalog_status=CURRENT) is the real,
+        # populated, per-chart source: precomputed [window_start, window_end)
+        # date ranges per graha where classical house-vedha genuinely applies
+        # (BPHS Ch.29), not an abstract house-number rule needing a separate
+        # house-FROM-MOON resolution step. Pinned to `vedha_kind='house_vedha'`
+        # (the classical transit-house vedha this current is named for) and
+        # `ayanamsha_id='lahiri_chitrapaksha'`, matching this writer's own
+        # convention elsewhere.
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_vedha")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT graha, primary_house, vedha_house
-                    FROM bg_transit_rules
-                    WHERE rule_type = 'vedha'
-                    """
+                    SELECT graha, window_start, window_end
+                    FROM kala_vedha_gochara
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND vedha_kind = 'house_vedha'
+                    """,
+                    (chart_id,),
                 )
                 for row in cur.fetchall():
                     vedha_rules.append({
                         'graha': row['graha'],
-                        'transit_to_house': row['primary_house'],
-                        'vedha_house': row['vedha_house'],
+                        'window_start': row['window_start'],
+                        'window_end': row['window_end'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_vedha")
