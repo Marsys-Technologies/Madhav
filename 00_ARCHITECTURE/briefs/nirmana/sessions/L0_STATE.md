@@ -2436,3 +2436,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 5 (33/40/41/62) despite main HEAD being static —
   queue confirmed healthy, just caught between transitions. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 3 (30/37/38/59). No DIRTY, no RED, no new eligible
+  work. 30/40 frozen holds.
