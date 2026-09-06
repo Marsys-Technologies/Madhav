@@ -489,6 +489,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~75:0xZ — L3-W4 — `#1903` MERGED for real** (squash-merged
+  during this cycle's PR hygiene sweep — its own commit title on `main` is
+  the PR's original title, not my last local commit message; a routine
+  intermediate "still building CI" note from mid-cycle didn't survive the
+  squash, no real content lost, just bookkeeping). Since `#1903` is now
+  closed, moved state-file tracking to `#2079` (still open, unlocked).
+  **Hit a FIFTH migration-number collision on `#2079` while rebasing onto
+  it**: 847→848 (collided with L1's newly-merged `847_..._estimated_seconds_
+  rebaseline.sql` — the fourth renumber for this one file overall:
+  811→841→844→847→848). Also resolved a genuine, additive L3_STATE.md
+  merge conflict while rebasing `#2079` onto the now-much-further-advanced
+  `main` (an old `#1895` L2 pre-emptive-fix heartbeat entry from early this
+  session, duplicated across HEAD/theirs — kept once, spliced at its correct
+  chronological position, verified zero data loss via the standing
+  `git diff origin/main | grep '^-'` check). Migration guard re-verified
+  clean, tests re-pass (5/5). `#2070`/`#2065` still healthy and queued from
+  last cycle. — blocked on: nothing new; next action: watch all 3 F-L3-15
+  PRs merge — `#2065` landing unblocks `ka_muhurta_seva`'s W2 acceptance,
+  the next genuine W4-path item (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
