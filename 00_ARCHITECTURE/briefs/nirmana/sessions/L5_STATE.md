@@ -457,6 +457,85 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T16:20Z (C8 v2.3 cycle 519) — **Milestone: `#2120` MERGED — the ninth state-recovery
+  PR closed out.** Ninth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, now 519). 5 local-only commits (cycles 512-518, 71 lines, single-file, plus two
+  untracked scratch JSON files left by the still-running `mi_kula` W2 subagent sharing this
+  worktree — left untouched, not part of this commit) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-10`. `mi_kula` W2-recording subagent (`ae23df5fcb8ae74f2`,
+  dispatched cycle 517) still running (~6 min) — no events landed yet, holding, not starting a
+  competing unit. New PR spotted (#2121, L1's `ga_tajaka`) — out of scope, confirmed not mine.
+- 2026-09-06T16:15Z (C8 v2.3 cycle 518) — **IDLE-OK, verified.** #2120 confirmed still genuinely
+  queued. New PR spotted (#2121) — confirmed it's L1's (`ga_tajaka volume_explanation`), not
+  mine, out of scope. `mi_kula` W2-recording subagent (cycle 517) still running (~2 min), zero
+  events landed yet — holding, not starting a competing unit.
+- 2026-09-06T16:12Z (C8 v2.3 cycle 517) — **Milestone: `bg_rules` just froze — `mi_kula`'s
+  ancestor-freeze condition (C2.1) is satisfied for the FIRST TIME all session.** Direct query
+  of `mi_kula`'s actual `depends_on` (`{bg_rules, bg_class_priors}`, both frozen now — not the 6
+  transitive ancestors the old W2-era asset table tracked, which included `bg_yogas`/
+  `bg_dasha_systems` as transitive, not direct, blockers) confirms this. Ran the canonical
+  `egate.sql -v layer=L5`: `mi_kula` shows `unfrozen_ancestors=0` but `gate=BLOCKED-NO-ROUTE` —
+  `asset_analysis_accepted`/`optimization_verdict_accepted` were never actually submitted to the
+  evidence spine for `mi_kula` (only the 3 canaries that were E-gate-open earlier ever got W2
+  events recorded; `mi_kula` sat ancestor-blocked the whole time). **This cycle's bounded unit:**
+  dispatched an executor-identity subagent (`ae23df5fcb8ae74f2`) to formally submit both W2
+  events for `mi_kula` (`--as executor`, recording the already-decided `changed` route from this
+  session's W1/W2 phase — not a new decision, not verification work) via `nrec`, computing exact
+  digests from `definitions.ts`'s real exported functions (never hand-reimplemented). Scoped
+  strictly to W2 recording only — no W4 dispatch, no build, no code/migration changes. PR
+  hygiene: #2120 still genuinely queued (`is:queued` confirmed this cycle).
+- 2026-09-06T16:07Z (C8 v2.3 cycle 516) — **IDLE-OK, verified.** #2120 confirmed still genuinely
+  queued (`is:queued`). Main advanced (#2118, L1's, not mine — out of scope). Checked the full L5
+  15-asset roster's lifecycle events directly: only `lel_events`/`mi_vistara`/`mi_jivanaghatana`
+  have ANY events, all three now fully `asset_frozen` — the other 12 (including `mi_kula`) remain
+  at zero events, genuinely blocked on unfrozen ancestors, no L5 action possible on any of them.
+  `mi_kula` E-gate unchanged (`bg_rules` still the sole gap). Noted in passing: adjudication
+  **#1840** (L5→Conductor, "output_digest_spec is L0-only") looks practically resolved for L5's
+  two canaries now that both reached `asset_frozen`, but it's a cross-layer finding possibly still
+  live for other layers — leaving it open, not mine to close unilaterally.
+- 2026-09-06T16:03Z (C8 v2.3 cycle 515) — **Milestone: `mi_jivanaghatana` reached `asset_frozen`
+  — the campaign's second frozen `mi_*` asset (after `mi_vistara`).** Verifier subagent
+  (`af515b693688d3039`, dispatched cycle 512) reported success; independently re-confirmed via
+  direct DB query (not trusted on self-report alone) — full 6-row lifecycle ledger in order,
+  `integrity_verified` at 15:58:51Z, `asset_frozen` at 16:00:09Z. Verifier's own account: ran the
+  real `integrity_check_sql` itself (non-vacuous, 63/63 rows matching `life_events`), computed
+  `registry_fingerprint_sha256` matching the value already accepted in prior events (registry
+  contract unchanged), computed `lifecycle_digest` per `requireFreezeProvenance`'s exact
+  algorithm from source, submitted both events `--as verifier` via `nrec`, each independently
+  re-confirmed in the DB before proceeding to the next. No `chart_grants`-class permission error
+  hit (migration 647 untouched, not needed here). No code/migration modified — pure evidence
+  submission. All scratch files cleaned up. **PR hygiene: #2120 now CLEAN and genuinely queued**
+  (`is:queued` confirmed). `mi_kula`'s E-gate: still 2/3 ancestors frozen (`bg_dasha_systems`,
+  `bg_yogas`), `bg_rules` remains the sole blocker.
+- 2026-09-06T16:00Z (C8 v2.3 cycle 514) — **IDLE-OK, but real progress on `mi_kula`'s E-gate:
+  `bg_yogas` just froze** (L0). 2 of 3 ancestors now frozen (`bg_dasha_systems`, `bg_yogas`) —
+  only `bg_rules` remains before `mi_kula` unblocks. #2120 still CLEAN, `mergeStateStatus:
+  BLOCKED` only on its still-IN_PROGRESS Governance Gates check (~11 min elapsed, upper end of
+  normal 7-12 min range, not yet stalled). Verifier subagent for `mi_jivanaghatana`'s W5 (cycle
+  512) still running (~5 min) — holding, not starting a competing unit.
+- 2026-09-06T15:57Z (C8 v2.3 cycle 513) — **IDLE-OK, verified.** [Note: switching heartbeat
+  timestamps to real UTC (`date -u`) from here on — prior entries drifted ~4.5h ahead of actual
+  UTC, a self-consistent but inaccurate convention that had gone unnoticed across the long
+  PR-hygiene stretch; harmless (log-only, no logic depended on it) but corrected now.] #2120
+  CLEAN, `mergeStateStatus: BLOCKED` only because its last check (Governance Gates) is still
+  IN_PROGRESS (~8 min elapsed, within normal 7-12 min range) — not stalled, nothing to fix.
+  Verifier subagent for `mi_jivanaghatana`'s W5 (dispatched cycle 512) still running — not
+  starting a second competing unit of work while it's in flight, per the one-bounded-unit
+  discipline. `mi_kula`'s remaining ancestors unchanged.
+- 2026-09-06T20:25Z (C8 v2.3 cycle 512) — **PR hygiene: #2120 (heartbeat recovery #9) CLEAN,
+  still running required checks (Unit Tests / DB Integration Tests / Governance Gates
+  IN_PROGRESS) — not yet eligible for the queue, correctly not touched. Backlog find: direct DB
+  query showed `mi_jivanaghatana` reached `accepted_rebuild_observed` back at **cycle 410
+  (~10:56Z today)** and was never taken to W5 — fell through the cracks during the long
+  PR-hygiene-dominated stretch (cycles ~410-511 were almost entirely #2103→#2108→#2111→#2114→
+  #2117 queue-watching). This is the highest-priority eligible unit per contract Step 2 priority
+  2 (completed run awaiting W5). Dispatched a fresh-context verifier subagent
+  (`af515b693688d3039`) to independently re-run `mi_jivanaghatana`'s real `integrity_check_sql`,
+  compute the canonical digests from `definitions.ts`'s own exported functions (never
+  hand-reimplemented), and submit `integrity_verified` → `asset_frozen` via `nrec --as verifier`
+  — briefed with the `mi_vistara`/`lel_events` precedent and the chart_grants (migration 647)
+  fix already landed, told to STOP on any real blocker rather than force a pass.
+  `mi_kula`'s remaining ancestors unchanged (only `bg_dasha_systems` frozen of the three).
 - 2026-09-06T20:20Z (C8 v2.3 cycle 511) — **Milestone: `#2117` MERGED — the eighth state-recovery
   PR closed out.** Eighth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, now 511). Found via a fresh `origin/main` fetch showing tip
