@@ -549,6 +549,55 @@ your layer close.
   action: continue N1's remaining chain once #1919/#1921/#1924 clear the queue
   (all confirmed genuinely `QUEUED`, not stuck), or re-check #1713/#2071 for answers
   next cycle.
+- `2026-09-06T~08:0xZ — L3-W3 — PR hygiene: twelve genuinely DIRTY PRs found and
+  fixed this cycle (a large sweep, in two batches). First batch of ten: #1940
+  (F-BHAV-2/F-BHAV-3, three-way conflict — L3_STATE.md + both generated files,
+  pins/digests regenerated for real, 45/45 tests), #2028/#2032/#2034/#2038 (pure
+  L3_STATE.md-only heartbeat/DIRTY-fix-note PRs, standard shape each time, only
+  the known-safe migration-range line removed), #1929 (F-VIGHNA-3, two-commit
+  rebase with a self-conflicting re-pin commit, inverted shape both times,
+  34/34 tests), #1931/#1932 (F-KALA-1 slices one/two, inverted shape, `tsc`
+  clean, 11/11 and 115/127 tests), #1936 (F-DARSH-2, two commits, standard then
+  inverted shape, 30/30 tests), #1943 (F-PARVA-1, three-way conflict —
+  migration 679 the LAST free number in the 670-679 range, pins/digests
+  regenerated, 28/28 tests including 3 live-rollback integration). A follow-up
+  sweep then found two MORE: #1951 (F-VIGHNA-8/F-DARSH-8, `tsc` clean, 115/127
+  tests) and #1952 (F-VIGHNA-5, migration 730, 8/8 tests). All twelve force-
+  pushed, re-armed, confirmed `MERGEABLE`/not-DIRTY on final GraphQL rechecks.
+  N1's sequence has genuinely advanced this cycle: #2047/#2049 (the seventh
+  step, both halves) MERGED — no longer appear in the open-PR list.
+  **F-L3-15 third slice: `ka_tulana` gets a real `health_probe` (migration
+  764, PR #2070).** Corrects a scoping error in #2065's own PR description:
+  `ka_tulana` was wrongly described there as needing DB access alongside
+  `ka_dasha_kala`. Re-checked `KaTulanaService.rank_windows()`/`.compare()`
+  directly: pure ranking logic over already-computed `WindowInput` records
+  the caller supplies, "No DB writes, No commit/rollback" per the module's
+  own docstring, no `db_conn` anywhere — DB-free by construction, same
+  architecture class as the other three probes. `ka_dasha_kala` remains
+  genuinely out of scope (its `KaDashaKalaService.query()` reads
+  `chart_dashas` through `db_conn`). **Opened a NEW migration range
+  (764-773)**: the 670-679 range assigned earlier this session is now fully
+  consumed (670-679 all claimed across this session's cycles, confirmed via
+  `ls platform/migrations/`); 764 confirmed unclaimed via `gh search` (code +
+  open-PR titles/bodies, both empty) before use. Ground truth computed
+  against two FIXED, synthetic `WindowInput` records (not fetched from any
+  real chart): I-11 composite weights on window_a(convergence=0.8,
+  rarity=15y, confidence=high, peak=2026-01-01) vs window_b(convergence=0.5,
+  rarity=5y, confidence=moderate, peak=2026-06-01) at
+  reference_date=2026-01-01 yield composite_a=0.795, composite_b=0.4234 —
+  window_a wins both `rank_windows()` and `compare()`, decisive_factor
+  correctly attributing the win to `proximity_factor`. New JS-canonical
+  contract digest independently cross-checked via real `node` executing
+  `definitions.ts`'s own `stableJson` — matched Python's `_contract_digest`
+  byte-for-byte on the first attempt. 15 new tests total (7 probe + 6
+  migration + 2 route), full `tests/l3/` suite 1459 passed/0 new failures.
+  — blocked on: nothing; next action: N1's remaining chain
+  (#1905/#1919/#1921/#1924 still queued — the seventh step landed, so these
+  four should be close behind), or `ka_dasha_kala`'s own DB-backed
+  health_probe architecture question (the one real remaining F-L3-15 gap,
+  needing a `run_health_probe()` signature change — a decision worth raising
+  rather than forcing through casually, per CLAUDE.md §N.2's "STOP and raise"
+  discipline for contract changes to shared interfaces).
 - `2026-09-06T~04:3xZ — L3-W3 — THIRTEENTH, FOURTEENTH, FIFTEENTH DIRTY-PR fixes this
   run — three at once: #1929 (F-VIGHNA-3), #1931 (F-KALA-1 first slice), #1932 (F-KALA-1
   second slice).** #1929 was the `ka_sangam`-adjacent-family shape (L3_STATE.md + the
