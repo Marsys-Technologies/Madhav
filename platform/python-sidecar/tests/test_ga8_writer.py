@@ -305,6 +305,44 @@ class TestAspectRows:
 # ── §4: Group B — Shadbala extensions ────────────────────────────────────────
 
 class TestShaddBalaExtensions:
+    # F-A15: graha_vargottama_amplification_factor now READS ga_vargas' own D9
+    # varga_vargottama_flag (chart_divisionals) instead of re-deriving it —
+    # this fake conn feeds that read path directly, so the fixture must
+    # answer the (chart_id, ayanamsha_id, graha) lookup rather than return an
+    # unconditional row (mirrors TestF61SaptavargajaScoreMaterialized's
+    # query-aware _Cur, adapted to this category's params shape).
+    class _VargottamaCur:
+        def __init__(self, calls, vargottama_by_graha):
+            self._calls = calls
+            self._vargottama_by_graha = vargottama_by_graha
+            self._last_sql = ""
+            self._last_params = None
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None):
+            self._calls.append((sql, params))
+            self._last_sql, self._last_params = sql, params
+        def fetchall(self):
+            if "varga_vargottama_flag" not in self._last_sql:
+                return []
+            graha = self._last_params[-1]
+            is_vargottama = self._vargottama_by_graha.get(graha, False)
+            return [(f"row-{graha}", is_vargottama, "test-build-001")]
+
+    class _VargottamaConn:
+        def __init__(self, vargottama_by_graha):
+            self.calls = []
+            self._vargottama_by_graha = vargottama_by_graha
+        def cursor(self, row_factory=None):
+            return TestShaddBalaExtensions._VargottamaCur(self.calls, self._vargottama_by_graha)
+
+    def _conn_one_vargottama(self, vargottama_graha="Mercury"):
+        """Mercury vargottama=True, every other classical graha False -- a
+        synthetic fixture proving BOTH 1.0 and 1.25 genuinely flow through
+        the new authority-read path, not just that neither crashes."""
+        by_graha = {g: (g == vargottama_graha) for g in sut.CLASSICAL_GRAHAS}
+        return self._VargottamaConn(by_graha)
+
     def test_vargottama_factor_produced_for_all_classical_grahas(self):
         rows = sut._build_shadbala_extension_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
@@ -317,11 +355,29 @@ class TestShaddBalaExtensions:
 
     def test_vargottama_factor_is_1_0_or_1_25(self):
         rows = sut._build_shadbala_extension_rows(
-            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=self._conn_one_vargottama(),
         )
         varg_rows = [r for r in rows if r["fact_category"] == "graha_vargottama_amplification_factor"]
         for r in varg_rows:
             assert r["fact_value_num"] in (1.0, 1.25), f"Unexpected factor: {r['fact_value_num']}"
+        # Both values must genuinely appear -- proves the read (not a guess)
+        # actually flows the real per-graha flag through to amp_factor.
+        values = {r["fact_value_num"] for r in varg_rows}
+        assert values == {1.0, 1.25}, f"expected both factor values to appear, got {values}"
+
+    def test_vargottama_factor_is_honest_none_without_conn(self):
+        """F-A15: with no conn (the pre-existing no-DB test path), the writer
+        must NOT guess a value -- it floors to None rather than fabricating
+        1.0/1.25 from a formula it no longer trusts on its own."""
+        rows = sut._build_shadbala_extension_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        varg_rows = [r for r in rows if r["fact_category"] == "graha_vargottama_amplification_factor"]
+        assert varg_rows, "rows must still be produced even without conn"
+        for r in varg_rows:
+            assert r["fact_value_num"] is None
+            assert r["fact_value_text"] == "unavailable"
 
     def test_saptavargaja_reference_rows_produced(self):
         rows = sut._build_shadbala_extension_rows(
@@ -1176,6 +1232,41 @@ class TestSpecialStates:
             subj = sut.PLANET_TO_SUBJECT.get(g["name"], g["name"].upper())
             assert subj in subjects
 
+    def test_is_vargottama_reads_ga_vargas_authority_not_the_old_navamsha_formula(self):
+        # F-A17: graha_special_state_rollup.is_vargottama used its own hardcoded
+        # navamsha-degree formula (nav_starts sign-cycling table) -- the same bug class as
+        # F-A15's original graha_vargottama_amplification_factor instance, never fixed here.
+        # Now reads ga_vargas' own D9 varga_vargottama_flag via the shared
+        # _get_varga_vargottama_flag helper. Mercury=True, everything else=False.
+        fake_conn = TestShaddBalaExtensions._VargottamaConn({"Mercury": True})
+        rows = sut._build_special_state_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=fake_conn,
+        )
+        rollup = {
+            r["fact_subject"]: r["fact_value_text"]
+            for r in rows
+            if r["fact_category"] == "graha_special_state_rollup" and r["fact_key"] == "is_vargottama"
+        }
+        assert rollup.get("MER") == "true", rollup
+        non_mercury = {subj: val for subj, val in rollup.items() if subj != "MER"}
+        assert non_mercury, "expected other classical grahas in the rollup"
+        assert set(non_mercury.values()) == {"false"}, non_mercury
+
+    def test_is_vargottama_is_honest_unavailable_without_conn(self):
+        # Without a conn, ga_vargas' own varga_vargottama_flag is unreachable -- the row must
+        # say "unavailable", never guess true/false (§N.8/B.10).
+        rows = sut._build_special_state_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rollup = [
+            r for r in rows
+            if r["fact_category"] == "graha_special_state_rollup" and r["fact_key"] == "is_vargottama"
+        ]
+        assert rollup, "graha_special_state_rollup.is_vargottama rows must still be produced"
+        for r in rollup:
+            assert r["fact_value_text"] == "unavailable", r
+
 
 # ── §Node Parashari Aspects ───────────────────────────────────────────────────
 
@@ -1310,12 +1401,17 @@ class TestVargaNodeRelationships:
             f"Mercury-Rahu conjunction missing. Subjects: {conj_subjects}"
 
     def test_rahu_ketu_in_vargottama_when_same_sign_as_d1(self):
-        # Rahu in Taurus in D1 (MOCK_CHART_OUTPUT). Make it Taurus in D9 too.
+        # F-A17: vargottama_per_varga now READS ga_vargas' own varga_vargottama_flag
+        # (chart_divisionals) instead of re-deriving it from chart_output's D1 sign — this fake
+        # conn feeds that read path directly (reuses TestShaddBalaExtensions' fixture, which
+        # already answers the (chart_id, ayanamsha_id, varga, graha) shaped query).
         vs = self._make_varga_state()
         vs["Rahu"] = {"sign": "Taurus", "sign_num": 2, "house": 2, "degree": 20.0}
+        fake_conn = TestShaddBalaExtensions._VargottamaConn({"Rahu": True})
         rows = sut._build_varga_relationship_rows(
             "D9", vs, MOCK_CHART_OUTPUT,
-            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=fake_conn,
         )
         vargottama_subjects = {r["fact_subject"] for r in rows
                                if r["fact_category"] == "vargottama_per_varga"}
@@ -1326,6 +1422,19 @@ class TestVargaNodeRelationships:
                         if r["fact_category"] == "vargottama_per_varga"
                         and r["fact_subject"] == "D9_RAH_MEAN")
         assert rahu_row["fact_value_text"] == "vargottama"
+
+    def test_vargottama_per_varga_is_honest_unavailable_without_conn(self):
+        # F-A17: without a conn, ga_vargas' own varga_vargottama_flag is unreachable — the row
+        # must say "unavailable", never guess True/False (§N.8/B.10).
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        vargottama_rows = [r for r in rows if r["fact_category"] == "vargottama_per_varga"]
+        assert vargottama_rows, "vargottama_per_varga rows must still be produced"
+        for r in vargottama_rows:
+            assert r["fact_value_text"] == "unavailable", r
+            assert r["fact_value_num"] is None, r
 
     def test_rahu_node_dignity_in_gemini_is_neutral(self):
         # L0 seal 2026-06-24: Rahu exaltation = Taurus (Parashari mainstream).
@@ -1780,13 +1889,27 @@ class TestF61SaptavargajaScoreMaterialized:
     """
 
     class _Cur:
+        """Query-aware: _build_shadbala_extension_rows now also issues a
+        varga_vargottama_flag lookup per graha (F-A15) before the
+        saptavargaja lookup this fixture was originally written for. Return
+        the fixture's saptavargaja rows only for that query; the
+        vargottama-flag query gets an empty result (this test class's fixed
+        rows are shaped for saptavargaja, not vargottama, and would corrupt
+        F-A15's own build-id-uniqueness check if handed to it) -- the
+        writer's honest-None floor for a missing D9 row has no bearing on
+        the saptavargaja assertions this class actually tests."""
         def __init__(self, calls, rows):
             self._calls, self._rows = calls, rows
+            self._last_sql = ""
         def __enter__(self): return self
         def __exit__(self, *a): return False
         def execute(self, sql, params=None):
             self._calls.append((sql, params))
-        def fetchall(self): return self._rows
+            self._last_sql = sql
+        def fetchall(self):
+            if "varga_vargottama_flag" in self._last_sql:
+                return []
+            return self._rows
 
     class _Conn:
         def __init__(self, rows):
@@ -1909,7 +2032,15 @@ class TestF61SaptavargajaScoreMaterialized:
         conn = self._Conn(rows=[])
         sut._build_shadbala_extension_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER, conn=conn)
-        issued_sql, params = conn.calls[0]
+        # F-A15 added an earlier per-graha varga_vargottama_flag query, so the
+        # saptavargaja query is no longer necessarily calls[0] -- find it by
+        # its own category rather than assume a fixed position.
+        saptav_calls = [
+            (sql, params) for sql, params in conn.calls
+            if "varga_saptavargaja_bala_component" in sql
+        ]
+        assert saptav_calls, "no saptavargaja query was issued at all"
+        issued_sql, params = saptav_calls[0]
         assert "= ANY(" in issued_sql, "read query must restrict to the saptavarga group"
         assert list(sut.SAPTAVARGA_EXPECTED_VARGAS) in [p for p in params if isinstance(p, list)]
 
