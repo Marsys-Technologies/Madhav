@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 133; revised the #2113 unblock plan after finding a real orphan risk: ga_positions_writer.py's fact_id derivation changed since the last acceptance (PR #1898, build_id removed from fact_id -- a real fix, but rebuild produces different fact_id values), and ga_yoga_firings.constituent_fact_ids (36/40 refs) resolves to exactly ga_positions' own categories -- a ga_positions-ONLY rebuild would orphan those. Did NOT resubmit/dispatch this cycle. Posted the corrected finding to #2113
+last_updated: 2026-09-07 — C8 v2.3 cycle 134; kept L1_W6_CLOSE_REPORT_v1_0.md accurate (PR #2179) -- rewrote §0/§3.5/§5 to reflect the #2113 re-diagnosis (ga_positions immune to the original asset_freshness framing; real open question is now the ga_yoga orphan-risk coordinated-rebuild question). No reply yet on #2113 as of this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7906,3 +7906,25 @@ record — they are the only entries in this table with a real wall-clock behind
   is also rebuild-ready (it's still `BLOCKED-ANCESTORS` on 7 other assets), or get a ruling on
   whether a coordinated multi-asset rebuild is the right shape here; re-check #2113 for any reply
   before deciding the next concrete step.
+- 2026-09-06T2xZ -- CYCLE 134 (C8 v2.3). PR hygiene: #2178 (only own open PR) confirmed
+  `mergeStateStatus: BLOCKED` with all checks either `pass` or still-`pending`, zero `fail` --
+  genuinely mid-CI, not DIRTY/RED -- clean. Re-checked #2113: no reply yet (still my own last
+  comment's timestamp). With W4 dispatch genuinely paused pending that reply (not something to
+  force by re-posting more urgently every cycle) and the finding-list-driven backlog still fully
+  exhausted, did the natural follow-up maintenance: `L1_W6_CLOSE_REPORT_v1_0.md` still described
+  #2113 in its ORIGINAL framing ("campaign-wide asset_freshness gate... unchanged since
+  2026-09-06T15:00:13Z across ~15 consecutive cycles") even though cycles 132-133 had since
+  substantially re-diagnosed it -- left uncorrected, a future reader (or Phase Z) would get a
+  materially stale picture of what's actually blocking W4. Rewrote §0's W4/W5 status paragraph,
+  added a third §3.5 item recording the full re-diagnosis (ga_positions' immunity to the
+  original gate, the #1856/PR#1861 timeline, the fact_id/orphan-risk finding), and corrected
+  §5's #2113 backlog entry to describe the actual open question (coordinated `ga_positions`->
+  `ga_yoga` rebuild sequencing) instead of the stale one. Bumped the draft to 0.3-DRAFT. Opened
+  PR #2179, armed auto-merge, confirmed genuine CI dispatch. No code change, no writer touched --
+  pure documentation-accuracy maintenance on an already-published DRAFT artifact. CYCLE 134 L1:
+  PR hygiene clean, kept the W6 close-report draft honest as evidence landed (its own stated
+  precedent) rather than let a materially stale blocker-description sit uncorrected -- next:
+  keep re-checking #2113 for a reply; if it stays quiet for several more cycles, reconsider
+  whether the cost-ledger/full-disposition-table prep items (still the two remaining
+  charter-named options) are a better use of a cycle than a bare re-check with nothing new to
+  report.
