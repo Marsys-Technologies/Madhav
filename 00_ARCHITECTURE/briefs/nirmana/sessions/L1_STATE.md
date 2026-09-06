@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 65; ga_structural F-A14 widened to 26/57 (#2043)
+last_updated: 2026-09-06 — C8 v2.3 cycle 66; fixed #2043's silently-stuck CI (edited-event gap)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3735,6 +3735,24 @@ whole campaign.
   arming auto-merge — every prior migration PR in this arc targets `main` directly regardless of
   local stacking, and this is now the explicit reminder for future cycles.
 
+- **D-L1-90** — C8 v2.3 cycle 66: PR hygiene found #2043 genuinely stuck — zero check-runs on
+  its head commit, not a still-initializing timing artifact. Root cause: `gh pr edit --base
+  main` (D-L1-89's retarget) fires a `pull_request.edited` webhook event; `ci.yml`'s
+  `pull_request:` trigger uses GitHub's default types (`opened`/`synchronize`/`reopened`), which
+  excludes `edited` — so no workflow ever dispatched. Confirmed via
+  `gh api repos/.../commits/<head-sha>/check-runs` returning `total_count: 0` directly (not
+  inferred from the unreliable `mergeStateStatus`/`autoMergeRequest` fields). Fixed via `gh pr
+  close` + `gh pr reopen` (fires `reopened`, a covered event) rather than a workaround —
+  confirmed ~30 check-runs dispatched immediately after. Close/reopen resets
+  `autoMergeRequest` to null; re-armed with `gh pr merge --auto --squash`. **New standing
+  lesson for this arc:** a `gh pr edit --base` retarget must ALWAYS be paired with a
+  close/reopen (or any commit push, which fires `synchronize`) — never trust that
+  `autoMergeRequest` being populated means a retargeted PR is actually getting CI-verified; a
+  populated `autoMergeRequest` with zero check-runs is a silent-stuck state indistinguishable
+  from a healthy queued PR unless checked directly via `is:queued` / check-runs, exactly the
+  `autoMergeRequest`-lies pattern the cycle contract already warns about, one layer deeper (it
+  lies about queue membership AND about whether CI ever ran after a retarget).
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
@@ -4833,3 +4851,25 @@ L1 must satisfy rather than a feature it consumes.
   793, graha_effective_dignity_modified_by_aspects -- first fully self-contained category this
   arc) -- next: continue ga_structural widening (31 categories remain), or ga_positions
   re-dispatch once #1892 lands.
+- 2026-09-06T09:2xZ -- CYCLE 66 (C8 v2.3). PR hygiene: 44/45 L1 PRs genuinely is:queued
+  (is:queued author:@me, --limit 200). Found one real defect on #2043 (last cycle's fresh PR):
+  its head commit had ZERO check-runs registered, days-old at cycle start -- not a
+  still-initializing timing artifact, a genuinely stuck PR. Root-caused before acting: last
+  cycle's `gh pr edit --base main` retarget fires a `pull_request.edited` webhook event, but
+  ci.yml's `pull_request:` trigger uses GitHub's default types (opened/synchronize/reopened),
+  which does not include `edited` -- so no workflow ever dispatched against the retargeted PR.
+  Confirmed via `gh api .../commits/<head-sha>/check-runs` returning total_count:0 (not a
+  mergeStateStatus=BLOCKED false read -- an actual empty check-run list). Fixed at the root
+  rather than working around it: `gh pr close 2043` + `gh pr reopen 2043` to fire a `reopened`
+  event, which IS in the default trigger set -- confirmed ~30 check-runs immediately dispatched
+  (pending/pass, no failures). Reopening reset autoMergeRequest to null (expected GitHub
+  behavior on close/reopen); re-armed via `gh pr merge 2043 --auto --squash` (benign "merge
+  strategy set by merge queue" message). This diagnosis-and-fix was itself this cycle's bounded
+  unit of work -- no new migration authored. New lesson for the arc: `gh pr edit --base` alone
+  is NOT sufficient to get CI running on a retargeted PR; it must be paired with a
+  close/reopen (or an empty/real commit push, which fires `synchronize`) or the PR will sit
+  silently stuck with a misleadingly-populated `autoMergeRequest` and zero real verification.
+  #1928/#1892 unchanged (still OPEN, still outside L1 scope). CYCLE 66 L1: fixed a genuinely
+  stuck PR (#2043, zero check-runs from an `edited`-only retarget event) via close/reopen +
+  re-arm -- no new migration this cycle -- next: continue ga_structural widening (31 categories
+  remain) once #2043 clears CI and queues, or ga_positions re-dispatch once #1892 lands.
