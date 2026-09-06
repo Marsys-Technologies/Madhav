@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T04:02Z (C8 v2.3 cycle 266) — **IDLE-OK.** #1826 CLEAN, all checks passed,
+  self-queued — 8th successful full CI cycle. #1844 confirmed `isInMergeQueue: true`.
+  #1844=28 (was 29), #1901=54 (was 55). #1869 now 4 comments (my own cycle-265 comment;
+  no response yet). 5 cycles since last push — pushing next cycle.
 - 2026-09-06T03:59Z (C8 v2.3 cycle 265) — **#1948 landed (chart_grants sweep) — retried
   lel_events, found the ONE table it missed.** Main advanced to #1948 (CONDUCTOR: grant
   `nirmana_evidence_ingress_writer` SELECT on 65 non-L0 tables, closing #1869). Verified
