@@ -5786,3 +5786,40 @@ down 286 cycles; nothing new) → next: confirm `#1831`/`#1808` go green and re-
 queue; watch all 8 positions continue advancing; retry E-gate/dispatch dry-run once DB
 access returns; F1 remains deferred.
 
+`2026-09-06T~15:00Z` — L4 — **CYCLE 297 (v2.3) — a full sweep found FOUR more own PRs
+genuinely `UNMERGEABLE` simultaneously (`#1849`, `#1845`, `#1842`, `#1839`) — apparently
+cascading from `#1834`'s requeue landing between the sweep checks; `#1831`/`#1808` (last
+cycle's fixes) confirmed legitimately still pending, unaffected. Fixed all four using the
+established `dequeuePullRequest`-then-push recipe — this cycle's bounded unit of work
+(the largest single-cycle PR-hygiene batch this window).**
+
+**PR hygiene:** `#1842`, `#1839`, `#1845`, `#1849` (branches
+`codex/nirmana-l4-w3-3g-pramana-domain-normalize`,
+`codex/nirmana-l4-w3-3f-phaladesa-top-anchor`,
+`codex/nirmana-l4-w3-3h-sodhana-leakage-blindspot`,
+`codex/nirmana-l4-w3-3i-suddha-sodhana-fail-loud`) each rebased onto `origin/main` in queue
+order (closest-to-head first). Each hit the same routine generated-file conflict shape
+(digest byte-identical to fresh regen once resolved where it conflicted at all; pin
+hand-derived and verified `--check` clean from the final rebased state each time). For each,
+confirmed via a fixed-base `git diff <last-known-good-main-commit> HEAD` that the branch's
+own writer fix survived intact and the diff was isolated to just that fix + the two
+generated files (F2 domain-vocabulary fix for `#1842`; the headline-anchor fix for `#1839`;
+the LEAKAGE-FIREWALL fix for `#1845`; the F-16 fail-loud fix for `#1849`). Tests: 32/32,
+97/97, 51/51, 51/51 respectively — all green. For each, checked `mergeQueueEntry` before
+pushing (all four still occupied their slot with `state: UNMERGEABLE`), called
+`dequeuePullRequest` via GraphQL, then pushed successfully
+(`mergeStateStatus: MERGEABLE`/`BLOCKED`-on-checks each time) and re-armed via `gh pr merge
+--auto`.
+
+`#1870`, `#1831`, `#1808` all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** several `main` commits landed during this cycle's extended hygiene work
+(L1, not L4-relevant). No new adjudications name L4 (count unchanged at 14). E-gate still
+uncheckable, 287th consecutive cycle DB access down.
+
+CYCLE 297 L4: dequeued+rebased+repushed 4 UNMERGEABLE PRs (`#1849`, `#1845`, `#1842`,
+`#1839` — all four writer fixes verified intact through rebase, 32+97+51+51 tests pass, all
+re-armed for auto-merge via the established dequeue-then-push recipe) → next: confirm all
+four re-enter the merge queue next cycle; watch `#1870`/`#1831`/`#1808` positions continue
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
