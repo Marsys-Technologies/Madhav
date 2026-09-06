@@ -2439,3 +2439,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 3 (30/37/38/59). No DIRTY, no RED, no new eligible
   work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions flat (30/37/38/59), no active merge-queue entry visible.
+  Corroborated via a peer session's comment on #1713: a repo-wide GH Actions runner-capacity
+  backlog (5 fresh `push`-event workflow runs stuck `queued`, not merge-queue-specific), matching
+  the earlier self-resolving D-L0-PP precedent — not filed as adjudication, just watching. No
+  DIRTY, no RED. 30/40 frozen holds.
