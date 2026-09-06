@@ -469,6 +469,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~22:0xZ — L3-W3 — Third clean cycle under corrected L3-only scope.
+  9 L3-owned PRs checked, 5 genuinely DIRTY (`#1954`/`#1940`/`#1936`/`#1929`/
+  `#1917`) — `#1949` merged since last cycle. All five: standard L3-pin and/or
+  digest regen (mostly single-conflict, no repeat of the earlier rebase-target-
+  staleness scare), diff scope verified sane before every push, tests re-run and
+  pass (35/45/30/34/8), pushed. All five confirmed `MERGEABLE` on a final
+  batched recheck. Branch-name-verified L3-owned before every checkout, no
+  exceptions — third consecutive cycle holding the corrected discipline. —
+  blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
+  L3-owned PRs merge, re-check #1713's sidecar finding (still due).
 - `2026-09-06T~19:0xZ — L3-W3 — First cycle under the corrected L3-only scope.
   Re-read `CYCLE_CONTRACT_C8_V23.md` fresh — confirms the correction: "Conductor-
   specific additions" section shows fleet-wide PR sweeps are explicitly the
