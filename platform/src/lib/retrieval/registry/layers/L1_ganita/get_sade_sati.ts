@@ -94,7 +94,13 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+      // F-D20 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `fact_category, ayanamsha_id,
+      // fact_key` alone (all:true path) — a non-total order. Confirmed live: 48 rows share
+      // this exact sort key for several (category, ayanamsha, key) combinations on the
+      // canonical chart (e.g. sade_sati_phase_quarter/krishnamurti/quarter_end_iso), so
+      // LIMIT/OFFSET pagination across them was undefined/unstable order. Adding
+      // fact_subject, fact_id (the table's own PK) makes this a genuine total order.
+      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rawRows = result.rows ?? []
