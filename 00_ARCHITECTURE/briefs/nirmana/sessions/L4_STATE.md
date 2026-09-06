@@ -8162,3 +8162,25 @@ unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still 
 CYCLE 429 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~15:57Z` — L4 — **CYCLE 430 (v2.3) — FIRST MOVEMENT: E-gate re-checked live,
+every asset's `unfrozen_ancestors` count dropped by exactly 1 (canary `ph_nimitta` 35→34;
+`ph_muhurta`/`ph_rectification`/`ph_sankrama`/`ph_sodhana` 36→35; `ph_pratikara` 38→37;
+`ph_suddha_sodhana` 37→36; `ph_phaladesa` 44→43; `ph_pramana` 43→42) — the first change in
+33 consecutive live-checked cycles since DB access was restored at cycle 391. Still
+`BLOCKED-ANCESTORS` for all 9 (nowhere close to open), but genuine forward campaign
+progress, not a stall. (410 cycles closed this window.)**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. One new adjudication, `#2122`
+(L0: `bg_vidhi_primitives.py` dispatch argument no tool reads) — confirmed L0's own item,
+not L4-relevant; count now 17. No `NIRMANA_HOLD` file present.
+
+CYCLE 430 L4: E-gate genuinely re-checked, showing real forward progress for the first
+time this window — every one of the 9 assets' `unfrozen_ancestors` count dropped by 1,
+confirming campaign-wide ancestor closure IS advancing, just very slowly; new adjudication
+`#2122` confirmed L0's own item, not L4-relevant → next: continue re-checking the E-gate
+each cycle to catch further movement, especially as `ph_nimitta` (the canary, now at 34)
+approaches zero; F1 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred
+code item.
