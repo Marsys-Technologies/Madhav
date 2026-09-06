@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_text_index FROZEN, 33/40 -- closes the entire 3-asset D-L0-FF batch (bg_doshas, bg_gochara_arcs, bg_text_index) unblocked by #1901. Also found bg_parihara_rules is now genuinely E-gate clear (both ancestors frozen, W2 current, data verified correct) -- a fresh, ready-to-dispatch asset for next cycle, not yet attempted. #2066 still not confirmed deployed -- bg_dasha_systems/bg_compendium_index evidence chains still pending that. No open L0 PRs.
+last_updated: 2026-09-06 -- bg_parihara_rules dispatch found a genuinely NEW, precisely-diagnosed defect (D-L0-OO): writer upserts but never deletes, so 1 orphaned row (rahu_kalam) in bg_parihara_rules and 8 orphaned rows in bg_muhurta_factor_census have accreted since their sources shrank. Exact rows identified, no writer change needed for the fix (DATA-only migration: delete 9 named rows + re-pin counts/hashes 61->60, 59->51). Deferred to next cycle to author+ship. Data unchanged, no damage from the failed dispatch attempt. Still 33/40 frozen (bg_doshas/bg_gochara_arcs/bg_text_index from the D-L0-FF batch). #2066 still not confirmed deployed. No open L0 PRs.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -45,7 +45,7 @@ while doing the first one (reviewed-deployment-sha must match the accepted W2's 
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
-| bg_parihara_rules | rebuild_only | **READY — newly E-gate clear this cycle.** Both ancestors (`bg_doshas`, `bg_texts`) now frozen; W2 evidence still current (`registry_fingerprint_sha256 6b13b8a1865e3620d89d8e1e8a0b4b952927bf2516350633462aa05b29d773e7`); live data independently re-verified correct (all 6 integrity clauses across its 3 target tables). Same dispatch recipe as the D-L0-FF batch (find its accepted W2's own commit for `--reviewed-deployment-sha`, pull `wave_index` fresh from the frozen manifest). Next cycle's top priority. |
+| bg_parihara_rules | rebuild_only | **D-L0-OO: real defect found+precisely diagnosed, data-only fix ready to author.** Writer upserts, never deletes — 1 orphaned row in `bg_parihara_rules` (`rahu_kalam`/1) + 8 orphaned rows in `bg_muhurta_factor_census` (see full list in the 2026-09-06 log entry) have accreted since their sources shrank. Fix: DATA-only migration deleting those 9 named rows + re-pinning `integrity_check_sql`'s counts (61→60, 59→51) and content hashes to match — no writer file touched, so no `writer_inventory_sha256` conflict. Not yet authored — next cycle's top priority. |
 | bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
 | bg_dasha_systems | rebuild_only | **Rebuilt + verified live this session (all 9 integrity clauses pass, run `c086b0e4-...`).** `accepted_rebuild_observed` blocked on an `implementation_accepted` record (verdict was `correct`, requiring one) — needs one small doc-only PR (touching no writer file — see the writer-digest-cascade lesson logged this session) to serve as that commit. Digests: `decision_digest 180b9337578767f109555b0a78084052bb6613e4ff4d817179b88ba62140df4f`, `output_digest bee5f89a3f97e831e2d4f2cba91acf42a270219dbefb270f2da89864ce102f39`, `output_digest_spec_sha256 b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593`, `wave_index 1`. |
 | bg_compendium_index | rebuild_only | **Rebuilt + verified live this session (all 6 integrity clauses pass, run `e8630a71-...`).** Same `implementation_accepted` block as `bg_dasha_systems` (verdict `correct`) — same doc-only PR can cover both in one shot. Digests: `decision_digest b2fb4c0eb54122752a1e30866212bb4be5b3fc112fb7691a96be363dc1594fda`, `output_digest 8fda033a96672e2edf9d1bb2f38628661ff64c5aaf25afb33fb4cb6529c36a87`, `output_digest_spec_sha256 f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806`, `wave_index 2`. |
@@ -3046,3 +3046,46 @@ while doing the first one (reviewed-deployment-sha must match the accepted W2's 
     unfixed, #1715), `bg_dasha_systems`/`bg_compendium_index` (data-correct, awaiting `#2066` for
     `implementation_accepted`), `bg_parihara_rules` (newly E-gate-clear, ready next cycle),
     `bg_rules`/`bg_concordance` (still blocked on `bg_yogas`/`bg_dasha_systems`).
+
+- 2026-09-06 — **`bg_parihara_rules` dispatch attempt found a genuinely NEW, precisely-diagnosed
+  defect (D-L0-OO) — different in kind from the D-L0-FF batch, not another instance of it.**
+  Dispatched with `--reviewed-deployment-sha 4a305940cb8e03c957a0dca4dd5b681ba516b95d` (the exact
+  commit its accepted W2 cites, `action=no_change`) — the writer ran for real (no orphaned prior
+  receipt this time, unlike D-L0-FF) and produced `parihara=60 activity=329 census=51`, not the
+  committed `61/329/59`. Data unchanged (orchestrator rolled back cleanly on the integrity
+  mismatch — verified). No damage.
+  - **Root cause, fully nailed down, not guessed**: `BgPariharaRulesWriter._upsert_parihara` /
+    `_upsert_census` use `ON CONFLICT (...) DO UPDATE` — **upsert-only, no `DELETE`**. When a
+    source shrinks (fewer qualifying rows than a prior seed produced), the old rows are never
+    cleaned up — they accrete forever. Confirmed by direct re-derivation: re-ran
+    `_DOSHA_QUERY`'s exact WHERE clause live and hand-counted the resulting `cancellation_conditions`
+    lists — sums to exactly 60, matching the writer's own fresh log line exactly.
+    `len(CENSUS_ROWS)` in the current writer source is exactly 51 (checked directly via Python
+    import), not 59 — `build_census_rows` is a pure in-memory constant, not DB-derived, so this one
+    is purely a stale source-vs-committed-table drift with no DB investigation needed at all.
+  - **Precisely identified, not approximated**: the ONE orphaned `bg_parihara_rules` row is
+    `(dosha_canonical_id='rahu_kalam', cancellation_index=1)` — `rahu_kalam` no longer appears in
+    live `brahma_dosha_catalog`'s qualifying set at all. The EIGHT orphaned
+    `bg_muhurta_factor_census` rows (diffed the live table's 59 `(factor_family,factor_name)` pairs
+    against `CENSUS_ROWS`'s current 51, by hand, both fetched fresh):
+    `('muhurta_lagna','lagna_lord_strength')`, `('muhurta_lagna','lagna_shuddhi_rules')`,
+    `('muhurta_lagna','rising_sign_span')`, `('panchangika','karana_lattice_family')`,
+    `('panchangika','nityayoga_lattice_family')`,
+    `('parihara_scope','vishti_conditional_undertaking_exception')`,
+    `('rite_specific','activity_rule_id_join')`,
+    `('rite_specific','activity_rule_pareto_axis_in_frozen_engine')`. `bg_muhurta_activity_rules`
+    (329) has no discrepancy at all — its source (`panchang_engine.shastra_tables.EVENT_TABLES`)
+    hasn't shrunk.
+  - **Scope call, mirroring the bg_yogas precedent but landing differently**: the underlying
+    upsert-vs-delete idempotency gap in the writer IS a real defect worth fixing eventually, but
+    fixing it would touch `bg_parihara_rules.py` (a writer file) and hit the exact same
+    `writer_inventory_sha256`/#1715-requirement-3 wall bg_yogas did — **not attempting that here**.
+    **What IS in scope and NOT blocked**: a DATA-only migration (delete the 9 named orphaned rows
+    + re-pin `integrity_check_sql`'s two affected counts (61→60, 59→51) and their two content
+    hashes to match) touches no writer file, changes no `writer_inventory_sha256`, and is exactly
+    the same class of correction as the campaign's own prior "L0-W3 accuracy corrections" — this
+    is genuinely shippable. **Deferred to next cycle to author, verify (rolled-back replay
+    matching the corrected counts/hashes exactly), PR, and re-dispatch** — this cycle's unit was
+    the diagnosis, already substantial. Fresh backup was taken before the attempt
+    (`cloudsql-backup:1788691271577`) and is still valid for the follow-up migration's own
+    pre-check.
