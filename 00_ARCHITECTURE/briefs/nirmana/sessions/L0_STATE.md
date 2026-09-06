@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_dasha_systems AND bg_compendium_index BOTH FROZEN, 35/40. Root-caused last cycle's accepted_rebuild_observed 500 straight from source: requireAcceptedRebuildProvenance requires run.started_at > implementation_accepted.recorded_at, and the original run predated the implementation record by two cycles -- structurally unfixable via retry. Fix: submit implementation_accepted FIRST, then dispatch a fresh rebuild (skip_no_delta + #1901 re-attribution, no data change) so its started_at naturally postdates the record. Worked for both assets -- bg_compendium_index clean on the first try once the lesson was applied from the start. Only 5 assets remain unfrozen, 2 of which are deliberate holds (bg_cohort Conductor-blocked, bg_yogas campaign-scope-blocked). #2081 (migration 703, D-L0-OO) still the only open L0 PR, checks running.
+last_updated: 2026-09-06 -- IDLE-OK, 35/40 frozen unchanged. #2081 confirmed is:queued (position 2, AWAITING_CHECKS), no DIRTY/RED. Watching for merge+deploy -- once live, bg_parihara_rules re-dispatch (verdict no_change, no implementation_accepted needed) would bring L0 to 36/40, leaving only bg_cohort + bg_yogas (permanent holds) and bg_rules + bg_concordance (downstream of bg_yogas).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3161,3 +3161,8 @@ the milestone entries in the log below for full chains + every gotcha found alon
     `bg_yogas` (deliberately unfixed, #1715 requirement 3), `bg_parihara_rules` (migration 703
     queued as `#2081`, D-L0-OO — re-dispatch once it deploys), `bg_rules`/`bg_concordance` (still
     blocked on `bg_yogas` specifically; `bg_dasha_systems` no longer blocks them).
+
+- 2026-09-06 — **IDLE-OK.** `#2081` confirmed `is:queued` (position 2, `AWAITING_CHECKS`), no
+  DIRTY/RED. Watching for merge+deploy — once live, re-dispatch `bg_parihara_rules` (verdict
+  `no_change`, so no `implementation_accepted` needed this time — straight dispatch →
+  `accepted_rebuild_observed` → `integrity_verified` → `asset_frozen`). 35/40 frozen unchanged.
