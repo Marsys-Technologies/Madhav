@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 67; ga_structural F-A14 widened to 27/57 (#2048)
+last_updated: 2026-09-06 — C8 v2.3 cycle 68; ga_structural F-A14 widened to 28/57 (#2051)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -42,7 +42,8 @@ your `nirmana-adjudication` issues → continue.
   chandra_bala_natal_baseline, cycle 62), 791 (`ga_structural` Group O tri-deva bundle — 3
   categories, cycle 63), 792 (`ga_structural` graha_functional_class_per_ascendant, cycle 64),
   793 (`ga_structural` graha_effective_dignity_modified_by_aspects, cycle 65), 794 (`ga_structural`
-  graha_composite_state_classification, cycle 67) used. 795–799 remain free.
+  graha_composite_state_classification, cycle 67), 795 (`ga_structural`
+  karaka_house_lord_overlap_flag, cycle 68) used. 796–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2913,6 +2914,61 @@ astrological first principles, and the arc's first cross-asset ga_yoga_firings r
 next: continue `ga_structural` widening (30 categories remain), or `ga_positions` re-dispatch
 once #1892 lands.
 
+## CYCLE 68 (C8 v2.3) — 1 genuine DIRTY PR found and fixed (#1950); ga_structural's F-A14 contract widened to 28/57 categories (PR #2051, migration 795)
+
+**PR hygiene:** clean sweep (`--limit 200`, `is:queued` truth-check). 43/45 of L1's own PRs
+confirmed genuinely `is:queued`. Of the 2 not queued: **#1950 was genuinely DIRTY**
+(`mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`) — a real merge conflict, not a stale read.
+Fixed by rebasing PR #1950's branch onto current `main`: the first commit (the real
+`ga_transit_anchors` writer fix, F-D22) applied cleanly; the second commit (a pin-advance-only
+commit touching `nirmana-analysis-layer-pins.json`) hit a genuine conflict and, after
+`checkout --ours` + continue, came out EMPTY (git silently dropped it) — meaning the pin never
+actually advanced. Caught this rather than assuming the drop meant "nothing to do": regenerated
+the pin fresh against the rebased commit via
+`scripts.generate.nirmana_analysis_layer_pins --convergence-commit <sha> --layer L1`, which
+confirmed a real update was still needed (`convergence_commit`, `writer_inventory_sha256`
+changed) and committed it as a fresh, non-empty commit. Force-pushed
+(`--force-with-lease`), re-armed auto-merge, confirmed CI genuinely dispatched (33 real
+check-runs, no failures) rather than trusting `autoMergeRequest` alone. #2048 (the other
+not-queued PR) was checked directly via check-runs and confirmed genuinely mid-CI (all
+success/skipped, no failures) — no action needed. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `karaka_house_lord_overlap_flag`**
+(PR **#2051**, migration 795 — sixteenth in the 780-799 range).
+
+`is_overlap` is TRUE iff a significance's fixed classical natural karaka (`NATURAL_KARAKAS`)
+equals the lord of that significance's fixed house (`significance_to_house`), via
+`_get_house_lord` (sign occupying that house from Lagna, then `SIGN_LORDS`). Only 12 of the
+writer's 30 `KARAKATVA_SIGNIFICANCES` have a `significance_to_house` entry — confirmed live:
+exactly 12 distinct `fact_subject` values, 180 rows.
+
+Fully re-derived from first principles rather than settling for a domain-check-only pass: lagna
+sign from `ga_positions`' own `graha_position.LAGNA.sign`, reusing the exact
+`((lagna_idx + house_num - 1) % 12) + 1` house-from-lagna arithmetic already proven in migration
+792's conjunct (bb3), and the same classical `SIGN_LORDS` table embedded in SQL since migration
+757's conjunct (g). `NATURAL_KARAKAS`/`significance_to_house` are the writer's own fixed
+classical assignment dicts — hardcoded directly rather than re-derived from a further authority,
+since they ARE the authority (same status as `SIGN_LORDS` itself). Verified against ALL 180 live
+rows (not a sample) before committing — 0 mismatches, and explicitly confirmed non-vacuous (50
+live `true` rows, both branches genuinely exercised, not just a 0-violation read on an
+all-one-value column).
+
+Shipped two conjuncts: (a5) a boolean domain check; (b5) the full re-derivation. Both verified
+live clean then individually mutation-tested via real transactional `UPDATE`+`ROLLBACK` against
+the EXACT SQL landed in the migration file — production confirmed untouched (180 rows) after
+both rollbacks.
+
+Carried the seventy prior conjuncts (a)-(b4) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 300 passed / 91 skipped (54 files). `provenance_inventory --check`: clean (exit 0). PR
+#2051 opened with `base: main` directly (per D-L1-90) and confirmed CI genuinely triggered (31
+real check-runs) before ending the cycle.
+
+CYCLE 68 L1: fixed a genuine DIRTY PR (#1950, real merge conflict + a silently-dropped empty
+pin-advance commit) and widened `ga_structural`'s F-A14 contract to 28/57 categories (PR #2051,
+migration 795, `karaka_house_lord_overlap_flag`) — next: continue `ga_structural` widening (29
+categories remain), or `ga_positions` re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2928,7 +2984,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2043 cycle 65 → #2048 cycle 67 — **27/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification; migration range 780-799, 795-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2048 cycle 67 → #2051 cycle 68 — **28/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain, chandra_bala_natal_baseline, pranic_strength_per_graha, jaimini_tri_deva_role_per_graha, graha_tri_deva_role_strength, graha_functional_class_per_ascendant, graha_effective_dignity_modified_by_aspects, graha_composite_state_classification, karaka_house_lord_overlap_flag; migration range 780-799, 796-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet. `chandra_bala_natal_baseline` (migration 790) is the THIRD cross-writer-owned category. Migration 791 bundled THREE tightly-coupled Group O tri-deva categories, catching a real classical-table ambiguity (Jupiter's dual `TRI_DEVA_ROLES` membership). `graha_functional_class_per_ascendant` (migration 792) confirmed BOTH branches of its two-branch classical formula (Aries-table vs. dynamic kendra/trikona) are genuinely exercised live (one chart has Cancer lagna) before committing to a full re-derivation, then caught and fixed a self-authored hand-flattening mistake (two branches silently dropped during manual CASE-expression simplification) by re-verifying against the already-proven CTE version and rebuilding with `LATERAL` joins. `graha_effective_dignity_modified_by_aspects` (migration 793) is the arc's FIRST fully self-contained category — no cross-category join needed at all, since the row's own `value_jsonb` carries base_dignity and every contribution's delta. `graha_composite_state_classification` (migration 794) re-derives its ENTIRE seven-way decision tree from classical first principles (exaltation/debilitation/own-sign sign tables) plus a genuine cross-ASSET reference to `ga_yoga`'s own `ga_yoga_firings.neecha_bhanga_raja_yoga` authority — the arc's first cross-asset firing-table reference. `karaka_house_lord_overlap_flag` (migration 795) fully re-derives its boolean flag from Lagna sign + the classical `SIGN_LORDS` table, reusing migration 792's house-from-lagna arithmetic, hardcoding the writer's own `NATURAL_KARAKAS`/`significance_to_house` classical dicts as the authority. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3846,6 +3902,23 @@ whole campaign.
   afflicted/severely_afflicted, weak) was exercised by a non-zero join-match count, not silently
   vacuous. Kept the domain check honest at all 7 writer-legitimate values even though
   `debilitated` (plain, uncancelled) has 0 live rows today.
+
+- **D-L1-92** — C8 v2.3 cycle 68: PR hygiene found #1950 genuinely DIRTY (real merge conflict).
+  Rebased onto current `main`: the real writer fix commit applied cleanly; the pin-advance-only
+  commit conflicted in `nirmana-analysis-layer-pins.json` and, after `checkout --ours` +
+  continue, came out EMPTY — git silently dropped it. Did NOT assume the drop meant the pin was
+  already current: regenerated fresh against the rebased commit SHA, which confirmed a real,
+  non-trivial update was still needed (`convergence_commit`/`writer_inventory_sha256` changed),
+  and committed that as a new non-empty commit before force-pushing. **New standing lesson:** an
+  empty commit dropped during rebase conflict resolution is not evidence nothing needs doing —
+  it only means "ours" happened to already contain that commit's diff at the point of conflict;
+  the underlying fact (a fresher writer commit needs a fresher pin) can still be true and must
+  be re-checked by actually running the regenerator, not inferred from the empty-commit signal
+  alone. Also widened `ga_structural`'s F-A14 contract (migration 795, PR #2051), 27/57 → 28/57,
+  adding `karaka_house_lord_overlap_flag` — fully re-derived from Lagna sign + classical
+  `SIGN_LORDS`, reusing migration 792's house-from-lagna arithmetic; `NATURAL_KARAKAS`/
+  `significance_to_house` hardcoded as the writer's own classical authority. Verified against
+  ALL 180 live rows, confirmed non-vacuous (50 real `true` rows).
 
 ## Held items
 
@@ -4994,3 +5067,30 @@ L1 must satisfy rather than a feature it consumes.
   794, graha_composite_state_classification -- first full re-derivation from classical
   astrological first principles, first cross-asset ga_yoga_firings reference) -- next: continue
   ga_structural widening (30 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T09:5xZ -- CYCLE 68 (C8 v2.3). PR hygiene found 1 genuine DIRTY PR: #1950
+  (mergeStateStatus DIRTY, mergeable CONFLICTING -- a real conflict, not a stale read). Rebased
+  onto current main: the real ga_transit_anchors writer fix (F-D22) applied cleanly; the
+  pin-advance-only commit conflicted in nirmana-analysis-layer-pins.json and came out EMPTY
+  after checkout --ours + continue (git silently dropped it). Did not assume the drop meant
+  nothing to do -- regenerated the pin fresh against the rebased SHA via
+  scripts.generate.nirmana_analysis_layer_pins, confirmed a real update was still needed
+  (convergence_commit/writer_inventory_sha256 changed), committed it fresh, force-pushed
+  (--force-with-lease), re-armed auto-merge, confirmed CI genuinely dispatched (33 real
+  check-runs, no failures). #2048 (the other not-queued PR) checked directly via check-runs and
+  confirmed genuinely mid-CI, no action needed. #1928/#1892 unchanged. Unit of work: widened
+  ga_structural's F-A14 contract to 28/57 (PR #2051, migration 795) --
+  karaka_house_lord_overlap_flag. Fully re-derived from Lagna sign (ga_positions'
+  graha_position.LAGNA.sign) via the same house-from-lagna arithmetic proven in migration 792's
+  conjunct (bb3), plus the classical SIGN_LORDS table already embedded since migration 757.
+  NATURAL_KARAKAS/significance_to_house hardcoded as the writer's own classical authority (they
+  ARE the authority, same status as SIGN_LORDS). Verified against ALL 180 live rows (not a
+  sample), confirmed non-vacuous via 50 real 'true' rows. Shipped 2 conjuncts: a boolean domain
+  check and the full re-derivation. Both verified live clean then individually mutation-tested
+  via real transactional UPDATE+ROLLBACK against the exact SQL landed in the file. Carried the
+  70 prior conjuncts forward verbatim, including the 3 already-tracked genuinely-red ones. No
+  writer touched. Full platform/tests/unit/migrations/ suite: 300 passed / 91 skipped (54
+  files). provenance_inventory --check: clean. Opened PR #2051 with base:main directly and
+  confirmed CI genuinely triggered (31 real check-runs) before ending the cycle. CYCLE 68 L1:
+  fixed a genuine DIRTY PR (#1950) and widened ga_structural's F-A14 contract to 28/57
+  categories (PR #2051, migration 795, karaka_house_lord_overlap_flag) -- next: continue
+  ga_structural widening (29 categories remain), or ga_positions re-dispatch once #1892 lands.
