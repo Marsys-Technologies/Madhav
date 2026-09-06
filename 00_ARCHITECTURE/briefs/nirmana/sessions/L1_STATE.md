@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 105; closed F-B31 (migration 843, ga_panchanga target_floor 221→437); investigated and correctly declined to "fix" F-B26 (verification tier is already honest, not a defect)
+last_updated: 2026-09-06 — C8 v2.3 cycle 106; closed F-E17 (migration 844) — ga_tajaka's volume_explanation claimed live on-demand computation via a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching internal string in one coherent fix. F-D21/F-D23 (ga_transit_anchors) traced to L0's own bg_vidhi_primitives.py — correctly out of L1's lane, flagged not fixed
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3377,7 +3377,7 @@ none accepted yet (blocked on #1736).
 | ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
-| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99 |
+| ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix |
 | ga_prashna | 0 / 0 | **dormant disposition** | R-1: facility is live-mounted; 5 orphaned served rows (F-E); F-A14 integrity_check_sql (#1977, scoped to ga_prashna_lagna only — ga_prashna_judgment genuinely empty) |
 
 Cross-cutting: **19/19 carry `integrity_check_sql` — F-A14 first-pass campaign COMPLETE (cycles
@@ -6902,3 +6902,37 @@ L1 must satisfy rather than a feature it consumes.
   onto a sibling finding (F-B26) that turned out, on actual investigation, to already be
   honestly represented -- next: continue the sweep with F-D21/D22/D23 (`ga_transit_anchors`),
   F-E16/E17 (`ga_tajaka`), F-E21/E22 (`ga_prashna`).
+- 2026-09-06T21:3xZ -- CYCLE 106 (C8 v2.3). PR hygiene: #2119/#2118 both healthy mid-CI
+  (`mergeable: MERGEABLE`, `autoMergeRequest` armed; #2118 showed `mergeStateStatus: UNSTABLE`
+  but zero actual FAILURE checks -- confirmed via `gh pr checks`, just one IN_PROGRESS check,
+  not a real regression). #2116 confirmed MERGED. Nothing DIRTY/RED/unqueued-but-clean. No
+  ruling yet on #2113's asset_freshness follow-up -- not blocking. Unit of work: continued the
+  W2 DECIDE sweep. **F-D21/F-D23 (`ga_transit_anchors`) traced to `bg_vidhi_primitives.py` --
+  confirmed live still unfixed (the `from_moon_view` primitive still dispatches an unread
+  `reference_point:'moon'` argument to `ganita_chart_facts_get` instead of routing to
+  `ganita_transit_anchors_get`, which already stores exactly this data) -- but this file is
+  `bg_*`, L0's own writer, outside L1's disjoint write-set.** Correctly did NOT edit another
+  layer's file (the exact discipline the #2087 L3-worktree-contamination incident taught
+  earlier this campaign) -- filed **#2122** naming the concrete one-line fix rather than leaving
+  it silently unaddressed, per F-D23's own "WIRE or record an explicit disposition" instruction.
+  **F-E17 (`ga_tajaka`) confirmed still genuinely open and fixed**: `volume_explanation` claimed
+  varshas outside the precomputed window are "computed on-demand ... via
+  ga_tajaka_writer.compute_varsha()" -- confirmed live that `compute_varsha()` has ZERO callers
+  (3 repo hits total: its own def, its own self-referential comment, the same false seed line) --
+  `get_tajik.ts` is a pure SELECT whose own `empty_reason` already honestly discloses the gap;
+  the TOOL was honest, only the REGISTRY lied. Shipped migration 844, correcting three places in
+  one coherent fix so the claim can't drift back apart: the live registry row, its seed source
+  (`asset_registry_seed.ts`), and the writer's own matching internal `storage_strategy`
+  build-summary string (`ga_tajaka_writer.py`) -- caught and fixed two of my own test-authoring
+  mistakes during writing (assertions matching my own header prose instead of the SQL payload,
+  same class of self-caught bug as migration 843's own test). Scoped pytest run of every file
+  importing `ga_tajaka_writer` (5 files, 62 tests) + companion vitest file (5 tests) + full
+  `platform/tests/unit/migrations/` suite (110 files, 677 passed, 91 skipped) + `tsc --noEmit`
+  all clean. Writer digest inventory regenerated; L1-only pin slice regenerated (`--layer L1`,
+  other layers untouched); `provenance_inventory --check` clean. Opened PR #2121 with base:main
+  directly, armed auto-merge, confirmed genuine CI dispatch via actions/runs (4 runs) before
+  ending the cycle. CYCLE 106 L1: PR hygiene clean, closed one genuinely open W2 DECIDE finding
+  (F-E17) with a real writer-level fix, and correctly recognized + escalated a SECOND finding
+  (F-D21/F-D23) that requires L0's action rather than mine -- staying in-lane even when the
+  DATA involved is L1's own -- next: continue the sweep with F-E21/E22 (`ga_prashna`), the last
+  items from cycle 102's initial zero-mention scan.
