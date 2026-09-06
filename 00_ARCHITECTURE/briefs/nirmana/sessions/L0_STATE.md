@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- migration 704 confirmed genuinely applied live. Fresh W2 registry_fingerprint/analysis_digest computed (2f9735d1.../a062c6f9...) -- values are correct and reusable. First submit attempt (source_ref pinned to a448be8a) hit HTTP 409 "does not match currently deployed commit" because an even newer commit deployed seconds later -- main is churning fast right now. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- next cycle: let the churn settle, re-check the actual live deployed sha, resubmit asset_analysis_accepted + optimization_verdict_accepted with that sha, then dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- MILESTONE: bg_parihara_rules FROZEN -- L0 now 36/40. Root cause of the 409s: gcloud run services describe showed the actually-serving revision's NIRMANA_DEPLOYED_SHA was still a448be8a even after a "successful" newer deploy -- promotion for the newer commit was blocked by the recurring ka_graha_sancara smoke-probe failure (flagged to #1713, not L0's). Resubmitted W2 against a448be8a and it worked; full chain (W2 refresh -> dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) completed clean, verified at each step. Remaining 4 assets (bg_cohort, bg_yogas, bg_rules, bg_concordance) are ALL held/blocked -- no open L0 work left this phase. No open L0 PRs, no DIRTY/RED. L0 is now IDLE-OK indefinitely absent a scope change to #1715 or a Conductor-side fix for D-L0-II.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -33,23 +33,23 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**L0-W4 EXECUTE + Conform-stage integrity corrections.** **35/40 frozen** (verifier-signed 5-event
-chains, implementer≠verifier). **5 remaining, and 2 of those are deliberate holds, not open work.**
-`bg_doshas` + `bg_gochara_arcs` + `bg_text_index` (D-L0-FF, via #1901's receipt re-attribution) and
-`bg_dasha_systems` + `bg_compendium_index` (the `correct`-verdict/`implementation_accepted` path,
-via #2066 + the ordering fix below) all FROZEN this cycle-set — five real freezes in one arc. See
-the milestone entries in the log below for full chains + every gotcha found along the way.
-Migration 703/`#2081` (D-L0-OO) is deployed and confirmed correct, but `bg_parihara_rules`'s
-re-dispatch itself now fails with a new, unexplained integrity-check mismatch (D-L0-PP, open —
-see log). Still 35/40 until that's resolved.
+**L0-W4 EXECUTE + Conform-stage integrity corrections — largely DONE.** **36/40 frozen**
+(verifier-signed 5-event chains, implementer≠verifier). **4 remaining, ALL held/blocked — no
+open work left for this campaign phase.** `bg_doshas` + `bg_gochara_arcs` + `bg_text_index`
+(D-L0-FF, via #1901's receipt re-attribution), `bg_dasha_systems` + `bg_compendium_index` (the
+`correct`-verdict/`implementation_accepted` path, via #2066 + an ordering fix), and
+`bg_parihara_rules` (D-L0-OO/D-L0-PP, migrations 703+704, #2081+#2088) all FROZEN across this
+cycle-set — six real freezes in one arc. See the milestone entries in the log below for full
+chains + every gotcha found along the way. L0 is now IDLE-OK indefinitely absent a scope change
+to `bg_yogas` (#1715) or a Conductor-side fix for `bg_cohort` (D-L0-II) — neither is this
+session's to resolve.
 
-## The 5 unfrozen assets
+## The 4 unfrozen assets
 
 | asset | route | status / blocker |
 |---|---|---|
 | bg_cohort | rebuild_only | **Structural blocker (D-L0-II), Conductor-owned, not L0-fixable**: `accepted_rebuild_observed` requires `receipt.receipt_state='proven'`, and bg_cohort's sole dependency `bg_ephemeris_engine` is `asset_kind='service'` (no writer, never has a provenance receipt) — `compute_upstream_hash` can never find a complete receipt set. Posted to #1713. Only L0 asset affected. |
 | bg_yogas | rebuild_only | **Root-caused + fix verified (dict-row-as-tuple bug in `extract_yogas_from_corpus`) but DELIBERATELY NOT SHIPPED** — conflicts with adjudication #1715 requirement 3 ("no L0 writer change in scope for this campaign", protects 29 frozen capsules). Full diff preserved in the 2026-09-06 log entry for a future campaign phase. Do not re-attempt. |
-| bg_parihara_rules | rebuild_only | **D-L0-PP ROOT-CAUSED + FIXED, awaiting deploy:** migration 703's `census_hash` pin was computed from stale committed data — writer commit `4a78a5c40` (#1539) had already corrected `CENSUS_ROWS`'s `('astronomical','eclipse_proximity')` `evidence_pointer` (`bg_sky_events`→`bg_sky_calendar`, the real asset), but the committed row was never refreshed, so 703 carried the stale value into its pin. Migration 704 (data-only, `#2088`) syncs the one field + re-pins; verified via two independent rolled-back replays (writer path + raw SQL) producing an identical corrected hash, plus a full closed-loop rehearsal (704 + fresh writer run + check, one rolled-back tx) confirming a real dispatch will pass. Once `#2088` merges+deploys: re-dispatch straight through to `asset_frozen` (verdict still `examined_and_already_efficient`/`no_change` — no new `implementation_accepted` needed). |
 | bg_rules | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_yogas` — **`bg_dasha_systems` is now FROZEN**; only `bg_yogas` (deliberately unfixed) still blocks this. Re-check E-gate if `bg_yogas` ever comes back in scope; otherwise stays blocked indefinitely. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node. `bg_dasha_systems`/`bg_text_index` now frozen; still gated on `bg_yogas` (and transitively `bg_rules`) regardless. |
 | bg_concordance | rebuild_only | E-gate `BLOCKED-ANCESTORS`: `bg_dasha_systems, bg_rules, bg_text_index, bg_yogas` — deepest DAG node, clears last; still gated on `bg_yogas` regardless of the others. |
@@ -3400,3 +3400,37 @@ see log). Still 35/40 until that's resolved.
 - 2026-09-06 — **IDLE-OK.** Same run `34034499400`, `Build & Deploy Web` still `in_progress`, no
   newer commit superseded it (deploy churn has slowed). No open L0 PRs, no DIRTY/RED. 35/40
   frozen unchanged.
+
+- 2026-09-06 — **MILESTONE: `bg_parihara_rules` FROZEN — L0 now 36/40.** `Build & Deploy Web`
+  completed `success` for `5b1ab78f`, but direct `gcloud run services describe` showed the
+  ACTUALLY-SERVING revision's `NIRMANA_DEPLOYED_SHA` env var was still `a448be8a` (traffic
+  promotion for `5b1ab78f` appears gated behind the same recurring `ka_graha_sancara` smoke-probe
+  failure flagged to #1713 — its `Build & Deploy Sidecar` failed again, real failure this time,
+  not skipped). Resubmitted W2 with `source_ref=git:a448be8a` (the two prior attempts against
+  `5b1ab78f`/its predecessor both 409'd for exactly this reason) — succeeded.
+  - Full chain, all real, all verified: fresh `asset_analysis_accepted` +
+    `optimization_verdict_accepted` (registry_fingerprint `2f9735d1...`, analysis_digest
+    `a062c6f9...`) → dispatch (`--snapshot-ref` had to match between dry-run and commit, since it's
+    baked into the manifest digest — first commit attempt 409'd until this was caught) → run
+    `fe14f22a-7d55-46c2-b69c-eb3eef3cae91` completed clean (`state=complete`, no error) →
+    provenance receipt confirmed (`receipt_state=proven`, `chart_id=NULL` since this is a
+    global-scope asset — my first receipt query used the wrong chart_id filter, caught and
+    corrected) → `accepted_rebuild_observed` (computed `authorization_sha256` via the
+    `run_id:asset_id:waveN` formula, `decision_digest` via `sha256(stableJson(verdict evidence_payload))`
+    — replicated `canonicalNirmanaOptimizationVerdictDigest` by hand, first time computing this
+    specific digest this session) → `integrity_verified` (computed `integrity_contract_sha256`
+    from the 14-field registry_contract) → `asset_frozen` (`lifecycle_digest
+    b57e712748f9e5e2c50716b974710f5bfa7a22ed16f2c7c53a3c0332ff91e807`, reconstructed from all 8
+    matching lifecycle events — 3 analysis/verdict pairs across this asset's whole W2 history,
+    1 rebuild-observed, 1 integrity-verified — confirmed via direct DB query this event now
+    exists, `recorded_at 13:11:39Z`).
+  - **This closes out D-L0-OO/D-L0-PP entirely.** `bg_parihara_rules` is the LAST asset this
+    campaign phase can freeze from the original blocker list — see updated Position/table below.
+
+- **New `## Position`**: **36/40 frozen.** 4 remaining, all held/blocked, none actionable this
+  phase: `bg_cohort` (Conductor-blocked, D-L0-II), `bg_yogas` (deliberately unfixed, #1715), and
+  `bg_rules`/`bg_concordance` (both still E-gate `BLOCKED-ANCESTORS` on `bg_yogas` specifically —
+  `bg_dasha_systems`, `bg_text_index` no longer block them, `bg_parihara_rules` doesn't gate
+  either of them). L0 is now IDLE-OK indefinitely absent a change to `bg_yogas`'s scope (#1715)
+  or a Conductor-side fix for `bg_cohort`'s structural bind (D-L0-II) — both outside this
+  session's authority to resolve. No open L0 PRs, no DIRTY/RED.
