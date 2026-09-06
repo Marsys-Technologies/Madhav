@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2081 still position 1 but queue confirmed actively cycling other candidates -- healthy. No DIRTY/RED. 35/40 frozen unchanged.
+last_updated: 2026-09-06 -- #2081 MERGED (89e1a4c3..., 11:28:18Z), no open L0 PRs. Confirmed NOT yet deployed. Watching for deploy -- once live, top priority is re-dispatching bg_parihara_rules to bring L0 to 36/40. 35/40 frozen unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3171,3 +3171,7 @@ the milestone entries in the log below for full chains + every gotcha found alon
   but the queue is actively cycling other candidates (several batches completed/in-progress in
   the last ~10 min) — healthy, just hasn't reached the front's own build yet. No DIRTY/RED.
   35/40 frozen unchanged.
+
+- 2026-09-06 — **`#2081` MERGED** (`89e1a4c3...`, 2026-09-06T11:28:18Z). No open L0 PRs. Confirmed
+  NOT yet deployed (ancestry check against live deployed sha). Watching for deploy — once live,
+  top priority is re-dispatching `bg_parihara_rules`. 35/40 frozen unchanged.
