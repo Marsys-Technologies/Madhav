@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 128; wrote and shipped `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only prep item running all 19 ga_* integrity_check_sql contracts live: 15 PASS, 4 expected FAIL (ga_yoga F-A16, ga_structural's 7 tracked-red conjuncts, ga_condition F-C8, ga_vargas F-A1 -- all pre-existing writer-fixed defects awaiting the blocked #2113 rebuild, no new findings). #2113/#2122 unchanged
+last_updated: 2026-09-07 — C8 v2.3 cycle 132; MAJOR finding on #2113 -- ga_positions (L1's DAG root, zero deps) has sat in a stale asset_throughput error state since 2026-09-05 due to bug #1856, fixed by PR #1861 the SAME night but never retried since; confirmed the asset_freshness gate can't even apply to it (empty depends_on); live dry-run pinpointed the one real remaining blocker (stale W2 acceptance pin, needs delta re-review + resubmit). Posted full diagnosis + 3-step unblock plan to #2113. Not yet executed -- next cycle's job
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -29,7 +29,8 @@ Both W1-sourced finding tiers that drove W3 IMPLEMENT are now fully swept:
 - **MUST tier** (~30 findings across ~22 id-groups, same doc §3): CLOSED as of cycle 125 for
   L1's own scope. Every id-group is either (a) fixed at the writer or serving-layer level
   across cycles 1-124, (b) correctly routed elsewhere and NOT L1's file to touch (F-C2/C3/C4/
-  C5/C7 → L2's `bo_laksana.py`; F-D21/D22/D23 → L0, adjudication #2122, PR #2153 still open),
+  C5/C7 → L2's `bo_laksana.py`; F-D21/D22/D23 → L0, adjudication #2122, **FIXED and CLOSED, PR
+  #2153 merged — verified live cycle 130, see below**),
   or (c) an already-closed cross-cutting rollout (F-A14/A15/B35/C15/D28/E27 `integrity_check_sql`
   — confirmed live, all 19 assets non-NULL, cycle 124).
 - **NEVER-LATER tier** (§3, same doc): correctly remains parked by explicit design (immutable
@@ -39,17 +40,20 @@ Both W1-sourced finding tiers that drove W3 IMPLEMENT are now fully swept:
 - **What's genuinely still open:** (1) adjudication #2113 — chart rebuild blocked campaign-wide
   by a new `asset_freshness` gate with no L1 dependency-asset rows yet; W4 dispatch is not
   eligible for any L1 asset until this resolves or a bootstrap step is identified, checked
-  every cycle, no change since 2026-09-06T15:00:13Z. (2) adjudication #2122 — L0's fix, PR
-  #2153, still open — an other-party action item, not blocking L1.
+  every cycle, no change since 2026-09-06T15:00:13Z. **That is now the ONLY genuinely open item.**
   **RESOLVED since this snapshot was first written**: #2123 RULED (cycle 107, re-confirmed
   cycle 127) — out of scope under R-1, L1's own documentation-accuracy action already done;
   #2156 RULED and CLOSED (cycle 127) — no L1 action required, L3's 848-850 recorded as a
-  permanent authorized exception, L1's next free number is 852.
-- **What this means for "next unit of work":** with the W1-sourced backlog exhausted and W4/W5
-  ineligible, a future cycle finding "nothing eligible" here should NOT assume it needs to
-  re-derive this whole picture from scratch — re-check the four items above first (they're the
-  actual blockers), and if none have moved, either genuinely IDLE-OK per the contract's own
-  guidance, or look beyond W1/W2's finding-list for other legitimate W3-adjacent work (this
+  permanent authorized exception, L1's next free number is 852; **#2122 CLOSED, PR #2153 merged
+  (cycle 130)** — F-D21/F-D23 fixed at the actual root cause (L0's `from_moon_view` vidhi
+  primitive, not this session's own writer/serving code), independently re-verified live (not
+  just trusted on the merge) via both `origin/main`'s source and the live `vidhi_primitives` DB
+  row.
+- **What this means for "next unit of work":** with the W1-sourced backlog exhausted, W4/W5
+  ineligible, and #2122 now closed, a future cycle finding "nothing eligible" here should NOT
+  assume it needs to re-derive this whole picture from scratch — re-check #2113 first (the one
+  remaining actual blocker), and if it hasn't moved, either genuinely IDLE-OK per the contract's
+  own guidance, or look beyond W1/W2's finding-list for other legitimate W3-adjacent work (this
   snapshot does not claim to be an exhaustive scope statement — only a checkpoint that the
   finding-list-driven work is done).
 
@@ -3416,7 +3420,7 @@ none accepted yet (blocked on #1736).
 | ga_yoga | 63 / 5 | changed → fixed (cycle 8/101, PR #1865, merged 2026-09-05) | F-D1 (citations existed 233/233 but no surface joined them) + F-D2 (no offset paging) both fixed serving-side in `get_yoga_firings.ts`; stale "MUST" corrected cycle 101. F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds. F-D5 **FIXED (cycle 114, PR #2140)** — `get_yoga_firings.ts`'s `ORDER BY strength DESC NULLS LAST, yoga_canonical_id` was a non-total order (confirmed live: 5+ (yoga_canonical_id, strength) pairs genuinely repeat across the 5 stored ayanamshas); added `ayanamsha_id, id` (PK) to the sort key. Merge-conflicted against a concurrent PR that added the `brahma_yoga_catalog` LEFT JOIN + real `OFFSET` pagination — reconciled with `f.`-prefixed columns, both fixes coexist |
 | ga_vichara | 8,249 / 8,249 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D), already fixed (`catalog_status` confirmed `CURRENT` live, cycle 103); F-A14 integrity_check_sql (#1967). F-D10 **FIXED (cycle 109, migration 846)** — `target_floor` was 8,240, nine short of the finding's own derived model (8,249); never surfaced as a build failure since achieved already exceeded the stale floor. F-D12 (`ga_vichara` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 307s (n=18). F-D11 **FIXED (cycle 115, PR #2141)** — `get_vichara.ts`'s `ORDER BY vichara_family, domain NULLS FIRST, subject` was a non-total order; confirmed live 1,595 `valence_pass` rows/ayanamsha share this exact sort key (SAT/MAR/JUP each 1,595-way tied); added `ayanamsha_id, varga_id NULLS FIRST, id` (PK) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists). F-D20 **FIXED (cycle 117, PR #2144)** — the shared `ORDER BY fact_category, ayanamsha_id, fact_key` (both `all:true` and the default path's underlying fetch) was a non-total order; confirmed live 48 rows share the sort key for several combinations (e.g. `sade_sati_phase_quarter`/krishnamurti/`quarter_end_iso`); added `fact_subject, fact_id` (PK). Same file as F-D18's still-open PR #2142 -- expect a small merge conflict on whichever lands second |
-| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows |
+| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows. F-D21/F-D23 **FIXED (L0's PR #2153, merged; adjudication #2122 CLOSED)** — root cause was one layer up (`from_moon_view`'s vidhi primitive dispatched `reference_point:"moon"` to `ganita_chart_facts_get`, which never read it), not this asset's own writer/serving code; re-pointed to `ganita_transit_anchors_get` with the inert argument dropped, both the code (`registry_data.ts`) and the already-committed live `vidhi_primitives` row (migration 705) fixed. **Independently re-verified live by this session (cycle 130)**, not just trusted on the merge: confirmed `live_tool='ganita_transit_anchors_get'`/`tool_args={"chart_id":"{chart_id}"}` both in `origin/main`'s source and in the live `vidhi_primitives` table |
 | ga_ayurdaya | 130 / 130 | rebuild_only | F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99. F-E8 **FIXED (cycle 120, PR #2148)** — `get_medical_indications.ts` had no `empty_reason` (0-row response looked populated) and no `density_contract`; added both, and named both upstream authorities (`chart_facts` + `bg_medical_mappings`) in `provenance.tables`, not just `ga_medical` itself |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955). F-E28 (`get_vastu_directions.ts` share) **FIXED (cycle 122, PR #2152)** — 0 `density_contract` occurrences AND no `empty_reason` at all (one of the finding's two named exceptions); added both |
@@ -4633,6 +4637,37 @@ L1 must satisfy rather than a feature it consumes.
 
 ## Cost ledger
 
+**RECONCILED cycle 131 (C8 v2.3 priority-5 prep item).** The table below was stale since roughly
+cycle 2 — it stopped recording per-item wall-clock entries once the session moved from turn-based
+W1/W2 work into the C8 v2.3 supervised-cycle model (cycle 1 onward), and nothing backfilled it
+across the ~129 cycles since. Rather than fabricate plausible-looking per-cycle wall-clock/token
+numbers this session has no way to actually measure (§N.8: an unmeasured number is null, not an
+estimate dressed up as one), this reconciliation does three honest things instead:
+
+1. **States why per-cycle wall-clock is not a meaningful cost metric under C8 v2.3.** Each
+   "cycle" is one bounded supervisor-paced invocation (~1 minute apart by the contract's own
+   design, `CYCLE_CONTRACT_C8_V23.md` §Step 0) — the gap between cycles is supervisor idle time,
+   not session work time, so "wall-clock per cycle" would measure the supervisor's polling
+   cadence, not this session's actual cost. Nothing here can honestly backfill it.
+2. **States why per-cycle token counts are not available either.** This session has no
+   introspective access to its own token consumption, per-cycle or cumulative — no tool exposes
+   it, and none of the prior 130 cycles' heartbeat entries recorded a real number (checked: zero
+   hits for a token count anywhere in this file's heartbeat log outside the one W1 parallel-
+   subagent measurement below, which came from the Agent tool's own summary, not
+   self-measurement).
+3. **Records what IS honestly countable** as of cycle 131, live-verified rather than estimated:
+   **130 cycles run** (C8 v2.3, cycles 1-131) · **118 merged PRs** (`gh pr list --search "is:pr
+   is:merged head:codex/nirmana-l1-"`, an approximation bounded by branch-naming convention, same
+   caveat as `L1_W6_CLOSE_REPORT_v1_0.md` §1.5) · **39 migrations authored** in L1's own granted
+   ranges (live-counted via `ls platform/migrations/`, filtered to 650-659/740-759/840-851 and
+   excluding the 2 files in that range that are genuinely L3's — 848/849, the #2156-adjudicated
+   collision) ·
+   **139 findings triaged**, of which the NOW tier (18) closed by cycle 122 and the MUST tier
+   (~24 id-groups) closed by cycle 125, both live-verified, not merely counted.
+
+The five original rows (cycles 1-2, genuinely measured at the time) are kept below as historical
+record — they are the only entries in this table with a real wall-clock behind them.
+
 | item | wall-clock | notes |
 |---|---|---|
 | bootstrap + grounding + 3 blocker analyses | ~35 min | E-gate, floors, pins all measured live |
@@ -4641,6 +4676,7 @@ L1 must satisfy rather than a feature it consumes.
 | W3 batch 2 — ga_vargas instant (#1766) | ~25 min | incl. live proof against the L1 authority |
 | W1 ANALYZE (19 assets, 5 parallel subagents) | ~21 min wall / ~1.2M subagent tokens | fully parallel |
 | PR #1736 (campaign critical path) | ~45 min | incl. generator, tests, live 6-layer acceptance |
+| **C8 v2.3 cycles 1-131 (this reconciliation)** | **not trackable, see above** | 118 merged PRs, 39 migrations, 139 findings triaged (18 NOW + ~24 MUST closed) — count-based facts substituted honestly for wall-clock/token estimates this session cannot measure |
 
 ## Heartbeat
 
@@ -7657,3 +7693,169 @@ L1 must satisfy rather than a feature it consumes.
   sanity checks it could reasonably also report on, or continue the "pre-write W5" cadence with
   a second concrete prep artifact (e.g. drafting the close-report section per charter priority-5's
   other named option) once this one's value is confirmed unique and not redundant.
+- 2026-09-07T01:2xZ -- CYCLE 129 (C8 v2.3). PR hygiene: neither #2163 nor #2132 (my only two
+  genuinely-mine open PRs -- `gh pr list --author "@me"` returns many more rows, but they belong
+  to other layer sessions sharing the same git identity: L5/#2162, CONDUCTOR/#2161, L3/#2160,
+  L0/#2153, L2/#2135, plus several ancient pre-campaign PRs -- none of those are mine to touch)
+  were in `is:queued`; both showed `mergeStateStatus: BLOCKED` with all checks either `pass` or
+  still-`pending` (no `fail`) -- genuinely mid-CI, not DIRTY, not RED, nothing to fix. Re-checked
+  the 2 tracked blockers: #2113 unchanged (same 15:00:13Z comment); #2153 still OPEN (now
+  `mergeStateStatus: CLEAN`, still not merged). Neither moved -- third consecutive cycle in this
+  disposition, so continued the priority-5 prep cadence cycle 128's own "next" note offered as
+  its second option: drafted `L1_W6_CLOSE_REPORT_v1_0.md`. Confirmed first that this is the
+  EXACT deliverable `PROMPT_L1.md` names for W6 ("publish `L1_W6_CLOSE_REPORT_v1_0.md` per C11"),
+  and found L5 had already set a live precedent (`L5_W6_CLOSE_REPORT_v1_0.md`, started early per
+  its own session prompt) -- read it in full before writing anything, both for structure (§0
+  status / §1 asset table / §1.5 PR outcome / §2 findings ledger / §3 pillar movement / §3.5
+  findings-that-outgrew-the-layer / §4 cost actuals / §5 backlog / §6 OPEN) and to confirm what
+  "the five doctrines" (C11's own phrase) actually resolve to -- traced them via the L0 W1 batch
+  files' own "Pillars" callouts to D-GROUNDING(P3)/D-SYNTHESIS(P4)/D-SALIENCE(P5)/D-TIME(P6)/
+  D-SERVICE(P8), not guessed. Wrote the draft compiling ONLY what W1-W3 have already determined
+  (no new analysis): condensed 19-asset table (cross-checked live counts/routes against this
+  file's own per-asset table, caught nothing wrong), findings-ledger tier counts pulled directly
+  from `L1_W2_DECIDE_v1_0.md` §3 (139 findings, MUST/NOW/NEVER-LATER dispositions), a genuine
+  live PR count (115, via `gh pr list --search "is:pr is:merged head:codex/nirmana-l1-"`, stated
+  as an approximation bounded by branch-naming rather than hand-enumerated or guessed), pillar
+  movement framed as "L1 is a substrate provider for 4 of 5 doctrines" (the D-SALIENCE-feed
+  findings F-C2/C3/C4/C5/C7 correctly cited as L2's to consume, not L1's to fix), and a §3.5
+  naming the two findings that genuinely outgrew L1's own scope (#2122 L0 escalation, #2156 L3
+  migration collision) -- the same "findings that outgrew the layer" framing L5's own report
+  used. Left §4 cost actuals and the full 139-row per-finding table explicitly OPEN rather than
+  fabricate either (§N.8: an unmeasured claim is null, not a plausible-looking estimate).
+  Double-checked one specific factual claim before shipping (both `ga_positions` F-A16 and
+  `ga_condition` F-C12 citing the SAME migration 847) by re-reading the source lines verbatim
+  rather than trusting recall -- confirmed correct, a genuine same-migration batch, not a
+  transcription error. Committed on a fresh branch off `origin/main`
+  (`codex/nirmana-l1-w3-prep-close-report`), opened PR #2164, armed auto-merge, confirmed
+  genuine CI dispatch (real run IDs, all `pending`, not a stub). No code change, no writer
+  touched, no migration authored -- pure documentation. CYCLE 129 L1: PR hygiene clean, second
+  consecutive prep-tier cycle (both blockers unchanged for a third straight cycle now), shipped
+  a genuinely useful, source-verified DRAFT close-report artifact that will save real
+  reconstruction effort whenever W4/W5/W6 actually become eligible -- next: re-check #2113/#2153
+  again; if both remain stuck for several more cycles, the two remaining charter-named prep
+  items are cost-ledger reconciliation (§4's own OPEN note) or the full 139-row per-finding
+  disposition table (§2's own OPEN note) -- prefer the cost ledger next, since the disposition
+  table's source data doesn't change until new findings land and is lower marginal value than a
+  first honest cost accounting.
+- 2026-09-07T01:3xZ -- CYCLE 130 (C8 v2.3). PR hygiene: genuinely trivial this cycle -- zero open
+  PRs authored by this session (`gh pr list --author "@me"` returns rows, but all belong to
+  other layer sessions sharing the same git identity -- L5/#2162, CONDUCTOR/#2161, L3/#2160+
+  #2166, L0/#2153, L2/#2135+#2165, plus several ancient pre-campaign parked PRs -- confirmed
+  none are mine, since all three of last cycle's own PRs (#2132/#2163/#2164) had already merged
+  by cycle 129's own end). Re-checked the 2 tracked blockers per the standing routine: #2113
+  unchanged (same 15:00:13Z comment) -- BUT #2153 (L0's fix for adjudication #2122) is now
+  **MERGED**, and #2122 itself is **CLOSED**. Did not stop at "the PR merged, must be fine" --
+  read the Conductor's own closing comment in full (fixed both the code, `registry_data.ts`'s
+  `from_moon_view` entry re-pointed from `ganita_chart_facts_get` to
+  `ganita_transit_anchors_get` with the inert `reference_point` argument dropped, AND the
+  already-committed live `vidhi_primitives` row via migration 705, since seed migrations don't
+  re-fire and the code fix alone wouldn't have corrected an already-seeded row), then
+  independently re-verified BOTH halves live myself rather than trust the merge alone: `git show
+  origin/main:platform/src/lib/vidhi/registry_data.ts` confirms `live_tool:
+  'ganita_transit_anchors_get'`/`tool_args: { chart_id: '{chart_id}' }`; a live `psql` query
+  against the actual `vidhi_primitives` table confirms the same values are genuinely in
+  production data, not just in source. This closes F-D21/F-D23 for real, not provisionally.
+  Updated tracking in three places rather than leaving any of them stale: (a) this file's
+  `ga_transit_anchors` per-asset row, (b) this file's W3 STATUS SNAPSHOT (now states #2113 is
+  the ONLY genuinely open item, moved #2122 to the RESOLVED list with the live-verification
+  detail), (c) `L1_W6_CLOSE_REPORT_v1_0.md`'s own DRAFT (PR #2170) -- 4 separate stale "PR #2153
+  ... open" mentions found and corrected (asset table, findings-ledger §2, pillar-movement §3,
+  §3.5, §5 backlog), consistent with that draft's own stated precedent of being filled as
+  evidence lands rather than written once from memory. Hit one genuine "commit lands on wrong
+  branch" near-miss while sequencing these two file edits across two different branches (the
+  now-familiar pitfall from cycles 111/121/123) -- caught it correctly this time BEFORE any
+  commit happened (the `git checkout -b` for the close-report branch failed cleanly twice, first
+  on uncommitted L1_STATE.md changes, then on an untracked working-tree file collision after
+  removing that blocker) -- committed L1_STATE.md on its own correct branch first, then removed
+  the stray untracked close-report copy, then created the close-report branch cleanly, avoiding
+  the mixup entirely rather than recovering from it after the fact. No code change, no writer
+  touched, no migration authored -- pure tracking-accuracy correction, but a load-bearing one
+  (this was a real, previously-recorded MUST-tier item genuinely closing, not busywork). CYCLE
+  130 L1: PR hygiene trivially clean (zero own open PRs at cycle start), verified and recorded a
+  real cross-layer adjudication closure (#2122) that leaves #2113 as the single remaining
+  blocker on this session's entire tracked backlog -- next: re-check #2113 again; if unchanged,
+  proceed with the cost-ledger reconciliation prep item per cycle 129's own "next" pointer, since
+  W1-W3 finding-list work, both adjudications, and one close-report draft update are all now
+  genuinely done.
+- 2026-09-07T01:4xZ -- CYCLE 131 (C8 v2.3). PR hygiene: #2171/#2170 (my only two open PRs --
+  confirmed the rest of `gh pr list --author "@me"`'s rows belong to other layer sessions: L5/
+  #2168+#2167, L3/#2166, L2/#2165, plus ancient parked PRs) both showed `mergeStateStatus:
+  BLOCKED` with checks either `pass` or still-`pending`, zero `fail` -- genuinely mid-CI, not
+  DIRTY, not RED, nothing to fix. Re-checked #2113 (now the sole tracked blocker): unchanged,
+  same 15:00:13Z comment. Proceeded with the cost-ledger reconciliation per cycle 130's own
+  "next" pointer. First searched the other layer sessions' own STATE.md files for how they
+  handle this (`grep -rn "cost ledger"`) rather than inventing a format -- found L0/L2/L3/L4/L5
+  ALL already carry a `## Cost ledger` section, and L1's OWN file already has one too (found at
+  the point of searching, not previously noticed as stale) -- last real entry from cycles 1-2,
+  nothing added across the ~129 cycles since. Considered fabricating plausible per-cycle wall-
+  clock/token numbers to "fill the gap" and explicitly rejected that (§N.8: an unmeasured number
+  presented as an estimate is exactly the same defect class as an invented judgment) -- instead
+  reconciled honestly: (1) recorded WHY per-cycle wall-clock isn't a meaningful metric under C8
+  v2.3 (cycles are supervisor-paced ~1-minute-apart invocations per the contract's own Step 0,
+  not continuous session time -- the gap between cycles is supervisor idle time, not this
+  session's cost), (2) recorded WHY per-cycle token counts aren't available (no tool exposes
+  self-token-consumption, and none of the 130 prior heartbeat entries recorded a real number
+  either, confirmed by checking), (3) substituted what IS honestly countable: live-verified 118
+  merged PRs (`gh pr list --search "is:pr is:merged head:codex/nirmana-l1- "`), 139 findings
+  triaged (18 NOW + ~24 MUST closed, both live-verified in earlier cycles), and migrations
+  authored. Caught and fixed my own arithmetic mistake mid-task on the last figure: first wrote
+  "12 migrations" from a rough mental estimate, then actually ran `ls platform/migrations/ | grep
+  -E "^(65[0-9]|74[0-9]|75[0-9]|84[0-9]|851)_" | grep -v "_l3_"` (excluding #2156's 2 genuinely
+  L3-owned files, 848/849) before shipping the number -- got **39**, more than 3x my first guess
+  -- corrected before committing rather than trusting the initial estimate. Kept the five
+  original cycles-1-2 entries verbatim as the only rows in the table with a real measured
+  wall-clock behind them. No code change, no writer touched -- pure documentation, landed
+  directly on this branch (not a separate PR) since the edit IS the state file. CYCLE 131 L1: PR
+  hygiene clean, reconciled a genuinely stale cost ledger honestly (count-based facts, not
+  fabricated time/token estimates) after catching and fixing a real arithmetic error in my own
+  first draft -- next: re-check #2113 again; with W1-W3 finding-list work, both adjudications,
+  the close-report draft, and now the cost ledger all reconciled, the only remaining charter-
+  named priority-5 prep item is the full 139-row per-finding disposition table (§2's own OPEN
+  note in the close report) -- worth it next if #2113 is still stuck, though its marginal value
+  is lower since the source data doesn't change until new findings land.
+- 2026-09-07T02:0xZ -- CYCLE 132 (C8 v2.3) -- **MAJOR: #2113 is not a dead end, it's a
+  fully-diagnosed 3-step path.** PR hygiene: #2171/#2170 (only 2 own PRs) both `BLOCKED`
+  (mid-CI, no failures) -- clean. Re-checked #2113 per routine: comment timestamp unchanged, but
+  this time went past the timestamp check and directly re-verified the E-gate + the underlying
+  `asset_freshness` table live (contract's own IDLE guidance: "verify, don't assume: run the
+  E-gate batch query"). `egate.sql -v layer=L1` showed `ga_positions` at `OPEN-PENDING-PIN`
+  (unfrozen_ancestors=0, real DAG root). Checked `asset_freshness` directly: still 38-39 distinct
+  assets, all `bg_*`/`mi_*`, zero L1 -- #2113's own finding still accurate. **But then checked
+  `asset_throughput` for `ga_positions` on all 3 charts directly (never done this specific check
+  before) and found the canonical chart (`482012f1`) sitting in `state='error'` since
+  2026-09-05T16:37Z** -- `last_error: "provenance: Object of type UUID is not JSON
+  serializable"`, the EXACT `#1856` bug L5 found and reported. **Confirmed #1861 (the fix)
+  MERGED 2026-09-06T01:20:40Z -- AFTER this failure, and nobody has retried since.** Verified the
+  writer itself completed cleanly before the crash: `rows_written=1205` exactly matches the live
+  `chart_facts` count for `ga_positions`' 5 categories on `482012f1` right now (data intact, not
+  corrupted). Confirmed `ga_positions.depends_on = {}` (genuinely zero deps, not just
+  zero-unfrozen) -- the `asset_freshness` DEP-ASSERT gate (`asset_runner.py`) iterates a
+  dispatch's dependencies' freshness; empty deps short-circuits to zero bad deps, so this asset
+  was never actually exposed to the gate #2113 reported in the first place. Read the full #1713
+  history for `ga_positions`' original dispatch (SLOT CLAIM 16:17:30Z through COMMITTED
+  16:37:40Z) -- confirmed C13 blast radius was already measured clean there (single in-layer
+  cascade, no cross-layer boundary) and a fresh Cloud SQL backup was taken before that attempt.
+  Ran a genuinely safe, zero-side-effect dry run (`dispatch_nirmana_campaign_wave.py --layer L1
+  --wave 0 --definition-revision t0-2026-09-01-0e5b06fb --assets ga_positions`, no `--commit`) --
+  hit and worked through two tooling sharp edges (script's own `DEFAULT_DEFINITION_REVISION`
+  constant points to a superseded definition, not the live frozen one; non-L0 layers need
+  `--reviewed-deployment-sha` passed anyway despite argparse not requiring it) before landing on
+  the REAL, precise, confirmed-live blocker: **`ga_positions`' own W2 acceptance is stale again**
+  (pinned against `git:1e30cd76b...`, live L1 `convergence_commit` has since moved to
+  `9f98f8c9b...` via ~15 sibling-asset writer changes since 2026-09-05) -- exactly the
+  "sibling-asset writer change invalidates my own unrelated acceptance" mechanism the ORIGINAL
+  2026-09-05 dispatch already documented on #1713, recurred predictably. **Deliberately stopped
+  here** rather than push through the actual delta-re-review + resubmission + `--commit` dispatch
+  in the same cycle -- those are a permanent evidence-ledger write and a real production dispatch
+  respectively, and deserve their own properly-paced, unhurried cycles rather than being rushed
+  under an already-long investigative cycle's remaining time. Posted the full finding to #2113
+  with the precise next-3-steps plan (delta re-review + resubmit via `nrec --as executor` ->
+  fresh dry-run confirm -> backup + real `--commit` dispatch -> if successful, work outward to
+  `ga_positions`' direct L1 dependents: `ga_dashas`/`ga_vargas`/`ga_nakshatra`/`ga_sensitive`/
+  `ga_sensitive_degree`/`ga_prashna`/`ga_ayurdaya`, all currently `waiting_on: ga_positions`).
+  CYCLE 132 L1: PR hygiene clean, **reframed #2113 from "campaign-wide gate, nothing L1 can do"
+  to a fully-diagnosed, concrete, low-risk 3-step unblock path**, found and reported (not yet
+  fixed) that L1's own DAG root has been silently sitting in a stale, already-fixable error state
+  for the entire 131-cycle span of this campaign -- next: cycle 133 should do step 1 (delta
+  re-review + resubmit `ga_positions`' W2 acceptance), confirming with a fresh dry-run before
+  ending that cycle; the actual `--commit` dispatch is its own separate, later cycle.
