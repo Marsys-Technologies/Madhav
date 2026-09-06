@@ -3547,3 +3547,6 @@ session's to resolve.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no new eligible work. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Main advanced (an unrelated L3 merge, #1917). No open L0 PRs, no new
+  eligible work. 36/40 frozen unchanged.
