@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 132; MAJOR finding on #2113 -- ga_positions (L1's DAG root, zero deps) has sat in a stale asset_throughput error state since 2026-09-05 due to bug #1856, fixed by PR #1861 the SAME night but never retried since; confirmed the asset_freshness gate can't even apply to it (empty depends_on); live dry-run pinpointed the one real remaining blocker (stale W2 acceptance pin, needs delta re-review + resubmit). Posted full diagnosis + 3-step unblock plan to #2113. Not yet executed -- next cycle's job
+last_updated: 2026-09-07 — C8 v2.3 cycle 133; revised the #2113 unblock plan after finding a real orphan risk: ga_positions_writer.py's fact_id derivation changed since the last acceptance (PR #1898, build_id removed from fact_id -- a real fix, but rebuild produces different fact_id values), and ga_yoga_firings.constituent_fact_ids (36/40 refs) resolves to exactly ga_positions' own categories -- a ga_positions-ONLY rebuild would orphan those. Did NOT resubmit/dispatch this cycle. Posted the corrected finding to #2113
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7859,3 +7859,50 @@ record — they are the only entries in this table with a real wall-clock behind
   for the entire 131-cycle span of this campaign -- next: cycle 133 should do step 1 (delta
   re-review + resubmit `ga_positions`' W2 acceptance), confirming with a fresh dry-run before
   ending that cycle; the actual `--commit` dispatch is its own separate, later cycle.
+- 2026-09-06T2xZ -- CYCLE 133 (C8 v2.3) -- **caught a real mistake before making it; revised the
+  #2113 unblock plan.** PR hygiene: #2171 confirmed genuinely `is:queued` mid-cycle (then
+  MERGED) -- clean throughout. Began step 1 (delta re-review for `ga_positions`): confirmed the
+  live deployed commit-sha label (`gcloud run services describe amjis-web ... commit-sha`) is
+  `6964b5538...`, matching `origin/main` HEAD exactly (no drift this time) -- so the stale-pin
+  diagnosis from cycle 132 stands, verified via the ACTUAL deployed commit, not an assumption.
+  Wrote a throwaway script importing `dispatch_nirmana_campaign_wave.py`'s own
+  `_live_registry_fingerprint`/`_current_analysis_receipt_digests` functions directly (never
+  hand-reimplemented the hash) to get byte-exact fresh values:
+  `registry_fingerprint_sha256=e7fac2bd...`, `analysis_digest=5467cc3b...`. **Before submitting
+  anything, read the actual diff of what changed `ga_positions_writer.py` itself since the last
+  acceptance (not just trusted the prior record's "unrelated sibling writer fixes" framing) --
+  and it WAS touched**: PR #1898 (issue #1747, merged 2026-09-06T14:54:54Z, AFTER the original
+  failed dispatch) removed `build_id` from `fact_id`'s derivation -- a real, good, already-merged
+  fix, but one that means a rebuild produces DIFFERENT fact_id values than what's currently
+  stored. Caught that this invalidates blindly copy-forwarding the prior
+  `examined_and_already_efficient`/`digest_identical` verdict (the schema hard-requires that
+  pairing) -- the honest verdict is `correct`/`correctness_change`. Then asked the harder
+  question the schema alone can't answer: does anything else STORE a reference to the specific
+  fact_id values that are about to change, rather than re-deriving them fresh? Checked
+  `information_schema.columns` for every `%fact_id%`/`%constituent_fact%`-shaped column
+  campaign-wide (`chart_vichara`, `ga_yoga_firings`, plus many L2/L3 `bodha_*`/`kala_*`/`l25_*`
+  columns) and live-verified each in-layer candidate: `chart_vichara`'s two array columns are
+  clean (0/21388 and 0/21388 references to `ga_positions`' categories) but **`ga_yoga_firings.
+  constituent_fact_ids` is NOT** -- 36 of 40 distinct fact_id values on the canonical chart
+  resolve to exactly `ga_positions`' own 5 categories. **A `ga_positions`-only rebuild would
+  silently orphan those 36 references.** Attempted the shared `cascade_check.sql -v
+  table=chart_facts` tool for a campaign-wide answer (it also surfaced non-L1 `kala_*`/`l25_*`/
+  `bodha_*` candidates worth someone checking) but its full schema-wide scan (~2,500+ columns)
+  did not finish inside two separate 10+-minute background attempts across cycle boundaries --
+  **learned mid-cycle that a Bash background process/Monitor does NOT reliably survive the
+  supervisor's own cycle-invocation boundary** (the underlying OS process itself sometimes did
+  survive, but the Monitor notification mechanism did not deliver across a fresh invocation,
+  costing two effectively-wasted re-checks) -- pivoted to a fast, targeted, in-session query
+  instead of continuing to wait on the slow generic tool, which is the right lesson for any
+  future long-running verification: prefer a bounded, targeted check over a slow generic scan
+  when a cycle's time budget is at stake. Posted the corrected finding + revised plan to #2113
+  (did NOT submit the resubmission or dispatch anything this cycle, given the new information
+  changes what "step 1" even means). CYCLE 133 L1: PR hygiene clean, **prevented a real
+  data-integrity mistake** (orphaning `ga_yoga_firings`' evidentiary fact references) that the
+  ORIGINAL 3-step plan would have caused, by insisting on checking the actual writer diff and
+  the actual downstream references rather than trusting the prior record's framing -- next:
+  `ga_positions`' own W2 acceptance still needs the delta re-review regardless (unaffected by
+  this finding), but the DISPATCH must not be `ga_positions` alone -- either wait until `ga_yoga`
+  is also rebuild-ready (it's still `BLOCKED-ANCESTORS` on 7 other assets), or get a ruling on
+  whether a coordinated multi-asset rebuild is the right shape here; re-check #2113 for any reply
+  before deciding the next concrete step.
