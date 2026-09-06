@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 104; fixed a genuine RED on #2118 (Fact-Category Pinning Gate) with a properly-justified allowlist entry, not a suppression — get_nakshatra.ts's non-reducing multi-category SELECT is the same known false-positive shape as get_positions.ts/get_sensitive_points.ts's own precedent entries
+last_updated: 2026-09-06 — C8 v2.3 cycle 105; closed F-B31 (migration 843, ga_panchanga target_floor 221→437); investigated and correctly declined to "fix" F-B26 (verification tier is already honest, not a defect)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3364,7 +3364,7 @@ none accepted yet (blocked on #1736).
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A) |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959) |
-| ga_panchanga | 437 / 221 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99 |
+| ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
@@ -6871,3 +6871,34 @@ L1 must satisfy rather than a feature it consumes.
   assumed transient, not weakened past) on a brand-new file, fixed via a genuine per-file audit
   matching established precedent -- next: resume the W2 DECIDE findings sweep where cycle 103
   left off.
+- 2026-09-06T21:2xZ -- CYCLE 105 (C8 v2.3). PR hygiene: #2118's Fact-Category Pinning Gate
+  confirmed no longer failing post cycle-104's allowlist fix; #2116 confirmed genuinely
+  `is:queued`; #2110 healthy mid-CI. #2112 confirmed MERGED. Nothing DIRTY/RED/unqueued-but-clean.
+  No ruling yet on #2113's asset_freshness follow-up -- not blocking. Unit of work: resumed the
+  W2 DECIDE sweep with F-B26/F-B31 (`ga_panchanga`). **F-B31 confirmed still genuinely open**:
+  live `count_sql` re-execution showed 437 rows against a registry `target_floor` still at 221
+  (the false `expected_volume_formula='AYANAMSHAS'` half of the same finding was already fixed,
+  confirmed `NULL` live -- only the floor number was left behind, same "half-closed" pattern as
+  F-C9/D-L1-105). Shipped migration 843 (a plain `UPDATE asset_registry SET target_floor = 437`,
+  matching the exact established precedent of migrations 293/294/296) -- verified live before
+  shipping (target_floor now 437, matches achieved exactly). **Investigated F-B26 in depth rather
+  than assuming it needed a parallel fix**: read `ga_panchanga_writer.py`'s actual emission code
+  for the 4 FORENSIC anchors (tithi/vara/yoga/karana) -- found a hardcoded `vp = "single"`, then
+  traced `brahmagyan/verification_vocab.py`'s own vocabulary table before concluding anything:
+  `"single"` is NOT a bare unsanctioned literal (it IS `UNVERIFIED_DEFAULT`'s own value) and is
+  in fact the CANONICAL spelling -- `"single_pass"` (what the file's OWN `_single_pass_verif()`
+  helper returns, unused by these 4 anchors) is explicitly documented as a
+  `deprecated_alias_of="single"`, not a stronger tier. Since these classical Panchanga anchors
+  are deterministic single-derivation table-lookups from already-computed Sun/Moon longitudes
+  with no genuine independent second-pass method available in this codebase, fabricating a
+  `two_pass_verified` claim here would be the exact §N.8 Earned-Signal violation the whole
+  campaign exists to prevent -- correctly declined to "fix" F-B26; documented the finding as
+  already honestly represented, not swept under a fabricated tier. Companion vitest file (4
+  tests) + full `platform/tests/unit/migrations/` suite (109 files, 670 passed, 91 skipped) both
+  clean; `provenance_inventory --check` + L1 pin: clean (no writer touched). Opened PR #2119 with
+  base:main directly, armed auto-merge, confirmed genuine CI dispatch via actions/runs (4 runs)
+  before ending the cycle. CYCLE 105 L1: PR hygiene clean, closed one genuinely open W2 DECIDE
+  finding (F-B31) via a well-precedented registry fix, and correctly RESISTED force-fitting a fix
+  onto a sibling finding (F-B26) that turned out, on actual investigation, to already be
+  honestly represented -- next: continue the sweep with F-D21/D22/D23 (`ga_transit_anchors`),
+  F-E16/E17 (`ga_tajaka`), F-E21/E22 (`ga_prashna`).
