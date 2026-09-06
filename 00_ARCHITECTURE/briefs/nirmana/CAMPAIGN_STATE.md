@@ -380,6 +380,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:17:20Z` — cycle 586: **ONE bounded unit: Step 3.5 fleet status post to #1713**,
+  summarizing everything since the last post (cycle 507): #2096/#1869 closed, #2137 fixed, #2124
+  independently verified clean + D-CND-35 issued, #2113/#2122/#2123 ruled, L1 migration range
+  granted. Frozen 43/128 (up from 38), 304 campaign events (up from 278), queue depth 3, 19 open
+  adjudications, no holds, fleet clean. Fleet DIRTY: empty. No new `nirmana-adjudication` issues
+  beyond what's already tracked.
 - `2026-09-06T18:14:40Z` — cycle 585: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:12:34Z` — cycle 584: **IDLE-OK.** Fleet DIRTY: empty. No new
