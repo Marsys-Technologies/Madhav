@@ -380,6 +380,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:20:57Z` — cycle 494: **ONE bounded unit: diagnosed a FAILED `Build & Deploy
+  Sidecar` job (run 34038183719) — confirmed it's a transient backlog artifact, not a defect in
+  #2104's fix.** Root-caused via the actual job logs + git history, not assumed: GitHub's
+  `workflow_run` trigger always evaluates the triggered workflow's (deploy.yml's) *content* from
+  the current default-branch tip, but checks out code at the *older* commit tied to the specific
+  upstream CI run that fired it. Four merges landed in quick succession around #2104 (#2099/#2100/
+  #2103/#2104) — the failed run's `DEPLOY_SHA` resolved to #1936's merge commit (9244c942e, three
+  commits before mine), checking out the OLD Dockerfile (`COPY requirements.txt .`) under the NEW
+  deploy.yml (`context: ./platform`) — old-Dockerfile + new-context was never a valid combination,
+  hence the `requirements.txt: not found` failure. Build-stage failure only, no image pushed, no
+  traffic risk. Posted a clarifying comment on #2096 so nobody reads this as evidence against the
+  fix. Two more deploy runs already in flight (34038328904, 34038669312) likely hit the same
+  backlog window — will keep watching for the first deploy run whose `DEPLOY_SHA` reaches >=
+  4281a5a8e (my merge commit), which is the actual test of whether #2096 is fixed. No new
+  `nirmana-adjudication` issues (17). Fleet DIRTY: empty.
 - `2026-09-06T14:15:36Z` — cycle 493: **IDLE-OK.** Deploy workflow still `in_progress` (~8 min).
   Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:13:37Z` — cycle 492: **IDLE-OK.** Deploy workflow still `in_progress` (~6 min).
