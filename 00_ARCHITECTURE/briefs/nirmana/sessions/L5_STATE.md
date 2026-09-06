@@ -457,6 +457,13 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:05Z (C8 v2.3 cycle 206) — **IDLE-OK.** Both own PRs still `isInMergeQueue:
+  true`, clean. #1861 still position 2, position-1 PR (#1920) `AWAITING_CHECKS` — same
+  pattern as before, not re-investigated in depth since already confirmed twice this
+  session it's normal duration not a stall. #1844=57, #1901=83 unchanged. #1869 unchanged
+  at 3 comments; #1856 still OPEN. 10 cycles now batched locally unpushed (#1826 still
+  queued) — watching this doesn't exceed the contract's "a few cycles" state-lag tolerance
+  much further; will push as soon as #1826 merges or drops out of queue.
 - 2026-09-06T01:03Z (C8 v2.3 cycle 205) — **IDLE-OK.** origin/main advanced (#1854 merged,
   the position-1 PR from last cycle). Both own PRs still confirmed `isInMergeQueue: true`,
   clean, no hygiene action needed. #1861 still position 2 (unchanged, short interval);
