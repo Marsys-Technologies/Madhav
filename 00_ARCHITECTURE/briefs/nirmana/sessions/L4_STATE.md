@@ -5946,3 +5946,20 @@ list, not stalled; E-gate uncheckable, DB access down 294 cycles; nothing new) �
 `#1870` merge; watch remaining positions continue advancing; retry E-gate/dispatch dry-run
 once DB access returns; F1 remains deferred.
 
+`2026-09-06T~15:40Z` — L4 — **CYCLE 305 (v2.3) — two more `main` commits landed
+(`#1995`/`#1902`, L2, not L4-relevant); all 8 own PRs' positions moved up well, `#1870` now
+at position 6, very close to the queue head.**
+
+**PR hygiene:** all 8 own PRs genuinely queued and advancing (19→6, 62→49, 61→48, 57→44,
+58→45, 50→37, 46→33, 47→34). No DIRTY, no RED.
+
+**Priorities 1-4:** new `main` commits confirmed not L4-relevant. No new adjudications name
+L4 (count unchanged at 15). E-gate still uncheckable, 295th consecutive cycle DB access
+down.
+
+CYCLE 305 L4: IDLE-OK (verified: two new `main` commits confirmed not L4-relevant; PR
+hygiene clean, all 8 own PRs genuinely queued and advancing well, `#1870` nearing the queue
+head; E-gate uncheckable, DB access down 295 cycles; nothing new) → next: watch `#1870`
+merge; watch remaining positions continue advancing; retry E-gate/dispatch dry-run once DB
+access returns; F1 remains deferred.
+
