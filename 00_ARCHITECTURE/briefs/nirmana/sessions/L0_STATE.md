@@ -2445,3 +2445,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   backlog (5 fresh `push`-event workflow runs stuck `queued`, not merge-queue-specific), matching
   the earlier self-resolving D-L0-PP precedent — not filed as adjudication, just watching. No
   DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **RESOLVED: runner backlog cleared, queue moving again.** New queue head #1986
+  appeared with 9 checks freshly `in_progress` (~1min in), positions dropped by 2 (28/35/36/57) —
+  confirms the earlier self-resolving prediction. No DIRTY, no RED. 30/40 frozen holds.
