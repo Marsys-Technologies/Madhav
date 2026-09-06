@@ -2556,3 +2556,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   hashes for the third). Deploy lag confirmed consistent across all three — will re-check
   periodically. Only `#2016` (heartbeat consolidation) remains open, at queue position 21. No
   DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** 2 more merges (#2015/#2019, L1, not L0's). `#2016` dropped to position
+  15. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
