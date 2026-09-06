@@ -3462,3 +3462,10 @@ session's to resolve.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no new eligible work. 36/40 frozen
   unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Deeper re-verification of D-L0-II: `bg_ephemeris_engine` DOES have
+  one receipt row (`build_id cd79def6`, `observed_at 2026-08-27`), correcting my earlier summary
+  of "never has a provenance receipt" — but its `receipt_state='unknown'`
+  (`unknown_reasons: ['output_digest_spec_unavailable']`), not `'proven'`, so
+  `accepted_rebuild_observed`'s requirement is still genuinely unmet. Blocker confirmed still
+  valid, no change in eligibility. No open L0 PRs, no new eligible work. 36/40 frozen unchanged.
