@@ -493,8 +493,24 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~127:0xZ — L3-W4 — IDLE-OK — and this time resolved the
+  recurring "is the pytest step stuck" question for good, with hard
+  evidence rather than another round of the same heuristic guess.** Same
+  run, now ~11.8min, still on the identical `pytest — pyjhora_adapter +
+  pipeline` step with no new checkmarks since 2 cycles ago — genuinely
+  looked stall-shaped this time, so pulled a PREVIOUSLY SUCCESSFUL run's own
+  log (`#2166`'s, job `101560078694`) rather than guess again: its own
+  `pytest` invocation started `21:16:04Z` and was still actively producing
+  test-collection output at `21:27:06Z` — **~11 minutes of genuine activity
+  in a run that went on to pass cleanly.** This is the actual normal
+  duration for this specific step, confirmed from real timestamps, not an
+  assumption — resolves every prior cycle's "~10min pattern, probably fine"
+  guess with an actual measured precedent. No new merges, no new bounded
+  work. — blocked on: `#2181` finishing; next action: same, but no further
+  step-level re-investigation needed for this exact concern — it's now
+  answered with evidence, not just repeated faith.
 - `2026-09-06T~126:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s last check,
-  same run, ~9.5min, checked step-level detail directly (`gh run view
+  same run, ~9.5min, checked step-level detail directly (`gh run view`
   --job`) — still on the same consistently-slow `pytest` step, genuine
   progress not a stall, matches every prior instance of this step this
   session. 0 failures. No new merges, no new bounded work. — blocked on:
