@@ -493,6 +493,42 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~103:0xZ — L3-W4 — Dispatched `ka_muhurta_seva`'s W4 chain to a
+  genuinely fresh subagent, per D-CND-35 — not executed by this session's own
+  context.** PR hygiene: `#2160` still genuinely `isInMergeQueue: true`
+  (position 2, healthy), nothing to fix. Before dispatching, checked the sidecar
+  Cloud Run traffic split (the same class of blocker recorded in Held items row
+  1 for `ka_graha_sancara`) — **self-caught a misread on the first pass**: an
+  initial `gcloud run services describe --format="value(status.traffic[0]...)"`
+  query returned array index 0 (alphabetically first tag), not the 100%-traffic
+  entry, making it briefly look like live traffic was pinned to a stale
+  pre-#2065 revision (`0212c095d`, commit #1697). Re-queried filtering on
+  `percent: 100` specifically: **the actual 100%-traffic revision is
+  `amjis-sidecar-probe-1a2546a9cee6-...` — built from `#2065`'s own commit.**
+  No stale-revision blocker this time; genuinely ready. Briefed and launched a
+  fresh general-purpose subagent (zero shared context, told to independently
+  re-read `definitions.ts`/`evidence-command.ts`/the probe route rather than
+  trust any value handed to it) to submit `probe_accepted` →
+  `integrity_verified` → `asset_frozen` in strict order via `nrec --as
+  verifier`, each independently re-verified against the DB before the next,
+  and to STOP rather than force a submission if the live probe isn't
+  genuinely GREEN or a digest doesn't match. **First attempt stalled** — no
+  progress for 10 minutes, still in the reading phase, notification fired as
+  `failed`. Confirmed via direct DB query that ZERO events were submitted by
+  it (safe stall, no partial/dangerous state) before treating it as a clean
+  no-op. **Redispatched a second fresh subagent** with a tightened prompt
+  (explicit "read efficiently, grep don't full-read, this should take under
+  10 minutes" guidance, plus the sidecar traffic revision and API-key
+  resolution path spelled out more directly to cut down its own investigation
+  time) — same D-CND-35 constraints, same strict 3-event order, same
+  independent-reconstruction requirement. `#2160` MERGED cleanly in the
+  meantime (0 failures) — zero open L3 PRs now, PR hygiene trivially clean.
+  Task is running in the background; results not yet in. — blocked on: the
+  subagent's own completion; next action: read its report next cycle,
+  transcribe the outcome here (success through all 3 events + confirmed
+  `egate.sql` drop from the not-yet-frozen list, OR wherever it stopped and
+  why — and if it stalls again, consider whether the task itself needs
+  tighter scoping before a third attempt, rather than retrying unchanged).
 - `2026-09-06T~102:0xZ — L3-W4 — `ka_muhurta_seva`'s W2 acceptance recorded
   live, for real.** PR hygiene: `#2160` now genuinely `isInMergeQueue: true`
   (`CLEAN`), nothing to fix. **Dispatched the W2 submission planned last
