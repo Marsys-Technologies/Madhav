@@ -473,6 +473,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~55:0xZ — L3-W4 — IDLE-OK (verified): all 3 PRs held queued this
+  time (no re-queue needed). `#1903` healthy, zero failures. Clock threshold
+  (15:52:00Z) still not reached (real time 15:26). `egate.sql` unchanged. —
+  blocked on: real time passing 15:52:00Z; next action: execute the recorded
+  4-step `probe_accepted` → `integrity_verified` → read-back → `asset_frozen`
+  sequence (Held items, row 1) once past it.
 - `2026-09-06T~54:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
   had fallen out of the queue again (`CLEAN`-but-unqueued, recurring churn
   pattern this cycle-band, not a new defect) — re-queued all three, verified
