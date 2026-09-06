@@ -380,6 +380,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T15:57:34Z` — cycle 536: **ONE bounded unit: ruled #2122 (L1→L0 cross-file finding,
+  F-D21/F-D23), verified before ruling.** `bg_vidhi_primitives.py`'s `from_moon_view` primitive
+  dispatches a `reference_point` arg to `ganita_chart_facts_get` that no tool reads — confirmed
+  live via `grep -rn "reference_point"`: exactly 2 hits, both declarations (the Python tuple + its
+  TS mirror `registry_data.ts`), zero consumers. **Ruled: L0's own fix, not Conductor/shared-infra**
+  — re-point `from_moon_view` to `ganita_transit_anchors_get` (a routine data-routing correction
+  within L0's own writer, not a security/shared-infra change). Assigned to L0; L1 correctly flagged
+  rather than fixed since the file sits outside L1's write-set. Fleet DIRTY: empty.
 - `2026-09-06T15:55:01Z` — cycle 535: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (16). Nothing rose to a bounded unit.
 - `2026-09-06T15:52:54Z` — cycle 534: **IDLE-OK.** Fleet DIRTY: empty. No new
