@@ -6180,3 +6180,21 @@ unchanged/queued or legitimately pending fresh CI, nothing failed → next: watc
 merge; confirm `#1845`/`#1842` go green; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~16:40Z` — L4 — **CYCLE 317 (v2.3) — `#1842` confirmed re-entered the queue.
+`#1849` has a fresh `merge_group` run (new head SHA, ~3 min elapsed) after a queue-ahead
+shift — genuinely still processing, not stalled. `#1845` unchanged, legitimately pending
+the same checks as last cycle.**
+
+**PR hygiene:** `#1842` genuinely `QUEUED`. `#1849` confirmed on a fresh merge-group run,
+within normal range. `#1845` confirmed genuinely in-progress via direct job inspection, no
+RED. Remaining `#1839`/`#1834`/`#1831`/`#1808` unchanged/queued.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+15). E-gate still uncheckable, 307th consecutive cycle DB access down.
+
+CYCLE 317 L4: IDLE-OK (verified: PR hygiene clean — `#1842` confirmed re-queued, `#1849` on
+a fresh merge-group run within normal range, `#1845` legitimately mid-CI, remaining
+unchanged/queued; E-gate uncheckable, DB access down 307 cycles; nothing new) → next: watch
+`#1849` merge; confirm `#1845` goes green; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
