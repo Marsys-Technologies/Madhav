@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T21:01:31Z` — cycle 620: **ONE bounded unit: #2159 CLOSED — confirmed live via SQL,
+  not assumed from PR merge alone.** Noted two unusually long gaps since the prior cycle (~52 min,
+  then ~32 min) — re-verified fleet state fresh each time rather than trusting stale context. PR
+  #2161 merged (19:45:43Z). Migration 850 confirmed applied via direct SQL (`_migrations_applied`,
+  `19:19:13Z` — the "lucky recovery" the filer predicted, landed even before #2161 merged) and
+  `asset_registry.health_probe` for `ka_muhurta_seva` confirmed populated. Posted closure and
+  closed #2159. Fleet DIRTY: empty. Adjudication count 19 (down from 20).
 - `2026-09-06T19:36:52Z` — cycle 619: **IDLE-OK.** Own PR #2161: confirmed `is:queued` (1). Fleet
   DIRTY: empty. No new `nirmana-adjudication` issues (20).
 - `2026-09-06T19:34:35Z` — cycle 618: **IDLE-OK.** Own PR #2161: still open, progressing. Fleet
