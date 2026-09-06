@@ -493,6 +493,24 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~132:0xZ — L3-W4 — PR HYGIENE: `#2181` had merged
+  (squash `c1e68c385`, 22:36:48Z) since last cycle — it was no longer in
+  the open-PR list. Rebased the 9 not-yet-merged local heartbeat commits
+  (cycles ~123-131, previously accumulating on the now-closed branch) onto
+  fresh `origin/main`. Hit the standard prepend-conflict pattern 5x
+  (HEAD's already-merged content flowing directly into an empty "theirs"
+  side — each of those 5 commits' content had already landed via #2181's
+  squash); resolved each via the established marker-strip script after
+  visually confirming the empty-theirs pattern held every time, never
+  discarding content. 1 more commit auto-dropped by git itself as
+  "patch contents already upstream". Verified zero conflict markers, zero
+  duplicate timestamps, and the `ka_dasha_kala` held-row intact afterward.
+  Renamed branch to `codex/nirmana-l3-heartbeat-idle-2`, pushed, opened
+  **PR #2184**, armed auto-merge. Not yet in queue — its own pre-queue
+  checks are running now (normal). No new bounded work found this cycle
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: `#2184`
+  clearing its checks and queueing; next action: verify it queues cleanly
+  next cycle.
 - `2026-09-06T~131:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
   run, now ~9.5min, still within the confirmed ~11min normal range for
   this exact step (per last cycle's precedent evidence). No new merges,
