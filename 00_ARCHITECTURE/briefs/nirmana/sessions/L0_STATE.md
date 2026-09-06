@@ -2200,3 +2200,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Fourth flat read; queue head still #1935, ~9.8min in_progress — still
   under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1935 merged (`d6da4fa7b`, L1, not L0's). Positions dropped to
+  84/91/92/113 (from 118 territory). New queue head #1934, ~2min into CI. No DIRTY, no RED, no new
+  eligible work. 30/40 frozen holds.
