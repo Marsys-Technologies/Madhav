@@ -2366,3 +2366,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Fifth flat read; queue head still #1958, ~11.6min in_progress — still
   under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** #1958 merged (`60ca5b5cb`, Conductor's cockpit fix, not L0's) —
+  resolved normally. Positions dropped by 1 (61/68/69/90). No DIRTY, no RED, no new eligible work.
+  30/40 frozen holds.
