@@ -143,13 +143,13 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 | asset_id | kind | obl. | wave | route | status | E-gate | capsule | notes |
 |---|---|---|---|---|---|---|---|---|
 | ka_gochara_resonance | data | build | 0 | **rebuild_only** | W2-done | **0 — OPEN** | — | **canary candidate**; fingerprint clean |
-| ka_graha_sancara | service | probe | 0 | **probe** | W2-accepted | **OPEN-PENDING-PIN (real)** | — | M3 fixed+deployed (#1751); `asset_analysis_accepted`+`optimization_verdict_accepted` recorded live 2026-09-05T14:00Z; ready for W4 slot claim + probe dispatch |
+| ka_graha_sancara | service | probe | 0 | **probe** | **W4 FROZEN (real)** | **— (frozen)** | `asset_frozen` 2026-09-06T15:56:00Z | **THE LAYER'S FIRST GENUINE, NON-ARTEFACTUAL `asset_frozen`.** Full chain: W2 re-accepted live-fingerprint-bound, `probe_accepted` GREEN (Moon=Aquarius, 9/9 grahas, `runner_revision amjis-sidecar-probe-be987b68e418-34043050211-1`), `integrity_verified` GREEN (independent re-probe, same result), `asset_frozen` — all 4 events server-reconstructed/verified, none hand-asserted. Confirmed via `egate.sql`: no longer appears in the not-yet-frozen list; `ka_muhurta_seva` (its only dependent) now reads `unfrozen_ancestors: 0`. |
 | ka_kota_chakra | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_moorti_nirnaya | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_sudarshana_varsha | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_tithi_pravesha | data | build | 0 | **verified_reuse** | W2-done | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
 | ka_vedha_gochara | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
-| ka_muhurta_seva | service | probe | 1 | **probe** | W2-done | 1 (ka_graha_sancara) | — | opens the moment the canary freezes |
+| ka_muhurta_seva | service | probe | 1 | **probe** | W2-done | **0 — OPEN (ancestor)** | — | canary froze 2026-09-06 (`ka_graha_sancara`) — `egate.sql` confirms `unfrozen_ancestors: 0` now; still `BLOCKED-NO-ROUTE` (needs its own W2 `asset_analysis_accepted`/`optimization_verdict_accepted`) before it can itself reach `OPEN-PENDING-PIN` |
 | ka_gochara_sweep | data | retired_with_disposition | 1 | **retired** | W2-done | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
 | ka_dasha_kala | service | probe | 0 | **probe** | W2-done | 2 | — | |
 | ka_gochara | data | build | 1 | **changed** | W2-done | 2 | — | v2/v3 authority question |
@@ -208,7 +208,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 
 | item | blocked on | status |
 |---|---|---|
-| `ka_graha_sancara`'s W4 probe dispatch | Sidecar blocker (#2096) CLOSED — Conductor confirmed live GREEN + 100% traffic promotion (verified independently: `gcloud run services describe` shows 100% on the `e8ad7db71c1a` revision). W2 re-accepted with the corrected LIVE registry fingerprint/analysis digest (catalog_status had drifted DRAFT→CURRENT via migration 673 since the original 2026-09-05 acceptance). `probe_accepted` itself is blocked only on a self-inflicted clock mistake — `observed_at` was submitted ~50min ahead of real time, and `requireProbeObservationTiming` needs the live probe's server request to start strictly after it; clears once real time passes **2026-09-06T15:52:00Z**. **This cycle's prep (clock not yet past threshold): mapped and precomputed the ENTIRE remaining chain**, not just the next step — `asset_frozen` additionally requires its own prior `integrity_verified` event (confirmed by reading `requireFreezeProvenance`: exactly one current `integrity_verified` row, independent of `probe_accepted`), which for a probe-obligation asset with null `count_sql`/`integrity_check_sql` re-runs the SAME live health probe under a DIFFERENT digest scheme (`collectIntegrityObservation`, confirmed by reading the function directly — not assumed). All three remaining events' STATIC inputs (the ones the server does NOT overwrite) are now precomputed and verified consistent with the live registry: `registry_fingerprint_sha256`=`aadfaa20f662bc323a70eeb4a3fa4a6eae51c0635ecf791436fe12c161e8f660`, `analysis_digest`=`4662bf0a4f0212d5b40f3916659377006d6882df2d4f5b95784cde0e72a3d35e` (both for `probe_accepted`/`integrity_verified`/`asset_frozen` alike), `probe_contract_sha256`=`2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6` (for `probe_accepted`), `integrity_contract_sha256`=`454eeb2d8f51156d7db58fa8a9c08fe79e1685531b3978bdcfc8151e0d1b898f` (for `integrity_verified`, = `sha256(stableJson(registry_contract))`, the bare 14-field object, NOT wrapped in `{health_probe:...}` — a different wrapping than the probe contract digest, confirmed by reading `canonicalNirmanaIntegrityContractDigest` directly). `asset_frozen`'s own `lifecycle_digest` CANNOT be precomputed — it hashes the actual recorded rows of `probe_accepted`/`integrity_verified` (server-generated `detector_observation`/timestamps unknown until those exist), so it must be read back from the DB after each lands, not guessed | genuinely open but fully mechanical, no design risk remains — sequence once past 15:52Z: (1) submit `probe_accepted` (payload template at `/tmp/probe_accepted_v2.json` this session, ephemeral — reconstruct from the digests above if the session restarted), (2) wait ~15-20s for `recorded_at` to clear, (3) submit `integrity_verified` with `source_ref=nirmana-elevation:integrity:ka_graha_sancara`, same two lifecycle-binding digests + the `integrity_contract_sha256` above, (4) query `nirmana_evidence.nirmana_elevation_campaign_events` for both new rows' exact `evidence_payload`/`source_kind`/`source_ref`, replicate `requireFreezeProvenance`'s sort+stableJson+sha256 in Python to get `lifecycle_digest`, (5) submit `asset_frozen` with `source_ref=nirmana-elevation:freeze:ka_graha_sancara`. All four submissions use `--as verifier` (server_reconstructed) |
+| ~~`ka_graha_sancara`'s W4 probe dispatch~~ | ~~sidecar blocker, then a clock timing gate~~ | **RESOLVED 2026-09-06T15:56:00Z — `asset_frozen` recorded for real.** Full chain executed once the clock cleared: `probe_accepted` (201, live probe GREEN — Moon=Aquarius, 9/9 grahas) → `integrity_verified` (201, independent re-probe, also GREEN) → `lifecycle_digest` computed by querying all 6 lifecycle rows and replicating the server's sort+stableJson+sha256 in Python → `asset_frozen` (201). Verified independently via `egate.sql`: `ka_graha_sancara` no longer appears in the not-yet-frozen list; `ka_muhurta_seva` (its dependent) now reads `unfrozen_ancestors: 0`. The layer's first genuine, non-artefactual freeze. |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -473,6 +473,33 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~65:0xZ — L3-W4 — MILESTONE: `ka_graha_sancara` FROZEN for real —
+  the layer's first genuine, non-artefactual `asset_frozen`.** PR hygiene:
+  `#2079`/`#2070`/`#2065` still queued, `#1903` healthy, zero failures. Clock
+  threshold cleared (real time 15:53:57 > 15:52:00Z). Re-verified the
+  registry contract was still byte-identical to every prior cycle's read
+  before touching anything. Executed the full recorded 4-step chain: (1)
+  `probe_accepted` — 201, live sidecar probe genuinely GREEN (Moon=Aquarius
+  matches the FORENSIC anchor, 9/9 grahas present, `runner_revision
+  amjis-sidecar-probe-be987b68e418-34043050211-1`); (2) waited 15s for
+  `recorded_at` to clear, then `integrity_verified` — 201, an INDEPENDENT
+  re-probe (not a cached result), also GREEN; (3) queried all 6 lifecycle
+  rows for this asset (both stale 2026-09-05 events plus the two corrected
+  resubmissions plus the two new ones) and replicated `requireFreezeProvenance`'s
+  exact sort+`stableJson`+sha256 in Python to compute `lifecycle_digest` —
+  no shortcuts, the real server-generated `detector_observation`/timestamps
+  from steps 1-2 fed directly into this; (4) `asset_frozen` — 201. **Verified
+  independently, not just trusted the 201s**: re-ran `egate.sql` — `ka_graha_
+  sancara` no longer appears in the not-yet-frozen list at all; `ka_muhurta_
+  seva` (its only dependent) now reads `unfrozen_ancestors: 0` (still
+  `BLOCKED-NO-ROUTE` — needs its own W2 events recorded, a separate, smaller
+  next step). Updated the asset table (both rows) and Held items (row 1
+  resolved, struck through) to reflect this live. Posting a MILESTONE
+  comment to `#1713` matching the established fleet convention. — blocked
+  on: nothing; next action: `ka_muhurta_seva`'s own W2 (`asset_analysis_
+  accepted`+`optimization_verdict_accepted`) is now the natural next W4-path
+  item once its own analysis/verdict are ready — not started this cycle
+  (bounded-unit discipline), a clean candidate for next cycle.
 - `2026-09-06T~64:0xZ — L3-W4 — IDLE-OK (verified): `#2079`/`#2070`/`#2065`
   had fallen out of the queue again — re-queued, verified via `is:queued`.
   `#1903` healthy, zero failures. Clock threshold within 36 SECONDS (real
