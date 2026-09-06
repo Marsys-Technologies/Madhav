@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 132; MAJOR finding on #2113 -- ga_positions (L1's DAG root, zero deps) has sat in a stale asset_throughput error state since 2026-09-05 due to bug #1856, fixed by PR #1861 the SAME night but never retried since; confirmed the asset_freshness gate can't even apply to it (empty depends_on); live dry-run pinpointed the one real remaining blocker (stale W2 acceptance pin, needs delta re-review + resubmit). Posted full diagnosis + 3-step unblock plan to #2113. Not yet executed -- next cycle's job
+last_updated: 2026-09-07 — C8 v2.3 cycle 146; began the 139-row disposition-table prep item, and while reconstructing MUST-tier statuses caught that cycle 125's "MUST tier fully closed" claim was WRONG for one id-group (F-B32/F-B33) -- independently re-verified LIVE that it is still genuinely open (coverage_matrix.ts still 169 hand-maintained categories vs. live chart_facts now at 223, up from 219 at original measurement; concept_aliases.ts:14 still cites a CI check file, schema_map_alias_coverage_check.ts, that still does not exist anywhere in the repo). Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, version 0.2-DRAFT->0.4-DRAFT) rather than silently propagating the wrong "closed" claim forward. Did not attempt the real fix this cycle (re-deriving the category list + either building the cited CI check or correcting the docstring) -- too large for one bounded unit; recorded as the new highest-priority unheld W3 item. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7859,3 +7859,440 @@ record — they are the only entries in this table with a real wall-clock behind
   for the entire 131-cycle span of this campaign -- next: cycle 133 should do step 1 (delta
   re-review + resubmit `ga_positions`' W2 acceptance), confirming with a fresh dry-run before
   ending that cycle; the actual `--commit` dispatch is its own separate, later cycle.
+- 2026-09-06T2xZ -- CYCLE 133 (C8 v2.3) -- **caught a real mistake before making it; revised the
+  #2113 unblock plan.** PR hygiene: #2171 confirmed genuinely `is:queued` mid-cycle (then
+  MERGED) -- clean throughout. Began step 1 (delta re-review for `ga_positions`): confirmed the
+  live deployed commit-sha label (`gcloud run services describe amjis-web ... commit-sha`) is
+  `6964b5538...`, matching `origin/main` HEAD exactly (no drift this time) -- so the stale-pin
+  diagnosis from cycle 132 stands, verified via the ACTUAL deployed commit, not an assumption.
+  Wrote a throwaway script importing `dispatch_nirmana_campaign_wave.py`'s own
+  `_live_registry_fingerprint`/`_current_analysis_receipt_digests` functions directly (never
+  hand-reimplemented the hash) to get byte-exact fresh values:
+  `registry_fingerprint_sha256=e7fac2bd...`, `analysis_digest=5467cc3b...`. **Before submitting
+  anything, read the actual diff of what changed `ga_positions_writer.py` itself since the last
+  acceptance (not just trusted the prior record's "unrelated sibling writer fixes" framing) --
+  and it WAS touched**: PR #1898 (issue #1747, merged 2026-09-06T14:54:54Z, AFTER the original
+  failed dispatch) removed `build_id` from `fact_id`'s derivation -- a real, good, already-merged
+  fix, but one that means a rebuild produces DIFFERENT fact_id values than what's currently
+  stored. Caught that this invalidates blindly copy-forwarding the prior
+  `examined_and_already_efficient`/`digest_identical` verdict (the schema hard-requires that
+  pairing) -- the honest verdict is `correct`/`correctness_change`. Then asked the harder
+  question the schema alone can't answer: does anything else STORE a reference to the specific
+  fact_id values that are about to change, rather than re-deriving them fresh? Checked
+  `information_schema.columns` for every `%fact_id%`/`%constituent_fact%`-shaped column
+  campaign-wide (`chart_vichara`, `ga_yoga_firings`, plus many L2/L3 `bodha_*`/`kala_*`/`l25_*`
+  columns) and live-verified each in-layer candidate: `chart_vichara`'s two array columns are
+  clean (0/21388 and 0/21388 references to `ga_positions`' categories) but **`ga_yoga_firings.
+  constituent_fact_ids` is NOT** -- 36 of 40 distinct fact_id values on the canonical chart
+  resolve to exactly `ga_positions`' own 5 categories. **A `ga_positions`-only rebuild would
+  silently orphan those 36 references.** Attempted the shared `cascade_check.sql -v
+  table=chart_facts` tool for a campaign-wide answer (it also surfaced non-L1 `kala_*`/`l25_*`/
+  `bodha_*` candidates worth someone checking) but its full schema-wide scan (~2,500+ columns)
+  did not finish inside two separate 10+-minute background attempts across cycle boundaries --
+  **learned mid-cycle that a Bash background process/Monitor does NOT reliably survive the
+  supervisor's own cycle-invocation boundary** (the underlying OS process itself sometimes did
+  survive, but the Monitor notification mechanism did not deliver across a fresh invocation,
+  costing two effectively-wasted re-checks) -- pivoted to a fast, targeted, in-session query
+  instead of continuing to wait on the slow generic tool, which is the right lesson for any
+  future long-running verification: prefer a bounded, targeted check over a slow generic scan
+  when a cycle's time budget is at stake. Posted the corrected finding + revised plan to #2113
+  (did NOT submit the resubmission or dispatch anything this cycle, given the new information
+  changes what "step 1" even means). CYCLE 133 L1: PR hygiene clean, **prevented a real
+  data-integrity mistake** (orphaning `ga_yoga_firings`' evidentiary fact references) that the
+  ORIGINAL 3-step plan would have caused, by insisting on checking the actual writer diff and
+  the actual downstream references rather than trusting the prior record's framing -- next:
+  `ga_positions`' own W2 acceptance still needs the delta re-review regardless (unaffected by
+  this finding), but the DISPATCH must not be `ga_positions` alone -- either wait until `ga_yoga`
+  is also rebuild-ready (it's still `BLOCKED-ANCESTORS` on 7 other assets), or get a ruling on
+  whether a coordinated multi-asset rebuild is the right shape here; re-check #2113 for any reply
+  before deciding the next concrete step.
+- 2026-09-06T2xZ -- CYCLE 134 (C8 v2.3). PR hygiene: #2178 (only own open PR) confirmed
+  `mergeStateStatus: BLOCKED` with all checks either `pass` or still-`pending`, zero `fail` --
+  genuinely mid-CI, not DIRTY/RED -- clean. Re-checked #2113: no reply yet (still my own last
+  comment's timestamp). With W4 dispatch genuinely paused pending that reply (not something to
+  force by re-posting more urgently every cycle) and the finding-list-driven backlog still fully
+  exhausted, did the natural follow-up maintenance: `L1_W6_CLOSE_REPORT_v1_0.md` still described
+  #2113 in its ORIGINAL framing ("campaign-wide asset_freshness gate... unchanged since
+  2026-09-06T15:00:13Z across ~15 consecutive cycles") even though cycles 132-133 had since
+  substantially re-diagnosed it -- left uncorrected, a future reader (or Phase Z) would get a
+  materially stale picture of what's actually blocking W4. Rewrote §0's W4/W5 status paragraph,
+  added a third §3.5 item recording the full re-diagnosis (ga_positions' immunity to the
+  original gate, the #1856/PR#1861 timeline, the fact_id/orphan-risk finding), and corrected
+  §5's #2113 backlog entry to describe the actual open question (coordinated `ga_positions`->
+  `ga_yoga` rebuild sequencing) instead of the stale one. Bumped the draft to 0.3-DRAFT. Opened
+  PR #2179, armed auto-merge, confirmed genuine CI dispatch. No code change, no writer touched --
+  pure documentation-accuracy maintenance on an already-published DRAFT artifact. CYCLE 134 L1:
+  PR hygiene clean, kept the W6 close-report draft honest as evidence landed (its own stated
+  precedent) rather than let a materially stale blocker-description sit uncorrected -- next:
+  keep re-checking #2113 for a reply; if it stays quiet for several more cycles, reconsider
+  whether the cost-ledger/full-disposition-table prep items (still the two remaining
+  charter-named options) are a better use of a cycle than a bare re-check with nothing new to
+  report.
+- 2026-09-06T2xZ -- CYCLE 135 (C8 v2.3). PR hygiene: #2179/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Re-checked #2113: **a
+  genuine, substantive reply had landed** -- L2 independently checked the two `bodha_*` candidate
+  columns cycle 133's abandoned `cascade_check.sql` scan had surfaced (never got to check them
+  myself), and confirmed the SAME no-FK orphan-risk pattern extends further:
+  `bodha_msr_signals.constituent_facts_array` (1074 distinct fact_ids, 1348 signals) and
+  `bodha_cgm_edges.constituent_fact_ids_array` (45 fact_ids, 45 edges) both resolve into
+  `ga_positions`' own categories, same as L1's own `ga_yoga_firings` finding. L2 explicitly
+  stated this needs a Conductor/native ruling, not something either layer can decide
+  unilaterally. Given the growing cross-layer scope and stakes, decided this deserved its own
+  clearly-labeled tracking issue rather than staying buried as a sub-thread on #2113 (which was
+  originally about a DIFFERENT topic, the asset_freshness gate) -- filed **#2180**
+  (`nirmana-adjudication`), summarizing both L1's and L2's findings in one place with an explicit
+  three-option framing (coordinated multi-layer rebuild wave / a documented campaign-wide
+  fact_id-migration step / something neither layer has identified) and a direct request for a
+  ruling on ownership + sequencing. Cross-linked #2113 and #2180 so neither thread loses context.
+  CYCLE 135 L1: PR hygiene clean, escalated a genuinely cross-layer, now-multi-party-confirmed
+  finding to a properly-scoped adjudication issue rather than letting it keep accumulating in the
+  wrong thread -- next: watch #2180 for a ruling; #2113's own narrower asset_freshness question
+  (whether OTHER L1 assets besides `ga_positions` need a bootstrap step) remains separately open
+  and unchanged.
+- 2026-09-06T2xZ -- CYCLE 136 (C8 v2.3). PR hygiene: #2179 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED` with all checks `pass` or still-`pending`, zero `fail` -- clean. **#2180 got a
+  Conductor ruling** -- verified live before ruling (no non-terminal `build_runs` row, no
+  `NIRMANA_HOLD`), traced the actual `depends_on` chain, and found a SHARPER version of my own
+  finding: `bo_laksana.depends_on` DOES include `ga_positions` (the orchestrator would correctly
+  cascade that edge), but **`ga_yoga.depends_on` does NOT** (`{ga_structural,ga_dashas}` only)
+  even though `ga_yoga_firings.constituent_fact_ids` clearly references `ga_positions`' facts --
+  the orchestrator's own dependency metadata is itself incomplete for this specific edge. Ruled:
+  option (a), an EXPLICIT 5-asset list (`ga_positions`, `ga_yoga`, `bo_laksana`,
+  `bo_cgm_paths`, `bo_cgm_motifs`) in one coordinated wave, not a depends_on-inferred set (which
+  would silently miss `ga_yoga`) and not a campaign-wide migration. Execution spans L1+L2,
+  coordinated via #1713. Separately flagged (not blocking): `ga_yoga`'s missing `depends_on` edge
+  is worth its own fix. **Before touching anything**, checked whether D-CND-09 (depends_on/layer
+  immutable inside the frozen definition) actually permits editing this -- it does not, confirmed
+  via `DAG_CORRECTIONS_REGISTER_v1_0.md`, the dedicated Conductor-owned register that exists
+  *specifically* for this exact situation (known-inaccurate depends_on that cannot be corrected
+  this cohort) -- did NOT migrate `ga_yoga.depends_on`, which would have violated a standing
+  ruling the Conductor's own comment didn't explicitly re-litigate. Found L1's own row in that
+  register had sat `⬜ outstanding` since it was created (unlike L3's completed audit) -- pulled
+  together the 11 hidden/false-edge findings L1's own W1 wave already found (issue #1744, full
+  detail recovered from the 5 W1 batch files rather than re-derived) plus this new `ga_yoga ->
+  ga_positions` edge, published `L1_DEPENDS_ON_AUDIT_v1_0.md` (PR #2183, honestly scoped IN
+  PROGRESS not COMPLETE -- does not yet do L3's full systematic per-asset grep sweep), and made a
+  minimal, surgical edit to just L1's own row in the register's index table. Hit and correctly
+  recovered from a real self-inflicted mistake: used a bare `git stash push` (explicitly
+  forbidden by this session's own safety protocol, since the stash stack is shared across
+  worktrees) instead of committing to a branch directly -- caught it immediately, recovered via
+  SHA-based `git stash apply` (not pop) rather than a bare pop, verified the recovered content
+  was complete, then dropped only my own tagged entry by its exact SHA, leaving 3 other
+  sessions' unrelated stash entries untouched. CYCLE 136 L1: PR hygiene clean, real Conductor
+  ruling received and acted on correctly (respected D-CND-09 rather than mutate an immutable
+  field), filled a genuinely outstanding campaign-wide gap (L1's own DAG audit) -- next: the
+  actual 5-asset coordinated dispatch is a bigger, cross-layer undertaking (needs #1713
+  coordination with L2, a fresh backup, careful sequencing) -- deserves its own dedicated
+  cycle(s) rather than being rushed alongside this cycle's other work; also worth reconsidering
+  whether L1's OWN remaining ~11 not-yet-audited assets are worth a full systematic grep pass
+  (matching L3's method exactly) as a future prep item.
+- 2026-09-06T2xZ -- CYCLE 137 (C8 v2.3). PR hygiene: #2183/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180 for
+  movement: **L2 replied confirming readiness** (`bo_laksana`/`bo_cgm_paths`/`bo_cgm_motifs` have
+  no independent blocker, their writers just re-run fresh) and explicitly deferred the #1713 slot
+  claim to whichever L1 session finishes `ga_positions`' delta re-review first -- correctly
+  refusing to claim it themselves ahead of that, per the ruling's own "don't split into
+  uncoordinated dispatches" framing. Did exactly that this cycle. Re-verified my cycle-133
+  computed values were STILL correct before trusting them (re-ran the same throwaway digest
+  script fresh against the live DB -- identical output, confirming the layer's
+  `convergence_commit`/registry contract for `ga_positions` hadn't moved since). Found the
+  DEPLOYED commit had itself moved since cycle 133 (`gcloud run services describe amjis-web`
+  now reports `cbd87d2c...`, not the `6964b553...` used before) -- checked it was a genuine
+  ancestor (deploy moved forward, not sideways) before using it, and confirmed the two relevant
+  generated files (`nirmana-writer-digests.json`, `nirmana-analysis-layer-pins.json`) are
+  byte-identical across that range, so the computed hashes themselves needed no recomputation,
+  only the `source_ref` needed updating. Constructed both evidence payloads (`asset_
+  analysis_accepted`, `optimization_verdict_accepted` with `verdict: correct` /
+  `output_contract: correctness_change`, the summary explicitly noting this submission is a
+  prerequisite for the #2180-ruled coordinated wave, not authorization to dispatch alone),
+  dry-ran both through `nrec --as executor --dry-run` first to confirm identity/route before
+  actually sending, then submitted both for real -- both HTTP 201. **Re-ran the exact dry-run
+  dispatch that failed at cycle 132/133 with "accepted asset analysis does not match the current
+  live registry contract" -- it now passes clean**, returning a real dry-run manifest
+  (`manifest_digest: 244ad8bd...`, `committed: false`, WP-6 blast radius correctly reported as
+  the known 270,471-row in-layer `chart_fact_identity` cascade, matching the original 2026-09-05
+  slot-claim's own C13 statement). Posted the milestone to #2180. Did NOT claim the #1713 slot or
+  attempt `--commit` this cycle -- the actual coordinated 5-asset dispatch (spans L1+L2, needs a
+  fresh backup snapshot, `--acknowledge-destroys` for the blast radius, careful monitoring across
+  two layers) is a bigger, higher-stakes action that deserves its own dedicated cycle rather than
+  being rushed onto the end of an already-substantial one. CYCLE 137 L1: PR hygiene clean,
+  **`ga_positions`' own prerequisite for the coordinated rebuild is genuinely done and verified**
+  -- next: claim the #1713 run slot naming all five assets (`ga_positions`, `ga_yoga`,
+  `bo_laksana`, `bo_cgm_paths`, `bo_cgm_motifs`), take a fresh backup, and execute the actual
+  coordinated dispatch -- this is now the single highest-priority piece of real work outstanding,
+  should be the very next cycle's focus if slot/backup logistics allow.
+- 2026-09-06T2xZ -- CYCLE 138 (C8 v2.3). PR hygiene: #2183 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Per cycle 137's
+  own "next" pointer, began the actual coordinated-dispatch step -- but before claiming the
+  #1713 slot, verified the LITERAL scope the ruling named would actually work, rather than
+  assume 5 named assets is sufficient. Checked `ga_yoga`'s own declared deps (`ga_structural`,
+  `ga_dashas`, unaffected by the `ga_positions` fix and NOT among the 5 ruled assets): **zero
+  `asset_freshness` rows for either**, confirmed live -- meaning `ga_yoga` would hit the exact
+  same freshness DEP-ASSERT wall #2113 originally found for `ga_structural`/`ga_condition`, one
+  hop later, regardless of the `ga_positions` fix. Tried a genuinely safe dry-run
+  (`--assets ga_positions,ga_yoga`, zero side effects) to check directly and hit a MORE
+  fundamental, previously-unknown constraint first: **`L1 wave 0 has no build obligation for:
+  ga_yoga`** -- the frozen manifest assigns every asset a fixed `wave_index` by DAG depth, and
+  one dispatch call can only select assets within a single wave. Queried the full manifest to
+  find `ga_positions`=wave 0, `ga_yoga`=wave 4, with `ga_dashas` (wave 1) and `ga_structural`
+  (wave 3) sitting between them -- meaning waves 0 through 3 (**15 of L1's 19 assets**, not the
+  2 named L1 assets) need fresh, successful, IN-ORDER dispatches before `ga_yoga` can pass its
+  own freshness check when it finally runs. **This is not a 5-asset coordinated dispatch -- it
+  is essentially rebuilding all of L1's DAG waves 0-4, then the 3 named L2 assets.** Posted the
+  corrected scope to #2180 with the full wave table and the exact error/evidence trail, asking
+  for confirmation or correction before committing to it. Did NOT claim the #1713 slot or
+  dispatch anything this cycle -- claiming a slot for a plan that would fail partway through
+  (or silently turn into a much bigger undertaking than whoever's coordinating expects) is worse
+  than pausing to get the scope right first. CYCLE 138 L1: PR hygiene clean, **caught a
+  significant scope gap in the Conductor's own ruling before acting on it**, via the same
+  verify-before-claiming-victory discipline that already caught the fact_id-orphan risk at
+  cycle 133 -- next: watch #2180 for confirmation of the revised (much larger) scope, or a
+  correction if there's a way to satisfy the freshness check without a full-layer rebuild that
+  this session hasn't found.
+- 2026-09-06T2xZ -- CYCLE 139 (C8 v2.3). PR hygiene: #2183 confirmed genuinely `is:queued`;
+  #2178 `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180: no
+  reply yet since cycle 138's scope-correction post. Rather than a bare re-check, dug into a
+  loose thread from cycle 133's own investigation -- why did PR #1898 fix ONLY
+  `ga_positions_writer.py`'s `fact_id` derivation, when the underlying "a fact's identity should
+  exclude `build_id`" principle applies equally to any writer using the same pattern? Traced PR
+  #1898's own title reference (issue #1747) back to its full comment history, not just its body
+  (the body is about an UNRELATED bug, the `ga_vargas` 5h30m longitude defect -- the fact_id/
+  build_id topic was tacked onto the same thread by a later Conductor pass). **Found the
+  ORIGINAL ask (2026-09-05T06:08Z) explicitly said "from `ga_positions_writer.py:92-95` AND
+  SIBLINGS"** -- confirmed live that 7 more L1 writers (`ga_ayurdaya`, `ga_panchanga`,
+  `ga_sensitive`, `ga_sensitive_degree`, `ga_sade_sati`, `ga_strength`, `ga_vargas`,
+  `ga_structural`) still bake `build_id` into their own `fact_id`, the exact same pattern --
+  confirmed this is D-CND-29's own named recurring-defect class (4th+ instance), and that the
+  Conductor's own follow-up comment (2026-09-05T16:44Z) already pre-authorized fixing it ("if
+  it's a defect: fix it in your own migration range, same division of labor as every prior
+  instance") -- it just never got done beyond `ga_positions`. **Decided NOT to fix these 7
+  writers this cycle** -- doing so would compound the already-large, already-uncertain
+  coordinated-rebuild scope with 7 more potential orphan-risk surfaces, each needing its own
+  downstream-reference diligence check the way `ga_positions` got. Posted the finding to #2180
+  as a scoping input for whoever plans the eventual rebuild (leave as-is for now vs. fix
+  alongside), not as new work to do immediately. CYCLE 139 L1: PR hygiene clean, surfaced a
+  second genuinely campaign-relevant, Conductor-already-authorized-but-never-executed defect
+  class while investigating why the original fix was incomplete -- next: keep watching #2180;
+  if it stays quiet, the 7-writer fact_id question and the wave-0-3 rebuild scope both remain
+  open decisions worth a nudge if several more cycles pass with no reply.
+- 2026-09-06T2xZ -- CYCLE 140 (C8 v2.3). PR hygiene: #2183 (only own open PR at cycle start)
+  MERGED since last check -- trivially clean. Checked #2180: still just my own cycle-139 comment,
+  no reply -- only 1 quiet cycle so far, not yet the "several more cycles" threshold worth a
+  nudge. Instead of a bare re-check, extended `L1_DEPENDS_ON_AUDIT_v1_0.md` with the round-2
+  systematic grep sweep round 1 had explicitly named as its own remaining gap (§3): the 8 L1
+  assets not yet covered by an existing finding (`ga_positions`, `ga_panchanga`, `ga_strength`,
+  `ga_vichara`, `ga_transit_anchors`, `ga_ayurdaya`, `ga_vastu`, `ga_prashna`). Built the
+  dedicated-target-table + declared-`bg_*` check per asset (matching L3's method), grepped each
+  writer directly. **Found a genuine new finding**: `ga_panchanga_writer.py` issues **zero** SQL
+  `SELECT`/`execute` calls anywhere in its 64KB file -- confirmed via whole-file grep, not
+  assumed -- it derives every panchanga element from `resolve_birth_params` (ephemeris
+  recomputation), the exact same "recomputes independently instead of reading" pattern as
+  `ga_vargas`' own F-A7. Its SECOND declared dependency, `bg_panchanga`, doesn't even exist as a
+  table (`\dt bg_panchanga*` returns nothing live) -- a dead reference, not merely unread. Both
+  declared edges are false. Caught and correctly resolved one near-miss before reporting it as a
+  defect: `ga_prashna`'s read of `bg_prashna_significators` looked like an undeclared 3rd edge,
+  but it's actually one of `bg_prashna_rules`' own 5 owned tables (confirmed via
+  `asset_registry` -- `bg_prashna_rules.target_table` is itself blank despite owning this whole
+  table family, a registry-metadata quirk, not a DAG defect) -- verified before reporting a false
+  positive rather than after. The other 6 assets (`ga_strength`, `ga_vichara`,
+  `ga_transit_anchors`, `ga_ayurdaya`, `ga_vastu`, plus `ga_positions` trivially) all confirmed
+  genuinely CLEAN. **All 19 L1 assets now have at least one audit pass.** Opened PR #2185,
+  armed auto-merge, confirmed genuine CI dispatch; also made the same minimal, surgical edit to
+  just L1's own row in `DAG_CORRECTIONS_REGISTER_v1_0.md`'s index table. CYCLE 140 L1: PR hygiene
+  clean, closed the exact gap round 1's own audit named as its remaining work, found one genuine
+  new defect (`ga_panchanga`, both declared edges false) and confirmed 7 more assets clean --
+  next: keep watching #2180; if it stays quiet for several more cycles, nudge it; otherwise the
+  remaining charter-named prep item (full 139-row per-finding disposition table) or a fuller
+  L3-grade exhaustive re-verification of the 8 now-CLEAN assets are the next legitimate options.
+- 2026-09-06T2xZ -- CYCLE 141 (C8 v2.3). PR hygiene: #2185 (only own open PR) `BLOCKED`, all
+  checks `pass` or still-`pending`, zero `fail` -- clean. Checked both #2180 and #2113: still
+  just my own prior comments on each, no reply -- 2 quiet cycles on #2180 now, borderline but
+  not yet the "several more cycles" threshold to justify a nudge. Chose the "fuller L3-grade
+  exhaustive re-verification" option from cycle 140's own menu, narrowed to the highest-value
+  single target: `ga_yoga`, since round 1/round 2 had only ever checked its ALREADY-KNOWN hidden
+  edges (F-D3's 2, cycle-135's 1 more) but never verified its 2 DECLARED edges' own validity in
+  either direction -- exactly the gap L3's method closes by checking every asset regardless of
+  prior findings. Grepped the whole file for `chart_dashas` and the substring "dasha"
+  case-insensitive: **zero matches, anywhere, including comments** -- `ga_dashas` (declared) is a
+  genuine FALSE edge. Grepped for FROM/JOIN patterns more broadly and found `chart_divisionals`
+  read twice, in a function (`_load_d9_positions`) whose OWN docstring says "Load D9 (navamsha)
+  positions from `chart_divisionals`" -- traced the call: a LAZY IMPORT of
+  `ga_structural_writer._load_varga_positions`, meaning `ga_yoga` reaches `ga_vargas`' own table
+  through a helper function defined in a DIFFERENT writer's module, not a direct query in its own
+  file -- an easy-to-miss indirect-dependency pattern, confirmed genuinely live (not a comment)
+  by reading the actual call site. Verified the OTHER declared edge (`ga_structural`) IS
+  genuinely needed, read via shared `chart_facts` categories rather than a dedicated table
+  (which is why it didn't show up as an obviously-separate hidden-table match). **`ga_yoga` is
+  now the single worst-audited asset found this campaign**: of its 2 declared edges, 1 is false
+  (`ga_dashas`) and 1 correct (`ga_structural`); of its real inputs, 4 are undeclared
+  (`ga_strength`, `ga_sensitive`, `ga_positions`, `ga_vargas`). Added findings #14/#15 to
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` and the matching update to `DAG_CORRECTIONS_REGISTER_v1_0.md`'s
+  L1 row, pushed both onto the SAME still-open PR #2185 rather than opening a new one (the
+  natural continuation of the same round-2 audit work) -- confirmed genuine fresh CI dispatch
+  for the new commit and that auto-merge stayed armed. CYCLE 141 L1: PR hygiene clean, proved
+  round 1's own "already has a finding" is not the same as "fully audited" by finding 2 more
+  genuine defects on an asset already covered by 3 prior findings -- next: keep watching #2180/
+  #2113; the same both-directions re-verification is now worth doing for the other 10 assets
+  that already have at least one finding, if #2180 stays quiet.
+- 2026-09-06T2xZ -- CYCLE 142 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. Checked #2180/#2113
+  again: same comment counts, same timestamps as last cycle -- 3 quiet cycles on #2180 now,
+  still choosing not to nudge (the finding itself is substantive and complete; a bare "any
+  update?" ping adds noise, not information, while there's still legitimate bounded work left
+  to do). Continued cycle 141's own plan: extended the both-directions declared-edge
+  re-verification to 4 more assets already carrying a hidden-edge finding. Checked `ga_dashas`
+  (`depends_on={ga_positions}`, F-A13), `ga_sensitive_degree` (`depends_on={ga_positions}`,
+  F-B15), `ga_nakshatra` (`depends_on={bg_nakshatra,ga_positions,bg_kp_sublord_division}`,
+  F-B23 -- 3 declared edges, checked against the correct 3-file writer set, not just the single
+  file F-B23's own evidence line cited), and `ga_condition`
+  (`depends_on={ga_positions,ga_vargas,ga_dashas}`, F-C23). **All 4 confirmed clean on every
+  declared edge** -- a genuine, honest negative result this round (unlike round 3's `ga_yoga`,
+  these 4 assets' existing findings really were the whole story for their declared side).
+  Updated `L1_DEPENDS_ON_AUDIT_v1_0.md` (new "Round 4" block, version 0.3->0.4) and
+  `DAG_CORRECTIONS_REGISTER_v1_0.md`'s L1 row (now stating 15/19 assets have declared edges
+  fully re-verified, 4 remain) -- pushed onto the same open PR #2185 (3rd commit now), confirmed
+  fresh CI dispatch and auto-merge still armed. CYCLE 142 L1: PR hygiene clean, closed 4 more
+  assets on the both-directions re-verification checklist with an honest clean result -- next:
+  4 assets remain for this check (`ga_structural`'s 7 edges is the largest single remaining
+  gap, `ga_sade_sati`'s 5, `ga_medical`'s 2, `ga_tajaka`'s 1) -- worth finishing if #2180 stays
+  quiet; otherwise a nudge becomes reasonable after one or two more silent cycles.
+- 2026-09-06T2xZ -- CYCLE 143 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. #2180/#2113: same
+  comment counts/timestamps as last cycle -- 4 quiet cycles on #2180 now; still holding off a
+  nudge, since there's genuinely productive bounded work left and a bare status ping wouldn't
+  add information. Tackled the largest remaining piece from cycle 142's own list:
+  `ga_structural`'s 7 declared edges (`ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`,
+  `ga_sensitive`, `ga_strength`, `ga_vargas`). 4 confirmed immediately via dedicated-table grep
+  (`chart_dashas`, `chart_facts`, `chart_divisionals`, `graha_shadbala_total` -- 5/41/37/5
+  matches). The remaining 3 (`ga_nakshatra`, `ga_panchanga`, `ga_sensitive`) all share
+  `chart_facts` as their OWN target table with `ga_positions`, so table-name matching alone
+  can't distinguish them -- had to check SPECIFIC `fact_category` filters instead. Found
+  `bhava_arudha` (confirmed `ga_sensitive`'s own category, established fact from cycle 124's own
+  investigation this segment) and `graha_nakshatra_join` (confirmed `ga_nakshatra`'s via a
+  targeted grep across all writer files for who else references/writes it) both genuinely
+  present as real `fact_category` filters in `ga_structural_writer.py` -- both declared edges
+  real. **Enumerated the COMPLETE list of 10 distinct `fact_category` filters the writer
+  actually uses** (not sampling a few candidates) to check the last one, `ga_panchanga` --
+  **zero matches for any panchanga-anga category name** (`tithi`/`vara`/`karana`/`disha_shul`/
+  `solar_context`/`calendrical`/`sun_moon_dynamics`) anywhere in that complete list. A genuine
+  new false edge (finding #16). `ga_structural` turns out to be the MOST accurate multi-edge
+  asset checked so far (6/7 correct) -- a useful contrast to `ga_yoga`'s 1/2. Updated
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` (version 0.4->0.5, new "Round 5" block) and the register's L1 row
+  (16/19 assets now fully re-verified, 3 remain), pushed onto the same open PR #2185 (4th commit),
+  confirmed fresh CI dispatch and auto-merge still armed. CYCLE 143 L1: PR hygiene clean, closed
+  the largest remaining declared-edge gap with 1 more genuine finding -- next: 3 assets remain
+  for this check (`ga_sade_sati`'s 5 edges, `ga_medical`'s 2, `ga_tajaka`'s 1) -- small enough to
+  likely finish in one more cycle; a nudge on #2180 becomes reasonable after that if still quiet.
+- 2026-09-06T2xZ -- CYCLE 144 (C8 v2.3) -- **DAG audit COMPLETE for coverage.** PR hygiene:
+  #2185/#2178 (only own open PRs) both `BLOCKED`, all checks `pass` or still-`pending`, zero
+  `fail` -- clean. #2180/#2113: same comment counts/timestamps, 5 quiet cycles on #2180 now.
+  Finished the last 3 assets from cycle 143's own list. `ga_medical`
+  (`depends_on={ga_condition,ga_positions}`): both confirmed genuinely read (`chart_facts` 4,
+  `ga_condition_composite` 6 matches) -- clean beyond its own existing finding. `ga_tajaka`
+  needed no new check at all -- re-confirmed its 3rd declared edge (`ga_sensitive`) was already
+  settled by F-E18's own text, so all 3 of its edges were already fully accounted for before this
+  cycle even started. `ga_sade_sati`'s remaining 5: 4 confirmed real (`ga_positions`, `ga_vargas`,
+  `ga_dashas` via dedicated tables; `ga_structural` via its own `argala_natal_matrix`/
+  `tara_bala_natal_baseline` categories, requiring the same category-level check round 5 used) --
+  **1 new false edge**: `ga_nakshatra`. This one needed real care to settle: 17 raw substring
+  matches for "nakshatra" in the file, and each had to be traced individually rather than trusted
+  at face value -- `NATIVE_MOON_NAKSHATRA = "Purva Bhadrapada"` is a hardcoded FORENSIC constant
+  (not a read at all), Saturn's transiting nakshatra is computed internally from raw longitude
+  (`int(lon // (360.0/27.0))`, not a table read either), and the one candidate that looked most
+  like a genuine read -- `_read_moon_pada_per_ayanamsha`, whose OWN docstring says "Read natal
+  Moon nakshatra pada from GA3" -- on inspection queries `chart_facts WHERE fact_category =
+  'graha_position'`, which is `ga_positions`' own category, not `ga_nakshatra`'s at all (the
+  docstring's internal "GA3" shorthand was a red herring worth not trusting without checking the
+  actual SQL). Zero genuine `ga_nakshatra` reads anywhere -- `ga_sade_sati`'s 7-edge declaration
+  is now 4 correct, 3 false, making it comparably inaccurate to `ga_yoga`. **This completes the
+  both-directions re-verification for all 19 L1 assets** -- the same coverage bar L3's own
+  completed audit set, reached via a different method (per-asset hand-picked candidates rather
+  than one unified `target_table → asset_id` owner-map script -- named honestly in §3 as the one
+  real methodology gap versus L3's artifact trail, not a coverage gap). Updated
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` to reflect completion (version 0.5->0.6, status IN PROGRESS->
+  COMPLETE for coverage, 17 findings total) and the register's L1 row to ✅ COMPLETE, matching
+  L3's own format -- also caught and fixed §5's own stale "five layer audits owed" (now
+  correctly four, L1 done). Pushed as the 5th commit onto the same still-open PR #2185, confirmed
+  fresh CI dispatch and auto-merge still armed. CYCLE 144 L1: PR hygiene clean, **closed out a
+  6-cycle DAG-audit arc that started as a side investigation of the #2180 orphan-risk finding and
+  grew into a full campaign-grade audit of all 19 L1 assets, finding 6 genuinely new defects along
+  the way** (`ga_yoga` ×3, `ga_panchanga` ×1, `ga_structural` ×1, `ga_sade_sati` ×1) -- next: with
+  #2180/#2113 at 5 quiet cycles and the DAG audit now genuinely finished, the remaining
+  charter-named prep items are the full 139-row per-finding disposition table, triaging the 6 new
+  post-W2 findings into F-ids/tiers (§3's own noted gap), or a light nudge on #2180 given the
+  cycle count; keep re-checking #2113/#2180 for movement each cycle regardless.
+- 2026-09-06T2xZ -- CYCLE 145 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. #2180/#2113: same
+  comment counts/timestamps, 6 quiet cycles on #2180 now. Did both remaining charter-named
+  options from cycle 144's own list rather than picking one. **F-id assignment**: verified live
+  (via grep across every W1 batch file + `L1_STATE.md`, not assumed) the true next-free number
+  in each relevant letter series -- F-A max F-A26, F-B max F-B35, F-C max F-C24, F-D max F-D29 --
+  then continued each of the 6 new findings in whichever series its OWN asset already uses
+  (`ga_yoga`->D matching F-D3, `ga_panchanga`->B matching F-B24/26/31, `ga_structural`'s DAG
+  findings->C matching F-C18/23, `ga_sade_sati`->D matching F-D14/15/18/20): `F-D30`
+  (`ga_yoga`->`ga_positions` hidden), `F-B36` (`ga_panchanga`'s 2 false edges), `F-D31`
+  (`ga_yoga`->`ga_dashas` false), `F-D32` (`ga_yoga`->`ga_vargas` hidden), `F-C25`
+  (`ga_structural`->`ga_panchanga` false), `F-D33` (`ga_sade_sati`->`ga_nakshatra` false).
+  Deliberately did NOT edit `L1_W2_DECIDE_v1_0.md` to insert these retroactively -- that's W2's
+  own frozen historical record, and misrepresenting when these were actually found would violate
+  the same honesty discipline this whole audit has been built on -- instead added a new §5 to
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` itself as the honest home for the assignment, with all 6 findings
+  getting the same NEVER-LATER-equivalent disposition every other DAG-declaration finding this
+  campaign gets (D-CND-09 makes `depends_on` immutable this cohort; the correction lives in the
+  register for the next freeze, not in code). Pushed as the 6th commit onto the same open PR
+  #2185. **Nudge**: posted a light, non-demanding status check-in on #2180 given the 6-cycle
+  quiet spell -- summarized the completed DAG audit as related context (confirmed it doesn't
+  change the wave-0-3 scope question itself, since the two most-relevant hidden edges both
+  resolve to assets already inside that scope) rather than just asking "any update?" with no new
+  information. CYCLE 145 L1: PR hygiene clean, closed both remaining post-audit housekeeping
+  items (F-id assignment + a proportionate nudge) in one bounded cycle -- next: watch #2180 for
+  a reply; with the DAG audit and its own triage now both genuinely finished, the full 139-row
+  per-finding disposition table is the last remaining charter-named prep item if #2180 stays
+  quiet further.
+- 2026-09-07T0xZ -- CYCLE 146 (C8 v2.3). PR hygiene: only own open PRs are `#2185` and `#2178`.
+  `#2185` is genuinely `is:queued` (GraphQL search confirmed) with every check `pass` -- will
+  merge on its own. `#2178` is `BLOCKED`/`MERGEABLE`, `autoMergeRequest` armed since
+  2026-09-06T21:53:01Z, one check (`Governance Gates`) still `pending`, zero `fail` -- the
+  already-diagnosed mid-CI pattern, not DIRTY/RED/clean-but-unqueued. Nothing to fix. #2180/#2113:
+  same comment counts as cycle 145, still no reply.
+  Picked up cycle 145's own last-named prep item: the full 139-row per-finding disposition table.
+  Began by adding a status column to the MUST-tier table, reconstructing each of the ~22
+  id-groups' current status from established campaign knowledge (F-A1/A2/A3, F-A10, F-A12,
+  F-A4/B2/B12/C9, F-A9/B1/D14/E1/E15, F-B24, F-C1, F-C2-C5/C7, F-C8, F-C14, F-B18/B19, F-B26/B31,
+  F-D1/D2, F-D9, F-D21-D23, F-E5, F-E10/E11, F-E16/E17, F-E21/E22, F-A14/A15+family all confirmed
+  closed from prior cycles' own records). Hit the last id-group, F-B32/F-B33, and could not recall
+  its status with the same confidence -- grepped this file and found it explicitly flagged TWICE
+  earlier in this segment as "deliberately left as its own separate follow-up, not folded in
+  here," with no later closure entry anywhere, directly contradicting cycle 125's own blanket
+  "MUST tier fully closed" claim. Rather than trust either claim, **re-verified LIVE**: (1)
+  `platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts` -- file header still
+  reads "Authored: Wave 3 Phase R1/R2 (2026-06-16)" / "Phase R1 finding: 0 of 158 fact_categories
+  were covered before this wave," unchanged; `CHART_FACTS_CATEGORIES` still has exactly 169
+  entries by grep count. Live `psql`: `SELECT count(DISTINCT fact_category) FROM chart_facts;` ->
+  **223** (not the original 219 -- the drift has widened, consistent with the F-A14 `ga_structural`
+  campaign's category additions this whole segment). (2) `concept_aliases.ts:14` still states
+  verbatim: "The CI regression check in `platform/scripts/census/schema_map_alias_coverage_check.ts`
+  asserts every LIVE fact_category has at least one alias entry" -- confirmed via direct path
+  check (`ls` -> No such file) AND a repo-wide grep for `alias_coverage` (only this docstring's own
+  mention, zero implementation anywhere in `platform/scripts/census/` or elsewhere) that the file
+  genuinely does not exist. **Both halves of F-B32/F-B33 are confirmed still open** -- this is
+  exactly the §N.8 defect class (an unmeasured "all clear" is null, not a fact), one layer up from
+  the finding's own original subject: a *prior cycle's own closure claim* turned out to be the
+  unearned signal this time, not a build-system flag.
+  Given the scale of the real fix (re-deriving a 169-item list against a live, still-growing
+  223-category universe, plus either implementing a real CI gate or correcting a false docstring
+  citation) is substantial and not a single bounded unit, decided NOT to attempt it this cycle.
+  Instead corrected the record honestly: edited `L1_W6_CLOSE_REPORT_v1_0.md` (version 0.2-DRAFT ->
+  0.4-DRAFT) -- §0's status line now names the exception instead of claiming blanket MUST-tier
+  closure; §2's MUST-tier disposition paragraph now carries the full correction in place of the
+  silent "closed" claim; §5 adds F-B32/F-B33's real fix as a new backlog bullet explicitly marked
+  "does NOT need #2113 -- genuinely unheld"; §6 lists it as a named OPEN item. Did not touch the
+  frozen `L1_W2_DECIDE_v1_0.md` (same discipline as cycle 145's F-id assignment -- W2's own
+  historical record is not retroactively rewritten; the correction lives in the close report,
+  which is explicitly DRAFT and exists to carry exactly this kind of update). Committed on
+  `codex/nirmana-l1-state-cycle4` (same branch as #2178, still open) alongside this state update.
+  CYCLE 146 L1: PR hygiene clean; caught and corrected a real false "all clear" from cycle 125 --
+  F-B32/F-B33 is genuinely open, not closed, verified live rather than assumed -- next: F-B32/F-B33's
+  real fix is now the highest-priority unheld W3 item (does not need #2113); the 139-row
+  disposition table itself remains open pending either a dedicated future cycle or #2180 staying
+  quiet long enough to justify one; keep re-checking #2113/#2180 every cycle regardless.

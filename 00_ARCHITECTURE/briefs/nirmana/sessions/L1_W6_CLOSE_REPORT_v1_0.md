@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.3-DRAFT"
+version: "0.4-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -19,8 +19,13 @@ warning: >
 ## §0 — Status
 
 **NOT CLOSED.** W1 ✅ (19/19 assets analyzed, 5 batch files) · W2 ✅ (139 findings triaged,
-routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed cycle 122, MUST tier
-closed for L1's own scope cycle 125; NEVER-LATER correctly parked by design) but **not yet
+routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed cycle 122; MUST tier
+was claimed closed for L1's own scope cycle 125, but that claim was **wrong for one id-group**:
+F-B32/F-B33 (`coverage_matrix.ts`'s 169-entry hand-maintained list vs. live `chart_facts` category
+count, plus `concept_aliases.ts`'s citation of a CI check that does not exist) was independently
+re-verified LIVE cycle 146 and is genuinely **still open** — the drift has in fact worsened (169
+vs. 219 at original measurement, 169 vs. **223** live cycle 146). See §2 for the corrected
+disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
 gate this section originally named.** Adjudication #2113 was raised as a campaign-wide
@@ -102,7 +107,25 @@ per-asset table in §1 above. Structural milestones:
 
 139 findings total (`L1_W2_DECIDE_v1_0.md` §3). **~24 MUST id-groups · 18 NOW · 11 NEVER-LATER
 id-groups.**
-- **MUST** — CLOSED for L1's own scope (cycle 125). Disposition breakdown: the large majority
+- **MUST** — CLOSED for L1's own scope (cycle 125) **with one correction found cycle 146**:
+  F-B32/F-B33 was carried in cycle 125's own closure sweep as closed, but was never actually
+  fixed — it was, and still is, genuinely OPEN. Re-verified LIVE cycle 146:
+  `platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts` still declares
+  exactly 169 hand-maintained `fact_category` entries (file header unchanged since 2026-06-16),
+  against a live `SELECT count(DISTINCT fact_category) FROM chart_facts` of **223** (the gap has
+  widened since the original 169-vs-219 measurement — consistent with the F-A14 `ga_structural`
+  campaign's category additions this segment). Separately, `concept_aliases.ts:14` still cites
+  `platform/scripts/census/schema_map_alias_coverage_check.ts` as an existing CI regression check
+  ("asserts every LIVE fact_category has at least one alias entry"); that file **does not exist**
+  anywhere in the repo (confirmed by direct path check and a repo-wide grep for
+  `alias_coverage`, cycle 146) — the same false-citation defect the original W1 finding
+  described, unchanged. Both halves are un-fixed; cycle 125's "closed" note for this id-group was
+  incorrect and is corrected here rather than carried forward silently (§N.8: an unverified "all
+  clear" is null, not a fact). Handed forward as the next unheld MUST-tier item in §5 — the fix
+  (re-deriving the 169-item list against the live 223 categories, and either implementing the
+  cited CI check or correcting the docstring to stop citing a file that doesn't exist) is
+  substantial enough that it was not attempted as this cycle's bounded unit.
+  The remaining MUST-tier disposition: the large majority
   fixed at the writer or serving-layer level across cycles 1-124; five id-groups (F-C2/C3/C4/C5/
   C7, the D-SALIENCE feed) correctly routed to L2's `bo_laksana.py` — confirmed not an L1 file;
   three id-groups (F-D21/D22/D23) escalated to L0 via adjudication #2122, **fixed and closed**
@@ -234,6 +257,17 @@ awaits either a dedicated prep cycle or genuine W6 close.
   moment #2113 clears — it needs no changes to serve as the mechanical-check half of L1's real
   W5 pass.
 
+**To L1's own future work (does NOT need #2113 — genuinely unheld, highest-priority open item):**
+- **F-B32/F-B33 real fix** (reconfirmed open cycle 146, §2): re-derive
+  `coverage_matrix.ts`'s `CHART_FACTS_CATEGORIES` against the live 223-category `chart_facts`
+  universe (was 169 at cycle 146; drift is monotonically growing as writers add categories, so
+  re-checking the live count at fix-time rather than trusting this report's 223 is required), and
+  either implement `platform/scripts/census/schema_map_alias_coverage_check.ts` for real (the
+  file `concept_aliases.ts:14` already claims exists) or correct that docstring to stop citing a
+  CI check that was never built. Not attempted cycle 146 — scoped as substantial (a real category
+  audit + either a new CI gate or a documentation correction with its own review), not a
+  single-cycle bounded unit.
+
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
 - W5: run the dry-run script fresh post-rebuild (the 4 currently-expected FAILs should flip to
@@ -243,7 +277,8 @@ awaits either a dedicated prep cycle or genuine W6 close.
 
 ## §6 — OPEN
 
-Per-finding disposition table (§2) · cost actuals (§4) · W4 execution (blocked, #2113) · W5
+Per-finding disposition table (§2) · cost actuals (§4) · **F-B32/F-B33 real fix (§5 — reconfirmed
+open cycle 146, unheld, does not need #2113)** · W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.
