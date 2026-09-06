@@ -3828,3 +3828,5 @@ itself. L0 is now IDLE-OK until that lands.
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work. 39/40 frozen unchanged.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work. 39/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work. 39/40 frozen unchanged.
