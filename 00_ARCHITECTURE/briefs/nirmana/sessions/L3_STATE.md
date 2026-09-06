@@ -493,6 +493,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~104:0xZ — L3-W4 — IDLE-OK (verified): `#2166` healthy, mergeable,
+  3 checks pending, 0 failures — nothing to fix. The redispatched W4 subagent
+  (2nd attempt) is genuinely still running (~3min in via `ListAgents`, not
+  stalled — well within its own budget), so left it undisturbed rather than
+  touch anything it might be reading/writing concurrently. No new
+  `origin/main` merges touch L3. `ga_positions` still `OPEN-PENDING-PIN` (not
+  yet `asset_frozen` — L1's own asset, outside this session's control);
+  `ga_dashas`/`ga_condition`/etc. still correctly `BLOCKED-ANCESTORS` on it —
+  no new unlock for `ka_dasha_kala`. Nothing else eligible this cycle. —
+  blocked on: the subagent's completion; next action: read its report,
+  transcribe the outcome, decide whether a third dispatch is warranted if it
+  stalls again (and if so, whether the task needs a narrower scope rather
+  than an unchanged retry).
 - `2026-09-06T~103:0xZ — L3-W4 — Dispatched `ka_muhurta_seva`'s W4 chain to a
   genuinely fresh subagent, per D-CND-35 — not executed by this session's own
   context.** PR hygiene: `#2160` still genuinely `isInMergeQueue: true`
