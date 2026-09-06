@@ -3967,3 +3967,18 @@ CYCLE 185 L4: IDLE-OK (verified: PR hygiene clean, `#1864` legitimately mid-CI; 
 uncheckable, DB access down 175 cycles; nothing new) → next: watch `#1864` re-enter the queue;
 retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~05:45Z` — L4 — **CYCLE 186 (v2.3) — `#1864` entered the queue (position 120,
+`UNSTABLE` on a non-required check, same pattern documented for `#1854` earlier this session
+— genuinely queued regardless). Queue has grown substantially deeper (120+) as other lanes'
+throughput continues; not a concern.**
+
+**PR hygiene:** all 9 own PRs genuinely queued, none DIRTY/RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 176th consecutive cycle DB access down.
+
+CYCLE 186 L4: IDLE-OK (verified: PR hygiene clean, `#1864` entered the queue at position 120
+despite `UNSTABLE` status — a non-required check, genuinely queued; E-gate uncheckable, DB
+access down 176 cycles; nothing new) → next: watch queue positions advance; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
