@@ -381,6 +381,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T19:24:16Z` — cycle 614: **ONE bounded unit: fixed #2159 (TIME-CRITICAL) — migrations
+  silently not applying while deploy reported success, plus caught and corrected my own near-miss
+  mid-fix.** L3 diagnosed exactly: `github.event.workflow_run.head_sha` resolved to a stale commit
+  under fast-merging, so the `migrate` job checked out an earlier PR and migration 850 was never
+  applied while the job reported green — the exact §N.4/§N.8 hazard class. `deploy-web` already had
+  a "Verify deployment source provenance" guard; `migrate` didn't. **Standing lesson recorded**: my
+  own `wip-cascade-hold` working tree's local copy of `deploy.yml` was stale (missing the earlier
+  #2096 context-widening fix) — a naive copy-into-PR-branch would have silently reverted that fix.
+  Caught via `git diff` against a fresh `origin/main` checkout before committing, discarded, redone
+  cleanly (51 insertions, 0 deletions verified). **Going forward: always diff a to-be-shipped file
+  against a fresh `origin/main` checkout before committing on a new PR branch, never trust the
+  working-tree copy is current.** Independent `code-reviewer` pass (PASS) also found 3 more jobs
+  with the identical gap (`deploy-sidecar`/`deploy-mcp`/`deploy-pipeline-job`) — fixed all four in
+  one PR (#2161), auto-merge armed. Fleet DIRTY: empty. Adjudication count 20.
 - `2026-09-06T19:16:03Z` — cycle 613: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T19:13:44Z` — cycle 612: **IDLE-OK.** Fleet DIRTY: empty. No new
