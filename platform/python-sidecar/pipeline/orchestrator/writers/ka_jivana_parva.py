@@ -370,10 +370,28 @@ def _assign_quality(idx: int, total: int, high_count: int, avg_score: float | No
     is_ongoing = end_y is None or (end_y >= today_y)
     is_past = end_y is not None and end_y < today_y
 
-    if is_ongoing and avg_score and avg_score >= 0.55:
-        return 'peak'
+    # F-PARVA-3/F-PARVA-4 (§N.8, §N.7 item 6): this used to be
+    # `if is_ongoing and avg_score and avg_score >= 0.55: return 'peak'` /
+    # `if is_ongoing: return 'building'` — EVERY ongoing period got 'building'
+    # regardless of evidence, with no detector distinguishing "genuinely building"
+    # (some real convergence activity measured, just not peak-level yet) from "no
+    # evidence at all" (zero convergence windows fell in this period's span at all).
+    # Measured on the native chart: 52 of 100 rows were 'building' with
+    # avg_effective_score IS NULL — a label asserting momentum with nothing behind
+    # it. `avg_score and ...` was also a truthiness short-circuit (F-PARVA-4) that
+    # happened to be behaviorally inert against the 0.55 threshold (0.0 can never
+    # clear 0.55 either way) but is fixed here too, on the same principle, rather
+    # than left as a latent trap for a future threshold change.
+    # Deliberately NOT lowering the 0.55/0.60 thresholds to make 'peak' reachable —
+    # the root cause (kala_convergence's structurally low score ceiling) is upstream
+    # (F-SANGAM-1) and curve-fitting a threshold to this chart's own measured max
+    # would be exactly the invented-judgment defect this doctrine forbids.
     if is_ongoing:
-        return 'building'
+        if avg_score is not None and avg_score >= 0.55:
+            return 'peak'
+        if avg_score is not None:
+            return 'building'
+        return 'transitional'
 
     if avg_score is None:
         return 'transitional'
