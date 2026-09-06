@@ -66,6 +66,16 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium', cacheable: true },
     bulk_context: { pre_fetch_priority: 82, always_include: false },
   },
+  // F-D18 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6 pt.4): was undeclared despite already
+  // implementing the substance (window filter with disclosed periods_dropped_outside_window
+  // + window_note + drill_uri, per B.10 — never a silent drop). empty_reason: false is an
+  // honest gap, not a violation — there is no zero-row empty_reason field in the handler
+  // below (only the always-on window-drop disclosure, a distinct mechanism).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'all'],
+    empty_reason: false,
+  },
   async handler(args, _ctx) {
     try {
       const chartId    = args.chart_id as string
