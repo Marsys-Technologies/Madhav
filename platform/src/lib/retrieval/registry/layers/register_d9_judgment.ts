@@ -1061,34 +1061,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // drill tool), and dedupe by distinct activation window — keeping the highest
             // convergence per window, capped at 6.
             const rawActivations = (Array.isArray(c['activations']) ? c['activations'] : []) as Array<Record<string, unknown>>
-            const byWindow = new Map<string, Record<string, unknown>>()
-            for (const a of rawActivations) {
-              const compact = {
-                id: a['id'],
-                signal_id: a['signal_id'],
-                signature_class: a['signature_class'],
-                activation_start: a['activation_start'],
-                activation_peak_date: a['activation_peak_date'],
-                activation_end: a['activation_end'],
-                convergence_score: a['convergence_score'],
-                dasha_activation_proximity_score: a['dasha_activation_proximity_score'],
-                orb_strength: a['orb_strength'],
-                domains_affected_array: a['domains_affected_array'],
-                source_citation: a['source_citation'],
-              }
-              const key = `${String(a['activation_start'] ?? '')}|${String(a['activation_peak_date'] ?? '')}|${String(a['activation_end'] ?? '')}|${String(a['signature_class'] ?? '')}`
-              const prev = byWindow.get(key)
-              const prevConv = prev ? Number(prev['convergence_score'] ?? -Infinity) : -Infinity
-              const curConv = Number(a['convergence_score'] ?? -Infinity)
-              if (!prev || curConv > prevConv) byWindow.set(key, compact)
-            }
-            const trimmedActivations = [...byWindow.values()]
-              .sort((x, y) => {
-                const csDiff = Number(y['convergence_score'] ?? 0) - Number(x['convergence_score'] ?? 0)
-                if (csDiff !== 0) return csDiff
-                return String(x['id'] ?? '').localeCompare(String(y['id'] ?? ''))
-              })
-              .slice(0, 6)
+            const trimmedActivations = pickTopKalaActivations(rawActivations, 6)
             timing['kala_activations'] = trimmedActivations
             if (rawActivations.length > trimmedActivations.length) {
               judgment_flags.push(judgmentFlag(
@@ -1632,6 +1605,79 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       return { content: { error: String(err), chart_id }, is_error: true }
     }
   },
+}
+
+/**
+ * F-KALA-1 (L3_W1_ANALYSIS_BATCH_E.md, ka_kalasutra finding 1): `kala_activation`'s
+ * `convergence_score`/`orb_strength` are 99.6% NULL (measured) — `ka_sangam` only ever
+ * produces windows for ≤260 of ~50,104 activation predicates. Ranking on either column
+ * here (as this used to) made "best row per window" and "top 6 overall" both effectively
+ * arbitrary for 99.6% of rows: a `?? -Infinity`/`?? 0` default never resolves a real
+ * ordering when almost every candidate carries that same default, so whichever row the
+ * fetch happened to return first silently won.
+ *
+ * `dasha_activation_proximity_score` is 0% NULL on the same rows (measured) and is the
+ * row's own strength-like measure (dignity × non-affliction, range [0,1], higher =
+ * stronger) — the honest primary rank key. `convergence_score`/`orb_strength` are kept as
+ * SECONDARY tiebreaks (real signal for the small fraction of rows `ka_sangam` does cover),
+ * then `id` as the final deterministic tiebreak (§N.7 item 2: a selection reducing a set
+ * to one row needs a TOTAL order, not a partial one that silently degrades to "first
+ * fetched" the instant every candidate ties on the primary key).
+ */
+function kalaActivationRankKey(row: Record<string, unknown>): [number, number, number] {
+  const proximity = Number(row['dasha_activation_proximity_score'])
+  const convergence = Number(row['convergence_score'])
+  const orb = Number(row['orb_strength'])
+  return [
+    Number.isFinite(proximity) ? proximity : -Infinity,
+    Number.isFinite(convergence) ? convergence : -Infinity,
+    Number.isFinite(orb) ? orb : -Infinity,
+  ]
+}
+
+/** Descending rank comparator over `kalaActivationRankKey`, id as the final total-order
+ *  tiebreak. Exported so a caller wanting the same ranking discipline elsewhere (e.g. a
+ *  future ahead.ts/assess_domain.ts fix per F-KALA-1's other named call sites) can reuse
+ *  it rather than re-deriving a parallel, potentially-drifting copy. */
+export function compareKalaActivationRank(a: Record<string, unknown>, b: Record<string, unknown>): number {
+  const [ap, ac, ao] = kalaActivationRankKey(a)
+  const [bp, bc, bo] = kalaActivationRankKey(b)
+  if (bp !== ap) return bp - ap
+  if (bc !== ac) return bc - ac
+  if (bo !== ao) return bo - ao
+  return String(a['id'] ?? '').localeCompare(String(b['id'] ?? ''))
+}
+
+/**
+ * Dedupes raw `kala_activation` rows by distinct window (start|peak|end|signature_class),
+ * keeping the highest-ranked row per window per `compareKalaActivationRank`, then returns
+ * the top `cap` compact rows overall by the same ranking. Pure — no I/O, no mutation of
+ * `rawActivations`.
+ */
+export function pickTopKalaActivations(
+  rawActivations: Array<Record<string, unknown>>,
+  cap: number,
+): Array<Record<string, unknown>> {
+  const byWindow = new Map<string, Record<string, unknown>>()
+  for (const a of rawActivations) {
+    const compact = {
+      id: a['id'],
+      signal_id: a['signal_id'],
+      signature_class: a['signature_class'],
+      activation_start: a['activation_start'],
+      activation_peak_date: a['activation_peak_date'],
+      activation_end: a['activation_end'],
+      convergence_score: a['convergence_score'],
+      dasha_activation_proximity_score: a['dasha_activation_proximity_score'],
+      orb_strength: a['orb_strength'],
+      domains_affected_array: a['domains_affected_array'],
+      source_citation: a['source_citation'],
+    }
+    const key = `${String(a['activation_start'] ?? '')}|${String(a['activation_peak_date'] ?? '')}|${String(a['activation_end'] ?? '')}|${String(a['signature_class'] ?? '')}`
+    const prev = byWindow.get(key)
+    if (!prev || compareKalaActivationRank(compact, prev) < 0) byWindow.set(key, compact)
+  }
+  return [...byWindow.values()].sort(compareKalaActivationRank).slice(0, cap)
 }
 
 /**
