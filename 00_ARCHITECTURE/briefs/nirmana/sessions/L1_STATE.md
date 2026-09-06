@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 55; ga_structural F-A14 widened to 11/57 (#2024)
+last_updated: 2026-09-06 — C8 v2.3 cycle 56; ga_structural F-A14 widened to 12/57 (#2026)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -34,7 +34,8 @@ your `nirmana-adjudication` issues → continue.
   10-number blocks given the ~50-remaining-category estimate)**. 780 (`ga_structural`
   nway_config_per_varga, cycle 52), 781 (`ga_structural` kala_sarpa_per_varga, cycle 53), 782
   (`ga_structural` tara_bala_natal_baseline, cycle 54), 783 (`ga_structural`
-  conjunction_within_orb, cycle 55) used. 784–799 remain free.
+  conjunction_within_orb, cycle 55), 784 (`ga_structural` aspect_tajik, cycle 56) used. 785–799
+  remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2378,6 +2379,46 @@ CYCLE 55 L1: widened `ga_structural`'s F-A14 contract to 11/57 categories (PR #2
 — next: continue `ga_structural` widening (46 categories remain), or `ga_positions` re-dispatch
 once #1892 lands.
 
+## CYCLE 56 (C8 v2.3) — ga_structural's F-A14 contract widened to 12/57 categories (PR #2026, migration 784); largest single-pass conjunct batch yet (6), reusing the self-consistency discipline for a second D1-sourced category
+
+**PR hygiene:** clean sweep (`--limit 200`). Filtered to L1's own 42 `codex/nirmana-l1-*` PRs;
+40/42 confirmed genuinely `is:queued`; #2024 (migration 783) and #1827 (this state PR) both
+mid-CI with green/pending checks only, no DIRTY/RED. #1928/#1892 unchanged, both still OPEN,
+outside L1 scope.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `aspect_tajik`** (PR **#2026**,
+migration 784 — fifth in the 780-799 range).
+
+`aspect_tajik` (76 rows) classifies each classical-graha pair in a recognized whole-sign aspect
+relation into one of four live Tajik yoga types (`yamaya`/`ithasala`/`eesarpha`/`manaau`; Nakta is
+retained in the writer's vocabulary but never fires from this pairwise loop, per the writer's own
+comment) based on orb vs. mutual deeptamsa and applying/separating motion — a richer branching
+structure than any prior category in this arc. Another D1-sourced category (`ga_structural`'s own
+in-memory `chart_output`); recognized on sight, without needing to re-investigate, that this
+belongs to the now-familiar D1 dual-independent-PyJHora-source shape and shipped six
+self-consistency/domain/cross-field conjuncts against the row's own stored fields instead of a
+cross-authority re-derivation — the largest single-pass conjunct batch in this widening arc so far
+(kala_sarpa had 5; this has 6), justified by the category's richer branching (four live types,
+each with its own orb-threshold/motion/salience constraint) rather than scope creep.
+
+(z) a `fact_key` domain check against the four live types; (aa) a same-value-stored-twice check
+(`fact_value_num` vs `value_jsonb.orb_deg`); (bb) a cross-field re-derivation of `orb_strength`
+from `orb_deg`/`deeptamsa_sum_deg` per the writer's own three-branch formula; (cc) a per-type
+`applying`-motion constraint (deliberately excluding `yamaya`, which the writer's own branch
+never gates on motion); (dd) a fixed `salience` mapping re-derivation; (ee) a re-derivation of the
+writer's own if/elif/elif orb-threshold branch structure that decides which type a row gets. All
+six verified live clean (0/76 each) then individually mutation-tested via real transactional
+`UPDATE`+`ROLLBACK` (fact_key corrupted for (z); orb value shifted for (aa); orb_strength/
+applying/salience/orb_deg each independently corrupted in `value_jsonb` for (bb)/(cc)/(dd)/(ee)).
+
+Carried the twenty-five prior conjuncts (a)-(y) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 217 passed / 91 skipped (43 files). `provenance_inventory --check`: clean.
+
+CYCLE 56 L1: widened `ga_structural`'s F-A14 contract to 12/57 categories (PR #2026, migration 784)
+— next: continue `ga_structural` widening (45 categories remain), or `ga_positions` re-dispatch
+once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2393,7 +2434,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2022 cycle 54 → #2024 cycle 55 — 11/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb; migration range 780-799, 784-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config), plus a FIFTH occurrence recognized-and-avoided on the pure-D1 `conjunction_within_orb` (migration 783, no varga dimension at all). `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL (too complex for one bounded conjunct pass) — self-consistency/domain conjuncts shipped instead, same discipline as combustion's (h) and graha_yuddha's (j)/(k), reused again for `conjunction_within_orb`. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category (emitted by `ga_panchanga_writer.py`, same pattern as bhadra/panchaka flags) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin by design. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard (a naive `split_part` mis-parses the genuine live row `SAT_KET_MEAN`) before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2024 cycle 55 → #2026 cycle 56 — 12/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik; migration range 780-799, 785-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config), plus TWO pure-D1 (no varga) occurrences recognized-and-avoided: `conjunction_within_orb` (migration 783) and `aspect_tajik` (migration 784, this arc's largest single-pass conjunct batch at 6, justified by the category's richer four-type branching). `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL — self-consistency/domain conjuncts shipped instead, same discipline reused for both `conjunction_within_orb` and `aspect_tajik`. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category (emitted by `ga_panchanga_writer.py`, same pattern as bhadra/panchaka flags) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin by design. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard (a naive `split_part` mis-parses the genuine live row `SAT_KET_MEAN`) before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3136,6 +3177,17 @@ whole campaign.
   This is the discipline's second reuse (after `tara_bala_natal_baseline`'s reuse of conjunct (d)'s
   join pattern) of checking real data shape before trusting a parsing assumption that had worked
   for every category so far.
+
+- **D-L1-80** — C8 v2.3 cycle 56: widened `ga_structural`'s F-A14 contract (migration 784,
+  PR #2026), 11/57 → 12/57, adding `aspect_tajik`. Second pure-D1 (no varga) category to hit the
+  D1 dual-source shape; reused the self-consistency/domain discipline a third time, scaled up to
+  six conjuncts (the arc's largest single-pass batch so far) to match the category's genuinely
+  richer branching (four live Tajik types, each with its own orb-threshold/motion/salience
+  constraint) rather than as scope creep — judged each of the six against the writer's own
+  explicit branch logic before including it, not padded to hit a round number. Deliberately
+  excluded `yamaya` from the applying-motion conjunct (cc) since the writer's own branch never
+  gates that type on motion — a reminder that a per-type conjunct must match the writer's actual
+  branch conditions exactly, not a convenient superset.
 
 ## Held items
 
@@ -4020,3 +4072,21 @@ L1 must satisfy rather than a feature it consumes.
   files). provenance_inventory --check: clean. CYCLE 55 L1: widened ga_structural's F-A14 contract
   to 11/57 categories (PR #2024, migration 783) -- next: continue ga_structural widening (46
   categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T07:1xZ -- CYCLE 56 (C8 v2.3). PR hygiene clean: filtered to L1's own 42
+  codex/nirmana-l1-* PRs; 40/42 genuinely is:queued, #2024 and #1827 both mid-CI (green/pending
+  only). #1928/#1892 unchanged. Unit of work: widened ga_structural's F-A14 contract to 12/57 (PR
+  #2026, migration 784) -- aspect_tajik. Second pure-D1 category to hit the D1 dual-source shape;
+  reused the self-consistency/domain discipline a third time, scaled to six conjuncts (the arc's
+  largest single-pass batch so far) to match the category's genuinely richer four-type branching
+  (yamaya/ithasala/eesarpha/manaau, each with its own orb-threshold/motion/salience constraint):
+  fact_key domain; fact_value_num==value_jsonb.orb_deg self-consistency; orb_strength cross-field
+  re-derivation from orb_deg/deeptamsa_sum_deg; per-type applying-motion constraint (deliberately
+  excluding yamaya, which the writer's own branch never gates on motion); fixed salience mapping;
+  and a re-derivation of the writer's own if/elif/elif orb-threshold branch structure. All six
+  verified live clean (0/76 each) then individually mutation-tested via real transactional
+  UPDATE+ROLLBACK. Carried the 25 prior conjuncts forward verbatim, including the 3
+  already-tracked genuinely-red ones. No writer touched. Full platform/tests/unit/migrations/
+  suite: 217 passed / 91 skipped (43 files). provenance_inventory --check: clean. CYCLE 56 L1:
+  widened ga_structural's F-A14 contract to 12/57 categories (PR #2026, migration 784) -- next:
+  continue ga_structural widening (45 categories remain), or ga_positions re-dispatch once #1892
+  lands.
