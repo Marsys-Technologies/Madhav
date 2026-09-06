@@ -461,6 +461,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~16:0xZ — L3-W3 — PR hygiene: 5 issues found (2030, 1940, 1928, 1922,
+  1808), all L2/L3/L4-owned but none held by an active worktree — fixed all 5.
+  **Real finding along the way**: #1928's rebase surfaced a genuine pre-existing test
+  failure (`test_birth_anchor_2slot_provisional_weights_match_spec`, `bo_pratijna_v4_
+  engine.py`) — traced it carefully before assuming it was this branch's fault: the
+  two functions #1928 actually touches were byte-identical to `origin/main`'s copies,
+  and the failing test's own registry/function were untouched by #1928 too. Found the
+  actual root cause already owned by **#2030** (`F-L2-16`, also in this cycle's DIRTY
+  batch, whose own PR description independently confirms the same pre-existing-on-
+  `origin/main` diagnosis) — `compute_class_weights` was activating `divisional`/
+  `yoga` slots for `birth_anchor` when it shouldn't (a category error per its own
+  `kill_switch_criteria` classification). Pushed #1928 as-is (its own 70/70 minus the
+  one unrelated, separately-owned failure) rather than duplicate #2030's fix, then
+  fixed #2030 itself in the same cycle — confirmed the fix actually resolves the
+  failure (70/70 clean after) plus 160 broader `-k pratijna` tests pass (6 unrelated
+  pre-existing collection errors in files neither PR touches: forensic_writer,
+  a3_writer, panchanga_writer, ka_kshetra, permission_curve_route). #1808 turned out
+  to have already self-healed before I could dequeue it (`gh api`'s `dequeuePullRequest`
+  failed with "actively building," recheck showed it had already left the queue on its
+  own, now clean `MERGEABLE`) — the established "wait and recheck" pattern held again.
+  #1940 needed a full fix (missed it initially this cycle, caught on the final sweep) —
+  standard L3-pin regen plus a genuinely-additive concurrent-entry `L3_STATE.md`
+  conflict (this branch's own stale ~11:3x entry, not yet on `main`, combined
+  chronologically after this cycle's own newer entry). All 5 confirmed `MERGEABLE`
+  on a final batched recheck. — blocked on: nothing new; next action: keep sweeping
+  for fresh staleness each cycle, verify #2030/#1928 both land cleanly (their shared
+  file makes them worth watching together), and #1713's sidecar finding is now five
+  cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
+  next cycle regardless.
 - `2026-09-06T~12:0xZ — L3-W3 — PR hygiene: re-swept the queue after #1950/#1940 landed —
   cascade shrank further (#1839, #1845, #1844 also cleared since last cycle). New head
   blocker: **#1951 (F-VIGHNA-8/F-DARSH-8, TypeScript-only, no writer/generated-file
