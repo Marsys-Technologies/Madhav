@@ -461,6 +461,67 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~09:0xZ — L3-W3 — PR hygiene: five more genuinely DIRTY PRs found and
+  fixed this cycle: #1957 (pure state-file sync), #2042 (heartbeat-14, pure state-file),
+  #2045 (heartbeat-15, two commits — the second's "removed" `Also open: M12...` line
+  verified as the PR's own intentional relocation into a `<details>` block, not a real
+  loss), #1949 (F-PARVA-3/F-PARVA-4, three-way conflict, pins/digests regenerated,
+  27/27 tests), #1954 (F-VIGHNA-6, four-commit rebase, pins re-pinned twice, 35/35
+  tests). All five force-pushed, re-armed, confirmed `MERGEABLE`.
+  **A sixth, different-shaped problem: #1905 (N1 third step, `engine_testimony.ts`)
+  showed `mergeQueueEntry.state: UNMERGEABLE` while still nominally `isInMergeQueue:
+  true` — not a plain DIRTY, a genuine conflict discovered mid-queue-processing.**
+  Rebasing surfaced an add/add conflict on `engine_testimony.ts`/`.test.ts` — diffed
+  both sides directly (`git show :2:<path>` vs `:3:<path>`) and confirmed origin/main's
+  copy (merged via the later composeConcordanceVerdict PR) is a STRICT SUPERSET of
+  #1905's own original content, byte-for-byte on the shared prefix. Took origin/main's
+  version entirely; the resulting branch is now byte-identical to `origin/main` HEAD
+  (`git merge-base --is-ancestor HEAD origin/main` confirms it). **Closed #1905 as
+  superseded** — nothing left for it to contribute, no code lost (everything it
+  introduced is present, and extended, in what's already merged).
+  **F-L3-15's remaining gap (`ka_dasha_kala`) properly escalated instead of forced
+  through: filed #2071.** Checked BOTH real callers of `run_health_probe()`:
+  `asset_runner.py`'s two call sites already have a live `db_conn` in scope (trivial,
+  backward-compatible signature addition); but `nirmana_probe.py`'s actual authenticated
+  HTTP route — the real mechanism a `probe_accepted` submission exercises — has ZERO
+  DB access infrastructure today (grepped for `psycopg`/`DATABASE_URL`/pool setup in
+  both `nirmana_probe.py` and `main.py`: nothing). Giving this one authenticated,
+  externally-reachable route DB credentials it currently deliberately lacks is a real
+  security-posture decision, not a signature tweak — filed as an adjudication with
+  three concrete options (A: add DB access; B: DB-free proxy check with weaker
+  coverage; C: leave the gap disclosed, permanently NULL) rather than choosing
+  unilaterally.
+  **Major discovery while attempting `ka_graha_sancara`'s actual live probe dispatch
+  (the standing top W4/E-gate priority): `amjis-sidecar`'s Cloud Run traffic has been
+  pinned to a STALE revision for 15+ hours, silently absorbing every merged PR's
+  sidecar-side changes without ever serving them.** Calling the live
+  `/internal/nirmana/probe` endpoint for `ka_graha_sancara` returned `"Asset and probe
+  type do not match"` even though the code (confirmed via `git show <deployed-sha>:
+  routers/nirmana_probe.py`) and DB (`health_probe` confirmed set via direct `psql`)
+  both have the right values. Traced via `gcloud run services describe`/`revisions
+  list` (not assumed): 100% traffic sits on `amjis-sidecar-probe-80a9cd71e105-...`
+  (commit `80a9cd71e105`, 2026-09-05T17:29:05Z, PR #1777) while
+  `status.latestReadyRevisionName` is `93ba7b539` (PR #1864, built
+  2026-09-06T08:46:02Z) — 28 revisions in the traffic table, all `percent: None`
+  except the one stale entry. `git merge-base --is-ancestor a734f34a0 80a9cd71e105`
+  confirms the serving revision genuinely predates PR #1846 (the commit that added
+  `ka_graha_sancara` to the route's allowlist). Cross-checked `amjis-web` for the same
+  pattern — it's fine (latest-ready IS what's serving), so this looks `amjis-sidecar`-
+  specific, not a systemic pipeline failure. **Every sidecar-side change merged since
+  2026-09-05T17:29Z, across every layer, has been built successfully but never
+  actually served a production request** — any prior session's "confirmed deployed"
+  check that only verified `latestReadyRevisionName`'s git ancestry (not which
+  revision is actually receiving traffic) would have been fooled by this, the same
+  §N.8 failure shape one layer up (a signal — "deployed" — whose detector measures
+  build success, not the actual claim). Posted as a factual, non-blocking observation
+  to #1713 (not requesting a specific fix — don't know why traffic promotion is stuck
+  and won't force a manual migration without understanding that).
+  — blocked on: `ka_graha_sancara`'s actual probe dispatch now genuinely blocked on
+  #1713's sidecar-deploy finding (not an L3 code problem — confirmed the code+DB are
+  both correct); `ka_dasha_kala`'s health_probe blocked on #2071's ruling. Next
+  action: continue N1's remaining chain once #1919/#1921/#1924 clear the queue
+  (all confirmed genuinely `QUEUED`, not stuck), or re-check #1713/#2071 for answers
+  next cycle.
 - `2026-09-06T~04:3xZ — L3-W3 — THIRTEENTH, FOURTEENTH, FIFTEENTH DIRTY-PR fixes this
   run — three at once: #1929 (F-VIGHNA-3), #1931 (F-KALA-1 first slice), #1932 (F-KALA-1
   second slice).** #1929 was the `ka_sangam`-adjacent-family shape (L3_STATE.md + the
