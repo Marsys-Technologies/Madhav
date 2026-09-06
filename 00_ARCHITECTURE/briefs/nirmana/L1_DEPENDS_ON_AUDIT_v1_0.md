@@ -1,14 +1,14 @@
 ---
 artifact: L1_DEPENDS_ON_AUDIT_v1_0.md
 canonical_id: NIRMANA_L1_DEPENDS_ON_AUDIT
-version: "0.4"
-status: IN PROGRESS — 15 confirmed findings + 7 assets confirmed CLEAN via a direct grep sweep
+version: "0.5"
+status: IN PROGRESS — 16 confirmed findings + 7 assets confirmed CLEAN via a direct grep sweep
   (round 2); 1 asset (ga_positions) trivially clean by construction (zero declared deps). All 19
-  L1 assets now have at least one pass of coverage; ga_yoga's own declared edges (round 3, cycle
-  141) and 4 more assets' declared edges (round 4, cycle 142) fully re-verified in both
-  directions, all clean beyond their existing findings. See §3 for what a fuller L3-style sweep
-  would still add — 4 assets (`ga_structural`, `ga_sade_sati`, `ga_medical`, `ga_tajaka`) remain
-  to be re-verified this way.
+  L1 assets now have at least one pass of coverage; declared-edge both-directions
+  re-verification done for ga_yoga (round 3), 4 more assets (round 4), and ga_structural's own
+  7-edge declaration (round 5, cycle 143 — found 1 more genuine false edge). See §3 for what a
+  fuller L3-style sweep would still add — 3 assets (`ga_sade_sati`, `ga_medical`, `ga_tajaka`)
+  remain to be re-verified this way.
 owner: L1 session
 campaign_id: nirmana-elevation
 produced_on: 2026-09-07
@@ -39,7 +39,7 @@ another asset's output (exactly finding #12's class), and a constituent-array me
 edge with no stored array at all. **Neither alone is complete**, matching D-CND-07's own doctrine
 that a green E-gate is necessary, never sufficient.
 
-## §2 — Confirmed findings (15) + CLEAN assets (8)
+## §2 — Confirmed findings (16) + CLEAN assets (8)
 
 | # | asset | edge type | detail | evidence | disposition |
 |---|---|---|---|---|---|
@@ -58,6 +58,7 @@ that a green E-gate is necessary, never sufficient.
 | 13 | `ga_panchanga` | FALSE ×2 (`ga_positions`, `bg_panchanga`) — **new, cycle 140, round-2 sweep** | Writer issues **zero** SQL `SELECT`/`execute` calls of any kind (confirmed: 0 matches for `select`/`cur.execute`/`cursor.execute` in the whole 64KB file) — it derives every panchanga element from `resolve_birth_params` (ephemeris recomputation), the same "recomputes independently instead of reading" pattern as `ga_vargas`' own F-A7. **`bg_panchanga` does not even exist as a table** (`\dt bg_panchanga*` returns nothing live) — a dead reference, not merely unread. | `ga_panchanga_writer.py` (whole-file grep, 0 execute calls); `resolve_birth_params` import at `:37`; live `\dt` check | Open — feeds this register; new finding, not yet triaged into a tier |
 | 14 | `ga_yoga` | FALSE (`ga_dashas`) — **new, cycle 141, verifying finding #8/#12's remaining declared edges** | `depends_on={ga_structural,ga_dashas}` declares `ga_dashas`, but the writer contains **zero** matches for `chart_dashas` (`ga_dashas`' own target table) or even the substring "dasha" anywhere in the file, in code or comments. Combined with findings #8/#12 (2 hidden + 1 hidden, none of them `ga_dashas`), `ga_yoga`'s declared 2-edge DAG is now confirmed wrong on BOTH members: `ga_dashas` false, `ga_structural` confirmed genuinely needed (below). | `ga_yoga_writer.py` (whole-file grep: 0 matches for `chart_dashas` and for "dasha" case-insensitive) | Open — feeds this register; new finding |
 | 15 | `ga_yoga` | HIDDEN (`ga_vargas`, via a reused helper) — **new, cycle 141** | `_load_d9_positions` (own docstring: "Load D9 (navamsha) positions from `chart_divisionals`") lazily imports `ga_structural_writer._load_varga_positions` and calls it directly — a genuine, documented read of `ga_vargas`' own target table, reached through a helper function defined in a DIFFERENT writer's module rather than a direct query in `ga_yoga_writer.py` itself. `ga_vargas` is not in `ga_yoga`'s declared `depends_on` anywhere. Confirmed `ga_structural` itself (the other declared edge) IS genuinely needed — read via shared `chart_facts` categories, not a dedicated table, so it doesn't show up as a separate "hidden" table match the way `ga_vargas` does. | `ga_yoga_writer.py:2434-2441` (`_load_d9_positions`, lazy import + call), `:2844-2845` (call site) | Open — feeds this register; new finding, an easy-to-miss pattern (indirect dependency via a reused cross-writer helper function, not a direct query) worth naming for future audits of other writers |
+| 16 | `ga_structural` | FALSE (`ga_panchanga`) — **new, cycle 143, round 5** | `depends_on` includes 7 edges (`ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive`, `ga_strength`, `ga_vargas`); 6 confirmed genuinely read (`ga_dashas` via `chart_dashas`, `ga_positions` via `chart_facts`'s `graha_position`, `ga_vargas` via `chart_divisionals`, `ga_strength` via `graha_shadbala_total`, `ga_nakshatra` via `chart_facts`'s `graha_nakshatra_join` category, `ga_sensitive` via `chart_facts`'s `bhava_arudha` category — the last two required checking the SPECIFIC `fact_category` filter, not just table name, since both assets share `chart_facts` as their target table). `ga_panchanga` alone has **zero** matches for any of its own panchanga-anga category names (`tithi`/`vara`/`karana`/`disha_shul`/`solar_context`/`calendrical`/`sun_moon_dynamics`) anywhere in the full list of 10 distinct `fact_category` filters the writer actually uses — confirmed by enumerating that complete list, not sampling a few candidates. | `ga_structural_writer.py` (full `fact_category = '...'` enumeration, 10 distinct values, none panchanga-related) | Open — feeds this register; new finding |
 
 **CLEAN (7, round 2, cycle 140)** — each asset's declared deps were confirmed genuinely read via
 direct grep, and no undeclared read of another asset's dedicated target table or L0 `bg_*` table
@@ -98,16 +99,24 @@ audited"): all 4 confirmed clean on every declared edge, no new false edges foun
   hidden L0 findings) — all 3 declared edges confirmed genuinely read (`chart_facts` 15,
   `chart_divisionals` 12, `chart_dashas` 6 matches).
 
-**Still not re-verified in both directions** (declared-edge validity, beyond their own already-
-known hidden/false findings): `ga_structural` (7 declared edges — the largest), `ga_sade_sati`
-(2 of 7 already confirmed false via F-D15, 5 remain), `ga_medical` (2 declared edges, not yet
-checked beyond its own hidden-edge finding), `ga_tajaka` (1 of 3 already confirmed genuinely read
-via F-E18's own text, `ga_sensitive`; 2 already confirmed false). `ga_vargas` and `ga_sensitive`
-need no further declared-edge check — F-A7 and F-B11 already cover their single declared edge
-each exhaustively.
+**Round 5 (cycle 143) — `ga_structural`'s own 7 declared edges**, the largest single declaration
+in L1: 6 confirmed genuinely read (`ga_dashas` via `chart_dashas`, `ga_positions` via
+`chart_facts`'s `graha_position`, `ga_vargas` via `chart_divisionals`, `ga_strength` via
+`graha_shadbala_total`, `ga_nakshatra` via `chart_facts`'s `graha_nakshatra_join` category,
+`ga_sensitive` via `chart_facts`'s `bhava_arudha` category — confirmed via the full list of 10
+distinct `fact_category` filters the writer uses, not table-name matching alone, since 3 of its
+6 real upstream assets share `chart_facts` as their own target table). **1 false**: `ga_panchanga`
+(finding #16) — zero matches for any panchanga-anga category name across that same complete list.
 
-**Summary: 9 assets with at least one confirmed hidden/false/semantic-mismatch edge (of L1's 19);
-10 distinct hidden-edge findings, 8 false/over-declared, 1 semantic-clarification-only, 1
+**Still not re-verified in both directions** (declared-edge validity, beyond their own already-
+known hidden/false findings): `ga_sade_sati` (2 of 7 already confirmed false via F-D15, 5
+remain), `ga_medical` (2 declared edges, not yet checked beyond its own hidden-edge finding),
+`ga_tajaka` (1 of 3 already confirmed genuinely read via F-E18's own text, `ga_sensitive`; 2
+already confirmed false). `ga_vargas` and `ga_sensitive` need no further declared-edge check —
+F-A7 and F-B11 already cover their single declared edge each exhaustively.
+
+**Summary: 10 assets with at least one confirmed hidden/false/semantic-mismatch edge (of L1's 19);
+10 distinct hidden-edge findings, 9 false/over-declared, 1 semantic-clarification-only, 1
 shared-ownership gap. 8 assets confirmed clean** (7 via direct grep + `ga_positions` trivially).
 One (`ga_dashas`↔`ga_vargas`, finding #2) has a measured live correctness consequence; the rest
 are DAG-accuracy findings without demonstrated data corruption to date. **`ga_yoga` is now the
@@ -115,7 +124,9 @@ single worst-audited asset in this exercise**: of its 2 declared edges, 1 is fal
 finding #14) and the other is genuinely correct (`ga_structural`); of its real inputs, 4 are
 undeclared (`ga_strength`, `ga_sensitive` — finding #8; `ga_positions` — finding #12; `ga_vargas`
 — finding #15) — a 2-edge declaration understating reality by 4 real hidden reads while also
-getting one of its 2 declared edges wrong.
+getting one of its 2 declared edges wrong. `ga_structural` (finding #16) is the largest single
+declaration in L1 (7 edges) and the most *accurate* of the multi-edge assets checked so far —
+6/7 correct, only 1 false.
 
 ## §3 — What this audit has NOT yet done
 
@@ -125,15 +136,16 @@ All 19 L1 assets now have at least one pass of coverage (round 1's 11 existing f
 proof that "already has a finding" is not the same as "fully audited," the same lesson L3's own
 method embeds by checking every asset regardless of prior findings). Round 4 (cycle 142) applied
 the same both-directions check to 4 more assets (`ga_dashas`, `ga_sensitive_degree`,
-`ga_nakshatra`, `ga_condition`) — all confirmed clean beyond their existing findings, no new
-edges found this time. `ga_vargas` and `ga_sensitive` need no further check (F-A7/F-B11 already
-cover their single declared edge each exhaustively). What a fuller, L3-grade systematic pass
-would still add, not yet done here:
-- **The same both-directions re-verification, still owed to 4 assets**: `ga_structural` (7
-  declared edges — the largest declaration in L1), `ga_sade_sati` (5 of 7 declared edges not yet
-  re-checked beyond F-D15's 2 confirmed false), `ga_medical` (2 declared edges, not yet checked
-  beyond its own hidden-edge finding), `ga_tajaka` (its 3rd declared edge, `ga_sensitive`, already
-  confirmed genuinely read via F-E18's own text — only the 2 already-false ones are settled).
+`ga_nakshatra`, `ga_condition`) — all confirmed clean beyond their existing findings. Round 5
+(cycle 143) checked `ga_structural`'s own 7-edge declaration — the largest in L1 — and found 1
+more genuine false edge (`ga_panchanga`, finding #16); the other 6 confirmed correct. `ga_vargas`
+and `ga_sensitive` need no further check (F-A7/F-B11 already cover their single declared edge
+each exhaustively). What a fuller, L3-grade systematic pass would still add, not yet done here:
+- **The same both-directions re-verification, still owed to 3 assets**: `ga_sade_sati` (5 of 7
+  declared edges not yet re-checked beyond F-D15's 2 confirmed false), `ga_medical` (2 declared
+  edges, not yet checked beyond its own hidden-edge finding), `ga_tajaka` (its 3rd declared edge,
+  `ga_sensitive`, already confirmed genuinely read via F-E18's own text — only the 2 already-false
+  ones are settled).
 - **A true `target_table → asset_id` owner map** built once and reused (rounds 2/3 checked
   against a hand-picked list of dedicated tables + `bg_*` patterns per asset, not the full live
   table universe L3's method scans).
