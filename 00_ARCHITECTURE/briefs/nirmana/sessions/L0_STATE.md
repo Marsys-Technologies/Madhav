@@ -2462,3 +2462,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (positions flat, queue head still #1987, ~4.7min in_progress,
   normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** `#1987`'s checks all completed — should merge imminently. Shortened
+  next wakeup to catch the expected drop. No DIRTY, no RED. 30/40 frozen holds.
