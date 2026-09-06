@@ -5365,3 +5365,18 @@ direct job inspection; E-gate uncheckable, DB access down 261 cycles; nothing ne
 watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns;
 F1 remains deferred.
 
+`2026-09-06T~12:55Z` — L4 — **CYCLE 272 (v2.3) — `#1997` confirmed merged along with three
+more PRs (`#1998`/`#1907`/`#2000`/`#1999`), confirming last cycle's at-normal-duration
+diagnosis; `main` advanced by 5, all 9 own PRs' positions moved up by 7 each.**
+
+**PR hygiene:** all 9 own PRs genuinely queued and advancing (49→42, 38→31, 105→98, 103→96,
+95→88, 99→92, 83→76, 74→67, 79→72). No DIRTY, no RED.
+
+**Priorities 1-4:** no new L4-relevant `main` commits, no new adjudications name L4 (count
+unchanged at 14). E-gate still uncheckable, 262nd consecutive cycle DB access down.
+
+CYCLE 272 L4: IDLE-OK (verified: `#1997` and 3 more merged confirming last cycle's
+diagnosis; PR hygiene clean, all 9 own PRs genuinely queued and advancing; E-gate
+uncheckable, DB access down 262 cycles; nothing new) → next: watch queue positions continue
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
