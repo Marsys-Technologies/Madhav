@@ -458,8 +458,21 @@ your layer close.
 
 ## Heartbeat
 
-- `2026-09-06T~03:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` unchanged,
-  `origin/main` tip unchanged, migration 731 still not deployed.` Nothing eligible.
+- `2026-09-06T~04:0xZ — L3-W3 — Precision finding: queried the actual `mergeQueue`
+  GraphQL object directly (not just `is:queued` membership) — real queue depth and
+  per-PR position, not available from any check used before this cycle.** Total queue
+  depth: **126 entries**, position 1 genuinely `AWAITING_CHECKS` (actively building, not
+  stalled). `#1903` is at **position 3** — very close to the front, should merge within
+  the next cycle or two. `#2060` (the F-CONC-7 migration) is at **position 106** — far
+  back, likely many hours out at the established ~12-20min/merge cadence. Every other
+  open L3 PR enumerated with its exact position (103-126 range for the newest ones,
+  scattered 3-100 for older ones still queued from many cycles ago) — recorded so future
+  cycles can check a specific PR's position directly via
+  `mergeQueue(branch:"main"){entries(first:N,after:"<cursor>"){nodes{position state
+  pullRequest{number title}}}}` (cursor is base64 of the 0-indexed offset, e.g. "MTAw" =
+  100) rather than re-deriving "is it stuck" from indirect signals each time. PR hygiene
+  clean this cycle (no DIRTY/RED). `origin/main` tip unchanged, migration 731 still not
+  deployed (expected, `#2060` far from the front).
 
 - `2026-09-06T~02:0xZ — L3-W3 — One DIRTY-PR fix caught in the final sweep: #1984
   (another heartbeat PR).** Standard conflict shape (HEAD empty, incoming full),
