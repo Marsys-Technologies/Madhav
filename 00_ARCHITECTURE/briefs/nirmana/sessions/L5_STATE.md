@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T09:52Z (C8 v2.3 cycle 373) — **IDLE-OK.** #1826 CLEAN, all checks passed,
+  self-queued — 24th successful full CI cycle. #1844 confirmed `isInMergeQueue: true`.
+  #1869 unchanged at 4 comments. 4 cycles since last push.
 - 2026-09-06T09:49Z (C8 v2.3 cycle 372) — **IDLE-OK.** #1826 unchanged (Governance Gates,
   no failures, armed). #1844 confirmed `isInMergeQueue: true`. #1869 unchanged at 4
   comments. 3 cycles since last push.
