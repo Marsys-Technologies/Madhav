@@ -1,14 +1,17 @@
 -- 850_nirmana_l3_w3_muhurta_seva_health_probe.sql
 --
--- RENUMBERED (676 → 850, after intermediate self-inflicted attempts at
--- 843 and 846 were superseded by this rebase): 676 collided with L1's own
--- `676_nirmana_l3_n5_muhurta_seva_depends_on.sql` (an unrelated, already-landed
--- L1 file reusing this number on origin/main) — L1's concurrent migration
--- allocation in this range moves fast enough that a filename-only reservation
--- goes stale between rebases. Renumbered upward per CLAUDE.md's surgical-
--- migration discipline (never allowlist a real collision); 850 chosen to also
--- avoid #2079's already-claimed 848 (ka_dasha_kala) and the merged #2070's 849
--- (ka_tulana) — see L3_STATE.md for the cross-sibling-PR serialization note.
+-- RENUMBERED (676 → 843 → 846 → 850 across this branch's own rebase cycles):
+-- 676 collided with L1's own `676_nirmana_l3_n5_muhurta_seva_depends_on.sql`
+-- (an unrelated, already-landed L1 file reusing this number on origin/main);
+-- 843 and then 846 each collided with L1's own subsequent already-merged
+-- files in turn (843_..._panchanga_target_floor.sql, then
+-- 846_..._vichara_target_floor.sql) — L1 is allocating migrations very fast
+-- through the 840s range this session, so a filename-only reservation goes
+-- stale between rebases. Renumbered upward each time per CLAUDE.md's
+-- surgical-migration discipline (never allowlist a real collision); 850
+-- chosen to also skip #2079's already-claimed 848 (ka_dasha_kala) and the
+-- merged #2070's 849 (ka_tulana) — see L3_STATE.md for the cross-sibling-PR
+-- serialization note.
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_muhurta_seva`, the next F-L3-15 slice after `ka_graha_sancara`
