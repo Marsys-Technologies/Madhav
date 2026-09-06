@@ -3654,3 +3654,6 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
 - 2026-09-06 — **IDLE-OK.** `#2115` queue entry showed `UNMERGEABLE` transiently (position 5) --
   checked its own merge-group CI directly: 2/3 checks passed, 1 in progress, genuinely healthy.
   Not a real conflict, just a mid-evaluation snapshot. No DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2115` back to `QUEUED`, still position 5, no failures. No
+  DIRTY/RED. 36/40 frozen unchanged.
