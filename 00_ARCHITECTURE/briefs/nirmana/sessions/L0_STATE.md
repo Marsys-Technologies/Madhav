@@ -2097,3 +2097,9 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   legitimate retry, not editing any test or check. Attempted `gh run rerun --failed` immediately but
   the run was still mid-flight (Unit Tests/Governance Gates pending) — queued to retry next cycle
   once the run completes. No DIRTY, no gate touched. 30/40 frozen holds.
+
+- 2026-09-06 — **RESOLVED: `#2016`'s RED cleared naturally.** The flagged run (34003557393) ended
+  `cancelled` (superseded when main advanced again with #1861) rather than needing a manual rerun —
+  a fresh CI run kicked off against the new base and `DB Integration Tests` is running clean so far
+  (no failures, just pending), confirming the earlier read: a one-off flake, not a real defect. No
+  DIRTY, no RED, no gate touched. 30/40 frozen holds.
