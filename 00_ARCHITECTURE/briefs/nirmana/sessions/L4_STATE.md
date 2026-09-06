@@ -4723,3 +4723,21 @@ cycles; nothing new) → next: confirm `#1834` goes green and re-enters the queu
 positions continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1
 remains deferred.
 
+`2026-09-06T~09:40Z` — L4 — **CYCLE 233 (v2.3) — second consecutive cycle `#1834`
+`BLOCKED`; drilled into the specific `Governance Gates` job (same run as last cycle) to
+confirm genuinely still running, not stuck: started `04:15:35Z`, checked at `04:21:33Z`
+(~6 min elapsed) — within normal range.**
+
+**PR hygiene:** remaining 8 own PRs unchanged/genuinely queued. `#1834` still `pending` on
+the same two checks as last cycle (`Governance Gates`, `Build Check`), confirmed genuinely
+in-progress via direct job inspection, not stalled.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+16). E-gate still uncheckable, 223rd consecutive cycle DB access down.
+
+CYCLE 233 L4: IDLE-OK (verified: PR hygiene clean — `#1834`'s Governance Gates job confirmed
+still running at ~6 min via direct job inspection, not stalled; remaining 8 unchanged/queued;
+E-gate uncheckable, DB access down 223 cycles; nothing new) → next: confirm `#1834` goes
+green and re-enters the queue; watch all 9 positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
