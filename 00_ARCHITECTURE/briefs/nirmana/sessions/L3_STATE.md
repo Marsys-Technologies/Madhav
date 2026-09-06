@@ -469,6 +469,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~30:0xZ — L3-W3 — IDLE-OK (verified): all 8 L3-owned PRs healthy,
+  no `UNKNOWN` ambiguity this time (clean `BLOCKED`/`MERGEABLE` across the
+  board). Merge queue has 5 entries — one `UNMERGEABLE` (`#1808`), checked its
+  owner directly rather than assume: `codex/nirmana-l4-w3-3c-nimitta-defaults`,
+  L4-owned, not this session's lane, left alone. `#1713`'s sidecar finding
+  unchanged, eleventh+ cycle. `#2079` still open. No new W3/W4/prep work
+  surfaced. — blocked on: nothing new; next action: keep L3-only sweeps going,
+  recheck `#1713`/`#2079`.
 - `2026-09-06T~29:0xZ — L3-W3 — PR hygiene: an initial batch check showed `UNKNOWN`
   mergeable/status on 7 of 8 L3-owned PRs — waited ~10s and rechecked (async-lag
   lesson from earlier this session) rather than trust the transient read, which
