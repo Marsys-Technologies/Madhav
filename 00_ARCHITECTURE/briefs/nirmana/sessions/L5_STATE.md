@@ -467,8 +467,10 @@ L5 on a colliding identity would bake it into my prediction ids.
   #1844's still-pending 808), same reconciliation discipline as cycle 411 exactly: `sqlIdentityOf`
   confirmed byte-identical before/after, `migration_renumber_disclosed.json` entry added, verified
   live via `migrate.ts --dry-run` then a real `--target 809_...` run
-  (`"Reconciled (not executed): 809_... — already applied as 806_..."`). Dequeued #1826, pushing
-  this cycle (force-with-lease), will re-arm and verify #1844 unaffected next.
+  (`"Reconciled (not executed): 809_... — already applied as 806_..."`). Dequeued, pushed
+  (fast-forward, no rewrite needed this time), re-armed, confirmed fresh CI started
+  (`autoMerge` 11:10:06Z) and #1844 unaffected (`autoMerge` unchanged at 11:03:28Z throughout).
+  Both migration-number races this session (692/#1844, 806/#1826) are now fully closed out.
 - 2026-09-06T11:15Z (C8 v2.3 cycle 411) — **Fixed the #1844 migration-692 collision deferred from
   cycle 409.** PR hygiene: #1844 fell out of the queue a 4th time (CLEAN-but-unqueued), re-armed
   immediately as pure hygiene before the main work. Main unit: worked in an isolated
