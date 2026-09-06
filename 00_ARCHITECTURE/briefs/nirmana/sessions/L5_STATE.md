@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T01:19Z (C8 v2.3 cycle 211) — **IDLE-OK.** #1861 still position 1: TAP+EKV
+  both SUCCESS, only CI-Ganga in_progress (~5.5 min), normal — not stuck. Both own PRs
+  still `isInMergeQueue: true`, clean. #1844=56, #1901=82 unchanged. #1869 unchanged at
+  3 comments; #1856 still OPEN. 15 cycles now batched locally unpushed.
 - 2026-09-06T01:16Z (C8 v2.3 cycle 210) — **IDLE-OK.** #1861 still position 1, checks
   running (not yet merged — main tip unchanged). Both own PRs still `isInMergeQueue: true`,
   clean. #1844=56, #1901=82 unchanged. #1869 unchanged at 3 comments; #1856 still OPEN.
