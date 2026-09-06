@@ -379,6 +379,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 324 | 2026-09-06T15:07Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Nothing changed since loop 323: main static, both E-gates unchanged, no new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 325 | 2026-09-06T15:11Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (2 cycles) but active `gh-readonly-queue` batch (`pr-2079`) confirms genuine ongoing activity, not a stall. Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 | 326 | 2026-09-06T15:14Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (3 cycles) but the queue slot moved from `pr-2079` to `pr-2114` -- different PR now evaluating, confirming genuine ongoing processing, not a stall. Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
+| 327 | 2026-09-06T15:18Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2054` healthy `BLOCKED`/`MERGEABLE`. Main static (4 cycles) -- `pr-2114`'s own status now `CLEAN`/`MERGEABLE` with all checks `COMPLETED`, same pattern as `pr-2109` (loops 316-319) which resolved correctly shortly after this exact state -- genuine convergence, not a stall. Both E-gates unchanged. No new adjudication activity anywhere. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
