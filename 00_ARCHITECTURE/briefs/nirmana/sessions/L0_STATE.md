@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2066 still queue position 2, checks confirmed in-progress normally (not hung). #1901 still not deployed. No DIRTY/RED. Standing priorities unchanged. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- MILESTONE: #2066 MERGED (9f415112..., 10:06:58Z). No open L0 PRs, clean hygiene. Both #2066 and #1901 confirmed NOT yet deployed (merge != deploy, verified via ancestry). Watching for both deploys -- once either lands, its priority work becomes actionable: bg_dasha_systems+bg_compendium_index evidence chains (#2066), bg_doshas+bg_gochara_arcs+bg_text_index dispatch (#1901). 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2964,6 +2964,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   `#1901` but no longer stuck. `#2066` now at queue position 7, `AWAITING_CHECKS` — close. No
   DIRTY/RED. 30/40 frozen holds unchanged.
 
-- 2026-09-06 — **IDLE-OK.** `#2066` still position 2 — its own batch's checks confirmed
-  in-progress normally (~11-min CI-Ganga job still running, matching typical durations, not
-  hung). No DIRTY/RED. `#1901` still not deployed. 30/40 frozen holds unchanged.
+- 2026-09-06 — **MILESTONE: `#2066` MERGED** (`9f415112...`, 2026-09-06T10:06:58Z). No open L0 PRs
+  — clean hygiene. **Both `#2066` and `#1901` confirmed NOT yet deployed** (merge ≠ deploy,
+  checked via ancestry against the current deployed sha). Watching for both deploys now; once
+  either lands, its corresponding priority work (see prior milestones) becomes immediately
+  actionable. 30/40 frozen holds unchanged.
