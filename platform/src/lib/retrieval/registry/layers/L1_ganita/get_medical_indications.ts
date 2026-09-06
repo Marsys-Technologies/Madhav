@@ -28,7 +28,8 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
     '(vata/pitta/kapha), organ_watch, body_part_watch, nakshatra_body_part, indication_tier,',
     'and classical_citation. NOT a diagnosis (not_diagnosis=true on every row) — these are',
     'classical watch-indications, not medical advice. Filters: graha, ayanamsha_id,',
-    'indication_tier. Bounded to 50 rows with a disclosed total.',
+    'indication_tier. Bounded to 50 rows with a disclosed total and an honest empty_reason',
+    'when zero rows match. Derived from chart_facts + bg_medical_mappings (see provenance).',
   ].join(' '),
 
   input_schema: {
@@ -50,6 +51,14 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 40, always_include: false },
+  },
+  // F-E8 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.6 items 3 and 4): was undeclared. empty_reason:
+  // true is a genuine claim — the handler below now sets content.empty_reason whenever
+  // total_matching === 0.
+  density_contract: {
+    paginated: true,
+    facets: ['graha', 'ayanamsha_id', 'indication_tier'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -93,8 +102,18 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { graha, ayanamsha_id, indication_tier, limit },
+          ...(total_matching === 0
+            ? { empty_reason: `No medical (Vaidya-phala) indications for chart ${chart_id}${graha ? ` graha '${graha}'` : ''}${ayanamsha_id ? ` ayanamsha '${ayanamsha_id}'` : ''}${indication_tier ? ` tier '${indication_tier}'` : ''}.` }
+            : {}),
           disclaimer: 'NOT a medical diagnosis — classical Vaidya-phala watch-indications only.',
-          provenance: { tables: ['ga_medical'], source: 'L1 Gaṇita Vaidya-phala; served chart-scoped.' },
+          // F-E8: ga_medical is DERIVED from two upstream authorities (ga_medical_writer.py:11,272)
+          // — chart_facts (natal sign/nakshatra per graha) and bg_medical_mappings (L0 seed
+          // table, the classical graha→dosha/organ mapping) — named here, not just the
+          // served table itself.
+          provenance: {
+            tables: ['ga_medical', 'chart_facts', 'bg_medical_mappings'],
+            source: 'L1 Gaṇita Vaidya-phala; served chart-scoped. Derived from chart_facts (natal sign/nakshatra) + bg_medical_mappings (L0 classical graha→dosha/organ reference).',
+          },
         },
         is_error: false,
       }
