@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Merge-queue stall RESOLVED (main advanced past the stuck 0452d1e74 tip). #2066 at position 22, is:queued confirmed, no DIRTY/RED. Deploy pipeline catching up sequentially but hasn't reached #1901 yet. Standing priorities unchanged: once #1901 deploys, dispatch bg_doshas + bg_gochara_arcs + bg_text_index (all three confirmed fully data-correct + W2-current this session, blocked only on the receipt re-attribution mechanism -- no rebuild/W2 refresh needed, straight through to asset_frozen). Once #2066 deploys, complete implementation_accepted + accepted_rebuild_observed for bg_dasha_systems + bg_compendium_index. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — IDLE-OK, #2066 at position 20 (steady progress), no DIRTY/RED. #1901 still not deployed but active deploy.yml runs confirmed against main -- genuinely mid-catch-up, not stalled again. Standing priorities unchanged: once #1901 deploys, dispatch bg_doshas + bg_gochara_arcs + bg_text_index (all three confirmed fully data-correct + W2-current, should go straight through to asset_frozen). Once #2066 deploys, complete implementation_accepted + accepted_rebuild_observed for bg_dasha_systems + bg_compendium_index. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2945,3 +2945,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   after a 2+-hour merge backlog, not a new anomaly. Nothing newly deployed yet; both watch items
   (`#1901` for the 3-asset unblock, `#2066` for the implementation-record PR) still pending
   deploy. 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2066` position 20 (was 22), no DIRTY/RED. `#1901` still not
+  deployed (deployed sha unchanged from last cycle) but active `deploy.yml` runs against `main`
+  confirmed queued/pending — genuinely mid-catch-up, not stalled again. 30/40 frozen holds
+  unchanged.
