@@ -2521,3 +2521,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change; `#2004`'s queue checks still `in_progress` (~5.9min, no
   failures). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; `#2004`'s queue checks still `in_progress` (~8.5min, no
+  failures). No DIRTY, no RED. 30/40 frozen holds.
