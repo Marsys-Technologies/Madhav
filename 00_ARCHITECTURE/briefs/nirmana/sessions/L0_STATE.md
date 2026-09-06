@@ -3691,3 +3691,10 @@ D-NATIVE-06 milestone entry below for the full guardrail verification.
   deploy run has yet triggered for main's current tip `eb5aa07be` (includes my fix + #2112) --
   likely propagation lag in the two-hop push->CI->workflow_run deploy trigger. No open L0 PRs,
   no DIRTY/RED. 36/40 frozen unchanged.
+
+- 2026-09-06 — **Resolved the earlier deploy-trigger delay.** Investigated the ~3-cycle stall:
+  found my exact commit (`be987b68e`)'s own push-triggered "CI — Ganga Quality Gate" completed
+  `success` at 15:31:59Z (other checks cancelled by the next commit superseding them, normal
+  concurrency behavior). A "Deploy to Cloud Run" run (`34043050211`) is now `in_progress` for
+  `eb5aa07be` (main's tip, which includes my fix) as of 15:40:27Z. No open L0 PRs, no DIRTY/RED.
+  36/40 frozen unchanged; next cycle: confirm this deploy completes, then dispatch bg_yogas.
