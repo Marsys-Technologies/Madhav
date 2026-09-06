@@ -1741,6 +1741,85 @@ class TestBhavaWebLagnaFix:
         assert h1_placed["fact_value_jsonb"]["lord"] == "Mars"
 
 
+class TestVargaSignOccupantsLagnaFix:
+    """F-A26: the Lagna/LAGNA pseudo-entry every varga_state carries for lagna-sign-number
+    consumers is not a graha and must never be counted as an argala/virodha occupant of its
+    sign. Migration 841's conjunct (d28) caught this live in production on both Aries-lagna
+    canonical charts: virodha_argala_natal_matrix scored a spurious 1.0 for Aries-as-source
+    at every virodha offset, with zero real graha there, because the per-varga caller
+    (_build_varga_aspect_rows) built its occupancy map from ALL of varga_state.items() with
+    no exclusion."""
+
+    def test_lagna_all_caps_excluded_from_occupancy(self):
+        vs = {
+            "LAGNA": {"sign": "Aries", "sign_num": 1, "house": 1, "degree": 12.0},
+            "Moon": {"sign": "Aquarius", "sign_num": 11, "house": 11, "degree": 5.0},
+        }
+        occ = sut._build_varga_sign_occupants(vs)
+        assert occ["Aries"] == []
+        assert occ["Aquarius"] == ["Moon"]
+
+    def test_lagna_mixed_case_excluded_from_occupancy(self):
+        vs = {
+            "Lagna": {"sign": "Cancer", "sign_num": 4, "house": 1, "degree": 3.0},
+            "Mars": {"sign": "Libra", "sign_num": 7, "house": 4, "degree": 20.0},
+        }
+        occ = sut._build_varga_sign_occupants(vs)
+        assert occ["Cancer"] == []
+        assert occ["Libra"] == ["Mars"]
+
+    def test_real_graha_sharing_lagna_sign_still_counts(self):
+        """A genuine graha occupying the lagna sign must still be counted -- only the
+        pseudo-entry itself is excluded, not the sign."""
+        vs = {
+            "LAGNA": {"sign": "Aries", "sign_num": 1, "house": 1, "degree": 12.0},
+            "Rahu": {"sign": "Aries", "sign_num": 1, "house": 1, "degree": 8.0},
+        }
+        occ = sut._build_varga_sign_occupants(vs)
+        assert occ["Aries"] == ["Rahu"]
+
+    def test_no_lagna_key_unaffected(self):
+        vs = {"Sun": {"sign": "Capricorn", "sign_num": 10, "house": 10, "degree": 5.0}}
+        occ = sut._build_varga_sign_occupants(vs)
+        assert occ["Capricorn"] == ["Sun"]
+
+    def test_end_to_end_virodha_score_false_positive_fixed(self):
+        """F-A26 reproduced end-to-end: an occupancy map built the OLD buggy way (Lagna
+        included) gives a spurious virodha_score=1.0 for the lagna's own sign as a virodha
+        source; the FIXED _build_varga_sign_occupants excludes it, giving the correct 0.0."""
+        vs = {"LAGNA": {"sign": "Aries", "sign_num": 1, "house": 1, "degree": 12.0}}
+
+        buggy_occupants = {s: [] for s in sut.SIGN_NAMES}
+        for graha_name, gdata in vs.items():
+            g_sign = gdata.get("sign", "")
+            if g_sign in buggy_occupants:
+                buggy_occupants[g_sign].append(graha_name)
+        buggy_rows = sut._build_argala_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            varga="D1", varga_sign_occupants=buggy_occupants,
+        )
+        buggy_virodha_from_aries = [
+            r for r in buggy_rows
+            if r["fact_category"] == "virodha_argala_natal_matrix"
+            and r["fact_key"].startswith("from_sign_1_offset_")
+            and r["fact_value_num"] != 0.0
+        ]
+        assert len(buggy_virodha_from_aries) > 0, "expected the bug to reproduce with raw occupancy"
+
+        fixed_occupants = sut._build_varga_sign_occupants(vs)
+        fixed_rows = sut._build_argala_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            varga="D1", varga_sign_occupants=fixed_occupants,
+        )
+        fixed_virodha_from_aries = [
+            r for r in fixed_rows
+            if r["fact_category"] == "virodha_argala_natal_matrix"
+            and r["fact_key"].startswith("from_sign_1_offset_")
+            and r["fact_value_num"] != 0.0
+        ]
+        assert fixed_virodha_from_aries == []
+
+
 # ── §T7: Karaka inter-relationship web ────────────────────────────────────────
 
 class TestKarakaWeb:
