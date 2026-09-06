@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T23:56:15Z` — cycle 685: **IDLE-OK.** First `git fetch` hit a transient ref-lock
+  contention (shared `.git` object store across worktrees) — retried immediately, succeeded.
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues (20). Nothing rose to a bounded unit.
 - `2026-09-06T23:54:03Z` — cycle 684: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (20). Nothing rose to a bounded unit.
 - `2026-09-06T23:51:58Z` — cycle 683: **IDLE-OK.** Fleet DIRTY: empty. No new
