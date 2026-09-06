@@ -379,6 +379,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T13:07:13Z` — cycle 476: **IDLE-OK.** Own PR #2094 (migration 647, cycle 475): CI
+  still pending (~2 min in — Build/DB-Integration/Governance-Gates/Unit-Tests all `pending`, not
+  stuck), correctly not yet `is:queued` — nothing to fix, just needs time. Fleet DIRTY sweep: empty.
+  No new `nirmana-adjudication` issues (15). Nothing rose to a bounded unit.
 - `2026-09-06T13:04:56Z` — cycle 475: **ONE bounded unit: closed the `chart_grants` RLS-grant gap
   from #1869 (confirmed twice independently — `lel_events`, `mi_vistara`).** Migration 647
   (`GRANT SELECT ON chart_grants TO nirmana_evidence_ingress_writer`), additive-only, mirrors
