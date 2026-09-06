@@ -469,6 +469,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~26:0xZ — L3-W3 — PR hygiene: last cycle's 3 queued PRs
+  (`#1954`/`#1940`/`#1903`) are progressing (`AWAITING_CHECKS`/`QUEUED`/`QUEUED`)
+  — not yet merged but genuinely moving, not stuck. Found 2 more `CLEAN`-but-
+  unqueued (`#1936`/`#1929`) — queued both, verified via `is:queued`. `#2079`
+  still hasn't merged (nothing to close on `#2071` yet); `#1713` unchanged. —
+  blocked on: nothing new; next action: keep L3-only hygiene sweeps going,
+  watch for actual merges now that several PRs are genuinely progressing
+  through the queue.
 - `2026-09-06T~25:0xZ — L3-W3 — PR hygiene: 3 of 9 L3-owned PRs were `CLEAN`
   but `isInMergeQueue: false` (`#1954`/`#1940`/`#1903`) — queued all three via
   `gh pr merge --auto`, then verified via `is:queued` search (the authoritative
