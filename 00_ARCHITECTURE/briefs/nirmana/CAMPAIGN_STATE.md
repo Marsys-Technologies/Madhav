@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:51:28Z` — cycle 574: **IDLE-OK.** Own PR #2139: still open, progressing. Fleet
+  DIRTY: #2079/#2065, both already nudged. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:49:22Z` — cycle 573: **ONE bounded unit: fleet sweep nudge on #2065**
   (F-L3-15 series, `ka_muhurta_seva` health_probe) — ~20 min stale, first sighting, nudged.
   #2079 (same series, previously nudged) shows a push ~1 min before this check — L3 already
