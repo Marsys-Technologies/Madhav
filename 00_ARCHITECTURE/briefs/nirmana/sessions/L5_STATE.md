@@ -457,6 +457,24 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:00Z (C8 v2.3 cycle 414) — **RED on #1844 AGAIN, immediately after cycle 413's
+  fix — a genuinely NEW collision, not a repeat of the old one.** L1's migration lane is landing
+  numbers fast enough that the 808 I picked in cycle 411 got claimed a SECOND time (by a different
+  L1 migration, `808_..._chartcluster.sql`) before #1844's CI ever validated it — caught live by
+  the real `[E2 NEW-COLLISION]` check in `migration_number_guard.ts`, not assumed. Renumbered again
+  to **810** (skipping 809 deliberately — that's my own sibling PR #1826's number, would have
+  collided with myself at merge time otherwise). Updated all three places in the same commit this
+  time (migration file + `migration_renumber_disclosed.json` + the `migrate.test.ts` canary) to
+  avoid another round-trip. **Verified all three gates locally before pushing**, not just one:
+  `migration_number_guard.ts` (PASS), `migrate.ts --target 810_...` (reconciled, not re-executed),
+  and the canary test (3 passed). Rebased onto fresh `origin/main` first this time specifically
+  *because* of the lesson just learned — a renumber chosen against a stale main fetch is not safe
+  in this campaign's current migration velocity. **Standing caution for future renumbers this
+  session:** re-fetch and re-check main's actual tip immediately before picking a number, every
+  time, no exceptions — a number that was free five minutes ago is not a guarantee. #1826's own
+  809 re-checked clear against the freshest main fetch (still no `809_*` file there) — no action
+  needed on it this cycle, but it carries the same live risk and should be re-verified before it
+  actually merges.
 - 2026-09-06T11:45Z (C8 v2.3 cycle 413) — **RED on #1844, root-caused and fixed — never weakened
   the gate.** PR hygiene: #1826 hygiene-clean (BLOCKED only on pending checks). #1844's "Unit
   Tests" check FAILED. Traced to the exact one failing test out of 11,940
