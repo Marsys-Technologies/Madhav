@@ -720,6 +720,34 @@ your layer close.
   file makes them worth watching together), and #1713's sidecar finding is now five
   cycles unanswered — still correctly not re-posting, but worth a fresh `gcloud` check
   next cycle regardless.
+- `2026-09-06T~13:0xZ — L3-W3 — PR hygiene: the queue-cascade fully cleared (7 clean
+  `QUEUED` entries, no blocker) — but the fleet sweep then found **15 PRs genuinely
+  DIRTY outside the queue** (main had advanced with two more merges, #1913/#1926,
+  since the last sweep). Mapped each to its owning layer before touching anything:
+  5 were L1-owned and 2 L2-owned, both with their own actively-checked-out worktree
+  sessions mid-fix (confirmed via `git worktree list`) — left alone, not this
+  session's lane or job. **Fixed all 8 genuinely L3-owned ones**: #1917, #1940,
+  #1943, #1949, #1936, #1929, #1954, #1903. Recurring pattern across all eight: the
+  fixed L3-convergence-commit pin (`dbc1865b...`) itself stayed valid, but its
+  `writer_inventory_sha256` kept going stale as each successive L3 PR (#1913,
+  #1952, etc.) landed on main with its own writer edits — regenerated per-branch
+  each time (`--check` clean before proceeding). #1903 hit the full ka_sangam-family
+  pattern (both pins AND digests conflicted, since it edits `ka_sangam/engine.py`
+  directly) — regenerated digests first, discovered pins then needed a SECOND
+  regen pass afterward (digests must be final before pins are computed from them,
+  order matters). **One real false alarm caught and corrected: right after pushing
+  #1917, GraphQL briefly reported it back as `DIRTY`/`CONFLICTING`** even though
+  the local branch's merge-base matched `origin/main` exactly — confirmed via a
+  ~8s recheck that this was GitHub's own async mergeability recompute lagging
+  behind the push, not a real conflict (now standard practice: don't trust an
+  immediately-post-push DIRTY reading without a brief recheck). All 8 branches:
+  tests re-run and pass (8,45,28,27,30,34,35,73 respectively), migration guard
+  PASS where a migration was touched (#1943's 679), all pushed and confirmed
+  `mergeable: MERGEABLE` on a final batched recheck. — blocked on: nothing new;
+  next action: re-sweep the fleet next cycle (main is advancing fast enough that
+  another round of staleness is likely), check whether the L1/L2-owned DIRTY PRs
+  cleared under their own sessions, and re-check #1713's `amjis-sidecar` finding
+  (now three cycles without a fresh look — should be next if hygiene is light).
 - `2026-09-06T~12:0xZ — L3-W3 — PR hygiene: re-swept the queue after #1950/#1940 landed —
   cascade shrank further (#1839, #1845, #1844 also cleared since last cycle). New head
   blocker: **#1951 (F-VIGHNA-8/F-DARSH-8, TypeScript-only, no writer/generated-file
