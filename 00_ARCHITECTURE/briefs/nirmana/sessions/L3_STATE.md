@@ -458,6 +458,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~09:0xZ — L3-W3 — IDLE-OK: `#1903` checks still `pending` (no failures) —
+  not yet re-queued, expected after last cycle's force-push.` PR hygiene clean.
+  `#2060`/`origin/main` tip unchanged.
+
 - `2026-09-06T~08:0xZ — L3-W3 — Two genuinely DIRTY PRs this cycle, including `#1903`
   itself (the F-CONC-6 prerequisite this whole session has been tracking) — same
   inverted conflict shape as `#1897`, correctly diagnosed rather than assumed.**
