@@ -380,6 +380,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:08:26Z` — cycle 490: **ONE bounded unit: confirmed #2104 merged (14:07:14Z) and
+  the follow-on `Deploy to Cloud Run` workflow triggered (queued 14:07:34Z, right after merge).**
+  Not waiting on the full deploy inline — the sidecar image build alone took ~19-20 min locally,
+  so the actual `amjis-sidecar-release-smoke` result (the real test of whether #2096 is fixed)
+  won't be available for several more cycles. Standing commitment from #2096's own ruling
+  (confirm live, don't close on PR-merge alone) carries forward — will check the release-smoke gate
+  once the deploy workflow completes, not before. No own PRs otherwise. Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (17).
 - `2026-09-06T14:05:57Z` — cycle 489: **IDLE-OK, watching closely.** Own PR #2104: merge-group's
   `CI — Ganga Quality Gate` run (id 34037568743) still `in_progress`, ~10 min elapsed since
   13:55:32Z — near the top of the documented ~700s/~11.7min normal-variance ceiling but not over it
