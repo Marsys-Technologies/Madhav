@@ -4519,3 +4519,46 @@ queued and advancing; E-gate uncheckable, DB access down 214 cycles; nothing new
 watch queue positions continue advancing; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~09:00Z` — L4 — **CYCLE 225 (v2.3) — genuine PR-hygiene DIRTY fix: `#1831`
+and `#1808` were dequeued from the merge queue (`mergeQueueEntry: null`,
+`mergeStateStatus: DIRTY`) after `#1946` merged into `main` upstream of both — this cycle's
+bounded unit of work.**
+
+**PR hygiene:** swept all 9 own PRs via GraphQL. 7/9 (`#1870`, `#1864`, `#1849`, `#1845`,
+`#1842`, `#1839`, `#1834`) genuinely `QUEUED`, no action. `#1831` and `#1808` were `DIRTY` —
+rebased both onto `origin/main` from the `codex/nirmana-l4-heartbeat` worktree:
+
+- **`#1831`** (`codex/nirmana-l4-w3-3d-pratikara-anchor`): one real conflict, on the
+  generated `nirmana-writer-digests.json` (routine, regenerated via
+  `provenance_inventory --output`) plus its own already-applied `nirmana-analysis-layer-pins.json`
+  re-splice commit conflicting with the fresh regeneration — resolved by keeping the freshly
+  derived `writer_inventory_sha256` (`21ade55b...`) and dropping the now-redundant older
+  re-splice value; `--check` passed clean. Verified via `git diff origin/main -- ...
+  ph_pratikara.py` that the branch's own F-3.4 fix (`_select_anchor`/`_windows_overlap`,
+  domain-scoped anchor selection) survived intact. 73/73 tests pass
+  (`test_ph_pratikara_anchor_selection.py` + `test_ph_wave4.py`).
+- **`#1808`** (`codex/nirmana-l4-w3-3c-nimitta-defaults`): the writer commit
+  (`ph_nimitta.py`'s `pratijna_grade`/`pratijna_status` no-evidence fix) applied clean with
+  no conflict; only its own prior re-splice commit on
+  `nirmana-analysis-layer-pins.json` conflicted with the fresh state — resolved the same way,
+  `--check` passed clean, writer-digest file confirmed byte-identical to a fresh
+  `provenance_inventory` run (no diff at all needed there). Verified via `git diff origin/main
+  -- ... ph_nimitta.py` that the branch's own fix survived intact. 286/286 tests pass
+  (`test_ph_nimitta_*.py` + `test_ph_wave*.py`).
+
+Both force-pushed with `--force-with-lease` (own branches only); both re-armed via
+`gh pr merge --auto` (GraphQL `mergeStateStatus` confirmed `MERGEABLE`/`BLOCKED`-on-checks
+within 15-30s of push, not still `DIRTY`). `mergeQueueEntry` was still `null` for both as of
+last check this cycle — expected transiently while their own CI checks complete before the
+queue admits them; will re-verify next cycle rather than assume.
+
+**Priorities 1-4:** no new `main` commits beyond what's already reflected above, no new
+adjudications name L4 (count unchanged at 15). E-gate still uncheckable, 215th consecutive
+cycle DB access down.
+
+CYCLE 225 L4: rebased+repushed 2 DIRTY PRs (#1831, #1808 — dequeued after #1946 merged
+upstream of both; both writer fixes verified intact through the rebase, 73+286 tests pass,
+both re-armed for auto-merge) → next: verify #1831/#1808 actually re-enter the merge queue
+next cycle (not just armed); watch remaining 7 PRs' positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
