@@ -458,6 +458,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~12:0xZ — L3-W3 — IDLE-OK: `#1903` unchanged at position 116, `#2060` at
+  position 90 (closer, noted for the record). No reply yet on the #1713 finding.`
+  Migration 731 still not deployed. PR hygiene clean. `origin/main` tip unchanged.
+
 - `2026-09-06T~11:0xZ — L3-W3 — Significant finding, escalated to #1713: fixing a DIRTY
   queued PR re-enqueues it at the BACK of the queue, not its old position.** `#1903`
   reached position 2 two cycles ago; went DIRTY (own conflict); resolved and
