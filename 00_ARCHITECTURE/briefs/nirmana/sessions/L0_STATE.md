@@ -2475,3 +2475,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Second flat read; queue head still #1988, ~8.8min in_progress, normal.
   No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 3 (23/30/31/52). Queue now processing 5 entries in
+  parallel (batch mode: #1983/#1990/#1991/#1993/#1994), all mid-CI, none L0's. No DIRTY, no RED.
+  30/40 frozen holds.
