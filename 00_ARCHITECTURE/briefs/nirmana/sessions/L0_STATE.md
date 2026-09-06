@@ -3389,3 +3389,10 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** Still `5b1ab78f` deploying (no newer commit landed since), no
   change. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — Still same deploy (`5b1ab78f`, run `34034499400`): `Apply DB Migrations` succeeded
+  again, `Build & Deploy Web` still `in_progress`. `Build & Deploy Sidecar` failed again on the
+  IDENTICAL unrelated `ka_graha_sancara` (L3) smoke-probe failure seen last cycle on a different
+  commit — confirmed recurring, not a one-off; posted an FYI to #1713 for whoever owns L3/that
+  asset (not L0's to fix, doesn't block my own path — migrations + web deploy both proceed fine
+  independently of the sidecar smoke gate). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
