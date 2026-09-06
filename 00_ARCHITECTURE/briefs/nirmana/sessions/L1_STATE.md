@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 144; DAG audit COMPLETE for coverage -- round 6 closed ga_medical (clean) and ga_sade_sati (found a 3rd false edge, ga_nakshatra -- 17 raw "nakshatra" matches, all resolved to hardcoded constants/internal computation/ga_positions' own category, zero genuine ga_nakshatra reads). All 19 L1 assets now have every declared edge re-verified in both directions, matching L3's own coverage bar. 17 confirmed findings total. Register's L1 row updated to COMPLETE. Still no reply on #2180/#2113 (5 quiet cycles)
+last_updated: 2026-09-07 — C8 v2.3 cycle 145; assigned F-ids to all 6 new post-W2 DAG findings (F-D30-33, F-B36, F-C25), all NEVER-LATER-equivalent per D-CND-09, recorded in L1_DEPENDS_ON_AUDIT_v1_0.md §5 (did not retroactively touch the frozen L1_W2_DECIDE_v1_0.md). Posted a light status nudge on #2180 given 6 quiet cycles, summarizing the completed DAG audit as related context. Still no direct reply as of this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8221,3 +8221,31 @@ record — they are the only entries in this table with a real wall-clock behind
   charter-named prep items are the full 139-row per-finding disposition table, triaging the 6 new
   post-W2 findings into F-ids/tiers (§3's own noted gap), or a light nudge on #2180 given the
   cycle count; keep re-checking #2113/#2180 for movement each cycle regardless.
+- 2026-09-06T2xZ -- CYCLE 145 (C8 v2.3). PR hygiene: #2185/#2178 (only own open PRs) both
+  `BLOCKED`, all checks `pass` or still-`pending`, zero `fail` -- clean. #2180/#2113: same
+  comment counts/timestamps, 6 quiet cycles on #2180 now. Did both remaining charter-named
+  options from cycle 144's own list rather than picking one. **F-id assignment**: verified live
+  (via grep across every W1 batch file + `L1_STATE.md`, not assumed) the true next-free number
+  in each relevant letter series -- F-A max F-A26, F-B max F-B35, F-C max F-C24, F-D max F-D29 --
+  then continued each of the 6 new findings in whichever series its OWN asset already uses
+  (`ga_yoga`->D matching F-D3, `ga_panchanga`->B matching F-B24/26/31, `ga_structural`'s DAG
+  findings->C matching F-C18/23, `ga_sade_sati`->D matching F-D14/15/18/20): `F-D30`
+  (`ga_yoga`->`ga_positions` hidden), `F-B36` (`ga_panchanga`'s 2 false edges), `F-D31`
+  (`ga_yoga`->`ga_dashas` false), `F-D32` (`ga_yoga`->`ga_vargas` hidden), `F-C25`
+  (`ga_structural`->`ga_panchanga` false), `F-D33` (`ga_sade_sati`->`ga_nakshatra` false).
+  Deliberately did NOT edit `L1_W2_DECIDE_v1_0.md` to insert these retroactively -- that's W2's
+  own frozen historical record, and misrepresenting when these were actually found would violate
+  the same honesty discipline this whole audit has been built on -- instead added a new §5 to
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` itself as the honest home for the assignment, with all 6 findings
+  getting the same NEVER-LATER-equivalent disposition every other DAG-declaration finding this
+  campaign gets (D-CND-09 makes `depends_on` immutable this cohort; the correction lives in the
+  register for the next freeze, not in code). Pushed as the 6th commit onto the same open PR
+  #2185. **Nudge**: posted a light, non-demanding status check-in on #2180 given the 6-cycle
+  quiet spell -- summarized the completed DAG audit as related context (confirmed it doesn't
+  change the wave-0-3 scope question itself, since the two most-relevant hidden edges both
+  resolve to assets already inside that scope) rather than just asking "any update?" with no new
+  information. CYCLE 145 L1: PR hygiene clean, closed both remaining post-audit housekeeping
+  items (F-id assignment + a proportionate nudge) in one bounded cycle -- next: watch #2180 for
+  a reply; with the DAG audit and its own triage now both genuinely finished, the full 139-row
+  per-finding disposition table is the last remaining charter-named prep item if #2180 stays
+  quiet further.
