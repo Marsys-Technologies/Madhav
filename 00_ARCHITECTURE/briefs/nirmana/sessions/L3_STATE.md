@@ -650,6 +650,32 @@ your layer close.
   confirm `#2065` actually reaches `isInMergeQueue: true` next cycle, then its merge
   unblocks `ka_muhurta_seva`'s W2 acceptance (route any verifier-role submissions
   through a fresh subagent per D-CND-35, same as every other asset this campaign).
+- `2026-09-06T~75:0xZ — L3-W4 — IDLE-OK (verified, not assumed).** PR hygiene: all three
+  L3 PRs healthy — `#2079` genuinely `isInMergeQueue: true` (position 2, `AWAITING_CHECKS`);
+  `#2065` and `#2147` (this session's own two most recent branches, `#2065`'s finished
+  rebase + its heartbeat-state PR) both `mergeable: MERGEABLE`, `autoMergeRequest` armed,
+  0 CI failures on either — just still 2-3 checks pending, genuine async lag, not a
+  defect. Nothing to fix. Ran a fresh `egate.sql` batch rather than trust the last read:
+  `ka_graha_sancara` still the sole frozen asset; `ka_muhurta_seva` and
+  `ka_gochara_resonance` both read `unfrozen_ancestors: 0` / `BLOCKED-NO-ROUTE` — the
+  route gap for `ka_muhurta_seva` closes the moment `#2065` actually merges+deploys, not
+  before; nothing else opened up (no L0/L1/L2 freeze progress since W1). Checked the two
+  live adjudications that could plausibly unblock something: `#2071` (ka_dasha_kala DB
+  access) — already RULED (Option B, DB-free proxy) and already implemented in `#2079`,
+  nothing further to do; `#1960` (moorti/Wave-2 admission) — still genuinely blocked on
+  native sign-off, not Conductor's or mine to grant, re-confirmed by re-reading the
+  ruling rather than assumed from memory. Considered D-TIME item 1 (per-engine
+  question-declarations) again per standing practice of not silently dropping it: still
+  the same "no persisted structured source across the 34 engines, genuinely too
+  unbounded for one cycle" conclusion reached twice before — not re-deriving from
+  scratch without new information. Verified 19/19 D-CND-03 integrity contracts and
+  target_floor/catalog_status are already fully landed for all 23 assets (queried
+  `asset_registry` directly) — no silent gap in either. No genuinely new bounded W3/W4
+  unit and no further useful prep beyond what's already recorded; declaring this cycle
+  idle rather than manufacturing filler work. — blocked on: nothing; next action: watch
+  `#2065`/`#2079`/`#2147` all actually merge, then `ka_muhurta_seva`'s W2 acceptance
+  becomes the next genuine W4-path item (route verifier-role submissions through a
+  fresh subagent per D-CND-35).
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
