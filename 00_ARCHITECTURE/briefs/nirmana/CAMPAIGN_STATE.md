@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:47:04Z` — cycle 572: **IDLE-OK.** Own PR #2139: **confirmed `is:queued` (1)** —
+  properly entered the merge queue. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T17:44:59Z` — cycle 571: **IDLE-OK.** Own PR #2139: still pending, not yet
   `is:queued` (~9 min in — Governance Gates alone can run this long per documented variance).
   Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
