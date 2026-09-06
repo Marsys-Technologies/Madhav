@@ -457,6 +457,47 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T19:16Z (C8 v2.3 cycle 545) — **Milestone: `#2138` MERGED — the twelfth
+  state-recovery PR closed out.** Twelfth recurrence of the exact same pattern (cycles 442, 453,
+  461, 473, 482, 492, 502, 511, 519, 528, 534, now 545). 10 local-only commits (cycles 535-544,
+  35 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-13`. `#2139` (Conductor's `depends_on` ordering fix)
+  still not merged — checked before starting recovery, unchanged status.
+- 2026-09-06T19:10Z (C8 v2.3 cycle 544) — **IDLE-OK, verified.** #2138 unchanged, still
+  genuinely queued. #2139 unchanged, still unmerged. New PR #2140 confirmed L1's, out of scope.
+- 2026-09-06T19:04Z (C8 v2.3 cycle 543) — **IDLE-OK, verified.** Main advanced (#2070, L3's, not
+  mine — out of scope per established precedent). #2138 unchanged, still genuinely queued. #2139
+  still not merged.
+- 2026-09-06T18:58Z (C8 v2.3 cycle 542) — **IDLE-OK, verified.** #2138 unchanged, still
+  genuinely queued. #2139 unchanged, still `UNSTABLE`/unmerged (Conductor's PR, not mine to act
+  on).
+- 2026-09-06T18:53Z (C8 v2.3 cycle 541) — **IDLE-OK, verified.** #2138 (mine) still genuinely
+  queued. #2139 (Conductor's, not mine — appears under `is:queued author:@me` only because of
+  the shared git identity across lanes) shows `mergeStateStatus: UNSTABLE`, not merged yet — not
+  mine to touch. #2136 confirmed L1's, out of scope. Nothing eligible.
+- 2026-09-06T18:47Z (C8 v2.3 cycle 540) — **IDLE-OK, verified.** #2138 now genuinely queued
+  (`is:queued`). #2139 still not merged.
+- 2026-09-06T18:41Z (C8 v2.3 cycle 539) — **IDLE-OK, verified.** #2138's Governance Gates job
+  checked at the step level (~10.8 min elapsed, upper end of normal but not stalled) — confirmed
+  genuine active step (`pytest — pyjhora_adapter + pipeline`) via direct job-steps API query, not
+  assumed from elapsed time alone. #2139 still not merged.
+- 2026-09-06T18:32Z (C8 v2.3 cycle 538) — **IDLE-OK, verified.** #2138's Governance Gates job
+  checked at the job level (~8.7 min elapsed, within the normal 7-12 min range) — genuine
+  progress, not stalled. #2139 still not merged.
+- 2026-09-06T18:26Z (C8 v2.3 cycle 537) — **IDLE-OK, verified.** #2138 down to its last check
+  (Governance Gates), no failures. #2139 still not merged. Nothing eligible.
+- 2026-09-06T18:20Z (C8 v2.3 cycle 536) — **#2137 RULED — Conductor confirmed the diagnosis and
+  fixed it, PR #2139 (sort-both-sides-before-comparing, per this session's own recommended
+  option (a); independently verified via a dispatched code-reviewer subagent that no other
+  `depends_on` consumer treats it positionally; regression test added).** #2139 not yet merged
+  (`mergedAt: null`) — nothing more for L5 to do until it lands and deploys; the W2 evidence and
+  kept snapshot (`cloudsql-backup:1788714572581`) remain correctly ready for the retry. #2138
+  down to 2 pending checks, no failures.
+- 2026-09-06T18:15Z (C8 v2.3 cycle 535) — **IDLE-OK, verified.** #2138 building cleanly, no
+  failures. #2137 (the depends_on ordering adjudication) not yet ruled (0 comments). Re-ran
+  `egate.sql -v layer=L5`: only `mi_kula` shows `w2_verdict=t` (still `OPEN-PENDING-PIN`, blocked
+  on #2137's fix, not on anything L5 can act on); all other 11 remaining assets still
+  `w2_verdict=f`, unchanged. Genuinely nothing eligible this cycle beyond hygiene.
 - 2026-09-06T18:10Z (C8 v2.3 cycle 534) — **Real orchestrator bug found and adjudicated (#2137);
   `#2131` MERGED — the eleventh state-recovery PR closed out.** Subagent `aee0c68dd31bd1840`
   reported: W2 resubmission succeeded cleanly (independently re-confirmed live — both old
