@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 110; closed F-A16/F-B22/F-C12/F-D12 (migration 847) — 5 of 7 estimated_seconds claims audited were STILL genuinely stale, re-measured fresh from live build_run_assets history rather than copy-pasted from the original findings' own now-2-months-old numbers
+last_updated: 2026-09-06 — C8 v2.3 cycle 111; audited F-A11 (ga_dashas yogini lord_natal resolver) — the R-43 fix was genuinely present and correct (verified byte-for-byte against ga_dashas_writer.py's YOGINI_SEQUENCE), but had ZERO test behind it despite being marked "exported for unit testing" — closed the §N.8 gap with a 20-test unit suite (PR #2130), no production code change
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3362,7 +3362,7 @@ none accepted yet (blocked on #1736).
 |---|---:|---|---|
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds) |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
-| ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A) |
+| ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48) |
 | ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
@@ -7073,3 +7073,25 @@ L1 must satisfy rather than a feature it consumes.
   F-E28) -- these are mostly serving-projection/pagination/density-contract claims, a different
   shape than the registry-field claims audited so far, likely requiring code inspection rather
   than a single SQL query per claim.
+- 2026-09-06T22:2xZ -- CYCLE 111 (C8 v2.3). PR hygiene: #2125/#2127 both genuinely `is:queued`;
+  #2129/#2110 mid-CI (checks pending/skipping only, nothing failing) with auto-merge armed --
+  nothing DIRTY/RED/unqueued-but-clean. Unit of work: first of the remaining ~13 "code
+  inspection" NOW claims -- F-A11 (`ga_dashas`, MUST). Read `get_dashas.ts`'s `factSubjectForLord`
+  resolver (R-43 comment cites F-A11 directly) and confirmed it IS genuinely fixed: yogini
+  deity-name→graha mapping is byte-identical to `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`
+  (Mangala→Moon, Pingala→Sun, Dhanya→Jupiter, Bhramari→Mars, Bhadrika→Mercury, Ulka→Saturn,
+  Siddha→Venus, Sankata→Rahu) -- unlike the migration-847 batch, this NOW claim was ACTUALLY
+  true. But the function was explicitly marked "exported for unit testing (no DB access
+  required)" and NO test anywhere in the suite ever exercised it -- a real §N.8 gap (a claimed
+  fix with no detector behind it). Closed it with a 20-test pure-unit suite (no DB, no mocks
+  needed -- confirmed via `npx tsc --noEmit` that importing `get_dashas.ts` for its pure export
+  carries no side effects) pinning all 8 yogini deities against their graha, all 9 classical
+  grahas resolving to 9 distinct fact_subject codes, and honest-undefined behavior for
+  unrecognized/empty input. Zero production code changed. `npx eslint` clean; no writer touched
+  so no pin/provenance regen needed. Opened PR #2130 directly off `origin/main`, armed
+  auto-merge, confirmed genuine CI dispatch (35 check-runs) before ending the cycle. CYCLE 111
+  L1: PR hygiene clean, closed the F-A11 test-coverage gap (fix was real, test wasn't) -- next:
+  continue the remaining ~12 NOW claims (F-B14/F-C21/F-D5/F-D11/F-D18/F-D20/F-D25/F-E2/F-E8/
+  F-E19/F-E28) the same way -- verify the claimed fix against source first, THEN check for a
+  real detector behind it, since both failure modes (false claim vs. untested true claim) have
+  now each shown up at least once this sweep.
