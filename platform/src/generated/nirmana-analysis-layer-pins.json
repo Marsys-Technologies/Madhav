@@ -40,7 +40,7 @@
       "convergence_commit": "be470cb8fa289c65fe4e273abe1cd1210e96f805",
       "non_writer_assets": [],
       "receipt_count": 9,
-      "writer_inventory_sha256": "12738f606e5cb29be5440c6a4f2ed7b48b4beb4799c33ae508e7e94497985fe2"
+      "writer_inventory_sha256": "eac8a3919f73243253efe0bcf65c162c113d099951831dabd90e6e8f155c34f6"
     },
     "L5": {
       "asset_prefix": "mi_",
