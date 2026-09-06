@@ -6713,3 +6713,26 @@ established upper bound) and self-enqueued cleanly (`QUEUED` position 17) — al
 own PRs (`#1831`/`#1808`/`#1834`/`#1839`) now genuinely queued, none DIRTY/RED → next: watch
 all 4 drain in position order; retry E-gate/dispatch dry-run once DB access returns; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-06T~12:22Z` — L4 — **CYCLE 338 (v2.3) — `#1831` MERGED (own PR, `ph_pratikara`
+F-3.4). `#1834`/`#1839` both found genuinely DIRTY (real conflicts from `#1831` landing),
+both rebased/resolved/tested/re-armed.**
+
+**PR hygiene this cycle, in order:** `#1834` (`ph_rectification` F3) — rebase conflicted in
+both generated files this time (a three-commit rebase carrying its own digest-regen +
+pin-resplice commits); digest regenerated clean, pin hand-derived to `eac8a391...f155c34f6`;
+49/49 tests green. `#1839` (`ph_phaladesa` headline-anchor) — pin-only conflict, hand-derived
+to `0dff6111...af15fce`; 97/97 tests green. Both: `--check` and isolation confirmed from each
+fully-rebased final state; `mergeQueueEntry` null before each push; re-armed via
+disable-then-auto. `#1808` re-confirmed still genuinely `QUEUED`, untouched.
+
+**Priorities 1-4:** `#1831` merged (own PR) — the eighth of the layer's shipped `ph_*` W3
+fixes to land on `main` (prior: `#1870`, `#1849`, `#1842`, `#1845`). No new adjudications
+name L4 (count unchanged at 15). E-gate still uncheckable — `mcp__postgres__query`
+unavailable, 328th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 338 L4: `#1831` MERGED (ph_pratikara F-3.4 — 8th shipped fix to land); found and fixed
+two simultaneous genuine DIRTY PRs (`#1834`, `#1839` — both rebased/tested green/re-armed);
+confirmed `#1808` still genuinely queued and untouched → next: watch all 3 remaining own PRs
+(`#1808`/`#1834`/`#1839`) drain in position order; retry E-gate/dispatch dry-run once DB
+access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
