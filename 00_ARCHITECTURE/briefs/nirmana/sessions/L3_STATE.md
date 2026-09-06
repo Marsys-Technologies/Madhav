@@ -458,6 +458,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~06:0xZ — L3-W3 — Confirmed real progress: #1987 (position 1 last cycle)
+  MERGED, `#1903` advanced from position 3 to position 2 — one step from the front.**
+  `origin/main` tip advanced to `dfc7b0a7c`. This state-tracking branch rebased cleanly
+  (15 commits, no conflict) onto the new tip before this entry. PR hygiene clean (no
+  DIRTY/RED). `#2060` unchanged, still queued further back. Nothing else eligible this
+  cycle — just monitoring confirmed real, expected movement.
+
 - `2026-09-06T~05:0xZ — L3-W3 — Investigated a possible queue-stall false alarm at
   position 1, resolved with real evidence before escalating — genuinely healthy, not
   stuck.** `#1903` still at position 3 (unchanged from last cycle), position 1 (`#1987`,
