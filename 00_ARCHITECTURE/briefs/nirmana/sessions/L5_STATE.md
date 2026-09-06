@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T13:30Z (C8 v2.3 cycle 429) — **Milestone: #1826 is now `CLEAN` and in the merge
+  queue alongside #1844 — BOTH PRs genuinely queued simultaneously for the first time this
+  session.** The hold-and-wait discipline from cycles 425-428 paid off: no further action needed,
+  just verified via `is:queued`/`isInMergeQueue` GraphQL (never `autoMergeRequest`). Nothing to do
+  but keep watching for either to fall out or actually merge. #1869 and `mi_kula`'s remaining
+  ancestors both unchanged.
 - 2026-09-06T13:25Z (C8 v2.3 cycle 428) — **IDLE-OK, still holding on #1826.** Same 2 checks
   pending as last cycle (Build Check, Governance Gates) — Governance Gates' pytest step routinely
   takes 7-12 minutes, consistent with normal progress, not stalled. No failures. #1844 still
