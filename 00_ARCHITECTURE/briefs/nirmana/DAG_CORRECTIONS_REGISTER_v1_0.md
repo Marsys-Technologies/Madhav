@@ -49,7 +49,7 @@ rather than copying, so there is one authority per layer and no transcription dr
 |---|---|---|---|
 | **L3 Kāla** | `L3_DEPENDS_ON_AUDIT_v1_0.md` | ✅ **COMPLETE** | 23/23 audited · CLEAN 7 · HIDDEN 4 · FALSE 7 · BOTH 5 · **36 hidden / 17 false edges** · 9 assets HELD under D-CND-07 |
 | **L0 Brahmagyan** | — | ⬜ outstanding | 40 assets, 24 with zero declared deps |
-| **L1 Gaṇita** | — | ⬜ outstanding | ~11 findings self-reported on #1744; `ga_dashas → ga_vargas` hidden edge is measured (build `6479bb56`, concurrent start, MVCC stale read) |
+| **L1 Gaṇita** | `L1_DEPENDS_ON_AUDIT_v1_0.md` | 🟡 IN PROGRESS | 12 confirmed findings (11 self-reported on #1744 + 1 new, `ga_yoga → ga_positions` hidden edge, Conductor-confirmed on #2180) · `ga_dashas → ga_vargas` hidden edge has a MEASURED live correctness consequence (build `6479bb56`, concurrent start, MVCC stale read) · not yet a systematic per-asset grep sweep like L3's (own §3 names the gap) |
 | **L2 Bodha** | — | ⬜ outstanding | 22 assets, avg 3.1 declared deps |
 | **L4 Phala** | — | ⬜ outstanding | 9 assets, avg 4.6 declared deps |
 | **L5 Mīmāṃsā** | — | ⬜ outstanding | 15 assets, 2 with zero declared deps |
