@@ -386,20 +386,24 @@ not an L3 code problem, and outside this session's authority to fix directly.
 Charter C6 — announce here, on `main`, each NEW capability downstream layers may consume.
 One line per capability with its PR number. Consumers poll `origin/main` for this section.
 
-**LANDED:** _(none yet — nothing has merged)_
+**LANDED — corrected 2026-09-06T~21:0xZ; this section had drifted to "none yet" while
+the entire N1 chain and the D-CND-03 contracts actually merged (silent drift, C9) —
+verified each against `git log origin/main`, not assumed from memory:**
 
-### PLANNED (published early per the session prompt's "publish your capability-delta list immediately")
+| capability | shape | PR(s) |
+|---|---|---|
+| **Engine testimony, unified vocabulary** | `platform-mcp/src/lib/engine_testimony.ts` — one canonical `EngineTestimony` shape replacing three near-identical per-engine agreement vocabularies | #1890, #1894, #1919 |
+| **Authority profiles as stored data** | `kala_paddhati_profile`'s `arbitration_role`/`precedence` columns + `query_kala_paddhati_profile` serving surface | #1894, #1921, #2047 |
+| **Concordance verdict** on the arbiter surface | `composeConcordanceVerdict` — arbitrates engine testimony via real authority-profile roles, wired into `kala_explain_get` | #1924, #2049 |
+| **19 chart-partitioned integrity contracts** (D-CND-03) | migration 670, all 19 L3 data assets (services take the health-probe path instead) | migration 670 |
+| **F-L3-15: all 4 L3 service-asset health_probes** | `ka_graha_sancara`/`ka_muhurta_seva`/`ka_tulana` real probes + `ka_dasha_kala`'s DB-free PROXY probe (D-CND-34) | #1846, migration 676, migration 810, #2079 |
 
-This is L3's side of the C6 contract, declared at W1 so L4/L5 can plan against it rather than
-discover it. Nothing here is consumable until it appears under **LANDED** with a PR number.
+### PLANNED (remaining)
 
 | capability | shape | who would consume it | status |
 |---|---|---|---|
-| **Temporal engine question-declarations** | a per-engine declaration in the registry: the one question each temporal engine answers, its granularity and range (D-TIME item 1) | L4 verdict surfaces choosing which clock to cite; any layer disambiguating two timing answers | planned, W3 |
-| **Concordance verdict** on the arbiter surface | `aligned \| partially_aligned(reasons) \| disputed(adjudicated_by, reasons)` per (domain, range), with per-engine testimony as a drill (D-TIME item 2) | L4 outlook/anchor surfaces wanting one temporal voice instead of N | planned, W3 |
-| **Authority profiles as stored data** | generalised from `kala_gochara_authority` + `kala_paddhati_profile` into a per-engine authority × strength-in-chart profile (D-TIME item 3) | anything needing to know *why* one engine outranked another | planned, W3 |
+| **Temporal engine question-declarations** | a per-engine declaration in the registry: the one question each temporal engine answers, its granularity and range (D-TIME item 1) | L4 verdict surfaces choosing which clock to cite; any layer disambiguating two timing answers | planned |
 | **Temporal-confidence multiplier** | the concordance verdict exposed as a salience multiplier (D-TIME item 5) | **this one is a consumer, not a product**: it is HELD on L2's consensus/salience capabilities (C6) | held on L2 |
-| **19 chart-partitioned integrity contracts** (D-CND-03) | a worked, live-verified set of `NOT EXISTS (… GROUP BY chart_id HAVING …)` invariants | not a runtime capability — a **pattern** L1/L2/L4/L5 can copy rather than re-derive, per the ruling on #1723 | planned, W3 |
 
 ### What L3 CONSUMES from upstream (the other side of the same contract)
 
@@ -626,6 +630,26 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~21:0xZ — L3-W3 — PR hygiene clean (all 10 L3-owned PRs healthy,
+  zero DIRTY/UNMERGEABLE). Re-checked #1713's sidecar finding: still stuck on
+  the identical stale revision, seven+ cycles now, no response — correctly not
+  re-posted. Re-verified the E-gate/Held-items freeze status (`ga_positions`,
+  `ga_sensitive`, `ga_yoga`, `ga_dashas` — zero `asset_frozen` events for any of
+  them) — no change, nothing newly dispatchable. **This cycle's bounded unit:
+  found and fixed real staleness in the `CAPABILITIES LANDED` section** —
+  it had said "none yet — nothing has merged" since W1, while the entire N1
+  chain (7 PRs: #1890/#1894/#1919/#1921/#1924/#2047/#2049 — engine testimony,
+  authority profiles, concordance verdict) and the D-CND-03 19-contract set
+  (migration 670) had actually landed on `main` — verified each against
+  `git log origin/main`, not trusted from memory (several files live in
+  `platform-mcp/`, a directory an initial grep of `platform/` alone missed).
+  This section exists specifically so L4/L5 can poll it per the C6 contract
+  rather than discover capabilities by surprise — a stale "nothing yet" is a
+  real, consumer-facing defect, not cosmetic. Rewrote it with accurate PR
+  numbers; folded F-L3-15's four health-probes in too (also landed, also
+  unlisted here). — blocked on: nothing new; next action: continue strict
+  L3-only hygiene sweeps, watch for L4/L5 sessions actually consuming the
+  now-correctly-announced capabilities, and keep re-checking #1713.
 - `2026-09-06T~20:0xZ — L3-W3 — Second cycle under corrected L3-only scope, holding.
   All 10 L3-owned PRs checked (not the fleet) — 5 showed `UNMERGEABLE`-in-queue
   (`#1954`/`#1940`/`#1936`/`#1929`/`#1903`), stuck behind non-L3 blockers ahead of
