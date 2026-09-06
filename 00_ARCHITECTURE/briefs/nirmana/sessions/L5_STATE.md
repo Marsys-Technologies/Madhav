@@ -457,6 +457,42 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T21:33Z (C8 v2.3 cycle 568) — **Milestone: `#2150` MERGED — the fourteenth
+  state-recovery PR closed out.** Fourteenth recurrence of the exact same pattern (cycles 442,
+  453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, now 568). 10 local-only commits
+  (cycles 558-567, 29 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-15`. Pipeline job image still `d29e0cf0...`, still
+  predates the `depends_on` ordering fix — deploy remains genuinely CI-cadence-bound, not
+  L5-actionable.
+- 2026-09-06T21:27Z (C8 v2.3 cycle 567) — **IDLE-OK, verified.** #2150 still queued, unchanged.
+  Pipeline job image unchanged, still predates the fix. #2132 confirmed L1's, out of scope.
+  Nothing eligible.
+- 2026-09-06T21:21Z (C8 v2.3 cycle 566) — **IDLE-OK, verified.** Main advanced to `13f689e2b`
+  (matches #2150's own speculative merge-base sha from last cycle — #2148 landed separately,
+  #2150 still open/queued). #2150 still genuinely queued, no failures. Pipeline job image
+  unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T21:15Z (C8 v2.3 cycle 565) — **IDLE-OK, verified genuine build activity — main
+  itself hasn't advanced for a couple cycles, so checked directly rather than assuming a
+  stall.** `gh run list --event merge_group` for #2150's own `gh-readonly-queue/main/pr-2150-*`
+  branch shows a real IN_PROGRESS build (`CI — Ganga Quality Gate`, ~7 min elapsed, two sibling
+  checks already SUCCESS) — genuine progress. Deploy still not caught up.
+- 2026-09-06T21:09Z (C8 v2.3 cycle 564) — **IDLE-OK, verified.** #2150 unchanged, still
+  genuinely queued (queue depth growing, position climbing normally — #2151 also arrived, not
+  mine). Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T21:03Z (C8 v2.3 cycle 563) — **IDLE-OK, verified.** #2150 unchanged, still
+  genuinely queued. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T20:57Z (C8 v2.3 cycle 562) — **IDLE-OK, verified.** #2150 now genuinely queued
+  (CLEAN). Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T20:51Z (C8 v2.3 cycle 561) — **IDLE-OK, verified.** #2150 unchanged, down to last
+  check, no failures. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T20:45Z (C8 v2.3 cycle 560) — **IDLE-OK, verified.** #2150's Governance Gates job
+  checked at the job level (~6.2 min elapsed, within normal range) — genuine progress, not
+  stalled. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T20:39Z (C8 v2.3 cycle 559) — **IDLE-OK, verified.** #2150 still building, no
+  failures. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T20:33Z (C8 v2.3 cycle 558) — **IDLE-OK, verified.** #2150 building cleanly, no
+  failures, not yet queued. Pipeline job image unchanged, still predates the fix. Nothing
+  eligible.
 - 2026-09-06T20:27Z (C8 v2.3 cycle 557) — **Milestone: `#2143` MERGED — the thirteenth
   state-recovery PR closed out.** Thirteenth recurrence of the exact same pattern (cycles 442,
   453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, now 557). 11 local-only commits (cycles
