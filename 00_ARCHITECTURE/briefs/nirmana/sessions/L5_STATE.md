@@ -457,6 +457,12 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T00:59Z (C8 v2.3 cycle 203) — **IDLE-OK, verified not stalled.** Queue positions
+  static for 3 cycles running (#1861=4, #1844=59, #1901=85) — investigated: position-1 PR
+  #1854's TAP + EKV merge-group checks both completed SUCCESS, only `CI — Ganga Quality
+  Gate` still in_progress (~9 min in) — normal duration, not stuck. Both own PRs (#1826,
+  #1844) still confirmed `isInMergeQueue: true`, CLEAN, no action needed. Still no push
+  (nothing new, #1826 still queued). #1869 unchanged at 3 comments; #1856 still OPEN.
 - 2026-09-06T00:56Z (C8 v2.3 cycle 202) — **IDLE-OK.** Both own PRs confirmed genuinely
   queued: #1826 `isInMergeQueue: true` (still holding, not yet merged — main tip unchanged),
   #1844 `isInMergeQueue: true`. No push this cycle either (nothing new to push, and #1826 is
