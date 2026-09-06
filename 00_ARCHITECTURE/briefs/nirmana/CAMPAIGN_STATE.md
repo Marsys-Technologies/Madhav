@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T21:41:55Z` — cycle 627: **IDLE-OK.** (Several duplicate supervisor nudges arrived
+  queued in the same turn — no new instruction, treated as one cycle.) Own PR #2172: still open,
+  progressing. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T21:29:45Z` — cycle 626: **IDLE-OK.** Own PR #2172: still open, progressing. Fleet
   DIRTY: empty. No new `nirmana-adjudication` issues (19).
 - `2026-09-06T21:27:42Z` — cycle 625: **IDLE-OK.** Own PR #2172: still pending, normal. Fleet
