@@ -2287,3 +2287,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** #1944 merged (`3cf987569`, Conductor's tracker v2.1, not L0's) —
   resolved normally, not a hang. Positions dropped by 2 (75/82/83/104). No DIRTY, no RED, no new
   eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; new queue head #1948, ~3.8min in, normal. No DIRTY, no RED.
+  30/40 frozen holds.
