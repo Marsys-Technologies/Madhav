@@ -3386,3 +3386,6 @@ see log). Still 35/40 until that's resolved.
   actual live deployed sha before resubmitting (registry_fingerprint/analysis_digest values
   themselves are still correct and reusable; only `source_ref` needs to track whatever's live at
   submit time). No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Still `5b1ab78f` deploying (no newer commit landed since), no
+  change. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
