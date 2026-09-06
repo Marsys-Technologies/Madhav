@@ -8,6 +8,13 @@
  * Phase R2 target: every category maps to ≥1 tool.
  *
  * Authored: Wave 3 Phase R1/R2 (2026-06-16)
+ *
+ * F-B32 (NIRMĀṆA campaign, 2026-09-07): this list was found stale against the live canonical
+ * chart's fact_category universe (169 hand-maintained vs. 219 live — see
+ * L1_W6_CLOSE_REPORT_v1_0.md §2/§5 for the full audit). Being closed incrementally, one verified
+ * cluster at a time, rather than in one unverified bulk pass — each addition here must be
+ * confirmed against the real serving tool's actual query logic, not inferred from naming alone.
+ * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07; the remaining ~52 are still open.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -70,11 +77,16 @@ export const CHART_FACTS_CATEGORIES = [
   'esoteric_point_vishnu',
   'esoteric_point_yogi',
   'graha_avastha_baladi',
+  'graha_avastha_baladi_per_varga',
   'graha_avastha_deepta',
+  'graha_avastha_deeptaadi_per_varga',
   'graha_avastha_jagrad',
+  'graha_avastha_jagradadi_per_varga',
   'graha_avastha_lajjitadi',
+  'graha_avastha_lajjitadi_per_varga',
   'graha_avastha_lifetime_exposure_summary',
   'graha_avastha_sayanadi',
+  'graha_avastha_sayanadi_per_varga',
   'graha_composite_state_classification',
   'graha_dignity_per_varga',
   'graha_dispositor_chain',
@@ -387,6 +399,17 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   graha_avastha_jagrad:                   ['marsys://tool/L1/get_avasthas'],
   graha_avastha_lajjitadi:                ['marsys://tool/L1/get_avasthas'],
   graha_avastha_lifetime_exposure_summary:['marsys://tool/L1/get_avasthas'],
+  // F-B32 (2026-09-07): opt-in only (not on the default page — the query is
+  // `fact_category = ANY($2)` over the caller's `categories` param, `AVASTHA_CATEGORIES`
+  // being only the default subset — get_avasthas.ts:11); real, computed, previously-uncatalogued
+  // per-varga refinement categories, same "opt-in still counts as served" doctrine as
+  // ashtakavarga_bindu_per_varga above. 1305/1305/45/45/45 live rows respectively (canonical
+  // chart) confirm these are populated, not stray.
+  graha_avastha_baladi_per_varga:         ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_deeptaadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_jagradadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_lajjitadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_sayanadi_per_varga:       ['marsys://tool/L1/get_avasthas'],
   graha_avastha_sayanadi:                 ['marsys://tool/L1/get_avasthas'],
 
   // ── Tajik ─────────────────────────────────────────────────────────────────
