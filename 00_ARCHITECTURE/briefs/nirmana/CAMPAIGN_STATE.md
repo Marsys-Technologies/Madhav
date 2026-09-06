@@ -380,6 +380,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:26:06Z` — cycle 590: **ONE bounded unit: fleet sweep nudge on #2149** — a
+  heartbeat-only PR from L3 (title: "L3: heartbeat — IDLE-OK..."), exactly the anti-pattern
+  already ruled on via #2067 (heartbeats must never be a PR). Nudged citing the standing doctrine
+  directly rather than a generic rebase note, asked L3 to close and switch to the non-PR
+  mechanism. No new `nirmana-adjudication` issues (19). 590 cycles this session.
 - `2026-09-06T18:23:48Z` — cycle 589: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:21:37Z` — cycle 588: **IDLE-OK.** Fleet DIRTY: empty. No new
