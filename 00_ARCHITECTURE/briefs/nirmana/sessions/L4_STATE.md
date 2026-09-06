@@ -9382,3 +9382,26 @@ file present.
 CYCLE 526 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-07T~03:20Z` — L4 — **CYCLE 527 (v2.3) — STATE-LAG HYGIENE FIX. Discovered
+`codex/nirmana-l4-heartbeat` (the old branch) had drifted ~200 cycles behind `main` since
+the last heartbeat sync PR (#1789, merged 2026-09-05) — contract Step 3 violation ("NEVER
+let state lag more than a few cycles behind reality on main"). Root cause: GitHub pruned the
+merged branch's remote ref post-#1789; a later cycle silently recreated it and kept pushing
+cycle entries to it without ever re-landing them on main. PR #2175 (from the stale old
+branch) hit merge conflicts against unrelated CI-workflow changes on main because the old
+branch's tree predated #1973/#1715/#2096/#2159. Fixed by recreating the heartbeat branch
+fresh off current `origin/main` as `codex/nirmana-l4-heartbeat-v2`, carrying forward only
+the three L4 docs artifacts (L4_STATE.md, L4_W5_VERIFICATION_v1_0.md,
+L4_W6_CLOSE_REPORT_v1_0.md) verbatim (append-only content verified: main's existing
+L4_STATE.md head byte-matched the new file's head before the append). Closed #2175, opened
+#2176 from the new branch — CLEAN, auto-merge armed, CI running as of this cycle. Going
+forward, `codex/nirmana-l4-heartbeat-v2` is the durable heartbeat branch; next cycle must
+verify #2176's `is:queued` status per Step 1 before anything else.**
+
+**PR hygiene:** #2176 is the only own PR open — CLEAN (mergeable), auto-merge armed, CI
+in progress; not yet `is:queued` (checks pending). Next cycle verifies queue entry first.
+
+CYCLE 527 L4: state-lag hygiene fix — recreated heartbeat branch on main-current base,
+opened PR #2176 (auto-merge armed) → next: verify #2176 is:queued, then resume E-gate
+re-checks on the new branch.
