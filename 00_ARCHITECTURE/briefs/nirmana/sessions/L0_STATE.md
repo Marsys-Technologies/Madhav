@@ -2336,3 +2336,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Prediction confirmed: #1953 merged (`99de5b042`, L1, not L0's).
   Positions dropped to 65/72/73/94. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** No change; new queue head #1955, ~4.3min in, normal. No DIRTY, no RED.
+  30/40 frozen holds.
