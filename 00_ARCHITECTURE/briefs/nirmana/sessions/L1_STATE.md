@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 60; ga_structural F-A14 widened to 19/57 (#2033); 1 DIRTY PR fixed (#1871)
+last_updated: 2026-09-06 — C8 v2.3 cycle 61; ga_structural F-A14 widened to 20/57 (#2035)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -37,7 +37,8 @@ your `nirmana-adjudication` issues → continue.
   conjunction_within_orb, cycle 55), 784 (`ga_structural` aspect_tajik, cycle 56), 785
   (`ga_structural` graha_yoga_karaka_flag, cycle 57), 786 (`ga_structural`
   graha_dispositor_chain, cycle 58), 787 (`ga_structural` composite_dispositor_strength, cycle
-  59), 788 (`ga_structural` Group H avastha bundle — 4 categories, cycle 60) used. 789–799
+  59), 788 (`ga_structural` Group H avastha bundle — 4 categories, cycle 60), 789
+  (`ga_structural` nakshatra_dispositor_chain, cycle 61) used. 790–799
   remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
@@ -2607,6 +2608,54 @@ CYCLE 60 L1: fixed 1 DIRTY PR (#1871); widened `ga_structural`'s F-A14 contract 
 categories (PR #2033, migration 788) — next: continue `ga_structural` widening (38 categories
 remain), or `ga_positions` re-dispatch once #1892 lands.
 
+## CYCLE 61 (C8 v2.3) — ga_structural's F-A14 contract widened to 20/57 categories (PR #2035, migration 789); the arc's strongest conjunct yet — re-derived directly against the writer's own §N.5 authoritative source table instead of an independently-embedded classical rule
+
+**PR hygiene:** clean sweep (`--limit 200`). Filtered to L1's own 43 `codex/nirmana-l1-*` PRs;
+40/43 confirmed genuinely `is:queued`. #1827 (this state PR), #1871 (last cycle's DIRTY fix,
+still catching up), and #2033 (freshly opened last cycle) all mid-CI with green/pending checks
+only, no DIRTY/RED. #1928/#1892 unchanged.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `nakshatra_dispositor_chain`**
+(PR **#2035**, migration 789 — tenth in the 780-799 range).
+
+Read the writer's own docstring before designing conjuncts and found this category is
+structurally different from `graha_dispositor_chain` (migration 786): rather than walking a
+hardcoded `SIGN_LORDS` table, it reads each chain step's `nakshatra_lord` directly from
+`graha_nakshatra_join` — the writer's own comment cites this as an L1-authority reference per
+§N.5. This makes the STRONGEST conjunct type available in this arc so far: re-deriving the
+chain-walk by re-reading the exact same source-of-truth table the writer itself consults,
+rather than an independently-embedded classical rule that could theoretically drift from the
+writer's own reference.
+
+Designing the domain-consistency conjunct surfaced a genuine, honestly-explained data gap: a
+naive "nakshatras array is always length-1" check produced 15/150 false violations, all on
+`fact_subject='LAGNA'`. Traced this to Lagna having no `graha_position.nakshatra` entry at all
+(confirmed: 0 rows), so the writer's own `if nak:` guard silently skips appending Lagna's own
+nakshatra to the array while still appending every subsequent graha's nakshatra correctly —
+producing an array exactly ONE shorter than the graha case, consistently across all 15 Lagna
+rows. Scoped the conjunct to match this exact, reproducible pattern (length-2 for Lagna,
+length-1 for grahas) rather than either suppressing the check or misreporting the honest gap as
+a violation. Separately confirmed Lagna DOES have a real `graha_nakshatra_join.nakshatra_lord`
+entry (unlike its missing `graha_position.nakshatra`), so it participates fully in the
+chain-walk re-derivation conjunct rather than being excluded as a special case.
+
+Shipped six conjuncts total: chain[0] identity, length-vs-array-length, a `cycle_at_step`
+arithmetic identity (which — worked out by hand — holds unconditionally regardless of whether a
+genuine repeat was found or the fallback fired, since both formulas coincide), the
+Lagna-aware nakshatras-array-length check, the full chain-pair re-derivation against
+`graha_nakshatra_join` via `generate_series`, and a `constituent_fact_ids[0]` resolution check
+(the §N.5 "constituent_facts_array must resolve" concern, verified directly against a real row
+rather than assumed). All six verified live clean then individually mutation-tested via real
+transactional `UPDATE`+`ROLLBACK`.
+
+Carried the forty-nine prior conjuncts (a)-(ww) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 256 passed / 91 skipped (48 files). `provenance_inventory --check`: clean.
+
+CYCLE 61 L1: widened `ga_structural`'s F-A14 contract to 20/57 categories (PR #2035, migration
+789) — next: continue `ga_structural` widening (37 categories remain), or `ga_positions`
+re-dispatch once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2622,7 +2671,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2031 cycle 59 → #2033 cycle 60 — **19/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary; migration range 780-799, 789-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape: `graha_yoga_karaka_flag` (migration 785) and `graha_dispositor_chain` (migration 786). `composite_dispositor_strength` (migration 787) is a cross-category dependent of `graha_dispositor_chain` — the FIRST conjunct in this arc requiring explicit reasoning about the writer's own float-rounding precision. **Migration 788 is the arc's first multi-category jump** — bundled FOUR tightly-coupled Group H avastha categories (baladi/jagrad/deepta/lifetime_exposure_summary, all emitted by the same loop, with lifetime_exposure_summary literally re-quoting the other three) into one migration, including a genuine cross-branch-logic iff re-derivation (jagrad='jagrad' iff deepta IN (deepta,svastha)) deliberately scoped to only the provably-iff case. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2033 cycle 60 → #2035 cycle 61 — **20/57 categories**: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb, aspect_tajik, graha_yoga_karaka_flag, graha_dispositor_chain, composite_dispositor_strength, graha_avastha_baladi, graha_avastha_jagrad, graha_avastha_deepta, graha_avastha_lifetime_exposure_summary, nakshatra_dispositor_chain; migration range 780-799, 790-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat confirmed on FOUR `_per_varga` categories plus TWO pure-D1 occurrences. TWO categories confirmed NOT the D1 dual-source shape: `graha_yoga_karaka_flag` (migration 785) and `graha_dispositor_chain` (migration 786). `composite_dispositor_strength` (migration 787) is a cross-category dependent of `graha_dispositor_chain` — the FIRST conjunct in this arc requiring explicit reasoning about the writer's own float-rounding precision. Migration 788 bundled FOUR tightly-coupled Group H avastha categories in one pass. `nakshatra_dispositor_chain` (migration 789) is the arc's STRONGEST conjunct type yet — unlike graha_dispositor_chain's hardcoded classical table, it reads each chain step's lord directly from `graha_nakshatra_join` (an L1-authority §N.5 reference), so the conjunct re-derives the chain-walk against that same source-of-truth table rather than an independently-embedded rule; also caught and correctly scoped an honest Lagna-specific data gap (no `graha_position.nakshatra` entry) rather than misreporting it as a violation. `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3432,6 +3481,21 @@ whole campaign.
   re-derivation (jagrad='jagrad' iff deepta IN (deepta,svastha)) by hand-tracing both
   functions' branch order, deliberately scoped to only the provably-iff relationship rather
   than forcing a broader, false claim for the non-1:1 sushupta/swapna split.
+
+- **D-L1-85** — C8 v2.3 cycle 61: widened `ga_structural`'s F-A14 contract (migration 789,
+  PR #2035), 19/57 → 20/57, adding `nakshatra_dispositor_chain`. Read the writer's own docstring
+  before assuming this category shared `graha_dispositor_chain`'s hardcoded-classical-table
+  shape, and found it structurally different: it reads each chain step's lord directly from
+  `graha_nakshatra_join`, an L1-authority reference per §N.5 — enabling the strongest conjunct
+  type in this arc so far, re-derived against the exact source table the writer consults rather
+  than an independently-embedded rule. Caught a genuine, honestly-explained data gap while
+  designing the domain-consistency conjunct: a naive length-1-everywhere check produced 15 false
+  violations, all on Lagna, traced to Lagna having no `graha_position.nakshatra` entry (the
+  writer's own `if nak:` guard silently skips it) — scoped the conjunct to the exact,
+  reproducible length-2-for-Lagna pattern rather than suppressing the check or misreporting the
+  honest gap as a violation. Separately verified Lagna DOES have a real
+  `graha_nakshatra_join.nakshatra_lord` entry, so it still participates fully in the chain-walk
+  re-derivation conjunct.
 
 ## Held items
 
@@ -4421,3 +4485,26 @@ L1 must satisfy rather than a feature it consumes.
   provenance_inventory --check: clean. CYCLE 60 L1: fixed 1 DIRTY PR, widened ga_structural's
   F-A14 contract to 19/57 categories (PR #2033, migration 788) -- next: continue ga_structural
   widening (38 categories remain), or ga_positions re-dispatch once #1892 lands.
+- 2026-09-06T08:1xZ -- CYCLE 61 (C8 v2.3). PR hygiene clean: 40/43 L1 PRs genuinely is:queued;
+  #1827/#1871/#2033 all mid-CI green/pending. #1928/#1892 unchanged. Unit of work: widened
+  ga_structural's F-A14 contract to 20/57 (PR #2035, migration 789) --
+  nakshatra_dispositor_chain. Read the writer's own docstring before assuming this shared
+  graha_dispositor_chain's hardcoded-classical-table shape -- found it reads each chain step's
+  lord DIRECTLY from graha_nakshatra_join (an L1-authority §N.5 reference), enabling the
+  strongest conjunct type in this arc: re-derived the chain-walk against the exact source table
+  the writer consults rather than an independently-embedded rule. Caught a genuine data gap
+  designing the domain check: naive length-1-everywhere produced 15 false violations, all on
+  Lagna, traced to Lagna having no graha_position.nakshatra entry (writer's own `if nak:` guard
+  silently skips it) -- scoped the conjunct to the exact reproducible length-2-for-Lagna pattern
+  rather than suppressing it or misreporting the honest gap. Confirmed Lagna DOES have a real
+  graha_nakshatra_join.nakshatra_lord entry, so it still participates in the chain-walk
+  re-derivation. Shipped 6 conjuncts total: chain[0] identity, length-vs-array, a cycle_at_step
+  arithmetic identity (holds unconditionally by hand-derivation), the Lagna-aware nakshatras-
+  array-length check, the full chain-pair re-derivation via generate_series, and a
+  constituent_fact_ids[0] resolution check (§N.5). All six verified live clean then individually
+  mutation-tested via real transactional UPDATE+ROLLBACK. Carried the 49 prior conjuncts forward
+  verbatim, including the 3 already-tracked genuinely-red ones. No writer touched. Full
+  platform/tests/unit/migrations/ suite: 256 passed / 91 skipped (48 files).
+  provenance_inventory --check: clean. CYCLE 61 L1: widened ga_structural's F-A14 contract to
+  20/57 categories (PR #2035, migration 789) -- next: continue ga_structural widening (37
+  categories remain), or ga_positions re-dispatch once #1892 lands.
