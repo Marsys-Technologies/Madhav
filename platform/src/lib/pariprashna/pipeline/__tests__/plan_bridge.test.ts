@@ -179,7 +179,7 @@ describe('getPlanBridgeCoverage — live, honest measurement', () => {
 // has no failure mode of its own; comparing its output to itself (the defect
 // an independent adversarial review found in a prior version of this file's
 // module comment) can never go red. The REAL detector is here: an explicit,
-// literal enumeration of the 19 `live_tool` names known uncovered as of this
+// literal enumeration of the 20 `live_tool` names known uncovered as of this
 // writing, asserted with `toEqual` (order- and count-sensitive) against the
 // live computation. `toEqual` on two arrays fails if EITHER side has an entry
 // the other lacks, so this catches a name silently:
@@ -210,6 +210,16 @@ const KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE: readonly string[] = [
   'ganita_condition_get',
   'ganita_kp_cusps_get',
   'ganita_structural_get',
+  // NIRMANA L0 F-D21/F-D23 (2026-09-07, #2122): from_moon_view's live_tool was repointed from
+  // the inert ganita_chart_facts_get(reference_point:'moon') call to the real consumer,
+  // ganita_transit_anchors_get -- a genuinely NEW distinct live_tool (total_distinct_live_tools
+  // 41->42), and it has no resolvable tool_name in the plan bridge yet (web_tool_bridge.generated.json
+  // reports it "unmapped", uri: null -- confirmed, not a stale-generation artifact). This is the
+  // SAME class of genuinely un-bridged tool as ganita_structural_get/ganita_condition_get above
+  // (see compiled_floor_adapter.ts's "Genuinely un-bridged, dispositioned" comment) -- honestly
+  // newly uncovered, not force-mapped. Bridging it into the Pariprashna plan-bridge resolver (a
+  // hand-map entry or generator fix) is out of this PR's scope; flagged for that owner separately.
+  'ganita_transit_anchors_get',
   'gochara_activation_get',
   'gochara_election_avoidance_get',
   'gochara_forecast_get',
@@ -226,7 +236,7 @@ const KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE: readonly string[] = [
 ]
 
 describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code path that can fail)', () => {
-  it('uncovered_live_tools matches the pinned 19-name baseline exactly — fails loudly if a name is added OR removed', () => {
+  it('uncovered_live_tools matches the pinned 20-name baseline exactly — fails loudly if a name is added OR removed', () => {
     const c = getPlanBridgeCoverage()
     // Sanity: the baseline itself must be sorted/deduped the same way the live
     // value is, or this assertion would be comparing apples to a typo.
@@ -235,16 +245,22 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     expect(c.uncovered_live_tools).toEqual(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE)
   })
 
-  it('covered_live_tools count matches the baseline-implied count (22 of 41)', () => {
+  it('covered_live_tools count matches the baseline-implied count (22 of 42)', () => {
     const c = getPlanBridgeCoverage()
     expect(c.total_distinct_live_tools - KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length).toBe(c.covered_live_tools)
     // NIRMANA L1 W3 F-E10 (2026-09-05): the registry legitimately grew a new distinct
     // live_tool (ganita_vastu_get, via the new vastu_read primitive) and it is
     // immediately covered, not uncovered — the pinned 19-name uncovered baseline above
-    // is unchanged. 21->22 covered, 40->41 total, per the header comment's own
+    // was unchanged by this delta. 21->22 covered, 40->41 total, per the header comment's own
     // "registry legitimately grew" update path.
+    //
+    // NIRMANA L0 F-D21/F-D23 (2026-09-07, #2122): the registry grew again -- from_moon_view's
+    // live_tool repointed to ganita_transit_anchors_get, a genuinely new distinct live_tool
+    // that is NOT yet resolvable in the plan bridge (uncovered baseline above: 19->20 names).
+    // Both total_distinct_live_tools and uncovered_live_tools grew by 1, so they cancel:
+    // covered_live_tools stays 22. 41->42 total.
     expect(c.covered_live_tools).toBe(22)
-    expect(c.total_distinct_live_tools).toBe(41)
+    expect(c.total_distinct_live_tools).toBe(42)
   })
 })
 

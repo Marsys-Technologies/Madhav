@@ -75,9 +75,16 @@ LAYER_PREFIX = {
 # changed exactly one entry (bg_yogas); the other 35 frozen L0 writers' digests
 # are byte-identical to before, so no other asset's already-accepted
 # analysis_digest is affected by this re-pin.
+#
+# Re-pinned again 2026-09-07 (issue #2122, F-D21/F-D23): bg_vidhi_primitives.py's
+# from_moon_view entry was corrected (re-pointed from the inert reference_point
+# arg on ganita_chart_facts_get to the real ganita_transit_anchors_get consumer).
+# Same verification discipline: regenerating the writer inventory changed
+# exactly one entry (bg_vidhi_primitives); the other 35 frozen L0 writers'
+# digests (bg_yogas included) are byte-identical to the prior re-pin.
 L0_FROZEN_PINS = {
     "convergence_commit": "49bb5c98b864a2cb2fee037cdb7f14f6892a8263",
-    "writer_inventory_sha256": "dd4500b6526b68b13d60dc447bcc57f76e4ba1cb1dd6782bd60f3a21017e90a3",
+    "writer_inventory_sha256": "5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178",
     "receipt_count": 40,
 }
 

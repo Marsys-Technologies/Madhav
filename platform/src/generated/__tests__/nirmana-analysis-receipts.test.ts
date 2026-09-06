@@ -90,9 +90,15 @@ describe('L0 preservation (adjudication #1715, ruling requirement 3)', () => {
     // nirmana-analysis-receipts.ts), so no other asset's already-accepted
     // analysis_digest is affected. convergence_commit and receipt_count are
     // unchanged -- this re-pin touches exactly the one value that changed.
+    //
+    // Updated again 2026-09-07 (issue #2122, F-D21/F-D23): bg_vidhi_primitives.py's
+    // from_moon_view entry corrected (inert reference_point arg -> the real
+    // ganita_transit_anchors_get consumer). Same discipline: regenerating the
+    // inventory changed exactly one entry (bg_vidhi_primitives); all other 35
+    // frozen L0 writers (bg_yogas included) are byte-identical to the prior re-pin.
     expect(NIRMANA_L0_CONVERGENCE_COMMIT).toBe('49bb5c98b864a2cb2fee037cdb7f14f6892a8263')
     expect(NIRMANA_L0_WRITER_INVENTORY_SHA256)
-      .toBe('dd4500b6526b68b13d60dc447bcc57f76e4ba1cb1dd6782bd60f3a21017e90a3')
+      .toBe('5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178')
     expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(40)
   })
 
