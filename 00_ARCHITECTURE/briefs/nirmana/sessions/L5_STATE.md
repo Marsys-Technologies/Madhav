@@ -457,6 +457,20 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:25Z (C8 v2.3 cycle 418) — **#1826's `mi_jivanaghatana` spec renumbered a THIRD
+  time (806→809→811→813), caught with #1826 down to its very last pending check.** Main's tip had
+  advanced to `811` (yet another L1 migration), colliding with cycle 416's 809→811 fix — spotted
+  before Governance Gates (the last of #1826's checks) could complete and discover it the hard way.
+  Renumbered to 813 (clear of main's 811 and sibling #1844's 812), all three places updated
+  together, all three gates verified locally (guard PASS, `migrate.ts` reconciled — confirmed via
+  the `_migrations_applied` tracker row directly), pushed (not queued yet, no dequeue needed),
+  re-armed, fresh CI confirmed running (21 checks in progress), #1844 confirmed unaffected. **Race
+  tally so far this session: `mi_vistara` (#1844) 692→808→810→812 (4 numbers), `mi_jivanaghatana`
+  (#1826) 806→809→811→813 (4 numbers).** Both PRs are now leapfrogging main roughly in lockstep —
+  each fix buys maybe one cycle of headroom before the other file's number gets clipped next. No
+  change to strategy: catching each collision live and cheaply, the moment it's found, remains
+  correct; there is no number far enough ahead of main's tip to be safe for more than a few
+  minutes at this velocity.
 - 2026-09-06T12:20Z (C8 v2.3 cycle 417) — **#1844's `mi_vistara` spec renumbered a FOURTH time
   (692→808→810→812), caught proactively again before its checks reached the guard.** Main's tip
   had advanced to `810` (yet another L1 migration), colliding with cycle-417-start's own 808→810
