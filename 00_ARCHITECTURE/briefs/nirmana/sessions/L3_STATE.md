@@ -630,6 +630,13 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~27:0xZ — L3-W3 — PR hygiene: the 4 PRs queued over the last two
+  cycles (`#1940`/`#1936`/`#1929`/`#1903`) went `UNMERGEABLE`-in-queue this
+  cycle (main advancing past them while queued). Fixed all four the standard
+  way: dequeue, rebase (clean, no conflicts on any of the four), pins/digests
+  `--check` clean, diff scope verified sane, tests re-pass (45/30/34/73),
+  pushed. All confirmed `MERGEABLE`. — blocked on: nothing new; next action:
+  keep sweeping, watch for actual merges, recheck `#1713`/`#2079`.
 - `2026-09-06T~21:0xZ — L3-W3 — PR hygiene clean (all 10 L3-owned PRs healthy,
   zero DIRTY/UNMERGEABLE). Re-checked #1713's sidecar finding: still stuck on
   the identical stale revision, seven+ cycles now, no response — correctly not
