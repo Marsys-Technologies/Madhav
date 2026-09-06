@@ -457,6 +457,36 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T02:50Z (C8 v2.3 cycle 618) — **`#2177` MERGED — the twentieth state-recovery PR
+  closed out.** Twentieth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, now 618). 8 local-only
+  commits (cycles 610-617, 24 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-21`. Ancestor counts still unchanged across all 11
+  remaining L5 assets — checked before starting recovery.
+- 2026-09-07T02:44Z (C8 v2.3 cycle 617) — **IDLE-OK, verified genuine build activity — #2177
+  unchanged for several cycles now, so checked directly rather than assuming.** Its own
+  `gh-readonly-queue/main/pr-2177-*` merge_group build shows real IN_PROGRESS activity (~10.2
+  min elapsed, two sibling checks already SUCCESS) — genuine progress, not stalled. Ancestor
+  counts unchanged. Nothing eligible.
+- 2026-09-07T02:38Z (C8 v2.3 cycle 616) — **IDLE-OK, verified.** #2177 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T02:32Z (C8 v2.3 cycle 615) — **IDLE-OK, verified.** #2177 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T02:26Z (C8 v2.3 cycle 614) — **IDLE-OK, verified.** #2177 now genuinely queued
+  (CLEAN). Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T02:20Z (C8 v2.3 cycle 613) — **IDLE-OK, verified.** #2177's Governance Gates job
+  checked at the job level (~10.4 min elapsed, upper end of normal but not stalled) — genuine
+  progress. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T02:14Z (C8 v2.3 cycle 612) — **IDLE-OK, verified.** #2177 down to its last check,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T02:08Z (C8 v2.3 cycle 611) — **IDLE-OK, verified.** #2177 down to 2 pending checks,
+  no failures. Main advanced (L3's `ka_muhurta_seva` FROZEN, not mine). Ancestor counts unchanged
+  from last cycle — that freeze wasn't in any of L5's remaining dependency chains. Nothing
+  eligible.
+- 2026-09-07T02:02Z (C8 v2.3 cycle 610) — **IDLE-OK, verified.** #2177 building cleanly, no
+  failures. Checked `unfrozen_ancestors` counts across all 11 remaining L5 assets — real
+  progress campaign-wide (all now in the low-to-mid 40s or 23, well down from earlier session
+  readings in the 50s-60s), but none have reached 0 yet. Nothing eligible.
 - 2026-09-07T01:56Z (C8 v2.3 cycle 609) — **`#2173` MERGED — the nineteenth state-recovery PR
   closed out.** Nineteenth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, now 609). 8 local-only commits
