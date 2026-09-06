@@ -461,6 +461,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~06:5xZ — L3-W3 — SIXTEENTH DIRTY-PR fix this run, and a real merge:
+  #1934 (F-KALA-1 third slice, kala_ahead_get recurrence-ladder) genuinely MERGED**
+  (`2026-09-06T02:33:50Z`, the first confirmed merge since #1935 several cycles ago) —
+  and its own merge conflicted this cycle's own state PR (`#2034`) on `L3_STATE.md`, same
+  established shape. Fixed via the usual pattern: stashed the held local edit first, then
+  discovered the stash didn't reapply cleanly post-rebase (same orphaning risk as the
+  original L3_STATE.md conflicts) — correctly discarded it and wrote this entry fresh
+  rather than fight a bad reapply. Force-pushed, re-armed auto-merge, confirmed
+  `MERGEABLE`.
+  #1903 (F-CONC-6 prerequisite) still not merged. #1958/sidecar-traffic/#1960 unchanged.
+
 - `2026-09-06T~06:3xZ — L3-W3 — IDLE-OK: full house again — all 46 open L3 PRs
   genuinely `is:queued`, `#1903` still among them but still not merged.** Refined the
   drain-rate finding: `git log origin/main` shows the tip has only advanced ONE commit
