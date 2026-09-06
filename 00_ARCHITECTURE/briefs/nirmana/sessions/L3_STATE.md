@@ -458,6 +458,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~05:0xZ — L3-W3 — Investigated a possible queue-stall false alarm at
+  position 1, resolved with real evidence before escalating — genuinely healthy, not
+  stuck.** `#1903` still at position 3 (unchanged from last cycle), position 1 (`#1987`,
+  an L1 PR, not mine) still `AWAITING_CHECKS` — same PR as last cycle, which read as a
+  possible stall at first. Checked `mergeQueueEntry{enqueuedAt}`: **23:14:14Z the
+  previous day, ~8 hours ago** — alarming at first glance. Then found the actual
+  evidence via `gh run list`: a LIVE, `in_progress` "CI — Ganga Quality Gate" workflow
+  run on branch `gh-readonly-queue/main/pr-1987-<sha>`, started **07:10:15Z — only ~6
+  minutes before this check**. `enqueuedAt` is when the PR joined the FIFO queue (its
+  position-N wait time), not when its merge-group CI started — #1987 only reached
+  position 1 recently and its actual checks are genuinely running right now. **Correctly
+  did NOT post a false stall alarm to #1713** — verified with real evidence
+  (`gh run list`) before concluding, exactly the discipline this campaign's own
+  precedent (checking before assuming) requires. PR hygiene clean this cycle (no
+  DIRTY/RED). `#2060` unchanged, still queued.
+
 - `2026-09-06T~04:0xZ — L3-W3 — Precision finding: queried the actual `mergeQueue`
   GraphQL object directly (not just `is:queued` membership) — real queue depth and
   per-PR position, not available from any check used before this cycle.** Total queue
