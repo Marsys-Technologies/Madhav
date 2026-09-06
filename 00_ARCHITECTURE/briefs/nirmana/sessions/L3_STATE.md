@@ -493,6 +493,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~140:0xZ — L3-W3 — PR hygiene: `#2187`'s own `merge_group`
+  build (run `34066593959`) confirmed via full `gh run list` scan
+  (not truncated) — ~5.5min elapsed, 8/9 jobs green, only `Governance
+  Gates` `in_progress`, within normal range. Nothing to fix. Continued
+  F-L3-4 with a seventh asset, `ka_jivana_parva` — a genuinely different
+  shape from every prior asset in this batch (not a fan-out, not a
+  top-N cap): the sum of three independently birth/time-clipped
+  Vimshottari dasha levels (10 MD + 89 AD + 1 PD = 100, coincidentally
+  equal to `ka_bhavishya_lekha`'s own 100 but via an unrelated,
+  uncapped derivation). Also caught and documented (without touching the
+  writer) a real discrepancy: the writer's own inline comment claims its
+  PD query returns "~9 rows", but the actual filter
+  (`start_date <= as_of_date AND end_date >= as_of_date`) returns only
+  the single PD spanning build time — independently re-verified live via
+  a fresh query against `chart_dashas` in the paired test, not trusted
+  from reading the comment. Migration 858 + paired test authored (no
+  self-transaction wrapper from the start), all 7 tests pass, confirmed
+  live the row is genuinely still NULL after the "rolled back" tests
+  ran. Migration-number guard PASS (858, confirmed free). Committed
+  locally (`2a422e88f`), held from push — `#2187` still mid-queue-
+  attempt. — blocked on: nothing new; next action: push once `#2187`
+  merges or clearly finishes, then continue F-L3-4 on another asset (12
+  remain NULL) if still no E-gate work.
 - `2026-09-07T~139:0xZ — L3-W3 — PR hygiene: `#2187` now genuinely
   `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
   F-L3-4 with a sixth asset, `ka_bhavishya_lekha` (probabilistic forward
