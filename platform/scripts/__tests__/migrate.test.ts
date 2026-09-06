@@ -752,7 +752,7 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; three known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 806→809 mi_jivanaghatana output_digest_spec (2026-09-06)', () => {
+  it('the checked-in allowlist parses; three known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 806→811 mi_jivanaghatana output_digest_spec (2026-09-06)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
     // forces documentation of each real renumber event. Current disclosed set: exactly 3.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
@@ -760,7 +760,7 @@ describe('loadRenumberDisclosures', () => {
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31143327280).
     // Entry 3: 806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql applied to the shared dev
-    //   DB, renumbered to 809 after colliding with an unrelated L1 806 migration that merged to
+    //   DB, renumbered to 809 then to 811 after main independently claimed 809 too, after colliding with an unrelated L1 806 migration that merged to
     //   main first. Disclosed 2026-09-06 (self-diagnosed proactively by the L5 NIRMANA campaign
     //   lane while reconciling the sibling 692->808 collision on PR #1844, same session).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
@@ -779,12 +779,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry544!.sql_identity).toBe('42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08')
     expect(entry544!.disposition).toBe('already-applied-under-old-name')
     expect(entry544!.disclosed_on).toBe('2026-08-07')
-    const entry809 = map.get('809_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
-    expect(entry809).toBeDefined()
-    expect(entry809!.applied_filename).toBe('806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
-    expect(entry809!.sql_identity).toBe('2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102')
-    expect(entry809!.disposition).toBe('already-applied-under-old-name')
-    expect(entry809!.disclosed_on).toBe('2026-09-06')
+    const entry811 = map.get('811_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
+    expect(entry811).toBeDefined()
+    expect(entry811!.applied_filename).toBe('806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
+    expect(entry811!.sql_identity).toBe('2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102')
+    expect(entry811!.disposition).toBe('already-applied-under-old-name')
+    expect(entry811!.disclosed_on).toBe('2026-09-06')
   })
 })
 
