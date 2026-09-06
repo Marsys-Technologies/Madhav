@@ -457,6 +457,14 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T10:31Z (C8 v2.3 cycle 388) — **#1901 MERGED — mi_vistara delta-skip fix
+  finally landed** (the Conductor's fix for #1899, tracked since very early in this
+  session). Checked deploy readiness before attempting anything (same lesson as
+  mi_jivanaghatana): `amjis-web` still serving `4dd77e21…`, `git merge-base
+  --is-ancestor 0452d1e74 4dd77e21…` confirms the deployed sha is BEHIND the fix commit.
+  **Not attempting the mi_vistara retry this cycle** — will retry once a live revision
+  descends from `0452d1e74`. Both own PRs confirmed healthy (#1826 fresh CI progressing,
+  #1844 genuinely queued, no failures on either). #1869 unchanged at 4 comments.
 - 2026-09-06T10:28Z (C8 v2.3 cycle 387) — **Pushed 5-cycle batch (381-386).** Dequeued
   #1826 (was genuinely queued), rebased 389 commits clean, pushed, re-armed. #1844
   confirmed unaffected (`isInMergeQueue: true`). Starting a new local batch.
