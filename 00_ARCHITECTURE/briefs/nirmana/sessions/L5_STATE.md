@@ -457,6 +457,35 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T02:01Z (C8 v2.3 cycle 221) — **mi_jivanaghatana DISPATCH SUCCEEDED — first
+  clean build since #1861 landed.** Deploy confirmed live at exact commit `1ef6267e96f6…`
+  (#1861). Claimed the run slot, took a fresh snapshot (`cloudsql-backup:1788659272974`).
+  Dry run with `--reviewed-deployment-sha 1ef6267e9…` (the newest deployed sha) failed:
+  `accepted asset analysis does not match the current live registry contract`. Root-caused
+  via a throwaway vitest scratch test computing the canonical digests live: the registry
+  fingerprint (`cf3bbf14…`) and analysis_digest (`6d41ef1d…`) both still matched the
+  ORIGINAL W2 acceptance exactly — the mismatch was `source_ref`, which the dispatch
+  script requires to equal `git:<--reviewed-deployment-sha>` **exactly** when that flag is
+  passed, not "any ancestor." Two 409s from `nrec` confirmed evidence is immutable per
+  (registry_fingerprint, analysis_digest) generation — you cannot attach a new source_ref
+  to an already-accepted generation by resubmitting under a new OR the same idempotency
+  key. **Fix: pass the ORIGINAL `--reviewed-deployment-sha`** (`5892849575f81c…`, the sha
+  the W2 evidence was actually accepted against) rather than the newest live sha — verified
+  it is a genuine ancestor of the now-live `1ef6267e9…` via `git merge-base
+  --is-ancestor`, matching C4's ancestry (not equality) rule. Dry run then succeeded
+  (`manifest_digest=31fb1c4c…`), confirmed rollback-only (0 rows for its `run_id` in
+  `build_runs`), then committed
+  (`run_id=14797342-d91d-4b36-8ed2-006b92d567cf`, execution `brahma-build-pipeline-job-zvmxr`).
+  Job log: `[mi_jivanaghatana] loaded 63 events from db ... inserted 63 provenance rows` —
+  no crash, no UUID-serialization error. `asset_throughput`: `state='lit'`,
+  `rows_written=63`, `last_error=NULL`. `build_run_assets.state='complete'`. Released the
+  slot with full account on #1713. **W5 (mechanical checks + `integrity_check_sql` +
+  fresh-context verification) not yet done — for a fresh-context verifier**, per C8
+  implementer≠certifier. Scratch vitest test file removed, never committed (confirmed
+  clean `git status`). Both own PRs confirmed `isInMergeQueue: true` (checked
+  pre-and-post-dispatch) — no push (would eject #1826, self-queued mid-cycle). #1844/#1901
+  not re-checked this cycle (dispatch took priority); #1856 still OPEN (will presumably
+  auto-close eventually or needs manual close — cosmetic, not blocking); #1869 unaffected.
 - 2026-09-06T01:47Z (C8 v2.3 cycle 220) — **IDLE-OK.** #1826 unchanged (Governance Gates
   still the only pending check, no failures, armed). #1844 confirmed `isInMergeQueue: true`.
   Deploy unchanged. #1844=48, #1901=74 unchanged for 2 cycles, but confirmed not a stall —
