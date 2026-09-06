@@ -364,3 +364,25 @@ def test_dasha_anchor_peaks_empty_timeline():
     from pipeline.orchestrator.writers.ka_vighnakara import KaVighnakaraWriter
     conn = _VConn([("FROM chart_dashas", [])])
     assert KaVighnakaraWriter()._dasha_anchor_peaks(conn, "cid", set()) == []
+
+
+def test_dasha_anchor_peaks_predicate_query_has_total_order_by_signal_id():
+    """F-VIGHNA-3 (§N.7 item 2): the predicate fetch must carry a total ORDER BY over a
+    stable key. Without it, which signal represents a given peak date (setdefault's
+    "first one wins") and which peaks survive the _MAX_DASHA_ANCHORS cap are both
+    undefined by Postgres row-order guarantees — a build-to-build nondeterminism the
+    fake in-memory cursor below cannot itself exercise (it doesn't actually sort), so
+    this test pins the query TEXT rather than simulating Postgres's row order."""
+    from pipeline.orchestrator.writers.ka_vighnakara import KaVighnakaraWriter
+
+    conn = _VConn([("FROM kala_activation_predicates", [])])
+    KaVighnakaraWriter()._dasha_anchor_peaks(conn, "482012f1-710e-4a25-994a-93821f5871aa", set())
+
+    predicate_calls = [c for c in conn.calls if "FROM kala_activation_predicates" in c]
+    assert len(predicate_calls) == 1
+    sql = predicate_calls[0]
+    assert "ORDER BY signal_id" in sql
+    # The ORDER BY must scope the whole predicate set for this chart, not just a
+    # tie-break clause bolted onto some other ordering — assert it is the ONLY
+    # ORDER BY clause on this query (a total order, not a partial one).
+    assert sql.count("ORDER BY") == 1

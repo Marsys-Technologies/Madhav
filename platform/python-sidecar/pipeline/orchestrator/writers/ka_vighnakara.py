@@ -406,6 +406,17 @@ class KaVighnakaraWriter(WriterBase):
         helper) and returns a de-duplicated, capped list of (peak_date, signal_id)
         anchors — one representative signal per distinct peak date. Read-only;
         SAVEPOINT-guarded so a soft failure never aborts the writer's transaction.
+
+        F-VIGHNA-3 (§N.7 item 2): the predicate fetch carries `ORDER BY signal_id` —
+        a total order over the one real key this table exposes for the purpose
+        (`kala_activation_predicates` has no natural single-column key of its own,
+        but `signal_id` is stable and unique per predicate row for a chart, which is
+        all `setdefault`'s per-peak "first one wins" selection and the
+        `_MAX_DASHA_ANCHORS` cap need to be deterministic). Before this fix the query
+        had no ORDER BY at all, so which signal represented a given peak date, and
+        which peaks made it under the cap, could both vary build-to-build on
+        identical data — a live instance of the defect class this doctrine item
+        exists to close.
         """
         anchors: dict[DateType, str] = {}
         timeline_cache: dict = {}
@@ -421,6 +432,7 @@ class KaVighnakaraWriter(WriterBase):
                     SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
                     FROM kala_activation_predicates
                     WHERE chart_id = %s
+                    ORDER BY signal_id
                     """,
                     (chart_id,),
                 )
