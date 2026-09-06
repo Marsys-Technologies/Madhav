@@ -5561,3 +5561,41 @@ genuinely still processing at ~7 min via direct job inspection, remaining 8
 unchanged/queued; E-gate uncheckable, DB access down 274 cycles; nothing new) → next: watch
 `#1864` merge; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~14:00Z` — L4 — **CYCLE 285 (v2.3) — `#1864` confirmed merged. `#1870` found
+genuinely `UNMERGEABLE` (queue-entry state, not just a stale read) — dequeued after upstream
+merges, needing a NOVEL fix step this time: GitHub's protected-branch hook rejected the
+force-push outright ("A pull request for this branch has been added to a merge queue...
+dequeue the associated pull request") even though the queue-entry already read
+`UNMERGEABLE`. Root cause: the branch was still occupying its queue slot despite being
+computed unmergeable — resolved by calling the `dequeuePullRequest` GraphQL mutation
+directly (`gh api graphql`) before retrying the push.**
+
+**PR hygiene:** `#1870` (`codex/nirmana-l4-w3-3m-sodhana-falsy-zero`) rebased onto
+`origin/main` via `git merge-base` + real `git rebase` (not just `git merge-tree`, which
+under-reported the situation as conflict-free — the real conflict was the routine generated-
+file kind, resolved the standard way: digest byte-identical to fresh regen, pin
+`writer_inventory_sha256` hand-derived and verified `--check` clean from the final rebased
+state). Confirmed via `git diff origin/main` that the branch's own F-12 fix
+(`_g_ladder_ceiling`'s None-check replacing `int(x or default)` falsy-zero coercion for
+`ayanamsha_robustness`) survived intact. 52/52 tests pass (`test_ph_wave5.py`). First push
+attempt was rejected by the protected-branch hook (PR still occupying its queue slot);
+called `dequeuePullRequest` via GraphQL mutation (`mutation($id: ID!) { dequeuePullRequest
+(input: {id: $id}) { clientMutationId } }`) to release the slot, then the retried
+`--force-with-lease` push succeeded (`mergeStateStatus: MERGEABLE`/`BLOCKED`-on-checks, not
+`DIRTY`). Re-armed via `gh pr merge --auto`.
+
+Remaining 7 own PRs (`#1849` 65, `#1845` 63, `#1842` 55, `#1839` 59, `#1834` 44, `#1831` 35,
+`#1808` 40) all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** three new `main` commits landed (`#1864` own, `#2024`/`#2026` L1, not
+otherwise L4-relevant). No new adjudications name L4 (count unchanged at 14). E-gate still
+uncheckable, 275th consecutive cycle DB access down.
+
+CYCLE 285 L4: rebased+repushed 1 DIRTY→UNMERGEABLE PR (`#1870` — dequeued after upstream
+merges; the protected-branch hook rejected the first push while the PR still occupied its
+queue slot, fixed via a `dequeuePullRequest` GraphQL mutation before retrying; F-12 fix
+verified intact, 52/52 tests pass, re-armed for auto-merge; `#1864` confirmed merged) →
+next: confirm `#1870` re-enters the merge queue next cycle; watch remaining 7 PRs' positions
+continue advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
