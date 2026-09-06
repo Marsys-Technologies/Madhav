@@ -626,6 +626,21 @@ your layer close.
   exceptions — third consecutive cycle holding the corrected discipline. —
   blocked on: nothing new; next action: keep sweeping L3-only, watch the 9
   L3-owned PRs merge, re-check #1713's sidecar finding (still due).
+- `2026-09-06T~20:0xZ — L3-W3 — Second cycle under corrected L3-only scope, holding.
+  All 10 L3-owned PRs checked (not the fleet) — 5 showed `UNMERGEABLE`-in-queue
+  (`#1954`/`#1940`/`#1936`/`#1929`/`#1903`), stuck behind non-L3 blockers ahead of
+  them in the queue (position 3's `#1834`, an L4 PR — not touched, not this
+  session's lane). Each of the 5 verified independently before assuming "just
+  stuck behind someone else": dequeued, rebased onto current `main`, all five
+  came back completely clean (no conflicts, pins/digests both `--check`-clean,
+  diff scope sane — no repeat of last cycle's rebase-target-staleness scare).
+  Tests re-run and pass on all five (35/45/30/34/73), pushed, re-queued,
+  confirmed `MERGEABLE` on a final batched recheck. Branch-name verified L3-owned
+  before every single checkout this cycle, no exceptions — the corrected
+  discipline held cleanly for a full cycle. — blocked on: nothing new for L3;
+  next action: continue strict L3-only hygiene sweeps, re-check whether the
+  non-L3 queue blockers (position 3 `#1834` and neighbors) clear on their own
+  (not L3's job to fix), and #1713's sidecar finding still due a fresh look.
 - `2026-09-06T~19:0xZ — L3-W3 — First cycle under the corrected L3-only scope.
   Re-read `CYCLE_CONTRACT_C8_V23.md` fresh — confirms the correction: "Conductor-
   specific additions" section shows fleet-wide PR sweeps are explicitly the
