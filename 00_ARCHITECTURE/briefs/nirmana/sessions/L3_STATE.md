@@ -458,6 +458,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~19:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, `#1903`/`#2060` still queued
+  unmerged, `origin/main` tip unchanged for a third consecutive cycle.** Confirmed this
+  is healthy queue cadence, not a stall: last repo-wide merge (`#1974`) was only ~12
+  minutes before this check (`gh pr list --search "is:merged" --limit 5`), well inside
+  the established ~10-15min/merge norm. PR hygiene clean, all 53 L3 PRs queued or
+  expected pre-queue. Nothing eligible to act on.
+
 - `2026-09-06T~18:0xZ — L3-W3 — IDLE-OK: no DIRTY/RED, nothing changed since last cycle.**
   PR hygiene: #2062/#1890 both `BLOCKED`/`MERGEABLE` (expected pre-queue), all other 51 L3
   PRs genuinely queued. Standing blockers re-verified: `#1903` and `#2060` (F-CONC-7
