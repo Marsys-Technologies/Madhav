@@ -192,9 +192,12 @@ this draft).
 1. **F1** (§2 above) — the layer's one remaining code item, explicitly scoped and explicitly
    not attempted autonomously; needs either a session with MCP-server verification capability
    or native review before landing.
-2. **`ph_sodhana` F-12** — NOW-tier, smallest item in the layer; narration honesty +
-   falsy-zero coercion in `_g_ladder_ceiling`, no live behavioral impact (the `max(...,1)` clamp
-   already floors the numeric result identically either way) but a real §N.7 item 1/6 instance.
+2. ~~**`ph_sodhana` F-12**~~ — CLOSED (#1870, merged 2026-09-06T09:48:59Z): narration honesty +
+   falsy-zero coercion in `_g_ladder_ceiling` fixed; see the asset table (§ above) and row
+   entries for #1870. This item is struck rather than removed per the archival-retain-in-place
+   discipline this scaffold is itself governed by; corrected 2026-09-06 (L4 cycle 323) — the
+   entry had gone stale relative to the asset table two rows above it, which already recorded
+   the merge correctly.
 3. **D-SYNTHESIS / D-SALIENCE HELD items** — waiting on L2's consensus/grounding/tail
    capabilities; polling `L2_STATE.md`'s `## CAPABILITIES LANDED` section each cycle per charter
    C6. Not L4's to unblock.
