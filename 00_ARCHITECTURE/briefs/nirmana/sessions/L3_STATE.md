@@ -493,6 +493,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~128:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s checks
+  finished (0 failures) and it's now genuinely `isInMergeQueue: true`
+  (position 1, `CLEAN`) — the long `pytest` step from last cycle passed, as
+  the precedent evidence predicted. No new merges, no new bounded work. —
+  blocked on: `#2181` finishing; next action: same.
 - `2026-09-06T~127:0xZ — L3-W4 — IDLE-OK — and this time resolved the
   recurring "is the pytest step stuck" question for good, with hard
   evidence rather than another round of the same heuristic guess.** Same
