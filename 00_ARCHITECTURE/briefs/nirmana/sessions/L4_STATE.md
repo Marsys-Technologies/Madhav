@@ -7052,3 +7052,39 @@ CYCLE 355 L4: IDLE-OK (verified: PR hygiene fully clean — both remaining own P
 queued, zero DIRTY/RED; no new L4-relevant adjudications; E-gate uncheckable, DB access down
 345 cycles) → next: watch `#1808`/`#1839` drain in position order; retry E-gate/dispatch
 dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred.
+
+`2026-09-06T~13:12Z` — L4 — **CYCLE 356 (v2.3) — `#1839` MERGED (own PR, `ph_phaladesa`
+headline-anchor). `#1808` went through a genuinely eventful fix: found `UNMERGEABLE` despite
+appearing in `is:queued` (ground truth caught what a plain `gh pr view` state alone would
+have missed); rebase was clean at first (no real conflict — the occupied-slot class);
+dequeued + pushed; but `main` advanced again (via `#1839`'s own merge) between that push and
+the re-arm attempt, producing a genuine `DIRTY`; re-fetched, re-rebased (hit a real two-file
+conflict this time — digest AND pin), resolved both, 110/110 tests green, re-armed
+successfully this time.**
+
+**PR hygiene this cycle, in detail:** `#1808` (`ph_nimitta` F-12/F-16) — first pass: `is:queued`
+showed `#1808` present, but a follow-up GraphQL `mergeQueueEntry` check showed `UNMERGEABLE`
+position 2 — a reminder that even the "ground truth" search result names a PR occupying a
+queue slot, not necessarily one that will actually merge; a slot occupant can still be
+`UNMERGEABLE`. First rebase was clean (no conflict markers), confirming this was the
+occupied-slot class, not real drift; dequeued and pushed. Second push attempt showed `DIRTY`
+— re-checked and found `#1839` had merged in the interim (confirmed via `git fetch origin
+main` showing the new tip); re-rebased onto the newer main, this time hitting real conflicts
+in both `nirmana-writer-digests.json` (regenerated clean) and
+`nirmana-analysis-layer-pins.json` (hand-derived to `486959b1...978d66f9`); isolation and
+digest-identity re-verified from the fully rebased final state; full `test_ph_nimitta_*`
+suite (110 tests) green; re-armed via disable-then-auto, confirmed `BLOCKED`/`MERGEABLE`.
+
+**Priorities 1-4:** `#1839` merged (own PR) — the tenth of the layer's shipped `ph_*` W3
+fixes to land on `main`. One new adjudication, `#2096` (ADJUDICATION L3: sidecar
+release-smoke gate failing since `#1846`, root-causing the stuck-traffic report on `#1713`)
+— confirmed L3's own item, not L4-relevant; adjudication count now 16. E-gate still
+uncheckable — `mcp__postgres__query` unavailable, 346th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+CYCLE 356 L4: `#1839` MERGED (ph_phaladesa headline-anchor — 10th shipped fix to land); `#1808`
+survived a two-stage fix (occupied-slot dequeue, then a genuine re-conflict from `#1839`'s own
+merge landing mid-fix, resolved and re-armed) — this is now the ONLY own PR still open →
+next: watch `#1808` — the last of the L4 W3 IMPLEMENT wave's own PRs — reach `QUEUED` and
+merge; retry E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP
+consumers) remains the layer's one deferred code item.
