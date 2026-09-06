@@ -7233,3 +7233,41 @@ adjudications; E-gate uncheckable, DB access down 354 cycles) → next: watch `#
 once it lands, all shipped `ph_*` W3 correctness fixes will be fully merged to `main`; retry
 E-gate/dispatch dry-run once DB access returns; F1 (`ph_phaladesa` zero MCP consumers)
 remains the layer's one deferred code item.
+
+`2026-09-06T~13:34Z` — L4 — **CYCLE 365 (v2.3) — MILESTONE: `#1808` MERGED (own PR,
+`ph_nimitta` F-12/F-16). This was the last open own PR — the entire L4 W3 IMPLEMENT wave's
+PR set is now fully merged to `main`. Zero own PRs remain open (confirmed via
+`headRefName` prefix search for `codex/nirmana-l4-w3*` — no matches).**
+
+**Full W3 wave landed this window, in merge order:** `#1870` (`ph_sodhana` F-12 falsy-zero),
+`#1849` (`ph_suddha_sodhana` F-16 fail-loud), `#1842` (`ph_pramana` F2 domain vocabulary),
+`#1845` (`ph_sodhana` F-14 LEAKAGE-FIREWALL), `#1831` (`ph_pratikara` F-3.4 anchor
+selection), `#1834` (`ph_rectification` F3 discrimination gate), `#1839` (`ph_phaladesa`
+headline-anchor), `#1808` (`ph_nimitta` F-12/F-16 honest defaults). Every fix followed the
+same verified cycle: root-cause investigation, local test coverage, governance-gate
+regeneration (writer digest + analysis-layer pin, hand-derived dozens of times this window
+per the standard recipe), PR, auto-merge arm, and — critically — repeated PR-hygiene
+sweeps through a long series of `main`-advance-triggered DIRTY/UNMERGEABLE/CLEAN
+-but-unqueued recurrences (this window alone: dozens of rebase-and-repush cycles across all
+8 PRs, several newly-documented trap variants: stale-`autoMergeRequest`-not-actually-queued,
+`CLEAN`-but-self-enqueue-failed, and the standard occupied-slot-`UNMERGEABLE`).
+
+**Priorities 1-4:** one new adjudication, `#2101` (L1: migration range 800-819 fully
+consumed, needs next assignment) — confirmed L1's own item, not L4-relevant; count now 17.
+No `main` commit beyond `#1808`'s own merge is new. E-gate still uncheckable —
+`mcp__postgres__query` unavailable, 355th consecutive cycle DB access down. No
+`NIRMANA_HOLD` file present.
+
+**What remains for L4:** (1) F1 (`ph_phaladesa` zero MCP consumers) — the layer's one
+deferred code item, needs MCP-server verification capability or native review, not
+autonomously actionable; (2) the E-gate-blocked W4 EXECUTE wave — `ph_nimitta` is the
+derived canary (D-L4-01), blocked on ancestor closure campaign-wide, uncheckable this whole
+window (355 cycles down); (3) D-SYNTHESIS/D-SALIENCE HELD items waiting on L2 capabilities,
+not L4's to unblock. No other own-remit work is currently eligible.
+
+CYCLE 365 L4: MILESTONE — `#1808` MERGED, closing out the entire W3 IMPLEMENT wave (8 PRs,
+all shipped ph_* correctness fixes now on `main`); zero own PRs remain open; new
+adjudication `#2101` confirmed L1's own item, not L4-relevant → next: retry E-gate/dispatch
+dry-run every cycle until DB access returns (the layer's only remaining priority-1-4 lever);
+F1 remains the one deferred code item; with no new eligible W1-W4 work, expect sustained
+honest IDLE-OK cycles until either DB access returns or a new finding/adjudication surfaces.
