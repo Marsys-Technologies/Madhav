@@ -174,7 +174,8 @@ normal, not a problem.**
 | L1 (continuation 2) | 750-759 | **exhausted** | #1972, cycle 137; exhaustion noted #2012, cycle 196 |
 | L1 (continuation 3) | 780-799 | **exhausted** | #2012, cycle 196; exhaustion noted #2057, cycle 297 |
 | L1 (continuation 4) | 800-819 | **exhausted** | #2057, cycle 297; exhaustion noted #2101, cycle 480 |
-| L1 (continuation 5) | 840-859 | open | #2101, cycle 480 (deliberately clear of L5's 820-839 block) |
+| L1 (continuation 5) | 840-859 | in use (840-847 L1, 851 in flight; **848-850 are an authorized L3 exception, permanent — see below**) | #2101, cycle 480 (deliberately clear of L5's 820-839 block); L3 encroachment ruled #2156, cycle 605 |
+| L3 exception (inside L1's 840-859) | 848-850 | **exhausted (permanent — already applied, never renumber)** | #2156, cycle 605: bookkeeping mixup, not exhaustion — L3's own 730-739 continuation had 8 free at the time. Recorded retroactively; L3 directed back to its own range for all further migrations. |
 | L2 | 660-669 | **exhausted** | charter C5 |
 | L2 (continuation) | 710-729 | **exhausted** | #1878; exhaustion noted #2005, cycle 186 |
 | L2 (continuation 2) | 760-779 | open | #2005, cycle 186 |
@@ -380,6 +381,17 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T18:58:51Z` — cycle 605: **ONE bounded unit: ruled and closed #2156 — L3 encroached
+  on L1's granted migration range (848-850), verified and recorded, not undone.** Confirmed live
+  via `git ls-tree origin/main`: 840-847 are L1's own (merged), 848-850 are L3's (`ka_dasha_kala`/
+  `ka_tulana`/`ka_muhurta_seva` health-probes, also merged). Checked L3's own continuation range
+  (730-739, #1942) — only 730-731 used, 8 free — so this wasn't a legitimate exhaustion-driven
+  reallocation like #2086's L5 precedent, just a genuine mixup. Since 848-850 are already applied,
+  they can never be renumbered (§N.4). **Ruled**: record 848-850 as a permanent, authorized L3
+  exception inside L1's block (retroactive bookkeeping only); no new range grant needed for L3
+  (8 free numbers already in its own 730-739); L1's own self-correction to 851+ was already
+  correct, nothing further needed there. Updated the MIGRATION RANGES table accordingly. Fleet
+  DIRTY: empty.
 - `2026-09-06T18:55:32Z` — cycle 604: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T18:53:26Z` — cycle 603: **IDLE-OK.** Fleet DIRTY: empty. No new
