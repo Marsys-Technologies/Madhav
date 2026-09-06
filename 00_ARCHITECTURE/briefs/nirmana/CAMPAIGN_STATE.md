@@ -168,12 +168,13 @@ normal, not a problem.**
 
 | owner | range | status | ruling |
 |---|---|---|---|
-| Conductor | 645-649 | in use (645 merged, 646 queued PR #1948) | charter C5 |
+| Conductor | 645-649 | in use (645/646/647 merged, 2 free) | charter C5 |
 | L1 | 650-659 | **exhausted** | charter C5 |
 | L1 (continuation) | 740-749 | **exhausted** | #1947, cycle 101 |
 | L1 (continuation 2) | 750-759 | **exhausted** | #1972, cycle 137; exhaustion noted #2012, cycle 196 |
 | L1 (continuation 3) | 780-799 | **exhausted** | #2012, cycle 196; exhaustion noted #2057, cycle 297 |
-| L1 (continuation 4) | 800-819 | open | #2057, cycle 297 |
+| L1 (continuation 4) | 800-819 | **exhausted** | #2057, cycle 297; exhaustion noted #2101, cycle 480 |
+| L1 (continuation 5) | 840-859 | open | #2101, cycle 480 (deliberately clear of L5's 820-839 block) |
 | L2 | 660-669 | **exhausted** | charter C5 |
 | L2 (continuation) | 710-729 | **exhausted** | #1878; exhaustion noted #2005, cycle 186 |
 | L2 (continuation 2) | 760-779 | open | #2005, cycle 186 |
@@ -379,6 +380,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T13:45:28Z` — cycle 480: **ONE bounded unit: granted L1's migration-range
+  continuation, but not the range they asked for.** Own PR #2104 (cycle 479's sidecar fix): still
+  pending CI (sidecar image build in CI is itself slow — saw ~19 min pip install locally for this
+  same image), not yet `is:queued`, nothing to fix. Fleet DIRTY: empty. Adjudication count 18 (up
+  from 15) — two new: **#2101** (L1's 800-819 range exhausted, requesting 820-839) and #2102
+  (L2 salience semantics, same class as #2052, not yet actioned). **#2101 ruled**: L1's requested
+  820-839 is already L5's granted block (#2086) — confirmed 820/821 already exist on `origin/main`
+  as L5's migrations; giving L1 the same range would recreate the exact collision #2086 itself was
+  about. Granted **L1 continuation 5, 840-859** instead — verified clear of both L5's block and the
+  live highest-used number (821). Recorded in MIGRATION RANGES table, closed #2101. Conductor's own
+  row also corrected (645/646/647 all merged now, not the stale "646 queued" note). #2102 not
+  actioned this cycle — next cycle's candidate.
 - `2026-09-06T13:42:07Z` — cycle 479: **ONE bounded unit (ran long — genuinely campaign-wide,
   worth it): root-caused and fixed #2096, the sidecar's silent stuck-traffic mystery reported to
   #1713 many cycles ago.** #2094 (prior cycle's chart_grants fix) merged clean in the interim —
