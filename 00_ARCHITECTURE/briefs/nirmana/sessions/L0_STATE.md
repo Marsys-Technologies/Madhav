@@ -391,3 +391,7 @@ a RED-fix (see heartbeat).
   the queue is actively moving (`git log origin/main` shows steady merges from other lanes just this
   past stretch, e.g. #2158/#2157/#2149/#2155). Not stalled, just hasn't reached #2153. #1713 tail
   unchanged. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #2153 still `is:queued`, not merged. `main` hasn't advanced
+  since last check, but confirmed not stalled: Conductor's `#2161` (DEPLOY_SHA provenance guard fix
+  for #2159, also queued) has CI genuinely `IN_PROGRESS` right now — the queue is processing its
+  order normally, just hasn't reached #2153 yet. #1713 tail unchanged. Nothing else eligible.
