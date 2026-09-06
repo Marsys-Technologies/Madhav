@@ -2479,3 +2479,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** Positions dropped by 3 (23/30/31/52). Queue now processing 5 entries in
   parallel (batch mode: #1983/#1990/#1991/#1993/#1994), all mid-CI, none L0's. No DIRTY, no RED.
   30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Positions dropped by 1 (22/29/30/51). Noted `#1901` (D-L0-FF fix,
+  Conductor's) flipped to `BLOCKED` — just tracking, not L0's action. No DIRTY, no RED. 30/40
+  frozen holds.
