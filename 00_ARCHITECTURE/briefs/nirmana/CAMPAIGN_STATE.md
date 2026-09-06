@@ -380,6 +380,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:36:18Z` — cycle 567: **IDLE-OK.** Own PR #2139: CI still pending, normal, not
+  yet `is:queued`. Fleet DIRTY: #2140 (L1), only ~2 min old, too fresh to act. No new
+  `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T17:34:01Z` — cycle 566: **ONE bounded unit: fixed #2137 — FROZEN orchestrator
   preflight false-positive blocking `mi_kula`'s dispatch (and any asset whose
   `depends_on` isn't stored alphabetically).** `_verify_registry_still_matches_manifest`
