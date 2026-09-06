@@ -458,6 +458,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~00:1xZ — L3-W3 — Two genuinely DIRTY PRs this cycle (#1980, #1897), one
+  with a NEW, trickier conflict shape than the usual pattern.** #1980: standard shape
+  (HEAD side empty, incoming full), resolved via the established script, single
+  surviving heading verified. **#1897 (N5 depends_on, migration 676) was different**:
+  `git checkout --conflict=merge` showed the conflict spanned ~607 lines with the
+  INCOMING side (`theirs`) EMPTY and the HEAD side (`ours`) carrying real, legitimate
+  accumulated heartbeat history from many other PRs (back to the "F-KALA-1 fix third
+  slice" entry) — the opposite of the usual shape. Diagnosed rather than blindly
+  script-applied: this PR's own branch had, in an earlier cycle, mistakenly DELETED that
+  real history during a prior bad conflict resolution (exactly the class of stash/edit
+  mistake this session has caught and named several times before) — applying the
+  established script here would have re-committed that same data loss. Resolved
+  correctly by keeping `ours` (the real 606-line history) followed by the
+  already-non-conflicting "N5 (depends_on half) CLOSED" entry — confirmed via
+  `git diff origin/main -- L3_STATE.md`: **zero removed lines**, only the one new entry
+  added. `test_migration_676_muhurta_seva_depends_on.py` 5/5 pass. Both PRs force-pushed,
+  re-armed auto-merge, confirmed `MERGEABLE`. This state-tracking branch itself needed a
+  clean 9-commit rebase onto `origin/main`'s latest tip before this entry (no conflict).
+  Standing blockers unchanged: `#1903`/`#2060` both still queued.
+
 - `2026-09-06T~23:0xZ — L3-W3 — One DIRTY-PR fix caught in the final sweep this cycle:
   #1978 (a heartbeat PR from earlier in this run).** L3_STATE.md-only conflict (2
   commits to rebase, first conflicted, second applied clean), resolved via the
