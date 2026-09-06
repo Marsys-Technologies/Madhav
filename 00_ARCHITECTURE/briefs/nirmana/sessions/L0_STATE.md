@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- #2088 (migration 704, D-L0-PP fix) MERGED (12:26:39Z). Deploy to Cloud Run kicked off on main, still pending as of this check -- not yet safe to re-dispatch bg_parihara_rules. No open L0 PRs, no DIRTY/RED. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm deploy completed + migration 704 applied live, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) merged (12:26:39Z); Deploy to Cloud Run (run 34033115503) still pending ~3min in -- not yet safe to re-dispatch bg_parihara_rules. No open L0 PRs, no DIRTY/RED. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm deploy completed + migration 704 applied live, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3306,3 +3306,6 @@ see log). Still 35/40 until that's resolved.
   `34033115503`, `pending` as of this check). No open L0 PRs, no DIRTY/RED. Not yet safe to
   re-dispatch `bg_parihara_rules` — deploy hasn't completed. 35/40 frozen unchanged; next cycle:
   confirm deploy completed, verify migration 704 applied live, then re-dispatch → 36/40.
+
+- 2026-09-06 — **IDLE-OK.** Deploy run `34033115503` still `pending` (~3min in). No open L0 PRs,
+  no DIRTY/RED. 35/40 frozen unchanged.
