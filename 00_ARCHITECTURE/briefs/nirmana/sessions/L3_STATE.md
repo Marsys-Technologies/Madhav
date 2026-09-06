@@ -469,6 +469,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~23:0xZ — L3-W3 — IDLE-OK (verified, not assumed): all 9 L3-owned
+  PRs checked — zero DIRTY/UNMERGEABLE, all `MERGEABLE`/`BLOCKED` (CI pending)
+  or already progressing; merge queue itself down to a single non-L3 entry
+  (`#1950`), healthy. `#1713`'s sidecar finding re-checked (`gcloud run services
+  describe`): still the identical stale revision, eight+ cycles now, zero new
+  comments on the issue thread — correctly not re-posted. Checked the Red
+  contracts section (5 HELD-not-failed rows, D-CND-17) — accurate, unchanged,
+  nothing newly actionable (two would go green on a rebuild, but the rebuild
+  itself remains blocked on the same L0/L1/L2 freezes as everything else in
+  Held items). Cost ledger checked — empty table is correct, only populates at
+  layer close. No genuinely new W3/W4/prep work surfaced this cycle beyond what
+  the last several cycles already did (E-gate, Held items, Capabilities Landed
+  all freshly correct as of recent cycles). — blocked on: nothing new; next
+  action: keep sweeping L3-only every cycle, watch the 9 L3-owned PRs actually
+  merge, and #1713 for a response.
 - `2026-09-06T~22:0xZ — L3-W3 — Third clean cycle under corrected L3-only scope.
   9 L3-owned PRs checked, 5 genuinely DIRTY (`#1954`/`#1940`/`#1936`/`#1929`/
   `#1917`) — `#1949` merged since last cycle. All five: standard L3-pin and/or
