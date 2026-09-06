@@ -457,6 +457,18 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:30Z (C8 v2.3 cycle 412) — **Fixed the anticipated #1826 migration-806 collision
+  (flagged as a to-do at the end of cycle 411) as this cycle's prep item — nothing else was
+  eligible: #1869 unchanged (still 5 comments, no new response), `mi_kula`'s 3 L0 ancestors still
+  0 `asset_frozen` events, #1826/#1844 both hygiene-clean (BLOCKED only on pending checks, no
+  failures, armed).** Confirmed the collision was real: origin/main's actual `806`/`807` are L1's
+  `ga_structural...dispositorchainvarga`/`...centrality`, not mine. Renumbered my own
+  `806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql` → `809` (clear of main's 807 tip AND
+  #1844's still-pending 808), same reconciliation discipline as cycle 411 exactly: `sqlIdentityOf`
+  confirmed byte-identical before/after, `migration_renumber_disclosed.json` entry added, verified
+  live via `migrate.ts --dry-run` then a real `--target 809_...` run
+  (`"Reconciled (not executed): 809_... — already applied as 806_..."`). Dequeued #1826, pushing
+  this cycle (force-with-lease), will re-arm and verify #1844 unaffected next.
 - 2026-09-06T11:15Z (C8 v2.3 cycle 411) — **Fixed the #1844 migration-692 collision deferred from
   cycle 409.** PR hygiene: #1844 fell out of the queue a 4th time (CLEAN-but-unqueued), re-armed
   immediately as pure hygiene before the main work. Main unit: worked in an isolated
