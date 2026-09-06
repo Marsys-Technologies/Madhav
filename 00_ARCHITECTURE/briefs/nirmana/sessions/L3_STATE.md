@@ -493,6 +493,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~110:0xZ — L3-W4 — IDLE-OK (verified): `#2166` still genuinely
+  `isInMergeQueue: true`, healthy — confirmed the shared queue itself is
+  actively processing (other PRs' `merge_group` builds `in_progress`/
+  completing right now via `gh run list`), just hasn't reached mine yet. No
+  new `origin/main` merges since last cycle. Continuing to hold local rather
+  than push. — blocked on: nothing; next action: same as last cycle, wait
+  for `#2166` to clear.
 - `2026-09-06T~109:0xZ — L3-W4 — IDLE-OK (verified): `#2166` genuinely
   `isInMergeQueue: true` (position 1, `CLEAN`) — the slow `Governance Gates`
   check from the last two cycles finished with no failures, confirming it
