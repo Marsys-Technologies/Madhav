@@ -457,6 +457,23 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:20Z (C8 v2.3 cycle 417) — **#1844's `mi_vistara` spec renumbered a FOURTH time
+  (692→808→810→812), caught proactively again before its checks reached the guard.** Main's tip
+  had advanced to `810` (yet another L1 migration), colliding with cycle-417-start's own 808→810
+  fix from two cycles ago. Same drill: rebased onto fresh main, renumbered to 812 (clear of main's
+  810 and sibling #1826's own 811), updated all three places (file + disclosure entry + canary),
+  verified all three gates locally (guard PASS, `migrate.ts` reconciled — confirmed via
+  `_migrations_applied` tracker row this time since the CLI output was truncated in my own
+  terminal capture, cross-checked directly against the DB rather than trusting the log tail), then
+  dequeued (it had actually entered the queue this time), force-pushed, re-armed. Confirmed #1826
+  fully unaffected and its own `811` still clear against the freshest main fetch. **Pattern now
+  well-established**: main's L1 structural-integrity-contract lane is landing a migration roughly
+  every 5-10 minutes, so ANY number picked for either PR has a real chance of going stale before
+  that PR's next CI run reaches the guard — this isn't a one-off, it's the current steady state,
+  and both PRs will likely need at least one more renumber each before they actually merge. No
+  further mitigation attempted (e.g. picking a number far ahead of main's tip) since that just
+  trades one race for a different, less-tested one (colliding with a number some OTHER lane also
+  jumped ahead to) — catching it live, cheaply, every cycle remains the right approach.
 - 2026-09-06T12:15Z (C8 v2.3 cycle 416) — **Caught #1826's own 809→(collision) before it ever hit
   a merge-queue build failure — pure PR hygiene, done before any other work this cycle.** Main's
   tip had advanced to `809` (an unrelated L1 migration) exactly as #1826 entered the merge queue
