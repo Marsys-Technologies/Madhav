@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Merge-queue stall still ongoing (unchanged, not re-flagging as noise). Used the wait to verify bg_gochara_arcs AND bg_text_index (not just bg_doshas) are ALSO fully data-correct live and W2-current -- all three D-L0-FF-family assets are now confirmed fully primed, blocked on nothing but #1901's deploy. Once #1901 deploys, dispatching any of the three should skip_no_delta + receipt-reattribute straight through to asset_frozen -- no rebuild, no new W2 needed. This is now the top-priority action once #1901 lands (3 assets in one mechanism). #2066 still queued (position 42, unmoved), no DIRTY/RED. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 — Merge-queue stall RESOLVED (main advanced past the stuck 0452d1e74 tip). #2066 at position 22, is:queued confirmed, no DIRTY/RED. Deploy pipeline catching up sequentially but hasn't reached #1901 yet. Standing priorities unchanged: once #1901 deploys, dispatch bg_doshas + bg_gochara_arcs + bg_text_index (all three confirmed fully data-correct + W2-current this session, blocked only on the receipt re-attribution mechanism -- no rebuild/W2 refresh needed, straight through to asset_frozen). Once #2066 deploys, complete implementation_accepted + accepted_rebuild_observed for bg_dasha_systems + bg_compendium_index. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2937,3 +2937,11 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
     highest-priority action the moment `#1901` deploys** — three assets in one mechanism, more
     valuable than the two already in progress behind `#2066`.
   - 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **Merge-queue stall RESOLVED** — `origin/main` advanced past the stuck `0452d1e74`
+  tip (now at `95bbafaa77...`, #1870). `#2066` position 22 (was 42), `is:queued` confirmed, no
+  DIRTY/RED. Deploy pipeline is catching up sequentially (deployed sha `492f32f0...` confirmed to
+  be an ancestor of `#1901`'s commit, i.e. genuinely behind it, not a different branch) — expected
+  after a 2+-hour merge backlog, not a new anomaly. Nothing newly deployed yet; both watch items
+  (`#1901` for the 3-asset unblock, `#2066` for the implementation-record PR) still pending
+  deploy. 30/40 frozen holds unchanged.
