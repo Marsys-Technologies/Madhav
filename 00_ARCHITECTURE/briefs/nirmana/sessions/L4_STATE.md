@@ -4035,3 +4035,22 @@ CYCLE 190 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queue
 uncheckable, DB access down 180 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~06:10Z` — L4 — **CYCLE 191 (v2.3) — PR hygiene found and fixed a real DIRTY PR
+(`#1870`).**
+
+**PR hygiene:** GraphQL sweep showed `#1870` (`ph_sodhana` F-12 falsy-zero fix)
+`CONFLICTING`/`DIRTY`. Fixed via the standard sequence: `git rebase origin/main` — clean
+except the final combined digest+pin-splice commit, `--skip`ped it. Regenerated the
+writer-digest fresh: **`ph_sodhana`'s hash changed for real** (this branch's own fix, still
+intact against the new base). Re-spliced the L4 pin fresh, verified `--check` PASS. Ran
+`test_ph_wave5.py`: 52/52 pass. Pushed `--force-with-lease` clean (no dequeue needed).
+Re-armed auto-merge; swept the other 8 own PRs afterward, none cascaded into DIRTY.
+
+**This cycle's unit was the DIRTY fix itself.** Priorities 1-4 otherwise unchanged: E-gate
+still uncheckable, 181st consecutive cycle DB access down.
+
+CYCLE 191 L4: PR hygiene — found and fixed 1 real DIRTY PR (`#1870`, clean rebase + fresh
+digest/pin regeneration, pushed without needing a dequeue) → other 8 own PRs confirmed healthy
+→ E-gate uncheckable, DB access down 181 cycles → next: watch `#1870` re-enter the queue;
+retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
