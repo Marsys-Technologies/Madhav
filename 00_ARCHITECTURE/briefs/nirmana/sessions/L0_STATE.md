@@ -464,3 +464,11 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change: no open L0 PR, `bg_cohort` carve-out file
   untouched, #1713/#2169 quiet. Entering another extended-idle stretch (same shape as the prior
   60+-cycle streak) — will keep verifying each cycle rather than assume, per contract.
+- 2026-09-07 — **`#2169` RULED (Conductor) and FIXED — PR #2172, auto-merge armed.** Confirmed my
+  root-cause diagnosis correct and distinct from #2159/#2161; fixed by diffing from the last
+  successful deploy's `head_sha` (fetched on demand for the shallow checkout) instead of `HEAD~1`,
+  falling back byte-identically on lookup failure. Conductor's own independent review caught and
+  fixed a real bug in the first draft (the success-run filter also matched PR-triggered build-check-
+  only runs) before shipping. Also confirmed my manual `workflow_dispatch` redeploy was "the right
+  call — the intended escape hatch, not a workaround." Nothing for L0 to action — #2172 is
+  Conductor's PR, not mine to manage. `bg_cohort`'s own C12 carve-out still unmoved. Nothing eligible.
