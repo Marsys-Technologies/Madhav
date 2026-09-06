@@ -3573,3 +3573,16 @@ CYCLE 157 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queu
 uncheckable, DB access down 147 cycles; nothing new) → next: watch queue positions resume
 advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~03:25Z` — L4 — **CYCLE 158 (v2.3) — genuinely IDLE; a subset of own PRs' queue
+positions shifted by 1 with no new `main` commit (same benign dequeue-elsewhere pattern as
+cycles 142/150).**
+
+**PR hygiene:** all 10 own PRs genuinely queued, none DIRTY/RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 148th consecutive cycle DB access down.
+
+CYCLE 158 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs genuinely queued; E-gate
+uncheckable, DB access down 148 cycles; nothing new) → next: watch queue positions continue
+advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
