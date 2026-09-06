@@ -3434,3 +3434,11 @@ session's to resolve.
   either of them). L0 is now IDLE-OK indefinitely absent a change to `bg_yogas`'s scope (#1715)
   or a Conductor-side fix for `bg_cohort`'s structural bind (D-L0-II) — both outside this
   session's authority to resolve. No open L0 PRs, no DIRTY/RED.
+
+- 2026-09-06 — **IDLE-OK.** Re-verified #1715 is genuinely CLOSED (resolved via #1736, the
+  evidence-spine generalization) and its RULING's requirement 3 — "L0 byte-identical... no
+  L0 re-acceptance, no invalidation of the 29 frozen capsules" — is the exact constraint
+  CLAUDE.md's own preamble cites; it's now permanently code-enforced (`nirmana_analysis_layer_
+  pins.py` refuses to re-derive L0's pins), not at risk of silently reopening. No new eligible
+  work: all 4 remaining assets confirmed still genuinely blocked/held. No open L0 PRs, no
+  DIRTY/RED. 36/40 frozen unchanged.
