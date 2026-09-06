@@ -301,6 +301,10 @@ a RED-fix (see heartbeat).
   Tests genuinely PASS (2m24s) and every other check green except 4 still pending/in-progress
   (Governance Gates, Unit Tests, Build Check, Gate battery selftest) — nothing red. Not actionable
   this cycle. #1713 tail unchanged. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #2153: Unit Tests now also confirmed PASS (join
+  DB Integration Tests). Only 2 checks left genuinely running (`Governance Gates`, `Build Check` —
+  confirmed via `gh run view` job `startedAt`/`status: in_progress`, not stalled), everything else
+  green or benign `skipping`. Not actionable yet. #1713 tail unchanged.
 - 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
   and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
   (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
