@@ -149,7 +149,7 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 | ka_sudarshana_varsha | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay |
 | ka_tithi_pravesha | data | build | 0 | **verified_reuse** | W2-done | 1 (ga_positions) | — | quality overlay; L4 consumer (D-7) |
 | ka_vedha_gochara | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
-| ka_muhurta_seva | service | probe | 1 | **probe** | W2-done | **0 — OPEN (ancestor)** | — | canary froze 2026-09-06 (`ka_graha_sancara`) — `egate.sql` confirms `unfrozen_ancestors: 0` now; still `BLOCKED-NO-ROUTE` (needs its own W2 `asset_analysis_accepted`/`optimization_verdict_accepted`) before it can itself reach `OPEN-PENDING-PIN` |
+| ka_muhurta_seva | service | probe | 1 | **probe** | W2-accepted | **OPEN-PENDING-PIN (real)** | — | health_probe deployed live (migration 850, PR #2065); `asset_analysis_accepted`+`optimization_verdict_accepted` recorded live 2026-09-06T~102:0xZ (verdict `examined_and_already_efficient`); ready for W4 probe/freeze dispatch via a genuinely fresh subagent (D-CND-35) |
 | ka_gochara_sweep | data | retired_with_disposition | 1 | **retired** | W2-done | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
 | ka_dasha_kala | service | probe | 0 | **probe** | W2-done | 2 | — | |
 | ka_gochara | data | build | 1 | **changed** | W2-done | 2 | — | v2/v3 authority question |
@@ -211,7 +211,8 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~`ka_graha_sancara`'s W4 probe dispatch~~ | ~~sidecar blocker, then a clock timing gate~~ | **RESOLVED 2026-09-06T15:56:00Z — `asset_frozen` recorded for real.** Full chain executed once the clock cleared: `probe_accepted` (201, live probe GREEN — Moon=Aquarius, 9/9 grahas) → `integrity_verified` (201, independent re-probe, also GREEN) → `lifecycle_digest` computed by querying all 6 lifecycle rows and replicating the server's sort+stableJson+sha256 in Python → `asset_frozen` (201). Verified independently via `egate.sql`: `ka_graha_sancara` no longer appears in the not-yet-frozen list; `ka_muhurta_seva` (its dependent) now reads `unfrozen_ancestors: 0`. The layer's first genuine, non-artefactual freeze. **Process gap self-caught + ruled (D-CND-35, #2124):** all 4 events were submitted by this same session's own context rather than a fresh subagent — hard-floor "implementer certifying own asset." Filed adjudication, dispatched an independent context-free verifier: VERIFIED, all 5 checks pass. Conductor ruled post-hoc verification is the correct remedy (append-only table, no revoke primitive exists) and ratified the separate-subagent requirement campaign-wide as D-CND-35. Durably annotated: independently re-verified post-hoc, not fresh-context at original submission. |
 | `ka_gochara_resonance`'s W4 dispatch | true closure (`ga_sensitive`/`ga_yoga`/`ga_dashas`, L1 unfrozen) | genuinely open, per D-CND-26 (#1734, RULED) |
 | `ka_dasha_kala`'s W2/W4 dispatch (health_probe LIVE since migration 848 deployed — #2079) | `ga_dashas`/`ga_positions` (L1, unfrozen) — declared AND true ancestors, per `KaDashaKalaService`/`tree_walk`'s own live-DB read | **DECIDED, not attempted**: `egate.sql` reads `BLOCKED-ANCESTORS` for this asset despite its probe being runnable — this is the E-gate correctly refusing dispatch, not a stale/artefactual block. D-CND-34's DB-free PROXY probe deliberately does NOT verify the live-DB behavior the ancestor-freeze gate protects, so a green probe result would not license bypassing C2's asset-frontier discipline — same "not this session's call to make alone" precedent as #1960. No `probe_accepted` submitted ahead of ancestor freeze. (Note: this row was accidentally dropped from an earlier rebase and is re-added here unchanged, not re-decided.) |
-| `ka_muhurta_seva`'s W2 route submission (`asset_analysis_accepted`+`optimization_verdict_accepted`, executor-role, NOT gated by D-CND-35) | nothing external any more — `health_probe` is LIVE (a later deploy got the right ref, `_migrations_applied` confirms 850 applied `19:19:13Z`); the deploy-pipeline defect that skipped it initially is #2159, still open but no longer blocking THIS asset | **Ready to dispatch, procedure identified from this session's own `ka_graha_sancara` precedent (commit `2187992a4`), deliberately not rushed into the same cycle as the discovery** — see heartbeat for the exact steps. Not yet submitted. |
+| ~~`ka_muhurta_seva`'s W2 route submission~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T~102:0xZ — recorded live, independently re-verified.** `egate.sql` confirms `OPEN-PENDING-PIN`. See heartbeat for the full procedure and digest cross-check. Next: W4 probe/freeze chain via a genuinely fresh subagent (D-CND-35). |
+| `ka_muhurta_seva`'s W4 probe/freeze dispatch (`probe_accepted`→`integrity_verified`→`asset_frozen`) | nothing external — genuinely `OPEN-PENDING-PIN` now | **Ready, but MUST route through a genuinely separate fresh subagent per D-CND-35** — not this session's own context, regardless of what it is technically capable of submitting. Not yet dispatched. |
 | deploy-pipeline defect (`migrate` job checks out wrong commit under `workflow_run.head_sha` race, no self-check unlike `deploy-web`) — CAMPAIGN-WIDE, not L3-only | Conductor/native ruling on **#2159** (filed, nirmana-adjudication, TIME-CRITICAL) | genuinely open — `ka_muhurta_seva` recovered by luck this time (a later deploy happened to get the right ref); the next asset/layer this hits may not be so lucky. Not fixed unilaterally — shared CI/deploy infra. |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
@@ -492,6 +493,53 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~102:0xZ — L3-W4 — `ka_muhurta_seva`'s W2 acceptance recorded
+  live, for real.** PR hygiene: `#2160` now genuinely `isInMergeQueue: true`
+  (`CLEAN`), nothing to fix. **Dispatched the W2 submission planned last
+  cycle, not rushed — executed carefully with independent verification at
+  every step:**
+  1. Confirmed the digest-computation methodology byte-exact BEFORE trusting
+     it for a live submission: reimplemented `stableJson` +
+     `registryContractFingerprintInput` + `canonicalRegistryContractDigest`
+     in a standalone Node script (no fragile import of the `server-only`
+     module), then cross-checked it against `ka_muhurta_seva`'s OWN known
+     `registry_fingerprint_sha256` from the frozen manifest (reconstructing
+     the frozen-time contract input) — **byte-for-byte MATCH**, proving the
+     algorithm correct using a value nobody could dispute, before computing
+     anything new.
+  2. Queried the LIVE `asset_registry` row (health_probe now populated,
+     `catalog_status=CURRENT`, `depends_on=[]` — already corrected from
+     F-L3-10's fictional edge, unrelated to this cycle) and the FROZEN
+     manifest asset (still `health_probe=null`, `catalog_status=DRAFT`,
+     `depends_on=[ka_graha_sancara]` — correctly stale, legitimately
+     unmatching, same as the `ka_gochara_resonance` precedent) — computed
+     `registry_fingerprint_sha256=286e6ccc97...` and
+     `analysis_digest=53d927c65d...`.
+  3. Built both event payloads (`asset_analysis_accepted`,
+     `optimization_verdict_accepted` — verdict `examined_and_already_
+     efficient`/`no_change`/`digest_identical`, citing PR #2065's commit
+     `1a2546a9c` and the probe module itself as evidence_refs), dry-ran both
+     through `nrec --as executor` first (confirmed correct identity routing,
+     nothing sent), then submitted for real: **both HTTP 201 `created`.**
+  4. **Independently re-verified via direct DB query**, not trusted from the
+     HTTP response alone — both rows present,
+     `recorded_by=nirmana-executor:amjis-nirmana-executor@...`, exact
+     `source_ref` match.
+  5. Re-ran `egate.sql`: **`ka_muhurta_seva` now reads `OPEN-PENDING-PIN`**
+     (`w2_analysis=t`, `w2_verdict=t`, `unfrozen_ancestors=0`) — genuinely
+     E-gate-open, the layer's SECOND real one (after `ka_graha_sancara`).
+  These two events (`asset_analysis_accepted`/`optimization_verdict_
+  accepted`) are **executor**-role per `nrec`'s own identity-split table —
+  confirmed NOT gated by D-CND-35 (which binds `probe_accepted`/
+  `integrity_verified`/`asset_frozen` specifically), so submitting them
+  directly from this session's own context was correct, not a repeat of the
+  `#2124` process gap. — blocked on: nothing for this specific step; next
+  action: `ka_muhurta_seva` is now ready for the W4 probe/freeze chain
+  (`probe_accepted` → `integrity_verified` → `asset_frozen`) — THIS part
+  DOES require D-CND-35's genuinely-separate fresh subagent, same as
+  `ka_graha_sancara`'s own freeze. Also still open: `#2159` (deploy-pipeline
+  defect) unresolved; `ka_dasha_kala` still correctly held on
+  `ga_dashas`/`ga_positions` ancestor freeze.
 - `2026-09-06T~101:0xZ — L3-W4 — Genuinely good news, and a corrected
   understanding of what was actually blocking it.** PR hygiene: `#2160`
   healthy, mergeable, 1 check pending, 0 failures — nothing to fix.
