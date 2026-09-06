@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T12:50Z (C8 v2.3 cycle 422) — **IDLE-OK** (verified, not assumed): both PRs
+  hygiene-clean, no failures. Main landed migration 812 (L1's `net_argala_per_varga`) — inside
+  L1's own 780-819 range, no collision with L5's dedicated 820-839 (first live confirmation the
+  #2086 fix is holding). #1869 and `mi_kula`'s remaining 2 ancestors both unchanged.
 - 2026-09-06T12:45Z (C8 v2.3 cycle 421) — **IDLE-OK** (verified, not assumed): both PRs
   hygiene-clean (BLOCKED only on pending checks post-re-arm, no failures). Main's migration tip
   unchanged at 811 — well clear of L5's dedicated 820-839 range, first quiet cycle since #2086's
