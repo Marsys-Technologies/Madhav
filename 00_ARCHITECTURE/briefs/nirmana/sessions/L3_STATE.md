@@ -221,6 +221,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W2 acceptance events (all 23), blocked on #1715~~ | ~~evidence spine generalisation~~ | **RESOLVED** — #1736 merged+deployed (verified live 2 cycles ago); `ka_graha_sancara`'s recorded, others available whenever their route work reaches this point |
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
+| `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -493,6 +494,30 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~142:0xZ — L3-W3 — PR hygiene: `#2189` checks running
+  pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
+  Integration Tests`/`Build Check` pending, nothing red), not yet
+  queued — nothing to fix. Continued F-L3-4 with an eighth asset,
+  `ka_avadhi` (Period Dossiers): summed MD+AD periods across 6 of 7
+  declared dasha systems for this native's lifetime (117+308+104+70+
+  480+90 = 1169, matching `target_floor`/`count_sql` exactly). Migration
+  859 + paired test authored (no self-transaction wrapper from the
+  start), all 8 tests pass. **Also surfaced, without fixing, a real
+  gap** while deriving this: the writer's 7th declared dasha system,
+  `chara`, has ZERO exact `chart_dashas.system_id` matches for this
+  chart — the table instead carries `chara_karaka` (a related but
+  distinct Jaimini concept, movable significators, not Chara/rasi
+  Daśā). Independently re-verified live (not trusted from reading the
+  writer alone) via a direct `chart_dashas` query in the paired test.
+  Whether this is an honest L1-side build gap or a genuine naming
+  mismatch in `ka_avadhi` is NOT resolved here — recorded as a new Held
+  item, per §N.7 (honest null over invented judgment), not fixed or
+  guessed at in this bounded unit. Migration-number guard PASS (859,
+  confirmed free). Committed locally, held from push — `#2189` still
+  mid-check. — blocked on: nothing new for F-L3-4 itself; the
+  `chara`/`chara_karaka` question is a new genuinely-open item; next
+  action: push once `#2189` clears/queues, then continue F-L3-4 on
+  another asset (11 remain NULL) if still no E-gate work.
 - `2026-09-07T~141:0xZ — L3-W3 — PR hygiene: `#2187` MERGED (squash
   `4598773ef`). Rebased the 11 not-yet-merged local commits (migrations
   856/857/858 + heartbeat, plus 7 pre-#2187 commits whose content was
