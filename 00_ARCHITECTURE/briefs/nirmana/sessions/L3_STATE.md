@@ -489,6 +489,39 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~93:0xZ — L3-W4 — PR hygiene: `#2149` went genuinely `DIRTY`
+  (caught, not assumed clean)** — the SAME `L3_STATE.md` Heartbeat-prepend
+  collision hit a third time this saga, this time between `#2149`'s own
+  accumulated local-then-pushed entries and `#2065`'s heartbeat content that
+  had landed via `#2147`'s merge. Fixed via the same rebase pattern (7
+  commits this time — all of `#2149`'s held-local heartbeat history);
+  every conflict was the same trivial "HEAD's block flows into theirs, no
+  data lost" prepend shape, verified via `git diff --stat` showing pure
+  additions each time and a final zero-marker grep. **Genuinely new finding
+  this cycle, not just hygiene**: `ka_dasha_kala.health_probe` is now LIVE on
+  the shared Cloud SQL proxy (`#2079`'s migration 848 deployed) — F-L3-15's
+  probe infrastructure is now 3/4 deployed (`ka_graha_sancara`, `ka_tulana`,
+  `ka_dasha_kala`; `ka_muhurta_seva` pending `#2065`). **Corrects the
+  `egate.sql` "oddity" flagged 2 cycles ago as a likely query bug**: re-ran
+  `egate.sql` and found `ka_dasha_kala` still reads `kind=(data)`/
+  `BLOCKED-ANCESTORS` (`ga_dashas`, `ga_positions` unfrozen) even with its
+  probe live — traced this to the REGISTRY's own declared `depends_on` for
+  this asset, which genuinely includes `ga_dashas`/`ga_positions` (the real
+  DATA-writer dependency `KaDashaKalaService`/`tree_walk` actually reads),
+  unlike the other three service assets' near-trivial dependencies (frozen
+  `bg_panchanga`/`bg_ephemeris` only). This is NOT a query bug — it is the
+  E-gate correctly refusing full `asset_frozen` dispatch for `ka_dasha_kala`
+  despite its probe being runnable, because D-CND-34's DB-free PROXY probe
+  deliberately does NOT verify the live-DB behavior the ancestor-freeze gate
+  protects; `probe_accepted` could in principle run today, but `asset_frozen`
+  genuinely cannot until `ga_dashas`/`ga_positions` freeze, same long-standing
+  L1 blocker as most of L3. No premature dispatch attempted. — blocked on:
+  `ga_dashas`/`ga_positions` freeze (for `ka_dasha_kala`'s full W4) and
+  `#2065` merging+deploying (for `ka_muhurta_seva`'s route to exist at all);
+  next action: re-verify `#2149` stays clean, watch `#2065` merge, and
+  consider whether `ka_dasha_kala`'s `probe_accepted` alone (without
+  `asset_frozen`) is worth recording now vs. waiting — not decided this
+  cycle, flagged for the next one.
 - `2026-09-06T~92:0xZ — L3-W4 — PR hygiene: `#2147` MERGED for real** (its
   own `L3_STATE.md` heartbeat content now landed on `main`). Checked `#2149`
   for the same post-merge DIRTY risk that hit `#2065` two cycles ago (same
