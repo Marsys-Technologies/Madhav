@@ -469,6 +469,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~32:0xZ — L3-W3 — PR hygiene: initial sweep showed `UNKNOWN`
+  status on all 8 L3-owned PRs — waited and rechecked rather than trust it,
+  revealing 4 genuinely `CLEAN`-but-unqueued (`#1940`/`#1936`/`#1929`/`#1903`)
+  — queued all four, verified via `is:queued`. `#2096` (yesterday's sidecar
+  root-cause finding) has no ruling yet, zero comments — nothing to implement
+  this cycle. Sidecar traffic unchanged (as expected, no fix applied yet). —
+  blocked on: `#2096`'s ruling; next action: keep L3-only hygiene sweeps
+  going, check `#2096` for a ruling each cycle.
 - `2026-09-06T~31:0xZ — L3-W3 — MAJOR FINDING: root-caused the `amjis-sidecar`
   stuck-traffic mystery this session has been re-checking (and correctly not
   re-posting) for 11+ cycles. Noticed one new comment on `#1713` this cycle
