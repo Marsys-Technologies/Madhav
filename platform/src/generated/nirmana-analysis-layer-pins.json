@@ -21,10 +21,10 @@
     },
     "L2": {
       "asset_prefix": "bo_",
-      "convergence_commit": "e146ade56af912cf9231c11011bea42cba0f04e7",
+      "convergence_commit": "8212b7bd6f2e453b772c529655902e2c25c26e8d",
       "non_writer_assets": [],
       "receipt_count": 22,
-      "writer_inventory_sha256": "e4f1fe8768f1dcf6a0d58ce9ccff821c330b7d537716df0e54dc4d848a265978"
+      "writer_inventory_sha256": "480e93704a44ccba3dff04d776094adac496f10b7e7ffef6f2596785bc20a6fa"
     },
     "L3": {
       "asset_prefix": "ka_",
