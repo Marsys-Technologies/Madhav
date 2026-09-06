@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, no change: #2088 (migration 704, D-L0-PP fix) still has only Governance Gates IN_PROGRESS (unusually long-running vs the other checks, but no failure) -- mergeable=MERGEABLE, not DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: re-check #2088, queue once CLEAN, merge+deploy, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- #2088 (migration 704, D-L0-PP fix) went CLEAN and was queued this cycle (confirmed via is:queued, not just autoMergeRequest). No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm merged, confirm deployed live, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3279,3 +3279,9 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** No change: Governance Gates still `IN_PROGRESS` on `#2088` (unusually
   long-running, but no failure). No DIRTY/RED, no other open L0 PRs. 35/40 frozen unchanged.
+
+- 2026-09-06 — **PR HYGIENE: `#2088` went CLEAN, queued it.** All checks passed
+  (`mergeStateStatus=CLEAN`). Was clean-but-unqueued — queued via `gh pr merge --auto`, confirmed
+  actually queued via `is:queued` (not just `autoMergeRequest`, which can lie). Now waiting for the
+  queue to process it, then merge+deploy. 35/40 frozen unchanged; next cycle: confirm merged, then
+  confirm deployed live, then re-dispatch `bg_parihara_rules` → 36/40.
