@@ -380,6 +380,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:36:22Z` — cycle 501: **IDLE-OK, very close.** Run 34038669312: candidate deployed
+  (zero-traffic), candidate URL resolved, smoke job configured — now on **"Run authenticated real
+  probes against candidate"**, the actual release-smoke step that tests `ka_graha_sancara`. This is
+  the direct answer to #2096. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17).
 - `2026-09-06T14:34:18Z` — cycle 500: **IDLE-OK — real progress.** Run 34038669312's `Build and
   push sidecar image` step **succeeded** — the actual defect from #2096 (Dockerfile/context
   mismatch) did not recur on this checkout, first real evidence the fix works end-to-end in CI.
