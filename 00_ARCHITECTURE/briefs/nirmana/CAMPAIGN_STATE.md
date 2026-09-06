@@ -380,6 +380,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T14:15:36Z` — cycle 493: **IDLE-OK.** Deploy workflow still `in_progress` (~8 min).
+  Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:13:37Z` — cycle 492: **IDLE-OK.** Deploy workflow still `in_progress` (~6 min).
   Fleet DIRTY: empty. No new `nirmana-adjudication` issues (17). Nothing rose to a bounded unit.
 - `2026-09-06T14:10:43Z` — cycle 491: **IDLE-OK.** No own PRs (2104 merged). Deploy workflow
