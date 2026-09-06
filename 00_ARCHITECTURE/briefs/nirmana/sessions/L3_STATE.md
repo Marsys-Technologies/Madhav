@@ -493,6 +493,56 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~131:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
+  run, now ~9.5min, still within the confirmed ~11min normal range for
+  this exact step (per last cycle's precedent evidence). No new merges,
+  no new bounded work. — blocked on: `#2181` finishing; next action: same.
+- `2026-09-06T~130:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s build same
+  run, now ~7.1min, still within known range. No new merges, no new bounded
+  work. — blocked on: `#2181` finishing; next action: same.
+- `2026-09-06T~129:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s own
+  `merge_group` build genuinely `in_progress` (~4.9min, well within range).
+  No new merges, no new bounded work. — blocked on: `#2181` finishing;
+  next action: same.
+- `2026-09-06T~128:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s checks
+  finished (0 failures) and it's now genuinely `isInMergeQueue: true`
+  (position 1, `CLEAN`) — the long `pytest` step from last cycle passed, as
+  the precedent evidence predicted. No new merges, no new bounded work. —
+  blocked on: `#2181` finishing; next action: same.
+- `2026-09-06T~127:0xZ — L3-W4 — IDLE-OK — and this time resolved the
+  recurring "is the pytest step stuck" question for good, with hard
+  evidence rather than another round of the same heuristic guess.** Same
+  run, now ~11.8min, still on the identical `pytest — pyjhora_adapter +
+  pipeline` step with no new checkmarks since 2 cycles ago — genuinely
+  looked stall-shaped this time, so pulled a PREVIOUSLY SUCCESSFUL run's own
+  log (`#2166`'s, job `101560078694`) rather than guess again: its own
+  `pytest` invocation started `21:16:04Z` and was still actively producing
+  test-collection output at `21:27:06Z` — **~11 minutes of genuine activity
+  in a run that went on to pass cleanly.** This is the actual normal
+  duration for this specific step, confirmed from real timestamps, not an
+  assumption — resolves every prior cycle's "~10min pattern, probably fine"
+  guess with an actual measured precedent. No new merges, no new bounded
+  work. — blocked on: `#2181` finishing; next action: same, but no further
+  step-level re-investigation needed for this exact concern — it's now
+  answered with evidence, not just repeated faith.
+- `2026-09-06T~126:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s last check,
+  same run, ~9.5min, checked step-level detail directly (`gh run view`
+  --job`) — still on the same consistently-slow `pytest` step, genuine
+  progress not a stall, matches every prior instance of this step this
+  session. 0 failures. No new merges, no new bounded work. — blocked on:
+  `#2181` finishing; next action: same.
+- `2026-09-06T~125:0xZ — L3-W4 — IDLE-OK (verified): `#2181`'s last check,
+  same run, ~7.1min — within normal range, 0 failures. One more unrelated
+  L1 merge, no L3 overlap; no new opening. — blocked on: `#2181` finishing;
+  next action: same.
+- `2026-09-06T~124:0xZ — L3-W4 — IDLE-OK (verified): `#2181` still healthy,
+  mergeable, auto-merge armed, 2 checks pending, 0 failures. One more
+  unrelated L5 merge, no L3 overlap; no new L3 E-gate opening. — blocked
+  on: `#2181` finishing; next action: same.
+- `2026-09-06T~123:0xZ — L3-W4 — IDLE-OK (verified): `#2181` healthy,
+  mergeable, auto-merge armed, 3 checks pending, 0 failures. One new
+  unrelated L4 merge, no L3 overlap; no new L3 E-gate opening. — blocked
+  on: `#2181` finishing; next action: same.
 - `2026-09-06T~122:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s own
   `merge_group` build genuinely `in_progress` (~10.7min, near but not past
   the known pattern) — confirmed via `gh run list` filtered on `pr-2174`,
