@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 131; reconciled the stale Cost ledger section (last real entry cycle 1-2) honestly rather than fabricate wall-clock/token estimates -- recorded why per-cycle wall-clock/tokens aren't meaningful/available under C8 v2.3, substituted live-verified counts instead (118 merged PRs, 39 migrations, 139 findings triaged). Caught and corrected a real arithmetic error in my own first-draft migration count (12 -> 39) before shipping. #2113 still the sole open blocker
+last_updated: 2026-09-07 — C8 v2.3 cycle 132; MAJOR finding on #2113 -- ga_positions (L1's DAG root, zero deps) has sat in a stale asset_throughput error state since 2026-09-05 due to bug #1856, fixed by PR #1861 the SAME night but never retried since; confirmed the asset_freshness gate can't even apply to it (empty depends_on); live dry-run pinpointed the one real remaining blocker (stale W2 acceptance pin, needs delta re-review + resubmit). Posted full diagnosis + 3-step unblock plan to #2113. Not yet executed -- next cycle's job
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -7813,3 +7813,49 @@ record — they are the only entries in this table with a real wall-clock behind
   named priority-5 prep item is the full 139-row per-finding disposition table (§2's own OPEN
   note in the close report) -- worth it next if #2113 is still stuck, though its marginal value
   is lower since the source data doesn't change until new findings land.
+- 2026-09-07T02:0xZ -- CYCLE 132 (C8 v2.3) -- **MAJOR: #2113 is not a dead end, it's a
+  fully-diagnosed 3-step path.** PR hygiene: #2171/#2170 (only 2 own PRs) both `BLOCKED`
+  (mid-CI, no failures) -- clean. Re-checked #2113 per routine: comment timestamp unchanged, but
+  this time went past the timestamp check and directly re-verified the E-gate + the underlying
+  `asset_freshness` table live (contract's own IDLE guidance: "verify, don't assume: run the
+  E-gate batch query"). `egate.sql -v layer=L1` showed `ga_positions` at `OPEN-PENDING-PIN`
+  (unfrozen_ancestors=0, real DAG root). Checked `asset_freshness` directly: still 38-39 distinct
+  assets, all `bg_*`/`mi_*`, zero L1 -- #2113's own finding still accurate. **But then checked
+  `asset_throughput` for `ga_positions` on all 3 charts directly (never done this specific check
+  before) and found the canonical chart (`482012f1`) sitting in `state='error'` since
+  2026-09-05T16:37Z** -- `last_error: "provenance: Object of type UUID is not JSON
+  serializable"`, the EXACT `#1856` bug L5 found and reported. **Confirmed #1861 (the fix)
+  MERGED 2026-09-06T01:20:40Z -- AFTER this failure, and nobody has retried since.** Verified the
+  writer itself completed cleanly before the crash: `rows_written=1205` exactly matches the live
+  `chart_facts` count for `ga_positions`' 5 categories on `482012f1` right now (data intact, not
+  corrupted). Confirmed `ga_positions.depends_on = {}` (genuinely zero deps, not just
+  zero-unfrozen) -- the `asset_freshness` DEP-ASSERT gate (`asset_runner.py`) iterates a
+  dispatch's dependencies' freshness; empty deps short-circuits to zero bad deps, so this asset
+  was never actually exposed to the gate #2113 reported in the first place. Read the full #1713
+  history for `ga_positions`' original dispatch (SLOT CLAIM 16:17:30Z through COMMITTED
+  16:37:40Z) -- confirmed C13 blast radius was already measured clean there (single in-layer
+  cascade, no cross-layer boundary) and a fresh Cloud SQL backup was taken before that attempt.
+  Ran a genuinely safe, zero-side-effect dry run (`dispatch_nirmana_campaign_wave.py --layer L1
+  --wave 0 --definition-revision t0-2026-09-01-0e5b06fb --assets ga_positions`, no `--commit`) --
+  hit and worked through two tooling sharp edges (script's own `DEFAULT_DEFINITION_REVISION`
+  constant points to a superseded definition, not the live frozen one; non-L0 layers need
+  `--reviewed-deployment-sha` passed anyway despite argparse not requiring it) before landing on
+  the REAL, precise, confirmed-live blocker: **`ga_positions`' own W2 acceptance is stale again**
+  (pinned against `git:1e30cd76b...`, live L1 `convergence_commit` has since moved to
+  `9f98f8c9b...` via ~15 sibling-asset writer changes since 2026-09-05) -- exactly the
+  "sibling-asset writer change invalidates my own unrelated acceptance" mechanism the ORIGINAL
+  2026-09-05 dispatch already documented on #1713, recurred predictably. **Deliberately stopped
+  here** rather than push through the actual delta-re-review + resubmission + `--commit` dispatch
+  in the same cycle -- those are a permanent evidence-ledger write and a real production dispatch
+  respectively, and deserve their own properly-paced, unhurried cycles rather than being rushed
+  under an already-long investigative cycle's remaining time. Posted the full finding to #2113
+  with the precise next-3-steps plan (delta re-review + resubmit via `nrec --as executor` ->
+  fresh dry-run confirm -> backup + real `--commit` dispatch -> if successful, work outward to
+  `ga_positions`' direct L1 dependents: `ga_dashas`/`ga_vargas`/`ga_nakshatra`/`ga_sensitive`/
+  `ga_sensitive_degree`/`ga_prashna`/`ga_ayurdaya`, all currently `waiting_on: ga_positions`).
+  CYCLE 132 L1: PR hygiene clean, **reframed #2113 from "campaign-wide gate, nothing L1 can do"
+  to a fully-diagnosed, concrete, low-risk 3-step unblock path**, found and reported (not yet
+  fixed) that L1's own DAG root has been silently sitting in a stale, already-fixable error state
+  for the entire 131-cycle span of this campaign -- next: cycle 133 should do step 1 (delta
+  re-review + resubmit `ga_positions`' W2 acceptance), confirming with a fresh dry-run before
+  ending that cycle; the actual `--commit` dispatch is its own separate, later cycle.
