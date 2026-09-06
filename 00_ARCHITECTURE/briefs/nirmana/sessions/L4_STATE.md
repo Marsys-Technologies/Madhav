@@ -3693,3 +3693,16 @@ confirmed genuinely mid-CI via `merge_group` run list; E-gate uncheckable, DB ac
 cycles; nothing new) → next: watch `#1854` merge; retry E-gate/dispatch dry-run once DB access
 returns; F1 remains deferred.
 
+`2026-09-06T~04:10Z` — L4 — **CYCLE 167 (v2.3) — third flat cycle; `#1854`'s same
+merge-group run confirmed at ~10 min, within normal range. Not stuck.**
+
+**PR hygiene:** all 10 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4. E-gate still
+uncheckable, 157th consecutive cycle DB access down.
+
+CYCLE 167 L4: IDLE-OK (verified: PR hygiene clean, all 10 own PRs unchanged/queued; `#1854`
+confirmed genuinely at ~10 min, not stuck; E-gate uncheckable, DB access down 157 cycles;
+nothing new) → next: watch `#1854` merge; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
