@@ -469,6 +469,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~39:0xZ — L3-W3 — IDLE-OK (verified): all 7 L3-owned PRs healthy
+  (`#1936` genuinely progressing in queue, rest `BLOCKED`/`MERGEABLE`). `#2104`
+  (the sidecar Docker-context fix) still hasn't merged; `#2096` unchanged
+  (still just the one ruling comment); sidecar traffic still on the same old
+  revision — all exactly as expected since `#2104` hasn't landed yet. Nothing
+  new to act on. — blocked on: `#2104` merging; next action: keep L3-only
+  hygiene sweeps going, watch `#2104`/`#2096` each cycle.
 - `2026-09-06T~38:0xZ — L3-W3 — RULING LANDED on `#2096`.** Conductor fixed it
   directly rather than choosing between the two options offered — a third,
   better approach built from this repo's own existing precedents: widen the
