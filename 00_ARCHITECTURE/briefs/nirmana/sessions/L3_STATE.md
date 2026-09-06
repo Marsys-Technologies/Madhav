@@ -493,6 +493,27 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~138:0xZ — L3-W3 — PR hygiene: `#2187` still mid-check
+  pre-queue (`Governance Gates`/`Build Check` pending at ~6.7min, within
+  normal range, nothing red). Continued F-L3-4 with a fifth asset,
+  `ka_vighnakara` (the obstruction/counter-indicator detector) — more
+  layered than the prior 5 in this batch: derived from the writer's own
+  `run()`/`_detect_all()` directly — anchors are the top-500-scored
+  `kala_convergence` windows (of 14,868 total for this chart, confirmed
+  live) plus up to 200 dasha-timeline anchors, each checked by 4 active
+  detectors (malefic_transit/panchanga_obstruction/gandanta/combustion);
+  a 5th (papakartari) is implemented but found zero hits for this
+  native, and 2 more `obstruction_type` values are reserved-not-yet-built
+  (confirmed by reading the writer source, not assumed from the CHECK
+  constraint alone). Live per-type breakdown (358+123+38+17) sums to
+  536, matching `target_floor`/`count_sql` exactly. Migration 856 +
+  paired test authored (no self-transaction wrapper from the start), all
+  7 tests pass, confirmed live the row is genuinely still NULL after the
+  "rolled back" tests ran. Migration-number guard PASS (856, confirmed
+  free). Committed locally (`bb931ca9a`), held from push — `#2187`
+  still mid-check. — blocked on: nothing new; next action: push once
+  `#2187` clears/queues, then continue F-L3-4 on another asset (15
+  remain NULL) if still no E-gate work.
 - `2026-09-07T~137:0xZ — L3-W3 — PR hygiene: `#2187` checks still
   running pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
   Integration Tests` pending, nothing red), not yet queued — nothing to
