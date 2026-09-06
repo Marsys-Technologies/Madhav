@@ -489,6 +489,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~92:0xZ — L3-W4 — PR hygiene: `#2147` MERGED for real** (its
+  own `L3_STATE.md` heartbeat content now landed on `main`). Checked `#2149`
+  for the same post-merge DIRTY risk that hit `#2065` two cycles ago (same
+  file, same section) — confirmed still genuinely `isInMergeQueue: true`
+  (position 2, `UNMERGEABLE` not-yet-tried placeholder) rather than DIRTY, so
+  no fix needed this time; GitHub's own queue re-validates against the new
+  base automatically once it actually attempts the build, and a state-file-
+  only PR prepending to the SAME section as an already-merged sibling is
+  exactly the shape that broke last time — watching closely, not assuming
+  clean. `#2065`'s own merge-group build genuinely `in_progress` (confirmed
+  via `gh run list` for `event=='merge_group'`, `pr-2065`'s own readonly-queue
+  branch, 2/3 jobs already `success`), position 5 — active progress, not
+  stuck. No new `origin/main` merge touches L3 code files. Neither service
+  asset's `health_probe` live yet. Continuing to hold the accumulated local
+  block (now 6 entries) rather than push — both `#2065` and `#2149` are
+  genuinely mid-queue-attempt right now, and pushing either branch would
+  dequeue it. — blocked on: nothing; next action: watch `#2065`/`#2149`
+  actually merge (or catch `#2149` going DIRTY if `#2065` merges first and
+  touches the same file — check explicitly, don't assume clean); push the
+  held local block once a landing spot is safe.
 - `2026-09-06T~91:0xZ — L3-W4 — IDLE-OK (verified): `#2147`/`#2149` both now
   genuinely `isInMergeQueue: true` (position 2 and 4) — the earlier
   `UNMERGEABLE` reading on `#2149` was, as documented, the not-yet-tried
