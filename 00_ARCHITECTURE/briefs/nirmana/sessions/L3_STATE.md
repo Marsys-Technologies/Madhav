@@ -213,7 +213,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | `ka_dasha_kala`'s W2/W4 dispatch (health_probe LIVE since migration 848 deployed — #2079) | `ga_dashas`/`ga_positions` (L1, unfrozen) — declared AND true ancestors, per `KaDashaKalaService`/`tree_walk`'s own live-DB read | **DECIDED, not attempted**: `egate.sql` reads `BLOCKED-ANCESTORS` for this asset despite its probe being runnable — this is the E-gate correctly refusing dispatch, not a stale/artefactual block. D-CND-34's DB-free PROXY probe deliberately does NOT verify the live-DB behavior the ancestor-freeze gate protects, so a green probe result would not license bypassing C2's asset-frontier discipline — same "not this session's call to make alone" precedent as #1960. No `probe_accepted` submitted ahead of ancestor freeze. (Note: this row was accidentally dropped from an earlier rebase and is re-added here unchanged, not re-decided.) |
 | ~~`ka_muhurta_seva`'s W2 route submission~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T~102:0xZ — recorded live, independently re-verified.** `egate.sql` confirms `OPEN-PENDING-PIN`. See heartbeat for the full procedure and digest cross-check. Next: W4 probe/freeze chain via a genuinely fresh subagent (D-CND-35). |
 | ~~`ka_muhurta_seva`'s W4 probe/freeze dispatch~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T21:10:00Z — `asset_frozen` recorded for real, via a genuinely fresh subagent from the start (no D-CND-35 process gap this time).** See asset table + heartbeat for the full chain and independent re-verification. |
-| deploy-pipeline defect (`migrate` job checks out wrong commit under `workflow_run.head_sha` race, no self-check unlike `deploy-web`) — CAMPAIGN-WIDE, not L3-only | Conductor/native ruling on **#2159** (filed, nirmana-adjudication, TIME-CRITICAL) | genuinely open — `ka_muhurta_seva` recovered by luck this time (a later deploy happened to get the right ref); the next asset/layer this hits may not be so lucky. Not fixed unilaterally — shared CI/deploy infra. |
+| ~~deploy-pipeline defect (`migrate` job checks out wrong commit)~~ | ~~Conductor/native ruling on #2159~~ | **RESOLVED — RULED + FIXED (PR #2161, merged 2026-09-06T19:45:43Z), CLOSED by Conductor.** Confirmed my diagnosis exactly right (root cause, evidence chain, the `deploy-web` precedent to mirror); added the identical commit-provenance guard to `migrate` PLUS 3 more jobs an independent review found also missing it (`deploy-sidecar`, `deploy-mcp`, `deploy-pipeline-job`) — all 4 now fail loud on a SHA mismatch. `DEPLOY_SHA`'s own resolution strategy deliberately left open (separate, larger decision). Discovered this cycle via a related fix, `#2172` ("CONDUCTOR: changed-paths gate diffs from last successful deploy"), which explicitly cites #2159 as "same defect class, different root cause" (that job's diff base, not `DEPLOY_SHA`'s checkout) — a second, independently-caught instance of the same underlying class, campaign-wide validation the finding mattered. |
 | 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | genuinely open — PR #1741 landed the WRITER only (confirmed via `L2_STATE.md` CAPABILITIES LANDED); data unreachable until the (held) `bo_laksana` rebuild |
@@ -493,6 +493,29 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~118:0xZ — L3-W4 — `#2159` (the deploy-pipeline defect this
+  session filed) is CLOSED — Conductor ruled it correct in full and fixed
+  it.** PR hygiene: `#2174`'s check finished (0 failures) and it's now
+  genuinely `isInMergeQueue: true`, position 3, state `QUEUED` — past its own
+  checks, just waiting for its merge turn. Discovered `#2159`'s resolution
+  via a NEW, related merge (`#2172`, "CONDUCTOR: changed-paths gate diffs
+  from last successful deploy, not HEAD~1") that explicitly cites `#2159` as
+  "same defect class, different root cause" — a second instance of the same
+  underlying failure mode (a deploy-pipeline job trusting a value that can
+  race under a fast-merging queue), independently caught elsewhere,
+  corroborating that the finding was real and worth filing. **Conductor's
+  ruling on `#2159` itself**: root cause, evidence chain, and the `deploy-
+  web` precedent to mirror all confirmed correct; fixed via PR #2161
+  (merged `19:45:43Z`) — the identical commit-provenance guard added to
+  `migrate` PLUS 3 more jobs (`deploy-sidecar`/`deploy-mcp`/`deploy-
+  pipeline-job`) an independent review found ALSO missing it, all 4 now
+  fail loud on a SHA mismatch before any DB/image work runs. `DEPLOY_SHA`'s
+  own resolution strategy (my remedy option 2) deliberately left open as a
+  separate, larger decision — correctly not bundled in. Held-items row
+  updated to RESOLVED. No new L3 E-gate opening otherwise. — blocked on:
+  `#2174` clearing the queue; next action: watch it merge, then resume
+  normal per-cycle monitoring — no other open threads from this saga
+  remain.
 - `2026-09-06T~117:0xZ — L3-W4 — IDLE-OK (verified): `#2174`'s last check,
   same run, now ~9.3min — still within the known ~10min pattern, not yet
   stuck. 0 failures. No new merges, no new bounded work. — blocked on:
