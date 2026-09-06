@@ -493,6 +493,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~105:0xZ — L3-W4 — Genuine progress on the W4 chain, not
+  finished yet.** PR hygiene: `#2166` still healthy, mergeable, 2 checks
+  pending, 0 failures. Checked the subagent's progress via a direct,
+  non-intrusive DB read (not `ListAgents` chatter alone) rather than interrupt
+  it: **`probe_accepted` and `integrity_verified` are both live**, correctly
+  attributed to `amjis-nirmana-verifier@...`, observed at `21:06:38Z` and
+  `21:07:14Z`. `asset_frozen` not yet present — the subagent is still
+  genuinely working (5min in, well within budget), not stalled. Left it
+  running undisturbed. No new bounded work available while it finishes. —
+  blocked on: the subagent completing the third event; next action: verify
+  `asset_frozen` lands, re-run `egate.sql` to confirm `ka_muhurta_seva` drops
+  out of the not-yet-frozen list entirely (the layer's second genuine
+  freeze), and read the subagent's own report for the full procedural
+  account once it returns.
 - `2026-09-06T~104:0xZ — L3-W4 — IDLE-OK (verified): `#2166` healthy, mergeable,
   3 checks pending, 0 failures — nothing to fix. The redispatched W4 subagent
   (2nd attempt) is genuinely still running (~3min in via `ListAgents`, not
