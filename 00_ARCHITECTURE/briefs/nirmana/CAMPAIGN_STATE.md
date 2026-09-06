@@ -380,6 +380,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T17:42:44Z` — cycle 570: **IDLE-OK.** Own PR #2139: `mergeStateStatus` briefly
+  `UNKNOWN` (GH recalculating), but checks confirmed still genuinely `pending` (Build Check,
+  Governance Gates) — not stuck, not yet `is:queued`. Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (19). Nothing rose to a bounded unit.
 - `2026-09-06T17:40:32Z` — cycle 569: **IDLE-OK.** Own PR #2139: still pending, not yet
   `is:queued`. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19). Nothing rose to a
   bounded unit.
