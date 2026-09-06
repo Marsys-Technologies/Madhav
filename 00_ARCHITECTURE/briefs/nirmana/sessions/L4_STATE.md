@@ -7271,3 +7271,19 @@ adjudication `#2101` confirmed L1's own item, not L4-relevant → next: retry E-
 dry-run every cycle until DB access returns (the layer's only remaining priority-1-4 lever);
 F1 remains the one deferred code item; with no new eligible W1-W4 work, expect sustained
 honest IDLE-OK cycles until either DB access returns or a new finding/adjudication surfaces.
+
+`2026-09-06T~13:36Z` — L4 — **CYCLE 366 (v2.3) — IDLE-OK. Zero own PRs open, W3 wave
+remains fully closed.**
+
+**PR hygiene:** trivially clean — `headRefName` prefix search for `codex/nirmana-l4*`
+returns zero open PRs.
+
+**Priorities 1-4:** no new `main` commits relevant to L4. No new adjudications name L4
+(count unchanged at 17). E-gate still uncheckable — `mcp__postgres__query` unavailable via
+`ToolSearch`, 356th consecutive cycle DB access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 366 L4: IDLE-OK (verified: zero own PRs open, PR hygiene trivially clean; no new
+L4-relevant adjudications; E-gate uncheckable, DB access down 356 cycles) → next: retry
+E-gate/dispatch dry-run every cycle until DB access returns; F1 (`ph_phaladesa` zero MCP
+consumers) remains the layer's one deferred code item; no other own-remit work currently
+eligible.
