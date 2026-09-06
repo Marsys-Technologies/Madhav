@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- CAUGHT A REAL ANOMALY: run 34033464028's Apply DB Migrations job reported success but migration 704 was NOT actually applied (confirmed via direct _migrations_applied query -- 704 absent, 700-703/710-799 all present; census row still has the OLD stale value). That run's overall conclusion was actually failure (unrelated: L3's ka_graha_sancara smoke probe failed in Build & Deploy Sidecar). Root cause for the migration-apply miss not yet found. A newer commit (a448be8a, confirmed to include 704) triggered a fresh deploy run (34033909025), Apply DB Migrations in_progress -- letting it determine the outcome before escalating. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged, still not safe to re-dispatch bg_parihara_rules -- next cycle: check 34033909025, verify 704 actually applied this time (don't trust job conclusion alone), then re-dispatch.
+last_updated: 2026-09-06 -- migration 704 CONFIRMED genuinely applied live (verified directly, not trusting the job conclusion alone -- _migrations_applied row exists, census content corrected, integrity_check_sql evaluates True). Fresh W2 values computed for re-dispatch (registry_fingerprint 2f9735d1..., analysis_digest a062c6f9...) but NOT YET submitted -- 34033909025's Build & Deploy Web job still in_progress, and submitting W2 against a mid-rollout deployed commit risks a reviewed-deployment-sha mismatch. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged -- next cycle: confirm Build & Deploy Web completed, submit the precomputed W2 pair, dispatch bg_parihara_rules straight through to asset_frozen (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3348,3 +3348,27 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** `34033909025`'s `Apply DB Migrations` job still `in_progress`, no
   change. No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **Migration 704 CONFIRMED genuinely applied.** `34033909025`'s `Apply DB
+  Migrations` completed `success`; directly re-verified (not trusting the job conclusion alone,
+  per the lesson from last cycle): `_migrations_applied` now has a real row for
+  `704_bg_parihara_rules_census_stale_evidence_pointer_repin.sql` (id 644, applied_at
+  `12:46:54Z`), `bg_muhurta_factor_census`'s `evidence_pointer` now reads `bg_sky_calendar` (the
+  corrected value), and `asset_registry.integrity_check_sql` for `bg_parihara_rules` now contains
+  the new census hash and evaluates `True` live. The earlier miss on `34033464028` self-resolved
+  on retry with no data damage — not escalating further; noting for the record only.
+  - Computed the fresh W2 values needed for re-dispatch (registry contract changed by 704, so the
+    old W2 acceptance is stale, same pattern as after 703): fresh live row saved to
+    `bg_parihara_rules_row_post704.json`; new `registry_fingerprint_sha256
+    2f9735d160f2c5023bc307370e661112e28a5c78b2fa0df6138c8b4e50137359`, new `analysis_digest
+    a062c6f941f94e3c775b457adc75df6ca4ba5ba0fb0c8ca7e2ede1f40f0c6204` (convergence_commit
+    `49bb5c98b864a2cb2fee037cdb7f14f6892a8263`, writer_digest_sha256
+    `e3d5118746f02847dbb1f6f317c6367b37df5d89d41626cc1977a0016ab7ecf2`, both unchanged from
+    before since no writer file was touched).
+  - **Deliberately NOT submitting W2 / dispatching yet this cycle**: `34033909025`'s `Build &
+    Deploy Web` job is still `in_progress` — the evidence-command route validates against
+    whatever commit is CURRENTLY deployed, and that's still mid-rollout. Submitting now risks the
+    same `reviewed-deployment-sha`-class mismatch hit earlier this session. Next cycle: confirm
+    `Build & Deploy Web` completed, submit the fresh W2 pair above, then dispatch straight
+    through to `asset_frozen` → **36/40**.
+  - No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
