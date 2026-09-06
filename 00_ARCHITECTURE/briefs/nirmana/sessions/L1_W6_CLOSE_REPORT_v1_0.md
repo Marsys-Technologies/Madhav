@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.2-DRAFT"
+version: "0.3-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -22,11 +22,20 @@ warning: >
 routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed cycle 122, MUST tier
 closed for L1's own scope cycle 125; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
-call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED** — adjudication #2113, a
-campaign-wide `asset_freshness` gate with zero L1 dependency-asset rows, blocks any L1 asset_set
-rebuild attempted through the standard path; unchanged since 2026-09-06T15:00:13Z across ~15
-consecutive cycles of re-checking · **W5 ⛔ BLOCKED** on the same gate (no completed post-W4 run
-exists to mechanically check or verify) — one prep artifact exists ahead of need:
+call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
+gate this section originally named.** Adjudication #2113 was raised as a campaign-wide
+`asset_freshness` gate (zero L1 dependency-asset rows) blocking any L1 rebuild; re-investigated
+live (cycles 132-133) and found the real picture is more specific: `ga_positions` (L1's DAG root,
+zero declared dependencies) is IMMUNE to that gate by construction, and its true blocker was a
+now-fixed writer crash (#1856) plus a stale W2 acceptance pin — both concretely diagnosed. But
+pursuing that unblock surfaced a SECOND, more consequential finding before any dispatch was
+attempted: `ga_positions_writer.py`'s `fact_id` derivation changed since its last acceptance (PR
+#1898 removed `build_id` from the hash — a real, good, already-merged fix), and
+`ga_yoga_firings.constituent_fact_ids` (36/40 refs on the canonical chart) resolves to exactly
+`ga_positions`' own categories — a `ga_positions`-only rebuild would orphan those references.
+**W4 is now blocked on a coordinated-rebuild-sequencing question, not an infrastructure gap** —
+posted to #2113, awaiting a reply as of this writing · **W5 ⛔ BLOCKED** (no completed post-W4
+run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
 real post-rebuild W5 pass, but confirms the mechanical-check half is ready the moment #2113
@@ -177,6 +186,23 @@ partly *not* confined to L1's own assets:
    action required. Worth Phase Z's attention as a general migration-range-hygiene case: the
    collision was caught by L1's own housekeeping (confirming the next free number before use),
    not by any automated guard.
+3. **Adjudication #2113 (chart-rebuild blocker) — re-diagnosed from "campaign-wide infra gap" to
+   a specific, coordinated-sequencing question. OPEN, awaiting reply.** Re-investigated live
+   rather than re-checking a stale issue comment: `ga_positions` (the DAG root, zero declared
+   dependencies) is immune to the originally-reported `asset_freshness` gate by construction, and
+   its 2026-09-05 failed dispatch was actually a now-fixed writer crash (#1856, PR #1861 merged
+   the same night, never retried). Before resubmitting its stale W2 acceptance and dispatching,
+   checked what changed in `ga_positions_writer.py` itself since that acceptance — PR #1898
+   (issue #1747) removed `build_id` from `fact_id`'s derivation, a real correctness fix, but one
+   that means a fresh build produces different `fact_id` values than what's currently stored.
+   Checked whether anything stores (rather than re-derives) those specific values and found
+   `ga_yoga_firings.constituent_fact_ids` does (36/40 refs on the canonical chart resolve to
+   `ga_positions`' own categories) — a `ga_positions`-only rebuild would silently orphan them.
+   Did not dispatch; posted the finding and asked whether a coordinated multi-asset rebuild
+   (`ga_positions` through `ga_yoga`) or a different sequencing is the right shape. Worth Phase
+   Z's attention as a general pattern: a writer's own identity-derivation change (even a
+   deliberately correct one) can create a transition hazard for any downstream table that stores
+   rather than re-derives the changed value, independent of any campaign-wide gate.
 
 ## §4 — Cost actuals vs forecast
 
@@ -192,11 +218,14 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §5 — Backlog handed forward
 
 **To Phase Z / the Conductor:**
-- **Adjudication #2113** (chart-rebuild blocked campaign-wide by a new `asset_freshness` gate)
-  — the single blocker preventing L1 W4/W5 progress; `asset_freshness` currently holds 35 rows
-  covering only 34 assets (all `bg_*`/L0 plus 2 `mi_*`/L5), zero for any L1/L2/L3/L4 asset. This
-  affects every non-L0/L5 layer identically, not an L1-specific problem — worth Phase Z
-  confirming whether a bootstrap step exists or is needed campaign-wide.
+- **Adjudication #2113** — no longer a simple campaign-wide `asset_freshness` gap (see §3.5
+  item 3 for the full re-diagnosis). The one thing still worth Phase Z's attention from the
+  ORIGINAL framing: `asset_freshness` holds rows for `bg_*`/L0 and a few `mi_*`/L5 assets only,
+  zero for any L1/L2/L3/L4 asset — this may still matter for OTHER L1 assets whose dependencies
+  are themselves L1 (unlike `ga_positions`, which is immune only because it has none). The
+  ACTIVE open question is narrower and asset-specific: whether a coordinated `ga_positions`→
+  `ga_yoga` rebuild sequencing (or an equivalent ruling) is needed before `ga_positions` can
+  safely dispatch alone.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
