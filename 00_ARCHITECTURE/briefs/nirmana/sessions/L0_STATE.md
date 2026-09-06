@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK, #2066 at queue position 17. Deployed sha unchanged for 3 cycles despite main advancing -- noticed deploy.yml keeps getting cancelled+restarted per new merge (plausible normal churn, not flagging yet -- will flag next cycle if still stuck). No DIRTY/RED. Standing priorities unchanged. 30/40 frozen holds unchanged.
+last_updated: 2026-09-06 -- IDLE-OK, deploy stall resolved on its own (confirmed genuine forward progress, no flag needed). #2066 at queue position 7, AWAITING_CHECKS -- close. No DIRTY/RED. Standing priorities unchanged: bg_doshas+bg_gochara_arcs+bg_text_index ready for #1901 deploy; bg_dasha_systems+bg_compendium_index ready for #2066 deploy. 30/40 frozen holds unchanged.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -2958,3 +2958,8 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   latest, cancel stale" behavior during a busy merge period, not necessarily a bug. Not flagging
   yet (single observation window, could resolve once merge velocity settles) — will flag to
   #1713 if the deployed sha is STILL stuck next cycle. 30/40 frozen holds unchanged.
+
+- 2026-09-06 — **IDLE-OK, deploy stall resolved on its own (no flag needed).** Deployed sha
+  advanced (confirmed via ancestry check, genuine forward progress, not a fluke). Still behind
+  `#1901` but no longer stuck. `#2066` now at queue position 7, `AWAITING_CHECKS` — close. No
+  DIRTY/RED. 30/40 frozen holds unchanged.
