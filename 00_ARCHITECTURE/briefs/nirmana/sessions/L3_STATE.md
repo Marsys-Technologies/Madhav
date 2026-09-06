@@ -493,6 +493,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~134:0xZ — L3-W3 — PR hygiene: `#2184` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — its checks cleared since
+  last cycle. Nothing to fix. Continued F-L3-4 with a second asset,
+  `ka_kota_chakra` (also fully CLEAN in the depends_on audit): derived
+  from `services/ka_kota_chakra/writer.py`/`logic.py` directly — simpler
+  than `ka_vedha_gochara`, no rule-matching gate at all, every graha
+  contributes one row per nakshatra-run over the same 460-day horizon.
+  Live per-graha breakdown (Moon 442, Mercury 41, Venus 35, Sun 35, Mars
+  18, Jupiter 7, Saturn 4, Ketu 3, Rahu 3) sums to 588, matching
+  `target_floor`/`count_sql` exactly. Migration 853 + paired test authored
+  — applied the immediately-preceding cycle's self-caught lesson up
+  front this time (no `BEGIN;`/`COMMIT;` wrapper from the start); all 6
+  tests pass, and confirmed live that the row is genuinely still NULL
+  after the "rolled back" integration tests ran (no repeat of the
+  migration-852 near-miss). Migration-number guard PASS (853, confirmed
+  free). Committed locally (`cdb75837c`), held from push — `#2184` still
+  mid-queue-attempt on the same branch. — blocked on: nothing new; next
+  action: push once `#2184` merges or clearly finishes its attempt, then
+  continue F-L3-4 on another asset if still no E-gate work.
 - `2026-09-07T~133:0xZ — L3-W3 — PR hygiene: `#2184` healthy, all checks
   green except `Governance Gates` (still `pending`, within the confirmed
   ~11min normal range for its pytest step), not yet queued (checks still
