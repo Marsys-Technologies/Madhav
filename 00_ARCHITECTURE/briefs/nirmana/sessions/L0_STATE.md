@@ -267,6 +267,15 @@ a RED-fix (see heartbeat).
   migrations 705 AND 706 both applied live (direct DB check, not CI-conclusion alone) and confirm
   `from_moon_view` is correctly wired end-to-end in production. Then revert to IDLE-OK pending
   Conductor's C12 carve-out for `bg_cohort`.
+- 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
+  and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
+  (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
+  cycle, will re-check next cycle by construction. No other open L0-lane PR. Checked #1713 tail (all
+  comments after my 09-06T14:37:43Z bg_cohort service-dependency carve-out flag) — no Conductor
+  response yet; read Conductor's latest fleet-status post in full (cycle 586, 09-06T18:17Z) — confirms
+  39 bg/L0 frozen, #2122 already logged as ruled/assigned-to-L0 (matches my PR #2153 work), no mention
+  of the bg_cohort carve-out landing. No new adjudication issues found for bg_cohort/C12 via
+  `gh search issues`. Nothing eligible: `bg_cohort` still the sole blocked asset, externally gated.
 - 2026-09-07 — **PR #2153's DB Integration Tests still RED after the prior cycle's fix; root-caused
   for real and fixed.** `is:queued` showed #2153 not queued, `mergeStateStatus: BLOCKED`. Pulled the
   actual failed job log (`gh api .../jobs/<id>/logs`) rather than trusting the check name alone:
