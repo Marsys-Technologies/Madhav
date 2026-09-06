@@ -496,3 +496,4 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   fully FIXED (PR #2172) alongside `#2159` -- both TIME-CRITICAL deploy-pipeline gaps this session
   helped surface now closed. No mention of the `bg_cohort` C12 service-dependency carve-out.
   45/128 frozen (39 bg/L0, unchanged for L0 specifically). Nothing eligible for L0.
+- 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
