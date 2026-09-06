@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- MILESTONE: bg_concordance FROZEN -- L0 now 39/40. This is the LAST asset L0 can freeze on its own -- only bg_cohort remains, genuinely Conductor-owned. Confirmed all 4 ancestors frozen, existing W2 from 2026-09-04 still valid (no refresh needed). Applied the lesson from bg_rules's near-miss: dispatched + authorized in one tight back-to-back sequence, clean on the first attempt. Full chain (dispatch -> accepted_rebuild_observed -> integrity_verified -> asset_frozen) verified at each step; independently confirmed via a direct COUNT query that L0 now has exactly 39 asset_frozen events. D-NATIVE-06 is now fully delivered except for bg_cohort. No open L0 PRs, no DIRTY/RED. L0 is IDLE-OK pending only Conductor's C12 carve-out for bg_cohort.
+last_updated: 2026-09-07 -- 39/40 frozen (bg_cohort remains, Conductor-owned, C12 carve-out not yet wired in). Found and shipped genuine new work: issue #2122 (Conductor-assigned to L0) -- from_moon_view Vidhi primitive dispatched an inert reference_point arg to ganita_chart_facts_get; re-pointed to ganita_transit_anchors_get (its real consumer), fixed in canonical source + Python seed writer + regenerated mirror, plus migration 705 correcting the live DB row migration 462 had seeded stale. Shipped as PR #2153, all relevant tests green, migration double-verified via rolled-back replay. Not a freeze-cycle item -- doesn't change the 39/40 count. No other open L0 PRs, no DIRTY/RED.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3915,3 +3915,34 @@ itself. L0 is now IDLE-OK until that lands.
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work. 39/40 frozen unchanged.
 
 - 2026-09-06 — **IDLE-OK.** No change. No open L0 PRs, no eligible work. 39/40 frozen unchanged.
+
+- 2026-09-07 — **New real work found and shipped: issue #2122, assigned to L0 by Conductor
+  ruling.** Overnight fleet-status post on #1713 (cycle 586) mentioned "an L0 dead-argument fix
+  (verified via grep, assigned to L0)" — investigated and found this is genuinely NEW, actionable
+  work outside the campaign-freeze track (a Vidhi registry correctness fix, unrelated to
+  bg_cohort's block).
+  - **F-D21/F-D23** (found by L1's W2 DECIDE sweep, filed as #2122 since the fix touches
+    L0-owned files outside L1's write-set): the `from_moon_view` Vidhi primitive dispatched a
+    `reference_point` argument to `ganita_chart_facts_get` that no tool anywhere reads (confirmed
+    via grep: 2 hits, both the declaration itself). Meanwhile `ga_transit_anchors` (L1's asset,
+    storing exactly this Chandra-lagna house-from-Moon data) had zero data-plane consumers
+    campaign-wide.
+  - **Fix**: re-pointed `from_moon_view.live_tool` to `ganita_transit_anchors_get` (confirmed via
+    its real Zod schema: takes only `chart_id` + optional filters, no `reference_point` param),
+    dropping the inert arg. Applied in the canonical source
+    (`platform/src/lib/vidhi/registry_data.ts`), the Python seed writer
+    (`bg_vidhi_primitives.py`), and regenerated the `platform-mcp` mirror via `npm run
+    codegen:vidhi` (never hand-edited a generated file).
+  - **Also found and fixed the live-data half**: migration 462 (VIDHI-PŪRṆATĀ, applied
+    2026-08-02) had seeded the live `vidhi_primitives` row with the stale value, and — since
+    seed migrations only re-fire on a fresh re-run, which doesn't happen in normal operation —
+    the live row would have stayed stale even after the code fix. Shipped migration 705
+    correcting it, verified via two independent rolled-back replays before shipping (never
+    edited the already-applied 462, per migration discipline).
+  - Verified: `codegen:vidhi:check` passes, `registry_completeness.test.ts` (9/9, including the
+    "every `live_tool` is a REAL tool" allowlist check), `vidhi_codegen_parity.test.ts` (3/3),
+    `test_bg_vidhi_primitives.py`, and `check_vidhi_registry_parity.mjs` (full PASS) all green.
+  - Shipped as **PR #2153** (`fix/nirmana-l0-vidhi-from-moon-view-repoint`). Once merged+deployed:
+    confirm migration 705 applies live, confirm the primitive is correctly wired — no freeze/W2/W4
+    evidence chain needed (this is a Vidhi-registry data-routing fix, not an asset-freeze cycle
+    item, and doesn't affect L0's 39/40 frozen count or the bg_cohort blocker).
