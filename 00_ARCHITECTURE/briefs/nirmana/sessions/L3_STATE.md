@@ -458,6 +458,31 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~16:0xZ — L3-W3 — Three genuinely DIRTY PRs found and fixed this cycle
+  (#1961, #1966, #1970) — all three had gone stale since 2-3 cycles ago; no new
+  substantive unit found beyond hygiene.** GraphQL `is:queued` initially listed all three
+  as `UNKNOWN` mergeStateStatus; direct GraphQL re-check confirmed genuine
+  `DIRTY`/`CONFLICTING` for all three, not a transient state. All three were pure
+  L3_STATE.md-only conflicts (no writer/generated-file collision) — resolved via the
+  established script, each verified for a single surviving heading: #1961 (7 commits to
+  rebase — this cycle's own prior state-tracking branch, carrying a genuinely interesting
+  piece of history not seen before: a cross-session message from "conductor-2b" about
+  #1956/#1958, correctly NOT acted on prematurely at the time since #1958 hadn't actually
+  merged yet), #1966 (F-SANGAM-7 tajika DIRTY-fix note), #1970 (F-SANGAM-7 eclipse
+  DIRTY-fix note). None touched any code file — safety-checked via `git diff origin/main
+  --stat` on non-state paths (empty for all three) and the standard "only the known
+  migration-range line differs" check on the state file itself. All three force-pushed,
+  re-armed auto-merge, confirmed `MERGEABLE`.
+  **Re-verified standing items**: `#1903` still genuinely queued (`isInMergeQueue: true`,
+  unchanged); `origin/main` advanced by three L1 integrity-contract merges since last
+  cycle (real queue progress, immaterial to L3); last cycle's own #2060 (F-CONC-7
+  migration 731) and #2061 (its heartbeat) both still genuinely queued, migration 731
+  confirmed NOT yet deployed (`_migrations_applied` has no `731_` row — expected, honest,
+  not yet merged). Checked #1713 and the `nirmana-adjudication` label for anything new
+  since last cycle: 15 open (down from 16 — #1956 closed, already recorded last cycle),
+  nothing newly relevant to L3. No eligible code unit beyond the hygiene fixes above — the
+  standing situation (N1/N2 blocked, `kala_now_get` needs a design decision, moorti
+  admission not authorized) is unchanged.
 - `2026-09-06T~05:2xZ — L3-W3 — F-PARVA-2 fix: migration 678 (PR pending, branch
   `codex/nirmana-l3-f-parva-2-volume-explanation`).** Moved to `ka_jivana_parva` (the
   life-arc chapter artifact — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_jivana_parva section).
