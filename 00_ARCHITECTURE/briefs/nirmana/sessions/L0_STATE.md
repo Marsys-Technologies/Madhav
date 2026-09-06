@@ -2132,3 +2132,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
   session without completing — a normal side-effect of a very active merge queue (each main advance
   restarts its checks before they finish), not a defect. Still no reds. No DIRTY, no RED. 30/40
   frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Fifth flat read (main HEAD unchanged this time). `#2016`'s newest CI
+  run only ~2min old, in_progress, no reds — the pattern is just each run's ~2-3min cadence lining
+  up with my check timing, not a hang. No DIRTY, no RED. 30/40 frozen holds.
