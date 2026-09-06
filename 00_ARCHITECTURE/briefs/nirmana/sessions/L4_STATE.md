@@ -6248,3 +6248,44 @@ PR-hygiene pass next cycle (confirmed UNMERGEABLE again but not DIRTY/RED, delib
 deferred to keep this cycle bounded); retry E-gate/dispatch dry-run once DB access returns;
 F1 remains deferred.
 
+
+`2026-09-06T~17:15Z` — L4 — **CYCLE 320 (v2.3) — PR hygiene fully cleared: the `#1831`/`#1808`
+UNMERGEABLE recurrence deferred at cycle 319 close, plus `#1834`, `#1845`, `#1839` found in
+the same state at this cycle's open (5 of 6 own PRs), all fixed via the established recipe
+this cycle. Zero left in a bad state at close.**
+
+**PR hygiene this cycle, in order:** `#1831` (`ph_pratikara` F-3.4) — rebase conflicted in
+both generated files; digest confirmed already correct via fresh regen; pin hand-derived to
+`a01210c5...42eec`; 76/76 tests green. `#1808` (`ph_nimitta` F-12/F-16) — rebase conflicted
+only in the pin file; digest already correct; pin hand-derived to `46de3151...e3f62c`; 110/110
+tests green (corrected the test invocation from a stale filename guess to the real
+`test_ph_nimitta_{base_rate,honest_defaults,spine,writer_date_coercion}.py` set). `#1834`
+(`ph_rectification` F3) — clean rebase, no conflicts; both generated files already correct;
+49/49 tests green; queue-slot state was `AWAITING_CHECKS` (not `UNMERGEABLE`) but still
+dequeued before push per the "any occupied state, not just UNMERGEABLE" recipe rule. `#1845`
+(`ph_sodhana` LEAKAGE-FIREWALL) — clean rebase, no conflicts; 54/54 tests green. `#1839`
+(`ph_phaladesa` headline-anchor) — clean rebase, no conflicts; 97/97 tests green. All five:
+`--check` and a fresh digest diff verified clean from each branch's own fully-rebased final
+state (never mid-rebase, per the cycle-226 lesson); `git diff $(git merge-base HEAD
+origin/main) HEAD --stat` confirmed each diff isolated to its own writer fix + the two
+generated files; `mergeQueueEntry` checked via GraphQL before every push, `dequeuePullRequest`
+called whenever occupied at all; all five re-armed via `gh pr merge --auto` and confirmed
+`BLOCKED`/`MERGEABLE` (not `DIRTY`) afterward. `#1842` (`ph_pramana` F2) checked and found
+genuinely `AWAITING_CHECKS` — legitimately mid-queue, no action needed.
+
+**Final sweep confirms all 6 own PRs healthy at cycle close:** `#1831`, `#1808`, `#1834`,
+`#1845`, `#1839` all `BLOCKED`/`MERGEABLE` with auto-merge armed (queued, awaiting their turn
+at the queue head — not DIRTY); `#1842` `AWAITING_CHECKS`, own auto-merge intact, untouched.
+
+**Priorities 1-4:** no new `main`-landed own-PR merges this cycle; no new adjudications name
+L4 (count unchanged at 15, cross-checked against the fresh list this cycle). E-gate still
+uncheckable — `mcp__postgres__query` unavailable via `ToolSearch`, 310th consecutive cycle DB
+access down. No `NIRMANA_HOLD` file present.
+
+CYCLE 320 L4: cleared all 5 outstanding UNMERGEABLE/occupied-queue-slot recurrences
+(`#1831`, `#1808`, `#1834`, `#1845`, `#1839` — every writer fix verified intact via
+merge-base-anchored diff, every test suite green, all re-armed and confirmed
+`BLOCKED`/`MERGEABLE`); `#1842` confirmed legitimately `AWAITING_CHECKS`, no action needed →
+next: watch the queue drain own PRs in position order; retry E-gate/dispatch dry-run once DB
+access returns; F1 (`ph_phaladesa` zero MCP consumers) remains deferred pending MCP-verification
+capability or native review.
