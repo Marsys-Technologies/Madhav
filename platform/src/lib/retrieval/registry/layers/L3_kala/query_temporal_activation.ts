@@ -188,7 +188,17 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
                    AND ms.ayanamsha_id = kala_activation.ayanamsha_id) AS domains_affected_array
         FROM kala_activation
         WHERE ${actConds.join(' AND ')}
-        ORDER BY orb_strength DESC NULLS LAST, activation_start, id
+        -- F-KALA-1 (L3_W1_ANALYSIS_BATCH_E.md, ka_kalasutra finding 1): orb_strength is
+        -- 99.6% NULL (measured) — ka_sangam only produces windows for <=260 of ~50,104
+        -- activation predicates — so ordering on it ALONE (as this used to) meant this
+        -- LIMIT's cut point was decided by activation_start/id for nearly every row, not by
+        -- any real strength signal. dasha_activation_proximity_score is 0% NULL (measured)
+        -- and is this row's own strength-like measure (dignity x non-affliction, [0,1],
+        -- higher = stronger) — added as the PRIMARY sort key; orb_strength stays as a
+        -- secondary tiebreak (real signal for the small fraction of rows ka_sangam does
+        -- cover); activation_start/id remain the final deterministic tiebreak (§N.7 item 2).
+        ORDER BY dasha_activation_proximity_score DESC NULLS LAST,
+                 orb_strength DESC NULLS LAST, activation_start, id
         LIMIT ${topKPh}
       `
 
