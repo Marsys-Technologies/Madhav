@@ -2510,3 +2510,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (positions still 11/18/19/40, frontmost #1997 ~9.7min in —
   still under 30min hang threshold). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Batch drained 5 more merges (#1997/#1998/#1907/#2000/#1999, L1/L2, none
+  L0's). `#2004` (my own PR) now at queue position 4, `AWAITING_CHECKS` — very close to merging.
+  Positions overall: 4/11/12/33. No DIRTY, no RED. 30/40 frozen holds.
