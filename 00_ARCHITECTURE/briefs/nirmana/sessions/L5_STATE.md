@@ -457,6 +457,10 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T09:36Z (C8 v2.3 cycle 367) — **IDLE-OK, verified not stalled.** #1826's
+  Governance Gates job checked at step level: on pytest, same shape as prior successful
+  runs. #1844 confirmed `isInMergeQueue: true`. #1869 unchanged at 4 comments. 5 cycles
+  since last push — pushing next cycle once #1826 clears the queue.
 - 2026-09-06T09:33Z (C8 v2.3 cycle 366) — **IDLE-OK.** #1826 unchanged (Governance Gates,
   ~8.4 min in, no failures, armed — normal duration). #1844 confirmed `isInMergeQueue:
   true`. #1869 unchanged at 4 comments. 4 cycles since last push.
