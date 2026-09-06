@@ -5185,3 +5185,19 @@ hygiene clean, all 9 own PRs genuinely queued and advancing; E-gate uncheckable,
 down 249 cycles; nothing new) → next: watch queue positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~11:55Z` — L4 — **CYCLE 260 (v2.3) — genuinely IDLE; first flat cycle, queue
+head (`#1988`, not mine) checked directly, confirmed `AWAITING_CHECKS` — actively
+processing. 250th consecutive cycle DB access down — a round milestone, noted without
+re-escalating beyond the original flag (D-CND-16/decide-and-log discipline).**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued for a second cycle. No DIRTY, no
+RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 250th consecutive cycle DB access down.
+
+CYCLE 260 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; queue head
+`#1988` actively processing; E-gate uncheckable, DB access down 250 cycles; nothing new) →
+next: watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
