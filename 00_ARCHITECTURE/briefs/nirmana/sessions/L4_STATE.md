@@ -5029,3 +5029,33 @@ cycles; nothing new) → next: re-fetch `main` next cycle to confirm `#1977` lan
 positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
 deferred.
 
+`2026-09-06T~11:10Z` — L4 — **CYCLE 251 (v2.3) — `#1977` confirmed merged, resolving last
+cycle's slow-but-normal diagnosis. Two more genuine DIRTY PRs found and fixed: `#1849` and
+`#1845`, both dequeued after upstream merges (this window's sixth and seventh DIRTY-PR
+episodes) — this cycle's bounded unit of work.**
+
+**PR hygiene:** full sweep found `#1849` (`codex/nirmana-l4-w3-3i-suddha-sodhana-fail-loud`)
+and `#1845` (`codex/nirmana-l4-w3-3h-sodhana-leakage-blindspot`) both `DIRTY`/dequeued.
+Rebased both onto `origin/main`: for each, the digest-regen commit's own digest content
+auto-merged clean (verified byte-identical to a fresh `provenance_inventory` regen), only the
+pin conflicted; re-derived `writer_inventory_sha256` by hand via the script's own algorithm
+and verified `--check` from the fully rebased state (not mid-rebase). Confirmed via `git diff
+origin/main` that each branch's own writer fix survived (`ph_suddha_sodhana.py`'s F-16
+fail-loud fix; `ph_sodhana/engine.py`'s LEAKAGE-FIREWALL NULL/empty-`confidence_basis` fix).
+51/51 tests pass (`test_ph_wave5.py`) for both. Both force-pushed with `--force-with-lease`,
+`mergeStateStatus` confirmed `MERGEABLE`/`BLOCKED`-on-checks (not `DIRTY`) within 15s, both
+re-armed via `gh pr merge --auto`.
+
+Remaining 7 own PRs (`#1870` 68, `#1864` 57, `#1842` 114, `#1839` 118, `#1834` 102, `#1831`
+93, `#1808` 98) all re-verified genuinely `QUEUED`, unchanged.
+
+**Priorities 1-4:** `#1977` merged (not L4-relevant). No new adjudications name L4 (count
+unchanged at 14). E-gate still uncheckable, 241st consecutive cycle DB access down.
+
+CYCLE 251 L4: rebased+repushed 2 DIRTY PRs (`#1849`, `#1845` — dequeued after upstream
+merges; both writer fixes verified intact through rebase, 51/51 tests pass each, both
+re-armed for auto-merge; `#1977` confirmed merged resolving last cycle's slow-but-normal
+diagnosis) → next: confirm `#1849`/`#1845` re-enter the merge queue next cycle; watch
+remaining 7 PRs' positions continue advancing; retry E-gate/dispatch dry-run once DB access
+returns; F1 remains deferred.
+
