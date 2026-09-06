@@ -2120,3 +2120,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (`#2016` still mid-CI, no reds; no active merge-queue entry
   found momentarily). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read. `#2016` confirmed `mergeable=MERGEABLE`,
+  `mergeStateStatus=BLOCKED` (pending checks, not DIRTY), auto-merge armed — still mid-CI, no reds.
+  No DIRTY, no RED. 30/40 frozen holds.
