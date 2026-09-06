@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 107; #2122 (F-D21/F-D23) RULED, assigned to L0. Re-investigated F-E22 before acting on its own MUST instruction — the "5 orphaned rows" are real, correctly-grounded prashna data; the actual defect (ga_prashna_judgment's FK pointing at the wrong parent table) is R-1-sensitive and filed as #2123, not fixed unilaterally
+last_updated: 2026-09-06 — C8 v2.3 cycle 108; #2123 RULED (out of scope under R-1, leave FK as-is, native flagged for the schema question). Found the "NOW" tier of L1_W2_DECIDE_v1_0.md's own findings list is aspirational, not a completion record (the same gap F-C9 had) — closed F-E4's ownership half (migration 845, ga_ayurdaya)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3374,7 +3374,7 @@ none accepted yet (blocked on #1736).
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
-| ga_ayurdaya | 130 / 0 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975) |
+| ga_ayurdaya | 130 / 130 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955) |
 | ga_tajaka | 240 / 240 | rebuild_only → fixed (cycle 7/99, PR #1859, merged 2026-09-06) | F-E16 (`DEFAULT_REFERENCE_YEAR` derived from the build clock, already wrong on 2/3 charts) fixed at the writer level; stale note corrected cycle 99. F-E17 **FIXED (cycle 106, migration 844)** — `volume_explanation` falsely claimed live on-demand computation via `compute_varsha()`, a function with ZERO callers; corrected in the registry, its seed source, and the writer's own matching `storage_strategy` string in one coherent fix |
@@ -6978,3 +6978,37 @@ L1 must satisfy rather than a feature it consumes.
   confirmed already-honest, correctly out-of-lane and escalated, or R-1-sensitive and
   escalated), survey whether any genuinely open W3 IMPLEMENT work remains, or whether L1 is
   ready to begin preparing for W4 DISPATCH review.
+- 2026-09-06T21:5xZ -- CYCLE 108 (C8 v2.3). PR hygiene: #2121/#2119 both confirmed genuinely
+  `is:queued`; #2110 healthy mid-CI. Nothing DIRTY/RED/unqueued-but-clean. **#2123 RULED
+  (Conductor)**: out of scope under R-1 -- "do not open the facility" is an explicit native
+  directive about the WHOLE facility, not a narrow schema note to read around; leave the FK
+  exactly as-is (already done, cycle 107), native flagged directly for the schema question
+  rather than the Conductor deciding it. Unit of work: began the survey cycle 107 queued up (is
+  there genuinely open W3 work beyond the now-complete MUST sweep?) by re-reading
+  `L1_W2_DECIDE_v1_0.md` §3's "NOW" section -- a prose list phrased in the past tense
+  ("re-baselined", "completed", "declared", "widened") that reads as a completion record.
+  **Tested that reading against ground truth rather than trusting it**: the SAME sentence that
+  claims "`fact_category_ownership` completed (F-C9, F-E4)" is the exact claim cycle 102 already
+  found FALSE for F-C9 (migration 842 had to backfill 7 real missing rows) -- checked F-E4
+  live too, on the theory that if one half of a paired claim was false the other half needed
+  independent verification, not benefit of the doubt. **F-E4 confirmed ALSO still open**:
+  `fact_category_ownership` held zero rows for `'ayurdaya'` (not fixed by anything to date).
+  Unlike `ga_structural`'s `count_sql` (a JOIN against this table, so F-C9's gap was a real
+  functional undercount), `ga_ayurdaya`'s `count_sql` filters on `fact_category` directly -- so
+  this is an attribution/audit-trail gap (§N.5), not a functional bug, correctly scoped as
+  lower-severity than F-C9 was. Shipped migration 845 (the same idempotent backfill pattern as
+  842). F-E4's OTHER half -- a genuine cross-ayanamsha AMSAYU longevity classification band-flip
+  (`madhyayu` under most ayanamshas, `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34
+  years, near the classical threshold) -- verified as an honest classical-computation
+  divergence, not a defect to fix; recorded in the asset table rather than force-fitting a
+  conjunct for it. Companion vitest file (5 tests) + full `platform/tests/unit/migrations/`
+  suite (110 files, 677 passed, 91 skipped) both clean; `provenance_inventory --check` + L1 pin:
+  clean (no writer touched). Opened PR #2125 with base:main directly, armed auto-merge,
+  confirmed genuine CI dispatch via actions/runs (4 runs) before ending the cycle. CYCLE 108 L1:
+  PR hygiene clean, one ruling landed (#2123, no action needed -- already complied), found and
+  closed a SECOND instance of the exact "claimed completed, actually isn't" pattern F-C9 first
+  surfaced -- by testing the DECIDE document's own prose against live data rather than trusting
+  a document's past-tense framing -- next: audit the REMAINING "NOW" section claims (F-A5/F-A11/
+  F-A16/F-B4/F-B6/F-B13/F-B14/F-B22/F-C12/F-C21/F-D4/F-D5/F-D10/F-D11/F-D12/F-D16/F-D18/F-D20/
+  F-D25/F-E2/F-E8/F-E13/F-E19/F-E27/F-E28) the same way before concluding W3's MUST+NOW sweep is
+  genuinely complete.
