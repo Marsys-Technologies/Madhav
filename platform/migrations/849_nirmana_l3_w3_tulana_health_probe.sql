@@ -1,4 +1,4 @@
--- 845_nirmana_l3_w3_tulana_health_probe.sql
+-- 849_nirmana_l3_w3_tulana_health_probe.sql
 --
 -- NIRMĀṆA L3 Kāla — W3. Populates `asset_registry.health_probe` for
 -- `ka_tulana`, F-L3-15's third slice. Corrects a scoping error made in this
@@ -45,6 +45,14 @@
 -- rather than the guard's own suggested 844, since sibling PR #2079 had
 -- already claimed 844 on its own branch in this same cycle (its own second
 -- renumber, 841->844, for the identical reason).
+--
+-- RENUMBERED A FOURTH TIME 845→849 (next cycle): 845 was independently
+-- claimed by L1's own already-merged 845_..._ayurdaya_category_ownership_
+-- backfill.sql — another genuine cross-lane collision, same E2 gate. L1 is
+-- allocating migrations very fast through the 840s range this session, so
+-- any L3 PR sitting on a number in it is a moving target across cycles.
+-- Renumbered to 849 rather than the guard's own suggested 848, since
+-- sibling PR #2079 had already claimed 848 on its own branch this cycle.
 --
 -- The contract below is consumed by a NEW, INDEPENDENT probe implementation
 -- (`_probe_tulana`, platform/python-sidecar/pipeline/orchestrator/service_probes.py)

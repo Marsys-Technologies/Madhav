@@ -1,12 +1,11 @@
 """
-tests/test_migration_845_tulana_health_probe.py — L3 Kāla, F-L3-15 third
-slice: migration 845 populates `asset_registry.health_probe` for `ka_tulana`.
+tests/test_migration_849_tulana_health_probe.py — L3 Kāla, F-L3-15 third
+slice: migration 849 populates `asset_registry.health_probe` for `ka_tulana`.
 
-RENUMBERED THREE TIMES 764→810→842→845 (across three cycles): 764 collided
-with L2's own 760-779 range; 810 was independently claimed by L1's own
-already-merged 810_..._houcompstrength.sql; 842 was independently claimed by
-L1's own already-merged 842_..._bhava_bala_backfill.sql — all three caught
-by `scripts/ci/migration_number_guard.ts`'s E2 check. Fixed each time by
+RENUMBERED FOUR TIMES 764→810→842→845→849 (across four cycles): 764 collided
+with L2's own 760-779 range; 810, 842, and 845 were each independently
+claimed by an L1 migration merged in the interim — all caught by
+`scripts/ci/migration_number_guard.ts`'s E2 check. Fixed each time by
 renumbering upward, each time skipping the guard's own suggestion when a
 sibling open L3 PR had already claimed it in the same cycle, since this
 migration had never been applied anywhere.
@@ -42,13 +41,13 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )
 _MIGRATION_PATH = os.path.join(
-    _REPO_ROOT, "platform", "migrations", "845_nirmana_l3_w3_tulana_health_probe.sql"
+    _REPO_ROOT, "platform", "migrations", "849_nirmana_l3_w3_tulana_health_probe.sql"
 )
 
 
 def _read_migration() -> str:
     if not os.path.exists(_MIGRATION_PATH):
-        pytest.skip(f"migration 845 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
+        pytest.skip(f"migration 849 not found at {_MIGRATION_PATH} (platform/ not checked out alongside python-sidecar)")
     with open(_MIGRATION_PATH, encoding="utf-8") as f:
         return f.read()
 
