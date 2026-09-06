@@ -489,6 +489,28 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~69:0xZ — L3-W4 — PR hygiene: all 3 F-L3-15 sibling PRs hit a
+  THIRD round of genuine migration-number collisions — all `UNMERGEABLE`-
+  in-queue this time, not just unqueued.** L1 is allocating migrations very
+  fast through the 840s range right now, so any L3 PR sitting on a number in
+  that range is a moving target across cycles. `#2079`: 841→844 (collided
+  with L1's `841_..._virodhaargalanatalmatrix.sql`). `#2070`: 842→845
+  (collided with L1's `842_..._bhava_bala_backfill.sql`, its THIRD renumber
+  overall: 764→810→842→845). `#2065`: 843→846 (collided with L1's
+  `843_..._panchanga_target_floor.sql`, its second renumber: 676→843→846).
+  Deliberately serialized 844/845/846 across the three sibling PRs (checked
+  each other's already-claimed numbers before picking, same discipline as
+  last time) to avoid a fourth collision between them once they land. All
+  three: rebased clean, dequeued (one had already auto-dequeued itself before
+  my mutation call — not an error, just already gone), header/docstring/
+  test-path references updated, `migration_number_guard.ts` re-verified
+  clean, tests re-pass (5/28/47), pushed, re-queued. `#1903` healthy, zero
+  failures, rebased 38 commits forward. — blocked on: nothing new; next
+  action: watch all 4 PRs actually merge — given the L1-840s-churn pattern,
+  a FOURTH collision on the next rebase wouldn't be surprising and isn't a
+  sign of a process defect on my end, just how fast that number range is
+  moving; keep checking `#2065` specifically since `ka_muhurta_seva`'s W2
+  acceptance is still the next genuine W4-path item once it lands.
 - `2026-09-06T~68:0xZ — L3-W4 — Conductor RULED on `#2124`: D-CND-35, campaign-
   wide, plus the durable annotation recorded.** PR hygiene: all 3 previously-
   unqueued PRs held queued this time (no re-queue needed), `#1903` healthy.
