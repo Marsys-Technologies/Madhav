@@ -10,10 +10,15 @@
  * schema (per `chart_facts_categories_authoritative_v1.json`, 218 categories, the live-DB
  * census C3 §1 rule-1 requires `get_database_schema`'s `entries` to be enumerated against).
  * It intentionally does NOT attempt exhaustive coverage of all 218 categories — a later
- * stream extends this into the Total Concept Inventory (γ) per the brief. The CI regression
- * check in `platform/scripts/census/schema_map_alias_coverage_check.ts` asserts every LIVE
- * fact_category has at least one alias entry, so a category added without any alias fails
- * loudly instead of silently degrading `concept_locate` coverage.
+ * stream extends this into the Total Concept Inventory (γ) per the brief.
+ *
+ * NO CI REGRESSION CHECK EXISTS YET (corrected 2026-09-07, F-B33 — an earlier revision of this
+ * docstring claimed `platform/scripts/census/schema_map_alias_coverage_check.ts` "asserts every
+ * LIVE fact_category has at least one alias entry"; that file was never built. A category added
+ * without an alias here degrades `concept_locate` coverage SILENTLY today — no gate catches it.
+ * Tracked as the open backlog item in `L1_W6_CLOSE_REPORT_v1_0.md` §5/§6, paired with F-B32
+ * (`coverage_matrix.ts`'s own stale hand-maintained category count) since a real fix needs to
+ * settle the same live-category-count question for both at once, not derive it twice.).
  *
  * `concept_id` uses the primary/most-specific `fact_category` string as the canonical id —
  * the Phase-0.7 concept census C3 references as the "real" canonical-id source does not exist
