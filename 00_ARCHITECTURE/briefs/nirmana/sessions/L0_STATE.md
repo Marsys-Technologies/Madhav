@@ -3899,3 +3899,7 @@ itself. L0 is now IDLE-OK until that lands.
 - 2026-09-06 — **IDLE-OK.** No change. `--search "L0"` matched an unrelated L1 PR (title
   prefix "L1", false-positive text match) -- not L0's, no action needed. No open L0 PRs, no
   eligible work. 39/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** No change. Re-checked with precise title-prefix filtering (avoids
+  the earlier false-positive text-search match) -- no open L0 PRs, no eligible work. 39/40
+  frozen unchanged.
