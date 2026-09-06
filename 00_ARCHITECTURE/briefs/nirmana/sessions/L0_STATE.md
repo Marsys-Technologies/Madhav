@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) advanced merge-queue position 14->5, still AWAITING_CHECKS, still is:queued, no DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm merged, confirm deployed live, then re-dispatch bg_parihara_rules (36/40).
+last_updated: 2026-09-06 -- IDLE-OK. #2088 (migration 704, D-L0-PP fix) advanced merge-queue position 5->4, still AWAITING_CHECKS, still is:queued, no DIRTY/RED. No other open L0 PRs. No other L0 asset currently eligible (bg_cohort/bg_yogas held, bg_rules/bg_concordance blocked on bg_yogas). 35/40 frozen unchanged -- next cycle: confirm merged, confirm deployed live, then re-dispatch bg_parihara_rules (36/40).
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -3292,3 +3292,6 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** `#2088` advanced position 14→5, still `AWAITING_CHECKS`, still
   `is:queued`. Healthy progress. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** `#2088` advanced 5→4, still `AWAITING_CHECKS`, still `is:queued`.
+  35/40 frozen unchanged.
