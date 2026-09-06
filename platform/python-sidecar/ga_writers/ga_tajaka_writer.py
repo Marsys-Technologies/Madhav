@@ -449,14 +449,32 @@ def _tajik_yogas(grahas_by_name: dict[str, dict], varsha_lagna_long: float
 # ── GA5 read (Tri-Rāśi-pati candidate) ───────────────────────────────────────
 
 def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | None:
+    # F-E19 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 2): LIMIT 1 with no ORDER BY pins
+    # fact_category + fact_key (so the CI fact-category-pin lint passes) but the ordering
+    # half of the D1 defect class was absent -- reproducible today only because every
+    # (chart, ayanamsha) currently has exactly 1 row/1 build (verified: 15/15 rows,
+    # count=1/builds=1/distinct_vals=1), not because the query itself is deterministic.
+    # fact_id (the table's PK) makes this a genuine total order.
     try:
         cur = conn.execute(
             "SELECT fact_value_text FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s "
-            "AND fact_category = 'tajik_triraashipathi' AND fact_key = 'lord' LIMIT 1",
+            "AND fact_category = 'tajik_triraashipathi' AND fact_key = 'lord' "
+            "ORDER BY fact_id LIMIT 1",
             [chart_id, canonical_aya],
         )
         row = cur.fetchone()
-        return row["fact_value_text"] if row else None
+        if row is None:
+            # Was silently swallowed to None -- no exception, just an absent row, and
+            # nothing logged either way, degrading candidate_lord_jsonb scoring with no
+            # trace. Log so a genuine future gap (unlike today's universal 1-row case) is
+            # visible rather than indistinguishable from "legitimately no candidate".
+            logger.warning(
+                "[ga_tajaka_writer] no tajik_triraashipathi/lord row found for "
+                "chart_id=%s ayanamsha=%s -- candidate_lord_jsonb scoring will lack this input",
+                chart_id, canonical_aya,
+            )
+            return None
+        return row["fact_value_text"]
     except Exception as exc:  # noqa: BLE001
         logger.warning("[ga_tajaka_writer] trirashipathi read failed (%s): %s",
                        canonical_aya, exc)

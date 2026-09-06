@@ -1,5 +1,5 @@
 {
-  "probe_digest": "d80baec6f882527a229c6cabecbdeaa36b984c3730fb11d0c69052c677414ab6",
+  "probe_digest": "7267ca3745616198174f95907d43ca6ab36c2d1e95018506b16b5e9931b5ea73",
   "version": "nirmana-writer-digest-inventory/v1",
   "writers": {
     "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
@@ -73,7 +73,7 @@
     "ga_sensitive_degree": "43dcdec9888f3f2def0f27ffb76d15d520f3ccee084c487edf1ac8cdd5333124",
     "ga_strength": "c304a0e3201051b16ef9fc855e074eaa220c42c1348ac7f172864226b393bf3e",
     "ga_structural": "43dcdec9888f3f2def0f27ffb76d15d520f3ccee084c487edf1ac8cdd5333124",
-    "ga_tajaka": "5ab244013e7bfa0e6a6ad6794dc4397cb04b0728d156cb20ffb48ff44cf900f9",
+    "ga_tajaka": "98a67d136cffbb989510ebbfa941e4ed2d7cf0bf8f9e7d91e35a223727f07207",
     "ga_transit_anchors": "1595ae4e3301e7a852ab304b761e0c99b86b8a8aba6df1c1e3468bfd1dd57848",
     "ga_vargas": "d99aff100b9a0d4af353daadea28f19d97f3e6915e461943368313e15759fe4b",
     "ga_vastu": "4fb8e02113240a9fc4af29a48a5cdd5a1a9d8bf8e6eb11dc940b5760cd16e6f1",

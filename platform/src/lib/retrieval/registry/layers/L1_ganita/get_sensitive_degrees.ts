@@ -19,6 +19,14 @@
  *
  * Chart-scoped (principle #14): chart_id is the entitlement key; the capability route
  * enforces authorizeChartAccess before this handler runs. Bounded serving.
+ *
+ * F-B14 (L1_W1_ANALYSIS_BATCH_B.md, MUST, §N.6 item 1): the SELECT list omitted
+ * `verification_pass_status`, so 225 `single` + 50 `pending_w3_verification` +
+ * 60 `two_pass_verified` rows were served as one undifferentiated flat array with no
+ * way for a caller to tell a two-pass-confirmed row from a single-pass one. Now selects
+ * the column on every row and reports `unverified_rows_in_page` + `tier_breakdown`
+ * (mirroring get_yoga_dosha.ts's catalog_only_rows_in_page discipline) — rows are never
+ * dropped or hidden, per B.10, just honestly labeled.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
@@ -45,8 +53,12 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
     'Yogi Graha = its nakshatra lord; Avayogi = Yogi+186°40\', its nakshatra lord; ',
     'Duplicate-Yogi/Sahayogi = the rasi lord of the Yogi Sphuta\'s own sign). Filter by ',
     "ayanamsha_id, subject (fact_subject, e.g. graha code or YOGI/AVAYOGI/DUPLICATE_YOGI/",
-    "SAHAYOGI), or check_type (fact_key). Every row carries fact_category so the two ",
-    'families are distinguishable. Bounded with a disclosed total.',
+    "SAHAYOGI), or check_type (fact_key). Every row carries fact_category and ",
+    'verification_pass_status so the two families and confirmation tiers are ',
+    'distinguishable; tier_breakdown + unverified_rows_in_page summarize the page ',
+    '(rows are never dropped — a single/pending_w3_verification tier is a genuine ',
+    'classical computation, just not yet independently cross-verified). Bounded with a ',
+    'disclosed total.',
   ].join(' '),
 
   input_schema: {
@@ -94,7 +106,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
 
     const sql = `
       SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
-             fact_value_jsonb, unit, ayanamsha_id, citation_ref
+             fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
       FROM chart_facts
       WHERE ${where}
       ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
@@ -106,6 +118,16 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+
+      // F-B14 / §N.6 item 1: tier breakdown for THIS page — never dropped, always disclosed.
+      const tier_breakdown: Record<string, number> = {}
+      let unverified_rows_in_page = 0
+      for (const r of rowsRes.rows) {
+        const tier = String(r['verification_pass_status'] ?? 'unknown')
+        tier_breakdown[tier] = (tier_breakdown[tier] ?? 0) + 1
+        if (tier !== 'two_pass_verified') unverified_rows_in_page++
+      }
+
       return {
         content: {
           chart_id,
@@ -114,6 +136,17 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { ayanamsha_id, subject, check_type, limit },
+          tier_breakdown,
+          unverified_rows_in_page,
+          ...(unverified_rows_in_page > 0
+            ? {
+                unverified_note:
+                  `${unverified_rows_in_page} of ${rowsRes.rows.length} row(s) in this page carry a ` +
+                  "verification_pass_status other than two_pass_verified (single/pending_w3_verification) " +
+                  '— genuine classical computations, not yet independently cross-verified. See each row\'s ' +
+                  'own verification_pass_status field, not just this count.',
+              }
+            : {}),
           ...(total_matching === 0
             ? { empty_reason: `No sensitive-degree checks for chart ${chart_id}${subject ? ` subject '${subject}'` : ''}${check_type ? ` check '${check_type}'` : ''}.` }
             : {}),

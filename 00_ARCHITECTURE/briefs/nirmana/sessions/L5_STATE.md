@@ -457,6 +457,282 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T20:27Z (C8 v2.3 cycle 557) — **Milestone: `#2143` MERGED — the thirteenth
+  state-recovery PR closed out.** Thirteenth recurrence of the exact same pattern (cycles 442,
+  453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, now 557). 11 local-only commits (cycles
+  546-556, 55 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-14`. Pipeline job image still `d29e0cf0...`, still
+  predates the `depends_on` ordering fix (`d9a5ca807`) — checked before starting recovery,
+  unchanged.
+- 2026-09-06T20:21Z (C8 v2.3 cycle 556) — **IDLE-OK, final diagnostic pass on the deploy
+  gap.** Confirmed the pattern: `"Gate & detect changed paths"` itself shows `skipped` (not
+  "ran, found nothing") on every completed deploy run touched so far, including the one whose
+  headSha includes the fix — consistent with rapid-fire main commits (many L1 PRs landing every
+  few minutes) causing each intermediate deploy run's downstream jobs to be superseded/skipped
+  before completing, a classic CI debounce pattern, not a genuine stall or a new bug. This is
+  infrastructure/CI-cadence territory, not an L5-actionable defect — not filing an adjudication
+  for "deploy backlog is busy," per contract's own "IDLE cycles are cheap and honest" guidance.
+  Will keep monitoring the ground-truth check (`gcloud run jobs describe`) each cycle; will
+  reconsider escalating only if this remains stuck across many more cycles. #2143 unchanged,
+  still queued.
+- 2026-09-06T20:16Z (C8 v2.3 cycle 555) — **IDLE-OK, verified.** #2143 unchanged, still queued.
+  Pipeline job image unchanged, still predates the fix. New PR #2145 confirmed L1's, out of
+  scope.
+- 2026-09-06T20:10Z (C8 v2.3 cycle 554) — **IDLE-OK, dug one level deeper on why deploy hasn't
+  caught up.** Confirmed the fix (`d9a5ca807`) IS an ancestor of at least one deploy run's
+  headSha that completed `success` (`7ce5f10b...`), but that specific run's own
+  `Build & Deploy Pipeline Job Image` step shows `skipped` (along with `Gate & detect changed
+  paths` and everything else — looks like the whole build/deploy chain was skipped for that run,
+  possibly superseded by a later push before it built anything, standard CI debounce behavior,
+  not a real failure). No deploy run for the exact `d9a5ca807` sha itself found in the last 30 —
+  consistent with deploys chasing the latest tip rather than running per-commit. **Continuing to
+  trust the direct ground-truth check** (`gcloud run jobs describe brahma-build-pipeline-job`)
+  over reasoning about individual workflow runs — it still shows the old image
+  (`d29e0cf0...`). #2143 unchanged, still queued. Nothing actionable — this is CI/CD
+  infrastructure outside L5's control.
+- 2026-09-06T20:04Z (C8 v2.3 cycle 553) — **IDLE-OK, verified deploy is genuinely active, not
+  stalled.** Deploy has looked unchanged for several cycles, so checked `gh run list --workflow
+  "Deploy to Cloud Run"` directly rather than assuming — several runs `in_progress` for
+  different head SHAs (the deploy pipeline is actively churning through the backlog of commits
+  since the fix landed, this is normal CI/CD activity, not a stall, and outside L5's control to
+  accelerate). #2143 unchanged, still queued.
+- 2026-09-06T19:58Z (C8 v2.3 cycle 552) — **IDLE-OK, verified.** #2143 unchanged, still
+  genuinely queued. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:52Z (C8 v2.3 cycle 551) — **IDLE-OK, verified.** #2143 now genuinely queued.
+  Pipeline job image still unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:46Z (C8 v2.3 cycle 550) — **IDLE-OK, verified.** #2143's Governance Gates job
+  checked at the job level (~10.6 min elapsed, within normal 7-12 min range) — genuine progress,
+  not stalled. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T19:40Z (C8 v2.3 cycle 549) — **IDLE-OK, verified.** #2143 still building, no
+  failures. Pipeline job image unchanged (`d29e0cf0...`), still predates the fix. Nothing
+  eligible.
+- 2026-09-06T19:34Z (C8 v2.3 cycle 548) — **IDLE-OK, verified.** #2143 building cleanly, no
+  failures. Pipeline job image still `d29e0cf0...`, still predates the fix — deploy hasn't
+  caught up yet. Nothing eligible.
+- 2026-09-06T19:28Z (C8 v2.3 cycle 547) — **`#2139` MERGED (the `depends_on` ordering fix), but
+  NOT YET DEPLOYED — checked before attempting a retry, not assumed.** `amjis-web`'s deployed sha
+  (`aeab76aa6...`) and, more importantly, the `brahma-build-pipeline-job` Cloud Run Job's actual
+  image tag (`d29e0cf0...` — the code that executes `runner.py` during a build) both predate the
+  fix commit `d9a5ca807`, confirmed via `git merge-base --is-ancestor`. Retrying `mi_kula`'s
+  dispatch now would hit the exact same false-positive failure again. Nothing eligible until
+  deploy catches up — this is genuinely nothing L5 can accelerate (deploy is CI/CD-driven, not
+  a manual trigger this session controls). #2143 building cleanly, no failures.
+- 2026-09-06T19:22Z (C8 v2.3 cycle 546) — **IDLE-OK, verified.** #2143 building cleanly, no
+  failures, not yet queued. #2139 still not merged. Nothing eligible.
+- 2026-09-06T19:16Z (C8 v2.3 cycle 545) — **Milestone: `#2138` MERGED — the twelfth
+  state-recovery PR closed out.** Twelfth recurrence of the exact same pattern (cycles 442, 453,
+  461, 473, 482, 492, 502, 511, 519, 528, 534, now 545). 10 local-only commits (cycles 535-544,
+  35 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-13`. `#2139` (Conductor's `depends_on` ordering fix)
+  still not merged — checked before starting recovery, unchanged status.
+- 2026-09-06T19:10Z (C8 v2.3 cycle 544) — **IDLE-OK, verified.** #2138 unchanged, still
+  genuinely queued. #2139 unchanged, still unmerged. New PR #2140 confirmed L1's, out of scope.
+- 2026-09-06T19:04Z (C8 v2.3 cycle 543) — **IDLE-OK, verified.** Main advanced (#2070, L3's, not
+  mine — out of scope per established precedent). #2138 unchanged, still genuinely queued. #2139
+  still not merged.
+- 2026-09-06T18:58Z (C8 v2.3 cycle 542) — **IDLE-OK, verified.** #2138 unchanged, still
+  genuinely queued. #2139 unchanged, still `UNSTABLE`/unmerged (Conductor's PR, not mine to act
+  on).
+- 2026-09-06T18:53Z (C8 v2.3 cycle 541) — **IDLE-OK, verified.** #2138 (mine) still genuinely
+  queued. #2139 (Conductor's, not mine — appears under `is:queued author:@me` only because of
+  the shared git identity across lanes) shows `mergeStateStatus: UNSTABLE`, not merged yet — not
+  mine to touch. #2136 confirmed L1's, out of scope. Nothing eligible.
+- 2026-09-06T18:47Z (C8 v2.3 cycle 540) — **IDLE-OK, verified.** #2138 now genuinely queued
+  (`is:queued`). #2139 still not merged.
+- 2026-09-06T18:41Z (C8 v2.3 cycle 539) — **IDLE-OK, verified.** #2138's Governance Gates job
+  checked at the step level (~10.8 min elapsed, upper end of normal but not stalled) — confirmed
+  genuine active step (`pytest — pyjhora_adapter + pipeline`) via direct job-steps API query, not
+  assumed from elapsed time alone. #2139 still not merged.
+- 2026-09-06T18:32Z (C8 v2.3 cycle 538) — **IDLE-OK, verified.** #2138's Governance Gates job
+  checked at the job level (~8.7 min elapsed, within the normal 7-12 min range) — genuine
+  progress, not stalled. #2139 still not merged.
+- 2026-09-06T18:26Z (C8 v2.3 cycle 537) — **IDLE-OK, verified.** #2138 down to its last check
+  (Governance Gates), no failures. #2139 still not merged. Nothing eligible.
+- 2026-09-06T18:20Z (C8 v2.3 cycle 536) — **#2137 RULED — Conductor confirmed the diagnosis and
+  fixed it, PR #2139 (sort-both-sides-before-comparing, per this session's own recommended
+  option (a); independently verified via a dispatched code-reviewer subagent that no other
+  `depends_on` consumer treats it positionally; regression test added).** #2139 not yet merged
+  (`mergedAt: null`) — nothing more for L5 to do until it lands and deploys; the W2 evidence and
+  kept snapshot (`cloudsql-backup:1788714572581`) remain correctly ready for the retry. #2138
+  down to 2 pending checks, no failures.
+- 2026-09-06T18:15Z (C8 v2.3 cycle 535) — **IDLE-OK, verified.** #2138 building cleanly, no
+  failures. #2137 (the depends_on ordering adjudication) not yet ruled (0 comments). Re-ran
+  `egate.sql -v layer=L5`: only `mi_kula` shows `w2_verdict=t` (still `OPEN-PENDING-PIN`, blocked
+  on #2137's fix, not on anything L5 can act on); all other 11 remaining assets still
+  `w2_verdict=f`, unchanged. Genuinely nothing eligible this cycle beyond hygiene.
+- 2026-09-06T18:10Z (C8 v2.3 cycle 534) — **Real orchestrator bug found and adjudicated (#2137);
+  `#2131` MERGED — the eleventh state-recovery PR closed out.** Subagent `aee0c68dd31bd1840`
+  reported: W2 resubmission succeeded cleanly (independently re-confirmed live — both old
+  16:16Z and new 17:23Z events present, new one's `source_ref=git:3891ca7d1...` matching the
+  post-C-F-01-fix deployed sha; `registry_fingerprint_sha256` identical to before as expected,
+  `analysis_digest` differs as expected); the retry dispatch got PAST the earlier refusal, dry-ran
+  clean, committed (`run_id=ce114909-...`), but the **build job itself failed at preflight** —
+  `frozen manifest validation failed: asset_registry changed after dispatch for frozen asset
+  mi_kula`. Independently verified: `build_runs.state='failed'` with exactly that `last_error`;
+  `mimamsa_signal_families`+`mimamsa_negative_controls` row count unchanged (15, same as
+  before — no partial write); `asset_throughput.mi_kula` untouched. Root-caused by reading the
+  actual code (not trusting the subagent's claim alone): `runner.py`'s
+  `_verify_registry_still_matches_manifest` (line 343-369) compares the dispatcher's
+  alphabetically-**sorted** frozen `depends_on` against the **live, unsorted**
+  `asset_registry.depends_on` (`{bg_rules, bg_class_priors}`, its original authored order) with
+  plain order-sensitive list equality (line 365) — same set, different order, false-positive
+  fail-closed. **Confirmed generally-applicable, not mi_kula-specific or a sha race**: any asset
+  whose registry `depends_on` isn't already alphabetical will hit this on its first real
+  post-sort-fix dispatch. Both `runner.py` and the dispatcher are core FROZEN orchestrator
+  internals (§N.2) — not L5's to patch. Filed **#2137** with the full diagnosis and a
+  recommended fix (sort before comparing, or compare as sets). No data harmed; kept snapshot
+  (`cloudsql-backup:1788714572581`) still valid and unused for the retry once #2137 lands. 5
+  local-only commits (cycles 529-533, 49 lines, single-file) recovered via patch-onto-fresh-branch
+  onto `codex/nirmana-l5-heartbeat-recovery-12`.
+- 2026-09-06T18:00Z (C8 v2.3 cycle 533) — **IDLE-OK, verified.** #2131 still genuinely queued.
+  `mi_kula` subagent still running (~9 min) — the real build-dispatch + job-log verification
+  legitimately takes longer than prior evidence-only tasks. Holding.
+- 2026-09-06T17:54Z (C8 v2.3 cycle 532) — **IDLE-OK, verified.** #2131 still genuinely queued.
+  `mi_kula` subagent still running (~6 min — the resubmit-then-dispatch sequence is longer than
+  a pure verifier task, expected). Holding, not starting a competing unit.
+- 2026-09-06T17:48Z (C8 v2.3 cycle 531) — **IDLE-OK, verified.** #2131 now genuinely queued
+  (`is:queued` confirmed). `mi_kula` resubmission+dispatch subagent (`aee0c68dd31bd1840`) still
+  running (~3 min) — holding, not starting a competing unit.
+- 2026-09-06T17:43Z (C8 v2.3 cycle 530) — **Dispatched executor subagent
+  (`aee0c68dd31bd1840`) to resubmit `mi_kula`'s W2 evidence against the post-C-F-01-fix deployed
+  code, then retry the W4 dispatch.** PR hygiene first: #2131 still building cleanly, no
+  failures. Briefed the subagent with the full root-cause (from last cycle) and the exact
+  sequence: fresh deployed sha → recompute `analysis_digest` via `definitions.ts`'s real
+  functions (confirm `registry_fingerprint_sha256` comes out identical to before, since the
+  `asset_registry` row itself never changed — only `analysis_digest` should differ) → submit
+  both W2 events `--as executor` → claim a slot on #1713 (verify live via `build_runs`, never
+  trust the comment thread) → dry-run → commit dispatch → verify via JOB LOGS (this time
+  expecting real non-zero rows, unlike `mi_vistara`/`mi_jivanaghatana`'s zero-row terminations)
+  → release slot. Explicitly told NOT to attempt W5 (implementer≠certifier) and to stop after at
+  most two retries if the deployed sha races again mid-sequence (deploys are landing every few
+  minutes from other lanes) rather than loop indefinitely.
+- 2026-09-06T17:37Z (C8 v2.3 cycle 529) — **`mi_kula` W4 dispatch attempted, refused correctly
+  by design, root-caused, slot released.** Followed `L5_W4_CANARY_RUNBOOK.md` in full: claimed
+  the run slot on #1713 (found a stale, unreleased L0 `SLOT CLAIM` from 12:03Z in the comment
+  thread — verified live via `build_runs` that 0/3 slots are genuinely occupied, `state IN
+  ('running','pending','queued','in_progress')` returns 0 rows, so treated the comment as an
+  L0 hygiene lapse rather than a real block, per the established "verify live, never trust the
+  ledger comment" precedent from `mi_vistara`'s dispatch); took a fresh Cloud SQL backup
+  (`cloudsql-backup:1788714572581`, confirmed SUCCESSFUL); ran the dry-run with
+  `--reviewed-deployment-sha` set to the SHA recorded as `source_ref` on `mi_kula`'s own W2
+  events (`9b1c2c22b...`, independently re-verified via direct DB read — NOT the currently-live
+  deployed sha, which has moved on since W2 was recorded, per the runbook's explicit
+  instruction). **Refused**: `accepted asset analysis does not match the current live registry
+  contract for mi_kula`. Root-caused by reading the dispatcher's own source
+  (`dispatch_nirmana_campaign_wave.py:982-993`): it reconstructs each asset's canonical analysis
+  digest from CURRENT code, for every layer not just L0 (#1715/#1718) — specifically so a
+  post-acceptance writer edit is detected and blocks dispatch. Independently recomputed the live
+  `registry_fingerprint_sha256` via the dispatcher's own `_live_registry_fingerprint` function
+  (imported directly, not hand-reimplemented) and confirmed it byte-matches the stored W2
+  payload — that part was never the problem. The actual mismatch is the analysis digest itself:
+  `mi_kula`'s W2 acceptance predates the C-F-01 writer fix (#2128), so the writer's digest (and
+  therefore the canonical analysis digest the dispatcher derives) has moved since. **This is the
+  fail-closed mechanism working correctly, not a bug** — confirmed no `build_runs` row was
+  orphaned (`count=0` for `scope_target='mi_kula'`) before releasing the slot with the full
+  account on #1713. **Next: re-submit `asset_analysis_accepted` +
+  `optimization_verdict_accepted` for `mi_kula` against the current post-fix deployed sha, then
+  retry dispatch with the same kept snapshot.** PR hygiene: #2131 still building cleanly, no
+  failures.
+- 2026-09-06T17:20Z (C8 v2.3 cycle 528) — **Milestone: `#2128` MERGED — the C-F-01 writer fix is
+  live on main.** Independently re-confirmed via `git show origin/main:...mi_kula.py` — only
+  `fam_msr_signal`/`fam_anchor` carry `MARSYS_DERIVED_CITED`, the other 7 `classical`-class
+  families still correctly `CLASSICAL_CITED`, both `--check` gates that blocked this PR twice
+  (writer digest inventory, L5 analysis-layer pin) are satisfied on main. **Also: `#2126`
+  MERGED — the tenth state-recovery PR closed out** (same pattern, cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, now 528). 8 local-only commits (cycles 520-527, 89 lines, single-file)
+  recovered via patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-11`. `mi_kula`
+  is now ready for its actual W4 global-re-seed dispatch — the writer fix that blocked it is
+  merged; that dispatch is next cycle's bounded unit (not started this cycle, to keep this one
+  to the mechanical recovery + verification it already contains). New PR #2130 confirmed L1's (`F-A11 yogini lord test`), out of scope.
+- 2026-09-06T17:14Z (C8 v2.3 cycle 527) — **IDLE-OK, verified.** #2126 still genuinely queued
+  (`is:queued` confirmed; mergeStateStatus reads UNKNOWN transiently while queue re-evaluates,
+  not a hygiene issue). #2128 down to 2 pending checks (Build Check, Governance Gates), zero
+  failures. New PR #2129 confirmed L1's (`estimated_seconds re-baseline`), out of scope.
+- 2026-09-06T17:08Z (C8 v2.3 cycle 526) — **IDLE-OK, verified.** #2126 still genuinely queued.
+  #2128 down to 3 pending checks (Build Check/Unit Tests/Governance Gates), zero failures —
+  DB Integration Tests cleared since last cycle. Good progress on the fix, holding.
+- 2026-09-06T17:02Z (C8 v2.3 cycle 525) — **IDLE-OK, verified.** #2126 still genuinely queued.
+  #2128's checks re-running fresh on `dd3b56b3b` (the second fix commit) — Build Check/Unit
+  Tests/DB Integration Tests/Governance Gates all freshly PENDING, zero failures yet. New PR
+  spotted (#2127) — confirmed L1's (`ga_vichara target_floor`), out of scope. Not starting a
+  competing unit while #2128's fix verification is in flight.
+- 2026-09-06T16:57Z (C8 v2.3 cycle 524) — **PR hygiene: same RED on #2128, second layer of the
+  same mechanism, fixed at root cause again.** #2126 confirmed genuinely queued (`is:queued`,
+  CLEAN). #2128's Governance Gates failed again on the NEW commit (`fd4c102e3`, confirmed via
+  direct check-run API query against that exact SHA, not a stale/cached read) — but a
+  **different** check within the same job: `nirmana_analysis_layer_pins --check` (not
+  `provenance_inventory --check`, which my prior fix already resolved). Root cause: L5's
+  aggregate `writer_inventory_sha256` in `nirmana-analysis-layer-pins.json` is *derived from* the
+  writer inventory I regenerated last cycle (#1715's receipt-spine design), so fixing the
+  inventory made THIS pin stale too — same mechanism, one layer deeper. Read the generator
+  script's own `--help` first (documents exactly why it exists — #1715, generalizing L0's
+  hand-maintained receipt spine to 6 layers) and found the safety flag built for precisely this:
+  `--layer L5` regenerates ONLY L5's record, preserving L0-L4's committed pins verbatim (#1814 —
+  whole-file regen would falsely restate other sessions' review state). Ran it with
+  `--convergence-commit` set to this branch's own HEAD (`fd4c102e3...`, 40 chars) — confirmed via
+  `git cat-file` that the *existing* L5 pin's `convergence_commit` is itself a real merged-PR SHA
+  from main (#1781), and via reading `check()`'s source that `convergence_commit` is never
+  existence-validated (only `writer_inventory_sha256` is), so pinning to a pre-merge branch HEAD
+  is consistent with how the other layers' committed pins already work. Diff confirmed scoped to
+  L5 only (`fields changed: convergence_commit, writer_inventory_sha256 / layers untouched: L0,
+  L1, L2, L3, L4`). Both `--check` invocations pass clean locally now. Committed (`dd3b56b3b`),
+  pushed. Never weakened either gate.
+- 2026-09-06T16:50Z (C8 v2.3 cycle 523) — **PR hygiene: RED on #2128, fixed at root cause.**
+  Governance Gates failed for real (`conclusion: failure`, confirmed via direct API job-list
+  query, not the flaky "still in progress" log-fetch race). Root cause from the job log:
+  `provenance_inventory --check` — "writer digest inventory is stale" — my C-F-01 commit
+  (`eb2fd720d`) edited `mi_kula.py`'s source without regenerating the checked-in
+  `platform/src/generated/nirmana-writer-digests.json` (the web planner's source of
+  sidecar-owned writer hashes; any Python writer change must regenerate it or a stale receipt
+  could survive deployment as fresh — exactly the mechanism §N.8/#1899 already document). Fixed
+  by running the exact regeneration command the CI log names
+  (`python -m pipeline.orchestrator.provenance_inventory --output
+  platform/src/generated/nirmana-writer-digests.json`), confirmed the diff touches only
+  `mi_kula`'s own digest entry (one line), re-ran `--check` locally (clean), committed
+  (`fd4c102e3`) and pushed to the same branch/PR — never weakened the gate. Checks re-running
+  on #2128 now. #2126 unchanged, still building normally, no failures.
+- 2026-09-06T16:42Z (C8 v2.3 cycle 522) — **C-F-01 fixed: `mi_kula.py`'s `fam_msr_signal`/
+  `fam_anchor` get an honest `evidence_tier`.** Read the writer source directly
+  (`platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py`): both families carried
+  `evidence_tier='CLASSICAL_CITED'` while `citation_refs` pointed at MARSYS's own MSR/Phala
+  methodology docs (`"MARSYS MSR §1"`, `"MARSYS Phala §2"`), not a classical Jyotish text —
+  confirmed against the other 7 `classical`-class families, all of which cite real classical
+  texts (BPHS, Saravali, Phaladeepika, Jaimini Sutras, KP, Sarvartha Chintamani, Mansagari).
+  Checked `integrity_check_sql` first: it only constrains `family_class IN
+  ('classical','negative_control')` and doesn't validate `evidence_tier` string values beyond
+  requiring `NEGATIVE_CONTROL` for the negative-control class — so a new honest tier value
+  doesn't touch the gate. Checked migration 346's column comment (the documented 5-value
+  vocabulary) and confirmed no CHECK constraint exists (plain `text NOT NULL`) — did **not**
+  edit the applied migration (hard floor), documented the new value at the writer call site
+  instead. Grepped serving code (`query_signal_families.ts`) — evidence_tier is passed through
+  raw, no enum-switching, safe to introduce a new value. Introduced `MARSYS_DERIVED_CITED` for
+  these two rows only; `family_class` and `citation_refs` unchanged (citations were already
+  accurate, just mislabeled by tier). Python syntax-checked. No test file exists for `mi_kula.py`
+  yet (untested writer, consistent with never having been dispatched). **PR #2128 opened and
+  auto-merge armed** — this is real W3 implementation work, on its own fresh branch off main
+  (not the state-recovery branch). `mi_kula`'s actual W4 global-re-seed dispatch is still the
+  next step after this lands. PR hygiene: neither #2126 nor #2128 queued yet, both freshly
+  running checks, zero failures on either — nothing to fix, holding.
+- 2026-09-06T16:32Z (C8 v2.3 cycle 521) — **Milestone: `mi_kula` reached `OPEN-PENDING-PIN` —
+  the FIRST time this asset's E-gate has been open all session.** W2 subagent
+  (`ae23df5fcb8ae74f2`) reported success; independently re-confirmed via direct DB query (both
+  events landed: `asset_analysis_accepted` 16:16:48Z, `optimization_verdict_accepted`
+  16:16:59Z) and a fresh `egate.sql -v layer=L5` run (`unfrozen_ancestors=0, w2_analysis=t,
+  w2_verdict=t, gate=OPEN-PENDING-PIN`). Scratch files confirmed cleaned up (a stale LSP
+  diagnostic about missing scratch-file imports was just IDE lag, not a real leftover). **Next
+  step is genuine W3 implementation, not a simple W4 dispatch**: the verdict's own basis
+  (`measurement.status='insufficient_history'`) flags that `mi_kula.py`'s `fam_msr_signal`/
+  `fam_anchor` families still carry `evidence_tier='CLASSICAL_CITED'` while citing only
+  MARSYS-internal documents (C-F-01, the grounding-badge finding from W1) — the writer needs a
+  real code/data fix (honest evidence_tier reclassification or a real classical citation) before
+  the global re-seed can be dispatched; the W2 event explicitly records the route decision only,
+  not the implementation. Deferred to a fresh bounded cycle rather than rushed here. PR hygiene:
+  #2126 not yet queued but no failures (Unit Tests/Governance Gates still running).
+- 2026-09-06T16:26Z (C8 v2.3 cycle 520) — **IDLE-OK, verified.** #2126 not yet queued but no
+  failures — Unit Tests/DB Integration Tests/Governance Gates all still IN_PROGRESS, normal
+  pace, holding. `mi_kula` W2 subagent (`ae23df5fcb8ae74f2`) still running (~6-7 min, longer than
+  the W5 dispatch took to start but this is a source-fidelity-heavy digest-derivation task) —
+  zero events landed yet, not starting a competing unit.
 - 2026-09-06T16:20Z (C8 v2.3 cycle 519) — **Milestone: `#2120` MERGED — the ninth state-recovery
   PR closed out.** Ninth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, now 519). 5 local-only commits (cycles 512-518, 71 lines, single-file, plus two
