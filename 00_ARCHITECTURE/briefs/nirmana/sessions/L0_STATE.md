@@ -297,6 +297,10 @@ a RED-fix (see heartbeat).
   transient `UNKNOWN` (normal mid-run). Not actionable this cycle — will re-check next cycle. #1713
   tail unchanged since last check (still ends at the 09-06T18:17Z Conductor fleet post); no Conductor
   movement on the bg_cohort carve-out. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #2153 progressing well: `gh pr checks` shows DB Integration
+  Tests genuinely PASS (2m24s) and every other check green except 4 still pending/in-progress
+  (Governance Gates, Unit Tests, Build Check, Gate battery selftest) — nothing red. Not actionable
+  this cycle. #1713 tail unchanged. Nothing else eligible.
 - 2026-09-07 — **IDLE-OK (verified).** PR hygiene: #2153 checked via `is:queued` (not queued, expected)
   and `gh pr view --json statusCheckRollup` — confirmed CI running against my latest fix commit
   (`10d67f74c`, matches `headRefOid`), not DIRTY/RED/unqueued-while-clean; nothing actionable this
