@@ -4921,3 +4921,21 @@ unchanged/queued; E-gate uncheckable, DB access down 233 cycles; nothing new) �
 `#1839` goes green and re-enters the queue; watch all 9 positions continue advancing; retry
 E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
 
+`2026-09-06T~10:35Z` — L4 — **CYCLE 244 (v2.3) — `#1839` confirmed genuinely re-entered
+the merge queue (position 130) after a transient `mergeQueueEntry: null` race (re-running
+`gh pr merge --auto` returned "already queued to merge", re-confirmed via GraphQL). All 9
+own PRs now genuinely queued — this window's fourth and fifth DIRTY-PR episodes
+(`#1842`, `#1839`) fully closed out.**
+
+**PR hygiene:** all 9 own PRs genuinely `QUEUED` via GraphQL `mergeQueueEntry` — `#1870` 80,
+`#1864` 69, `#1849` 4, `#1845` 5, `#1842` 126, `#1839` 130, `#1834` 114, `#1831` 105, `#1808`
+110. No DIRTY, no RED. Clean sweep.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 234th consecutive cycle DB access down.
+
+CYCLE 244 L4: IDLE-OK (verified: PR hygiene fully clean — all 9 own PRs genuinely queued,
+`#1839` fully recovered after a transient null-queue race; E-gate uncheckable, DB access
+down 234 cycles; nothing new) → next: watch all 9 positions continue advancing; retry
+E-gate/dispatch dry-run once DB access returns; F1 remains deferred.
+
