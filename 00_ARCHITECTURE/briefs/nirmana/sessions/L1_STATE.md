@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 143; still no reply on #2180/#2113 (4 quiet cycles). Extended the DAG audit round 5 (PR #2185): checked ga_structural's own 7 declared edges (the largest declaration in L1) -- 6 confirmed genuinely read (2 via specific chart_facts fact_category filters, not just table names, since they share the table with other assets), 1 new genuine false edge found (ga_panchanga). 16/19 L1 assets now fully re-verified; 3 remain (ga_sade_sati's 5, ga_medical's 2, ga_tajaka's 1)
+last_updated: 2026-09-07 — C8 v2.3 cycle 144; DAG audit COMPLETE for coverage -- round 6 closed ga_medical (clean) and ga_sade_sati (found a 3rd false edge, ga_nakshatra -- 17 raw "nakshatra" matches, all resolved to hardcoded constants/internal computation/ga_positions' own category, zero genuine ga_nakshatra reads). All 19 L1 assets now have every declared edge re-verified in both directions, matching L3's own coverage bar. 17 confirmed findings total. Register's L1 row updated to COMPLETE. Still no reply on #2180/#2113 (5 quiet cycles)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8183,3 +8183,41 @@ record — they are the only entries in this table with a real wall-clock behind
   the largest remaining declared-edge gap with 1 more genuine finding -- next: 3 assets remain
   for this check (`ga_sade_sati`'s 5 edges, `ga_medical`'s 2, `ga_tajaka`'s 1) -- small enough to
   likely finish in one more cycle; a nudge on #2180 becomes reasonable after that if still quiet.
+- 2026-09-06T2xZ -- CYCLE 144 (C8 v2.3) -- **DAG audit COMPLETE for coverage.** PR hygiene:
+  #2185/#2178 (only own open PRs) both `BLOCKED`, all checks `pass` or still-`pending`, zero
+  `fail` -- clean. #2180/#2113: same comment counts/timestamps, 5 quiet cycles on #2180 now.
+  Finished the last 3 assets from cycle 143's own list. `ga_medical`
+  (`depends_on={ga_condition,ga_positions}`): both confirmed genuinely read (`chart_facts` 4,
+  `ga_condition_composite` 6 matches) -- clean beyond its own existing finding. `ga_tajaka`
+  needed no new check at all -- re-confirmed its 3rd declared edge (`ga_sensitive`) was already
+  settled by F-E18's own text, so all 3 of its edges were already fully accounted for before this
+  cycle even started. `ga_sade_sati`'s remaining 5: 4 confirmed real (`ga_positions`, `ga_vargas`,
+  `ga_dashas` via dedicated tables; `ga_structural` via its own `argala_natal_matrix`/
+  `tara_bala_natal_baseline` categories, requiring the same category-level check round 5 used) --
+  **1 new false edge**: `ga_nakshatra`. This one needed real care to settle: 17 raw substring
+  matches for "nakshatra" in the file, and each had to be traced individually rather than trusted
+  at face value -- `NATIVE_MOON_NAKSHATRA = "Purva Bhadrapada"` is a hardcoded FORENSIC constant
+  (not a read at all), Saturn's transiting nakshatra is computed internally from raw longitude
+  (`int(lon // (360.0/27.0))`, not a table read either), and the one candidate that looked most
+  like a genuine read -- `_read_moon_pada_per_ayanamsha`, whose OWN docstring says "Read natal
+  Moon nakshatra pada from GA3" -- on inspection queries `chart_facts WHERE fact_category =
+  'graha_position'`, which is `ga_positions`' own category, not `ga_nakshatra`'s at all (the
+  docstring's internal "GA3" shorthand was a red herring worth not trusting without checking the
+  actual SQL). Zero genuine `ga_nakshatra` reads anywhere -- `ga_sade_sati`'s 7-edge declaration
+  is now 4 correct, 3 false, making it comparably inaccurate to `ga_yoga`. **This completes the
+  both-directions re-verification for all 19 L1 assets** -- the same coverage bar L3's own
+  completed audit set, reached via a different method (per-asset hand-picked candidates rather
+  than one unified `target_table → asset_id` owner-map script -- named honestly in §3 as the one
+  real methodology gap versus L3's artifact trail, not a coverage gap). Updated
+  `L1_DEPENDS_ON_AUDIT_v1_0.md` to reflect completion (version 0.5->0.6, status IN PROGRESS->
+  COMPLETE for coverage, 17 findings total) and the register's L1 row to ✅ COMPLETE, matching
+  L3's own format -- also caught and fixed §5's own stale "five layer audits owed" (now
+  correctly four, L1 done). Pushed as the 5th commit onto the same still-open PR #2185, confirmed
+  fresh CI dispatch and auto-merge still armed. CYCLE 144 L1: PR hygiene clean, **closed out a
+  6-cycle DAG-audit arc that started as a side investigation of the #2180 orphan-risk finding and
+  grew into a full campaign-grade audit of all 19 L1 assets, finding 6 genuinely new defects along
+  the way** (`ga_yoga` ×3, `ga_panchanga` ×1, `ga_structural` ×1, `ga_sade_sati` ×1) -- next: with
+  #2180/#2113 at 5 quiet cycles and the DAG audit now genuinely finished, the remaining
+  charter-named prep items are the full 139-row per-finding disposition table, triaging the 6 new
+  post-W2 findings into F-ids/tiers (§3's own noted gap), or a light nudge on #2180 given the
+  cycle count; keep re-checking #2113/#2180 for movement each cycle regardless.
