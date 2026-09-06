@@ -423,3 +423,11 @@ a RED-fix (see heartbeat).
   is "from_moon_view correctly wired end-to-end in production" genuinely closed. Then IDLE-OK pending
   Conductor's C12 carve-out for `bg_cohort` (and #2169's ruling, if any, though that's Conductor's
   clock not L0's blocker).
+- 2026-09-07 — **IDLE-OK (verified).** Force-deploy run `34059983414` progressing (`Build & Deploy
+  MCP` now genuinely `in_progress`, `Apply DB Migrations` completed `success`), not done yet. **Cross-
+  checked L1's own #2122 "verified closed live" claim (PR #2171)** — confirmed via their diff that
+  they checked `origin/main`'s source + the live `vidhi_primitives` DB row, but NOT the deployed
+  serving code's freshness — i.e. the exact gap `#2169` covers, unaddressed by their check. Not L1's
+  lane to fix or mine to correct in their file; noted here as independent confirmation my own
+  deeper verification (deployed image SHA, eventually a live tool call) is the one that actually
+  closes this. #1713's only new item is my own prior post. Nothing else actionable.
