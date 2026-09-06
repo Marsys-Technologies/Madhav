@@ -4478,6 +4478,25 @@ whole campaign.
   chart-data dependency at all, fully re-derivable from the 12 sign names' classical zodiacal
   order, and provably symmetric as an independent cross-row invariant.
 
+- **D-L1-103** — C8 v2.3 cycle 83, post-heartbeat-push addendum: after force-pushing #1827's
+  rebased state-file commit and re-arming auto-merge, the check-runs API reported 0 total_count
+  for a genuinely-landed SHA (`git fetch` + `git log` both confirmed the remote tip matched
+  local HEAD exactly) — persisting across three separate checks spaced ~10-15s apart. Rather
+  than assume "CI silently didn't fire" and stop there, cross-checked the repo-wide
+  `actions/runs` endpoint directly: it showed ZERO workflow runs for that SHA at all, confirming
+  a genuine non-dispatch, not just a check-runs read lag. Applied D-L1-90's close/reopen fix
+  (fires a `reopened` event, covered by `ci.yml`'s trigger types) — this time it WAS a plain
+  rebase + `--force-with-lease` push to an ALREADY-OPEN, previously-CI-active PR, not a base
+  retarget as D-L1-90 originally documented. The close/reopen immediately produced three real
+  `pull_request`-event workflow runs (confirmed via `actions/runs`), which then appeared in
+  check-runs moments later (26 total). **Generalizes D-L1-90**: the silent-non-dispatch failure
+  mode is not exclusive to base retargets — an ordinary force-push to an existing open PR can
+  also, at least occasionally, land the ref update without GitHub ever queuing the `synchronize`
+  webhook that `ci.yml` needs. The reliable diagnostic is the repo-wide `actions/runs` endpoint
+  filtered by `head_sha` (not just `commits/{sha}/check-runs`, which can only ever show runs that
+  were already queued and says nothing about whether a dispatch was attempted at all), and the
+  reliable fix remains the same close/reopen already established.
+
 ## Held items
 
 - ~~All W2 acceptance events~~ — **hold CLEARED.** 11/19 (`ga_positions` + all 10 `rebuild_only`)
