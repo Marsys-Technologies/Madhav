@@ -457,6 +457,62 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T23:33Z (C8 v2.3 cycle 588) — **Milestone: `#2158` MERGED — the sixteenth
+  state-recovery PR closed out.** Sixteenth recurrence of the exact same pattern (cycles 442,
+  453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, now 588). 9 local-only
+  commits (cycles 579-587, 49 lines, single-file) recovered via patch-onto-fresh-branch onto
+  `codex/nirmana-l5-heartbeat-recovery-17`. This cycle's own bounded unit: dispatching a
+  fresh-context W5 verifier for `mi_kula` (implementer≠certifier — the dispatch subagent that
+  just built it must not also certify it).
+- 2026-09-06T23:27Z (C8 v2.3 cycle 587) — **Milestone: `mi_kula` W4 dispatch SUCCEEDED — the
+  first L5 build with real, non-zero-row data (15 rows: 11 signal families + 4 negative
+  controls).** Independently re-confirmed via direct DB read (not trusting the subagent's report
+  alone): `asset_throughput.mi_kula` shows `state=lit, rows_written=15, last_error=NULL`;
+  `mimamsa_signal_families`+`mimamsa_negative_controls` counts match (11+4=15); **`fam_msr_signal`
+  and `fam_anchor` both confirmed live in the real re-seeded data as `MARSYS_DERIVED_CITED`** —
+  C-F-01's fix is genuinely in effect, not just in source. Subagent's account: dry-run + commit
+  both succeeded (`run_id=343fe4fa-...`, execution `brahma-build-pipeline-job-sq4hk`), job logs
+  showed `"[mi_kula] seeded 11 signal families + 4 negative controls"` →
+  `"asset mi_kula complete — 15 rows"`, `build_run_assets.state='complete'`, a fresh
+  `asset_provenance_receipts` row landed. Slot claimed/released cleanly on #1713, snapshot
+  reused after confirming no interim writes. **Self-caught operational mistake, independently
+  verified as harmless**: while editing its own slot-release comment, the subagent fetched a
+  comment by array index instead of exact ID and PATCHed an unrelated engineer's git-stash
+  hazard report (`issuecomment-5550113557`) — checked directly: content is intact and coherent,
+  the sed substitution found no match so the PATCH was byte-identical (only `updated_at` bumped,
+  no real edit). Noted as a hygiene lesson (fetch comments by ID, never by list-index), not
+  escalated — no actual harm. **Next: W5 (integrity_verified/asset_frozen) needs a fresh-context
+  verifier — a different subagent than this one (implementer≠certifier).** #2158 still genuinely
+  queued, no failures.
+- 2026-09-06T23:21Z (C8 v2.3 cycle 586) — **IDLE-OK, verified.** #2158 still genuinely queued.
+  `mi_kula` dispatch-retry subagent still running (~4 min) — holding.
+- 2026-09-06T23:15Z (C8 v2.3 cycle 585) — **IDLE-OK, verified.** #2158 still genuinely queued.
+  `mi_kula` dispatch-retry subagent still running (~1 min) — holding, not starting a competing
+  unit.
+- 2026-09-06T23:09Z (C8 v2.3 cycle 584) — **Milestone: deploy finally caught up to the
+  `depends_on` ordering fix.** `gcloud run jobs describe brahma-build-pipeline-job` now shows
+  image `1a2546a9c...`, confirmed via `git merge-base --is-ancestor d9a5ca807` to include #2139's
+  fix. Dispatched a subagent (`a26da1175b1c4ac4a`) to retry `mi_kula`'s W4 dispatch — briefed
+  with the full chain (C-F-01 fix → W2 resubmission → first dispatch attempt refused on the
+  ordering bug → #2137 adjudicated → #2139 fixed → now deployed) and a critical nuance verified
+  before dispatching it: `--reviewed-deployment-sha` must stay `3891ca7d1...` (the sha already
+  bound to `mi_kula`'s existing, still-valid W2 events), NOT the newer deployed sha, because the
+  dispatcher's evidence-binding check derives the canonical analysis digest from the checked-in
+  `nirmana-writer-digests.json` (unchanged since `3891ca7d1`) — the newer deploy only matters for
+  the build JOB's own runtime preflight (`runner.py`, now fixed), not the dispatch-time evidence
+  match. Told the subagent to independently re-verify this reasoning against actual source/DB
+  state before trusting it, not take it on faith. #2158 still genuinely queued, no failures.
+- 2026-09-06T23:03Z (C8 v2.3 cycle 583) — **IDLE-OK, verified.** #2158 now genuinely queued
+  (CLEAN). Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T22:57Z (C8 v2.3 cycle 582) — **IDLE-OK, verified.** #2158 down to its last check,
+  no failures. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T22:51Z (C8 v2.3 cycle 581) — **IDLE-OK, verified.** #2158 unchanged, no failures.
+  Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T22:45Z (C8 v2.3 cycle 580) — **IDLE-OK, verified.** #2158 down to 2 pending checks,
+  no failures. Pipeline job image unchanged, still predates the fix. Nothing eligible.
+- 2026-09-06T22:39Z (C8 v2.3 cycle 579) — **IDLE-OK, verified.** #2158 building cleanly, no
+  failures, not yet queued. Pipeline job image unchanged, still predates the fix. Nothing
+  eligible.
 - 2026-09-06T22:33Z (C8 v2.3 cycle 578) — **Milestone: `#2154` MERGED — the fifteenth
   state-recovery PR closed out.** Fifteenth recurrence of the exact same pattern (cycles 442,
   453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, now 578). 9 local-only commits
