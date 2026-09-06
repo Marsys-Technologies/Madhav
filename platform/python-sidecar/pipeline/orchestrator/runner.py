@@ -362,7 +362,11 @@ def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> N
             raise ValueError(f"frozen run manifest asset {asset_id} is no longer registered")
         if (
             row["scope"] != frozen.asset_scopes[asset_id]
-            or list(row["depends_on"] or []) != frozen.asset_deps[asset_id]
+            # Sort both sides: the frozen manifest's depends_on is stored sorted
+            # (matching the server's registryContractFingerprintInput, which also
+            # sorts), but asset_registry.depends_on is stored in authored order —
+            # dependency order was never a real invariant, so compare unordered.
+            or sorted(row["depends_on"] or []) != sorted(frozen.asset_deps[asset_id])
             or row.get("natural_key_partition") != frozen.asset_partitions[asset_id]
             or bool(row.get("has_cowriters")) != frozen.asset_has_cowriters[asset_id]
         ):

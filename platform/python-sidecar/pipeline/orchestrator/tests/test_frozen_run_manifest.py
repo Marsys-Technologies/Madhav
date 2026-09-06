@@ -123,3 +123,28 @@ def test_registry_dependency_drift_fails_closed_instead_of_replanning_the_run():
 
     with pytest.raises(ValueError, match="changed after dispatch"):
         _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(_run()))
+
+
+def test_registry_dependency_reorder_alone_does_not_fail_preflight():
+    """Regression for #2137: asset_registry.depends_on is stored in authored order,
+    but the frozen manifest's depends_on is stored sorted (matching the server's
+    registryContractFingerprintInput). Same set, different order must not be
+    treated as drift -- dependency order was never a real invariant."""
+    run = _run()
+    # ga_strength's manifest depends_on is ["ga_positions"] (single-element, so add
+    # a second real dependency to make reordering observable).
+    run["plan_manifest"]["assets"][1]["depends_on"] = ["ga_extra", "ga_positions"]
+    run["plan_manifest_digest"] = _canonical_manifest_digest(run["plan_manifest"])
+
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            return [
+                {"asset_id": "ga_positions", "scope": "per_chart", "depends_on": [], "natural_key_partition": "chart_id", "has_cowriters": False},
+                # Live registry has the same two deps, authored (unsorted) order.
+                {"asset_id": "ga_strength", "scope": "per_chart", "depends_on": ["ga_positions", "ga_extra"], "natural_key_partition": "chart_id", "has_cowriters": True},
+            ]
+
+    _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(run))
