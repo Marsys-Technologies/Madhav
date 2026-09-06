@@ -118,6 +118,30 @@ def test_contract_digest_matches_javascript_bytes_for_dasha_kala():
     )
 
 
+MUHURTA_SEVA_PROBE = {
+    "probe_type": "muhurta_seva_forensic",
+    "forensic_date": "1984-02-05",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset_minutes": 330,
+    "forensic_event": "vivah",
+    "forensic_birth_nakshatra_id": 25,
+    "forensic_expected_tithi": "Shukla Tritiya",
+    "forensic_expected_nakshatra": "Purva Bhadrapada",
+    "forensic_expected_score_with_native": 33.0,
+    "forensic_expected_score_without_native": 28.000000000000004,
+}
+
+
+def test_contract_digest_matches_javascript_bytes_for_muhurta_seva():
+    # Same independent-node-execution discipline as the graha_sancara test above:
+    # `node -e` running definitions.ts's exact stableJson recursion against this
+    # literal object, then sha256 of the result — not a Python reimplementation.
+    assert nirmana_probe._contract_digest(MUHURTA_SEVA_PROBE) == (
+        "96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001"
+    )
+
+
 def test_full_frozen_release_contracts_match_javascript_digests():
     contracts_path = (
         Path(__file__).resolve().parents[1] / "scripts" / "nirmana_probe_contracts.json"
@@ -137,6 +161,9 @@ def test_full_frozen_release_contracts_match_javascript_digests():
     )
     assert nirmana_probe._contract_digest(contracts["ka_dasha_kala"]) == (
         "b50fa62f11c4b61b841c5d23db1324bcafa5831c11ec306d8d800a178feac9bd"
+    )
+    assert nirmana_probe._contract_digest(contracts["ka_muhurta_seva"]) == (
+        "96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001"
     )
 
 
@@ -228,6 +255,8 @@ def test_probe_route_rejects_digest_mismatch_before_execution(
         ("bg_panchanga", "tulana_ranking_forensic"),
         ("ka_dasha_kala", "graha_sancara_forensic"),
         ("bg_panchanga", "dasha_kala_proxy_integrity"),
+        ("ka_muhurta_seva", "graha_sancara_forensic"),
+        ("bg_panchanga", "muhurta_seva_forensic"),
     ],
 )
 def test_probe_route_rejects_asset_probe_type_mismatch(

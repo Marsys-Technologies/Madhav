@@ -2818,6 +2818,42 @@ your layer close.
   PR hygiene checked first: 18 L3 PRs queued; #1934 (previous cycle's PR) confirmed CLEAN
   (0 failing, 4 checks still running) — nothing to fix.
 
+- `2026-09-06T~05:0xZ — L3-W3 — PR hygiene: two more genuinely DIRTY PRs found and
+  fixed this cycle beyond last cycle's eight — #1887 (F-SANGAM-7 tajika/eclipse half,
+  `ka_sangam/engine.py` — the ka_sangam-family generated-file conflict pattern: pins
+  regenerated for real, only its own `writer_inventory_sha256` changed; writer-digests
+  regenerated, only `ka_sangam`'s hash changed; 142/142 targeted tests pass) and
+  #2023 (heartbeat-lineage branch, standard L3_STATE.md shape, only the known-safe
+  migration-range line removed). Both force-pushed, re-armed, confirmed `MERGEABLE`.
+  Full L3-lane sweep (54 PRs, batch GraphQL) otherwise clean — no other DIRTY, no
+  CLEAN-but-unqueued.
+  **F-L3-15 next slice: `ka_muhurta_seva` gets a real `health_probe` (migration 676,
+  PR #2065).** Continuing the health-probe gap F-L3-15 first found (`ka_graha_sancara`,
+  migration 671, prior cycle) across L3's four service assets — all four had
+  `health_probe = NULL` in production; this closes the second. Checked
+  `KaMuhurtaSevaService.score()` first: DB-free (composes `panchang_engine.
+  compute_panchang` + `muhurat.finder.score_muhurat`, both in-process libraries) — the
+  same architecture class the existing three probes are built for, unlike
+  `ka_dasha_kala`/`ka_tulana` which both genuinely need live `chart_dashas`/DB access
+  and `run_health_probe()` has no `db_conn` parameter — a real contract question for a
+  future slice, deliberately left out of this one rather than forced through. Ground
+  truth independently re-derived through this module's own import path at the FORENSIC
+  birth date/location (Tithi = Shukla Tritiya, Nakshatra = Purva Bhadrapada, matching
+  CLAUDE.md §B): scoring "vivah" with `native_chart.birth_nakshatra_id=25` activates
+  Tara Bala, `score_with_native=33.0` vs `score_without_native=28.000000000000004` —
+  pinned as an exact difference (not a bare not-None check) so a silently-ignored
+  `native_chart` param would be caught (§N.8). New JS-canonical contract digest
+  independently cross-checked via real `node` executing `definitions.ts`'s own
+  `stableJson` (not a Python reimplementation) — matched Python's `_contract_digest`
+  byte-for-byte on the first attempt. 15 new tests total (7 probe + 6 migration + 2
+  route), full `tests/l3/` suite 1459 passed/0 new failures (only the 3 pre-existing
+  `ka_kshetra` parity failures), branch/PR kept separate from this cycle's hygiene
+  fixes (new work off a fresh `origin/main`-based branch, not stacked on a heartbeat
+  branch). — blocked on: nothing; next action: `ka_dasha_kala`/`ka_tulana`'s
+  DB-backed health_probe architecture question, or continue N1 sequencing
+  (#1905/#1919/#1921/#1924/#2047/#2049 all queued, not yet merged — the seventh step
+  and its arbitration_role/composeConcordanceVerdict wiring land once the queue
+  drains them in order).
 - `2026-09-06T~04:0xZ — L3-W3 — F-KALA-1 fix (third slice): PR (branch
   `codex/nirmana-l3-f-kala-1-ahead-recurrence-rank`).** Continuing the same finding's four
   named call sites (register_d9_judgment.ts fixed 2 cycles ago; query_temporal_activation.ts
