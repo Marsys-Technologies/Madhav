@@ -315,7 +315,9 @@ def _build_nodes_for_aya(
         _pos = (graha_positions or {}).get(graha)
         _pos_json = json.dumps(_pos) if _pos else None
         nodes.append({
-            "node_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_node_ids()
+            # before any write; see #1888. Never reaches the database.
+            "node_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -368,7 +370,9 @@ def _build_nodes_for_aya(
 
     for h in range(1, 13):
         nodes.append({
-            "node_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_node_ids()
+            # before any write; see #1888. Never reaches the database.
+            "node_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -416,7 +420,9 @@ def _build_nodes_for_aya(
 
     for domain in CANONICAL_DOMAINS_SORTED:
         nodes.append({
-            "node_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_node_ids()
+            # before any write; see #1888. Never reaches the database.
+            "node_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -487,7 +493,9 @@ def _build_nodes_for_aya(
         tradition = str(sig.get("signal_tradition") or "parashari")
         ver_pass = str(sig.get("verification_pass_status") or "single_pass")
         nodes.append({
-            "node_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_node_ids()
+            # before any write; see #1888. Never reaches the database.
+            "node_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -520,7 +528,82 @@ def _build_nodes_for_aya(
     return nodes
 
 
+def assign_deterministic_node_ids(conn, nodes: list[dict]) -> int:
+    """Replace each row's node_id with its DERIVED identity. Returns the collapse count.
+
+    Nirmāṇa #1888 (D-CND-29). node_id was randomly generated at four emit sites, so
+    every bo_bimba rebuild minted fresh identities for the same logical nodes — the mechanism
+    behind bodha_cgm_paths/bodha_cgm_sub_graphs going 100%/33% orphaned the moment
+    bo_bimba rebuilt without them (measured in #1888).
+
+    The identity is computed by `bodha_cgm_node_identity()` in migration 714 — the
+    single source of truth — and never reimplemented here, mirroring bo_laksana's
+    assign_deterministic_signal_ids() (#1804) and L4's phala_anchor_identity (#1754):
+    a Python copy of the hash is free to drift from the SQL one, and a drifted
+    identity function is indistinguishable from no identity function at all.
+
+    Assigned back onto the row dicts before insert (not derived inside the INSERT
+    itself) so the emit-site dicts and the inserted rows always agree — the same
+    discipline bo_laksana's version documents for its own post-insert UPDATE passes.
+    This writer has none of those today, but a future one built on `node_id` would
+    hit the identical silent-zero-match failure mode if identity were split across
+    two computations instead of one.
+
+    One round-trip for the whole write, not one per ayanamsha/batch.
+    """
+    if not nodes:
+        return 0
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "node_type": row.get("node_type"),
+            "node_subject": row.get("node_subject"),
+        }
+        for index, row in enumerate(nodes)
+    ]
+    rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_cgm_node_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 e->>'node_type',
+                 e->>'node_subject'
+               )::text AS nid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    for r in rows:
+        if isinstance(r, dict):
+            index, nid = r["i"], r["nid"]
+        else:
+            index, nid = r[0], r[1]
+        nodes[index]["node_id"] = nid
+
+    # D-CND-29: report the collapse honestly rather than assume none. Measured at
+    # migration time the natural key is exactly unique (1101/1101 nodes across all
+    # three charts), so a non-zero count here is new information and worth a loud line.
+    distinct_ids = len({n["node_id"] for n in nodes})
+    collapsed = len(nodes) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_bimba: %d of %d node rows collapsed onto an existing deterministic "
+            "identity (same node by the natural key). Expected 0 — the tuple measured "
+            "exactly unique on all three charts at migration 714.",
+            collapsed, len(nodes),
+        )
+    return collapsed
+
+
 def _batch_insert(conn, nodes: list[dict]) -> int:
+    # #1888/D-CND-29: derive every node_id before anything is written. Placed here,
+    # at the single insert path, rather than at the four emit sites — the emit sites
+    # can multiply, this cannot be bypassed, and a row that reaches the database with
+    # a uuid4() is precisely the defect this function exists to remove.
+    assign_deterministic_node_ids(conn, nodes)
     inserted = 0
     for i in range(0, len(nodes), _BATCH_SIZE):
         for row in nodes[i:i + _BATCH_SIZE]:
