@@ -489,6 +489,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~74:0xZ — L3-W4 — IDLE-OK (verified): all 4 PRs healthy, zero
+  failures, all fresh run IDs, auto-merge armed on all — none queued yet,
+  just still building CI after last cycle's pushes. `#2065` still hasn't
+  merged. `#1903` rebased 43 commits forward, clean, pins/digests both
+  `--check`-clean. `egate.sql` unchanged. — blocked on: `#2065` merging;
+  next action: once it lands, `ka_muhurta_seva`'s W2 acceptance is the next
+  genuine W4-path item — route any verifier-role submissions through a
+  fresh subagent per D-CND-35.
 - `2026-09-06T~73:0xZ — L3-W4 — PR hygiene: a FOURTH round of migration-
   number collisions, `#2079` only this time.** All 3 F-L3-15 PRs went
   `UNMERGEABLE`-in-queue again. `#2079`: 844→847 (collided with L1's newly-
