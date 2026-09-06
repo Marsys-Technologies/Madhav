@@ -9250,3 +9250,19 @@ unchanged — all 9 assets still `BLOCKED-ANCESTORS`, canary `ph_nimitta` still 
 CYCLE 516 L4: IDLE-OK (verified: zero own PRs open; E-gate genuinely re-checked, unchanged;
 no new L4-relevant adjudications) → next: continue re-checking the E-gate each cycle; F1
 (`ph_phaladesa` zero MCP consumers) remains the layer's one deferred code item.
+
+`2026-09-07T~01:24Z` — L4 — **CYCLE 517 (v2.3) — CONTINUED MOVEMENT: E-gate re-checked
+live, every asset's `unfrozen_ancestors` count dropped by another 1 (canary `ph_nimitta`
+32→31). Still `BLOCKED-ANCESTORS` for all 9.**
+
+**PR hygiene:** zero own PRs open, trivially clean.
+
+**Priorities 1-4:** one new adjudication, `#2169` (TIME-CRITICAL, L0 → CONDUCTOR: deploy.yml
+changed-paths gate diffs only HEAD~1) — confirmed Conductor-addressed, not L4-relevant;
+count now 19. No `NIRMANA_HOLD` file present.
+
+CYCLE 517 L4: IDLE-OK on dispatch but E-gate shows genuine steady progress — canary
+`ph_nimitta` now at 31 unfrozen ancestors (down from 35 at cycle 430, roughly one per every
+few cycles); new adjudication `#2169` confirmed not L4-relevant → next: continue
+re-checking the E-gate each cycle; F1 (`ph_phaladesa` zero MCP consumers) remains the
+layer's one deferred code item.
