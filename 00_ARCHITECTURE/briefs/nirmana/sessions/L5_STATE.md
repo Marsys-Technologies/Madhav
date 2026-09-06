@@ -457,6 +457,9 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T08:05Z (C8 v2.3 cycle 334) — **Pushed 5-cycle batch (328-333).** Dequeued
+  #1826 (was genuinely queued), rebased 336 commits clean, pushed, re-armed. #1844
+  confirmed unaffected (`isInMergeQueue: true`). Starting a new local batch.
 - 2026-09-06T08:04Z (C8 v2.3 cycle 333) — **IDLE-OK.** #1826 CLEAN, all checks passed,
   self-queued — 18th successful full CI cycle. #1844 confirmed `isInMergeQueue: true`.
   #1869 unchanged at 4 comments. 5 cycles since last push — pushing now.
