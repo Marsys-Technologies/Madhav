@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 54; ga_structural F-A14 widened to 10/57 (#2022)
+last_updated: 2026-09-06 — C8 v2.3 cycle 55; ga_structural F-A14 widened to 11/57 (#2024)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -33,7 +33,8 @@ your `nirmana-adjudication` issues → continue.
   same-day (cycle 52): L1 continuation 3, 780–799 granted (20 numbers — sized up from the last two
   10-number blocks given the ~50-remaining-category estimate)**. 780 (`ga_structural`
   nway_config_per_varga, cycle 52), 781 (`ga_structural` kala_sarpa_per_varga, cycle 53), 782
-  (`ga_structural` tara_bala_natal_baseline, cycle 54) used. 783–799 remain free.
+  (`ga_structural` tara_bala_natal_baseline, cycle 54), 783 (`ga_structural`
+  conjunction_within_orb, cycle 55) used. 784–799 remain free.
 - **Branch namespace:** `codex/nirmana-l1-*` · **PR title prefix:** `L1:`
 - **Worktree:** `~/nirmana-s/l1`
 - **Standing ruling D-CND-01 (read before your first Conform-stage check):** a `count(*) = N` is
@@ -2333,6 +2334,50 @@ CYCLE 54 L1: widened `ga_structural`'s F-A14 contract to 10/57 categories (PR #2
 — next: continue `ga_structural` widening (47 categories remain), or `ga_positions` re-dispatch
 once #1892 lands.
 
+## CYCLE 55 (C8 v2.3) — ga_structural's F-A14 contract widened to 11/57 categories (PR #2024, migration 783); pure-D1 category reuses the kala_sarpa self-consistency discipline; RAH_MEAN/KET_MEAN underscore parsing hazard caught before shipping
+
+**PR hygiene:** clean sweep (`--limit 200`). Filtered the shared-bot-identity 129 open PRs down to
+L1's own 41 (`codex/nirmana-l1-*` branch prefix) — 39/41 confirmed genuinely `is:queued`; #2022
+(migration 782) and #1827 (this state PR) both mid-CI with green/pending checks only, no
+DIRTY/RED. #1928/#1892 unchanged, both still OPEN, outside L1 scope.
+
+**Unit of work: continued `ga_structural`'s F-A14 widening — `conjunction_within_orb`** (PR
+**#2024**, migration 783 — fourth in the 780-799 range).
+
+`conjunction_within_orb` is a pure-D1 category (30 rows, one per graha pair within a 10° orb) with
+no varga dimension — computed from `ga_structural`'s own in-memory `chart_output`, the SAME D1
+source already flagged by the D1 dual-independent-PyJHora-source caveat root-caused for F-A17.
+Recognized on sight that a full cross-authority re-derivation against `ga_vargas`' own
+`chart_divisionals` D1 data would risk re-surfacing that already-tracked disagreement as a false
+"new defect" — the fifth time this arc has hit that shape, and the first time on a pure-D1 (not
+`_per_varga`) category. Reused `kala_sarpa_per_varga`'s (migration 781) self-consistency/domain
+discipline instead: (w) an `orb_deg` domain check `[0, 10.0]`, (x) a no-reversed-duplicate-pair
+cross-row check, (y) a pair-ordering invariant against the writer's own `ALL_GRAHAS` loop order.
+
+**Caught a real parsing hazard before it became a false-clean result**: `PLANET_TO_SUBJECT`'s
+`RAH_MEAN`/`KET_MEAN` tokens themselves contain an underscore, so a naive
+`split_part(fact_subject,'_',2)` mis-parses any pair involving Rahu or Ketu. Checked the actual
+distinct `fact_subject` values live BEFORE writing (x)/(y) and found a genuine such row
+(`SAT_KET_MEAN`, which a naive split would read as `SAT`/`KET` rather than `SAT`/`KET_MEAN`) —
+this would have made the reversed-duplicate check silently correct-by-luck (no live reversed pair
+to catch) but genuinely broken for a future one. Both conjuncts check the `RAH_MEAN_`/`KET_MEAN_`
+prefix first via `LIKE ... ESCAPE`, falling back to `split_part` only otherwise; re-verified
+correctness by parsing all 30 live rows and inspecting `s1`/`s2` by eye before combining into the
+final conjuncts.
+
+All three conjuncts verified live clean (0/30 each) then individually mutation-tested via real
+transactional corruption: (w) an orb corrupted to 15.0; (x) a genuine reversed-duplicate row
+INSERTed (copying an existing `SUN_MER` row under `MER_SUN`); (y) a subject corrupted to break
+ordering (`SUN_MER` → `MER_SUN`). All three caught, all rolled back, production untouched.
+
+Carried the twenty-two prior conjuncts (a)-(v) forward verbatim, including the three
+already-tracked genuinely-red ones. No writer touched. Full `platform/tests/unit/migrations/`
+suite: 208 passed / 91 skipped (42 files). `provenance_inventory --check`: clean.
+
+CYCLE 55 L1: widened `ga_structural`'s F-A14 contract to 11/57 categories (PR #2024, migration 783)
+— next: continue `ga_structural` widening (46 categories remain), or `ga_positions` re-dispatch
+once #1892 lands.
+
 ## Asset table (19 assets)
 
 Live counts vs declared floor, canonical chart `482012f1`. Routes are W2 *proposals* from W1 —
@@ -2348,7 +2393,7 @@ none accepted yet (blocked on #1736).
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963) |
 | ga_strength | 13,621 / 11,936 | rebuild_only (corrected cycle 23 — W1 proposal below is stale) | Writer sound (L1_W2_DECIDE_v1_0.md); F-C1's fix is serving-side, L2's `query_ucd.ts`, already landed there |
-| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2019 cycle 53 → #2022 cycle 54 — 10/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline; migration range 780-799, 783-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config). `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL (too complex for one bounded conjunct pass) — self-consistency/domain conjuncts shipped instead, same discipline as combustion's (h) and graha_yuddha's (j)/(k). `tara_bala_natal_baseline` (migration 782) is a second cross-writer-owned category (emitted by `ga_panchanga_writer.py`, same pattern as bhadra/panchaka flags) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin by design |
+| ga_structural | 98,542 / 77,821 | rebuild_only | owns argala 41,760 — unconsumed; undercounts self ~5,157 (F-C); F-A14 integrity_check_sql (#1964 cycle 34 → ... → #2022 cycle 54 → #2024 cycle 55 — 11/57 categories: graha_vargottama_amplification_factor, bhadra_flag, panchaka_flag, vargottama_per_varga, parivartana_per_varga, combustion_per_varga, graha_yuddha_per_varga, nway_config_per_varga, kala_sarpa_per_varga, tara_bala_natal_baseline, conjunction_within_orb; migration range 780-799, 784-799 free); F-A15 **FIXED at the writer level (#1981, cycle 42)** — migration 745's conjunct (b) still genuinely RED, will clear once the 2 affected charts rebuild; F-A17 **FIXED at the writer level (#2003, cycle 48)** — migration 756's conjunct (e) still genuinely RED, same disposition; **F-157** shipped as migration 757's conjunct (f) — GENUINELY RED on 439/624 rows; all three conjuncts clear on the same future rebuild. D1's dual-independent-PyJHora-source caveat (root-caused for F-A17) confirmed on FOUR `_per_varga` categories (vargottama/combustion/graha_yuddha/nway_config), plus a FIFTH occurrence recognized-and-avoided on the pure-D1 `conjunction_within_orb` (migration 783, no varga dimension at all). `kala_sarpa_per_varga` (migration 781) is the first category where the full source algorithm was deliberately NOT re-derived in SQL (too complex for one bounded conjunct pass) — self-consistency/domain conjuncts shipped instead, same discipline as combustion's (h) and graha_yuddha's (j)/(k), reused again for `conjunction_within_orb`. `tara_bala_natal_baseline` (migration 782) is a cross-writer-owned category (emitted by `ga_panchanga_writer.py`, same pattern as bhadra/panchaka flags) — its full modulo formula WAS re-derived in SQL, proactively applying the D-L1-55 mod-sign-bug margin by design. `conjunction_within_orb` (migration 783) caught a real RAH_MEAN/KET_MEAN underscore-parsing hazard (a naive `split_part` mis-parses the genuine live row `SAT_KET_MEAN`) before it could produce a false-clean detector |
 | ga_condition | 2,880 / 2,880 | **changed** | **MUST: `varga_dignity_composite` NULL on 135/135 served (F-C)** |
 | ga_yoga | 63 / 5 | **changed** | citations exist (233/233) but no surface joins them (F-D1); F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds |
 | ga_vichara | 8,249 / 0 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D); F-A14 integrity_check_sql (#1967) |
@@ -3077,6 +3122,20 @@ whole campaign.
   against `psql` before folding it into the full migration — the staged `WITH`-clause verification
   query used during authoring had no such ambiguity and would not have caught it, a reminder that
   the final assembled expression needs its own syntax check, not just its per-step logic.
+
+- **D-L1-79** — C8 v2.3 cycle 55: widened `ga_structural`'s F-A14 contract (migration 783,
+  PR #2024), 10/57 → 11/57, adding `conjunction_within_orb`. First pure-D1 category (no varga
+  dimension at all) in this arc to hit the D1 dual-independent-PyJHora-source shape — recognized
+  the risk of re-surfacing the already-tracked disagreement via a full cross-authority
+  re-derivation and reused `kala_sarpa_per_varga`'s self-consistency/domain discipline instead
+  (orb domain, no-reversed-duplicate-pair, pair-ordering invariant). Caught a genuine parsing
+  hazard before authoring the conjuncts: `PLANET_TO_SUBJECT`'s `RAH_MEAN`/`KET_MEAN` tokens contain
+  an underscore, so a naive `split_part(subject,'_',2)` mis-parses the real live row
+  `SAT_KET_MEAN` — checked all 30 distinct live `fact_subject` values by eye first, then wrote both
+  new conjuncts to check the `RAH_MEAN_`/`KET_MEAN_` prefix before falling back to `split_part`.
+  This is the discipline's second reuse (after `tara_bala_natal_baseline`'s reuse of conjunct (d)'s
+  join pattern) of checking real data shape before trusting a parsing assumption that had worked
+  for every category so far.
 
 ## Held items
 
@@ -3944,3 +4003,20 @@ L1 must satisfy rather than a feature it consumes.
   widened ga_structural's F-A14 contract to 10/57 categories (PR #2022, migration 782) -- next:
   continue ga_structural widening (47 categories remain), or ga_positions re-dispatch once #1892
   lands.
+- 2026-09-06T07:0xZ -- CYCLE 55 (C8 v2.3). PR hygiene clean: filtered the shared-bot-identity 129
+  open PRs to L1's own 41; 39/41 genuinely is:queued, #2022 and #1827 both mid-CI (green/pending
+  only). #1928/#1892 unchanged. Unit of work: widened ga_structural's F-A14 contract to 11/57 (PR
+  #2024, migration 783) -- conjunction_within_orb. First pure-D1 (no varga) category to hit the D1
+  dual-source shape; recognized the risk on sight and reused kala_sarpa_per_varga's self-
+  consistency/domain discipline (orb domain [0,10], no-reversed-duplicate-pair, pair-ordering
+  invariant against ALL_GRAHAS order) instead of a full cross-authority re-derivation. Caught a
+  genuine RAH_MEAN/KET_MEAN underscore-parsing hazard before authoring: PLANET_TO_SUBJECT's
+  RAH_MEAN/KET_MEAN tokens contain an underscore, so naive split_part mis-parses the real live row
+  SAT_KET_MEAN -- inspected all 30 distinct live fact_subject values by eye, then wrote both new
+  conjuncts to check the RAH_MEAN_/KET_MEAN_ prefix first. All three conjuncts verified live clean
+  (0/30 each) then individually mutation-tested via real transactional UPDATE/INSERT+ROLLBACK.
+  Carried the 22 prior conjuncts forward verbatim, including the 3 already-tracked genuinely-red
+  ones. No writer touched. Full platform/tests/unit/migrations/ suite: 208 passed / 91 skipped (42
+  files). provenance_inventory --check: clean. CYCLE 55 L1: widened ga_structural's F-A14 contract
+  to 11/57 categories (PR #2024, migration 783) -- next: continue ga_structural widening (46
+  categories remain), or ga_positions re-dispatch once #1892 lands.
