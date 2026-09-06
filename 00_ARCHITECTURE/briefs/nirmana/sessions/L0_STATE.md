@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — Caught and fixed a DIRTY PR (#1969) before it could merge and delete other layers' files (a stale-branch-point artifact, not a real conflict) — closed it, replaced with clean single-commit #1985. #1910/1915/1923/1925 confirmed unaffected, still queued normally. 30/40 frozen holds.
+last_updated: 2026-09-06 — Second DIRTY-PR catch of the campaign: #1910 (migration 700, bg_dasha_systems) went DIRTY once it reached the queue head after #1911 merged — same stale-branch-point pattern as #1969 (branch cut from an old main point, would have deleted ~60 other layers' migrations/files, 397 insertions/3862 deletions in the diff). Closed #1910, replaced with clean single-commit #2004 off current main, auto-merge armed. 1915/1923/1925 confirmed still queued normally (UNKNOWN mergeStateStatus is just not-yet-recomputed, not DIRTY). 30/40 frozen holds.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -1948,4 +1948,20 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** Fourth flat read (positions still 2/8/16/65), queue head still #1911,
   ~10.6min in_progress — still under the 30min hang threshold. No DIRTY, no RED. 30/40 frozen
+  holds.
+
+- 2026-09-06 — **PR HYGIENE: second DIRTY-PR catch.** #1911 merged; #1910 (`bg_dasha_systems`
+  migration 700, D-L0-GG) then fell out of `is:queued` and surfaced `mergeStateStatus=DIRTY`,
+  `mergeable=CONFLICTING`. Root-caused via `git diff origin/main <branch> --stat` (branch
+  `feat/nirmana-l0-cycle-resume-2`, cut from a stale main point weeks of merges ago): the diff was
+  397 insertions / 3862 deletions — merging as-is would have deleted ~60 files belonging to other
+  layers (migrations 651/665-669/671-675/686/710-716/718, `L2_STATE.md`, `L3_STATE.md` content,
+  several python-sidecar/registry files), not a real conflict on my one file. Fix: fresh branch
+  `fix/nirmana-l0-migration-700-resubmit` off current `origin/main`, `git checkout
+  origin/feat/nirmana-l0-cycle-resume-2 -- platform/migrations/700_bg_dasha_systems_catalog_hash_repin.sql`
+  only, verified `git diff HEAD --stat` showed exactly one file (134 insertions, 0 deletions) before
+  committing. Opened **#2004**, auto-merge armed, closed **#1910** with explanation. Confirmed
+  #1915/#1923/#1925 (branches `-3`/`-4`/`-5`, each cut later than `-2`) still genuinely `is:queued`
+  — their `UNKNOWN` mergeStateStatus is just not-yet-recomputed (GitHub only recomputes at/near
+  queue head), not a DIRTY signal; will re-verify each as it nears the queue head. 30/40 frozen
   holds.
