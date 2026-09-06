@@ -5012,3 +5012,20 @@ direct job inspection; E-gate uncheckable, DB access down 239 cycles; nothing ne
 watch queue positions resume advancing; retry E-gate/dispatch dry-run once DB access returns;
 F1 remains deferred.
 
+`2026-09-06T~11:05Z` — L4 — **CYCLE 250 (v2.3) — fourth flat cycle; `#1977`'s
+`merge_group` job actually completed `success` this time (all 3 checks), but `main` has not
+advanced yet — the documented "slow-but-normal" lag pattern, re-confirmed by a fresh
+`git fetch` showing no new commit. Not escalated.**
+
+**PR hygiene:** all 9 own PRs unchanged/genuinely queued. No DIRTY, no RED.
+
+**Priorities 1-4:** no new `main` commits, no new adjudications name L4 (count unchanged at
+14). E-gate still uncheckable, 240th consecutive cycle DB access down.
+
+CYCLE 250 L4: IDLE-OK (verified: PR hygiene clean, all 9 own PRs unchanged/queued; `#1977`'s
+merge_group checks all completed success, `main` lag confirmed via fresh fetch as the
+documented slow-but-normal pattern, not stalled; E-gate uncheckable, DB access down 240
+cycles; nothing new) → next: re-fetch `main` next cycle to confirm `#1977` lands; watch queue
+positions resume advancing; retry E-gate/dispatch dry-run once DB access returns; F1 remains
+deferred.
+
