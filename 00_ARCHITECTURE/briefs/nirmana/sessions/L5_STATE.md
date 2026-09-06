@@ -457,6 +457,33 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:00Z (C8 v2.3 cycle 410) — **`mi_jivanaghatana`'s `accepted_rebuild_observed`
+  LANDED live — the campaign's second `mi_*` asset to reach it.** PR hygiene: #1826 `BLOCKED`
+  only on pending checks (no failures, armed), not CLEAN-but-unqueued — no action; #1844 confirmed
+  `isInMergeQueue: true`. Applied the `mi_vistara` recipe (cycles 407-408) to `mi_jivanaghatana`,
+  now unblocked by migration 806. Extra step this asset needed: its W2 verdict was `correct`
+  (change-required), not `no_change`, so `accepted_rebuild_observed` requires a prior
+  `implementation_accepted` event — submitted first (referencing A-F-08/A-F-09/migration 690,
+  `decision_digest` computed via the real `canonicalNirmanaOptimizationVerdictDigest`, throwaway
+  vitest, deleted after; `source_ref` had to be the EXACT current live deployed sha —
+  `475b5a8c3a…` — not the original W2 sha, a genuinely different requirement from the dispatch
+  script's own sha rule). Then the usual `build_run_authorized`-before-`started_at` dispatch race,
+  won again (~5.5s window). **Self-caught mistake:** hardcoded `implementation_accepted`'s
+  `observed_at` to a placeholder future time (11:35Z) instead of real wall-clock time, which made
+  the first `accepted_rebuild_observed` attempt fail the server's `occursAfter` ordering check
+  (HTTP 409) since its own `observed_at` was earlier — no corruption (the failed attempt wrote
+  nothing), fixed by resubmitting with `observed_at` safely after 11:35Z. Receipt's `output_digest`
+  (`3f63c772…`) matches the value independently rehearsed via a rollback-only transaction *before*
+  authoring migration 806 last cycle — end-to-end corroboration the spec is correct, not just
+  schema-valid. All four events independently re-verified via direct DB read. Full account +
+  SLOT CLAIM/RELEASE on #1713. **Deliberately did NOT dispatch a W5 verifier this cycle** — its
+  `integrity_verified` would hit the identical `chart_grants` RLS gap `mi_vistara`'s did (#1869,
+  still open, unchanged), so it would be wasted effort until that lands. **Next open items, in
+  order: (1) watch #1869 for the `chart_grants` grant — the instant it lands, dispatch W5
+  verifiers for BOTH `mi_vistara` and `mi_jivanaghatana` (payloads already computed for
+  `mi_vistara`; `mi_jivanaghatana`'s will need fresh digests since its `registryContract`/
+  `integrity_check_sql` differ); (2) the #1844 migration-692 renumber (deferred from cycle 409,
+  still open); (3) `mi_kula`'s E-gate (still 3 unfrozen ancestors, unchanged).**
 - 2026-09-06T11:20Z (C8 v2.3 cycle 409 addendum, post-notification) — **Migration 806
   guard-cleared (`MIGRATION SAFE`) and applied via `migrate.ts` — verified live**
   (`asset_output_digest_specs` row for `mi_jivanaghatana` confirmed, sha matches). The guard also
