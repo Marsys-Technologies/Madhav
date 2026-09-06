@@ -98,6 +98,34 @@ class TestDetectConfidenceInflation:
         a = _clean_anchor(confidence_high=0.79, dasha_consensus_count=6, ayanamsha_robustness=5)
         assert detect_confidence_inflation(a) is None
 
+    def test_genuine_zero_robustness_is_not_coerced_to_the_default(self):
+        # F-12: `int(ayanamsha_robustness or 3)` silently substituted the default (3) for
+        # a genuine measured 0 -- NOT numerically inert here (unlike n_independent, whose
+        # clamp floors at 1 regardless): rob=0 is a legal, stricter value inside [0,5].
+        # n=3, rob=0 (honoured): ceiling = (0.50+0.15) * (0.80+0.00) = 0.65 * 0.80 = 0.52.
+        # n=3, rob coerced to 3: ceiling = 0.65 * 0.92 = 0.598 -- the old, wrong, laxer bar.
+        a = _clean_anchor(confidence_high=0.55, dasha_consensus_count=3, ayanamsha_robustness=0)
+        rec = detect_confidence_inflation(a)
+        assert rec is not None, (
+            "confidence_high=0.55 must be flagged against the true rob=0 ceiling (0.52); "
+            "the pre-fix coercion to rob=3 (ceiling 0.598) would have missed this"
+        )
+
+    def test_genuine_zero_n_independent_still_floors_to_one(self):
+        # n_independent's clamp floor is 1, so a genuine 0 lands on the exact same numeric
+        # ceiling as None would (both -> n=1) -- proving this half of the fix is a None-check
+        # correction with NO behavioural change, unlike the ayanamsha_robustness half above.
+        # n=0 (or None) -> clamped n=1, rob=3: ceiling = (0.50+0.05) * (0.80+0.12) = 0.506.
+        a_zero = _clean_anchor(confidence_high=0.50, dasha_consensus_count=0, ayanamsha_robustness=3)
+        a_none = _clean_anchor(confidence_high=0.50, dasha_consensus_count=None, ayanamsha_robustness=3)
+        assert detect_confidence_inflation(a_zero) is None
+        assert detect_confidence_inflation(a_none) is None
+        # Both still correctly flag once confidence_high exceeds that shared 0.506 ceiling.
+        a_zero_over = _clean_anchor(confidence_high=0.55, dasha_consensus_count=0, ayanamsha_robustness=3)
+        a_none_over = _clean_anchor(confidence_high=0.55, dasha_consensus_count=None, ayanamsha_robustness=3)
+        assert detect_confidence_inflation(a_zero_over) is not None
+        assert detect_confidence_inflation(a_none_over) is not None
+
     def test_at_exactly_cap_no_flag(self):
         a = _clean_anchor(confidence_high=0.80, dasha_consensus_count=6, ayanamsha_robustness=5)
         # 0.80 == ceiling (0.80) → no inflation

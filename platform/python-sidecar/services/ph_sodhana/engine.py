@@ -114,8 +114,26 @@ class SodhanaRecord:
 
 
 def _g_ladder_ceiling(n_independent: Optional[int], ayanamsha_robustness: Optional[int]) -> float:
-    n   = min(max(int(n_independent or 1), 1), 6)
-    rob = min(max(int(ayanamsha_robustness or 3), 0), 5)
+    """
+    F-12 (L4_W1_ANALYSIS_BATCH_C.md §1.5(a), §N.7 item 1/6): `int(x or default)` treats a
+    genuine measured 0 identically to "unknown, use the default" -- the falsy-zero coercion
+    class this campaign has fixed repeatedly elsewhere.
+
+    For `n_independent` this is numerically inert (the clamp floor is already 1, so 0 and
+    None land on the same result either way) -- kept as an explicit None-check anyway so the
+    code says what it means, not because the output changes.
+
+    For `ayanamsha_robustness` this is NOT inert: 0 is a legal, meaningful value inside its
+    [0, 5] clamp range (the worst-robustness case, rob_factor floor 0.80) -- `0 or 3` silently
+    substituted the "normal middle" default (3) for the "zero robustness" measurement,
+    producing a MORE LENIENT ceiling than the true input warrants. A chart whose robustness
+    genuinely measures 0 would have confidence_inflation checked against a laxer bar than it
+    should be. No live anchor currently has ayanamsha_robustness=0 (measured: constant at 3
+    across all anchors on both charts today -- see F-13's detect_ceiling_inputs_degenerate),
+    but the correction matters once that stops being true.
+    """
+    n   = min(max(n_independent if n_independent is not None else 1, 1), 6)
+    rob = min(max(ayanamsha_robustness if ayanamsha_robustness is not None else 3, 0), 5)
     rob_factor = _ROBUSTNESS_FACTOR_MIN + 0.04 * rob
     return min(_CONF_CAP, (0.50 + 0.05 * n) * rob_factor)
 
