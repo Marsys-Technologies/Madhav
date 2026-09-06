@@ -2140,3 +2140,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 - 2026-09-06 — **IDLE-OK.** `#2016` down to 3 remaining pending checks (DB Integration Tests,
   Unit Tests, Governance Gates) — all other 22 checks now pass, no reds. Close to completing. No
   DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** `#2016`'s CI re-triggered again (new run) despite main HEAD being
+  unchanged — cause unclear (possibly a scheduled re-check or another branch's concurrent push),
+  but still no reds each time. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
