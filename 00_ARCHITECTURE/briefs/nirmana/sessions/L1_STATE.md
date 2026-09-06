@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-06 — C8 v2.3 cycle 115; closed F-D11 (PR #2141) — get_vichara.ts's ORDER BY (vichara_family, domain NULLS FIRST, subject) was a non-total order; confirmed live 1,595 valence_pass rows/ayanamsha share the sort key; added ayanamsha_id, varga_id, id (PK) per the finding's own suggested fix
+last_updated: 2026-09-06 — C8 v2.3 cycle 116; closed F-D18 (PR #2142) — get_sade_sati.ts had no density_contract despite implementing the substance; declared it honestly, and applied the cycle-114 lesson proactively (fixed the same file's pin-allowlist line-number BEFORE running the checker, avoiding a repeat RED)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3372,7 +3372,7 @@ none accepted yet (blocked on #1736).
 | ga_condition | 2,880 / 2,880 | changed → fixed (cycle 6/99, PR #1853, merged 2026-09-06) | F-C8 (`varga_dignity_composite` NULL on 135/135) **FIXED at the writer level** — `ga_condition_composite`'s own integrity_check_sql conjunct (a) remains genuinely RED on already-built data (135/135), will clear once the affected chart(s) rebuild, same disposition as ga_structural's seven tracked-red conjuncts; stale "MUST" corrected cycle 99. F-C12 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 71s (n=51) |
 | ga_yoga | 63 / 5 | changed → fixed (cycle 8/101, PR #1865, merged 2026-09-05) | F-D1 (citations existed 233/233 but no surface joined them) + F-D2 (no offset paging) both fixed serving-side in `get_yoga_firings.ts`; stale "MUST" corrected cycle 101. F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds. F-D5 **FIXED (cycle 114, PR #2140)** — `get_yoga_firings.ts`'s `ORDER BY strength DESC NULLS LAST, yoga_canonical_id` was a non-total order (confirmed live: 5+ (yoga_canonical_id, strength) pairs genuinely repeat across the 5 stored ayanamshas); added `ayanamsha_id, id` (PK) to the sort key. Merge-conflicted against a concurrent PR that added the `brahma_yoga_catalog` LEFT JOIN + real `OFFSET` pagination — reconciled with `f.`-prefixed columns, both fixes coexist |
 | ga_vichara | 8,249 / 8,249 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D), already fixed (`catalog_status` confirmed `CURRENT` live, cycle 103); F-A14 integrity_check_sql (#1967). F-D10 **FIXED (cycle 109, migration 846)** — `target_floor` was 8,240, nine short of the finding's own derived model (8,249); never surfaced as a build failure since achieved already exceeded the stale floor. F-D12 (`ga_vichara` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 307s (n=18). F-D11 **FIXED (cycle 115, PR #2141)** — `get_vichara.ts`'s `ORDER BY vichara_family, domain NULLS FIRST, subject` was a non-total order; confirmed live 1,595 `valence_pass` rows/ayanamsha share this exact sort key (SAT/MAR/JUP each 1,595-way tied); added `ayanamsha_id, varga_id NULLS FIRST, id` (PK) |
-| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51) |
+| ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists) |
 | ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971) |
 | ga_ayurdaya | 130 / 130 | rebuild_only | `get_ayurdaya.ts` omits `fact_value_jsonb` (F-E); F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99 |
@@ -7200,3 +7200,28 @@ L1 must satisfy rather than a feature it consumes.
   remaining ~8 NOW claims (F-D18/F-D20/F-D25/F-E2/F-E8/F-E19/F-E28) -- worth checking whether
   any more of these are the same ORDER-BY defect class before assuming each needs a fresh
   investigation approach.
+- 2026-09-06T23:3xZ -- CYCLE 116 (C8 v2.3). PR hygiene: #2136 genuinely `is:queued`; #2141/
+  #2140/#2132 all mid-CI, nothing failing -- nothing DIRTY/RED/unqueued-but-clean. Unit of
+  work: seventh of the remaining NOW claims -- F-D18 (`ga_sade_sati`, NOW, §N.6 pt.4), a
+  different shape from the last two (density_contract-undeclared, same class as F-C21, not
+  another ORDER-BY defect). Confirmed still live: `get_sade_sati.ts` had 0 occurrences of
+  `density_contract` despite already implementing the substance the field is meant to
+  disclose -- a real window filter (current+adjacent, ŚODHANA T3/MC-014) with disclosed
+  `periods_dropped_outside_window`/`window_note`/`drill_uri`, genuinely paginated via limit/
+  offset. Declared it: `paginated: true`, `facets` from the file's own input_schema
+  (ayanamsha_id/categories/all), `empty_reason: false` -- honest, since the window-drop
+  disclosure is a distinct mechanism from a zero-row empty_reason field, and no such field
+  exists in this handler. Applied cycle 114's own lesson PROACTIVELY this time: checked the
+  pin allowlist BEFORE running the checker, found `get_sade_sati.ts` also had a line-number-
+  keyed entry (line 87) that my 8-line insertion would shift, computed the new line via a
+  targeted `grep` (97, confirmed by actually running the checker once to see its own reported
+  line rather than trusting arithmetic), updated the allowlist first, then verified
+  `check_fact_category_pinning.py` exits 0 and the CI run's own Fact-Category Pinning Gate
+  check came back `pass` (not just my local re-run) -- avoided a repeat of cycle 114's
+  self-inflicted RED entirely rather than fixing it after the fact. `npx tsc --noEmit` + `npx
+  eslint` clean (pre-existing unrelated `_ctx` warning only); `npx vitest run --project node
+  src/lib/retrieval/registry/layers/L1_ganita/` -- 126 passed, no regressions. No writer
+  touched. Opened PR #2142 directly off `origin/main`, armed auto-merge, confirmed genuine CI
+  dispatch (35 check-runs) before ending the cycle. CYCLE 116 L1: PR hygiene clean, closed
+  F-D18 and pre-empted the line-drift-allowlist trap this time instead of hitting it -- next:
+  continue the remaining ~7 NOW claims (F-D20/F-D25/F-E2/F-E8/F-E19/F-E28).
