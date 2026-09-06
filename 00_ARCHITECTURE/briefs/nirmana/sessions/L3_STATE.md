@@ -461,8 +461,23 @@ your layer close.
 
 ## Heartbeat
 
-- `2026-09-06T~22:3xZ — L3-W3 — IDLE-OK: full house again — #2006's `Governance Gates`
-  finished clean (the `pytest — pyjhora_adapter + pipeline` step just genuinely took
+- `2026-09-06T~23:0xZ — L3-W3 — SEVENTH DIRTY-PR fix this run: #1913 (F-SANGAM-5,
+  c11_vedha_factor) — the triple-conflict shape (L3_STATE.md + both generated files),
+  same as #1903's fix; `engine.py` auto-merged CLEANLY again.** Resolved `L3_STATE.md`
+  via the established script (verified exactly 1 occurrence of "F-SANGAM-5 CLOSED
+  (finally, dedicated cycle)" survived), took `origin/main`'s copy of the two generated
+  files then regenerated for real — only `ka_sangam`'s hash changed (this PR also touches
+  `kala_trigger/trigger.py`, a shared helper already folded into `ka_sangam`'s own digest,
+  no separate digest entry needed). Verified `test_ka_sangam.py`+`test_u3_convergence_
+  currents.py`+`test_kala_trigger.py` (150/150), full `tests/l3/` (1424 passed, 0
+  failures), both `--check` invocations exit 0, `tsc --noEmit` clean. Force-pushed,
+  re-armed auto-merge, confirmed `MERGEABLE`.
+  This is now the SEVENTH DIRTY-PR fix of this run — six of them the identical `ka_sangam`
+  generated-file collision (#1883/#1887/#1890/#1897/#1903/#1905/#1913, several also
+  carrying the L3_STATE.md variant) — confirming this really is the dominant, recurring
+  hazard class for the remainder of the queue, not an occasional fluke.
+  #1903 (F-CONC-6 prerequisite) still not merged. #1958/#1921/sidecar-traffic/#1960
+  unchanged.
   ~11-12min, confirmed not a hang), all 39 open L3 PRs now genuinely `is:queued`.**
   `#1903` still among them but still not merged. #1958/#1921/sidecar-traffic/#1960
   unchanged. Routing to a fresh branch since `#2006` just locked.
