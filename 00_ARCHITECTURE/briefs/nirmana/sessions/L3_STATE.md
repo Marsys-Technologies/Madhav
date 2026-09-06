@@ -458,6 +458,49 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-06T~15:0xZ — L3-W3 — F-CONC-7 CLOSED: migration 731 (PR #2060), the first real
+  code unit in several cycles.** PR hygiene clean first (all 50 prior L3 PRs genuinely
+  queued or expected pre-queue). **The unlock:** re-checking standing blockers found
+  `#1958` had MERGED (2026-09-06T04:25:49Z) — the CONDUCTOR's fix to `stats/route.ts`'s
+  `size_sql` call (conditional `$1` binding + `size_is_estimate` disclosure flag), the
+  calling-code half F-CONC-7 was waiting on. `#1956`'s own ruling (already closed) named
+  the follow-up explicitly: "You're clear to author the migration for L3's six rows...
+  using the proportional-share formula from your own filing, once #1958 merges." Wrote
+  migration 731 (next free number in the 730-739 range; 730 already claimed by #1952):
+  UPDATE `asset_registry.size_sql` for `ka_sangam`/`ka_vighnakara`/`ka_kalasutra`/
+  `ka_kala_darshana`/`ka_jivana_parva`/`ka_bhavishya_lekha`, each to the proportional-share
+  formula from the original filing (`total_size × chart_row_count / total_row_count`,
+  `GREATEST(..., 1)`-guarded), each binding `$1` so `stats/route.ts` detects it as
+  chart-scoped, table names re-verified live against each asset's own `count_sql` rather
+  than assumed.
+  **Found and fixed an additional, in-scope defect while writing it**: none of the 77
+  existing `size_sql` values campaign-wide carry an `AS size` alias — `stats/route.ts`
+  reads `sizeResult.rows[0]?.size`, a column literally named `size`, but an unaliased
+  `pg_total_relation_size(...)` names its own column `pg_total_relation_size`.
+  `count_sql`'s parallel bare `count(*)` only works because Postgres happens to name that
+  column `count`. Verified via `psycopg` against the query() wrapper (a bare pg-pool
+  passthrough, no runtime column renaming) that this is real, not assumed. My own
+  original filing's proposed SQL DID include `AS size` and the Conductor's ruling
+  approved the formula as proposed — so this migration is written correctly from the
+  start (with the alias) rather than copying the campaign-wide bare pattern forward.
+  Recorded, not re-escalated (a separate, lower-severity, campaign-wide null-field defect,
+  out of this migration's scope; every other layer's size_bytes is unaffected either way).
+  **Mutation-proved live**: 22/22 tests pass, including live-DB integration tests that
+  execute all six size_sql values against the real tables (rolled back, never committed),
+  confirm `0 <= share <= total` for each, and confirm idempotency. Hit and worked around a
+  pre-existing, unrelated test-tooling limitation while writing the live test: `psycopg`
+  (unlike node-postgres, which the real caller uses) does not recognize Postgres-native
+  `$1` placeholders via `cur.execute(sql, params)` — confirmed this is not new by running
+  the EXISTING `test_f188_mi_gunanaka_count_sql.py`'s own live `$1` test, which fails
+  identically; worked around it in my test only, by substituting the fixed canonical
+  chart_id constant directly rather than via psycopg param binding (never user input,
+  safe). Full `tests/l3/` suite: **1447 passed, 3 failed (same pre-existing, unrelated
+  `ka_kshetra` parity failures — `bg_class_priors` data gap — confirmed unchanged), 36
+  skipped.** No writer file touched — digest/pin regeneration correctly skipped.
+  **Re-confirmed #1903 still queued** (`isInMergeQueue: true`, unchanged), `ga_positions`
+  freeze status not re-checked this cycle (already re-verified live twice in the prior two
+  cycles, no new signal to prompt a third check within the same session-hours). N1/N2/
+  `kala_now_get` unchanged — still correctly not attempted.
 - `2026-09-06T~05:2xZ — L3-W3 — F-PARVA-2 fix: migration 678 (PR pending, branch
   `codex/nirmana-l3-f-parva-2-volume-explanation`).** Moved to `ka_jivana_parva` (the
   life-arc chapter artifact — `L3_W1_ANALYSIS_BATCH_E.md`'s ka_jivana_parva section).
