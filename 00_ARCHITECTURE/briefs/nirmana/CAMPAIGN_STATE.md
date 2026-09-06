@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-06T21:44:13Z` — cycle 628: **IDLE-OK.** Own PR #2172 confirmed **MERGED** (21:43:20Z) —
+  #2169's fix is now live on `main`. No own PRs remaining. Fleet DIRTY: empty. No new
+  `nirmana-adjudication` issues (19).
 - `2026-09-06T21:41:55Z` — cycle 627: **IDLE-OK.** (Several duplicate supervisor nudges arrived
   queued in the same turn — no new instruction, treated as one cycle.) Own PR #2172: still open,
   progressing. Fleet DIRTY: empty. No new `nirmana-adjudication` issues (19).
