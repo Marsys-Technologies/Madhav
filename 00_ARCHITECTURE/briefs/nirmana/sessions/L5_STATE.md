@@ -457,6 +457,24 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-06T11:45Z (C8 v2.3 cycle 413) — **RED on #1844, root-caused and fixed — never weakened
+  the gate.** PR hygiene: #1826 hygiene-clean (BLOCKED only on pending checks). #1844's "Unit
+  Tests" check FAILED. Traced to the exact one failing test out of 11,940
+  (`scripts/__tests__/migrate.test.ts > loadRenumberDisclosures > the checked-in allowlist
+  parses...`) — a deliberate canary that hardcodes `map.size` and each entry's fields for
+  `migration_renumber_disclosed.json`, by design, so it fails whenever a new disclosure is added
+  without updating the test (its own comment says so explicitly). My cycle-411 fix (#1844's
+  692→808 entry) correctly tripped it (2→3). **Fixed by updating the test**, not the disclosure
+  file: added the 808 entry's own assertions mirroring the two existing ones, bumped the expected
+  count to 3, verified locally (3 passed) before pushing. Pushed to #1844's branch directly (not
+  queued at the time, no dequeue needed), re-confirmed armed. **Then proactively found and fixed
+  the SAME canary would ALSO break #1826** (its own distinct 3rd entry, 806→809 from cycle 412) —
+  caught it mid-flight (its Unit Tests check was still IN_PROGRESS) and fixed+pushed before CI
+  ever reached that test, avoiding a wasted red cycle there too. Both worktree operations
+  (`/tmp/l5-1844-fix` for #1844) done in isolation, cleaned up after; #1826 fix done directly in
+  this session's own worktree since no isolation was needed. Both PRs' migration-number-collision
+  chapter (found cycle 409, fixed cycles 411-412, canary-repaired cycle 413) is now fully closed —
+  next genuine surprise would be a NEW collision, not a recurrence of this one.
 - 2026-09-06T11:30Z (C8 v2.3 cycle 412) — **Fixed the anticipated #1826 migration-806 collision
   (flagged as a to-do at the end of cycle 411) as this cycle's prep item — nothing else was
   eligible: #1869 unchanged (still 5 comments, no new response), `mi_kula`'s 3 L0 ancestors still
