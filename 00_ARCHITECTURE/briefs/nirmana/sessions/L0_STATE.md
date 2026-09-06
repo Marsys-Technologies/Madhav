@@ -3309,3 +3309,6 @@ see log). Still 35/40 until that's resolved.
 
 - 2026-09-06 — **IDLE-OK.** Deploy run `34033115503` still `pending` (~3min in). No open L0 PRs,
   no DIRTY/RED. 35/40 frozen unchanged.
+
+- 2026-09-06 — **IDLE-OK.** Deploy run `34033115503` still `pending` (~5min in, normal duration).
+  No open L0 PRs, no DIRTY/RED. 35/40 frozen unchanged.
