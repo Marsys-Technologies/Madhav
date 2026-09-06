@@ -2110,3 +2110,6 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** No change (`#2016` still mid-CI, no reds; queue head #1881, not L0's,
   ~8min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** Second flat read (`#2016` still mid-CI no reds, queue head still
+  #1881, ~10.4min in_progress — normal). No DIRTY, no RED. 30/40 frozen holds.
