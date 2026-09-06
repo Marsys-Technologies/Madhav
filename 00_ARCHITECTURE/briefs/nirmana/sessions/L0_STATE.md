@@ -2052,3 +2052,7 @@ integrity_verified → asset_frozen, all via the scratchpad tooling built this s
 
 - 2026-09-06 — **IDLE-OK.** `#2004` inched forward to position 105; `#2013`/`#2014`/`#2016` still
   mid-CI, no reds. No DIRTY, no RED, no new eligible work. 30/40 frozen holds.
+
+- 2026-09-06 — **IDLE-OK.** `#2013` now genuinely `is:queued` (`UNSTABLE` is just its one remaining
+  `Build Check (PR only)` still pending — all 25 other checks pass, no failures). `#2014`/`#2016`
+  still `BLOCKED`/mid-CI, no reds. No DIRTY, no RED. 30/40 frozen holds.
