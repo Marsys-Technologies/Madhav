@@ -497,6 +497,83 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~397:0xZ — L3-W4 — PR hygiene: `#2282` advanced to
+  position 1 (top of queue) — `#2281` merged (unrelated L5
+  heartbeat PR, confirmed via `origin/main`, no L3 overlap).
+  `#2282`'s own `merge_group` run has started: `TAP CI`/`EKV` both
+  completed/passed, `CI — Ganga Quality Gate` `in_progress`. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2282` finishing; next
+  action: same.
+- `2026-09-07T~396:0xZ — L3-W4 — PR hygiene: `#2282` still position
+  2, `AWAITING_CHECKS` — `#2281`'s `Governance Gates` job now
+  ~9.1min into the same known-slow `pytest —
+  pyjhora_adapter + pipeline` step, within the confirmed ~11min
+  normal range. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2281` finishing; next action: same.
+- `2026-09-07T~395:0xZ — L3-W4 — PR hygiene: `#2282` still position
+  2, `AWAITING_CHECKS` — located `#2281`'s own `merge_group` run
+  directly: `TAP CI`/`EKV` both completed/passed, `CI — Ganga
+  Quality Gate` still `in_progress`, genuine progress not a stall.
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2281` finishing; next action: same.
+- `2026-09-07T~394:0xZ — L3-W4 — PR hygiene: `#2282` still position
+  2, `AWAITING_CHECKS` — `#2281` (unrelated L5 PR) ahead is itself
+  still `AWAITING_CHECKS`, so `#2282`'s own `merge_group` run hasn't
+  started yet (serial queue processing). No new `origin/main`
+  merges. No new E-gate opening. IDLE-OK. — blocked on: `#2281`
+  clearing ahead of `#2282`; next action: same.
+- `2026-09-07T~393:0xZ — L3-W4 — PR hygiene: `#2282`'s checks
+  finished (0 failures — the ~11min run resolved cleanly, same edge
+  precedent held again). Now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 2 — one unrelated L5 PR (`#2281`) ahead,
+  itself still `AWAITING_CHECKS`, normal congestion. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2281` clearing ahead of `#2282`; next action: same.
+- `2026-09-07T~392:0xZ — L3-W4 — PR hygiene: `#2282`'s last check,
+  same run, now ~10.5min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2282` finishing; next action: same.
+- `2026-09-07T~391:0xZ — L3-W4 — PR hygiene: `#2282`'s last check,
+  same run, now ~8.4min — approaching but still within the
+  confirmed ~11min normal range, still on the same `pytest` step. No
+  new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2282` finishing; next action: same.
+- `2026-09-07T~390:0xZ — L3-W4 — PR hygiene: `#2282`'s last check,
+  same run, now ~6.3min — still on the same `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2282` finishing; next action: same.
+- `2026-09-07T~389:0xZ — L3-W4 — PR hygiene: `#2282`'s last check
+  (`Governance Gates`) ~4.4min elapsed, on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range. `Unit Tests`/`DB Integration Tests` now both passed.
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2282` finishing; next action: same.
+- `2026-09-07T~388:0xZ — L3-W4 — PR hygiene: `#2282`'s pre-queue
+  checks in progress, nothing red — 19/26 gates already passed
+  (`DB Integration Tests`, `Unit Tests`, `Governance Gates` still
+  `pending`, well within normal timing). No new `origin/main` merges.
+  Re-verified live: `ga_dashas`/`ga_sensitive` still
+  `OPEN-PENDING-PIN`, unchanged. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2282`'s checks finishing; next action: same.
+- `2026-09-07T~387:0xZ — L3-W4 — PR hygiene: `#2280` confirmed
+  MERGED. Rebased 18 local commits onto fresh `origin/main` (4 new
+  commits arrived, including our own `#2280` merge). First rebase
+  attempt hit a nested-conflict corruption from an automated
+  marker-strip loop bug (didn't halt on a real non-empty-theirs
+  case, kept compounding); aborted cleanly back to a known-good HEAD
+  and redid it one commit at a time with verification after each
+  strip. 7 empty-theirs conflicts auto-resolved correctly this way;
+  1 later commit's content was already upstream and git skipped it
+  automatically. Verified zero leftover conflict markers before
+  proceeding. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-24`, pushed, opened `#2282`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal, not yet
+  queued). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2282`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~386:0xZ — L3-W4 — PR hygiene: `#2280` advanced to
   position 2, `state: MERGEABLE` (its own checks are done — only
   `#2279` (L1: state cycles 192-193) remains ahead in queue,
@@ -569,6 +646,12 @@ your layer close.
   re-verified live this cycle, unchanged (see above). No new E-gate
   opening. IDLE-OK. — blocked on: `#2280` finishing; next action:
   same.
+- `2026-09-07T~382:0xZ — L3-W4 — PR hygiene: `#2280`'s pre-queue check
+  run still `in_progress` (~4.8min, well within the confirmed ~11min
+  normal range). `Unit Tests` still pending. No new `origin/main`
+  merges, `ga_dashas`/`ga_sensitive` still `OPEN-PENDING-PIN`. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2280` finishing; next
+  action: same.
 - `2026-09-07T~381:0xZ — L3-W4 — PR hygiene: `#2280`'s pre-queue check
   run still `in_progress` (~2.5min, well within the confirmed ~11min
   normal range). `DB Integration Tests` now passed. No new
