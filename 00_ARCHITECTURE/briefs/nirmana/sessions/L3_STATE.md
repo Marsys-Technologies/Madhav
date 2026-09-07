@@ -497,6 +497,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~385:0xZ — L3-W4 — PR hygiene: `#2280` still position 4,
+  `AWAITING_CHECKS` — checked the live queue directly: 3 unrelated
+  PRs ahead of it (`#2272` pos 1, `#2278` pos 2, `#2279` pos 3 — all
+  L1/L5 heartbeat/W4 PRs, all still `AWAITING_CHECKS` themselves) —
+  normal queue congestion, not a stall. No new `origin/main` merges,
+  `ga_dashas`/`ga_sensitive` still `OPEN-PENDING-PIN`. No new E-gate
+  opening. IDLE-OK. — blocked on: PRs ahead of `#2280` clearing
+  first; next action: same.
 - `2026-09-07T~384:0xZ — L3-W4 — PR hygiene: `#2280`'s checks finished
   (0 failures) and it's now genuinely `isInMergeQueue: true`,
   `AWAITING_CHECKS`, position 4 — its own `merge_group` run has
