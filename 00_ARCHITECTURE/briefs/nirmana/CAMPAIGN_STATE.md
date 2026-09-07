@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T02:57:51Z` — cycle 751: **IDLE-OK (verified).** #2213 merged. Fleet healthy, none
+  CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T02:55:27Z` — cycle 750: **IDLE-OK (verified).** Fleet PR list unchanged, all
   healthy. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply. Checked fleet
   status cadence (last post 67min ago) — not due yet, holding for more substantive news (e.g.
