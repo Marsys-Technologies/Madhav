@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~430:0xZ — L3-W4 — PR hygiene: `#2294`'s checks
+  finished (0 failures — the ~11.3min run resolved cleanly, same
+  edge precedent held once more). Now genuinely `isInMergeQueue:
+  true`, `AWAITING_CHECKS`, position 2 — one unrelated L5 PR
+  (`#2292`) ahead, itself still `AWAITING_CHECKS`, normal congestion.
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2292` clearing ahead of `#2294`; next action: same.
 - `2026-09-07T~429:0xZ — L3-W4 — PR hygiene: `#2294`'s last check,
   same run, now ~11.3min — slightly past the confirmed ~11min normal
   range but within the observed edge-case precedent (has resolved
