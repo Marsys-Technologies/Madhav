@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~531:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4.4min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges. IDLE-OK. —
+  blocked on: `#2369` finishing; next action: same.
 - `2026-09-07T~530:0xZ — L3-W4 — PR hygiene: `#2369` still position
   1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
   CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
