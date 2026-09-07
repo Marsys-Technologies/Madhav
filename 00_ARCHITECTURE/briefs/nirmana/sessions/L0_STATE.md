@@ -1057,3 +1057,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   no impact on L0's own asset-freeze status, which was never in question (freeze != Lane C's
   historical-count metric). Nothing actionable for L0 here; this is Conductor→native, not
   delegated to any layer. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  #2180's new activity is Conductor's ruling on L1/L2's ga_positions/fact_id-scheme sequencing —
+  not L0-relevant. Nothing eligible.
