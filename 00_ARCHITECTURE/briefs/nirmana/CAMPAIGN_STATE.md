@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T17:05:36Z` — cycle 1051: **Governance hygiene — closed #2224 and #2317, both
+  confirmed resolved and verified working.** Surveyed all open `nirmana-adjudication` issues
+  (still 5, no new ones): #2224's fix (PR #2307) and #2317's fix (PR #2327) are both shipped
+  AND independently verified — `ga_transit_anchors` actually dispatched, built, and froze
+  (cycle 997) using exactly these code paths, not just "merged, presumed working." Closed both
+  with a resolution comment. #2291 stays open (migration shipped but `bo_sudarshana`'s freshness
+  hasn't reconciled yet — not fully resolved); #2300 stays open (native-gated, no reply);
+  #2258 stays open (step 1/3 done, 2 more steps + native's tier-semantics ruling pending). 3 open
+  adjudications now, live-checked. Δfrozen still +0 (57/128). Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open.
 - `2026-09-07T17:03:07Z` — cycle 1050: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
   same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T17:00:52Z` — cycle 1049: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: same 2 known stale
