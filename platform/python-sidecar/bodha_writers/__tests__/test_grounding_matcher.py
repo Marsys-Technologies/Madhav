@@ -211,3 +211,23 @@ def test_every_sruti_match_satisfies_the_db_check_constraint_shape():
     )
     assert match.grounding_tier == "sruti"
     assert match.citation_granularity is not None
+
+
+def test_page_column_ref_is_never_stored_as_chapter_verse():
+    # sutravali_rules.verse_ref is page:column shaped for the ENTIRE live
+    # corpus ("PG94:C1" -- 3,002/3,002 verified 2026-09-08). #1726 condition 3:
+    # the stored granularity says what the corpus supports; a page-column ref
+    # wearing 'chapter_verse' is a fabricated-precision claim (§N.7).
+    rule = {
+        "rule_id": "r9", "text_id": "phaladeepika", "verse_ref": "PG94:C1",
+        "antecedent_jsonb": [{"relation": "occupies", "planet": "venus", "house": 2}],
+        "predicate_jsonb": {"description": "wealth"},
+    }
+    match = classify_yoga_dosha_firing(
+        firing_id=9,
+        constituent_planets=["venus"],
+        constituent_houses=[2],
+        candidate_rules=[rule],
+    )
+    assert match.grounding_tier == "sruti"
+    assert match.citation_granularity == "page_column"

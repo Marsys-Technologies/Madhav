@@ -28,6 +28,18 @@ import layerPinRecord from './nirmana-analysis-layer-pins.json'
  */
 
 export const NIRMANA_ANALYSIS_LAYERS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as const
+
+/**
+ * D-NATIVE-11 (#2258, native-ruled 2026-09-07): supporting infrastructure
+ * writers are registered in the orchestrator DAG but are NOT elevation-
+ * denominator assets — no frozen-manifest membership, no terminal capsule, no
+ * receipt base; their correctness is verified as part of the grounding of the
+ * assets they serve.  They stay OUT of receipt-base arithmetic here, while
+ * remaining IN the writer-inventory aggregate above: a supporting writer's
+ * code change still fails the spine closed and forces a reviewed re-pin.
+ * Mirrors SUPPORTING_WRITERS in scripts/generate/nirmana_analysis_layer_pins.py.
+ */
+const SUPPORTING_WRITERS: ReadonlySet<string> = new Set(['bo_grounding'])
 export type NirmanaAnalysisLayer = (typeof NIRMANA_ANALYSIS_LAYERS)[number]
 
 // A durable receipt identifier, not a SQL relation reference.  Keeps existing
@@ -104,7 +116,9 @@ function buildLayerReceipts(layer: NirmanaAnalysisLayer): Readonly<Record<string
   const inventory = resolveLayerInventory(layer)
   if (inventory === null) return Object.freeze({})
   const assetIds = [
-    ...Object.keys(inventory).filter((assetId) => assetId.startsWith(pin.asset_prefix)),
+    ...Object.keys(inventory).filter(
+      (assetId) => assetId.startsWith(pin.asset_prefix) && !SUPPORTING_WRITERS.has(assetId),
+    ),
     ...pin.non_writer_assets,
   ].sort()
   if (assetIds.length !== pin.receipt_count) {
