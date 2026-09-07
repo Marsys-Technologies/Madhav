@@ -923,3 +923,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   still open but is the campaign-wide W6 mechanism, Conductor/cross-layer scoped, not L0's to act on;
   #2224 is L1's cross-layer flag, already cross-referenced). #1713's tail is still my own 40/40 post,
   no new activity since. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0` re-run fresh: still 0
+  rows. Adjudication list and #1713 tail both unchanged since last cycle. Nothing eligible.
