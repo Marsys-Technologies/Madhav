@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T16:05:46Z` — cycle 1026: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T16:03:19Z` — cycle 1025: **IDLE-OK, Δfrozen +0.** Read #2346's full body: excellent
   execution of the #2258 ruling — caught a real factual error in my own proposal comment (table
   is `ga_yoga_firings`, not `chart_yoga_firings`), rehearsed against production, encoded
