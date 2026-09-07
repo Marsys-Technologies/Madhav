@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.30-DRAFT"
+version: "0.31-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -456,7 +456,15 @@ awaits either a dedicated prep cycle or genuine W6 close.
   regression test added (source-text grep, not runtime behavior, since the emitted value is
   identical either way); 60/60 relevant tests pass. `ga_dashas`' three original MUST findings
   (F-A10/F-A12/F-A17) are now all genuinely confirmed fixed — its evidence submission (still
-  zero events) is safe to attempt. **Still open**: wave 1 dispatch itself remains blocked by the
+  zero events) is safe to attempt. **Cycle 173**: PR #2229's own CI surfaced a real cross-layer
+  digest blast radius from the initial `SCOPE_CAP_SENTINEL` approach — fixed by reverting the
+  shared-module edit and resolving it via a controlled `entry_for()` lookup inside
+  `ga_dashas_writer.py` instead; merged clean. **Cycle 174**: zero stale evidence remains among
+  L1's previously-evidenced `ga_*` assets — the 5 remaining non-wave-1 stragglers
+  (`ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga`) re-stamped, applying the
+  back-to-back submission discipline cycle 171's orphaned-generation trap taught. `ga_dashas`'
+  own first-time evidence deliberately deferred (deployed SHA still precedes its F-A17 merge —
+  checked live, not assumed). **Still open**: wave 1 dispatch itself remains blocked by the
   `asset_frozen` E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
