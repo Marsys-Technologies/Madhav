@@ -688,6 +688,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 633 | 2026-09-07T07:31Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 632. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 634 | 2026-09-07T07:33Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 633 (3 cycles static). Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 635 | 2026-09-07T07:36Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main advanced (`b9addfde...` -- queue continuing to progress). PR hygiene: `#2227` transient `UNKNOWN`/`UNKNOWN` on first read, resolved healthy `BLOCKED`/`MERGEABLE` on 6s recheck, still pre-queue. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
+| 636 | 2026-09-07T07:38Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 635. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
