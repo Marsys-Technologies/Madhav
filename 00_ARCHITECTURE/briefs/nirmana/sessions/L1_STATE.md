@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 152; shipped F-B32 slice 4/N (PR #2193): special_lagna/upapada_lagna/sensitive_point_gulika_mandi (opt-in via get_sensitive_points.ts, corroborated by tool_name_bridge.ts's retired query_special_lagnas mapping) + sensitive_degree_check/sensitive_point_yogi (get_sensitive_degrees.ts, served unconditionally, no opt-in needed). Switched to the correct feature branch FIRST this time, learning from cycle 151's mistake. 26/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 153; shipped F-B32 slice 5/N (PR #2193): ayurdaya, unconditionally served by get_ayurdaya.ts. Also investigated graha_yuddha_per_varga as a candidate and found it genuinely UNREACHABLE by any tool (get_graha_yuddha.ts hardcodes a different, zero-row bare category with no override) -- recorded as its own finding rather than force-mapped. 27/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8484,3 +8484,46 @@ record — they are the only entries in this table with a real wall-clock behind
   F-B32 slice 4 (5 more categories, PR #2193) -- next: ~31 categories + 6 phantom entries +
   get_nakshatra.ts's own 3-category docstring overclaim remain; continue one verified cluster
   per cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T7xZ -- CYCLE 153 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 152 -- still no reply (8 cycles since the last
+  nudge on #2180 at cycle 145; held off nudging again since there is no new information to add
+  beyond routine F-B32 progress, which isn't relevant to that adjudication's actual question).
+  Continued F-B32's incremental closure. `ayurdaya` (`get_ayurdaya.ts`): confirmed the tool
+  hardcodes `fact_category = 'ayurdaya'` (get_ayurdaya.ts:71, a literal `=`, not `ANY(...)` --
+  no opt-in ambiguity at all, simpler than every prior slice) and serves 130 live rows on the
+  canonical chart, matching the tool's own docstring count exactly. Added it with its own new
+  `── Āyurdāya ──` section.
+  Spent the rest of the cycle checking several more single-category candidates from the
+  remaining ~30 and found most do NOT have a verifiable serving tool: `tara_bala` (bare, distinct
+  from the already-added `graha_tara_bala`) has 43 live rows but no tool anywhere references the
+  literal string `'tara_bala'` -- `get_tara_chandra_bala.ts` hardcodes a DIFFERENT two-category
+  array (`tara_bala_natal_baseline`, `chandra_bala_natal_baseline`) with no override mechanism,
+  so it cannot reach the bare category either. `kendradhipati_dosha`, `significator_path`,
+  `panchadha_maitri`, `sambandha_grade`, `virupa_drishti`, `sun_derived_upagraha`: none appear as
+  an actual `chart_facts.fact_category` string anywhere in any L1_ganita retrieval file (grep
+  clean) -- `get_condition_composite.ts`'s docstring mentions "panchadha friendship" and
+  "combustion" but that tool reads from a DIFFERENT table entirely (`ga_condition_composite`,
+  not `chart_facts`) -- a naming-similarity trap correctly avoided by checking the actual SQL
+  rather than trusting the prose, same discipline as slice 3's `nakshatra_co_tenancy` exclusion.
+  `graha_yuddha_per_varga` (17 live rows) got the deepest look: `get_graha_yuddha.ts` hardcodes
+  `fact_category = 'graha_yuddha'` (bare, ZERO rows for this chart) with no `categories`
+  override at all, unlike get_avasthas/get_strength/get_nakshatra/get_sensitive_points which all
+  support opt-in via an explicit param -- this per-varga variant is genuinely UNREACHABLE by any
+  tool today, not just missing from the list. This is a DIFFERENT, deeper defect class than
+  F-B32 itself (a real computed category with literally no serving path, the same class as the
+  original F-B18/F-B19 "asset has no tool" finding but at category granularity) -- recorded in
+  the file's own header note as its own finding rather than force-mapped to a tool that cannot
+  reach it.
+  Learned from cycle 151, applied again: switched to the feature branch FIRST, confirmed slices
+  1-4's content present before editing. Self-caught and fixed a duplicate `*/` typo (introduced
+  while editing the header note) via the `tsc` diagnostic before committing. `tsc --noEmit`
+  clean, `coverage_gate.test.ts` 6/6 pass. Rebased (no-op, already current), checked `is:queued`
+  before pushing (not queued) but still hit the merge-queue race on push -- dequeued via the
+  GraphQL mutation, pushed successfully, updated PR title/description, re-queued, confirmed
+  `autoMergeRequest` armed. 27/57 categories now closed. CYCLE 153 L1: PR hygiene clean; shipped
+  F-B32 slice 5 (1 category, PR #2193) and surfaced a new, separate finding
+  (`graha_yuddha_per_varga` unreachability) -- next: ~30 categories + 6 phantom entries +
+  get_nakshatra.ts's 3-category docstring overclaim + the graha_yuddha_per_varga unreachability
+  finding all remain; continue one verified cluster per cycle; keep re-checking #2113/#2180
+  every cycle regardless.

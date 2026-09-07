@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.10-DRAFT"
+version: "0.11-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -28,7 +28,7 @@ CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quant
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
 — 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
-cycle 149 onward (26/57 landed across 4 slices, PR #2193). See §2 for the corrected
+cycle 149 onward (27/57 landed across 5 slices, PR #2193). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
@@ -323,10 +323,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
   `sensitive_point_gulika_mandi` (opt-in via `get_sensitive_points.ts`, corroborated by
   `tool_name_bridge.ts:87` mapping the retired `query_special_lagnas` tool name onto the same
   URI); `sensitive_degree_check`, `sensitive_point_yogi` (`get_sensitive_degrees.ts`, served
-  UNCONDITIONALLY, no opt-in ambiguity). All four slices confirmed via live row counts before
-  adding. **26/57 closed, ~31/57 remain open**; the 6 phantom entries and the get_nakshatra.ts
-  3-category docstring overclaim are both untouched (need their own separate investigation
-  before either removing or re-pointing).
+  UNCONDITIONALLY, no opt-in ambiguity). Slice 5 (1/57): `ayurdaya` — `get_ayurdaya.ts`
+  unconditionally serves this via a hardcoded `fact_category = 'ayurdaya'` filter, the simplest
+  case yet. All five slices confirmed via live row counts before adding. **27/57 closed,
+  ~30/57 remain open**; the 6 phantom entries and the get_nakshatra.ts 3-category docstring
+  overclaim are both untouched (need their own separate investigation before either removing or
+  re-pointing). **New finding, cycle 153**: `graha_yuddha_per_varga` (17 live rows) was checked
+  against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by any tool — that tool
+  hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for this chart) with no
+  `categories`-override mechanism, unlike every other per_varga category closed so far. This is
+  a deeper defect class than F-B32 itself (a real computed category with no serving path at
+  all, category-granularity version of the original F-B18/F-B19 "asset has no tool" finding) and
+  is tracked separately, not folded into the F-B32 tool-mapping work.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -338,10 +346,11 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-4 (26
-categories) landed cycles 149-152, PR #2193; ~31/57 + 6 phantoms + get_nakshatra.ts's own
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-5 (27
+categories) landed cycles 149-153, PR #2193; ~30/57 + 6 phantoms + get_nakshatra.ts's own
 3-category docstring overclaim remain, unheld, does not need
-#2113)** · W4 execution (blocked, #2113) · W5
+#2113)** · **graha_yuddha_per_varga unreachability (§5 — new cycle 153, distinct from F-B32)**
+· W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.
