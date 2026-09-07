@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~182:0xZ — L3-W4 — PR hygiene: `#2203`'s own `merge_group`
+  build still `in_progress` (~10.1min, approaching but still within the
+  confirmed ~11min normal range). No new `origin/main` merges, no new
+  E-gate opening. IDLE-OK. — blocked on: `#2203` finishing; next
+  action: same, check step-level detail next cycle if still on this
+  exact run.
 - `2026-09-07T~181:0xZ — L3-W4 — PR hygiene: `#2203`'s own `merge_group`
   build still `in_progress` (~7.5min, within range). No new
   `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
