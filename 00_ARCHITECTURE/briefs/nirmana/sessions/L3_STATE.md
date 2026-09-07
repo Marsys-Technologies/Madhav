@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~511:0xZ — L3-W4 — PR hygiene: `#2347` confirmed
+  MERGED. Rebased 29 local commits onto fresh `origin/main`, 10
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-35`, pushed, opened
+  `#2358`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2358`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~510:0xZ — L3-W4 — PR hygiene: `#2347` still position
   1, `AWAITING_CHECKS` — same run, now ~10.6min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
