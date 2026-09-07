@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~443:0xZ — L3-W4 — PR hygiene: `#2299` now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 2 — the
+  `enqueuePullRequest` fallback took effect, own `merge_group` run
+  started. One unrelated L5 PR (`#2298`) ahead, itself still
+  `AWAITING_CHECKS`, normal congestion. No new `origin/main` merges.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2298` clearing
+  ahead of `#2299`; next action: same.
 - `2026-09-07T~442:0xZ — L3-W4 — PR hygiene: `#2299`'s checks
   finished (0 failures — the ~10.3min run resolved cleanly),
   `mergeStateStatus: CLEAN` but `isInMergeQueue: false` — the known
