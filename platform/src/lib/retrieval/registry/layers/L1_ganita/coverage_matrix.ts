@@ -15,8 +15,8 @@
  * cluster at a time, rather than in one unverified bulk pass — each addition here must be
  * confirmed against the real serving tool's actual query logic, not inferred from naming alone.
  * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07 slice 1; `graha_{cheshta,drik,
- * kala,sthana}_bala_per_varga` (4 categories) closed 2026-09-07 slice 2; the remaining ~48 are
- * still open.
+ * kala,sthana}_bala_per_varga` (4 categories) closed 2026-09-07 slice 2; the get_nakshatra.ts
+ * cluster (12 categories) closed 2026-09-07 slice 3; the remaining ~36 are still open.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -60,6 +60,7 @@ export const CHART_FACTS_CATEGORIES = [
   'composite_dispositor_strength',
   'conjunction_per_varga',
   'conjunction_within_orb',
+  'cusp_kp_lords',
   'dhaiya_period',
   'dispositor_chain_per_varga',
   'dosha_fires',
@@ -96,10 +97,14 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_drik_bala_per_varga',
   'graha_effective_dignity_modified_by_aspects',
   'graha_functional_class_per_ascendant',
+  'graha_gandanta',
   'graha_in_house_composite_strength',
   'graha_ishta_phala',
   'graha_kala_bala_per_varga',
   'graha_kashta_phala',
+  'graha_kp_lords',
+  'graha_nakshatra_join',
+  'graha_pada_join',
   'graha_position',
   'graha_saptavargaja_bala_component',
   'graha_shadbala_cheshta',
@@ -112,6 +117,7 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_sign_attributes',
   'graha_special_state_rollup',
   'graha_sthana_bala_per_varga',
+  'graha_tara_bala',
   'graha_tri_deva_role_strength',
   'graha_vargottama_amplification_factor',
   'graha_vimsopaka_dasavarga',
@@ -133,14 +139,20 @@ export const CHART_FACTS_CATEGORIES = [
   'karakamsa_position',
   'karakatva_strength_per_significance',
   'kp_cuspal_significators',
+  'kp_house_significators',
+  'kp_planet_significations',
   'kp_ruling_planets_natal',
   'lal_kitab_special_point',
   'lord_aspects_lord_per_varga',
   'lord_in_house_per_varga',
   'maharsi_specific_point',
   'midpoint',
+  'nakshatra_cogravity',
+  'nakshatra_conjunction',
   'nakshatra_cross_ayanamsha',
+  'nakshatra_dispositor',
   'nakshatra_pada_sensitive',
+  'nakshatra_statistics',
   'panchaka_flag',
   'panchanga_abhijit_muhurta',
   'panchanga_agni_vasa',
@@ -426,6 +438,35 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   graha_avastha_lajjitadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
   graha_avastha_sayanadi_per_varga:       ['marsys://tool/L1/get_avasthas'],
   graha_avastha_sayanadi:                 ['marsys://tool/L1/get_avasthas'],
+
+  // ── Nakshatra Semantic Layer ──────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 3/N): get_nakshatra.ts (F-B18/F-B19's fix — this asset previously
+  // had NO dedicated serving tool at all) had zero entries in this file despite covering 16
+  // fact_categories by its own header comment and NAKSHATRA_CATEGORIES const. These 12 are the
+  // ones directly named in that const with confirmed non-trivial live rows (canonical chart):
+  // graha_nakshatra_join=700, graha_pada_join=200, graha_kp_lords=200, cusp_kp_lords=240,
+  // graha_gandanta=50, nakshatra_dispositor=200, nakshatra_conjunction=1, nakshatra_cogravity=10,
+  // graha_tara_bala=150, nakshatra_statistics=34, kp_house_significators=540,
+  // kp_planet_significations=505. Three other categories named in the tool's own const
+  // (nakshatra_lord_placement, graha_degree_flags, nakshatra_exchange) have ZERO live rows for
+  // the canonical chart and are deliberately NOT added here — that is the tool's own docstring
+  // claiming coverage for categories that do not exist, a distinct finding from F-B32 and out of
+  // this slice's scope. Three more from the F-B32 diff that look nakshatra-adjacent by name
+  // (nakshatra_co_tenancy, nakshatra_dispositor_chain, nakshatra_lord_relationship) do NOT
+  // appear in get_nakshatra.ts's own category list at all and are NOT added here either — they
+  // need their own tool-ownership verification, not an assumed match by naming similarity.
+  graha_nakshatra_join:        ['marsys://tool/L1/get_nakshatra'],
+  graha_pada_join:             ['marsys://tool/L1/get_nakshatra'],
+  graha_kp_lords:              ['marsys://tool/L1/get_nakshatra'],
+  cusp_kp_lords:               ['marsys://tool/L1/get_nakshatra'],
+  graha_gandanta:              ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_dispositor:        ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_conjunction:       ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_cogravity:         ['marsys://tool/L1/get_nakshatra'],
+  graha_tara_bala:             ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_statistics:        ['marsys://tool/L1/get_nakshatra'],
+  kp_house_significators:      ['marsys://tool/L1/get_nakshatra'],
+  kp_planet_significations:    ['marsys://tool/L1/get_nakshatra'],
 
   // ── Tajik ─────────────────────────────────────────────────────────────────
   tajik_hadda_lord:          ['marsys://tool/L1/get_tajik'],
