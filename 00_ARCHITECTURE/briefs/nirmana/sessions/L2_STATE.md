@@ -825,6 +825,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 770 | 2026-09-07T14:52Z | L2-W3 | Main advanced (`c3dada5f...`). `#2315`/`#2328` both healthy `BLOCKED`/`MERGEABLE`, pre-queue -- `#2328` not yet merged, watching. All three E-gates unchanged. All tracked adjudication comment counts unchanged, no new `nirmana-adjudication` issues |
 | 771 | 2026-09-07T14:54Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main unchanged. `#2315`/`#2328` both healthy `BLOCKED`/`MERGEABLE`, pre-queue -- `#2328` not yet merged. All three E-gates unchanged. All tracked adjudication comment counts unchanged, no new `nirmana-adjudication` issues. Nothing eligible -- printing IDLE-OK |
 | 772 | 2026-09-07T14:56Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main advanced (`38548afc...`). `#2315`/`#2328` transient `UNKNOWN`/`UNKNOWN` on first read, both resolved healthy `BLOCKED`/`MERGEABLE` on 6s recheck, still pre-queue -- `#2328` not yet merged. All three E-gates unchanged. All tracked adjudication comment counts unchanged, no new `nirmana-adjudication` issues. Nothing eligible -- printing IDLE-OK |
+| 773 | 2026-09-07T14:58Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main unchanged. `#2315`/`#2328` both healthy `BLOCKED`/`MERGEABLE`, pre-queue -- `#2328` not yet merged. All three E-gates unchanged. All tracked adjudication comment counts unchanged, no new `nirmana-adjudication` issues. Nothing eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
