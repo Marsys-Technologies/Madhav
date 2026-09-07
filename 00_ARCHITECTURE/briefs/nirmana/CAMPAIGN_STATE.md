@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:10:12Z` — cycle 714: **#1888 status update, NOT closed.** PR #1893 (deterministic
+  `bo_bimba.node_id` mechanism fix, D-CND-29) confirmed merged, but live-queried
+  `bodha_cgm_paths` and found 45/135 rows (33%) still orphaned against `bodha_cgm_nodes` — the
+  data resync the ruling flagged as separately required hasn't happened. Linked to #2180's
+  execution: flagged that a fresh `bo_bimba` build must precede `bo_cgm_paths`/`bo_cgm_motifs`
+  in that dispatch sequence, or this orphaning survives the rebuild too. Adjudication count
+  unchanged (13 open). Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:07:30Z` — cycle 713: **CLOSED #1852.** PR #1928 confirmed merged
   (2026-09-06T13:14:47Z). Hit the stale-worktree trap again checking this one — my own
   `wip-cascade-hold` copy of `bo_pratijna_v4_engine.py` still showed the old cross-layer
