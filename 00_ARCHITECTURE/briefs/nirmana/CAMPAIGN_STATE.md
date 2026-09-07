@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:41:47Z` — cycle 821: **IDLE-OK (verified).** #2228 merged. #2227's checks
+  progressing, expected soon given the known ~9-10min Governance Gates duration. Fleet DIRTY
+  empty; adjudications unchanged (11).
 - `2026-09-07T06:39:04Z` — cycle 820: **Root-caused the apparent 34min merge-queue stall — not
   stalled, one genuinely slow check.** No merges landed 06:03Z→06:37Z despite 4 CLEAN queued
   PRs (#2228/#2239/#2241/#2242), which looked alarming. Investigated via the GitHub Actions API
