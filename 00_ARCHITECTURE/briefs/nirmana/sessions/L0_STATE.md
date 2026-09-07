@@ -7,11 +7,14 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — 39/40 frozen. The C12 carve-out has LANDED: PR #2234 (D-NATIVE-07,
-  native-authorized, Conductor-owned) fixes the service-dependency provenance wall that's been
-  blocking `bg_cohort` — already `is:queued` and healthy, not yet merged. Verified live that both
-  sides match the PR's diagnosis exactly (`bg_ephemeris_engine` healthy, `bg_cohort` stuck exactly as
-  described). NEXT ACTION once #2234 merges+deploys: re-dispatch `bg_cohort` to take L0 to 40/40.
+last_updated: 2026-09-07 — 39/40 frozen. PR #2234 (D-NATIVE-07) is merged AND confirmed deployed
+  (`brahma-build-pipeline-job` live image `46f7b7257e...` includes `fd64055ee`). Re-dispatching
+  `bg_cohort` cleared its evidence-binding wall (was passing the wrong `--reviewed-deployment-sha`;
+  fixed) but hit a NEW blocker: `build_runs` triggered_by dedup permanently refuses re-dispatch
+  because a prior `completed` run (`a9446885...`, 2026-09-05, pre-fix) already occupies this exact
+  key, and its receipt is the one stuck at `receipt_state=unknown` — the fix can't retroactively
+  repair a receipt already persisted by the old buggy run. Filed nirmana-adjudication #2240 (both
+  findings). NEXT ACTION: await Conductor's ruling on #2240 before touching bg_cohort dispatch again.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -762,3 +765,39 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** Force-deploy progressing: Sidecar + DB Migrations done,
   `Build & Deploy Pipeline Job Image` (the one that matters) still `in_progress`. Nothing eligible.
+- 2026-09-07 — **Force-deploy `34087944016` CONFIRMED COMPLETE and its image CONFIRMED live** — fresh
+  `gcloud run jobs describe brahma-build-pipeline-job` read shows image tag `46f7b7257e...`, and
+  `git merge-base --is-ancestor fd64055ee 46f7b7257e` = true: the deployed pipeline-job genuinely
+  includes #2234's fix. Attempted re-dispatch: `dispatch_nirmana_campaign_wave.py --layer L0 --wave 1
+  --assets bg_cohort --definition-revision t0-2026-09-01-0e5b06fb --reviewed-deployment-sha
+  46f7b7257e...` (today's deploy SHA) — **failed again** with "accepted asset analysis does not match
+  the current live registry contract for bg_cohort", even though the registry fingerprint itself was
+  independently re-verified to match exactly (twice now). **Root-caused by reading
+  `validate_wave_evidence_bindings` in full**: `--reviewed-deployment-sha` isn't "today's deployed
+  commit" — it's the exact commit bg_cohort's *existing accepted evidence* already cites in its
+  `source_ref`. I had the semantics backwards. Independently recomputed bg_cohort's canonical
+  `analysis_digest` from scratch (replicating `_canonical_analysis_digest` exactly: writer_digest from
+  `nirmana-writer-digests.json` + live registry contract + the separately-pinned
+  `nirmana-analysis-layer-pins.json` L0 convergence_commit `49bb5c98b8...`) — it matched the stored
+  evidence's digest (`8682fa43...`) byte-for-byte, proving the analysis is genuinely unchanged; nothing
+  to re-stamp. (Tried resubmitting fresh evidence bound to today's SHA anyway first, via the
+  reconstructed `l0_submit_evidence.sh` OIDC executor-SA route — got a clean 409 "conflicting lifecycle
+  receipt already exists for this registry/analysis generation," confirming receipts key on
+  (fingerprint, digest), not source_ref.) Re-ran with the *correct*, pre-existing
+  `--reviewed-deployment-sha 4f7a9cc872714c74111ca8ae38ad4257c462cd3e` — **the evidence-binding wall
+  cleared entirely.** New wall immediately behind it: `"a run already exists for this frozen campaign
+  wave; duplicate execution refused"`. Queried `build_runs` directly: `a9446885-2a21-49ae-baac-
+  d3b7cc1f317b`, `state='completed'`, created 2026-09-05 17:44:37 UTC — **before** #2234 was even
+  merged. This is the exact run whose receipt is stuck at `receipt_state=unknown`
+  (`unknown_reasons=["upstream_digest_unavailable"]`, real `output_digest` already present — the
+  writer itself succeeded, only the service-dependency receipt bookkeeping choked on the now-fixed
+  bug). The dedup guard blocks re-dispatch unconditionally on `triggered_by`, regardless of the old
+  run's state, and the fix lives in `asset_runner.py`'s live receipt-computation path — it cannot
+  retroactively repair a receipt already persisted from the old buggy run. No CLI override, no
+  separate receipt-recompute tool found. **Not mine to bypass unilaterally** (adjacent to the FROZEN
+  orchestrator contract's dispatch invariants, and may not be unique to bg_cohort — any asset whose
+  build completed while receipt computation was broken by a now-fixed bug would hit the same wall).
+  Filed **#2240** (both findings: the `--reviewed-deployment-sha` semantics correction, flagged for
+  other layers too per #2224's cross-layer concern; and the build_runs dedup-vs-stuck-receipt
+  blocker, asking for a sanctioned path forward). D-L0-II's underlying wall is now provably fixed and
+  deployed — what remains is purely this dispatch-mechanics gap. NEXT: await #2240's ruling.
