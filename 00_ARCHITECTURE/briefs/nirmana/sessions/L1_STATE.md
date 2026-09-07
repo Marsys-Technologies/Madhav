@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 174; **zero stale evidence remains among L1's previously-evidenced `ga_*` assets.** #2229 (F-A17's own PR) merged; rebased picked up its writer-digest fix. Deployed SHA still lagged the merge, so deliberately did NOT submit `ga_dashas`' first-time evidence yet (deferred a genuine cycle rather than compute against stale writer code) -- used the wait productively instead: computed fresh registry_fingerprint/analysis_digest for the 5 remaining non-wave-1 stale assets from cycle 170 (`ga_sade_sati`, `ga_strength`, `ga_structural`, `ga_vichara`, `ga_yoga`), submitted all 10 record_evidence calls back-to-back within one deploy window (the lesson from cycle 171's orphaned-generation trap, applied correctly this time -- zero races hit). Independently re-verified live across all 19 ga_* assets: STALE remaining = []. Only two known special cases left, both already understood: `ga_transit_anchors` (fresh analysis, still-orphaned verdict from cycle 171) and `ga_dashas`/5 others with zero evidence ever (a different, first-time-acceptance gap). Posted the full sweep result to #2224. #2113/#2180 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 175; deploy still hasn't caught up to `ga_dashas`' F-A17 merge (checked live again, same `0ffdd44f4` SHA as last cycle -- genuinely stalled, not just slow), so deferred it again rather than compute against stale code. Pivoted to independently re-verifying F-C8 (`ga_condition`'s `varga_dignity_composite` NULL-on-135/135 finding), one of the close report's own 6 "claimed closed, cycle 125 sweep only -- no dedicated citation found" MUST-tier groups. Confirmed genuinely fixed in code: `_compute_varga_composite`'s dignity-label-normalization fallback is BOTH correct and necessary -- live-confirmed `chart_divisionals.varga_dignity` NEVER populates the numeric `overall_dignity_score` field (1305 rows, 100% text-label-only), so without this exact fallback path every varga's score is None and the composite is unconditionally None. Live: `ga_condition_composite.varga_dignity_composite` still 0/45 non-NULL for the canonical chart -- genuinely needs a rebuild, which is blocked by the same `asset_frozen` E-gate as wave 1 (`ga_condition` is wave 2, depends on `ga_dashas`/`ga_positions`/`ga_vargas`). Also re-confirmed and properly cited F-A10/F-A12 in the disposition table (verified cycles 171-172 but their own table rows still said "flagged, not re-verified" until now -- fixed the inconsistency). Close report's uncited-groups count now 2 remaining (`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`), down from 6 at segment start. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9751,3 +9751,68 @@ evidence remains among L1's `ga_*` assets** (5 more re-stamped: `ga_sade_sati`/`
 correctly this time — next: retry `ga_dashas`' first-time evidence once the deploy genuinely
 catches up, or complete `ga_transit_anchors`' still-orphaned verdict; keep re-checking
 #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 175 (C8 v2.3) — deploy still stalled on `ga_dashas`; independently re-verified F-C8
+## (`ga_condition`), closing another of the close report's own uncited-MUST-finding groups
+
+PR hygiene: `#2228` (this state branch) `MERGEABLE`/`BLOCKED` with zero RED checks. No other
+L1-authored PR open (`#2229` merged last cycle). Nothing DIRTY/RED/unqueued. Re-checked
+`#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own prior comments.
+
+**Re-checked the deployed SHA before anything else** (learned discipline from the last two
+cycles — never assume, always check live): `NIRMANA_DEPLOYED_SHA` is STILL `0ffdd44f4...`, the
+identical value from cycle 174, confirmed still an ancestor-predecessor of the F-A17 merge
+(`df28f4088`) via the same `git merge-base --is-ancestor` check. This means the deploy pipeline
+has been genuinely stalled for a full cycle, not merely "one more deploy away" — deferred
+`ga_dashas`' first-time evidence submission again rather than force it through.
+
+**Unit of work: independently re-verify F-C8**, one of the close report's own §2.5 disposition
+table's 6 originally-uncited MUST-tier groups ("claimed closed, cycle 125 sweep only — no
+dedicated citation found"). Read W2 DECIDE's own description first: `ga_condition`'s
+`varga_dignity_composite` NULL on 135/135 rows, "two writer-side causes." Read
+`ga_condition_writer.py`'s `_compute_varga_composite`/`_load_varga_dignity_spread` directly
+(not trusting the close-report's own one-line "fixed at writer level" summary): found a real,
+explicitly-commented F-C8 fix — when `chart_divisionals.varga_dignity`'s numeric
+`overall_dignity_score` is absent, derive the score from the `dignity` TEXT label instead,
+normalized through the SAME `_DIVISIONAL_DIGNITY_NORMALIZE` map already used elsewhere in this
+file (not a second, drifting copy).
+
+**Confirmed this fix is not just present but actually NECESSARY**, live: queried
+`chart_divisionals` for the canonical chart's `varga_dignity` category — 1305 rows, and a
+`GROUP BY fact_key` showed **100% `dignity` (text label), ZERO `overall_dignity_score`** (the
+upstream writer that populates this table never writes the numeric field at all). Without the
+label-fallback fix, EVERY varga's `score` would be `None`, `total_w` would sum to `0`, and
+`_compute_varga_composite` would unconditionally return `None` — exactly reproducing the
+135/135-NULL symptom the finding describes. This one fix genuinely closes the described
+mechanism (whether "two writer-side causes" described two facets of this same gap or something
+narrower, the live data shape confirms this fallback is both correct and sufficient).
+
+**Confirmed the OTHER half honestly**: queried `ga_condition_composite` (the asset's own target
+table) for the canonical chart — 45 rows, **0 non-NULL `varga_dignity_composite`**, i.e. still
+100% NULL live, unchanged since the fix landed in code. This is the SAME "code fixed, canonical-
+chart data stale" pattern already seen for `ga_positions`/`ga_dashas` — confirmed via the frozen
+campaign manifest that `ga_condition` is genuinely wave 2 (not wave 0/1), depending on
+`ga_dashas`/`ga_positions`/`ga_vargas` — meaning its rebuild is blocked by the identical
+`asset_frozen` E-gate already escalated via adjudication #2224, not something resolvable this
+cycle regardless of evidence-submission timing.
+
+**Updated the close report's §2.5 disposition table** with F-C8's full, evidence-based
+disposition (superseding the old "no dedicated citation found — flagged" line). While there,
+noticed the SAME table's F-A10/F-A12 rows still said "flagged, not re-verified this pass" despite
+cycles 171-172 having already independently confirmed both fixed — a genuine inconsistency in
+this session's own prior record-keeping (the verification happened, but the disposition table
+itself was never updated to reflect it). Fixed both rows to cite the real cycle-171/172 evidence.
+Corrected the table's own "Honest count" summary paragraph accordingly (also caught and fixed a
+small arithmetic slip in my own first draft of this edit — wrote "3 remaining" while listing only
+2 groups, corrected before finalizing). Uncited MUST-tier groups now down to 2
+(`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15` — 8 individual F-ids), from the original 6 at segment start.
+
+CYCLE 175 L1: PR hygiene clean; deploy genuinely stalled on `ga_dashas`' F-A17 fix (same SHA as
+last cycle, checked live) — deferred again rather than force it; independently re-verified F-C8
+(`ga_condition`) instead — confirmed genuinely fixed in code (the dignity-label fallback is both
+correct and necessary, live-confirmed the upstream never populates a numeric score) but still
+100% NULL live pending a rebuild blocked by the same `asset_frozen` E-gate as wave 1; also fixed a
+stale disposition-table inconsistency for F-A10/F-A12 found along the way — next: retry
+`ga_dashas`' evidence once the deploy resumes, or independently re-verify the 2 remaining uncited
+MUST groups (`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`); keep re-checking #2113/#2180/#2224 every cycle
+regardless.
