@@ -731,3 +731,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. PR #2234 still `is:queued`.
   Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** PR #2234 still `is:queued`, but confirmed ALL its own checks
+  are genuinely green (`gh pr checks` — 20+ passing, rest benign `skipping`, nothing red/pending) —
+  it's just waiting its turn in the shared queue, not stalled. Not mine to rush (Conductor's PR).
+  Nothing eligible.
