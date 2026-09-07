@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.41-DRAFT"
+version: "0.42-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -24,16 +24,21 @@ was claimed closed for L1's own scope cycle 125, but that claim was **wrong for 
 F-B32/F-B33 (`coverage_matrix.ts`'s 169-entry hand-maintained list vs. live `chart_facts` category
 count, plus `concept_aliases.ts`'s citation of a CI check that does not exist) was independently
 re-verified LIVE cycle 146 and is genuinely **still open**. F-B33 (the false CI-check citation)
-CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quantified precisely
+CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) — quantified precisely
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
 — 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
 cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
 not stale names; no list edit needed for them. Being closed incrementally
-cycle 149 onward (55/57 landed across 12 slices, PR #2202 + #2242 + #2244 + #2247 + #2250 + #2252; ~2 remaining — just `tara_bala` bare (single-writer, no obvious existing-tool home) plus the total-57 count's own inherent "~" imprecision — ZERO genuinely-ambiguous-ownership categories remain, that entire framing turned out to be a false alarm on closer inspection (see §5); either
-ambiguous multi-writer ownership or a distinct deeper defect class — see §5 for the current
-breakdown, not a list-staleness gap). See §2 for the corrected
-disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
+cycle 149 onward, and now **CLOSED (cycle 185)**: all 57 landed across 13 slices, PR #2202 +
+#2242 + #2244 + #2247 + #2250 + #2252 + #2254 — the last named category, bare `tara_bala`,
+turned out (like every other category this campaign flagged as having "no existing-tool home"
+or "ambiguous ownership") to already have a clean single-writer home once re-checked
+individually rather than trusted from a prior grouped characterization. ZERO genuinely-
+ambiguous-ownership categories were ever found across the entire backlog — that framing was
+itself a false alarm on closer inspection every single time it was raised (see §5). See §2 for
+the corrected disposition and §5 for the full account; NEVER-LATER correctly parked by design)
+but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ PARTIALLY UNBLOCKED, cycle 155.**
 Adjudication #2113 was raised as a campaign-wide `asset_freshness` gate (zero L1 dependency-asset
@@ -272,7 +277,7 @@ silently equal to it.
 | F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
 | F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
 | F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
-| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 55/57 closed across 12 slices (PR #2202, #2242, #2244, #2247, #2250, #2252), ~2 remaining — just `tara_bala` bare (confirmed single-writer, no obvious existing-tool home; ZERO genuinely-ambiguous-multi-writer categories remain — that entire framing was itself a false alarm, corrected cycle 183); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878); `get_structural_signals.ts` CLOSED 15 more cycle 181 (PR #2244), the first genuinely new-endpoint slice, plus a `karaka_web_per_varga` false-positive correction in the cycle-156 sweep's own claim; `get_sensitive_points.ts` CLOSED 2 more cycle 182 (PR #2247) — cycle 181's own "ambiguous ownership" claim was itself wrong for these 2 (single-writer, just an oversight); `get_structural_signals.ts` CLOSED 3 more cycle 183 (PR #2250) — cycle 182's own "4 genuinely ambiguous" claim was wrong for 3 of the 4 (same false-ambiguity shape, third time found); `get_positions.ts` CLOSED `sun_derived_upagraha`/`sandhi_flag` cycle 184 (PR #2252) — its own deliberately-deferred, higher-blast-radius careful pass, finally done | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+| F-B32, F-B33 | cross | **FULLY CLOSED (cycle 185)** — F-B33 CLOSED (PR #2191); F-B32 57/57 closed across 13 slices (PR #2202, #2242, #2244, #2247, #2250, #2252, #2254). ZERO genuinely-ambiguous-multi-writer categories were ever found across the entire backlog — every one flagged "ambiguous ownership" or "no existing-tool home" turned out, on individual re-check, to be a clean single-writer category simply missing from an existing tool. Chronology: the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878); `get_structural_signals.ts` CLOSED 15 cycle 181 (PR #2244), the first genuinely new-endpoint slice, plus a `karaka_web_per_varga` false-positive correction; `get_sensitive_points.ts` CLOSED 2 more cycle 182 (PR #2247); `get_structural_signals.ts` CLOSED 3 more cycle 183 (PR #2250) — cycle 182's own "4 genuinely ambiguous" claim was wrong for 3 of the 4; `get_positions.ts` CLOSED `sun_derived_upagraha`/`sandhi_flag` cycle 184 (PR #2252), its own deliberately-deferred, higher-blast-radius careful pass; `get_structural_signals.ts` CLOSED bare `tara_bala` cycle 185 (PR #2254) — the backlog's last category, whose "no existing-tool home" claim was itself wrong (same function as 2 already-served siblings) | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about, and then fully re-closed for real |
 
 **Honest count**: of 20 id-groups, **all 20 now have a specific, checkable citation in this
 report** — 14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles
@@ -285,9 +290,10 @@ live-confirmed matching exactly; the 5th, `ga_tajaka`, correctly and deliberatel
 §N.4's own floor-timing doctrine, not an oversight — see rows above for the full traces). **This
 closes the disposition table's own honesty gap entirely**: every MUST-tier id-group this session
 inherited from cycle 125's sweep has now been independently re-verified live, not merely
-re-asserted. Of the 20, `F-B32`/`F-B33` remains the only id-group this campaign has actually
-found to be incorrectly claimed closed (F-B32 still genuinely open, tracked in §2/§5); every
-other group's cycle-125 "closed" claim held up under independent re-verification.
+re-asserted. Of the 20, `F-B32`/`F-B33` was the only id-group this campaign found to be
+incorrectly claimed closed — genuinely open when found, but **now FULLY CLOSED as of cycle 185**
+(§2/§5; 57/57 categories across 13 slices, 7 PRs); every other group's cycle-125 "closed" claim
+held up under independent re-verification.
 
 ## §3 — Pillar movement (per the five doctrines)
 
@@ -645,12 +651,24 @@ awaits either a dedicated prep cycle or genuine W6 close.
   flag` has NO `house_d1` (a flag/reasons pair, not a position) and isn't an upagraha, so it's
   categories-only opt-in, mirroring the existing `nakshatra_cross_ayanamsha` precedent exactly
   — neither the `CASE` ordering clause nor the frame-rebasing logic needed any change (both
-  already generic enough). Only bare `tara_bala`
-  (`ga_structural_writer.py`'s own `_build_nakshatra_relationship_rows`, distinct from
-  `ga_nakshatra_emitters.py`'s already-served `graha_tara_bala` sibling) remains open — single-
-  writer, deliberately left open because it has no obvious existing-tool home the way every
-  other closed category did; needs its own scoping decision, not a rushed attachment to
-  whichever tool happened to be open.
+  already generic enough).
+
+  **Bare `tara_bala` CLOSED cycle 185, PR #2254 — F-B32'S ENTIRE BACKLOG NOW CLOSED.** The last
+  remaining category was believed to have "no obvious existing-tool home," a characterization
+  never actually re-verified. It was wrong: `ga_structural_writer.py`'s own
+  `_build_nakshatra_relationship_rows` docstring reads "Emit nakshatra_co_tenancy, tara_bala,
+  nakshatra_lord_relationship" — the SAME function already emitting two categories
+  `get_structural_signals.ts` has served since cycle 181. Confirmed via the function's own
+  `_base_row("tara_bala", graha_subj, "tara_from_moon", ...)` call site: single-writer, 43 live
+  rows for the canonical chart. Added directly, alongside its two siblings. The original
+  ~57-category gap between the 169-entry hand-maintained list and the live 219-category universe
+  (quantified cycle 148) is now fully accounted for — 13 slices, 7 PRs (#2202, #2242, #2244,
+  #2247, #2250, #2252, #2254). Every category this campaign ever flagged as "ambiguous ownership"
+  or having "no existing-tool home" turned out, without exception, to already have a clean
+  single-writer home once checked individually rather than trusted from a prior grouped
+  characterization — a pattern this segment found and corrected five separate times
+  (`karaka_web_per_varga`; the `esoteric_point_*` pair; the 3-category
+  `get_structural_signals.ts` batch; `sun_derived_upagraha`/`sandhi_flag`; bare `tara_bala`).
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -688,14 +706,15 @@ landed cycle 184, PR #2252 — `get_positions.ts`'s own deliberately-deferred, h
 careful pass finally done: `sun_derived_upagraha` (confirmed live to carry `house_d1`, so it
 joins the `include_upagrahas` bundle and the `frame` re-basing facet applies to it) and
 `sandhi_flag` (no `house_d1`, categories-only opt-in like `nakshatra_cross_ayanamsha`) both
-closed. 55/57 now closed, ~2 remaining — just `tara_bala` bare (single-writer,
-`ga_structural_writer.py`, no obvious existing-tool home), needing a scoping
-pass, not a list-staleness gap or an ownership question; the "6 phantom
+closed. Slice 13 landed cycle 185, PR #2254 — bare `tara_bala`'s own "no obvious existing-tool
+home" claim was itself wrong (same emitting function as 2 already-served siblings), closed via
+`get_structural_signals.ts`. **F-B32 FULLY CLOSED: 57/57, across 13 slices, 7 PRs.** ZERO
+categories in the entire backlog turned out to be genuinely ambiguous or homeless once checked
+individually; the "6 phantom
 categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
 rebuild, no edit needed
-#2113)** · **~2 remaining F-B32 categories (just `tara_bala` bare), single-writer,
-deliberately-deferred tool-placement scoping question (§5 — updated cycle 184, distinct from
-F-B32's own list-repair scope)**
+#2113)** · **F-B32 fully closed cycle 185 — no remaining categories (§5 — closed, distinct from
+F-B32's own list-repair scope, which is itself now complete)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
 6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
 `ga_sade_sati` PR #2212, `ga_nakshatra` PR #2213, `ga_panchanga` PR #2216; `ga_sensitive`'s
