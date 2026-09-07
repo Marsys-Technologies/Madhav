@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~258:0xZ — L3-W4 — PR hygiene: `#2233`'s last check, same
+  run, now ~8.9min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2233` finishing; next
+  action: same.
 - `2026-09-07T~257:0xZ — L3-W4 — PR hygiene: `#2233`'s pre-queue check
   run still `in_progress` (~6.3min on the known-slow `pytest —
   pyjhora_adapter + pipeline` step, within the confirmed ~11min
