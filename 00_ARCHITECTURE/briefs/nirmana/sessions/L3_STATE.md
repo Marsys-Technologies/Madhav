@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~399:0xZ — L3-W4 — PR hygiene: `#2284`'s pre-queue
+  checks running (`Unit Tests`, `DB Integration Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2284` clearing checks/queue; next action: same.
 - `2026-09-07T~398:0xZ — L3-W4 — PR hygiene: `#2282` confirmed
   MERGED. Rebased 20 local commits onto fresh `origin/main`. Hit one
   genuine (non-empty-theirs) conflict this time — a real interleaving
