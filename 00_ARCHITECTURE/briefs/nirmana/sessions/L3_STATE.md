@@ -222,7 +222,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
 | `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
-| `ka_sangam`'s F-L3-4 volume-formula derivation (last 2 of 20 originally-NULL L3 assets, with `ka_kshetra`) | real, verified structural complexity, not yet fully traced | genuinely open — investigated this cycle without reaching a confident number. Verified: `_generate_windows` runs Mode A (dasha-prior search) + Mode B (off-dasha sweep) or Mode C (SUBSYSTEM predicates → sign-ingress) per SELECTED predicate, but **Mode D (SAV-bindhu, `mode_d_av_bindhu`) fires only once per SUBSTEP** (`if pred_dict is pred_dicts[0]`), not once per predicate — my own first working assumption (once-per-predicate) was wrong, caught before writing anything down. Two substep horizon scopes exist: `'near'` = 5yr (today..+5y), one substep total; `'lifetime:{i}'` = birth_year..birth_year+`_LIFETIME_HORIZON_YEARS`, ONE substep per selected lifetime predicate (up to `_LIFETIME_MAX_PREDICATES=60`). Live: `kala_convergence` for the canonical chart is 80% mode D (11950 of 14868), meaning Mode D's per-substep output (planets x SAV-strong-signs x ingresses-over-that-substep's-own-horizon) dominates the total, and getting an honest total right needs: (a) how many lifetime substeps this chart actually selected (up to 60, not verified), (b) `_LIFETIME_HORIZON_YEARS`'s exact value, (c) how many of this chart's 12 signs clear the SAV>=28 threshold, (d) real ingress counts for Jupiter/Saturn/Mars per horizon length -- none of these were queried live this cycle. Not fixed or guessed at; recorded as a head start for whichever session next attempts this, so the mode-D-per-substep-not-per-predicate correction isn't re-discovered from scratch. |
+| `ka_sangam`'s F-L3-4 volume-formula derivation (last 2 of 20 originally-NULL L3 assets, with `ka_kshetra`) | real, verified structural complexity; a second cycle's deeper dig still didn't close it | genuinely open — a second investigation cycle answered every fact the first cycle's note listed as missing, and STILL could not reach a confident number; recording the harder blocker this time instead of re-listing solved sub-questions. Confirmed live: `_LIFETIME_HORIZON_YEARS=100`, `_HORIZON_YEARS=7` (the 'near' SubStep's own label says "5yr" — stale, the real constant is 7, a minor doc drift not fixed here since it's not this migration's concern); this chart selected all 60 possible lifetime substeps (`build_substep_progress` count) + 1 near = 61 total; 6 of this chart's 12 signs clear `SAV>=28` (signs 1,2,4,5,7,8, read from `chart_facts`/`ashtakavarga_bindu_sign`/`SARVA-SIGN_*`, `lahiri_chitrapaksha`). Computed real Jupiter/Saturn/Mars sign-ingress counts into those 6 signs over the exact 100y lifetime window directly from `ephemeris_daily` (day-to-day sidereal sign-change detection, offset back-derived via `brahmagyan.l0_ephemeris.derive_sidereal` at birth, not guessed): 75 (Jupiter) + 349 (Mars) + 42 (Saturn) = 466 windows per lifetime-substep call. **This does not reconcile**: `_dedup` keys on `(mode, peak_date, signal_id)`, and each lifetime substep's Mode D windows are tagged with THAT substep's own sole predicate's `signal_id` (a different one per substep), and the substep-scoped `DELETE ... WHERE signal_id=%s AND horizon_tier='lifetime'` only clears rows sharing that same `signal_id` — so nothing in the code stops all 60 substeps' Mode D output from stacking as separate rows, which would predict roughly 60x466=27,960 lifetime-tier Mode D rows alone, far above the observed 11,950 mode-D total (`kala_convergence`, all tiers). The gap means either (a) my day-to-day sign-change detection over-counts real ingresses (plausible: retrograde stations near a sign cusp can wobble across the boundary several times, and the true `find_ingresses` service likely has its own real-root/hysteresis logic this rough SQL pass didn't replicate), or (b) some other gate (e.g. `HIGH_CONFIDENCE_ORB_THRESHOLD`, a per-window admission check not traced this cycle) drops a large fraction of Mode D candidates before insertion, or (c) something about which predicate is genuinely "first" per substep differs from this reading. None of these three were resolved. Not fixed or guessed at; still recorded as a head start, now with the harder remaining question named precisely (reconcile the ~2.3x gap between a naive ingress count and the real served total) rather than the easier facts a first pass already closed. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -495,6 +495,33 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~150:0xZ — L3-W3 — PR hygiene: `#2192` build ~8.7min,
+  within normal range, nothing red. Continued the `ka_sangam` F-L3-4
+  investigation from last cycle: answered every fact last cycle's note
+  flagged as missing — `_LIFETIME_HORIZON_YEARS=100`, `_HORIZON_YEARS=7`
+  (caught the 'near' substep's own label saying "5yr" is stale, not
+  fixed, out of scope), this chart selected all 60 possible lifetime
+  substeps + 1 near = 61 total (`build_substep_progress`), 6 of 12 signs
+  clear `SAV>=28` (queried live from `chart_facts`). Computed real
+  Jupiter/Saturn/Mars ingress counts into those 6 signs over the exact
+  100y window directly from `ephemeris_daily` (75+349+42=466 per
+  lifetime-substep call) — but this does NOT reconcile against the
+  observed 11,950 mode-D total: nothing in `_dedup`'s
+  `(mode, peak_date, signal_id)` key or the substep-scoped DELETE stops
+  all 60 lifetime substeps' Mode D output from stacking as separate
+  rows, which would predict ~60x466=27,960, about 2.3x too high. Did
+  not resolve the gap (candidates: my day-to-day sign-detection over-
+  counting retrograde boundary wobbles vs the real `find_ingresses`
+  service's own logic; an untraced admission gate; or a wrong "first
+  predicate" assumption) — recorded the SPECIFIC unreconciled gap in the
+  Held item (replacing the now-answered easier questions) rather than
+  force a number or re-list solved sub-questions. No migration, no code
+  change this cycle — a second investigation pass is itself the bounded
+  unit, converging the search space for whoever tackles this next.
+  — blocked on: nothing new; next action: push once `#2192`
+  merges/finishes; `ka_sangam`/`ka_kshetra` remain the only 2 of 20
+  originally-NULL L3 assets not yet closed, both now investigated in
+  real depth (not merely assumed complex) without a safe number reached.
 - `2026-09-07T~149:0xZ — L3-W3 — PR hygiene: `#2192` own `merge_group`
   build confirmed via full `gh run list` scan — ~3.6min elapsed, healthy,
   nothing red. Nothing to fix. Attempted `ka_sangam`'s F-L3-4 volume
