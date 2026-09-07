@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:40:09Z` — cycle 954: **IDLE-OK, Δfrozen +0.** No reaction to the #2276 ruling
+  yet (~4 min old). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:36:03Z` — cycle 953: **Found `ga_dashas`' real blocker — ruled #2276, the
   actual reason it's been stuck ~2h.** L1's own PR #2290 named it: waiting on nirmana-adjudication
   #2276, which I hadn't seen. Real gap: `create_campaign_run`'s guard (dispatch_nirmana_
