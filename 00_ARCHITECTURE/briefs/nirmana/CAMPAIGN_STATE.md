@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:22:37Z` — cycle 793: **IDLE-OK (verified).** #2234 checks still running
+  (~5min in, normal), not yet queued — not a hygiene fault. Fleet DIRTY empty; adjudications
+  unchanged (11).
 - `2026-09-07T05:19:16Z` — cycle 792: **D-NATIVE-07 SHIPPED — PR #2234, auto-merge armed.**
   Independent code-reviewer subagent returned LGTM (no confirmed bugs, verified all 6 requested
   angles: correctness, bypass-risk across all 4 boolean branches, digest stability via
