@@ -497,6 +497,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~360:0xZ — L3-W4 — PR hygiene: `#2267` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the ~11.1min edge-of-range
+  precedent held once again). Rebased the 18 not-yet-merged local
+  heartbeat commits onto fresh `origin/main`. Hit the standard
+  empty-theirs prepend-conflict pattern 4x (auto-resolved via the
+  marker-strip loop, each verified empty-theirs before stripping) —
+  several patches collapsed as already-applied duplicates during the
+  rebase (17→13 commits ahead, no data lost, verified zero conflict
+  markers + state-file-only diff). Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-21`, pushed, opened PR `#2270`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still frozen (absent
+  from blocked list), `ka_gochara_resonance` still correctly HELD. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` clearing
+  checks/queue; next action: same monitoring cadence.
 - `2026-09-07T~359:0xZ — L3-W4 — PR hygiene: `#2267`'s last check, same
   run, now ~11.1min — at the recurring edge-of-range pattern. Step-
   level unchanged, no separate stall signal. One new `origin/main`
