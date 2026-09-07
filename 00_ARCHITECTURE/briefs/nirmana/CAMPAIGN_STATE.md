@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:04:01Z` — cycle 964: **IDLE-OK, Δfrozen +0.** L2/L3 and `ga_transit_anchors`
+  unchanged. Fleet DIRTY: clean (both known stale PRs cleared this check). Own-PR hygiene: none
+  open. Adjudications unchanged (11).
 - `2026-09-07T13:01:44Z` — cycle 963: **MILESTONE — `ga_dashas` FROZE. Δfrozen +1 (55→56).** The
   #2276 fix worked end-to-end (applied live before #2295 itself merged, same out-of-band-
   migration pattern as earlier fixes) — the asset that sat stuck ~2h20m at `implementation_
