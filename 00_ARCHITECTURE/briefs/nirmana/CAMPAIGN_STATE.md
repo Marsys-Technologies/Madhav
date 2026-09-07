@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:22:55Z` — cycle 718: **CLOSED #2071.** Checked #1960 (correctly parked for
+  native, no action) and #2052 (item 2 confirmed merged via PR #2056, items 1/3 correctly await
+  native design authority, left open) first. #2071: PR #2079 confirmed merged — `ka_dasha_kala`
+  gets its DB-free proxy `health_probe` per D-CND-34's option (B). 12→11 open adjudications.
+  Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:20:17Z` — cycle 717: **#1945 more progress — Lane E backfilled (2/5 done).**
   `migration_filename`/`migration_sha256` are pinned constants in `definitions.ts`
   (`592_nirmana_elevation_campaign_evidence.sql`); live-confirmed against
