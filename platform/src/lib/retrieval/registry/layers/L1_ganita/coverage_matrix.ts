@@ -54,6 +54,14 @@
  * confirmed single-writer-owned by `ga_structural_writer.py` alone (no competing L0/L1/L3
  * writer for the same category).
  *
+ * **`esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system` closed here (2026-09-07,
+ * cycle 182) via `get_sensitive_points.ts`** — these two were mischaracterized during the
+ * cycle-156 sweep above as needing new-endpoint work same as the rest; re-checked, both are
+ * cleanly single-writer-owned by `ga_sensitive_writer.py` alone (70 and 25 live rows) and were
+ * simply never added to `get_sensitive_points.ts`'s existing `esoteric_point_*` category
+ * family — not genuinely unreachable. Added there directly (same flat SELECT shape as every
+ * other sibling in that family, no new tool needed).
+ *
  * **Cycle 183: 3 more of the "remaining ~10" closed via the SAME tool** —
  * `bhava_significance_link`/`net_argala_per_varga`/`panchadha_maitri` were originally filed as
  * "ambiguous multi-writer ownership" alongside `sandhi_flag`, but re-checking each occurrence
@@ -141,11 +149,13 @@ export const CHART_FACTS_CATEGORIES = [
   'esoteric_point_panchasphuta',
   'esoteric_point_pranapada_sphuta',
   'esoteric_point_shiva',
+  'esoteric_point_sphuta_fertility',
   'esoteric_point_sri_yantra_position',
   'esoteric_point_trikona_dasha_sphuta',
   'esoteric_point_trisphuta',
   'esoteric_point_vishnu',
   'esoteric_point_yogi',
+  'esoteric_point_yogi_system',
   'graha_avastha_baladi',
   'graha_avastha_baladi_per_varga',
   'graha_avastha_deepta',
@@ -496,11 +506,13 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   esoteric_point_panchasphuta:       ['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_pranapada_sphuta:   ['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_shiva:              ['marsys://tool/L1/get_sensitive_points'],
+  esoteric_point_sphuta_fertility:   ['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_sri_yantra_position:['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_trikona_dasha_sphuta:['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_trisphuta:          ['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_vishnu:             ['marsys://tool/L1/get_sensitive_points'],
   esoteric_point_yogi:               ['marsys://tool/L1/get_sensitive_points'],
+  esoteric_point_yogi_system:        ['marsys://tool/L1/get_sensitive_points'],
   bhrigu_nadi_point:                 ['marsys://tool/L1/get_sensitive_points'],
   lal_kitab_special_point:           ['marsys://tool/L1/get_sensitive_points'],
   maharsi_specific_point:            ['marsys://tool/L1/get_sensitive_points'],
