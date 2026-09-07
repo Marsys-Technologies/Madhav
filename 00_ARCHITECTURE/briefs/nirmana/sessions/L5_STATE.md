@@ -457,6 +457,48 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T05:53Z (C8 v2.3 cycle 801) — **`#2235` MERGED — the thirty-ninth state-recovery PR
+  closed out.** Thirty-ninth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, now 801). 10 local-only
+  commits (cycles 791-800, single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-39` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:50Z (C8 v2.3 cycle 800) — **IDLE-OK, verified.** #2235 still OPEN/`is:queued`,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T05:48Z (C8 v2.3 cycle 799) — **IDLE-OK, verified.** #2235 still OPEN/`is:queued`,
+  unchanged. #2228 confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:46Z (C8 v2.3 cycle 798) — **IDLE-OK, verified.** #2235 unchanged for 3 cycles at
+  `is:queued` — checked `gh-readonly-queue/main/pr-2235-*` merge_group build directly: genuinely
+  IN_PROGRESS (2/3 runs SUCCESS), started 05:40:33Z — not a stall. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:44Z (C8 v2.3 cycle 797) — **IDLE-OK, verified.** #2235 still OPEN/`is:queued`,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T05:42Z (C8 v2.3 cycle 796) — **IDLE-OK, verified.** #2235 now genuinely `is:queued`,
+  `mergeStateStatus=UNKNOWN` (normal mid-queue). #2233 confirmed L3's, merged, out of scope.
+  Main tip advanced to `46f7b7257`. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T05:39Z (C8 v2.3 cycle 795) — **IDLE-OK, verified.** #2235's Governance Gates check
+  ~11.2min elapsed, outer edge of normal range but no failures — confirmed not yet in
+  `merge_group` (still pre-queue). Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
+- 2026-09-07T05:37Z (C8 v2.3 cycle 794) — **IDLE-OK, verified.** #2235's last check (Governance
+  Gates) ~9.1min elapsed, within normal range, no failures. Main tip unchanged. E-gate re-run:
+  all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:35Z (C8 v2.3 cycle 793) — **IDLE-OK, verified.** #2235 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:33Z (C8 v2.3 cycle 792) — **IDLE-OK, verified.** #2235 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. Main tip unchanged.
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:30Z (C8 v2.3 cycle 791) — **IDLE-OK, verified.** #2235 (recovery #38) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 05:28:44Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. #2234
+  confirmed Conductor's, #2233 confirmed L3's, out of scope. Main tip unchanged. E-gate re-run:
+  all 11 remaining L5 assets unchanged. Nothing eligible.
 - 2026-09-07T05:28Z (C8 v2.3 cycle 790) — **`#2232` MERGED — the thirty-eighth state-recovery PR
   closed out.** Thirty-eighth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
   482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
