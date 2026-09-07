@@ -496,6 +496,39 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~347:0xZ — L3-W4 — **Computed the real, non-fabricated
+  digests for `ka_tithi_pravesha`'s W2 events.** Read
+  `NirmanaAssetAnalysisReceiptSchema`'s exact zod field list
+  (`definitions.ts:1111`) to confirm the receipt shape precisely.
+  Then computed both values directly from live sources via a Python
+  script hitting the DB and generated JSON files (never hand-
+  transcribed the giant `integrity_check_sql` text — that risked a
+  silent digest-corrupting typo, so pulled it live instead):
+  - `registry_fingerprint_sha256` (LIVE, differs from the frozen
+    manifest's stored `3424d50a…d7760` because `integrity_check_sql`
+    was NULL at freeze-time and is populated now) =
+    `03f402f82e5d8977291762305a6e9d34c40b470d832238dd592cddd4cb44f625`
+  - `analysis_digest` = `654705d4176e1cd7ee26aecda802a0aa4fe26f6e5ad1c13a51ab71d2907d7d1d`
+  Both verified as exactly 64 hex chars (valid sha256 hexdigest
+  shape). Computed via the same `stable_json`/sha256 pattern already
+  cross-verified byte-for-byte against the TS canonical
+  implementation 2 cycles ago. This is real, reproducible, DB-sourced
+  data — not fabricated per B.10/§N.8. Still NOT submitted: still
+  need (1) a valid `git:<40-hex>` `source_ref` (haven't located which
+  commit to cite — likely whichever commit carries
+  `L3_W2_DECIDE_v1_0.md`, not yet confirmed via `git log`), (2) the
+  admin API's auth mechanism for
+  `/api/admin/nirmana-elevation/evidence`, (3) the exact
+  `optimization_verdict_accepted` payload shape (verdict=
+  `examined_and_already_efficient` per `L3_W2_DECIDE_v1_0.md` row 51,
+  but "basis"/"proposal" field shapes not yet read from the zod
+  schema at `definitions.ts` lines ~963/992/1028). `#2264` unchanged,
+  position 2, `AWAITING_CHECKS`. No new `origin/main` merges,
+  `ga_positions` confirmed still frozen. IDLE-OK-but-productive. —
+  blocked on: the 3 remaining items above; next action: find the
+  `L3_W2_DECIDE_v1_0.md` commit SHA via `git log`, read the
+  `optimization_verdict_accepted` payload schema precisely, and find
+  the API auth pattern.
 - `2026-09-07T~346:0xZ — L3-W4 — Located and verified `analysis_digest`'s
   exact formula (my earlier "3 unknowns" note was wrong about it being
   free-hash-of-doc-text). Traced `canonicalNirmanaAssetAnalysisDigestForRegistryRow`
