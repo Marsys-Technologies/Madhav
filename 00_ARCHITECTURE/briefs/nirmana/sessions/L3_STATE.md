@@ -494,6 +494,28 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~147:0xZ — L3-W3 — PR hygiene: `#2192` checks running
+  pre-queue (4 pending, nothing red), not yet queued — nothing to fix.
+  Continued F-L3-4 with `ka_yojaka` — the SIMPLEST derivation in the
+  whole F-L3-4 batch: read the writer's full per-signal loop end to end
+  (writer.py:184-294) and confirmed there is NO `continue`/`break`
+  anywhere in it before every signal reaches `enriched.append` — a
+  genuine, guaranteed 1:1 pass-through of `bodha_msr_signals` (an L2
+  Bodha table), not merely an observed match for this chart. Live-
+  verified 50104 = 50104 exactly. Migration 864 + paired test authored
+  (no self-transaction wrapper from the start), all 7 tests pass —
+  including a live re-verification of the exact 1:1 relationship from
+  both source tables directly. Migration-number guard PASS (864,
+  confirmed free). Committed locally (`5eb816dac`), held from push —
+  `#2192` still mid-check. — blocked on: nothing new; next action: push
+  once `#2192` clears/queues. **F-L3-4 status: 15 of 20
+  originally-NULL L3 assets now closed** across 13 migrations
+  (852-864); only `ka_gochara_v3_century_materialize`, `ka_kshetra`,
+  `ka_sangam` remain, all three deliberately deferred as too large for
+  one bounded unit (2480-line peak-anchored writer; 8.6M-row heaviest
+  asset with the worst DAG declaration; 2975-line 12-current convergence
+  scoring engine, respectively) — a dedicated future session/cycle
+  should tackle these three rather than force a shallow derivation.
 - `2026-09-07T~146:0xZ — L3-W3 — PR hygiene: `#2189` MERGED (squash
   `c678bec95`). Also picked up `ka_kalasutra`'s F-L3-4 slice this cycle
   before the rebase: migration 863 — one row per (predicate, matched
