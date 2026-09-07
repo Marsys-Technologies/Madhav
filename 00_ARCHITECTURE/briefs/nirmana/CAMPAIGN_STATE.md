@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:56:28Z` — cycle 938: **IDLE-OK, Δfrozen +0.** `ga_nakshatra`'s slot released
+  cleanly per L1's own log. L2/L3 still silent ~12 min after the sharp nudge — reframing this:
+  their own heartbeat PRs land periodically (11:43Z was the last), consistent with a supervisor-
+  cycle cadence similar to my own rather than active refusal; holding off a 4th identical nudge
+  until their next natural cycle has had a fair chance to read #1713. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:54:11Z` — cycle 937: **Δfrozen +1 (51→52). `ga_nakshatra` froze.** L1's 5th
   freeze this drive; 11 assets remain campaign-wide (2 more L1, `bo_sudarshana`, 6 `ka_*`). L2/L3
   still zero movement, no reply on #1713. Fleet DIRTY: same 2 known stale native PRs. Own-PR
