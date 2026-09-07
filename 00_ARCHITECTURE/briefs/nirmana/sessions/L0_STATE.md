@@ -1265,3 +1265,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   `ga_strength` and `ga_ayurdaya` (L1) froze — campaign progress, not L0-actionable. Nothing
   eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Adjudication list and #1713 tail unchanged. Nothing eligible.
