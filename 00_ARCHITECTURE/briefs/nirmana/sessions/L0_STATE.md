@@ -758,3 +758,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** Force-deploy `34087944016` progressing (`Build & Deploy
   Pipeline Job Image` genuinely `in_progress` — the job that matters for `bg_cohort`), not done yet.
   #1713's only new activity is my own prior post. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** Force-deploy `34087944016` still `in_progress`, no change.
+  Nothing eligible.
