@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.40-DRAFT"
+version: "0.41-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -30,7 +30,7 @@ canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, correc
 — 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
 cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
 not stale names; no list edit needed for them. Being closed incrementally
-cycle 149 onward (53/57 landed across 11 slices, PR #2202 + #2242 + #2244 + #2247 + #2250; ~4 remaining, all single-writer but deliberately deferred pending their own tool-placement scoping — ZERO genuinely-ambiguous-ownership categories remain, that entire framing turned out to be a false alarm on closer inspection (see §5); either
+cycle 149 onward (55/57 landed across 12 slices, PR #2202 + #2242 + #2244 + #2247 + #2250 + #2252; ~2 remaining — just `tara_bala` bare (single-writer, no obvious existing-tool home) plus the total-57 count's own inherent "~" imprecision — ZERO genuinely-ambiguous-ownership categories remain, that entire framing turned out to be a false alarm on closer inspection (see §5); either
 ambiguous multi-writer ownership or a distinct deeper defect class — see §5 for the current
 breakdown, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
@@ -272,7 +272,7 @@ silently equal to it.
 | F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
 | F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
 | F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
-| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 53/57 closed across 11 slices (PR #2202, #2242, #2244, #2247, #2250), ~4 remaining (`sandhi_flag`, `sun_derived_upagraha`, `tara_bala` bare — all confirmed single-writer, deliberately deferred pending their own tool-placement scoping; ZERO genuinely-ambiguous-multi-writer categories remain — that entire framing was itself a false alarm, corrected cycle 183); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878); `get_structural_signals.ts` CLOSED 15 more cycle 181 (PR #2244), the first genuinely new-endpoint slice, plus a `karaka_web_per_varga` false-positive correction in the cycle-156 sweep's own claim; `get_sensitive_points.ts` CLOSED 2 more cycle 182 (PR #2247) — cycle 181's own "ambiguous ownership" claim was itself wrong for these 2 (single-writer, just an oversight); `get_structural_signals.ts` CLOSED 3 more cycle 183 (PR #2250) — cycle 182's own "4 genuinely ambiguous" claim was wrong for 3 of the 4 (same false-ambiguity shape, third time found) | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 55/57 closed across 12 slices (PR #2202, #2242, #2244, #2247, #2250, #2252), ~2 remaining — just `tara_bala` bare (confirmed single-writer, no obvious existing-tool home; ZERO genuinely-ambiguous-multi-writer categories remain — that entire framing was itself a false alarm, corrected cycle 183); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878); `get_structural_signals.ts` CLOSED 15 more cycle 181 (PR #2244), the first genuinely new-endpoint slice, plus a `karaka_web_per_varga` false-positive correction in the cycle-156 sweep's own claim; `get_sensitive_points.ts` CLOSED 2 more cycle 182 (PR #2247) — cycle 181's own "ambiguous ownership" claim was itself wrong for these 2 (single-writer, just an oversight); `get_structural_signals.ts` CLOSED 3 more cycle 183 (PR #2250) — cycle 182's own "4 genuinely ambiguous" claim was wrong for 3 of the 4 (same false-ambiguity shape, third time found); `get_positions.ts` CLOSED `sun_derived_upagraha`/`sandhi_flag` cycle 184 (PR #2252) — its own deliberately-deferred, higher-blast-radius careful pass, finally done | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
 
 **Honest count**: of 20 id-groups, **all 20 now have a specific, checkable citation in this
 report** — 14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles
@@ -637,12 +637,20 @@ awaits either a dedicated prep cycle or genuine W6 close.
   be genuinely ambiguous.** Every single one resolved to clean single ownership once checked
   occurrence-by-occurrence instead of by grouped grep hit count — the same false-ambiguity shape
   now found three separate times this campaign (`karaka_web_per_varga`; the `esoteric_point_*`
-  pair; this batch of 4). The remaining 3 — `sandhi_flag`, `sun_derived_upagraha`, bare
-  `tara_bala` (`ga_structural_writer.py`'s own `_build_nakshatra_relationship_rows`, distinct
-  from `ga_nakshatra_emitters.py`'s already-served `graha_tara_bala` sibling) — are ALL
-  single-writer but deliberately left open because none has an obvious existing-tool home the
-  way the esoteric-point pair or the 3 above did; each needs its own scoping decision, not a
-  rushed attachment to whichever tool happened to be open.
+  pair; this batch of 4). **`sandhi_flag`/`sun_derived_upagraha` CLOSED cycle 184, PR #2252**:
+  `get_positions.ts`'s own deliberately-deferred careful pass, finally done. `sun_derived_
+  upagraha` genuinely carries `house_d1` (confirmed live) so it joins the `include_upagrahas`
+  opt-in bundle alongside `upagraha_position`/`aprakasha_position` — it IS an upagraha
+  conceptually, and the existing `frame` re-basing facet applies to it the same way. `sandhi_
+  flag` has NO `house_d1` (a flag/reasons pair, not a position) and isn't an upagraha, so it's
+  categories-only opt-in, mirroring the existing `nakshatra_cross_ayanamsha` precedent exactly
+  — neither the `CASE` ordering clause nor the frame-rebasing logic needed any change (both
+  already generic enough). Only bare `tara_bala`
+  (`ga_structural_writer.py`'s own `_build_nakshatra_relationship_rows`, distinct from
+  `ga_nakshatra_emitters.py`'s already-served `graha_tara_bala` sibling) remains open — single-
+  writer, deliberately left open because it has no obvious existing-tool home the way every
+  other closed category did; needs its own scoping decision, not a rushed attachment to
+  whichever tool happened to be open.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -675,17 +683,19 @@ own "4 genuinely ambiguous" claim for 3 of the 4 (same false-ambiguity shape, th
 `sandhi_flag`'s apparent ambiguity resolved too — its second "writer" was an unrelated
 same-named `chart_dashas` COLUMN, real sole writer is `ga_positions_writer.py` — deliberately
 deferred to its own scoping pass, not folded in. **ZERO of the original "ambiguous multi-writer
-ownership" categories turned out to be genuinely ambiguous** once checked individually. 53/57
-now closed, ~4 remaining — `sandhi_flag`, `sun_derived_upagraha`, `tara_bala` bare, ALL
-single-writer but deliberately deferred pending their own tool-placement scoping (`sun_derived_
-upagraha`'s and `sandhi_flag`'s natural home is the higher-blast-radius `get_positions.ts`;
-`tara_bala` bare has no obvious existing-tool home at all), needing a scoping
+ownership" categories turned out to be genuinely ambiguous** once checked individually. Slice 12
+landed cycle 184, PR #2252 — `get_positions.ts`'s own deliberately-deferred, higher-blast-radius
+careful pass finally done: `sun_derived_upagraha` (confirmed live to carry `house_d1`, so it
+joins the `include_upagrahas` bundle and the `frame` re-basing facet applies to it) and
+`sandhi_flag` (no `house_d1`, categories-only opt-in like `nakshatra_cross_ayanamsha`) both
+closed. 55/57 now closed, ~2 remaining — just `tara_bala` bare (single-writer,
+`ga_structural_writer.py`, no obvious existing-tool home), needing a scoping
 pass, not a list-staleness gap or an ownership question; the "6 phantom
 categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
 rebuild, no edit needed
-#2113)** · **~4 remaining F-B32 categories, all single-writer, deliberately-deferred
-tool-placement scoping questions (§5 — updated cycle 183, distinct from F-B32's own
-list-repair scope)**
+#2113)** · **~2 remaining F-B32 categories (just `tara_bala` bare), single-writer,
+deliberately-deferred tool-placement scoping question (§5 — updated cycle 184, distinct from
+F-B32's own list-repair scope)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
 6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
 `ga_sade_sati` PR #2212, `ga_nakshatra` PR #2213, `ga_panchanga` PR #2216; `ga_sensitive`'s

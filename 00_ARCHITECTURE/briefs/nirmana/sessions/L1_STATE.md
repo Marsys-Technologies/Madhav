@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 183; **F-B32: `get_structural_signals.ts` closes 3 more mischaracterized categories (PR #2250) — `bhava_significance_link`/`net_argala_per_varga`/`panchadha_maitri` were "ambiguous multi-writer" only because the original grep counted mere name mentions, not real writes.** Re-checked each individually: every non-`ga_structural_writer.py` hit resolves to a read, a route descriptor, or a same-named helper feeding a different category — genuinely single-writer, added directly (15→18 categories). Separately resolved `sandhi_flag`'s apparent ambiguity too: its second "writer" is an unrelated same-named COLUMN on the `chart_dashas` TABLE, not a `chart_facts.fact_category` mention — the real sole writer is `ga_positions_writer.py` (already correctly in `natural_key_partition` via migration 876), deliberately deferred to its own `get_positions.ts` pass (higher blast radius). **PR hygiene caught and fixed a real DIRTY conflict on #2247** (rebase vs. #2244's merge, both touching `coverage_matrix.ts`'s F-B32 header comment) before starting new work. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 184; **F-B32: `get_positions.ts` finally gets its own deliberately-deferred careful pass (PR #2252), closing `sun_derived_upagraha`/`sandhi_flag` — the last two named F-B32 categories with a home in this asset.** `sun_derived_upagraha` genuinely carries `house_d1` (confirmed live) so it joins the `include_upagrahas` opt-in bundle and the existing `frame` re-basing facet applies to it exactly like `upagraha_position`; `sandhi_flag` has no `house_d1` (a flag/reasons pair, not a position) and isn't an upagraha, so it's categories-only opt-in, never bundled. No change to the CASE ordering clause or the frame-rebasing logic itself. New live integration test (3/3) proves the frame facet actually re-bases sun_derived_upagraha rows and confirms sandhi_flag is reachable but correctly excluded from the bundle. Broader retrieval-registry regression sweep (241 files, 2271 tests) run given this file's higher blast radius — 0 regressions. #2250/#2247 both confirmed genuinely queued mid-cycle; #2246/#2252 mid-CI, nothing DIRTY/RED. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3407,7 +3407,7 @@ none accepted yet (blocked on #1736).
 
 | asset_id | live / floor | proposed route | headline W1 finding |
 |---|---:|---|---|
-| ga_positions | 890 / 50 | rebuild_only | layer root; canary. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds) |
+| ga_positions | 890 / 50 | rebuild_only | layer root; canary. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds). **F-B32 fix (cycle 184, PR #2252)**: `sun_derived_upagraha` (`ga_sensitive_writer.py`-owned, joins `get_positions.ts`'s `include_upagrahas` bundle since it carries `house_d1` -- frame facet applies) and `sandhi_flag` (this asset's own `_build_chalit_rows`, already in `natural_key_partition` since migration 876 but never served, categories-only opt-in -- no `house_d1`, not an upagraha) both closed -- the deliberately-deferred, higher-blast-radius file finally gets its own careful pass |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract`. **The "15/16 categories entirely absent, 1 misrouted" F-B32/F-B33 follow-up FIXED (cycle 180, PR #2242, migration 878)** — investigation found the close report's own 3-category "docstring overclaim" characterization was itself wrong for 2/3: `nakshatra_lord_placement` is a genuine overclaim (zero writer emission, removed from docstring/const/`count_sql`), but `graha_degree_flags`/`nakshatra_exchange` are real writer-owned categories (migration 872 had already confirmed this) wrongly read as zero-live-rows build lag — added to `coverage_matrix.ts`. Separately found `nakshatra_cross_ayanamsha` was missing from `natural_key_partition` since migration 872 (that migration never checked `pipeline/orchestrator/writers/ga_nakshatra.py`, which emits it directly, 17 live rows) — added. True category count: 15, not 16. Verified: `tsc --noEmit` clean, integration test 3/3, 40/40 Python tests, zero blast radius (1-line digest delta, L0/L2-L5 untouched in layer pins) |
@@ -10324,3 +10324,52 @@ same-named-but-unrelated `chart_dashas` column, its real fix correctly scoped to
 hygiene -> next: confirm #2246/#2247/#2250 all reach `is:queued`; `sun_derived_upagraha`/bare
 `tara_bala` (both confirmed single-writer, no obvious tool home) and the `sandhi_flag`/
 `get_positions.ts` fix are the next candidates; keep re-checking #2113/#2180/#2224.
+
+## CYCLE 184 (C8 v2.3) — get_positions.ts's deliberately-deferred careful pass, finally done:
+## sun_derived_upagraha + sandhi_flag closed, F-B32's last named categories with a real home
+
+PR hygiene first: `is:queued` empty for L1-lane at cycle open; #2246/#2247/#2250 all mid-CI,
+nothing DIRTY/RED. Checked #2113/#2180/#2224 -- no new Conductor reply.
+
+**Unit of work.** With cycles 181-183 having explicitly and repeatedly deferred
+`sun_derived_upagraha`/`sandhi_flag` to "their own careful pass on get_positions.ts (frame-
+rebasing math, CR-50 discipline, a materially higher blast radius than the other F-B32
+slices)", this cycle did exactly that pass rather than deferring again.
+
+Investigated both categories' live row shapes first, before touching any code:
+`sun_derived_upagraha` (`ga_sensitive_writer.py`, 4 subjects -- KALA_SUN/MRITYU_SUN/
+YAMAGHANTAKA/ARTHA_PRAHARA) genuinely carries `house_d1`/`sign`/`nakshatra`/`pada` fact_keys --
+the SAME shape as `upagraha_position`. This settled the design question cleanly: it belongs in
+the `include_upagrahas` opt-in bundle (not a separate categories-only opt-in like
+`nakshatra_cross_ayanamsha`), since it IS conceptually an upagraha and the tool's existing
+`frame` re-basing facet (chandra/surya/arudha/karakamsha) genuinely applies to its `house_d1`
+rows the same way it already does for `upagraha_position`. `sandhi_flag`
+(`ga_positions_writer.py`'s own `_build_chalit_rows`, subjects = the 9 standard graha codes) has
+ONLY `sandhi_flag`/`sandhi_reasons` fact_keys -- no `house_d1` at all, confirming it's a flag,
+not a position, and doesn't belong in the upagraha bundle; added categories-only, mirroring the
+existing `nakshatra_cross_ayanamsha` precedent exactly.
+
+Deliberately did NOT touch the `CASE fact_category ... ELSE 3` ordering clause or the
+frame-rebasing logic itself -- both new categories fall correctly into the existing `ELSE 3`
+bucket and the frame-rebasing code already operates generically on any `house_d1` row
+regardless of category, so no new branch was needed for either.
+
+Given this file's own explicitly-flagged higher blast radius, ran a broader verification pass
+than the last several F-B32 slices: beyond `tsc`/pinning-gate/the file's own test suite, ran the
+full retrieval-registry regression sweep (241 test files, 2271 tests) -- 0 regressions. Updated
+the existing mocked unit test (`get_positions.test.ts`) for the new `include_upagrahas` bundle
+contents and added a `sandhi_flag`-reachable case; wrote a new live integration test (3 cases)
+proving `sun_derived_upagraha` rows are genuinely reachable with all 4 expected subjects, the
+`frame` facet actually re-bases their `house_d1` rows (not just pass through), and `sandhi_flag`
+is reachable via explicit `categories` but correctly absent when `include_upagrahas: true`.
+
+Hit the same recurring line-pin drift as every prior F-B32 slice (docstring/schema additions
+shifted the file's own allowlisted SELECT from line 157 to 184) -- fixed the pointer, verified
+`check_fact_category_pinning.py` clean before pushing.
+
+CYCLE 184 L1: F-B32 -- `get_positions.ts` closes `sun_derived_upagraha`/`sandhi_flag` (PR
+#2252), the deliberately-deferred higher-blast-radius pass finally done, verified with a
+broader-than-usual regression sweep given the file's own flagged sensitivity -> next: confirm
+#2246/#2252 reach `is:queued`; bare `tara_bala` (`ga_structural_writer.py`, no obvious
+existing-tool home) is the last remaining named F-B32 category; keep re-checking
+#2113/#2180/#2224.
