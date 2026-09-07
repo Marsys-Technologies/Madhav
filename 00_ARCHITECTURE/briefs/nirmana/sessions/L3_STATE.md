@@ -497,6 +497,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~473:0xZ — L3-W4 — PR hygiene: `#2322` confirmed
+  MERGED (the queue congestion pattern self-resolved once more, at
+  ~9min this time). Rebased 22 local commits onto fresh
+  `origin/main`, 7 empty-theirs conflicts auto-resolved cleanly,
+  zero markers left. Renamed to `codex/nirmana-l3-heartbeat-idle-32`,
+  pushed, opened `#2330`, auto-merge armed (`BLOCKED`, own checks
+  pending — normal). No new E-gate opening this cycle. IDLE-OK. —
+  blocked on: `#2330`'s own checks completing; next action: same
+  monitoring cadence.
+
 - `2026-09-07T~472:0xZ — L3-W4 — PR hygiene: `#2322` still position
   1, `AWAITING_CHECKS` — ~8.6min since enqueued, own `merge_group`
   run still not visible. Approaching but not yet past the
