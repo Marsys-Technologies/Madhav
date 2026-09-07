@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:56:14Z` — cycle 998: **IDLE-OK, Δfrozen +0.** L1's newly-checked frontier
+  (`ga_condition`/`ga_structural`/`ga_tajaka`) confirmed same 3, still blocked on #2300 (native-
+  gated). L2/L3 unchanged. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (12).
 - `2026-09-07T14:53:43Z` — cycle 997: **MILESTONE — `ga_transit_anchors` FROZE. Δfrozen +1
   (56→57).** Closes out the entire chain from #2224's original discovery through #2307's fix
   through #2317's dispatch-time echo — a genuine multi-hour, multi-ruling saga now fully
