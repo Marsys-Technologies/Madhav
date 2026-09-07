@@ -21,13 +21,32 @@
  * sensitive_point_yogi (get_sensitive_degrees.ts) closed 2026-09-07 slice 4 (5 categories);
  * `ayurdaya` (get_ayurdaya.ts, unconditionally served) closed 2026-09-07 slice 5; `bhava_cusps`
  * (get_kp_cusps.ts, unconditional) + `house_bhava_bala_ratio`/`house_chalit` (get_bhava_bala.ts,
- * opt-in) closed 2026-09-07 slice 6 (3 categories); the remaining ~27 are still open. Note:
- * `graha_yuddha_per_varga` (17 live rows) was investigated and found
- * genuinely UNREACHABLE by any tool — get_graha_yuddha.ts hardcodes `fact_category =
- * 'graha_yuddha'` (a bare, zero-row-for-this-chart category) with no override mechanism, so the
- * per-varga variant cannot be opted into like every other per_varga category in this file. This
- * is a deeper defect than a stale list entry (a real computed category with no path to any
- * tool at all) and is recorded as its own finding, not force-mapped here.
+ * opt-in) closed 2026-09-07 slice 6 (3 categories); `dispositor_tree` (get_dispositors.ts,
+ * opt-in) closed 2026-09-07 slice 7.
+ *
+ * `graha_yuddha_per_varga` (17 live rows) was investigated and found genuinely UNREACHABLE by
+ * any tool — get_graha_yuddha.ts hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row-
+ * for-this-chart category) with no override mechanism, so the per-varga variant cannot be
+ * opted into like every other per_varga category in this file. This is a deeper defect than a
+ * stale list entry (a real computed category with no path to any tool at all).
+ *
+ * Slice 7's sweep (cycle 156) checked every remaining category by name against every
+ * L1_ganita/*.ts file: of ~26 remaining after slice 7, `dispositor_tree` was the ONLY one with
+ * a real serving tool. The other ~25 — `aspect_received_by_special_point`,
+ * `bhava_significance_link`, `chart_center_of_gravity`, `chart_cluster`,
+ * `conjunction_special_point`, `contradiction_pair`, `esoteric_point_sphuta_fertility`,
+ * `esoteric_point_yogi_system`, `graha_centrality`, `kendradhipati_dosha`,
+ * `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`, `nakshatra_lord_relationship`,
+ * `net_argala_per_varga`, `nway_config_per_varga`, `panchadha_maitri`, `sambandha_grade`,
+ * `sandhi_flag`, `significator_path`, `sun_derived_upagraha`, `tara_bala` (bare, distinct from
+ * the already-covered `graha_tara_bala`), `virupa_drishti`, plus `graha_yuddha_per_varga` above
+ * and `karaka_web_per_varga` (real but not yet built for this chart, a separate concern) — have
+ * ZERO hits anywhere in `L1_ganita/*.ts` (verified by grep, not assumed from naming). This
+ * reframes what remains: F-B32 is no longer mostly "a stale list needs new entries" — it is
+ * mostly "these categories have no serving tool at all," the same defect class as
+ * `graha_yuddha_per_varga` and, at the asset level, F-B18/F-B19's original `ga_nakshatra`
+ * finding. Fixing THAT is new-tool/new-endpoint work, out of scope for this hand-maintained
+ * list's own repair. See `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full account.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -76,6 +95,7 @@ export const CHART_FACTS_CATEGORIES = [
   'cusp_kp_lords',
   'dhaiya_period',
   'dispositor_chain_per_varga',
+  'dispositor_tree',
   'dosha_fires',
   'dosha_label',
   'eclipse_proximity_natal',
@@ -355,6 +375,10 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   composite_dispositor_strength:['marsys://tool/L1/get_dispositors'],
   parivartana_per_varga:      ['marsys://tool/L1/get_dispositors'],
   kala_sarpa_per_varga:       ['marsys://tool/L1/get_dispositors'],
+  // F-B32 (2026-09-07, slice 7/N): opt-in only, same "fact_category = ANY($2)" doctrine as
+  // every prior opt-in slice (get_dispositors.ts:66) — not in the tool's own default
+  // DISP_CATEGORIES, but the query is fully data-driven. 1450 live rows (canonical chart).
+  dispositor_tree:            ['marsys://tool/L1/get_dispositors'],
 
   // ── Sade Sati + Shani periods ─────────────────────────────────────────────
   sade_sati_cycle:                  ['marsys://tool/L1/get_sade_sati'],
