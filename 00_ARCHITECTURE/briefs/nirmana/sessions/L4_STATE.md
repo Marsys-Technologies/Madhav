@@ -9436,3 +9436,188 @@ adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
 CYCLE 529 L4: IDLE-OK (verified: #2176 CI still legitimately in progress, not yet queued;
 E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications) → next: verify
 #2176 is:queued, then resume routine E-gate re-checks.
+
+`2026-09-07T~03:30Z` — L4 — **CYCLE 530 (v2.3) — IDLE-OK + self-correction: withholding push.**
+Noticed PR #2176's CI run ID changed cycle-to-cycle (34061834652 → 34061946847) — each of my
+own cycle-528/529 heartbeat pushes to `codex/nirmana-l4-heartbeat-v2` restarted its pending
+checks (DB Integration, Governance Gates, TypeScript, Unit Tests), risking the exact
+livelock this contract's Step 1 exists to prevent (a PR that never finishes CI because its
+own branch keeps moving). **Fix: this and future cycles' entries are committed locally but
+NOT pushed to `codex/nirmana-l4-heartbeat-v2` until #2176 actually merges** — once merged,
+the next heartbeat branch starts fresh off the new main tip and these queued local commits
+get folded in then. E-gate re-checked live, unchanged — canary `ph_nimitta` still at 31.
+
+**PR hygiene:** #2176 CLEAN/mergeable/auto-merge-armed, CI running undisturbed this cycle
+(no push); not yet `is:queued`. No DIRTY/RED action needed.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `394b379d8`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 530 L4: IDLE-OK (verified: #2176 CI running, deliberately left undisturbed this cycle
+to let it finish; E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications)
+→ next: check #2176 is:queued/merged before pushing anything new to its branch.
+
+`2026-09-07T~03:33Z` — L4 — **CYCLE 531 (v2.3) — IDLE-OK. Confirmed the withhold-push fix
+worked: PR #2176's CI run ID unchanged from last cycle (34061946847), now down to 2 pending
+checks (Unit Tests, Governance Gates) from 5 — genuinely converging, not restarted. Still
+committing locally, not pushing, until it lands. E-gate re-checked live, unchanged — canary
+`ph_nimitta` still at 31.**
+
+**PR hygiene:** #2176 CLEAN/mergeable/auto-merge-armed, CI converging undisturbed; not yet
+`is:queued`. No DIRTY/RED action needed.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `394b379d8`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 531 L4: IDLE-OK (verified: #2176 CI converging undisturbed, down to 2 pending checks;
+E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications) → next: check
+#2176 is:queued/merged before pushing anything new to its branch.
+
+`2026-09-07T~03:36Z` — L4 — **CYCLE 532 (v2.3) — IDLE-OK. PR #2176's CI still converging
+undisturbed (same run 34061946847), now down to 1 pending check (Governance Gates). Still
+withholding push. E-gate re-checked live, unchanged — canary `ph_nimitta` still at 31.**
+
+**PR hygiene:** #2176 CLEAN/mergeable/auto-merge-armed, one check away from green; not yet
+`is:queued`. No DIRTY/RED action needed.
+
+**Priorities 1-4:** `main` advanced to `9d9d894` (L1: state cycle 130 — #2122 verified
+closed live, #2171) — L1 state housekeeping, not L4-relevant. No new adjudications name L4
+(count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 532 L4: IDLE-OK (verified: #2176 CI one check from green, still undisturbed; E-gate
+genuinely re-checked, unchanged; no new L4-relevant adjudications) → next: check #2176
+is:queued/merged before pushing anything new to its branch.
+
+`2026-09-07T~03:39Z` — L4 — **CYCLE 533 (v2.3) — IDLE-OK. PR #2176 still on the same
+Governance Gates check (~9 real-clock minutes elapsed, started 21:44:19Z per the job API —
+plausible for a multi-part gate covering drift/schema/edge/native-literal/py-sidecar, not
+obviously stuck). Still withholding push. E-gate re-checked live, unchanged — canary
+`ph_nimitta` still at 31.**
+
+**PR hygiene:** #2176 CLEAN/mergeable/auto-merge-armed; one long-running check outstanding,
+not yet `is:queued`. No DIRTY/RED action needed — nothing to fix, just waiting.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `9d9d894`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 533 L4: IDLE-OK (verified: #2176's one remaining check genuinely still running, not
+stuck; E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications) → next:
+check #2176 is:queued/merged before pushing anything new to its branch.
+
+`2026-09-07T~03:42Z` — L4 — **CYCLE 534 (v2.3) — #2176 now `is:queued` (CI finished green,
+mergeStateStatus CLEAN). PR hygiene fully clean.** E-gate re-checked live, unchanged — canary
+`ph_nimitta` still at 31. Pushing this cycle's entry plus the cycles-530-533 backlog now that
+the branch won't disturb an in-flight CI run (queue re-validates the queued SHA, not the
+branch tip continuously).
+
+**PR hygiene:** #2176 is:queued — confirmed via search, not just autoMergeRequest. Nothing
+further to do. **Correction:** attempted to push this entry to `codex/nirmana-l4-heartbeat-v2`
+and GitHub rejected it — "protected branch hook declined... queued for merging cannot be
+updated." Confirms the branch really is in the merge queue (further evidence beyond the
+`is:queued` search) and confirms withholding pushes to a queued branch is the correct
+discipline, not just a CI-restart precaution. This entry stays local-committed,
+NOT pushed, until #2176 merges.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `9d9d894`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 534 L4: PR hygiene — #2176 confirmed is:queued (verified via search AND a rejected push);
+E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications → next: verify #2176
+merges cleanly, then start a new heartbeat branch off the merged tip.
+
+`2026-09-07T~03:45Z` — L4 — **CYCLE 535 (v2.3) — IDLE-OK. #2176 still queued, not yet
+merged (mergeStateStatus UNKNOWN while queued — expected). `main` advanced with `ka_muhurta_seva`
+FROZEN (L3, #2174) — checked whether this moved L4's canary; E-gate re-run live shows NO
+change (canary `ph_nimitta` still at 31), so that asset is not in L4's unfrozen-ancestor set
+(or the freeze hasn't propagated to campaign_events yet — will re-check next cycle).**
+
+**PR hygiene:** #2176 still in the merge queue; nothing to fix, cannot push to it while
+queued (confirmed last cycle). This entry stays local-committed only.
+
+**Priorities 1-4:** no new adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD`
+file present.
+
+CYCLE 535 L4: IDLE-OK (verified: #2176 still queued, not yet merged; E-gate genuinely
+re-checked after an L3 freeze event, unchanged; no new L4-relevant adjudications) → next:
+verify #2176 merges, then start a fresh heartbeat branch off the merged tip.
+
+`2026-09-07T~03:48Z` — L4 — **CYCLE 536 (v2.3) — IDLE-OK. #2176 still queued, not yet
+merged. E-gate re-checked live, unchanged — canary `ph_nimitta` still at 31.**
+
+**PR hygiene:** #2176 still in the merge queue; cannot push while queued. This entry stays
+local-committed only.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `cbd87d2`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 536 L4: IDLE-OK (verified: #2176 still queued; E-gate genuinely re-checked, unchanged;
+no new L4-relevant adjudications) → next: verify #2176 merges, then start a fresh heartbeat
+branch off the merged tip.
+
+`2026-09-07T~03:51Z` — L4 — **CYCLE 537 (v2.3) — IDLE-OK. #2176 confirmed via GraphQL
+`mergeQueueEntry`: position 1, state `AWAITING_CHECKS`, enqueued 21:55:48Z (~8 real-clock
+min elapsed) — normal merge-queue re-validation, not stuck. E-gate re-checked live,
+unchanged — canary `ph_nimitta` still at 31.**
+
+**PR hygiene:** #2176 still queued, position 1; cannot push while queued. This entry stays
+local-committed only.
+
+**Priorities 1-4:** no new `main` commits relevant to L4 (still `cbd87d2`). No new
+adjudications name L4 (count unchanged at 19). No `NIRMANA_HOLD` file present.
+
+CYCLE 537 L4: IDLE-OK (verified: #2176 queue position 1, AWAITING_CHECKS, ~8min elapsed —
+normal; E-gate genuinely re-checked, unchanged; no new L4-relevant adjudications) → next:
+verify #2176 merges, then start a fresh heartbeat branch off the merged tip.
+
+--
+
+`2026-09-07T~06:50Z` — L4 — **CYCLE 538 (v2.3) — #2176 MERGED (fd06903, 2026-09-06T22:08Z);
+new heartbeat discipline adopted: NEVER create/commit a `*-heartbeat*` branch. The 12 local
+commits on `codex/nirmana-l4-heartbeat-v2` (cycles ~530–537) were cut off by the merge-queue
+push rejection and will NOT be pushed as a heartbeat PR — their state content rides this
+file's next REAL work PR instead. Cycle 537's "next: fresh heartbeat branch" note is
+superseded by this directive (decide-and-log). E-gate re-checked live in ONE query: all 9
+assets `BLOCKED-ANCESTORS`, canary `ph_nimitta` unchanged at 31. C8.5 prep confirmed
+exhausted on main (`L4_W5_VERIFICATION_v1_0.md` covers all 9 ph_* assets;
+`L4_W6_CLOSE_REPORT_v1_0.md` scaffold present). Idling quietly per backoff protocol.**
+
+**PR hygiene:** zero own L4 PRs open (#2176 merged; merge queue empty) — trivially clean.
+
+**Priorities 1-4:** `main` advanced to `d935a7a97` (L1 ga_nakshatra fix #2242) — not
+L4-relevant. No `NIRMANA_HOLD` file present. This entry stays local-UNCOMMITTED per the new
+heartbeat discipline.
+
+CYCLE 538 L4: IDLE-OK (verified: #2176 merged fd06903; queue empty; E-gate one-query
+re-check unchanged, canary 31; prep exhausted on main) → next: quiet idle; re-check E-gate
+next nudge; state rides next real work PR.
+
+--
+
+`2026-09-07T~07:05Z` — L4 — **CYCLE 539 (v2.3) — C8.5 PREP COMPLETED FOR REAL: the W5
+cross-asset scripted half now exists. Supervisor directive re-examined the "prep exhausted"
+claim from cycle 538 and found it FALSE in one specific place: the v1.0 W5 runbook's own
+"Not yet covered: cross-asset consistency" section, plus the L5-precedent gap (L5 ships an
+executable `l5_w5_mechanical_checks.sql`; L4 had only markdown). Authored
+`l4_scripts/l4_w5_mechanical_checks.sql` — 10 read-only checks in the L5 one-row-per-check
+format: X1–X6 cross-asset same-chart/resolution checks no per-asset `integrity_check_sql`
+can express (X1 closes the runbook's flagged `ph_pratikara.linked_anchor_id` gap, 1,277
+links green; X4 covers `overlapping_obstruction_id`, which NO detector touched, 60 refs
+green; X3 corrects v1.0's "already covered" claim — clause 4 proves existence, not chart
+identity), and W1–W4 pre-writing the four migration-681-withheld invariants. RUN live
+against pre-rebuild data: 7 PASS (3 vacuous, self-identified), 3 EXPECTED-RED each on an
+already-code-fixed defect (#1834 load_bearing@win_margin=0; −0.2000 confidence band;
+#1788 tiling — the check independently measured EXACTLY 250 missing pairs, reproducing the
+writer's own recorded defect figure). Runbook bumped 1.0→1.1 in place; W6 scaffold §5.4
+now points at the pre-staged instruments. Shipped as a real PR off origin/main on
+non-heartbeat branch `codex/nirmana-l4-w5-mechanical-checks`; the 9 accumulated local
+heartbeat entries (cycles 530–538) ride this PR per the new heartbeat discipline.**
+
+**PR hygiene:** clean at cycle open (zero own L4 PRs; queue empty of mine). This PR (#2259)
+opened, auto-merge armed, all completed required checks passing, one pending — NOT yet
+`is:queued` at cycle close (the contract's own rule: arming is not queueing). Next cycle
+verifies actual queue entry/merge; if CLEAN-but-unqueued then, re-arm and re-verify.
+
+**Priorities 1-4:** main at `fd24ffd5b` (L1 W3 slices, L5 recovery — not L4-relevant). No
+`NIRMANA_HOLD`. C8.5 prep is NOW genuinely exhausted: per-asset batch runner (runbook
+v1.1) + cross-asset script + W6 scaffold all on their way to main; subsequent cycles idle
+quietly on one E-gate query until the gate opens.

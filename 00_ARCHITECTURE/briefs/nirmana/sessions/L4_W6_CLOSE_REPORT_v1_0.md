@@ -203,7 +203,13 @@ this draft).
    C6. Not L4's to unblock.
 4. **`ph_pratikara` F-2 rerun** and the layer's whole W4 EXECUTE wave — blocked on the E-gate;
    `ph_nimitta` is the derived canary (D-L4-01) and will open the layer's build wave once its
-   46-ancestor closure completes campaign-wide.
+   46-ancestor closure completes campaign-wide. W5's instruments are pre-staged for that day
+   (2026-09-07): the per-asset batch runner lives in `L4_W5_VERIFICATION_v1_0.md` (v1.1) and
+   the cross-asset scripted half in `l4_scripts/l4_w5_mechanical_checks.sql` — 10 checks,
+   already run read-only against pre-rebuild data (7 PASS / 3 EXPECTED-RED on known
+   already-code-fixed defects, including an independent reproduction of #1788's exact
+   250-missing-row figure). The W5 cycle re-runs both against the fresh build and promotes
+   the three expected-red checks into `asset_registry` invariants once they go green.
 5. **Cross-layer handoffs already filed** (not re-listed here in full; see `L4_STATE.md` §"Handed
    across to other sessions") — L2's `bo_laksana` non-deterministic `signal_id`, L2's
    `bodha_contradictions` orphan-registry gap, L3's `kala_convergence`/`kala_bhavishya`

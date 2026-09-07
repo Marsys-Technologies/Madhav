@@ -1,8 +1,14 @@
 ---
-version: 1.0
+version: 1.1
 status: DRAFT
 owner: L4 (Phala)
 depends_on: migration 681 (C12 registry contracts), migration 680 (D-CND-04 ph_nimitta)
+changelog: >
+  1.1 (2026-09-07): cross-asset gap closed as prep — the scripted half now exists at
+  l4_scripts/l4_w5_mechanical_checks.sql (10 checks, authored AND run read-only against
+  live data: 7 PASS of which 3 vacuous-and-say-so, 3 EXPECTED-RED each on an already-fixed
+  defect awaiting W4 rebuild). §"Known gaps" and §"Not yet covered" annotated in place.
+  1.0 (2026-09-06): initial pre-written runbook (C8.5 prep).
 ---
 
 # L4 Phala — W5 VERIFY runbook
@@ -99,15 +105,41 @@ installed. That gap (fix shipped, detector not added) is itself a C12/§N.8 viol
 open past freeze — a fixed-but-undetected defect reads identically to a never-fixed one to any
 future session reading only `asset_registry`.
 
-## Not yet covered: cross-asset (inter-`ph_*`) consistency
+**v1.1 update (2026-09-07):** all four withheld invariants are now PRE-WRITTEN as executable
+checks W1–W4 in `l4_scripts/l4_w5_mechanical_checks.sql`, and were RUN read-only against live
+pre-rebuild data. Verified statuses: (1) `ph_pramana` life_event_miss — now VACUOUS (zero miss
+rows exist post-migration-684/#1842, vs. the 12/12 failures W1 measured; the check earns its
+green only when a W4 rebuild produces miss rows again); (2) `ph_rectification` load_bearing —
+RED as expected (`judgment_flags->>'load_bearing'` is where the flag lives, not a column);
+(3) confidence band — RED as expected (−0.2000 on both charts); (4) `ph_sankrama` tiling —
+RED with **exactly 250 missing pairs measured, independently reproducing the writer's own
+recorded defect figure**. Item 2's earlier note ("verify this invariant is added to
+`asset_registry`") is resolved: it was NOT added to `asset_registry` (correctly — it fails on
+current data; installing it would ship a knowingly-red gate), so it lives in the script until
+the rebuild lands, after which the W5 cycle should promote W2–W4 into migration-installed
+`integrity_check_sql` clauses.
 
-The 9 detectors above are each single-asset. A true W5 pass should also confirm, once a build
-completes:
-- `ph_pratikara.linked_anchor_id` (where non-NULL) resolves into `phala_anchors` of the same
-  chart — this is NOT yet in migration 681's detector for `ph_pratikara` (that detector checks
-  `kala_obstruction` tiling, not the anchor link). Flagged, not fixed, here.
-- `ph_phaladesa.top_anchor_id` cross-checks are already covered (migration 681, ph_phaladesa
-  clause 4).
+## Cross-asset (inter-`ph_*`) consistency — COVERED as of v1.1 (was: "Not yet covered")
 
-This gap is handed forward to whichever cycle actually runs W5, not fixed now — no live build
-exists yet to verify a fix against (§N.8: don't assert a detector works without running it).
+The 9 detectors above are each single-asset. The cross-asset scripted half now exists:
+**`l4_scripts/l4_w5_mechanical_checks.sql`** (L5-precedent format: one row per check —
+`check_id, passed, detail`; read-only; vacuous greens self-identify). It was authored AND run
+against live data (run status recorded in its own header), which satisfies the §N.8 concern
+that deferred this section at v1.0 — the checks are demonstrated to execute and to fail on the
+real corruption that exists (3 expected-red on known, already-code-fixed defects).
+
+Coverage beyond the original two bullets, from a full column-by-column sweep of what no
+per-asset contract expresses:
+- `ph_pratikara.linked_anchor_id` same-chart (X1 — the v1.0 flagged gap; 1,277 links green)
+- `ph_sankrama.source_anchor_id` same-chart (X2), `ph_phaladesa.top_anchor_id` same-chart
+  (X3 — v1.0 called this "already covered" by clause 4, but clause 4 proves existence, not
+  chart identity; corrected)
+- `ph_muhurta.overlapping_obstruction_id` → `kala_obstruction` resolution + same-chart (X4;
+  60 refs green — no detector anywhere touched this column)
+- `ph_pramana.linked_sodhana_id` (X5) and `ph_sankrama.mitigation_ref` (X6) — vacuous today,
+  armed for post-rebuild data
+- the four withheld invariants as W1–W4 (see §"Known gaps" v1.1 update above)
+
+What remains genuinely for the W5 cycle itself: re-run this script against the FRESH build's
+data (the run recorded here proves the checks work; it says nothing about data that does not
+exist yet), plus the fresh-context judgment verification the plan pairs with the scripted half.
