@@ -31,22 +31,35 @@
  * stale list entry (a real computed category with no path to any tool at all).
  *
  * Slice 7's sweep (cycle 156) checked every remaining category by name against every
- * L1_ganita/*.ts file: of ~26 remaining after slice 7, `dispositor_tree` was the ONLY one with
- * a real serving tool. The other ~25 — `aspect_received_by_special_point`,
- * `bhava_significance_link`, `chart_center_of_gravity`, `chart_cluster`,
- * `conjunction_special_point`, `contradiction_pair`, `esoteric_point_sphuta_fertility`,
- * `esoteric_point_yogi_system`, `graha_centrality`, `kendradhipati_dosha`,
- * `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`, `nakshatra_lord_relationship`,
- * `net_argala_per_varga`, `nway_config_per_varga`, `panchadha_maitri`, `sambandha_grade`,
- * `sandhi_flag`, `significator_path`, `sun_derived_upagraha`, `tara_bala` (bare, distinct from
- * the already-covered `graha_tara_bala`), `virupa_drishti`, plus `graha_yuddha_per_varga` above
- * and `karaka_web_per_varga` (real but not yet built for this chart, a separate concern) — have
+ * L1_ganita/*.ts file: of ~26 remaining after slice 7, `dispositor_tree` was the ONLY one
+ * confirmed with a real serving tool at the time — **that sweep's own claim about
+ * `karaka_web_per_varga` ("real but not yet built for this chart, a separate concern") was
+ * itself wrong, corrected here (2026-09-07, slice 8): it was already covered above via
+ * get_karakas.ts, a pre-existing W2 structural-close SC-5 entry the sweep missed.** The
+ * remaining ~25 — `aspect_received_by_special_point`, `bhava_significance_link`,
+ * `chart_center_of_gravity`, `chart_cluster`, `conjunction_special_point`, `contradiction_pair`,
+ * `esoteric_point_sphuta_fertility`, `esoteric_point_yogi_system`, `graha_centrality`,
+ * `kendradhipati_dosha`, `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`,
+ * `nakshatra_lord_relationship`, `net_argala_per_varga`, `nway_config_per_varga`,
+ * `panchadha_maitri`, `sambandha_grade`, `sandhi_flag`, `significator_path`,
+ * `sun_derived_upagraha`, `tara_bala` (bare, distinct from the already-covered
+ * `graha_tara_bala`), `virupa_drishti`, plus `graha_yuddha_per_varga` above — genuinely had
  * ZERO hits anywhere in `L1_ganita/*.ts` (verified by grep, not assumed from naming). This
- * reframes what remains: F-B32 is no longer mostly "a stale list needs new entries" — it is
+ * reframed what remains: F-B32 is no longer mostly "a stale list needs new entries" — it is
  * mostly "these categories have no serving tool at all," the same defect class as
  * `graha_yuddha_per_varga` and, at the asset level, F-B18/F-B19's original `ga_nakshatra`
- * finding. Fixing THAT is new-tool/new-endpoint work, out of scope for this hand-maintained
- * list's own repair. See `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full account.
+ * finding.
+ *
+ * **Slice 8 (2026-09-07): `get_structural_signals.ts` closes 15 of these 25** — every category
+ * confirmed single-writer-owned by `ga_structural_writer.py` alone (no competing L0/L1/L3
+ * writer for the same category). The remaining ~10 (`bhava_significance_link`,
+ * `esoteric_point_sphuta_fertility`, `esoteric_point_yogi_system`, `net_argala_per_varga`,
+ * `panchadha_maitri`, `sandhi_flag`, `sun_derived_upagraha`, `tara_bala`) are left open: each is
+ * written by MORE than one L0/L1/L3 writer (e.g. `panchadha_maitri` by both
+ * `ga_condition_writer.py` and `ga_structural_writer.py`; `sandhi_flag` by `ga_dashas_writer.py`
+ * AND `ga_positions_writer.py`), which needs a dedicated ownership-disambiguation pass before a
+ * fix here — not something to guess at by attaching them to whichever tool this slice happened
+ * to be building. See `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full account.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -75,6 +88,7 @@ export const CHART_FACTS_CATEGORIES = [
   'aspect_parashari_given',
   'aspect_parashari_per_varga',
   'aspect_parashari_received',
+  'aspect_received_by_special_point',
   'aspect_tajik',
   'ayurdaya',
   'bhadra_flag',
@@ -89,9 +103,13 @@ export const CHART_FACTS_CATEGORIES = [
   'bhava_cusps',
   'bhrigu_nadi_point',
   'chandra_bala_natal_baseline',
+  'chart_center_of_gravity',
+  'chart_cluster',
   'composite_dispositor_strength',
   'conjunction_per_varga',
+  'conjunction_special_point',
   'conjunction_within_orb',
+  'contradiction_pair',
   'cusp_kp_lords',
   'dhaiya_period',
   'dispositor_chain_per_varga',
@@ -123,6 +141,7 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_avastha_lifetime_exposure_summary',
   'graha_avastha_sayanadi',
   'graha_avastha_sayanadi_per_varga',
+  'graha_centrality',
   'graha_cheshta_bala_per_varga',
   'graha_composite_state_classification',
   'graha_degree_flags',
@@ -159,6 +178,7 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_vimsopaka_shadvarga',
   'graha_vimsopaka_shodasavarga',
   'graha_yoga_karaka_flag',
+  'graha_yuddha_per_varga',
   'house_bhava_bala_ratio',
   'house_bhava_bala_subscore',
   'house_bhava_bala_total',
@@ -174,6 +194,7 @@ export const CHART_FACTS_CATEGORIES = [
   'karaka_web_per_varga',
   'karakamsa_position',
   'karakatva_strength_per_significance',
+  'kendradhipati_dosha',
   'kp_cuspal_significators',
   'kp_house_significators',
   'kp_planet_significations',
@@ -183,13 +204,17 @@ export const CHART_FACTS_CATEGORIES = [
   'lord_in_house_per_varga',
   'maharsi_specific_point',
   'midpoint',
+  'nakshatra_co_tenancy',
   'nakshatra_cogravity',
   'nakshatra_conjunction',
   'nakshatra_cross_ayanamsha',
   'nakshatra_dispositor',
+  'nakshatra_dispositor_chain',
   'nakshatra_exchange',
+  'nakshatra_lord_relationship',
   'nakshatra_pada_sensitive',
   'nakshatra_statistics',
+  'nway_config_per_varga',
   'panchaka_flag',
   'panchanga_abhijit_muhurta',
   'panchanga_agni_vasa',
@@ -235,10 +260,12 @@ export const CHART_FACTS_CATEGORIES = [
   'sade_sati_phase_quarter',
   'sade_sati_saturn_retrograde_subset',
   'saham_position',
+  'sambandha_grade',
   'saturn_derived_point',
   'sensitive_degree_check',
   'sensitive_point_gulika_mandi',
   'sensitive_point_yogi',
+  'significator_path',
   'special_lagna',
   'swamsa_position',
   'tajik_hadda_lord',
@@ -250,6 +277,7 @@ export const CHART_FACTS_CATEGORIES = [
   'vargottama_per_varga',
   'vimsopaka_bala_per_graha',
   'virodha_argala_natal_matrix',
+  'virupa_drishti',
   'vishakha_shani_period',
   'yoga_fires',
   'yoga_label',
@@ -574,6 +602,26 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
 
   // ── Eclipse / Misc flags ──────────────────────────────────────────────────
   eclipse_proximity_natal: ['marsys://tool/L1/get_eclipse_flags'],
+
+  // F-B32 (2026-09-07, slice 8/N): get_structural_signals.ts closes ga_structural's residual
+  // 15-category gap the cycle-156 sweep found genuinely unreachable by any tool (see the file
+  // header comment above). All 15 confirmed single-writer-owned by ga_structural_writer.py with
+  // non-trivial live rows for the canonical chart (1 to 5,220 rows each).
+  sambandha_grade:                   ['marsys://tool/L1/get_structural'],
+  virupa_drishti:                    ['marsys://tool/L1/get_structural'],
+  contradiction_pair:                ['marsys://tool/L1/get_structural'],
+  conjunction_special_point:         ['marsys://tool/L1/get_structural'],
+  nakshatra_dispositor_chain:        ['marsys://tool/L1/get_structural'],
+  nakshatra_lord_relationship:       ['marsys://tool/L1/get_structural'],
+  nakshatra_co_tenancy:              ['marsys://tool/L1/get_structural'],
+  graha_centrality:                  ['marsys://tool/L1/get_structural'],
+  chart_cluster:                     ['marsys://tool/L1/get_structural'],
+  chart_center_of_gravity:           ['marsys://tool/L1/get_structural'],
+  significator_path:                 ['marsys://tool/L1/get_structural'],
+  aspect_received_by_special_point:  ['marsys://tool/L1/get_structural'],
+  nway_config_per_varga:             ['marsys://tool/L1/get_structural'],
+  graha_yuddha_per_varga:            ['marsys://tool/L1/get_structural'],
+  kendradhipati_dosha:               ['marsys://tool/L1/get_structural'],
 } as const
 
 /** Additional non-chart_facts tables that need retrieval coverage */
