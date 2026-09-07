@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:14:32Z` — cycle 920: **#2272 MERGED.** The fleet-wide `output_digest_spec`
+  gap fix is now genuinely landed on `main`, not just live-applied out-of-band. L1's remaining 8
+  eligible `ga_*` assets should now have a clean structural path to `accepted_rebuild_observed`.
+  Δfrozen still +0 this exact instant (48/128), 0 active slots — expecting the next dispatch wave
+  imminently given the merge just landed. Fleet DIRTY: clean. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T11:12:24Z` — cycle 919: **MILESTONE — Δfrozen +1 (47→48). `ga_vargas` froze.**
   L1's first new freeze since `ga_positions`, confirming the lane IS moving even though #2272
   (fleet-wide fix) is still unmerged — almost certainly applied live out-of-band per the same
