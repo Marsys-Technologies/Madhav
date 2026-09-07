@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 157; corrected a real error in this session's own cycle-146/148 "6 phantom entries" finding. Traced all 6 (ashtakavarga_anubindu, dosha_fires, yoga_fires, esoteric_point_chatushphuta/panchasphuta/trisphuta) to REAL, ACTIVE writer code (ga_structural_writer.py, ga_sensitive_writer.py) that is genuinely called from the main aggregation flow -- these are not phantom/dead category names, they are correctly-declared categories whose owning assets (ga_structural, ga_sensitive) are simply `rebuild_only`/awaiting the same wave 1-3 rebuild #2180 already ruled on. No coverage_matrix.ts edit needed for these 6; the "phantom" framing itself was wrong. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 158; built the MUST-tier per-finding disposition table (L1_W6_CLOSE_REPORT_v1_0.md new §2.5) -- 20 id-groups, 14 with a specific citation already in this campaign's own record, 6 id-groups (9 F-ids: F-A10, F-A12, F-A4/B2/B12, F-A9/B1/D14/E1/E15, F-C8) honestly flagged as resting on cycle 125's own uncited closure sweep rather than a dedicated re-check -- matching the same discipline that caught F-B32/F-B33 and the "6 phantom entries" claim being wrong. NOW/NEVER-LATER tiers' per-finding tables remain OPEN. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8735,3 +8735,47 @@ record — they are the only entries in this table with a real wall-clock behind
   1-3 rebuild, not stale/dead category names -- next: the 139-row per-finding disposition table
   is now the clearest remaining charter-named prep item if #2180/#2113 stay quiet further; keep
   re-checking both every cycle regardless.
+- 2026-09-07T12xZ -- CYCLE 158 (C8 v2.3). PR hygiene: `#2202` genuinely `is:queued` (GraphQL
+  confirmed). `#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known mid-CI
+  pattern, nothing to fix. #2113/#2180: identical comment counts to cycle 157 -- still no reply.
+  With #2180/#2113 quiet and F-B32's list-repair work effectively exhausted, picked up the last
+  remaining charter-named prep item flagged since cycle 146: the full per-finding disposition
+  table. Scoped to the MUST tier only this cycle (20 id-groups / ~30 F-ids) -- NOW (18 findings,
+  already a clean tier-level summary with nothing found wrong against it) and NEVER-LATER (11
+  id-groups, same) don't carry the same urgency, since MUST is the one tier this session has
+  actually found a wrong "closed" claim inside (F-B32/F-B33, discovered cycle 146).
+  Reconstructed the table from `L1_W2_DECIDE_v1_0.md` §3's own MUST-tier rows (id(s)/asset/what
+  columns, verbatim -- did not touch that frozen file, same discipline as cycle 145's F-id
+  assignment) plus this report's own already-written evidence (§1 asset table, §2 tier summary,
+  §3.5 escalations). Went through all 20 id-groups one at a time cross-referencing each F-id
+  against every existing citation in this document (PR numbers, migration numbers, adjudication
+  numbers) rather than inventing dispositions from memory. **Result: 14 of 20 id-groups have a
+  specific, checkable citation already documented in this campaign's own record** (F-A1/A2/A3 ->
+  PR #1766; F-C9 -> migration 842; F-B24 -> PR #1841; F-C1 -> L2's query_ucd.ts; F-C2/C3/C4/C5/C7
+  -> confirmed routed to L2's bo_laksana.py, not L1's; F-C14 -> issue #1750 Conductor ruling;
+  F-B18/B19 -> PR #2118; F-B26/B31 -> migration 843; F-D1/D2 -> serving-side fix; F-D9 ->
+  catalog_status fix; F-D21/D22/D23 -> PR #2153 + adjudication #2122, verified live cycle 130;
+  F-E5/E10/E11/E16/E17 -> writer-level fixes; F-E21/E22 -> adjudication #2123; F-A14/A15+family
+  -> integrity_check_sql rollout complete cycle 124, though the underlying F-A14 CONTRACT itself
+  remains genuinely red for `ga_vargas`/`ga_structural` pending the #2180-ruled rebuild -- a real
+  nuance worth keeping distinct from the rollout being done; F-B32/F-B33 -> this session's own
+  extensively-documented, still-active work).
+  **6 id-groups (9 individual F-ids: F-A10, F-A12, F-A4/B2/B12, F-A9/B1/D14/E1/E15, F-C8) had NO
+  dedicated citation anywhere in this document** -- these rest ENTIRELY on cycle 125's own
+  blanket MUST-tier closure sweep, with nothing this session could independently point to.
+  Rather than paper over this by writing a confident-sounding disposition anyway (the exact
+  §N.8 mistake that produced the F-B32/F-B33 and "6 phantom entries" errors), marked these 6
+  explicitly and honestly as "claimed closed, cycle 125 sweep only -- not independently
+  re-verified this pass." This is the whole point of building the table now rather than earlier:
+  a table that silently presents a cited fix and an uncited claim with the same confidence would
+  be worse than no table at all, given this session's own track record of cycle 125's claims
+  turning out wrong twice already this segment.
+  Added the table as a new §2.5 in `L1_W6_CLOSE_REPORT_v1_0.md` (version 0.15-DRAFT ->
+  0.16-DRAFT), with an explicit honest-count callout (14 cited / 6 uncited) and a recommendation
+  that a future cycle spot-check the 6 uncited groups live, the same method that caught
+  F-B32/F-B33. Updated §5/§6 to reflect the MUST tier is now tabulated while NOW/NEVER-LATER
+  remain open. CYCLE 158 L1: PR hygiene clean; built the MUST-tier per-finding disposition table
+  and surfaced which of its 20 id-groups rest on an unverified prior claim rather than asserting
+  uniform confidence -- next: NOW/NEVER-LATER per-finding tables remain open if a future cycle
+  wants them; the 6 uncited MUST-tier groups are a good candidate for a dedicated live-verify
+  cycle; keep re-checking #2113/#2180 every cycle regardless.

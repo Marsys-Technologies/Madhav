@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.15-DRAFT"
+version: "0.16-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -184,10 +184,58 @@ id-groups.**
   per #1744), R-1 `ga_prashna` dormancy, native-parked verification items, stale-doc-figure items
   deliberately deferred to opportunistic-only fixes rather than a dedicated pass.
 
-*(Per-finding disposition TABLE — as opposed to this tier-level summary — is OPEN; the source
-data for it is complete in `L1_W2_DECIDE_v1_0.md` §3 + `L1_STATE.md`'s per-asset table, but
-compiling a single 139-row table is deferred to a later prep cycle or W6 itself, since it does
-not change any decision made so far.)*
+*(Per-finding disposition TABLE for the MUST tier — as opposed to this tier-level summary — is
+now built, cycle 158, see §2.5. NOW/NEVER-LATER per-finding tables remain OPEN, deferred to a
+future prep cycle since the tier-level summary above already accounts for every finding in both
+and neither tier has had a correction discovered against it, unlike MUST.)*
+
+## §2.5 — MUST-tier per-finding disposition table (cycle 158)
+
+Reconstructed from `L1_W2_DECIDE_v1_0.md` §3's own MUST-tier table (source of the `id(s)` /
+`asset` / `what` columns, verbatim) plus this report's own already-recorded evidence (§1's asset
+table, §2's tier summary, §3.5's escalations). **This is a compilation of citations already made
+elsewhere in this campaign's own record, not a fresh live re-verification of every row** — rows
+with a specific PR/migration/issue number were traceable to an explicit citation already in this
+document; rows without one are marked honestly as resting on cycle 125's own MUST-tier closure
+sweep alone, not independently re-checked this pass. That distinction is the point of this
+table — after cycle 146-157's own experience finding cycle 125's blanket claim wrong for one
+id-group (F-B32/F-B33), an un-cited "closed" is treated as a weaker claim than a cited one, not
+silently equal to it.
+
+| id(s) | asset | disposition | evidence |
+|---|---|---|---|
+| F-A1 | ga_vargas | Fixed at writer level | PR #1766 (§1 row 2) |
+| F-A2, F-A3 | ga_vargas | Fixed at writer level | PR #1766 (§1 row 2, "F-A1/F-A3 fixed at writer level") |
+| F-A10 | ga_dashas | Claimed closed, cycle 125 sweep only | No dedicated citation found in this session's own record — flagged, not re-verified this pass |
+| F-A12 | ga_dashas + ga_vargas | Claimed closed, cycle 125 sweep only | No dedicated citation found — flagged, not re-verified this pass |
+| F-A4, F-B2, F-B12 | positions, sensitive, sensitive_degree | Claimed closed, cycle 125 sweep only | No dedicated citation found for these three specifically — flagged |
+| F-C9 | ga_structural | Fixed | migration 842 (§1 row 9) |
+| F-A9, F-B1, F-D14, F-E1, F-E15 | dashas, sensitive, sade_sati, ayurdaya, tajaka | Claimed closed, cycle 125 sweep only | No dedicated per-F-id citation found — flagged, not re-verified this pass |
+| F-B24 | ga_panchanga | Fixed at writer level | PR #1841 (§1 row 5) |
+| F-C1 | ga_strength (serving) | Fixed serving-side | L2's `query_ucd.ts` (§1 row 8) |
+| F-C2, F-C3, F-C4, F-C5, F-C7 | structural, strength | ROUTED to L2, not an L1 fix | Confirmed `bo_laksana.py`'s scope, not L1's (§2) |
+| F-C8 | ga_condition | Claimed closed, cycle 125 sweep only | No dedicated citation found — flagged |
+| F-C14 | CI guard | Confirmed already closed independently | Issue #1750, Conductor ruling, predates this session's discovery (§2) |
+| F-B18, F-B19 | ga_nakshatra (serving) | Fixed | PR #2118 (§1 row 4) |
+| F-B26, F-B31 | ga_panchanga | Fixed | migration 843 (§1 row 5) |
+| F-D1, F-D2 | ga_yoga (serving) | Fixed serving-side | §1 row 11 |
+| F-D9 | ga_vichara | Fixed | `catalog_status` DRAFT→CURRENT (§1 row 12) |
+| F-D21, F-D22, F-D23 | ga_transit_anchors | Fixed and closed, verified live | L0's PR #2153, adjudication #2122 closed, verified live cycle 130 (§1 row 14, §3.5 item 1) |
+| F-E5 | ga_medical | Fixed at writer level | §1 row 16 |
+| F-E10, F-E11 | ga_vastu | Fixed | §1 row 17 |
+| F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
+| F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
+| F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
+| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 31/57 closed across 7 slices (PR #2202), ~25 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157 | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+
+**Honest count**: of 20 id-groups, 14 have a specific, checkable citation already in this
+report; 6 (`F-A10`, `F-A12`, `F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`, `F-C8` — 9 individual F-ids
+across those groups) rest on cycle 125's own sweep with no dedicated citation this session could
+find. That is not evidence they are wrong — F-B32/F-B33 is the only id-group this campaign has
+actually found to be incorrectly claimed closed — but per the same discipline, an uncited claim
+should be named as such rather than presented with the same confidence as a cited one. A future
+cycle spot-checking those 6 uncited groups live (the same method used for F-B32/F-B33) would
+close this table's own remaining honesty gap.
 
 ## §3 — Pillar movement (per the five doctrines)
 
@@ -403,12 +451,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
 - W5: run the dry-run script fresh post-rebuild (the 4 currently-expected FAILs should flip to
   PASS — if any does not, that is new information, not the already-tracked residual).
-- A full 139-row per-finding disposition table (§2's own noted OPEN item).
+- MUST-tier per-finding disposition table built §2.5 (cycle 158); NOW/NEVER-LATER tiers'
+  per-finding tables remain OPEN (tier-level summaries in §2 already account for every finding
+  in both, and neither has had a correction found against it).
+- A dedicated live re-check of the 6 MUST-tier id-groups (9 F-ids) §2.5 found resting on an
+  uncited cycle-125 claim rather than a specific PR/migration citation.
 - Session-level cost actuals reconciliation (§4's own noted OPEN item).
 
 ## §6 — OPEN
 
-Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
+Per-finding disposition table — MUST tier built §2.5 (cycle 158), 6 id-groups (9 F-ids) still
+resting on an uncited cycle-125 claim rather than a dedicated re-check; NOW/NEVER-LATER tiers
+still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; ~25 remaining reframed cycle 156 as genuinely
 unreachable by any tool — a tool-coverage gap, not a list-staleness gap; the "6 phantom
