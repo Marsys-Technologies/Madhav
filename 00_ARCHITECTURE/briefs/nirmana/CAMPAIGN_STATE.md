@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:38:14Z` — cycle 799: **IDLE-OK (verified).** #2234 still `is:queued` (~20min).
+  Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T05:35:36Z` — cycle 798: **IDLE-OK (verified).** #2234 still `is:queued` (~17min),
   all checks now SUCCESS/SKIPPED (verified via detailed check listing), just waiting its turn —
   `mergeStateStatus: UNKNOWN` is the normal rotation artifact, not a fault. Fleet DIRTY empty;
