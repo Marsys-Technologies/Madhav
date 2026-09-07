@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 163; shipped natural_key_partition fix 5/7 (ga_nakshatra, migration 872, PR #2213): 14 categories re-confirmed directly against ga_nakshatra_emitters.py + ga_kp_significators.py (not the get_nakshatra.ts serving tool's own overclaiming 16-category const), zero overlap with the other six writers. Applied locally, verified. 2 co-writers (ga_panchanga, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 164; shipped natural_key_partition fix 6/7 (ga_panchanga, migration 873, PR #2216): found the writer owns 34 categories, not the ~16 this session had assumed -- 16 literal constants + 18 dynamically-constructed window categories (f"panchanga_{window_name}"). 33/34 confirmed live (amrit_kaal legitimately absent). Expressed as a LIKE prefix match rather than a 34-item list, confirmed no other writer emits anything with that prefix. Applied locally, verified. 1 co-writer (ga_sensitive, the most complex, ~25 categories) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8961,3 +8961,36 @@ record — they are the only entries in this table with a real wall-clock behind
   #2213) -- next: 2 co-writers remain (`ga_panchanga`, `ga_sensitive` -- `ga_sensitive` is the
   one needing the most careful verification, ~25 categories) plus `ga_positions`' own
   `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T18xZ -- CYCLE 164 (C8 v2.3). PR hygiene: `#2212`/`#2209` both genuinely `is:queued`
+  (GraphQL confirmed); `#2213`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest
+  armed on both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts
+  to cycle 163 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_panchanga`
+  next. Re-grepped `ga_panchanga_writer.py` for literal `"panchanga_*"` strings and found the
+  same 16 as every prior cycle's partial characterisation -- but did NOT stop there this time,
+  given cycle 159's `ga_positions` investigation had already taught this segment's own lesson
+  that a quick literal-string grep can miss dynamically-constructed categories. Cross-checked
+  against the LIVE canonical chart's full `panchanga_%` category list (33 distinct values) and
+  found 17 more than the 16 literals accounted for. Traced them to `INAUSPICIOUS_WINDOWS`/
+  `AUSPICIOUS_WINDOWS` tuple lists (lines 1404-1431, 9+9=18 window names) fed through
+  `_emit_inauspicious_window`/`_emit_auspicious_window`, which build the real fact_category as
+  `f"panchanga_{window_name}"` (line 859) -- 34 declared total, 33 live (`amrit_kaal` legitimately
+  absent: the emitter returns nothing when the underlying panchanga library finds no matching
+  timing object for a chart, confirmed via a live `comm` diff between the derived 34-item list
+  and the live 33-item list -- exactly one gap, exactly the expected one).
+  Given 34 categories all sharing the identical `panchanga_` prefix, used a `LIKE` prefix match
+  in the partition text instead of a 34-item enumeration -- but only after confirming no other
+  writer emits anything with that prefix: two incidental grep hits (`ga_sade_sati_writer.py`,
+  `ga_sensitive_writer.py`) checked directly and confirmed to be a code comment
+  (`panchanga_engine`, `ga_panchanga_writer` cross-reference) and an unrelated local variable
+  (`panchanga.get(...)` dict lookup), neither a genuine `fact_category` write.
+  Migration numbering: 868/869/870 merged or genuinely queued (confirmed); 871/872 still
+  reserved by cycles 162/163's own open PRs. Used 873. Wrote the migration, ran `--dry-run` (873
+  the only pending), applied for real, verified `asset_registry.natural_key_partition` now set
+  for `ga_panchanga`. Branched fresh off `origin/main`, re-confirmed 873 still free there,
+  committed, pushed, opened PR #2216, queued, confirmed `autoMergeRequest` armed.
+  CYCLE 164 L1: PR hygiene clean; shipped `natural_key_partition` fix 6/7 (`ga_panchanga`, PR
+  #2216), correcting this session's own under-counted category-list assumption along the way --
+  next: only `ga_sensitive` remains (the most complex, ~25 categories, deliberately saved for a
+  dedicated cycle) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
+  #2113/#2180 every cycle regardless.
