@@ -497,6 +497,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~471:0xZ — L3-W4 — PR hygiene: `#2322` still position
+  1, `AWAITING_CHECKS`, `enqueuedAt: 14:42:07Z` — ~6.5min so far, own
+  `merge_group` run not yet visible in `gh run list`. Confirmed
+  `#2320` (L2) also merged since last check, no L3 overlap. Within
+  normal range given the earlier observed congestion pattern; not
+  yet a stall concern (that took ~11min before). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2322` finishing; next action:
+  same, watch closely if it passes ~11min.
 - `2026-09-07T~470:0xZ — L3-W4 — PR hygiene: `#2322` advanced to
   position 1 (top of queue) — `#2318` merged (unrelated L1 PR,
   confirmed via `origin/main`) and `#2320` also cleared (queue
