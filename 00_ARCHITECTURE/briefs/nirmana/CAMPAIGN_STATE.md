@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:29:08Z` — cycle 987: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
+  stale PRs cleared this check). Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T14:26:51Z` — cycle 986: **L3 re-nudged — still citing the old auth wall ~90 min
   after the `nrec` fix.** PR #2313 (14:10Z) describes `ka_gochara_resonance`/5 others as blocked
   on "the super-admin-write-access wall" — the exact problem `nrec` already solves, posted to
