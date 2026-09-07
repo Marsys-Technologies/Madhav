@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~357:0xZ — L3-W4 — PR hygiene: `#2267`'s own `merge_group`
+  build still `in_progress`, `Unit Tests` now passed, only
+  `Governance Gates` remains (~6.5min, within range, same run). No
+  new `origin/main` merges, `ga_positions` re-confirmed still frozen.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2267` finishing;
+  next action: same.
 - `2026-09-07T~356:0xZ — L3-W4 — PR hygiene: `#2267` still position 2,
   `AWAITING_CHECKS` — located its own `merge_group` run directly
   (`gh-readonly-queue/main/pr-2267-...`), step-level checked: `Unit
