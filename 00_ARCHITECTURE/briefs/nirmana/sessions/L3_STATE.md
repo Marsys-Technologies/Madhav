@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~211:0xZ — L3-W4 — PR hygiene: `#2218` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3 (an L5 heartbeat
+  PR merged, no overlap). No new E-gate opening. IDLE-OK. — blocked
+  on: `#2218` clearing checks/queue; next action: same.
 - `2026-09-07T~210:0xZ — L3-W4 — PR hygiene: `#2214` MERGED. Rebased
   the 22 not-yet-merged local heartbeat commits onto fresh
   `origin/main`. Hit the standard empty-theirs prepend-conflict
