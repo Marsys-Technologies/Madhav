@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:46:55Z` — cycle 909: **L1 is actively working — new PR #2277 explains the
+  earlier slow `integrity_verified` step.** "`L1 W4: ga_dashas integrity_check_sql perf fix
+  (migration 882) -- 48.5-85s -> 8-9.4s`" — retroactively explains why `ga_dashas` sat at
+  `accepted_rebuild_observed` for ~8 min two attempts ago (a genuinely slow SQL check, now fixed).
+  #2272 unchanged (same head, still `BLOCKED`) but this confirms L1 hasn't stalled, just working a
+  real queue of discovered issues — not re-nudging. Δfrozen still +0. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:44:36Z` — cycle 908: **L2 moved — `bo_sudarshana` W2 evidence submitted.**
   `asset_analysis_accepted`/`optimization_verdict_accepted` both landed 09:54:05 — L2's first-ever
   frontier asset now in the pipeline (W3/W4 still to come). #2272 unchanged (same head SHA, still
