@@ -381,6 +381,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T02:00:44Z` — cycle 729: **IDLE-OK (watched progress, no ruling needed).** L1
+  executed on the #2180 `natural_key_partition` ruling: PR #2205 authors `ga_positions`' own
+  partition (verified against the writer's real row-construction sites, not the serving-tool
+  mapping), migration 868 applied and confirmed. L1 correctly self-scoped down from all 7
+  co-writers to just `ga_positions` this pass after finding `ga_sensitive` owns a much larger,
+  more diverse category set needing its own careful verification — good judgment, no correction
+  needed. Own-PR hygiene clean; adjudications unchanged (10). Nothing rose to a bounded unit for
+  me this cycle.
 - `2026-09-07T01:58:16Z` — cycle 728: **IDLE-OK (verified).** Own-PR hygiene clean;
   adjudications unchanged (10). #2201 self-resolved into `is:queued` (no nudge needed). #2165
   still open/unqueued but already nudged last cycle — not re-nudging per standing discipline.
