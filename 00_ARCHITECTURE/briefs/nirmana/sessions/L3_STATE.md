@@ -495,6 +495,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~179:0xZ — L3-W4 — PR hygiene: `#2203`'s own `merge_group`
+  build genuinely `in_progress` (~2.5min, well within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2203` finishing; next action: same.
 - `2026-09-07T~178:0xZ — L3-W4 — PR hygiene: `#2203`'s checks finished
   (0 failures) and it's now genuinely `isInMergeQueue: true`, `QUEUED`,
   position 1 — past its own checks, waiting for its merge turn. One
