@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 161; shipped natural_key_partition fix 3/7 (ga_sensitive_degree, migration 870, PR #2209): sensitive_degree_check + sensitive_point_yogi, confirmed via the writer's own header comment; caught that ga_sensitive_writer.py mentions sensitive_point_yogi too but only in a cross-referencing docstring about its own different category (esoteric_point_yogi), not a genuine write -- verified real vs. incidental overlap before concluding clean. 4 co-writers (ga_nakshatra, ga_panchanga, ga_sade_sati, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 162; shipped natural_key_partition fix 4/7 (ga_sade_sati, migration 871, PR #2212): 14 categories confirmed via the writer's own fact_category literals (sade_sati_* x8, *_shani_period x6, dhaiya_period), zero overlap with the other six writers. Applied locally, verified. 3 co-writers (ga_nakshatra, ga_panchanga, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8908,3 +8908,26 @@ record — they are the only entries in this table with a real wall-clock behind
   `ga_sensitive` -- `ga_sensitive` is the one needing the most careful verification, ~25
   categories) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
   #2113/#2180 every cycle regardless.
+- 2026-09-07T16xZ -- CYCLE 162 (C8 v2.3). PR hygiene: `#2208` genuinely `is:queued` (GraphQL
+  confirmed); `#2209`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  161 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_sade_sati`
+  next -- already fully characterized from earlier campaign work (cycle 144's DAG audit had
+  already distinguished its READ categories from its WRITE categories). Re-confirmed the 14
+  WRITE categories fresh for this migration via direct grep against `ga_sade_sati_writer.py`'s
+  own fact_category literals: 8 `sade_sati_*` categories, 6 `*_shani_period` categories, and
+  the one-off `dhaiya_period`. Checked overlap against all six sibling writers with a single
+  combined pattern (`sade_sati_|shani_period|dhaiya_period`) rather than three separate greps --
+  zero hits, genuinely clean.
+  Migration numbering: 868 (merged, `ga_positions`) confirmed off the pending list via
+  `git ls-tree origin/main`; 869/870 still reserved by cycles 160/161's own open PRs. Used 871.
+  Wrote the migration, ran `--dry-run` (871 the only pending), applied for real, verified
+  `asset_registry.natural_key_partition` now set for `ga_sade_sati`. Branched fresh off
+  `origin/main`, re-confirmed 871 still free there, committed, pushed, opened PR #2212, queued,
+  confirmed `autoMergeRequest` armed.
+  CYCLE 162 L1: PR hygiene clean; shipped `natural_key_partition` fix 4/7 (`ga_sade_sati`, PR
+  #2212) -- next: 3 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sensitive` --
+  `ga_sensitive` is the one needing the most careful verification, ~25 categories) plus
+  `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle
+  regardless.
