@@ -1376,3 +1376,14 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **New adjudication #2317 (L1): the SAME `validate_wave_evidence_bindings` function
+  I worked with extensively for `bg_cohort` — its single `reviewed_deployment_sha` requirement
+  across analysis+verdict is now structurally unsatisfiable for any asset whose pair legitimately
+  straddles a deploy, a direct consequence of #2224's own fix.** Checked L0's exposure directly:
+  compared all 40 `bg_*` assets' latest analysis vs verdict `source_ref` — **0 mismatches**, L0 is
+  clean today, but this is only because no L0 evidence has straddled a deploy since #2224 landed,
+  not because the underlying assumption is safe — a future post-freeze re-stamp (same shape as
+  `bg_vidhi_primitives` earlier this session) could hit this identical wall next time L0 needs to
+  dispatch. Posted this cross-reference to #2317. Also: Conductor ruled on L2's #2291 tooling-
+  ceiling adjudication (batched `jsonb_build_object`, authorized) — not L0's task. `egate.sql`
+  still 0 unfrozen. Nothing eligible.
