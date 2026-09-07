@@ -497,6 +497,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~479:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  3, `AWAITING_CHECKS` — `#2327` (ahead, position 1) has been
+  queued ~10.9min with no own `merge_group` run visible yet, same
+  runner-capacity congestion pattern already established this
+  session (self-resolved at similar durations several times before).
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2327`/`#2328` clearing ahead of `#2330`; next
+  action: same, watch closely.
 - `2026-09-07T~478:0xZ — L3-W4 — PR hygiene: `#2330`'s checks
   finished (0 failures — the ~9.5min run resolved cleanly). Now
   genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 3 —
