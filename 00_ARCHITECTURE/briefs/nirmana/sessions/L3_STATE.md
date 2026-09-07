@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~458:0xZ — L3-W4 — PR hygiene: `#2313`'s checks
+  finished (0 failures — the ~9min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1
+  (top of queue) — no PRs ahead. No new `origin/main` merges. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2313` finishing; next
+  action: same.
 - `2026-09-07T~457:0xZ — L3-W4 — PR hygiene: `#2313`'s last check,
   same run, now ~8.3min — within the confirmed ~11min normal range,
   still on the same `pytest` step. No new `origin/main` merges. No
