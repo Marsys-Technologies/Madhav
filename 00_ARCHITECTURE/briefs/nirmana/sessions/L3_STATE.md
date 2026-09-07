@@ -497,6 +497,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~398:0xZ — L3-W4 — PR hygiene: `#2282` confirmed
+  MERGED. Rebased 20 local commits onto fresh `origin/main`. Hit one
+  genuine (non-empty-theirs) conflict this time — a real interleaving
+  issue where a squash-merged commit's content needed inserting
+  between two already-present entries in the right chronological
+  slot, not a duplicate — resolved by hand, verifying the exact
+  insertion point against the surrounding T~381/T~383 timestamps.
+  Remaining conflicts were the standard empty-theirs pattern (7
+  more, all auto-resolved with per-hunk verification this time,
+  learning from last cycle's stacked-marker bug) plus one commit
+  already upstream (skipped automatically). Verified zero leftover
+  markers before pushing. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-25`, pushed, opened `#2284`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2284`'s own
+  checks completing; next action: same monitoring cadence.
+
 - `2026-09-07T~397:0xZ — L3-W4 — PR hygiene: `#2282` advanced to
   position 1 (top of queue) — `#2281` merged (unrelated L5
   heartbeat PR, confirmed via `origin/main`, no L3 overlap).
