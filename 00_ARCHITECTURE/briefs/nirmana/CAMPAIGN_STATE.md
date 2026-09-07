@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T04:36:07Z` — cycle 783: **#2224 operational finding, cross-noted on #1945.** L1
+  hit a real structural gotcha: the two-call evidence-submission flow (analysis→verdict) can
+  permanently orphan a generation if `NIRMANA_DEPLOYED_SHA` advances between calls (fast-
+  deploying fleet + zero-tolerance commit-match + immutable-per-generation lifecycle receipts).
+  Not a platform bug (sound design intent), no ruling requested. Cross-noted on #1945 as a
+  hazard for my own future Lane C attempts. Fleet healthy; own-PR hygiene clean; adjudications
+  unchanged (11).
 - `2026-09-07T04:33:34Z` — cycle 782: **IDLE-OK (verified).** Fleet PR list unchanged (3rd
   cycle), all MERGEABLE. Own-PR hygiene clean; adjudications unchanged (11); no new #2224 reply.
 - `2026-09-07T04:31:13Z` — cycle 781: **IDLE-OK (verified).** Fleet PR list unchanged, all
