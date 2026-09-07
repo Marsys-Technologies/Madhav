@@ -1232,3 +1232,9 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   `ga_prashna` (L1) froze this cycle — campaign progress, not L0-actionable. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Conductor pushed L2/L3 to deprioritize their own heartbeat cadence in favor of frontier-drain
+  (they have non-empty eligible frontiers, `bo_sudarshana`/6 `ka_*` assets). This directive does not
+  apply to L0's situation: `egate.sql` confirms L0's own eligible frontier is genuinely empty (0
+  rows), so heartbeat-only cycles remain the correct behavior here, not something to override.
+  Nothing eligible.
