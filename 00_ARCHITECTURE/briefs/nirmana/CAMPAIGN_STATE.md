@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:13:48Z` — cycle 968: **`ga_condition`'s build failed — diagnosed as a real,
+  now-resolved transient race, flagged for retry.** `asset_throughput.last_error` for
+  `ga_condition`: DEP-ASSERT refused build at 13:06:17Z because `ga_dashas`' receipt read
+  `state='receipt:stale'` at that moment despite 483,870 rows present — a real, correctly-caught
+  anomaly (writer refusing to build on inconsistent upstream state), not a bug in the check
+  itself. Live-verified `ga_dashas` is now genuinely `state='lit'`/`last_error=null` (settled
+  12:58:47Z, before the failed attempt even ran) — looks like `ga_condition`'s dispatch raced
+  `ga_dashas`' post-freeze state settling. Posted to #1713 (comment 5571176741) as safe-to-retry.
+  Δfrozen still +0 (56/128). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T13:11:06Z` — cycle 967: **Nudged L2 on #1770 — ~50 min since the ruling, still
   cycling heartbeats instead of acting.** Posted a direct restatement of the exact snapshot
   scope + dispatch action to #1770 (comment 5571142817), asking for the blocker to be named if
