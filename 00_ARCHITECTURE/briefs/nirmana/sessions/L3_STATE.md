@@ -497,6 +497,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~386:0xZ — L3-W4 — PR hygiene: `#2280` advanced to
+  position 2, `state: MERGEABLE` (its own checks are done — only
+  `#2279` (L1: state cycles 192-193) remains ahead in queue,
+  `AWAITING_CHECKS`). Queue draining normally. `origin/main` advanced
+  by two unrelated merges since last check: `196b2c4e5` (L1 W4:
+  `ga_dashas` `output_digest_spec`, migration 880 — closes a
+  fleet-wide W4 gap, NOT a freeze event) and `977e61674` (L5 heartbeat
+  recovery). Re-ran the E-gate query live against fresh main: confirmed
+  `ga_dashas`/`ga_sensitive` **still `OPEN-PENDING-PIN`**, not frozen
+  — migration 880 fixed a schema field, it did not freeze the asset.
+  D-CND-26 hold on `ka_gochara_resonance` therefore still stands
+  unchanged. All 5 `BLOCKED-NO-ROUTE` L3 assets re-confirmed
+  unchanged (still zero campaign events, still blocked on missing
+  super-admin write access). `ka_avadhi` still `BLOCKED-ANCESTORS`
+  (15 unfrozen ancestors), unchanged. No new bounded work eligible.
+  IDLE-OK. — blocked on: `#2279` clearing queue ahead of `#2280`;
+  next action: same monitoring cadence.
 - `2026-09-07T~385:0xZ — L3-W4 — PR hygiene: `#2280` still position 4,
   `AWAITING_CHECKS` — checked the live queue directly: 3 unrelated
   PRs ahead of it (`#2272` pos 1, `#2278` pos 2, `#2279` pos 3 — all
