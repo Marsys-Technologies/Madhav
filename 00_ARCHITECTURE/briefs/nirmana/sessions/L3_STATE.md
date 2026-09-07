@@ -495,6 +495,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~317:0xZ — L3-W4 — PR hygiene: `#2251`'s checks finished
+  (0 failures), `mergeStateStatus: CLEAN` but genuinely CLEAN-but-
+  unqueued (`isInMergeQueue: false`). Queued it (first `gh pr merge
+  --auto` returned no error but re-verification showed still not
+  queued; retried with explicit `--squash`, got "already queued to
+  merge", then confirmed genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 1). No new `origin/main` merges relevant to L3,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2251` finishing its queue turn; next
+  action: same.
 - `2026-09-07T~316:0xZ — L3-W4 — PR hygiene: `#2251`'s last check, same
   run, now ~9.4min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. Two new
