@@ -1,12 +1,15 @@
--- 897_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql
+-- 898_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql
 --
--- Renumbered from 896 (cycle 224): collided with L2's independently-authored
--- 896_nirmana_l2_bo_sudarshana_output_digest_spec.sql, which merged into main first. This
--- file was already applied live under its original 896 filename before the collision
--- surfaced; disclosed via migration_renumber_disclosed.json (sql_identity unchanged --
--- the RAISE EXCEPTION message text below still literally says "migration 896", left as-is
--- deliberately since editing it would change this file's sql_identity and break the
--- disclosed match).
+-- Renumbered TWICE (cycle 224, then cycle 230): originally 896, collided with L2's
+-- independently-authored 896_nirmana_l2_bo_sudarshana_output_digest_spec.sql (merged first) --
+-- renumbered to 897. The merge queue's own speculative merge-group check then caught a SECOND
+-- collision at 897 against L2's own in-flight 897_nirmana_l2_bodha_grounding_matches_schema.sql
+-- (PR #2346, ahead of this one in queue) before either landed in main -- renumbered again to
+-- 898, the next genuinely free number. This file was already applied live under its original
+-- 896 filename (cycle 212) before the first collision surfaced; disclosed via
+-- migration_renumber_disclosed.json (sql_identity unchanged across both renumbers -- the RAISE
+-- EXCEPTION message text below still literally says "migration 896", left as-is deliberately
+-- since editing it would change this file's sql_identity and break the disclosed match).
 --
 -- NIRMĀṆA — same class of gap as migrations 645/646/885/890: `nirmana_evidence_ingress_writer`
 -- never had `SELECT` on `ga_transit_anchors`. Discovered live: `ga_transit_anchors`' first real
