@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:28:45Z` — cycle 720: **#1945 more progress — Lane B backfilled (3/5 done: A,
+  B, E).** Live-queried `build_runs` scoped to campaign_id/definition_revision exactly per the
+  validator's own query: 49 total, 49 terminal. Submitted via `nrec --as verifier`, HTTP 201,
+  re-confirmed in ledger. Lanes C/D remain (C needs registry-fingerprint-set digest +
+  invalidated-analysis census; D needs a real CI run ID tied to current deploy state) — deferred
+  to their own cycles. Adjudication count unchanged (10 open). Own-PR hygiene: none open. Fleet
+  DIRTY: empty.
 - `2026-09-07T01:26:01Z` — cycle 719: **CLOSED #2137.** Full adjudication-backlog sweep this
   cycle: #2102 (PR #2106 confirmed merged, notes-flag done, correctly stays open pending
   native domain-question), #2113/#2123 (correctly tracking/parked, nothing new to rule). #2137:
