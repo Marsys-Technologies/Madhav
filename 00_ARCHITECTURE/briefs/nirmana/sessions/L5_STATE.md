@@ -457,6 +457,47 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T08:59Z (C8 v2.3 cycle 876) — **`#2260` MERGED — the forty-sixth state-recovery PR
+  closed out.** Forty-sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846,
+  858, 867, now 876). 8 local-only commits (cycles 868-875, single-file, pure additions)
+  recovered via patch onto a fresh `codex/nirmana-l5-heartbeat-recovery-46` branch off
+  `origin/main`. E-gate re-run: all 11 remaining L5 assets unchanged from last check. Nothing
+  eligible.
+- 2026-09-07T08:48Z (C8 v2.3 cycle 875) — **IDLE-OK, verified.** #2260 unchanged for 3 cycles at
+  `is:queued`/CLEAN — checked `gh-readonly-queue/main/pr-2260-*` merge_group build directly:
+  genuinely IN_PROGRESS (2/3 runs SUCCESS), started 08:37:16Z — not a stall. E-gate re-run: all
+  11 remaining L5 assets' `unfrozen_ancestors` dropped by 1 each (campaign-wide progress
+  continues) — new values: mi_abhilekha=41, mi_adhilepa=43, mi_bhara=21, mi_bhavisya=40,
+  mi_darshana=46, mi_gunanaka=42, mi_pariksha=42, mi_pramana=41, mi_sambandha=43,
+  mi_sankalpa=21, mi_seva=44 — still all non-zero, nothing eligible yet. Main tip unchanged.
+- 2026-09-07T08:41Z (C8 v2.3 cycle 874) — **IDLE-OK, verified.** #2260 still `is:queued`/CLEAN,
+  unchanged. #2261 (new) confirmed L3's, out of scope. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T08:39Z (C8 v2.3 cycle 873) — **IDLE-OK, verified.** #2260 now genuinely `is:queued`,
+  `mergeStateStatus=CLEAN`. #2259 confirmed L4's, out of scope. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T08:36Z (C8 v2.3 cycle 872) — **IDLE-OK, verified.** #2260's Governance Gates check
+  ~11.5min elapsed, outer edge of normal range but no failures — confirmed not yet in
+  `merge_group` (still pre-queue). Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
+- 2026-09-07T08:34Z (C8 v2.3 cycle 871) — **IDLE-OK, verified.** #2260's last check (Governance
+  Gates) ~9min elapsed, within normal range, no failures. #2259 confirmed L4's, out of scope.
+  Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T08:32Z (C8 v2.3 cycle 870) — **IDLE-OK, verified.** #2260 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip advanced to `c646808d6`
+  (#2254, L1's — merged, out of scope). E-gate re-run: all 11 remaining L5 assets unchanged.
+  Nothing eligible.
+- 2026-09-07T08:29Z (C8 v2.3 cycle 869) — **IDLE-OK, verified.** #2260 still building — Unit
+  Tests + DB Integration Tests + Governance Gates `IN_PROGRESS`, no failures, not yet
+  `is:queued`. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T08:27Z (C8 v2.3 cycle 868) — **IDLE-OK, verified.** #2260 (recovery #45) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 08:25:07Z`), CI
+  `IN_PROGRESS`/`QUEUED` (Unit Tests, DB Integration Tests, Governance Gates), no failures.
+  #2254 confirmed L1's, out of scope. Main tip advanced to `fade51684` (#2256, L3's — merged,
+  out of scope). E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
 - 2026-09-07T08:24Z (C8 v2.3 cycle 867) — **`#2257` MERGED — the forty-fifth state-recovery PR
   closed out.** Confirms the batch-processing pattern again (5-deep queue). Forty-fifth
   recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482, 492, 502, 511, 519, 528,
