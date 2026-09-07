@@ -232,6 +232,40 @@ def test_digest_fails_closed_before_scanning_rows_when_a_reviewed_key_is_null():
     assert len(cursor.executed) == 2
 
 
+def test_component_statement_batches_wide_tables_under_jsonb_build_object_arity_ceiling():
+    # PostgreSQL's jsonb_build_object is variadic subject to FUNC_MAX_ARGS=100
+    # (50 column/value pairs). A relation wider than that must never emit a
+    # single call with >100 args, or every wide-table spec authored after
+    # ga_positions' original 23-column precedent fails hard at compute time.
+    wide = {
+        "version": "nirmana-output-digest-spec-v1",
+        "components": [{
+            "name": "wide",
+            "relation": "bo_wide_relation",
+            "key_columns": ["signal_id"],
+            "value_columns": [f"col_{i:03d}" for i in range(82)],
+        }],
+    }
+    statement = _component_statement(wide["components"][0])
+    for call in re.findall(r"jsonb_build_object\(([^)]*)\)", statement):
+        arg_count = len([part for part in call.split(",") if part.strip()])
+        assert arg_count <= 100, f"jsonb_build_object call exceeds FUNC_MAX_ARGS: {arg_count} args"
+    assert statement.count("jsonb_build_object(") == 2  # 82 columns -> 2 batches of <=45
+    assert " || " in statement
+    assert all(f'"col_{i:03d}"' in statement for i in range(82))
+
+
+def test_component_statement_single_batch_is_unchanged_for_narrow_tables():
+    # Narrow tables (<=45 value_columns, the common case) must produce the
+    # exact same SQL shape as before batching existed -- no wrapping
+    # parentheses, no `||`, so every already-shipped digest spec's stored
+    # content stays byte-identical.
+    statement = _component_statement(SPEC["components"][0])
+    assert statement.count("jsonb_build_object(") == 1
+    assert " || " not in statement
+    assert statement.startswith("SELECT jsonb_build_object(")
+
+
 def test_invalid_spec_identifier_fails_closed_before_querying_a_relation():
     from pipeline.orchestrator.provenance import canonical_digest
     invalid = {"version": "nirmana-output-digest-spec-v1", "components": [{
