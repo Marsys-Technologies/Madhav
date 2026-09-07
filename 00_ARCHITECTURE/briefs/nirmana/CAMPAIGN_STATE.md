@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:51:27Z` — cycle 996: **`ga_transit_anchors` one step from freeze —
+  `integrity_verified` landed.** Only `asset_frozen` left. Δfrozen still +0 (56/128). Fleet
+  DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T14:49:03Z` — cycle 995: **IDLE-OK, Δfrozen +0.** `ga_transit_anchors`'
   `accepted_rebuild_observed` landed — clearing steps normally. Fleet DIRTY: same 2 known stale
   native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
