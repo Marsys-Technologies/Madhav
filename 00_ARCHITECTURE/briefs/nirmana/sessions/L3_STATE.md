@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~163:0xZ — L3-W4 — PR hygiene: `#2197` advanced to
+  position 1, own `merge_group` build's all 3 jobs completed
+  successfully (confirmed via `gh run list` filtered on `pr-2197`, not
+  assumed from the `UNKNOWN` mergeStateStatus alone) — genuinely
+  healthy. One new unrelated L1 merge (#2193), no L3 overlap, no new
+  E-gate opening. IDLE-OK. — blocked on: `#2197` finishing; next
+  action: same.
 - `2026-09-07T~162:0xZ — L3-W4 — PR hygiene: `#2197`'s last pending
   check (`Build Check (PR only)`) checked at step-level — all steps
   showed `completed`/`success` including "Complete job", the
