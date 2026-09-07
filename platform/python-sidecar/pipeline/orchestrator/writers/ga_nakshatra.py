@@ -2,7 +2,10 @@
 pipeline.orchestrator.writers.ga_nakshatra — L1 per-chart parallel nakshatra chart.
 
 Heavy WriterBase: plan_substeps (5 ayanamshas + cross-ayanamsha) + run_substep.
-Writes 16 fact_categories into chart_facts.
+Writes 15 fact_categories into chart_facts (migration 878: GA_NAKSHATRA_FACT_
+CATEGORIES below previously declared a 16th, `nakshatra_lord_placement`, that
+this writer never actually emits — corrected to match what run_substep
+genuinely produces, not what the list aspirationally named).
 bg_nakshatra is AUTHORITY for static attrs (JOIN, cite, never restate).
 bg_kp_sublord_division is AUTHORITY for KP sub-lord boundaries — the KP
 significator emitter READS it (§N.5) and never re-derives the geometry.
@@ -43,7 +46,7 @@ CANONICAL_AYANAMSHAS: dict[str, str] = {
 }
 
 GA_NAKSHATRA_FACT_CATEGORIES = [
-    "graha_nakshatra_join", "graha_pada_join", "nakshatra_lord_placement",
+    "graha_nakshatra_join", "graha_pada_join",
     "graha_kp_lords", "cusp_kp_lords", "graha_gandanta", "graha_degree_flags",
     "nakshatra_dispositor", "nakshatra_exchange", "nakshatra_conjunction",
     "nakshatra_cogravity", "graha_tara_bala", "nakshatra_statistics",

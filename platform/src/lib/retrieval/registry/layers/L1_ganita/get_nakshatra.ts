@@ -1,10 +1,10 @@
 /**
  * L1 retrieval: nakshatra-semantic layer (ga_nakshatra)
- * Covers: graha_nakshatra_join, graha_pada_join, nakshatra_lord_placement, graha_kp_lords,
+ * Covers: graha_nakshatra_join, graha_pada_join, graha_kp_lords,
  *         cusp_kp_lords, graha_gandanta, graha_degree_flags, nakshatra_dispositor,
  *         nakshatra_exchange, nakshatra_conjunction, nakshatra_cogravity, graha_tara_bala,
  *         nakshatra_statistics, nakshatra_cross_ayanamsha, kp_house_significators,
- *         kp_planet_significations (16 fact_categories, ga_nakshatra's full count_sql list).
+ *         kp_planet_significations (15 fact_categories, ga_nakshatra's full count_sql list).
  * Tool: marsys://tool/L1/get_nakshatra
  *
  * F-B18/F-B19 (L1_W1_ANALYSIS_BATCH_B.md): the tool named for this asset
@@ -12,12 +12,18 @@
  * face at all, only reachable indirectly via bodha_signals_get(signal_type_class=
  * nakshatra_semantic). This closes that gap directly, mirroring get_sensitive_points.ts's
  * shape for a similarly diverse multi-category asset.
+ *
+ * `nakshatra_lord_placement` removed (migration 878): grepped every ga_nakshatra source
+ * file (ga_writers/ga_nakshatra_emitters.py, pipeline/orchestrator/writers/ga_nakshatra.py)
+ * and found it was declared but never actually emitted anywhere — a genuine docstring/const
+ * overclaim, zero live rows, same defect class as get_graha_yuddha.ts's own hardcoded
+ * zero-row category. `nakshatra_cross_ayanamsha` was already correctly present here.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
 const NAKSHATRA_CATEGORIES = [
-  'graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_kp_lords',
+  'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
   'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor',
   'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity', 'graha_tara_bala',
   'nakshatra_statistics', 'nakshatra_cross_ayanamsha', 'kp_house_significators',
@@ -25,7 +31,7 @@ const NAKSHATRA_CATEGORIES = [
 ]
 
 const DOMAIN_MAP: Record<string, string[]> = {
-  identity: ['graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_gandanta', 'graha_degree_flags'],
+  identity: ['graha_nakshatra_join', 'graha_pada_join', 'graha_gandanta', 'graha_degree_flags'],
   kp: ['graha_kp_lords', 'cusp_kp_lords', 'kp_house_significators', 'kp_planet_significations'],
   relational: ['nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity'],
   strength: ['graha_tara_bala'],

@@ -125,6 +125,7 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_avastha_sayanadi_per_varga',
   'graha_cheshta_bala_per_varga',
   'graha_composite_state_classification',
+  'graha_degree_flags',
   'graha_dignity_per_varga',
   'graha_dispositor_chain',
   'graha_drik_bala_per_varga',
@@ -186,6 +187,7 @@ export const CHART_FACTS_CATEGORIES = [
   'nakshatra_conjunction',
   'nakshatra_cross_ayanamsha',
   'nakshatra_dispositor',
+  'nakshatra_exchange',
   'nakshatra_pada_sensitive',
   'nakshatra_statistics',
   'panchaka_flag',
@@ -529,20 +531,31 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   // graha_nakshatra_join=700, graha_pada_join=200, graha_kp_lords=200, cusp_kp_lords=240,
   // graha_gandanta=50, nakshatra_dispositor=200, nakshatra_conjunction=1, nakshatra_cogravity=10,
   // graha_tara_bala=150, nakshatra_statistics=34, kp_house_significators=540,
-  // kp_planet_significations=505. Three other categories named in the tool's own const
-  // (nakshatra_lord_placement, graha_degree_flags, nakshatra_exchange) have ZERO live rows for
-  // the canonical chart and are deliberately NOT added here — that is the tool's own docstring
-  // claiming coverage for categories that do not exist, a distinct finding from F-B32 and out of
-  // this slice's scope. Three more from the F-B32 diff that look nakshatra-adjacent by name
-  // (nakshatra_co_tenancy, nakshatra_dispositor_chain, nakshatra_lord_relationship) do NOT
-  // appear in get_nakshatra.ts's own category list at all and are NOT added here either — they
-  // need their own tool-ownership verification, not an assumed match by naming similarity.
+  // kp_planet_significations=505.
+  // CORRECTED (migration 878, slice 3 follow-up): this comment previously claimed all three of
+  // nakshatra_lord_placement/graha_degree_flags/nakshatra_exchange were docstring overclaims
+  // with zero live rows — wrong for two of the three. Grepped the actual writer source
+  // (ga_writers/ga_nakshatra_emitters.py) directly: graha_degree_flags/nakshatra_exchange ARE
+  // genuinely emitted (real, currently-active code, confirmed by migration 872's own earlier
+  // investigation) — their zero-live-rows measurement was the same build-lag artifact cycle
+  // 157 already corrected for 6 other categories on this exact writer, not a docstring overclaim.
+  // Added below. Only nakshatra_lord_placement is a genuine overclaim (zero writer emission
+  // anywhere, not just zero rows) — removed from get_nakshatra.ts itself (migration 878), so it
+  // is correctly absent from this file too, not "deliberately excluded despite being claimed".
+  // nakshatra_cross_ayanamsha (also in the tool's const) is already covered above via
+  // get_positions (W2 SC-5, a separate, earlier, already-correct entry) — not duplicated here.
+  // Three more from the F-B32 diff that look nakshatra-adjacent by name (nakshatra_co_tenancy,
+  // nakshatra_dispositor_chain, nakshatra_lord_relationship) do NOT appear in get_nakshatra.ts's
+  // own category list at all and are NOT added here either — they need their own tool-ownership
+  // verification, not an assumed match by naming similarity.
   graha_nakshatra_join:        ['marsys://tool/L1/get_nakshatra'],
   graha_pada_join:             ['marsys://tool/L1/get_nakshatra'],
   graha_kp_lords:              ['marsys://tool/L1/get_nakshatra'],
   cusp_kp_lords:               ['marsys://tool/L1/get_nakshatra'],
   graha_gandanta:              ['marsys://tool/L1/get_nakshatra'],
+  graha_degree_flags:          ['marsys://tool/L1/get_nakshatra'],
   nakshatra_dispositor:        ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_exchange:          ['marsys://tool/L1/get_nakshatra'],
   nakshatra_conjunction:       ['marsys://tool/L1/get_nakshatra'],
   nakshatra_cogravity:         ['marsys://tool/L1/get_nakshatra'],
   graha_tara_bala:             ['marsys://tool/L1/get_nakshatra'],
