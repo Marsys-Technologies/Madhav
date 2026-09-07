@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~167:0xZ — L3-W4 — PR hygiene: `#2199`'s last check
+  (`Governance Gates`) ~7.3min, within normal range, not yet queued. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
+  — blocked on: nothing new; next action: push once `#2199`
+  merges/finishes.
 - `2026-09-07T~166:0xZ — L3-W4 — PR hygiene: `#2199` checks ~4.8min,
   within normal range, nothing red, not yet queued. One new L1 merge
   (#2178, "orphan-risk finding on `ga_positions` rebuild") — read it:
