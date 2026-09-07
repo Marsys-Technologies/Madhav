@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T04:38:37Z` — cycle 784: **IDLE-OK (verified).** #2225/#2226 progressing through
+  queue; #2227/#2228 CLEAN-but-unqueued but still fresh (~15-21min) — not yet nudge-worthy. Own-
+  PR hygiene clean; adjudications unchanged (11); no new #2224 reply.
 - `2026-09-07T04:36:07Z` — cycle 783: **#2224 operational finding, cross-noted on #1945.** L1
   hit a real structural gotcha: the two-call evidence-submission flow (analysis→verdict) can
   permanently orphan a generation if `NIRMANA_DEPLOYED_SHA` advances between calls (fast-
