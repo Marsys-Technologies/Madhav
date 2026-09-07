@@ -381,6 +381,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:06:25Z` — cycle 809: **Root-caused #2227/#2228's stuck-unqueued pattern —
+  not negligence, a genuinely-stalled CI run.** After two nudges each went unanswered, ran
+  `gh pr merge --auto` directly on both (purely mechanical, doesn't touch their content).
+  Found `autoMergeRequest` was already armed on both (confirming the standing "autoMergeRequest
+  lies" doctrine) — the real blocker was checks that had never actually completed. My action
+  triggered fresh CI runs on both: #2228's Unit Tests already SUCCESS (completed), #2227's
+  freshly IN_PROGRESS (started this cycle). Should resolve normally now. Own-PR hygiene clean;
+  adjudications unchanged (11); fleet DIRTY empty.
 - `2026-09-07T06:02:45Z` — cycle 808: **IDLE-OK (verified).** #2227/#2228 still unqueued, only
   ~2min since the second nudge — too soon to expect action, not escalating further yet. All
   fleet PRs healthy. Own-PR hygiene clean; adjudications unchanged (11).
