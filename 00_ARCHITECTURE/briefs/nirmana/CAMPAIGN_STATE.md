@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:14:30Z` — cycle 812: **IDLE-OK (verified).** #2228 down to 1 pending check
+  (Governance Gates) — very close. #2227 progressing normally. Fleet DIRTY empty; adjudications
+  unchanged (11).
 - `2026-09-07T06:12:06Z` — cycle 811: **IDLE-OK (verified).** #2228 progressing (down to 2
   pending checks). #2227's Unit Tests check restarted at a newer timestamp — normal churn from
   a branch update mid-queue, not stuck. Fleet DIRTY empty; adjudications unchanged (11).
