@@ -495,6 +495,44 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~189:0xZ — L3-W4 — PR hygiene: `#2206`'s own `merge_group`
+  build still `in_progress` (~6.8min, within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2206` finishing; next action: same.
+- `2026-09-07T~188:0xZ — L3-W4 — PR hygiene: `#2206`'s own `merge_group`
+  build genuinely `in_progress` (~4.5min, well within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2206` finishing; next action: same.
+- `2026-09-07T~187:0xZ — L3-W4 — PR hygiene: `#2206` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — its checks cleared
+  since last cycle. Nothing to fix. No new `origin/main` merges, no new
+  E-gate opening. IDLE-OK. — blocked on: `#2206` finishing; next
+  action: same.
+- `2026-09-07T~186:0xZ — L3-W4 — PR hygiene: `#2206`'s last check, same
+  run, now ~8.75min, checked step-level detail directly — still on the
+  same consistently-slow `pytest` step, genuine progress not a stall.
+  No new `origin/main` merges, no new E-gate opening. IDLE-OK. —
+  blocked on: nothing new; next action: same.
+- `2026-09-07T~185:0xZ — L3-W4 — PR hygiene: `#2206`'s last check
+  (`Governance Gates`) ~5.9min, within normal range, not yet queued. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
+  — blocked on: nothing new; next action: push once `#2206`
+  merges/finishes.
+- `2026-09-07T~184:0xZ — L3-W4 — PR hygiene: `#2206` checks running
+  pre-queue (~3min, 2 pending, nothing red), not yet queued — nothing
+  to fix. No new `origin/main` merges relevant to L3, no new E-gate
+  opening. IDLE-OK. — blocked on: nothing new; next action: push once
+  `#2206` clears/queues.
+- `2026-09-07T~183:0xZ — L3-W4 — PR hygiene: `#2203` MERGED. Rebased
+  the 12 not-yet-merged local heartbeat commits onto fresh
+  `origin/main`. Hit the standard empty-theirs prepend-conflict pattern
+  8x (auto-resolved), no non-standard conflicts. Verified zero conflict
+  markers, migration-number guard PASS. Confirmed the rebased diff is
+  state-file-only. Renamed branch to `codex/nirmana-l3-heartbeat-idle-4`,
+  pushed, opened **PR #2206**, armed auto-merge. No new bounded work
+  this cycle (`ga_positions` still `OPEN-PENDING-PIN`, no new E-gate
+  opening). — blocked on: nothing new; next action: verify `#2206`
+  clears its checks and queues cleanly next cycle.
 - `2026-09-07T~182:0xZ — L3-W4 — PR hygiene: `#2203`'s own `merge_group`
   build still `in_progress` (~10.1min, approaching but still within the
   confirmed ~11min normal range). No new `origin/main` merges, no new
