@@ -497,6 +497,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~447:0xZ — L3-W4 — PR hygiene: `#2299` still position
+  1, `AWAITING_CHECKS`, `enqueuedAt: 13:19:37Z` — now ~11.2min with
+  no own `merge_group` run visible yet. Investigated: the repo shows
+  unusually heavy concurrent CI load right now (`gh run list` shows
+  many active branches — L1/L2/L5 sessions all pushing simultaneously,
+  `Ganga Quality Gate`/`TAP CI`/deploy runs stacked up across
+  multiple unrelated branches) — reads as GitHub Actions runner-
+  capacity congestion, not a technical stall specific to `#2299`
+  itself (no error, `mergeStateStatus` still resolving normally, no
+  DIRTY/RED signal). Nothing actionable yet — will re-check next
+  cycle and escalate scrutiny if the own-build genuinely never
+  starts. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2299`'s own build starting; next action:
+  same, watch closely.
 - `2026-09-07T~446:0xZ — L3-W4 — PR hygiene: `#2299` still position
   1, `AWAITING_CHECKS` — its own `merge_group` run hasn't visibly
   started yet in `gh run list`, but a `pr-2301` run was seen
