@@ -1355,3 +1355,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   implemented #2224's fix (PR #2307, dropping the redundant source_ref match) — not L0's task, but
   the exact deploy-race evidence hazard class relevant to future L0 re-submissions if ever needed.
   Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Conductor's new activity is implementation guidance for L1's #2224 fix — not L0's task. Nothing
+  eligible.
