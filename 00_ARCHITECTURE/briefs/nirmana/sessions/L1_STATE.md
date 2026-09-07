@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 150; shipped F-B32 slice 2/N onto the same open PR #2193 (queued): 4 more graha_*_bala_per_varga categories (cheshta/drik/kala/sthana), same verified-opt-in doctrine as slice 1, confirmed via get_strength.ts's own data-driven query + live row counts (735 each). 9/57 categories now closed, ~48 remain. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 151; shipped F-B32 slice 3/N (PR #2193): the get_nakshatra.ts cluster, 12 categories that had ZERO entries anywhere in coverage_matrix.ts despite the tool's own 16-category NAKSHATRA_CATEGORIES const. Caught and self-corrected a mid-cycle branch mistake (had started editing coverage_matrix.ts on the wrong branch, missing slices 1-2 -- discarded before committing, redid on the correct feature branch). 21/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8416,3 +8416,42 @@ record — they are the only entries in this table with a real wall-clock behind
   closed. CYCLE 150 L1: PR hygiene clean; shipped F-B32 slice 2 (4 more categories, same PR
   #2193) -- next: ~48 categories + 6 phantom entries remain; continue one verified cluster per
   cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T5xZ -- CYCLE 151 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 150 -- still no reply.
+  Continued F-B32's incremental closure with slice 3: the `get_nakshatra.ts` cluster. This tool
+  (F-B18/F-B19's earlier fix -- `ga_nakshatra` previously had NO dedicated serving tool at all)
+  had ZERO entries anywhere in `coverage_matrix.ts`, despite its own header comment and
+  `NAKSHATRA_CATEGORIES` const explicitly naming 16 fact_categories. Cross-referenced that const
+  against the F-B32 missing-57 list: 12 direct matches (`graha_nakshatra_join`,
+  `graha_pada_join`, `graha_kp_lords`, `cusp_kp_lords`, `graha_gandanta`,
+  `nakshatra_dispositor`, `nakshatra_conjunction`, `nakshatra_cogravity`, `graha_tara_bala`,
+  `nakshatra_statistics`, `kp_house_significators`, `kp_planet_significations`), all confirmed
+  with real, non-trivial live row counts before adding (700/200/200/240/50/200/1/10/150/34/
+  540/505). Deliberately did NOT add 3 other categories the tool's own const names
+  (`nakshatra_lord_placement`, `graha_degree_flags`, `nakshatra_exchange`) after checking they
+  have ZERO live rows for the canonical chart -- that is the tool's OWN docstring overclaiming,
+  a separate finding from F-B32, not something to paper over by adding a category with no data
+  behind it. Also deliberately did NOT add 3 categories from the missing-57 list that look
+  nakshatra-adjacent by name (`nakshatra_co_tenancy`, `nakshatra_dispositor_chain`,
+  `nakshatra_lord_relationship`) since they do not appear in `get_nakshatra.ts`'s own category
+  list at all -- naming similarity is not verification, and guessing their owner would repeat
+  the exact mistake this whole slow, incremental approach exists to avoid.
+  **Self-caught mid-cycle mistake**: after finishing the edit, `tsc` flagged `graha_nakshatra_join`
+  as an unknown property on a type listing only ~161 more entries -- far fewer than expected,
+  which meant I had started this cycle's edit on `codex/nirmana-l1-state-cycle4` (the STATE
+  branch, checked out fresh from origin/main at cycle 150's merge) instead of
+  `codex/nirmana-l1-f-b32-avastha-per-varga` (the actual feature branch carrying slices 1-2).
+  Caught it via the diagnostic before committing anything -- discarded the in-progress edit
+  cleanly (`git checkout --` on the one file, confirmed `git status` clean), switched to the
+  correct branch, and reapplied slice 3 there on top of the real slices 1-2 content. Verified
+  `tsc --noEmit` clean and `coverage_gate.test.ts` 6/6 pass on the correct branch before
+  committing. Rebased onto origin/main (clean, 3 commits), and hit a merge-queue race pushing
+  the force-with-lease after rebase (the PR had been auto-queued between my check and the push)
+  -- dequeued via the `dequeuePullRequest` GraphQL mutation, force-pushed successfully, updated
+  the PR title/description to cover all three slices, re-queued, confirmed `autoMergeRequest`
+  armed. 21/57 categories now closed. CYCLE 151 L1: PR hygiene clean; shipped F-B32 slice 3 (12
+  more categories, PR #2193) after catching and correcting my own wrong-branch mistake before it
+  reached a commit -- next: ~36 categories + 6 phantom entries + get_nakshatra.ts's own 3-category
+  docstring overclaim remain; continue one verified cluster per cycle; keep re-checking
+  #2113/#2180 every cycle regardless.

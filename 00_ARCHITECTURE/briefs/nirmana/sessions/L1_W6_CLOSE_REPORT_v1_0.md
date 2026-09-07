@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.8-DRAFT"
+version: "0.9-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -28,7 +28,7 @@ CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quant
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
 — 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
-cycle 149 onward (9/57 landed across 2 slices, PR #2193). See §2 for the corrected
+cycle 149 onward (21/57 landed across 3 slices, PR #2193). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
@@ -307,10 +307,22 @@ awaits either a dedicated prep cycle or genuine W6 close.
   data-driven query (opt-in via the `categories` param, same doctrine as the file's existing
   `ashtakavarga_bindu_per_varga` precedent); slice 2 (`graha_cheshta_bala_per_varga`,
   `graha_drik_bala_per_varga`, `graha_kala_bala_per_varga`, `graha_sthana_bala_per_varga` —
-  4/57), same doctrine verified against `get_strength.ts`'s equivalent query — both slices
-  confirmed via live row counts before adding. **9/57 closed, ~48/57 remain open**; the 6
-  phantom entries are untouched (need their own separate investigation — real category renamed
-  vs. never-implemented — before either removing or re-pointing).
+  4/57), same doctrine verified against `get_strength.ts`'s equivalent query; slice 3 (the
+  `get_nakshatra.ts` cluster — `graha_nakshatra_join`, `graha_pada_join`, `graha_kp_lords`,
+  `cusp_kp_lords`, `graha_gandanta`, `nakshatra_dispositor`, `nakshatra_conjunction`,
+  `nakshatra_cogravity`, `graha_tara_bala`, `nakshatra_statistics`, `kp_house_significators`,
+  `kp_planet_significations` — 12/57), a tool that (per F-B18/F-B19) previously had NO dedicated
+  serving tool at all and had ZERO entries anywhere in this file despite its own
+  `NAKSHATRA_CATEGORIES` const naming 16 categories — 3 of that const's own categories
+  (`nakshatra_lord_placement`, `graha_degree_flags`, `nakshatra_exchange`) were checked and
+  found to have ZERO live rows, so deliberately NOT added (a separate tool-docstring-overclaim
+  finding, not this one); 3 more from the missing-57 list that look nakshatra-adjacent by name
+  (`nakshatra_co_tenancy`, `nakshatra_dispositor_chain`, `nakshatra_lord_relationship`) do not
+  appear in `get_nakshatra.ts`'s own list at all and were left for a future slice rather than
+  guessed. All three slices confirmed via live row counts before adding. **21/57 closed,
+  ~36/57 remain open**; the 6 phantom entries and the get_nakshatra.ts 3-category docstring
+  overclaim are both untouched (need their own separate investigation before either removing or
+  re-pointing).
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -322,8 +334,9 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-2 (9
-categories) landed cycles 149-150, PR #2193; ~48/57 + 6 phantoms remain, unheld, does not need
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-3 (21
+categories) landed cycles 149-151, PR #2193; ~36/57 + 6 phantoms + get_nakshatra.ts's own
+3-category docstring overclaim remain, unheld, does not need
 #2113)** · W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
