@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:27:44Z` — cycle 1011: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
+  stale PRs cleared this check). Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:25:22Z` — cycle 1010: **IDLE-OK, Δfrozen +0.** ~10 min since the fleet's last
   merge — a natural lull, not a stall (checked fleet-wide merge activity, not just campaign
   events). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
