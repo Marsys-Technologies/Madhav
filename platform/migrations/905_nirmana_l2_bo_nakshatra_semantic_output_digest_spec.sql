@@ -1,4 +1,4 @@
--- 902_nirmana_l2_bo_nakshatra_semantic_output_digest_spec.sql
+-- 905_nirmana_l2_bo_nakshatra_semantic_output_digest_spec.sql
 --
 -- NIRMANA v2.5 -- L2 (Bodha) W4 pre-dispatch. Transaction ownership belongs to
 -- platform/scripts/migrate.ts.

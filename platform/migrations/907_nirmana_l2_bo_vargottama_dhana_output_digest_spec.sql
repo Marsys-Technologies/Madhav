@@ -1,9 +1,9 @@
--- 904_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql
+-- 907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql
 --
 -- NIRMANA v2.5 -- L2 (Bodha) W4 pre-dispatch. Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
 --
--- Sibling migration to 902/903 -- see 902 for the full rationale (#1770
+-- Sibling migration to 905/906 -- see 905 for the full rationale (#1770
 -- EXTENSION RULING, D-NATIVE-12, 2026-09-07 20:41:01Z; template 896/
 -- bo_sudarshana; D-CND-27 gap class). This migration authors
 -- bo_vargottama_dhana's output-digest specification.
@@ -18,7 +18,7 @@
 -- _where_in() contract (values must equal sorted(values)):
 -- ["dhana_axis","vargottama_amplification"].
 --
--- key_columns / value_columns are identical to 896/902/903 (table-invariant,
+-- key_columns / value_columns are identical to 896/905/906 (table-invariant,
 -- re-verified live against information_schema.columns before authoring).
 --
 -- spec_sha256 computed and independently re-verified via the REAL server

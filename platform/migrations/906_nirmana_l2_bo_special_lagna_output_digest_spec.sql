@@ -1,9 +1,9 @@
--- 903_nirmana_l2_bo_special_lagna_output_digest_spec.sql
+-- 906_nirmana_l2_bo_special_lagna_output_digest_spec.sql
 --
 -- NIRMANA v2.5 -- L2 (Bodha) W4 pre-dispatch. Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
 --
--- Sibling migration to 902 (bo_nakshatra_semantic) -- see that file for the
+-- Sibling migration to 905 (bo_nakshatra_semantic) -- see that file for the
 -- full rationale (#1770 EXTENSION RULING, D-NATIVE-12, 2026-09-07 20:41:01Z;
 -- template 896/bo_sudarshana; D-CND-27 gap class). This migration authors
 -- bo_special_lagna's output-digest specification.
@@ -14,7 +14,7 @@
 -- single SIGNAL_TYPE_CLASS constant special_lagna_emitter.py declares
 -- (platform/python-sidecar/bodha_writers/special_lagna_emitter.py:40).
 --
--- key_columns / value_columns are identical to 896/902 (table-invariant,
+-- key_columns / value_columns are identical to 896/905 (table-invariant,
 -- re-verified live against information_schema.columns before authoring).
 --
 -- spec_sha256 computed and independently re-verified via the REAL server
