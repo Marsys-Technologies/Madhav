@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T00:58:56Z` — cycle 710: **CLOSED #1757.** PR #1906 confirmed merged
+  (2026-09-05T23:21:09Z) — `count_sql` seed-revert guard fixed, matching prior ruling's
+  promise to close on merge. 17→16 open adjudications. Own-PR hygiene: none open. Fleet
+  DIRTY: empty.
 - `2026-09-07T00:56:37Z` — cycle 709: **CLOSED #1747.** Checked #1734 first (D-CND-26 ruling
   already complete, stays open as L3's living per-asset ledger — no action needed). #1747's
   original bug long since fixed (#1766); its tacked-on fact_id/build_id ask was already
