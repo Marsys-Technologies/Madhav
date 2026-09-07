@@ -493,6 +493,116 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~140:0xZ — L3-W3 — PR hygiene: `#2187`'s own `merge_group`
+  build (run `34066593959`) confirmed via full `gh run list` scan
+  (not truncated) — ~5.5min elapsed, 8/9 jobs green, only `Governance
+  Gates` `in_progress`, within normal range. Nothing to fix. Continued
+  F-L3-4 with a seventh asset, `ka_jivana_parva` — a genuinely different
+  shape from every prior asset in this batch (not a fan-out, not a
+  top-N cap): the sum of three independently birth/time-clipped
+  Vimshottari dasha levels (10 MD + 89 AD + 1 PD = 100, coincidentally
+  equal to `ka_bhavishya_lekha`'s own 100 but via an unrelated,
+  uncapped derivation). Also caught and documented (without touching the
+  writer) a real discrepancy: the writer's own inline comment claims its
+  PD query returns "~9 rows", but the actual filter
+  (`start_date <= as_of_date AND end_date >= as_of_date`) returns only
+  the single PD spanning build time — independently re-verified live via
+  a fresh query against `chart_dashas` in the paired test, not trusted
+  from reading the comment. Migration 858 + paired test authored (no
+  self-transaction wrapper from the start), all 7 tests pass, confirmed
+  live the row is genuinely still NULL after the "rolled back" tests
+  ran. Migration-number guard PASS (858, confirmed free). Committed
+  locally (`2a422e88f`), held from push — `#2187` still mid-queue-
+  attempt. — blocked on: nothing new; next action: push once `#2187`
+  merges or clearly finishes, then continue F-L3-4 on another asset (12
+  remain NULL) if still no E-gate work.
+- `2026-09-07T~139:0xZ — L3-W3 — PR hygiene: `#2187` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
+  F-L3-4 with a sixth asset, `ka_bhavishya_lekha` (probabilistic forward
+  projection artifact) — a top-N-of-qualifying shape, the same as L5's
+  `mi_adhilepa` (migration 690), simpler than the last two fan-out shapes
+  in this batch: `LEAST(100, count of eligible kala_darshana windows in
+  the rolling next-5y horizon, net_label != obstructed_severe)`. Verified
+  live that 110 eligible windows currently exist, so the 100-row cap is
+  currently binding, matching `target_floor`/`count_sql` exactly.
+  Migration 857 + paired test authored (no self-transaction wrapper from
+  the start); the live integration test independently re-derives the
+  eligibility query from source tables rather than trusting the
+  migration's own recorded number — all 6 tests pass, confirmed live the
+  row is genuinely still NULL after the "rolled back" tests ran.
+  Migration-number guard PASS (857, confirmed free). Committed locally
+  (`4c2c05e8c`), held from push — `#2187` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2187` merges or
+  clearly finishes, then continue F-L3-4 on another asset (14 remain
+  NULL) if still no E-gate work.
+- `2026-09-07T~138:0xZ — L3-W3 — PR hygiene: `#2187` still mid-check
+  pre-queue (`Governance Gates`/`Build Check` pending at ~6.7min, within
+  normal range, nothing red). Continued F-L3-4 with a fifth asset,
+  `ka_vighnakara` (the obstruction/counter-indicator detector) — more
+  layered than the prior 5 in this batch: derived from the writer's own
+  `run()`/`_detect_all()` directly — anchors are the top-500-scored
+  `kala_convergence` windows (of 14,868 total for this chart, confirmed
+  live) plus up to 200 dasha-timeline anchors, each checked by 4 active
+  detectors (malefic_transit/panchanga_obstruction/gandanta/combustion);
+  a 5th (papakartari) is implemented but found zero hits for this
+  native, and 2 more `obstruction_type` values are reserved-not-yet-built
+  (confirmed by reading the writer source, not assumed from the CHECK
+  constraint alone). Live per-type breakdown (358+123+38+17) sums to
+  536, matching `target_floor`/`count_sql` exactly. Migration 856 +
+  paired test authored (no self-transaction wrapper from the start), all
+  7 tests pass, confirmed live the row is genuinely still NULL after the
+  "rolled back" tests ran. Migration-number guard PASS (856, confirmed
+  free). Committed locally (`bb931ca9a`), held from push — `#2187`
+  still mid-check. — blocked on: nothing new; next action: push once
+  `#2187` clears/queues, then continue F-L3-4 on another asset (15
+  remain NULL) if still no E-gate work.
+- `2026-09-07T~137:0xZ — L3-W3 — PR hygiene: `#2187` checks still
+  running pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
+  Integration Tests` pending, nothing red), not yet queued — nothing to
+  fix. Continued F-L3-4 with a fourth asset, `ka_moorti_nirnaya`: same
+  ungated sign/nakshatra-run shape as `ka_kota_chakra` (migration 853),
+  derived from `services/ka_moorti_nirnaya/writer.py`/`logic.py` directly
+  — one row per (graha, sign-run) over the same 460-day horizon, scoped
+  to 8 of 9 grahas (Moon deliberately excluded, disclosed in the writer's
+  own docstring). Live per-graha breakdown (Mercury 20, Venus 17, Sun 16,
+  Mars 9, Jupiter 4, Ketu 2, Rahu 2, Saturn 2) sums to 72, matching
+  `target_floor`/`count_sql` exactly. Migration 855 + paired test
+  authored (no self-transaction wrapper from the start), all 7 tests
+  pass, confirmed live the row is genuinely still NULL after the "rolled
+  back" tests ran. Migration-number guard PASS (855, confirmed free).
+  **Correction to last cycle's own heartbeat entry:** it said "14 of 23
+  L3 assets still NULL" for F-L3-4 — that arithmetic was wrong (20 were
+  NULL at F-L3-4's filing, minus the 3 done by that point = 17, not 14;
+  now 16 after this cycle's `ka_moorti_nirnaya`). Self-caught while
+  re-deriving the count for this entry; not re-editing the prior entry
+  (rolling log), corrected here instead. Committed locally (`4491043da`),
+  held from push — `#2187` still mid-check. — blocked on: nothing new;
+  next action: push once `#2187` clears its checks/queues, then continue
+  F-L3-4 on another asset (16 remain NULL) if still no E-gate work.
+- `2026-09-07T~136:0xZ — L3-W3 — PR hygiene: `#2184` MERGED (squash
+  `c14ca7f2a`). Rebased the 9 not-yet-merged local commits (migrations
+  852/853/854 + their heartbeat entries, plus 6 pre-#2184 heartbeat
+  entries whose content was already absorbed into #2184's squash) onto
+  fresh `origin/main`. Hit the standard empty-theirs prepend-conflict
+  pattern 5x (auto-resolved via the marker-strip script after confirming
+  each), plus ONE genuine non-standard conflict this time: the `~126:0xZ`
+  heartbeat entry appeared corrupted on the HEAD side (a stray extra
+  backtick truncating it mid-sentence, `` `gh run view`  `` instead of
+  continuing into `--job`) `` — an artifact from an earlier cycle's own
+  conflict-resolution script) while the incoming commit carried the full,
+  correct text; resolved by keeping the correct/complete version and
+  dropping the corrupted duplicate, re-read the surrounding 50 lines
+  afterward to confirm no other entry was lost or duplicated. Verified
+  zero conflict markers, migration-number guard PASS, all 18
+  migration-852/853/854 tests still pass post-rebase, `ka_dasha_kala`
+  held row intact. Renamed branch to
+  `codex/nirmana-l3-f-l3-4-volume-derivations`, pushed, opened **PR
+  #2187**, armed auto-merge (checks running now, not yet queued — normal).
+  No new bounded work this cycle beyond the rebase/PR-open itself
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: nothing new;
+  next action: verify `#2187` clears its checks and queues cleanly next
+  cycle, then continue F-L3-4 (14 of 23 L3 assets still NULL) if still no
+  E-gate work.
 - `2026-09-07T~135:0xZ — L3-W3 — PR hygiene: `#2184` still genuinely
   `isInMergeQueue: true` (position 1), own `merge_group` build (run
   `34065366576`) confirmed via full `gh run list` scan (not a truncated
