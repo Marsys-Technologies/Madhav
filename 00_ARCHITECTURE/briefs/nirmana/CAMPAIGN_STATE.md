@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:00:49Z` — cycle 1000: **IDLE-OK, Δfrozen +0.** 1000th logged cycle. Frontier
+  unchanged. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
+  unchanged (12).
 - `2026-09-07T14:58:25Z` — cycle 999: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
   clean. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T14:56:14Z` — cycle 998: **IDLE-OK, Δfrozen +0.** L1's newly-checked frontier
