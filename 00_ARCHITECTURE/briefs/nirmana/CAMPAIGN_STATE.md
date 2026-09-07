@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:10:27Z` — cycle 943: **IDLE-OK, Δfrozen +0.** L1 dispatched `ga_sensitive_degree`
+  (1 slot active). L2 hasn't reacted to the migration-980 correction yet — only ~3 min old.
+  Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
+  (11).
 - `2026-09-07T12:06:50Z` — cycle 942: **Found L2's REAL reason — a stale-info problem, not
   non-compliance, and it's already resolved.** Read #2271's own diff: L2 was correctly holding
   `bo_sudarshana` because `natural_key_partition` was NULL and their last check of
