@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~261:0xZ — L3-W4 — PR hygiene: `#2233` advanced to
+  position 3, `AWAITING_CHECKS` (`mergeStateStatus` briefly `UNKNOWN`,
+  normal async lag) — located its own `merge_group` run directly,
+  step-level checked: `Unit Tests` + `Governance Gates` both
+  `in_progress` ~2.8min in, well within normal range. One new
+  `origin/main` merge (an L5 heartbeat PR, no L3 overlap).
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2233` finishing; next action: same.
 - `2026-09-07T~260:0xZ — L3-W4 — PR hygiene: `#2233`'s checks finished
   (0 failures — the ~11.2min resolved cleanly as expected). Now
   genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 4 —
