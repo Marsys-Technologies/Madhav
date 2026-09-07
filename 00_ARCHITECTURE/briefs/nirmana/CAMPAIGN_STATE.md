@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:39:26Z` — cycle 844: **IDLE-OK (verified).** #2247/#2252 still DIRTY but both
+  within reasonable wait window (nudged/fresh respectively). #2227 unchanged. Adjudications
+  unchanged (11).
 - `2026-09-07T07:36:59Z` — cycle 843: **Fleet sweep — re-nudged #2247** (DIRTY again, ~40min,
   likely a `get_*.ts` retrieval-tool merge race with sibling L1 PRs). #2252 fresh, watching.
   #2227 unchanged. Adjudications unchanged (11).
