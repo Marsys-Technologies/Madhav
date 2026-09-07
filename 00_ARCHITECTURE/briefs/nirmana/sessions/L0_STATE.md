@@ -1206,3 +1206,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   `ga_vargas` (L1) froze this cycle — campaign progress, not L0-actionable. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. Hit a transient `git fetch` ref-lock error
+  this cycle (`cannot lock ref 'refs/remotes/origin/main'`) — a concurrent-fetch race, not a real
+  problem; retried once and it succeeded cleanly. `egate.sql -v layer=L0`: still 0 rows.
+  Adjudication list and #1713 tail unchanged. Nothing eligible.
