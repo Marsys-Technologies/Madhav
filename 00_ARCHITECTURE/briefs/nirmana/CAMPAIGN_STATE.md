@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:23:36Z` — cycle 761: **L2 liveness flag posted to #1713, not an adjudication.**
+  #2165 remains L2's only visible activity in 6+ hours (since 21:00:50Z), no response to the
+  cycle-726 nudge either — flagged for whoever supervises L2 to check its worktree/process
+  directly, since this looks like a stalled session rather than active-but-slow. #2217 now
+  queued (progressing). Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:20:38Z` — cycle 760: **IDLE-OK (verified).** Fleet PR list unchanged, all
   MERGEABLE. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:18:04Z` — cycle 759: **IDLE-OK (milestone watched).** PR #2220 —
