@@ -17,7 +17,7 @@
       "convergence_commit": "9f98f8c9b292899c071e218af0e50e71ab8ca57e",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "2ebcad70a47a3f8c408b39ea0798b54e5aa74a576c7932a3ecf0ad6f8b9f3213"
+      "writer_inventory_sha256": "3f90267a10ba4029dd0579506198d0131f8df41e64dc32c99d343b3dd2f382a3"
     },
     "L2": {
       "asset_prefix": "bo_",
