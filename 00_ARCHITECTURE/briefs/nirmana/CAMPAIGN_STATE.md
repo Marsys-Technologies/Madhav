@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:09:20Z` — cycle 893: **IDLE-OK, Δfrozen +0.** ~4 min since
+  `accepted_rebuild_observed`, still no `integrity_verified` — slower than the `ga_positions`
+  precedent (40s) but not yet a stall. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene:
+  none open. Adjudications unchanged (11).
 - `2026-09-07T10:07:14Z` — cycle 892: **IDLE-OK, Δfrozen +0.** `ga_dashas` still short of
   `integrity_verified`/`asset_frozen`, ~2 min since `accepted_rebuild_observed` — not yet
   stall-worthy. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
