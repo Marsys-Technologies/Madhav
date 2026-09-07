@@ -89,12 +89,25 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
   ga_prashna: ['ga_positions', 'bg_prashna_rules'],
 }
 
+// D-NATIVE-11 (#2258, native-ruled 2026-09-07): supporting infrastructure
+// writers register in the DAG (so they need a seed/registry row) but are NOT
+// elevation-denominator assets — the 128-identity below deliberately excludes
+// them and stays exactly 128. Adding a name here requires its own native
+// ruling; adding a seed row without listing it here still fails the identity.
+const SUPPORTING_WRITER_IDS = ['bo_grounding'] as const
+
 describe('asset_registry_seed — post-626 DAG parity', () => {
   const assetsById = new Map(ASSETS.map((asset) => [asset.asset_id, asset]))
 
-  it('has the complete 128-identity post-626 registry seed', () => {
-    expect(ASSETS).toHaveLength(128)
-    expect(assetsById.size).toBe(128)
+  it('has the complete 128-identity post-626 registry seed (+ ruled supporting writers)', () => {
+    const denominatorAssets = ASSETS.filter(
+      (asset) => !SUPPORTING_WRITER_IDS.includes(asset.asset_id as (typeof SUPPORTING_WRITER_IDS)[number]),
+    )
+    expect(denominatorAssets).toHaveLength(128)
+    expect(assetsById.size).toBe(128 + SUPPORTING_WRITER_IDS.length)
+    for (const supportingId of SUPPORTING_WRITER_IDS) {
+      expect(assetsById.has(supportingId), `${supportingId} must have a seed row (it registers in the DAG)`).toBe(true)
+    }
   })
 
   it('pins all 24 substantive migration-governed dependency arrays', () => {
