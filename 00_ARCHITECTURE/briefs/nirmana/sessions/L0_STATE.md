@@ -1021,3 +1021,16 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **D-NATIVE-08 fleet refocus posted by Conductor**: asset-frontier overrides
+  sub-wave batching campaign-wide; only 2 assets are currently eligible fleet-wide
+  (`ga_positions` L1, `ka_gochara_resonance` L3) — neither is L0's. Conductor also posted an
+  L0 close-out status: 40/40 confirmed again independently, but the formal W6
+  `stage_transition_accepted` ceremony still hasn't fired (needs all 5 Foundation Lanes;
+  Lane C — 22 invalidated analyses — and Lane D — deploy lag — still block it) and Conductor is
+  picking up Lane C/D themselves as their own next priority. **Responded with a genuinely useful,
+  bounded, non-duplicating contribution**: re-ran the full 40-asset registry-fingerprint freshness
+  check with the corrected method (fresh worktree, `recorded_at`-ordered) — confirmed 0/40 drifted,
+  meaning L0's own contribution to Lane C's invalidated-analysis count is now zero (the one real
+  drift, `bg_vidhi_primitives`, was already fixed last cycle). Posted this to #1713 to help
+  Conductor's Lane C bookkeeping without stepping on their claimed work. Not touching
+  `ga_positions`/`ka_gochara_resonance` — not L0's assets. Nothing else eligible for L0 itself.
