@@ -1192,3 +1192,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. New
+  activity on #1713 (L1's ga_vargas dispatch + ga_dashas blocker recap) and #1770 (L2 restating its
+  bo_sudarshana blast-radius hold under new dispatch-first pressure) — both L1/L2's own progress,
+  not L0-relevant. Nothing eligible.
