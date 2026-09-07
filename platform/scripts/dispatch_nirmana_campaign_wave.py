@@ -370,9 +370,26 @@ def validate_wave_evidence_bindings(
                 # the same registry fingerprint while an explicitly reviewed
                 # deployment advances the canonical receipt/source pair.  It
                 # remains auditable history, not current dispatch authority.
+                if analysis_digest != canonical_analysis_digests[asset_id]:
+                    continue
+                # Adjudication #2317 (ruled 2026-09-07, Option (b)): the analysis
+                # event's content is already independently verified above against
+                # the freshly-recomputed canonical digest, so requiring its OWN
+                # source_ref to also equal reviewed_deployment_sha adds no safety
+                # on top of that -- the same reasoning #2224 applied to
+                # definitions.ts's sibling check. The verdict event's source_ref
+                # still must match: it represents "this specific decision was
+                # reviewed under this specific commit" (a decision-currency
+                # property, not a content-correctness one), which the verdict's
+                # own assertNirmanaGitCommitMatchesDeployment binds it to at
+                # submission time -- #2317 does not disturb that. #2224's own fix
+                # guarantees the verdict's source_ref is always later than an
+                # analysis accepted before a deploy landed, so requiring them to
+                # match could never hold once any deploy happened in between, for
+                # any asset -- dropping the analysis-side match only.
                 if (
-                    analysis_digest != canonical_analysis_digests[asset_id]
-                    or row["source_ref"] != f"git:{reviewed_deployment_sha}"
+                    row["event_type"] == "optimization_verdict_accepted"
+                    and row["source_ref"] != f"git:{reviewed_deployment_sha}"
                 ):
                     continue
             current_rows[row["event_type"]].append((row, analysis_digest))
