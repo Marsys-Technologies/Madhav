@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~226:0xZ — L3-W4 — PR hygiene: `#2222`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 2 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_positions` re-verified
+  live: still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2222` finishing; next action: same.
 - `2026-09-07T~225:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
   run, now ~8.5min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step (`
