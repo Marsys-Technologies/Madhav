@@ -1076,3 +1076,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   transient network error (`connection reset by peer`) on the first `gh issue list` call this cycle
   — retried the `#1713` tail check independently rather than assume anything from the failed call,
   confirmed unchanged. Adjudication list unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  `ga_positions` (L1) froze this cycle, cascading the eligible-frontier from 2 to 16 assets
+  campaign-wide — but all 16 are L1/L2/L3 (`ga_*`/`bo_sudarshana`/`ka_*`), none L0's. Nothing
+  eligible for L0.
