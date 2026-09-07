@@ -755,3 +755,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   the pipeline-job image genuinely updates (direct `gcloud` check, not the workflow's own conclusion
   alone); only THEN re-dispatch `bg_cohort` under the normal executor/verifier-SA identity-separated
   path to take L0 to 40/40 — the exact handoff #2234's own test plan names.
+- 2026-09-07 — **IDLE-OK (verified).** Force-deploy `34087944016` progressing (`Build & Deploy
+  Pipeline Job Image` genuinely `in_progress` — the job that matters for `bg_cohort`), not done yet.
+  #1713's only new activity is my own prior post. Nothing else eligible.
