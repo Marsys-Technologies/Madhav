@@ -381,6 +381,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:27:48Z` — cycle 926: **Targeted L2/L3 nudge — L1's success makes their silence
+  the standout defect now.** Δfrozen +0 this check (49/128), but confirmed L1 froze 2 since the
+  directive (`ga_vargas`, `ga_sensitive`) while L2/L3 show ZERO movement: `bo_sudarshana` still
+  W2-only at 1h33m stale, L3's 6 assets still zero events despite the `nrec` fix posted ~1h40m
+  ago. Posted a sharp, lane-specific nudge to #1713 (comment 5569941813) naming both gaps
+  directly and asking for a dispatch or a named blocker, not a status report — L1's proof-of-
+  concept removes the "maybe the directive doesn't apply cleanly" excuse. Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:25:48Z` — cycle 925: **Δfrozen +1 (48→49). `ga_sensitive` froze.** L1's second
   freeze this drive, ~13 min after `ga_vargas`. 14 assets remain on the eligible frontier. Fleet
   DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
