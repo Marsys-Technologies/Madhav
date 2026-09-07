@@ -222,6 +222,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
 | `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
+| `ka_sangam`'s F-L3-4 volume-formula derivation (last 2 of 20 originally-NULL L3 assets, with `ka_kshetra`) | real, verified structural complexity; a second cycle's deeper dig still didn't close it | genuinely open — a second investigation cycle answered every fact the first cycle's note listed as missing, and STILL could not reach a confident number; recording the harder blocker this time instead of re-listing solved sub-questions. Confirmed live: `_LIFETIME_HORIZON_YEARS=100`, `_HORIZON_YEARS=7` (the 'near' SubStep's own label says "5yr" — stale, the real constant is 7, a minor doc drift not fixed here since it's not this migration's concern); this chart selected all 60 possible lifetime substeps (`build_substep_progress` count) + 1 near = 61 total; 6 of this chart's 12 signs clear `SAV>=28` (signs 1,2,4,5,7,8, read from `chart_facts`/`ashtakavarga_bindu_sign`/`SARVA-SIGN_*`, `lahiri_chitrapaksha`). Computed real Jupiter/Saturn/Mars sign-ingress counts into those 6 signs over the exact 100y lifetime window directly from `ephemeris_daily` (day-to-day sidereal sign-change detection, offset back-derived via `brahmagyan.l0_ephemeris.derive_sidereal` at birth, not guessed): 75 (Jupiter) + 349 (Mars) + 42 (Saturn) = 466 windows per lifetime-substep call. **This does not reconcile**: `_dedup` keys on `(mode, peak_date, signal_id)`, and each lifetime substep's Mode D windows are tagged with THAT substep's own sole predicate's `signal_id` (a different one per substep), and the substep-scoped `DELETE ... WHERE signal_id=%s AND horizon_tier='lifetime'` only clears rows sharing that same `signal_id` — so nothing in the code stops all 60 substeps' Mode D output from stacking as separate rows, which would predict roughly 60x466=27,960 lifetime-tier Mode D rows alone, far above the observed 11,950 mode-D total (`kala_convergence`, all tiers). The gap means either (a) my day-to-day sign-change detection over-counts real ingresses (plausible: retrograde stations near a sign cusp can wobble across the boundary several times, and the true `find_ingresses` service likely has its own real-root/hysteresis logic this rough SQL pass didn't replicate), or (b) some other gate (e.g. `HIGH_CONFIDENCE_ORB_THRESHOLD`, a per-window admission check not traced this cycle) drops a large fraction of Mode D candidates before insertion, or (c) something about which predicate is genuinely "first" per substep differs from this reading. None of these three were resolved. Not fixed or guessed at; still recorded as a head start, now with the harder remaining question named precisely (reconcile the ~2.3x gap between a naive ingress count and the real served total) rather than the easier facts a first pass already closed. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -494,6 +495,134 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~150:0xZ — L3-W3 — PR hygiene: `#2192` build ~8.7min,
+  within normal range, nothing red. Continued the `ka_sangam` F-L3-4
+  investigation from last cycle: answered every fact last cycle's note
+  flagged as missing — `_LIFETIME_HORIZON_YEARS=100`, `_HORIZON_YEARS=7`
+  (caught the 'near' substep's own label saying "5yr" is stale, not
+  fixed, out of scope), this chart selected all 60 possible lifetime
+  substeps + 1 near = 61 total (`build_substep_progress`), 6 of 12 signs
+  clear `SAV>=28` (queried live from `chart_facts`). Computed real
+  Jupiter/Saturn/Mars ingress counts into those 6 signs over the exact
+  100y window directly from `ephemeris_daily` (75+349+42=466 per
+  lifetime-substep call) — but this does NOT reconcile against the
+  observed 11,950 mode-D total: nothing in `_dedup`'s
+  `(mode, peak_date, signal_id)` key or the substep-scoped DELETE stops
+  all 60 lifetime substeps' Mode D output from stacking as separate
+  rows, which would predict ~60x466=27,960, about 2.3x too high. Did
+  not resolve the gap (candidates: my day-to-day sign-detection over-
+  counting retrograde boundary wobbles vs the real `find_ingresses`
+  service's own logic; an untraced admission gate; or a wrong "first
+  predicate" assumption) — recorded the SPECIFIC unreconciled gap in the
+  Held item (replacing the now-answered easier questions) rather than
+  force a number or re-list solved sub-questions. No migration, no code
+  change this cycle — a second investigation pass is itself the bounded
+  unit, converging the search space for whoever tackles this next.
+  — blocked on: nothing new; next action: push once `#2192`
+  merges/finishes; `ka_sangam`/`ka_kshetra` remain the only 2 of 20
+  originally-NULL L3 assets not yet closed, both now investigated in
+  real depth (not merely assumed complex) without a safe number reached.
+- `2026-09-07T~149:0xZ — L3-W3 — PR hygiene: `#2192` own `merge_group`
+  build confirmed via full `gh run list` scan — ~3.6min elapsed, healthy,
+  nothing red. Nothing to fix. Attempted `ka_sangam`'s F-L3-4 volume
+  formula (the last remaining tractable-looking candidate alongside
+  `ka_kshetra`) and made real progress but stopped short of a confident
+  number this cycle — recorded as a new Held item rather than force an
+  inaccurate migration. Key finding, self-corrected before writing
+  anything down: Mode D (SAV-bindhu) fires ONCE PER SUBSTEP
+  (`if pred_dict is pred_dicts[0]`), not once per predicate as my first
+  reading assumed — this alone would have produced a wildly wrong
+  formula had I not re-checked the actual invocation site. Confirmed
+  two substep horizon scopes (`'near'`=5yr, one substep;
+  `'lifetime:{i}'`=birth-to-`_LIFETIME_HORIZON_YEARS`, up to 60
+  substeps) but did not verify how many lifetime substeps this chart
+  actually selects, the exact horizon-years constant, this chart's own
+  SAV-strong-sign count, or real per-planet ingress counts — all
+  needed before a formula could be honestly written. No migration, no
+  code change this cycle; this investigation itself is the bounded
+  unit, logged so the next attempt doesn't re-discover the mode-D
+  correction from scratch. — blocked on: nothing new; next action:
+  push once `#2192` merges/finishes, then either complete the
+  `ka_sangam` investigation (query the 4 missing facts above) or move
+  to a different tier if still no E-gate work. **F-L3-4 status
+  unchanged this cycle: 16 of 20 closed**; `ka_kshetra`/`ka_sangam`
+  remain, both now confirmed via direct investigation (not assumption)
+  to be genuinely complex.
+- `2026-09-07T~148:0xZ — L3-W3 — PR hygiene: `#2192` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix.
+  Revisited `ka_gochara_v3_century_materialize` — one of the 3 assets
+  deferred last cycle as "too large" — and found its ROW-COUNT shape is
+  actually separable from its intensity-scoring complexity and genuinely
+  tractable: 18 of 27 event classes serve a flat one-row-per-
+  find_threshold_crossings-interval production (10-40 rows/class,
+  chart-specific), the other 9 additionally get up to 3 peak-anchored
+  month + 3 day rows per era window (`MAX_PEAKS_PER_ERA_WINDOW=3`,
+  sourced from `services/gochara_v3/resolution_hierarchy.py`). **Self-
+  caught a real error mid-authoring**: a first draft wrongly generalised
+  the flat tier to a uniform "10 rows per class" from an incomplete,
+  terminal-truncated query — caught by re-running the FULL breakdown
+  before committing, corrected to the real per-class-variable counts
+  (290 flat + 90 era + 267 month + 267 day = 914). Migration 865 +
+  paired test authored (no self-transaction wrapper from the start); the
+  test's live checks independently re-derive the complete breakdown from
+  source specifically to guard against a repeat of that exact mistake —
+  all 8 tests pass. Migration-number guard PASS (865, confirmed free).
+  Committed locally (`6d30f1c2a`), held from push — `#2192` still
+  mid-queue-attempt. — blocked on: nothing new; next action: push once
+  `#2192` merges or clearly finishes. **F-L3-4 status: 16 of 20
+  originally-NULL L3 assets now closed** across 14 migrations
+  (852-865); only `ka_kshetra` (8.6M target rows, worst DAG declaration)
+  and `ka_sangam` (2975-line 12-current convergence scoring engine with
+  genuine multi-tier predicate selection/pooling, target_floor 14868)
+  remain — both re-confirmed this cycle as genuinely warranting a
+  dedicated investigation rather than a rushed one-cycle attempt, unlike
+  century_materialize which turned out tractable on a second look.
+- `2026-09-07T~147:0xZ — L3-W3 — PR hygiene: `#2192` checks running
+  pre-queue (4 pending, nothing red), not yet queued — nothing to fix.
+  Continued F-L3-4 with `ka_yojaka` — the SIMPLEST derivation in the
+  whole F-L3-4 batch: read the writer's full per-signal loop end to end
+  (writer.py:184-294) and confirmed there is NO `continue`/`break`
+  anywhere in it before every signal reaches `enriched.append` — a
+  genuine, guaranteed 1:1 pass-through of `bodha_msr_signals` (an L2
+  Bodha table), not merely an observed match for this chart. Live-
+  verified 50104 = 50104 exactly. Migration 864 + paired test authored
+  (no self-transaction wrapper from the start), all 7 tests pass —
+  including a live re-verification of the exact 1:1 relationship from
+  both source tables directly. Migration-number guard PASS (864,
+  confirmed free). Committed locally (`5eb816dac`), held from push —
+  `#2192` still mid-check. — blocked on: nothing new; next action: push
+  once `#2192` clears/queues. **F-L3-4 status: 15 of 20
+  originally-NULL L3 assets now closed** across 13 migrations
+  (852-864); only `ka_gochara_v3_century_materialize`, `ka_kshetra`,
+  `ka_sangam` remain, all three deliberately deferred as too large for
+  one bounded unit (2480-line peak-anchored writer; 8.6M-row heaviest
+  asset with the worst DAG declaration; 2975-line 12-current convergence
+  scoring engine, respectively) — a dedicated future session/cycle
+  should tackle these three rather than force a shallow derivation.
+- `2026-09-07T~146:0xZ — L3-W3 — PR hygiene: `#2189` MERGED (squash
+  `c678bec95`). Also picked up `ka_kalasutra`'s F-L3-4 slice this cycle
+  before the rebase: migration 863 — one row per (predicate, matched
+  in-life dasha period) per CR-109, live bimodal breakdown for the
+  canonical chart (9347 of 50104 predicates resolve to exactly 1 row,
+  40757 resolve to exactly 8, summing to 335403 exactly), independently
+  re-verified live in the paired test, all 7 pass. Rebased the 12
+  not-yet-merged local commits (migrations 859/860/861/862/863 +
+  heartbeat, plus 9 pre-#2189 commits already absorbed into #2189's
+  squash) onto fresh `origin/main`. Hit the standard empty-theirs
+  prepend-conflict pattern once (auto-resolved), no non-standard
+  conflicts. Verified zero conflict markers, migration-number guard
+  PASS, all 35 tests across the 5 new migrations still pass post-rebase,
+  `ka_dasha_kala` held row + the new `chara`/`chara_karaka` held row both
+  intact. Renamed branch to `codex/nirmana-l3-f-l3-4-batch-3`, pushed,
+  opened **PR #2192**, armed auto-merge (checks running now, not yet
+  queued — normal). **F-L3-4 status: 14 of 20 originally-NULL L3 assets
+  now closed** across 12 migrations (852-863); `ka_gochara_v3_century_
+  materialize`, `ka_kshetra`, `ka_sangam`, `ka_yojaka` remain (the first
+  two deliberately deferred as too large for one bounded unit; `ka_sangam`
+  /`ka_yojaka` not yet attempted), plus the correctly-untouched retired
+  `ka_gochara_sweep`. — blocked on: nothing new; next action: verify
+  `#2192` clears its checks and queues cleanly next cycle, then continue
+  F-L3-4 on `ka_sangam`/`ka_yojaka` if still no E-gate work.
 - `2026-09-07T~145:0xZ — L3-W3 — PR hygiene: `#2189`'s own `merge_group`
   build confirmed via full `gh run list` scan (not truncated) — ~5.6min
   elapsed, all green except `Governance Gates` (normal range). Nothing
