@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~434:0xZ — L3-W4 — PR hygiene: `#2294` still position
+  2, `AWAITING_CHECKS` — `#2292`'s `Governance Gates` job now
+  ~11.2min, slightly past the confirmed ~11min normal range but
+  within the observed edge-case precedent, still on the same
+  `pytest` step, no failure signal. No new `origin/main` merges.
+  IDLE-OK. — blocked on: `#2292` finishing; next action: same, watch
+  closely.
 - `2026-09-07T~433:0xZ — L3-W4 — PR hygiene: `#2294` still position
   2, `AWAITING_CHECKS` — `#2292`'s `Governance Gates` job now
   ~9.1min, still on the same `pytest` step, within the confirmed
