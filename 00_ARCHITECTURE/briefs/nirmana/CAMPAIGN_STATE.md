@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:40:51Z` — cycle 864: **`ga_positions` W4 continues — `accepted_rebuild_observed`
+  landed, Δfrozen still +0.** Only `integrity_verified` + `asset_frozen` remain in the
+  `bg_cohort`-reference sequence. Steady forward progress each check, no escalation warranted.
+  Fleet DIRTY unchanged (#1180/#446). Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:38:18Z` — cycle 863: **IDLE-OK, Δfrozen +0.** Only ~2 min since last check — no
   new `ga_positions` events beyond the still-pending `implementation_accepted`; too short a gap to
   read as a stall. Fleet DIRTY unchanged (#1180/#446, both already flagged, native's own). Own-PR
