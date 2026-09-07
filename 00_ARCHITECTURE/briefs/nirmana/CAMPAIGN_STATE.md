@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:07:14Z` — cycle 892: **IDLE-OK, Δfrozen +0.** `ga_dashas` still short of
+  `integrity_verified`/`asset_frozen`, ~2 min since `accepted_rebuild_observed` — not yet
+  stall-worthy. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T10:05:12Z` — cycle 891: **`ga_dashas` cleared the stall point — `accepted_rebuild_
   observed` landed.** Confirms the `nrec`-route diagnosis was right: evidence submission is
   flowing again past where it stuck before. Only `integrity_verified` + `asset_frozen` remain.
