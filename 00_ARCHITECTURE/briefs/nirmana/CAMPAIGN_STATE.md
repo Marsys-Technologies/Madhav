@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T00:09:06Z` — cycle 691: **ONE bounded unit: fleet sweep nudge on #2178** (L1's
+  own state PR re: ga_positions orphan-risk, relates to my #2180 ruling) — ~7 min stale, first
+  real sighting this recurrence. No new `nirmana-adjudication` issues (20).
 - `2026-09-07T00:06:49Z` — cycle 690: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (20). Nothing rose to a bounded unit. 690 cycles this session.
 - `2026-09-07T00:04:44Z` — cycle 689: **IDLE-OK.** Fleet DIRTY: empty. No new
