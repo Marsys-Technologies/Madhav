@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.33-DRAFT"
+version: "0.34-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -470,8 +470,14 @@ awaits either a dedicated prep cycle or genuine W6 close.
   (`ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga`) re-stamped, applying the
   back-to-back submission discipline cycle 171's orphaned-generation trap taught. `ga_dashas`'
   own first-time evidence deliberately deferred (deployed SHA still precedes its F-A17 merge —
-  checked live, not assumed). **Still open**: wave 1 dispatch itself remains blocked by the
-  `asset_frozen` E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
+  checked live, not assumed). **Cycle 177**: `ga_dashas`' first-time evidence submitted cleanly
+  once the deploy caught up — a dry-run dispatch confirmed the evidence itself is genuinely valid
+  (zero matching complaint), hitting only the already-escalated `asset_frozen` E-gate. Every
+  `ga_*` asset investigated this session now has clean, current evidence except
+  `ga_transit_anchors` (still orphaned) and the untouched zero-evidence bucket
+  (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`). **Still open**: wave 1
+  dispatch itself remains blocked by the `asset_frozen` E-gate regardless of evidence freshness,
+  campaign-wide — not an L1 registry fix.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
