@@ -457,6 +457,51 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T03:10Z (C8 v2.3 cycle 738) — **`#2215` MERGED — the thirty-third state-recovery PR
+  closed out.** Confirms the batch-processing pattern again (as at cycle 705/706): #2214 and
+  #2215 merged together. Thirty-third recurrence of the exact same pattern (cycles 442, 453,
+  461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625,
+  634, 644, 652, 663, 675, 685, 695, 706, 717, 727, now 738). 10 local-only commits (cycles
+  728-737, single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-33` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T03:08Z (C8 v2.3 cycle 737) — **IDLE-OK, verified.** #2214 (L3's) merged; #2215
+  still OPEN/`is:queued`, unchanged — normal batch-processing behavior (same pattern as cycle
+  705/706). Main tip advanced to `0a77d9285`. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
+- 2026-09-07T03:06Z (C8 v2.3 cycle 736) — **IDLE-OK, verified.** #2215 unchanged for 3 cycles at
+  `is:queued`/CLEAN — checked `gh-readonly-queue/main/pr-2215-*` merge_group build directly:
+  genuinely IN_PROGRESS (2/3 runs SUCCESS), started 02:59:55Z — not a stall. #2201 reappeared in
+  queue list (already confirmed L1's previously). Main tip unchanged. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T03:04Z (C8 v2.3 cycle 735) — **IDLE-OK, verified.** #2215 still `is:queued`/CLEAN,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T03:02Z (C8 v2.3 cycle 734) — **IDLE-OK, verified.** #2215 still `is:queued`/CLEAN,
+  unchanged. #2216 (new) confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T03:00Z (C8 v2.3 cycle 733) — **IDLE-OK, verified.** #2215 now genuinely `is:queued`,
+  `mergeStateStatus=CLEAN`. #2214 confirmed L3's, out of scope. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T02:58Z (C8 v2.3 cycle 732) — **IDLE-OK, verified.** #2215's last check (Governance
+  Gates) ~10.2min elapsed, within normal range, no failures. Main tip advanced to `fa3298319`
+  (#2213, L1's — merged, out of scope). E-gate re-run: all 11 remaining L5 assets unchanged.
+  Nothing eligible.
+- 2026-09-07T02:56Z (C8 v2.3 cycle 731) — **IDLE-OK, verified.** #2215 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T02:53Z (C8 v2.3 cycle 730) — **IDLE-OK, verified.** #2215 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. #2213 confirmed
+  L1's, out of scope. Main tip advanced to `4c5653090` (#2212, L1's — merged, out of scope).
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T02:51Z (C8 v2.3 cycle 729) — **IDLE-OK, verified.** #2215 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. Main tip unchanged.
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T02:49Z (C8 v2.3 cycle 728) — **IDLE-OK, verified.** #2215 (recovery #32) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 02:47:40Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. #2213/#2212
+  confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
 - 2026-09-07T02:47Z (C8 v2.3 cycle 727) — **`#2211` MERGED — the thirty-second state-recovery PR
   closed out.** #2213/#2212 confirmed L1's, out of scope. Thirty-second recurrence of the exact
   same pattern (cycles 442, 453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578,
