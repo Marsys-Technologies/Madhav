@@ -495,6 +495,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~200:0xZ — L3-W4 — PR hygiene: `#2210` MERGED (confirmed
+  `state: MERGED`, `mergedAt` set — `isInMergeQueue` had flipped to
+  `false` with `mergeQueueEntry: null`, disambiguated by checking
+  `merged: true` directly rather than assuming dequeue). Rebased the
+  19 not-yet-merged local heartbeat commits onto fresh `origin/main`.
+  Hit the standard empty-theirs prepend-conflict pattern 6x
+  (auto-resolved via the marker-strip loop, each verified empty-theirs
+  before stripping). Verified zero conflict markers remain; rebased
+  diff vs `origin/main` is `L3_STATE.md`-only. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-6`, pushed, opened PR `#2214`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: unchanged, `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2214` clearing
+  checks/queue; next action: same monitoring cadence.
 - `2026-09-07T~199:0xZ — L3-W4 — PR hygiene: `#2210`'s own `merge_group`
   checks finished (0 failures), `mergeQueueEntry.state: MERGEABLE`,
   position 3 — past its own checks, now waiting purely for its queue
