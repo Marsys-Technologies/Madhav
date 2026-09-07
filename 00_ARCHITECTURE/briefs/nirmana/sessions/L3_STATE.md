@@ -495,6 +495,34 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~152:0xZ — L3-W4/W3 — PR hygiene: `#2195` checks running
+  pre-queue (4 pending, nothing red), not yet queued — nothing to fix.
+  Re-ran `egate.sql`: unchanged, no new E-gate opening (`ga_positions`
+  still `OPEN-PENDING-PIN`). Considered a third `ka_sangam` investigation
+  pass: ruled out one of the 3 candidate explanations from last cycle
+  (Mode D's `orb_strength` is hardcoded to `1.0`, well above
+  `HIGH_CONFIDENCE_ORB_THRESHOLD=0.45`, so that admission gate cannot be
+  what's trimming the count) but a rough correction for the other
+  candidate (my day-to-day sign-detection likely over-counting
+  retrograde boundary wobbles — corrected estimate ~389/lifetime-call
+  vs the naive 466) still predicts ~23,340 across 60 substeps, still
+  ~2x too high — decided against a third guess-and-check pass without
+  running the actual `find_ingresses` service logic, which is the only
+  way to close this honestly. Ran a broad live audit of
+  `expected_volume_formula IS NOT NULL` across all 23 L3 assets to
+  double-check no regression in the already-shipped migrations — 9
+  assets show `true` (the ones deployed by an earlier completed deploy:
+  `ka_gochara`/`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_vedha_gochara`/
+  `ka_vighnakara`/`ka_bhavishya_lekha`/`ka_jivana_parva`/
+  `ka_sudarshana_varsha`/`ka_taranga`/`ka_tithi_pravesha`), the rest
+  correctly show `false` because migrations 859-865 haven't been
+  deployed yet (still sitting in merged-but-not-yet-deployed PRs or in
+  `#2195` itself) — not a defect, just deploy lag, consistent with how
+  every migration in this batch has behaved. No new bounded work found;
+  recording this as an honest IDLE-OK cycle rather than forcing a third
+  unverified `ka_sangam` guess. — blocked on: nothing new; next action:
+  push once `#2195` clears/queues, then watch for the F-L3-4 migrations
+  to actually deploy and re-verify live once they do.
 - `2026-09-07T~151:0xZ — L3-W3 — PR hygiene: `#2192` MERGED (squash
   `54174fca3`). Rebased the 9 not-yet-merged local commits (migrations
   864/865 + heartbeat, plus 10 pre-#2192 commits already absorbed into
