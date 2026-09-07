@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~187:0xZ — L3-W4 — PR hygiene: `#2206` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`) — its checks cleared
+  since last cycle. Nothing to fix. No new `origin/main` merges, no new
+  E-gate opening. IDLE-OK. — blocked on: `#2206` finishing; next
+  action: same.
 - `2026-09-07T~186:0xZ — L3-W4 — PR hygiene: `#2206`'s last check, same
   run, now ~8.75min, checked step-level detail directly — still on the
   same consistently-slow `pytest` step, genuine progress not a stall.
