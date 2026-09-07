@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:30:56Z` — cycle 764: **IDLE-OK (verified).** #2217 merged to main — the full
+  7/7 `chart_facts` co-writer `natural_key_partition` backfill is now landed. Several PRs show
+  transient `UNKNOWN` mergeable post-rotation (not DIRTY — CONFLICTING search still empty). Own-
+  PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:28:38Z` — cycle 763: **IDLE-OK (verified).** Fleet PR list unchanged (3rd
   cycle running), all MERGEABLE. Own-PR hygiene clean; adjudications unchanged (10); no new
   #2180 reply.
