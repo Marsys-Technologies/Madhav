@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~203:0xZ — L3-W4 — PR hygiene: `#2214`'s last check
+  (`Governance Gates`) ~6.7min, within normal range, still on the same
+  `pytest` step. `Unit Tests` now passed too. One new `origin/main`
+  merge (`#2212`, L1 `natural_key_partition` authoring, no L3
+  overlap). `ga_positions` re-verified live: still `OPEN-PENDING-PIN`,
+  no new E-gate opening. IDLE-OK. — blocked on: `#2214` finishing;
+  next action: same.
 - `2026-09-07T~202:0xZ — L3-W4 — PR hygiene: `#2214`'s own `merge_group`
   build (well, pre-queue check run) still `in_progress` (~4.4min on
   the known-slow `pytest — pyjhora_adapter + pipeline` step, well
