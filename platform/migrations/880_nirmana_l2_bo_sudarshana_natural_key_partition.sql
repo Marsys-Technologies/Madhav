@@ -1,4 +1,4 @@
--- 877_nirmana_l2_bo_sudarshana_natural_key_partition.sql
+-- 880_nirmana_l2_bo_sudarshana_natural_key_partition.sql
 --
 -- NIRMANA v2.1 -- L2 (Bodha) W4 EXECUTE. Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
