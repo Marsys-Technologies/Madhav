@@ -19,8 +19,10 @@
  * cluster (12 categories) closed 2026-09-07 slice 3; special_lagna/upapada_lagna/
  * sensitive_point_gulika_mandi (get_sensitive_points.ts) + sensitive_degree_check/
  * sensitive_point_yogi (get_sensitive_degrees.ts) closed 2026-09-07 slice 4 (5 categories);
- * `ayurdaya` (get_ayurdaya.ts, unconditionally served) closed 2026-09-07 slice 5; the remaining
- * ~30 are still open. Note: `graha_yuddha_per_varga` (17 live rows) was investigated and found
+ * `ayurdaya` (get_ayurdaya.ts, unconditionally served) closed 2026-09-07 slice 5; `bhava_cusps`
+ * (get_kp_cusps.ts, unconditional) + `house_bhava_bala_ratio`/`house_chalit` (get_bhava_bala.ts,
+ * opt-in) closed 2026-09-07 slice 6 (3 categories); the remaining ~27 are still open. Note:
+ * `graha_yuddha_per_varga` (17 live rows) was investigated and found
  * genuinely UNREACHABLE by any tool — get_graha_yuddha.ts hardcodes `fact_category =
  * 'graha_yuddha'` (a bare, zero-row-for-this-chart category) with no override mechanism, so the
  * per-varga variant cannot be opted into like every other per_varga category in this file. This
@@ -65,6 +67,7 @@ export const CHART_FACTS_CATEGORIES = [
   'bhava_bala_positional',
   'bhava_bala_temporal',
   'bhava_bala_total_extended',
+  'bhava_cusps',
   'bhrigu_nadi_point',
   'chandra_bala_natal_baseline',
   'composite_dispositor_strength',
@@ -135,8 +138,10 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_vimsopaka_shadvarga',
   'graha_vimsopaka_shodasavarga',
   'graha_yoga_karaka_flag',
+  'house_bhava_bala_ratio',
   'house_bhava_bala_subscore',
   'house_bhava_bala_total',
+  'house_chalit',
   'house_strength_classification_rollup',
   'jaimini_tri_deva_role_per_graha',
   'janma_shani_period',
@@ -312,6 +317,12 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   house_bhava_bala_subscore:        ['marsys://tool/L1/get_bhava_bala'],
   house_bhava_bala_total:           ['marsys://tool/L1/get_bhava_bala'],
   house_strength_classification_rollup: ['marsys://tool/L1/get_bhava_bala'],
+  // F-B32 (2026-09-07, slice 6/N): opt-in only, same "fact_category = ANY($2)" doctrine as
+  // every prior opt-in slice (get_bhava_bala.ts:57) — neither is in the tool's own default
+  // BB_CATEGORIES, but the query is fully data-driven. Live rows (canonical chart):
+  // house_bhava_bala_ratio=60, house_chalit=225.
+  house_bhava_bala_ratio:           ['marsys://tool/L1/get_bhava_bala'],
+  house_chalit:                     ['marsys://tool/L1/get_bhava_bala'],
 
   // ── Aspects ───────────────────────────────────────────────────────────────
   aspect_parashari_given:    ['marsys://tool/L1/get_aspects'],
@@ -458,6 +469,14 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   kp_cuspal_significators:       ['marsys://tool/L1/get_karakas'],
   kp_ruling_planets_natal:       ['marsys://tool/L1/get_karakas'],
   jaimini_tri_deva_role_per_graha:['marsys://tool/L1/get_karakas'],
+
+  // ── KP Cusps (dedicated) ───────────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 6/N): get_kp_cusps.ts (CR-30's dedicated KP-cusp face) spreads its
+  // fixed KP_CATEGORIES unconditionally on every call (get_kp_cusps.ts:130) — no opt-in needed.
+  // `cusp_kp_lords`/`kp_ruling_planets_natal` are already covered above via get_karakas;
+  // `bhava_cusps` is the one category from that same const that had no entry anywhere in this
+  // file. 360 live rows (canonical chart).
+  bhava_cusps:                    ['marsys://tool/L1/get_kp_cusps'],
 
   // ── Avasthas ─────────────────────────────────────────────────────────────
   graha_avastha_baladi:                   ['marsys://tool/L1/get_avasthas'],
