@@ -538,6 +538,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 483 | 2026-09-07T00:37Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main unchanged since loop 478. Both E-gates unchanged (`bo_laksana` 12/21, `bo_laksana_rerank` 15/24). No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 484 | 2026-09-07T00:39Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main unchanged since loop 478. Both E-gates unchanged (`bo_laksana` 12/21, `bo_laksana_rerank` 15/24). No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 485 | 2026-09-07T00:42Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue -- main static for 7 cycles, verified queue liveness (2 new batches building, `pr-2195/2196`), not a stall. Both E-gates unchanged. No new `nirmana-adjudication` issues. Nothing new eligible -- printing IDLE-OK |
+| 486 | 2026-09-07T00:45Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main unchanged since loop 478. Both E-gates unchanged (`bo_laksana` 12/21, `bo_laksana_rerank` 15/24). No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
