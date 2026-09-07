@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:43:25Z` — cycle 865: **`ga_positions` one step from freeze — `integrity_verified`
+  landed (45s old at check), only `asset_frozen` left.** Δfrozen still +0. Fleet DIRTY unchanged
+  (#1180/#446). Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:40:51Z` — cycle 864: **`ga_positions` W4 continues — `accepted_rebuild_observed`
   landed, Δfrozen still +0.** Only `integrity_verified` + `asset_frozen` remain in the
   `bg_cohort`-reference sequence. Steady forward progress each check, no escalation warranted.
