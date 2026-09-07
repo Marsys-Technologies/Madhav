@@ -457,6 +457,28 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T06:14Z (C8 v2.3 cycle 652) — **`#2190` MERGED — the twenty-fourth state-recovery
+  PR closed out.** Twenty-fourth recurrence of the exact same pattern (cycles 442, 453, 461,
+  473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634,
+  644, now 652). 7 local-only commits (cycles 645-651, 16 lines, single-file) recovered via
+  patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-25`. Ancestor counts still
+  unchanged across all 11 remaining L5 assets.
+- 2026-09-07T06:08Z (C8 v2.3 cycle 651) — **IDLE-OK, verified.** #2190 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:02Z (C8 v2.3 cycle 650) — **IDLE-OK, verified genuine build activity — main
+  stuck for several cycles, checked directly.** #2190's own `gh-readonly-queue/main/pr-2190-*`
+  merge_group build shows real IN_PROGRESS activity (~7.4 min elapsed, two sibling checks
+  already SUCCESS) — genuine progress, not stalled. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T05:56Z (C8 v2.3 cycle 649) — **IDLE-OK, verified.** #2190 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T05:50Z (C8 v2.3 cycle 648) — **IDLE-OK, verified.** #2190 now genuinely queued.
+  Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T05:44Z (C8 v2.3 cycle 647) — **IDLE-OK, verified.** #2190 down to its last check,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T05:38Z (C8 v2.3 cycle 646) — **IDLE-OK, verified.** #2190 down to 2 pending checks,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T05:32Z (C8 v2.3 cycle 645) — **IDLE-OK, verified.** #2190 building cleanly, no
+  failures. Ancestor counts unchanged. Nothing eligible.
 - 2026-09-07T05:26Z (C8 v2.3 cycle 644) — **`#2188` MERGED — the twenty-third state-recovery PR
   closed out.** Twenty-third recurrence of the exact same pattern (cycles 442, 453, 461, 473,
   482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, now
