@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:51:38Z` — cycle 825: **IDLE-OK (verified).** #2227 restarted again (back to 5
+  pending) — consistent with the understood fast-moving-main-vs-waiting-PR dynamic (every main
+  advance re-validates/restarts a queued PR's checks), not a fault specific to this PR. Auto-
+  merge still armed since original. Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:48:59Z` — cycle 824: **IDLE-OK (verified).** #2244 resolved on its own (no
   longer CONFLICTING). #2227 down to 3 pending checks, converging. Fleet DIRTY empty;
   adjudications unchanged (11).
