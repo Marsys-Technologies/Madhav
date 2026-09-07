@@ -358,6 +358,16 @@ governance (#1762).
 IDLE-OK heartbeats; landing them wholesale would bury this file. Entries land on main from
 cycle 1062 forward, riding real work PRs per C8 Step 3.)*
 
+- `2026-09-07T19:10Z` — cycle 1066: **NATIVE DIRECTIVE actioned — D-NATIVE-09/10/11.** Posted
+  D-NATIVE-09 (grounding tier rule: śruti→yukti→pratyakṣa, deterministic, evidence stored with
+  row) and D-NATIVE-11 (bo_grounding = supporting infrastructure, denominator stays 128) to
+  #2258 verbatim. Implemented D-NATIVE-10 (this PR): `reattribute_unchanged_receipt` now
+  reconciles `asset_freshness` exactly as `persist_successful_receipt` does — delta-skipped
+  rebuild of a `registry_changed`-stale asset clears the flag ('unknown' receipts stay
+  'unknown', never promoted). Unblocks the remaining L1 frontier (ga_condition/ga_structural/
+  ga_tajaka behind ga_dashas' stale receipt) + every future delta-skipped rebuild. 3 new tests;
+  89/89 orchestrator tests pass. Freeze exception: native-granted (O-wave §3.5, D-NATIVE-10).
+  Also: #2383 MERGED 18:13Z (deploy-gate root fix on main).
 - `2026-09-07T17:52Z` — cycle 1063: **#2169 root-fix PR #2383 authored, verified, queued-armed.**
   Deploy gate diff base re-anchored to production's own deployed commit per component (revision
   `commit-sha` label / pipeline image tag), fail-open toward deploying; full gate script executed

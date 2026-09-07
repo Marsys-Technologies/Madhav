@@ -189,11 +189,15 @@ def _stored_receipt(cur, receipt: Receipt) -> Receipt | None:
     return stored
 
 
-def _upsert_freshness(
+def _upsert_freshness_row(
     cur,
-    receipt: Receipt,
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    partition_key: str,
     freshness: FreshnessState,
     reasons: list[str],
+    receipt_version: str,
 ) -> None:
     """Store the sidecar projection only; this never commits a transaction."""
     cur.execute(
@@ -205,8 +209,21 @@ def _upsert_freshness(
           freshness_state = EXCLUDED.freshness_state, reasons = EXCLUDED.reasons,
           receipt_version = EXCLUDED.receipt_version, observed_at = EXCLUDED.observed_at
         """,
-        (receipt.asset_id, receipt.chart_id, receipt.partition_key, freshness,
-         json.dumps(reasons), receipt.receipt_version),
+        (asset_id, chart_id, partition_key, freshness,
+         json.dumps(reasons), receipt_version),
+    )
+
+
+def _upsert_freshness(
+    cur,
+    receipt: Receipt,
+    freshness: FreshnessState,
+    reasons: list[str],
+) -> None:
+    _upsert_freshness_row(
+        cur, asset_id=receipt.asset_id, chart_id=receipt.chart_id,
+        partition_key=receipt.partition_key, freshness=freshness,
+        reasons=reasons, receipt_version=receipt.receipt_version,
     )
 
 
@@ -328,6 +345,17 @@ def reattribute_unchanged_receipt(
     #1899). Skipping this update is what previously left accepted_rebuild_observed
     structurally unreachable: the run holding the build_run_authorized event and
     the run whose receipt records the (unchanged) content were never the same row.
+
+    Also reconciles asset_freshness exactly as persist_successful_receipt does
+    (D-NATIVE-10, Nirmana #2300): this run IS the rebuild that re-verified the
+    output under current inputs, so a `registry_changed`-stale flag must clear
+    here just as it would on a full rebuild. Before this, the delta-skip fast
+    path left freshness permanently 'stale' for any asset whose content happened
+    to be byte-identical across a registry-contract edit -- the receipt said
+    'proven' while asset_freshness said 'stale', and every downstream dependent
+    failed DEP-ASSERT ('receipt:stale' despite rows present). The freshness
+    value mirrors the completion path's own rule: 'unknown' receipts stay
+    'unknown' (never promoted), everything else is 'fresh'.
     """
     partition_key = partition_declaration or WHOLE_ASSET_PARTITION
     cur.execute(
@@ -335,8 +363,26 @@ def reattribute_unchanged_receipt(
         UPDATE asset_provenance_receipts
            SET build_id = %s, observed_at = NOW()
          WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        RETURNING receipt_state, unknown_reasons, receipt_version
         """,
         (build_id, asset_id, chart_id, partition_key),
+    )
+    row = cur.fetchone()
+    if not row:
+        # No stored receipt (should be unreachable: the caller just matched one).
+        # Write no freshness rather than invent one (§N.7: honest null).
+        return
+    if isinstance(row, dict):
+        receipt_state = row.get("receipt_state")
+        unknown_reasons = row.get("unknown_reasons")
+        receipt_version = row.get("receipt_version")
+    else:
+        receipt_state, unknown_reasons, receipt_version = row[0], row[1], row[2]
+    freshness: FreshnessState = "unknown" if receipt_state == "unknown" else "fresh"
+    _upsert_freshness_row(
+        cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
+        freshness=freshness, reasons=list(unknown_reasons or []),
+        receipt_version=receipt_version or RECEIPT_VERSION,
     )
 
 
