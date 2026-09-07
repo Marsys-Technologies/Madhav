@@ -101,7 +101,11 @@ def _match_to_row(match, chart_id: str, ayanamsha_id: str, build_id: str, now: s
 # --check) pins L2's receipt_count to the frozen campaign manifest's 22 bo_* assets;
 # a 23rd registered writer can never pass it until the Conductor rules how a net-new
 # mid-campaign asset joins the manifest (amendment vs. pins-script extension).
-# Re-apply `@register("bo_grounding")` the moment that ruling lands.
+# When that ruling lands: re-import the register decorator, apply it to this class
+# with asset id bo_grounding, add the asset_registry seed row + has_writer migration,
+# and regenerate digests + the L2 pin. (Deliberately NOT spelled as the decorator
+# call here -- test_has_writer_completeness.py's three-way diff collects writer ids
+# by regex over source, comments included.)
 class BoGroundingWriter(WriterBase):
     """bo_grounding: D-GROUNDING tier-assignment matches for the v1 target scope."""
     asset_id = "bo_grounding"
