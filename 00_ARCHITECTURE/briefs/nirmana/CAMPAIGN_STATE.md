@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T16:03:19Z` — cycle 1025: **IDLE-OK, Δfrozen +0.** Read #2346's full body: excellent
+  execution of the #2258 ruling — caught a real factual error in my own proposal comment (table
+  is `ga_yoga_firings`, not `chart_yoga_firings`), rehearsed against production, encoded
+  falsifiability as a real DB `CHECK` constraint rather than writer-side discipline. `bo_sudarshana`
+  freshness still stale but this is legitimate reprioritization (L2 working #2258 instead), not
+  neglect — not escalating yet. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
+  open. Adjudications: 5 open.
 - `2026-09-07T16:00:45Z` — cycle 1024: **L2 already implementing #2258's ruling — PR #2346,
   step 1/3 (migration 897, `bodha_grounding_matches` schema).** Real, fast follow-through on the
   structural parts I ruled last cycle. Separately: `bo_sudarshana`'s `asset_freshness` still
