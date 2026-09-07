@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~249:0xZ — L3-W4 — PR hygiene: `#2231`'s last check, same
+  run, now ~11.1min — at the recurring edge-of-range pattern
+  (`#2214`/`#2218`/`#2222`/`#2225` all showed this right before
+  finishing or resolving as merge-queue eval lag). Step-level
+  unchanged, no separate stall signal. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2231` finishing; next action: same, expect
+  resolution next cycle per precedent.
 - `2026-09-07T~248:0xZ — L3-W4 — PR hygiene: `#2231`'s last check, same
   run, now ~9min — approaching but still within the confirmed ~11min
   normal range, still on the same `pytest` step. No new `origin/main`
