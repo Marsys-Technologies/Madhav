@@ -381,6 +381,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:48:57Z` — cycle 866: **MILESTONE — `ga_positions` FROZE. Δfrozen +1 (46→47),
+  frontier cascades 2→16 eligible.** The #2180 ruling's full payoff: `asset_frozen` fired,
+  completing rebuild→`implementation_accepted`→`accepted_rebuild_observed`→`integrity_verified`
+  →`asset_frozen` within ~15 min of the ruling. Re-ran the eligible-frontier query: **16 assets
+  eligible campaign-wide now**, up from 2 — 9 more `ga_*` (L1: ayurdaya, dashas, nakshatra,
+  panchanga, prashna, sensitive, sensitive_degree, transit_anchors, vargas), `bo_sudarshana` (L2,
+  first Bodha asset to clear the frontier), and 6 `ka_*` (L3: `ka_gochara_resonance` +
+  kota_chakra, moorti_nirnaya, sudarshana_varsha, tithi_pravesha, vedha_gochara). Posted the full
+  cascade + per-layer dispatch instruction to #1713 (comment 5567948123). This is exactly the
+  campaign-metric shift D-NATIVE-08 asked for — one root-cause ruling unblocking 16 downstream
+  assets, not another W3-contract PR. Fleet DIRTY: clean (the #1180/#446 CONFLICTING flags from
+  earlier cycles have cleared). Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:43:25Z` — cycle 865: **`ga_positions` one step from freeze — `integrity_verified`
   landed (45s old at check), only `asset_frozen` left.** Δfrozen still +0. Fleet DIRTY unchanged
   (#1180/#446). Own-PR hygiene: none open. Adjudications unchanged (11).
