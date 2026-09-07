@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~273:0xZ — L3-W4 — PR hygiene: `#2236`'s checks finished
+  (0 failures — the ~10.6min precedent held again). Now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1 — its own
+  `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2236` finishing; next action: same.
 - `2026-09-07T~272:0xZ — L3-W4 — PR hygiene: `#2236`'s last check, same
   run, now ~10.6min — at the recurring edge-of-range pattern. Step-
   level unchanged, no separate stall signal. One new `origin/main`
