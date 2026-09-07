@@ -381,6 +381,15 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:44:07Z` — cycle 801: **D-NATIVE-07 CONFIRMED MERGED** (`fd64055ee`, PR #2234).
+  Live-verified `bg_ephemeris_engine` already has the exact shape the fix targets (service,
+  healthy, real stored `output_digest`) — no separate dependency fix needed first, since the fix
+  reads `asset_kind`/`service_health` live from `asset_registry`, not from the dependency's own
+  stored receipt. Posted confirmation + explicit handoff to #1713: whichever L0 session picks it
+  up next just needs an ordinary `bg_cohort` re-dispatch (no special flags) to reach
+  `asset_freshness='fresh'` and close L0 to 40/40. Not dispatching myself — the actual W4→W5→W6
+  identity-separated rebuild is L0's own operational domain/tooling, matching this session's
+  standing division-of-labor discipline. Adjudications unchanged (11); fleet DIRTY empty.
 - `2026-09-07T05:40:45Z` — cycle 800: **IDLE-OK (verified).** #2234 still queued, part of a
   3-PR batch (#2233/#2234/#2235) — normal queue depth, not stalled. Fleet DIRTY empty;
   adjudications unchanged (11).
