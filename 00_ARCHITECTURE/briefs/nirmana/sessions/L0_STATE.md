@@ -1289,3 +1289,10 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   hit this ceiling. Noted for awareness only. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. Two
+  L1 items: Conductor ruled on #2276 (generation-scoped redispatch guard fix, authorized L1 to
+  implement) and #2224 has a detailed new finding — a permanent evidence-submission deadlock trap
+  (`ga_transit_anchors`, source_ref cross-check mismatch on fast deploys) with 2 proposed fixes,
+  neither yet ruled. Both are generic structural findings in shared campaign tooling that COULD
+  theoretically affect a future L0 asset, but L0 is fully frozen right now so neither is currently
+  actionable here — noted for awareness. Nothing eligible.
