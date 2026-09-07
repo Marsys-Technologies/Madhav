@@ -381,6 +381,15 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:39:04Z` — cycle 820: **Root-caused the apparent 34min merge-queue stall — not
+  stalled, one genuinely slow check.** No merges landed 06:03Z→06:37Z despite 4 CLEAN queued
+  PRs (#2228/#2239/#2241/#2242), which looked alarming. Investigated via the GitHub Actions API
+  (merge_group-triggered runs, not just PR-level checks): found "Governance Gates" (drift/
+  schema/edge/native-literal/py-sidecar) genuinely takes ~9-10min per merge-group batch — not
+  stuck, just slow (confirmed against a real completed instance: 06:28:36Z→06:38:04Z, SUCCESS).
+  #2239 merged immediately after its Governance Gates check finished (06:38:26Z), confirming the
+  queue itself was healthy throughout. #2227/#2228 still open but the queue is demonstrably
+  moving. Own-PR hygiene clean; fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:34:53Z` — cycle 819: **IDLE-OK (verified).** #2228 still queued, #2227's
   checks progressing normally. Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:32:26Z` — cycle 818: **IDLE-OK (verified).** #2228 waiting its turn as 3rd in
