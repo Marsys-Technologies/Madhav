@@ -496,6 +496,38 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~345:0xZ — L3-W4 — Continued the W2-event-submission
+  scoping from last cycle (`ka_tithi_pravesha` first candidate).
+  Cross-verified `registry_fingerprint_sha256`'s algorithm byte-for-
+  byte rather than trusting the Python replica blind: TS's canonical
+  `stableJson()` (`definitions.ts`) recursively sorts object keys at
+  every nesting level and joins with bare `,`/`:` (no spaces); Python
+  `_stable_json()` (`dispatch_nirmana_campaign_wave.py`) is
+  `json.dumps(sort_keys=True, separators=(",",":"))` — same recursive
+  key-sort, same no-space separator convention. The 14-field
+  `REGISTRY_CONTRACT_FIELDS` Python tuple matches
+  `RegistryContractSchema`'s `.strict()` zod field list exactly
+  (`sort_order`…`dead_flag`), so both languages hash the same key set
+  with the same values off the same live DB row. Confirms the
+  existing Python fingerprint computation (already used successfully
+  for `ka_graha_sancara`/`ka_muhurta_seva`'s real freezes) is safe to
+  reuse for `ka_tithi_pravesha` too. Looked for a live TS CLI
+  (`monitor.ts`'s `buildNirmanaBaselineCandidate` calls the exact
+  canonical function against real DB rows) to get the fingerprint
+  authoritatively rather than via replica, but it's a `'server-only'`
+  Next.js library import with no standalone CLI wrapper found in
+  `platform/scripts/` — not runnable directly without more plumbing.
+  Remaining unknowns before a real submission is safe: (1)
+  `analysis_digest`'s exact hash target (is it over the analysis doc
+  text, a structured summary, or something else — not yet located);
+  (2) the admin API's auth mechanism (session cookie? service-role
+  key? not yet found); (3) a valid `git:<40-hex>` `source_ref` for the
+  existing `L3_W2_DECIDE_v1_0.md` analysis. Did not attempt the write.
+  `#2264` still mid-check (~8.5min, within normal range), no new
+  `origin/main` merges, `ga_positions` confirmed still frozen (spot-
+  checked again). IDLE-OK-but-productive. — blocked on: the 3 open
+  unknowns above; next action: locate `analysis_digest`'s exact
+  computation and the API auth mechanism before attempting any write.
 - `2026-09-07T~344:0xZ — L3-W4 — **MAJOR EVENT: `ga_positions` HAS
   FROZEN.** After #2261 merged, this cycle's routine `egate.sql`
   re-check found `ga_positions` no longer in the not-yet-frozen
