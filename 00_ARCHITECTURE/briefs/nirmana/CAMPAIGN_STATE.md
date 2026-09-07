@@ -381,6 +381,15 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:19:30Z` — cycle 970: **Fleet-wide frontier is now genuinely exhausted pending
+  external rulings — confirmed, not assumed.** Re-ran the query: 15 assets eligible, every single
+  one blocked — L1's 4 remaining (`ga_condition`/`ga_structural`/`ga_tajaka` on #2300,
+  `ga_transit_anchors` on #2224), L2's 4 (all on #1770's snapshot step), L3's 7 (6 known +
+  newly-eligible `ka_dasha_kala`, all on the `nrec` transport unblock). L1's own PR #2304
+  independently reached the identical conclusion ("L1 frontier genuinely blocked pending
+  #2300/#2224"). This is a healthy, correctly-diagnosed IDLE state, not a stall — every gate has
+  a real owner and next step already in motion. Δfrozen still +0 (56/128). Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T13:16:15Z` — cycle 969: **Correcting cycle 968's diagnosis — L1 already root-
   caused it precisely as a real orchestrator bug (#2300), not a transient race.** L1's own filing:
   `ga_dashas`' delta-skip rebuild path (`_skip_no_delta`→`reattribute_unchanged_receipt`,
