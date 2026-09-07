@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:12:32Z` — cycle 715: **CLOSED #1899.** Live-verified (not just merge-verified):
+  `mi_vistara`'s campaign-events ledger shows `accepted_rebuild_observed` → `integrity_verified`
+  → `asset_frozen` all completed 2026-09-06T10:31-13:40Z, confirming PR #1901's re-attribution
+  fix works end-to-end, not just deployed. 13→12 open adjudications. Own-PR hygiene: none open.
+  Fleet DIRTY: empty.
 - `2026-09-07T01:10:12Z` — cycle 714: **#1888 status update, NOT closed.** PR #1893 (deterministic
   `bo_bimba.node_id` mechanism fix, D-CND-29) confirmed merged, but live-queried
   `bodha_cgm_paths` and found 45/135 rows (33%) still orphaned against `bodha_cgm_nodes` — the
