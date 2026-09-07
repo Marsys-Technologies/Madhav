@@ -497,6 +497,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~446:0xZ — L3-W4 — PR hygiene: `#2299` still position
+  1, `AWAITING_CHECKS` — its own `merge_group` run hasn't visibly
+  started yet in `gh run list`, but a `pr-2301` run was seen
+  running speculatively (GitHub's queue can run checks for
+  multiple queued PRs in parallel) — `#2301` is queued behind
+  `#2299` at position 2, not ahead, so this isn't a stall signal for
+  `#2299` itself. No new `origin/main` merges. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2299`'s own build starting/
+  finishing; next action: same, watch closely for its own
+  `merge_group` run to appear.
 - `2026-09-07T~445:0xZ — L3-W4 — PR hygiene: `#2299` advanced to
   position 1 (top of queue) — `#2298` merged (unrelated L5
   heartbeat PR, confirmed via `origin/main`, no L3 overlap).
