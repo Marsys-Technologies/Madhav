@@ -457,6 +457,40 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T15:50Z (C8 v2.3 cycle 1040) — **`#2344` MERGED — the sixty-first state-recovery PR
+  closed out.** Sixty-first recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
+  663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846, 858,
+  867, 876, 885, 896, 905, 917, 927, 937, 946, 963, 975, 985, 994, 1004, 1016, 1030, now 1040). 9
+  local-only commits (cycles 1031-1039, single-file, pure additions) recovered via patch onto a
+  fresh `codex/nirmana-l5-heartbeat-recovery-61` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged from last check. Nothing eligible.
+- 2026-09-07T15:48Z (C8 v2.3 cycle 1039) — **IDLE-OK, verified.** `#2344` still `is:queued`,
+  static for several cycles — checked deeper: `gh run list --event merge_group` shows L1's `#2345`
+  batch build genuinely `in_progress` since `15:38:33Z` (~10min), and `#2344`'s own recent batch
+  attempt at `15:37:59Z` shows `success` on the checked legs. Genuine active processing, not a
+  stall. No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:46Z (C8 v2.3 cycle 1038) — **IDLE-OK, verified.** `#2344` still `is:queued`,
+  unchanged. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:44Z (C8 v2.3 cycle 1037) — **IDLE-OK, verified.** `#2344` still `is:queued`,
+  L1's `#2345` cleared out. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:42Z (C8 v2.3 cycle 1036) — **IDLE-OK, verified.** `#2344` still `is:queued`,
+  batched with L1's `#2345`. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:40Z (C8 v2.3 cycle 1035) — **IDLE-OK, verified.** `#2344` still `is:queued`/CLEAN,
+  batched with L1's `#2345`. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:37Z (C8 v2.3 cycle 1034) — **IDLE-OK, verified.** `#2344` now genuinely
+  `is:queued`, `mergeStateStatus=CLEAN`, all checks passed. No push (would dequeue). E-gate
+  unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:35Z (C8 v2.3 cycle 1033) — **IDLE-OK, verified.** `#2344`: only `Governance Gates`
+  still `pending` (~6min in, normal). No hygiene action. E-gate unchanged. Nothing eligible. Entry
+  held local.
+- 2026-09-07T15:33Z (C8 v2.3 cycle 1032) — **IDLE-OK, verified.** `#2344` progressing normally:
+  `DB Integration Tests` now passed; `Unit Tests` + `Governance Gates` still `pending` (~4min in).
+  No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T15:31Z (C8 v2.3 cycle 1031) — **IDLE-OK, verified.** `#2344` (recovery-60) auto-merge
+  armed 15:29:15Z, `mergeStateStatus=BLOCKED`, checks just started (`DB Integration Tests`,
+  `Unit Tests`, `Governance Gates` all `pending` ~2min in — normal, not stalled). No hygiene
+  action. E-gate unchanged. Nothing eligible. Entry held local.
 - 2026-09-07T15:28Z (C8 v2.3 cycle 1030) — **`#2333` MERGED — the sixtieth state-recovery PR
   closed out.** Sixtieth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
