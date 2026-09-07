@@ -649,6 +649,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 594 | 2026-09-07T05:54Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main advanced (`09a3c4db...` -- queue continuing to progress). PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 595 | 2026-09-07T05:56Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 594. Both E-gates re-verified unchanged. Transient network error (`connection reset by peer`) on `#2224`'s comment-count check -- retried immediately, confirmed 7 (unchanged). No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 596 | 2026-09-07T05:59Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 595. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
+| 597 | 2026-09-07T06:01Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 596. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
