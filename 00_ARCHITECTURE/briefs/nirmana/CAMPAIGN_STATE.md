@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:17:30Z` — cycle 946: **IDLE-OK, Δfrozen +0.** `ga_sensitive_degree`'s
+  `accepted_rebuild_observed` landed. L2/L3 still zero movement, ~9 min since the migration
+  correction — worth a direct check next cycle if still silent. Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:15:10Z` — cycle 945: **Δfrozen +2 (52→54). `ga_strength` and `ga_ayurdaya`
   both froze.** L1's 7th and 8th freezes this drive, ~4 min apart. L1's own frontier is nearly
   exhausted now (only `ga_transit_anchors` + `ga_dashas`/`ga_sensitive_degree` mid-pipeline
