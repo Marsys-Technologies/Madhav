@@ -495,6 +495,10 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~208:0xZ — L3-W4 — PR hygiene: `#2214`'s own `merge_group`
+  build still `in_progress` (~5.1min, within range, same run). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2214` finishing; next action: same.
 - `2026-09-07T~207:0xZ — L3-W4 — PR hygiene: `#2214` still position 1,
   `AWAITING_CHECKS` — located its own `merge_group` run directly
   (`gh-readonly-queue/main/pr-2214-...`), step-level checked: `Unit
