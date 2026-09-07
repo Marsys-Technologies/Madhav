@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:06:33Z` — cycle 917: **IDLE-OK, Δfrozen +0.** Still 0 active slots, #2272 still
+  unmerged — only ~2 min since the enforcement nudge, too soon to re-post the same finding. Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:04:25Z` — cycle 916: **NATIVE DIRECTIVE — frontier-drain enforcement, new
   standing mode.** Two mid-turn rulings: (1) drain-the-frontier is now top priority over ALL W3
   work, lanes should claim slots and dispatch W4→verify→freeze back-to-back until their eligible
