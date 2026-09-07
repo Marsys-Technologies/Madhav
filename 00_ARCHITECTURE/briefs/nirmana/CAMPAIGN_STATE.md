@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:20:38Z` — cycle 760: **IDLE-OK (verified).** Fleet PR list unchanged, all
+  MERGEABLE. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:18:04Z` — cycle 759: **IDLE-OK (milestone watched).** PR #2220 —
   `ga_positions`' `output_digest_spec` (migration 875), **fix 2/2 of #2180's ruling now done**.
   Combined with cycle 755's 7/7 partition completion, both authorized prerequisite fixes for
