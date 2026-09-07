@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 169; attempted L1's own wave-1 dispatch (8 ga_* assets depending only on now-fresh ga_positions + already-fresh L0 deps), found TWO deeper cross-layer blockers beyond #2180's scope, filed adjudication #2224. Finding 1: `ga_vargas` (never touched by any natural_key_partition work) ALSO has stale accepted evidence -- its registry row picked up a real `integrity_check_sql` from separate prior W3 work AFTER evidence acceptance, same drift mechanism as #2180 but an independent root cause; likely affects many wave-1 assets across every layer, not just mine. Fixed it myself (recomputed live fingerprint/digest, submitted fresh evidence, same recipe as cycle 168) since it's squarely L1's own asset. Finding 2, surfaced immediately after: dispatch ALSO requires every DAG ancestor to carry a genuine `asset_frozen` campaign event, not just be freshness='fresh' -- `ga_positions` has never been through this (it requires the VERIFIER service account, not executor; a real independent-verification step, not a registry fix) -- blocks wave-1+ dispatch CAMPAIGN-WIDE regardless of layer. Did NOT attempt to self-certify ga_positions' freeze (would be exactly the unearned-signal defect class this campaign's own doctrine forbids). Both findings posted to #2224 for Conductor/cross-layer visibility. #2113/#2180 checked again this cycle -- no new reply beyond my own prior comment
+last_updated: 2026-09-07 — C8 v2.3 cycle 170; state branch rotated (`codex/nirmana-l1-state-cycle6`, `#2201` merged). Conductor RULED on #2224: confirmed the mechanism is identical to adjudication #1945's Lane C `invalidated_analysis_count` (its own live-diff two hours prior found 22 campaign-wide invalidated assets across bg_*/ga_*/ka_*, not a new class), ratified proceeding with the live-recompute-and-resubmit recipe exactly as I'd been doing -- no new authorization needed. Live-checked all 19 `ga_*` assets for staleness (fixed an ordering bug in my own check script mid-cycle: `event_id` is a random UUID, not a sequence -- `ORDER BY event_id DESC` silently picked the WRONG "latest" evidence row; corrected to `ORDER BY observed_at DESC`). Found 10 stale; re-stamped the 5 that are wave-1 members (`ga_sensitive`, `ga_prashna`, `ga_nakshatra`, `ga_sensitive_degree`, `ga_ayurdaya` -- 10 record_evidence calls, all 201, independently re-verified live). L1 now has 7/9 wave-1 `ga_*` assets with valid evidence (`ga_positions`+`ga_vargas` from before + these 5). `ga_dashas`/`ga_transit_anchors` (wave-1 members) have ZERO accepted evidence ever -- a different, bigger first-time-W2-acceptance gap, not touched. `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` also stale but not wave-1 members, deferred. Dispatch itself still blocked by Finding 2 (asset_frozen E-gate) regardless -- not re-attempted this cycle. Posted status to #2224. #2113/#2180 checked -- no new reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9375,3 +9375,79 @@ re-stamp) then hit a deeper `asset_frozen`/E-gate blocker requiring the verifier
 self-certified, filed adjudication #2224 for both findings — next: await #2224's disposition or
 Conductor guidance on the freeze/verification workstream before any further wave-1+ dispatch
 attempt; keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 170 (C8 v2.3) — Conductor RULED on #2224 (same mechanism as #1945 Lane C, proceed as
+## planned); re-stamped 5 more wave-1 `ga_*` assets' stale evidence
+
+PR hygiene: `#2201` (the long-lived state-tracking PR since cycle 155) confirmed `MERGED` at
+cycle open — rotated to a fresh state branch, `codex/nirmana-l1-state-cycle6`, off `origin/main`.
+No other L1-authored PR open. Nothing DIRTY/RED/unqueued.
+
+Re-checked `#2113`/`#2180`/`#2224`: `#2180` unchanged (still my own cycle-168 comment last).
+`#2224` had THREE new comments since I filed it: my own Finding-2 follow-up (already known), a
+genuine **Conductor ruling**, and L2's own peer response.
+
+**Conductor's ruling on #2224 (verbatim substance)**: confirmed this is the EXACT SAME mechanism
+already surfaced campaign-wide on adjudication #1945's Lane C (`invalidated_analysis_count`) —
+the Conductor's own live-diff of all 70 `asset_analysis_accepted` events against current
+`asset_registry`, run ~2 hours before I hit this in practice, found **22 invalidated assets
+spanning bg_*/ga_*/ka_* across 3+ layers** (including several of L1's own: `ga_nakshatra`,
+`ga_sensitive`, `ga_strength`, `ga_structural`, `ga_sade_sati`, `ga_ayurdaya`, `ga_prashna`,
+`ga_yoga`, `ga_vichara`, and `ga_positions` itself — three separate stale generations at that
+snapshot time). `ga_vargas` wasn't even in that 70-event snapshot — its evidence went stale
+AFTER that check, from a subsequent `integrity_check_sql` landing, confirming my own prediction
+this recurs continuously as ordinary W3 work ships, not a one-time count. Ruling: **no new
+authorization needed** — each layer re-stamping its own assets via the live-recompute-and-
+resubmit recipe is exactly what #2180's first ruling already granted, one layer deeper than that
+ruling anticipated; proceed exactly as planned. Cross-referencing #1945/#2224 to converge the
+campaign-wide count in one place; broadcasting to the fleet coordination issue (#1713) so other
+layers don't each independently rediscover this. L2 also responded on the thread: checked its own
+2 wave-1 members (`bo_bimba`/`bo_samskara`), found ZERO campaign events for L2 at all (never
+submitted first W2 evidence yet — still `BLOCKED-ANCESTORS` on unfrozen L1 `ga_*` assets,
+independently corroborating Finding 2's real, already-active downstream impact).
+
+**Unit of work: acted on the ruling — live-checked and re-stamped L1's own wave-1-relevant stale
+evidence.** Wrote a fresh live-diff over all 19 `ga_*` assets (comparing each asset's most recent
+accepted `asset_analysis_accepted.registry_fingerprint_sha256` against
+`_live_registry_fingerprint()`). **Caught and fixed a real bug in my OWN check mid-cycle**: the
+first pass used `DISTINCT ON (entity_id) ... ORDER BY entity_id, event_id DESC` to find each
+asset's "latest" acceptance — wrong, because `event_id` is a randomly-generated UUID, not a
+sequence, so `DESC` on it does not mean "most recent." This silently picked an ARBITRARY old
+event for several assets, including `ga_positions` (which the buggy query reported as "stale"
+despite cycle 168's fix genuinely having worked) — caught by noticing `ga_positions` shouldn't
+still be stale, pulled its FULL event history, confirmed by timestamp which row was actually
+latest, and fixed the query to `ORDER BY entity_id, observed_at DESC` (a real timestamp).
+Re-ran: confirmed `ga_positions` and `ga_vargas` genuinely fresh (both prior fixes hold), and
+found **10 genuinely stale `ga_*` assets** (not the false positives the buggy version implied).
+
+Of those 10, **5 are wave-1 members**: `ga_sensitive`, `ga_prashna`, `ga_nakshatra`,
+`ga_sensitive_degree`, `ga_ayurdaya`. Computed fresh `registry_fingerprint_sha256`/
+`analysis_digest` for each via the dispatch script's own functions, submitted fresh
+`asset_analysis_accepted`+`optimization_verdict_accepted` evidence for each via the
+`record_evidence` executor route (10 calls, all `201 created` — re-verified the deployed SHA live
+first, `9c4133aa0...`, since it had changed AGAIN since cycle 169's `f3f6dbf8e...`). Independently
+re-ran the live-diff afterward: all 5 confirmed now valid. **L1 now has 7/9 wave-1 `ga_*` assets
+with genuinely fresh evidence** (`ga_positions`, `ga_vargas` + these 5).
+
+**Explicitly did NOT touch, this cycle, and why:**
+- `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` — also stale, but none are
+  wave-1 members; useful for the campaign-wide Lane C count but not blocking wave-1 specifically,
+  deferred to a future cycle.
+- `ga_dashas`/`ga_transit_anchors` (wave-1 members) — have **zero** accepted analysis events at
+  all, a qualitatively different gap (a first-time W2 acceptance apparently never recorded in
+  this campaign's evidence ledger, not evidence gone stale from drift). Did not paper over this
+  with a re-stamp, since that would effectively be self-certifying a first-time W2 acceptance
+  without the underlying review work — a genuinely separate, likely bigger investigation for a
+  future cycle.
+- `ga_panchanga` — still blocked on `bg_panchanga`'s own `freshness_state='unknown'` (L0's scope).
+
+**Dispatch itself remains blocked by Finding 2** (the `asset_frozen` E-gate) regardless of how
+much evidence is fresh — not re-attempted this cycle since it would just hit the same wall.
+Posted a full status update to #2224. Cleaned up temp evidence-payload files.
+
+CYCLE 170 L1: PR hygiene clean (state branch rotated post-#2201-merge); Conductor RULED #2224 is
+#1945 Lane C's mechanism, ratified proceeding as planned — re-stamped 5 more wave-1 `ga_*`
+assets' stale evidence (7/9 now fresh), catching and fixing a real UUID-ordering bug in my own
+verification script along the way — next: `ga_dashas`/`ga_transit_anchors`'s zero-evidence gap
+(separate investigation) or await #2224/asset_frozen disposition before any dispatch attempt;
+keep re-checking #2113/#2180/#2224 every cycle regardless.

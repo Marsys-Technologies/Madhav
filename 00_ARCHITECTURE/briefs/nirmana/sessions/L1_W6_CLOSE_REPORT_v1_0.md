@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.27-DRAFT"
+version: "0.28-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -429,10 +429,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
   isolated to L1. (2) A deeper `asset_frozen` E-gate: dispatch requires every DAG ancestor to
   carry a genuine freeze event (requiring the VERIFIER service account, a real independent
   verification pass), not just `freshness_state='fresh'` — `ga_positions` has never been through
-  this. Deliberately NOT self-certified (would be an unearned-signal defect). **Still open**:
-  wave 1 dispatch itself, now understood to require a genuine per-asset freeze/verification
-  workstream (W5/W6-equivalent) before it can proceed at all, campaign-wide — not just an L1
-  registry fix. Awaiting #2224's disposition.
+  this. Deliberately NOT self-certified (would be an unearned-signal defect). **Conductor RULED
+  cycle 170**: confirmed identical to adjudication #1945's Lane C `invalidated_analysis_count`
+  (its own live-diff found 22 campaign-wide invalidated assets across 3+ layers); no new
+  authorization needed, proceed re-stamping per-asset exactly as planned. Acted on it: live-diffed
+  all 19 `ga_*` assets (fixing a real UUID-vs-timestamp ordering bug in the check itself along the
+  way), found 10 stale, re-stamped the 5 that are wave-1 members (`ga_sensitive`, `ga_prashna`,
+  `ga_nakshatra`, `ga_sensitive_degree`, `ga_ayurdaya`) — **L1 now has 7/9 wave-1 `ga_*` assets
+  with valid evidence.** `ga_dashas`/`ga_transit_anchors` (wave-1 members) surfaced a distinct,
+  bigger gap — zero accepted evidence ever, not drift — deliberately not papered over.
+  `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` also stale, not wave-1
+  members, deferred. **Still open**: wave 1 dispatch itself remains blocked by the `asset_frozen`
+  E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
