@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:42:07Z` — cycle 992: **IDLE-OK, Δfrozen +0.** No reaction yet to the #2317
+  ruling (~4 min old). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (12).
 - `2026-09-07T14:38:35Z` — cycle 991: **Third bug in the same family, found and ruled — #2317,
   the dispatch-time echo of #2224.** #2307 (the #2224 fix) is live and confirmed working
   (`ga_transit_anchors`' verdict submission succeeded against the deployed code) — but
