@@ -495,6 +495,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~161:0xZ — L3-W4 — PR hygiene: `#2197` genuinely
+  `isInMergeQueue: true` (position 2 — moved from 1, another PR merged
+  ahead, healthy queue churn). `mergeStateStatus: UNSTABLE` checked
+  directly against the full check list: `Governance Gates` finished
+  green (9m33s, matching the confirmed pattern exactly), only
+  `Build Check (PR only)` still `pending` — the UNSTABLE label reflects
+  that one pending check, not a failure. No new `origin/main` merges,
+  no new E-gate opening. IDLE-OK. — blocked on: nothing new; next
+  action: push once `#2197` merges/finishes.
 - `2026-09-07T~160:0xZ — L3-W4 — PR hygiene: `#2197`'s last check
   (`Governance Gates`) genuinely `in_progress` at ~9.3min, checked
   step-level detail directly (still on the same `pytest —
