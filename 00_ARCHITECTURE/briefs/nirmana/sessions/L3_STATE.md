@@ -495,6 +495,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~191:0xZ — L3-W4 — PR hygiene: `#2210` still pre-queue,
+  checks running (`Unit Tests` + `Governance Gates` pending, nothing
+  red), `autoMergeRequest.enabledAt` confirmed set. No new
+  `origin/main` merges relevant to L3 (only an L5 heartbeat PR and the
+  already-logged L1 `#2205`). Re-ran `egate.sql` live: unchanged,
+  `ga_positions` still `OPEN-PENDING-PIN`, `ka_gochara_resonance` still
+  `BLOCKED-NO-ROUTE`. No new E-gate opening, no bounded L3 work
+  eligible. IDLE-OK. — blocked on: `#2210` clearing checks/queue; next
+  action: same monitoring cadence.
 - `2026-09-07T~190:0xZ — L3-W4 — PR hygiene: `#2206` MERGED. Rebased the
   ~18 not-yet-merged local heartbeat commits onto fresh `origin/main`.
   Hit the standard empty-theirs prepend-conflict pattern 8x
