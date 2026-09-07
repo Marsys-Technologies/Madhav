@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:26:34Z` — cycle 973: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
+  stale PRs cleared this check). Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T13:24:12Z` — cycle 972: **IDLE-OK, Δfrozen +0.** L1's own state confirms "no
   movement on #2300/#2224" — consistent with my own tracking, a legitimate lull not a hidden
   problem. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
