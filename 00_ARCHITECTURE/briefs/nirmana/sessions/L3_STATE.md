@@ -497,6 +497,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~435:0xZ — L3-W4 — PR hygiene: `#2294` advanced to
+  position 1 (top of queue) — `#2292` merged (unrelated L5 heartbeat
+  PR, confirmed via `origin/main`, no L3 overlap). `#2294`'s own
+  `merge_group` run hasn't started yet (queue processes serially),
+  no failure, normal. Notable: `#2277` (L1, `ga_dashas`
+  `integrity_check_sql` perf fix — not a freeze) now queued behind
+  `#2294` at position 2. No new E-gate opening for L3. IDLE-OK. —
+  blocked on: `#2294` finishing; next action: same.
 - `2026-09-07T~434:0xZ — L3-W4 — PR hygiene: `#2294` still position
   2, `AWAITING_CHECKS` — `#2292`'s `Governance Gates` job now
   ~11.2min, slightly past the confirmed ~11min normal range but
