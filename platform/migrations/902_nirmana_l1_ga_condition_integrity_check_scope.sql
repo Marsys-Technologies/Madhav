@@ -1,4 +1,15 @@
--- 899_nirmana_l1_ga_condition_integrity_check_scope.sql
+-- 902_nirmana_l1_ga_condition_integrity_check_scope.sql
+--
+-- Migration 902. Authored as 899 (cycle 259) and applied live under that working number, but
+-- L2's `899_nirmana_l2_bo_grounding_registry_row.sql` landed on main first and L3 consumed
+-- 900/901 — renumbered per MIG-1 (MIGRATION_AND_MERGE_PROTOCOL §3, max() across both
+-- directories). The `$SQL$` body below is BYTE-IDENTICAL to the value already applied live on
+-- 2026-09-07 (including its in-body comments still reading "migration 899"): the body is
+-- `asset_registry.integrity_check_sql` for `ga_condition`, which is registry-fingerprint input
+-- (dispatch_nirmana_campaign_wave.py FINGERPRINT_FIELDS), and `ga_condition` is now
+-- `asset_frozen` against that exact live generation — editing even a comment inside the body
+-- would shift the frozen asset's registry fingerprint. Deploy-time re-apply is therefore a
+-- true value-level no-op.
 --
 -- NIRMĀṆA L1 Gaṇita — cycle 259: `ga_condition`'s `integrity_check_sql` conjunct (a)
 -- (varga_dignity_composite re-derivation) is unscoped across all 3 canonical charts — the
