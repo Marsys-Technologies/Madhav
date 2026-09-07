@@ -1166,3 +1166,10 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  L1's merged PR mentioned a "fleet-wide `asset_output_digest_specs` gap" — checked whether L0 was
+  exposed: 38/39 `bg_*` writer assets have a spec row; the one exception, `bg_sign_medical`, is
+  producer-covered by `bg_medical_mappings` (the `fixedProducerCoverage` map in `definitions.ts`),
+  a correct, different evidence path (`producer_covered`, not its own `accepted_rebuild_observed`) —
+  not a gap. All 40 L0 assets already reached `asset_frozen` independent of this table, confirming
+  L0 was never exposed to L1's issue. Nothing eligible.
