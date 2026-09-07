@@ -495,6 +495,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~225:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
+  run, now ~8.5min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step (`
+  mergeStateStatus` briefly `UNKNOWN`, normal async lag, confirmed via
+  step-level check). NOTABLE: `#2220` merged — "ga_positions
+  output_digest_spec (migration 875, fix 2/2 of `#2180`)" — the second
+  and apparently final authoring fix for adjudication `#2180`. Re-ran
+  full `egate.sql` L1+L3 sweep live: `ga_positions` **still**
+  `OPEN-PENDING-PIN` — all now-known authoring components (7/7
+  `natural_key_partition` + 2/2 `output_digest_spec`) complete, but
+  the pin/freeze action itself has not fired. Watching, not acting —
+  this remains the L1 sibling session's dispatch to make. No new
+  E-gate opening for L3. IDLE-OK. — blocked on: `#2222` finishing;
+  next action: same, watch very closely now that all known inputs are
+  authored.
 - `2026-09-07T~224:0xZ — L3-W4 — PR hygiene: `#2222`'s last check
   (`Governance Gates`) ~6.5min, within normal range, `Unit Tests` now
   also passed. No new `origin/main` merges, no new E-gate opening.
