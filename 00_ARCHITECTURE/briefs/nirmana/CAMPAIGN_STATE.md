@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:25:48Z` — cycle 925: **Δfrozen +1 (48→49). `ga_sensitive` froze.** L1's second
+  freeze this drive, ~13 min after `ga_vargas`. 14 assets remain on the eligible frontier. Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:23:43Z` — cycle 924: **IDLE-OK, Δfrozen +0.** `ga_sensitive`'s
   `accepted_rebuild_observed` landed — progressing normally toward freeze. 0 active slots (this
   run must be between build and next dispatch). Fleet DIRTY: same 2 known stale native PRs.
