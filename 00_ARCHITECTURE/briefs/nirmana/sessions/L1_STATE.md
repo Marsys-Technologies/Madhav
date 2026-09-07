@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 186; **Governance-hygiene fix on the close report itself: found and corrected a stale §6/§5 claim that survived 2 close-out passes.** With F-B32 now fully closed, swept the close report's own OPEN section for anything else genuinely done-but-not-marked — found §6 (and §5's forward-work list) still said "6 MUST-tier id-groups (9 F-ids) rest on an uncited cycle-125 claim," a bullet that was actually resolved cycle 178 (all 6 independently re-verified and cited in §2.5's own "Honest count" paragraph) but never removed from §6/§5 when that work landed, surviving unnoticed through the F-B32 slice-8-through-13 close-out cycles. Corrected both spots to point at the real citation rather than leave a stale TODO that could mislead a future reader (or session) into re-doing already-done verification work. No code touched — docs-only, no PR needed, committed directly to the state branch alongside this cycle's own update. #2254/#2252 confirmed genuinely queued; #2247/#2246 mid-CI, nothing DIRTY/RED. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 187; **L1_W6_CLOSE_REPORT_v1_0.md §4's own noted OPEN item (cost actuals) gets its registry-level fix (PR #2255, migration 879): a second round of estimated_seconds re-baselining, continuing migration 847's exact methodology.** 10 more assets found stale against live `build_run_assets` telemetry (1.3x-3.4x drift) — `ga_ayurdaya`, `ga_panchanga`, `ga_sensitive`, `ga_strength`, `ga_tajaka`, `ga_transit_anchors`, `ga_vastu`, `ga_yoga` (never previously re-measured) plus, notably, `ga_vargas`/`ga_dashas` — both explicitly confirmed ACCURATE by migration 847 itself at cycle 110, now genuinely drifted since (~77 cycles of additional build history later): a live measurement is only as fresh as the moment it was taken, not a permanent fact once measured. Verified live pre/post-apply, new 6-case contract test added mirroring 847's own test shape. #2254/#2252/#2247 confirmed genuinely queued; #2255/#2246 mid-CI, nothing DIRTY/RED. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -10458,3 +10458,50 @@ stale-claim sweep complete, the close report's genuinely remaining OPEN items ar
 reconciliation (§4) and the NOW/NEVER-LATER per-finding tables (deliberately deferred, not
 stale) -- both smaller prep-tier items; the E-gate (#2224) remains the only real blocker on
 substantive new W4/W5 work; keep re-checking #2113/#2180/#2224 every cycle.
+
+## CYCLE 187 (C8 v2.3) — F-B32 closed and the stale-claim sweep done, so moved to the close
+## report's next genuinely-open item: cost actuals, specifically its registry-level half
+
+PR hygiene first: `is:queued` showed #2254/#2252 genuinely queued at cycle open; #2247 CLEAN
+with all checks passing but not yet armed for auto-merge — armed it (`gh pr merge --auto`),
+confirmed genuinely queued via the "already queued to merge" error-message technique. #2246
+mid-CI, nothing DIRTY/RED. Checked #2113/#2180/#2224 -- no new Conductor reply.
+
+**Unit of work.** With F-B32 closed and last cycle's stale-claim sweep done, re-checked §4/§5/§6
+one more time for the next genuinely-unheld item rather than assume nothing remains. §4 (cost
+actuals) explicitly says "awaits either a dedicated prep cycle or genuine W6 close" -- this
+cycle became that dedicated prep cycle, at least for the measurable, honest half of it.
+L5's own close report precedent (checked directly) shows the SAME structural gap -- "Session
+token/wall-clock actuals: OPEN, filled at close" -- confirming a genuine session-level cost
+ledger requires data no mid-campaign session actually has access to (no external per-cycle
+token/wall-clock log exists to query); attempting to fabricate one would violate §N.4/B.10
+doctrine outright. What IS honestly measurable right now, using real telemetry: `asset_
+registry.estimated_seconds` against live `build_run_assets` history -- exactly the exercise
+migration 847 (cycle 110) already started for 5 assets.
+
+Ran the same live query migration 847's own methodology used (EXTRACT(EPOCH FROM (ended_at -
+started_at)), state='complete' only) across all 19 `ga_*` assets. Found 10 with genuine drift
+(>=1.3x registry-vs-measured): `ga_ayurdaya` (2.33x), `ga_dashas` (1.98x), `ga_panchanga`
+(3.37x), `ga_sensitive` (1.66x), `ga_strength` (1.36x), `ga_vargas` (2.72x), `ga_tajaka`
+(1.37x), `ga_transit_anchors` (2.30x), `ga_vastu` (2.10x), `ga_yoga` (1.36x). The other 9 all
+measure within 1.3x of their current registry value (several within 1%) -- correctly left
+alone.
+
+The two most striking findings were `ga_vargas`/`ga_dashas`: migration 847's OWN comment
+explicitly says both "were confirmed ACCURATE by F-A16 itself and are correctly left untouched
+here" at cycle 110 (94s/564s matching the registry then). This cycle's live re-query, ~77
+cycles of additional build history later, finds BOTH have genuinely drifted since (256s/1118s
+now) -- not that cycle 110's finding was ever wrong, just that a measurement's freshness has a
+shelf life. Wrote migration 879 (verified no collision against origin/main's highest migration
+878, nor any open sibling PR branch), applied via the established dry-run-then-apply workflow,
+live-confirmed all 10 values post-apply, and wrote a 6-case textual contract test mirroring
+migration 847's own test shape (pins every value, the touched-vs-untouched asset sets, and the
+methodology citation).
+
+CYCLE 187 L1: closed L1_W6_CLOSE_REPORT_v1_0.md §4's registry-level cost-actuals gap -- migration
+879 re-baselines 10 more stale `estimated_seconds` values (PR #2255), including 2 that migration
+847 itself had explicitly confirmed accurate 77 cycles ago and have since drifted -> next: confirm
+#2255/#2246 reach `is:queued`; §4's session-level token/wall-clock half remains genuinely OPEN
+(no data source exists to measure it honestly mid-campaign, same gap L5's own close report
+carries); the NOW/NEVER-LATER per-finding tables remain the other deliberately-deferred §6 item;
+keep re-checking #2113/#2180/#2224 every cycle.

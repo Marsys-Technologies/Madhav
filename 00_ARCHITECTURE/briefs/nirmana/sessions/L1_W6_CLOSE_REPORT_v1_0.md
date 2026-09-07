@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.43-DRAFT"
+version: "0.44-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -392,14 +392,26 @@ partly *not* confined to L1's own assets:
 
 ## §4 — Cost actuals vs forecast
 
-**OPEN.** Session token/wall-clock actuals not tracked against a forecast this segment — unlike
-L5's report, no per-cycle cost ledger has been reconciled yet (the charter names "reconcile cost
-ledger" as a distinct, still-undone priority-5 prep item, separate from this close-report draft).
-Registry `estimated_seconds` re-measurement is a related but distinct exercise, and where done
-this wave produced real corrections: `ga_positions` (was 5s, measured mean 17s/n=54, migration
-847) and `ga_condition` (was 30s, measured mean 71s/n=51, migration 847) — both re-baselined
-from live `build_run_assets` data, not estimated. A full session-level cost actuals section
-awaits either a dedicated prep cycle or genuine W6 close.
+**Session token/wall-clock half: still OPEN.** No per-cycle cost ledger has been reconciled —
+checked L5's own close report directly (cycle 187): it carries the identical gap ("Session
+token/wall-clock actuals: OPEN, filled at close"), confirming this genuinely requires data no
+session actually has access to mid-campaign (no external per-cycle token/wall-clock log exists
+to query) — attempting to fill it now would mean fabricating a number, which §N.4/B.10 forbid
+outright. Correctly deferred to genuine W6 close, when real closing-session data would exist to
+report honestly, not treated as this cycle's job to invent.
+
+**Registry `estimated_seconds` half: CLOSED (cycle 187, migration 879).** This IS honestly
+measurable now, from real `build_run_assets` telemetry, and migration 847 (cycle 110) already
+started the exercise for 5 assets: `ga_positions` (was 5s, measured mean 17s/n=54) and
+`ga_condition` (was 30s, measured mean 71s/n=51), plus `ga_nakshatra`/`ga_sade_sati`/
+`ga_vichara` — all re-baselined from live data, not estimated. Migration 879 continued the same
+methodology across the remaining 14 assets and found 10 more genuinely stale (1.3x-3.4x drift):
+`ga_ayurdaya`, `ga_dashas`, `ga_panchanga`, `ga_sensitive`, `ga_strength`, `ga_vargas`,
+`ga_tajaka`, `ga_transit_anchors`, `ga_vastu`, `ga_yoga`. Notably, `ga_vargas`/`ga_dashas` were
+explicitly confirmed ACCURATE by migration 847 itself at cycle 110 — the live re-query, ~77
+cycles of additional build history later, finds both have genuinely drifted since (94s→256s,
+564s→1118s), not that the cycle-110 finding was ever wrong. All 19 `ga_*` assets' registry
+estimates are now current as of this cycle's live measurement.
 
 ## §5 — Backlog handed forward
 
@@ -683,7 +695,10 @@ awaits either a dedicated prep cycle or genuine W6 close.
   cited in §2.5's own table — see the "Honest count" paragraph immediately following it. This
   bullet was left stale here after that work landed; corrected cycle 186 rather than left to
   mislead a future reader into re-doing already-done work.
-- Session-level cost actuals reconciliation (§4's own noted OPEN item).
+- Session-level TOKEN/WALL-CLOCK cost actuals reconciliation (§4's own noted OPEN item — the
+  registry `estimated_seconds` half of §4 was closed cycle 187, migration 879; this narrower
+  remaining piece genuinely needs closing-session data no mid-campaign cycle has, same gap
+  L5's own report carries — correctly deferred to genuine W6 close, not fabricated here).
 
 ## §6 — OPEN
 
