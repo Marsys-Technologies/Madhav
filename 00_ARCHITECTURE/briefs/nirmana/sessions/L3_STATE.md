@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~481:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  2, `AWAITING_CHECKS` — `#2328` (ahead) queued ~8.4min, own build
+  not yet visible, same recurring congestion pattern, not yet a
+  stall concern. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2328` clearing ahead of `#2330`; next
+  action: same.
 - `2026-09-07T~480:0xZ — L3-W4 — PR hygiene: `#2327` merged
   (congestion self-resolved again, confirmed via `origin/main`, no
   L3 overlap). Live queue listing shows `#2330` actually at position
