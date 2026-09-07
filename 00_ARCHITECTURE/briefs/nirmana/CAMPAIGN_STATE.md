@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:18:52Z` — cycle 897: **IDLE-OK, Δfrozen +0.** #2272 still `mergeStateStatus=
+  BLOCKED`, not queued yet — L1's own PR, watching not intervening. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:16:02Z` — cycle 896: **Root cause found — L1 already diagnosing/fixing it.**
   PR #2272 (`L1 W4: ga_dashas output_digest_spec (migration 880)`, OPEN, `mergeStateStatus=
   BLOCKED`, Unit Tests check red at check time): `asset_output_digest_specs` only had a row for
