@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~445:0xZ — L3-W4 — PR hygiene: `#2299` advanced to
+  position 1 (top of queue) — `#2298` merged (unrelated L5
+  heartbeat PR, confirmed via `origin/main`, no L3 overlap).
+  `#2299`'s own `merge_group` run hasn't started yet, normal
+  right after advancing. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2299` finishing; next action: same.
 - `2026-09-07T~444:0xZ — L3-W4 — PR hygiene: `#2299` still position
   2, `AWAITING_CHECKS` — `#2298`'s own `merge_group` run hasn't
   started yet (serial queue processing, no failure signal). No new
