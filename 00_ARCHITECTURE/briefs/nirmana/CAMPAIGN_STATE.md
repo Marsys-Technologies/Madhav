@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:45:32Z` — cycle 956: **IDLE-OK, Δfrozen +0.** No reaction yet to either #2276
+  or #2224 ruling. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T12:42:28Z` — cycle 955: **Second real bug found and ruled — `ga_transit_anchors`'
   permanent deadlock in `definitions.ts`.** L1's PR #2293 root-caused it precisely (posted to
   #2224): `requireAcceptedOptimizationVerdictProvenance`'s SQL requires the verdict's `source_ref`
