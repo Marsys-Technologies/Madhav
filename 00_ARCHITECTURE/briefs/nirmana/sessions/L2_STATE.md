@@ -701,6 +701,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 646 | 2026-09-07T08:03Z | L2-W3 | PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. **Main static since loop 636 (6 cycles) -- re-confirmed.** `#2251`'s `Governance Gates` check finally `completed`/`success` (~11.5min total, matching the established typical window) -- merge should follow shortly; not a stall. No L2 action (not our PR). Both E-gates unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 647 | 2026-09-07T08:06Z | L2-W3 | **IDLE-OK (verified, not assumed).** Main jumped to `fd24ffd5...` -- the entire 4-deep queue (`2251`→`2252`→`2253`→`2247`) merged in one batch, confirming loop 646's diagnosis was correct (not a stall). PR hygiene: `#2227` transient `UNKNOWN`/`UNKNOWN` on first read, resolved healthy `BLOCKED`/`MERGEABLE` on 6s recheck, still pre-queue. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 648 | 2026-09-07T08:08Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2227` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 647. Both E-gates re-verified unchanged. No new `nirmana-adjudication` issues; all tracked comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
+| 649 | 2026-09-07T08:13Z | L2-W3 | **PRIORITY DIRECTIVE received (coordination channel): stage `bo_sudarshana` as frontier canary + land capabilities AS DATA, above further W3 polish.** Acted on both this cycle. (1) `bo_sudarshana` confirmed genuinely narrowest gate: exactly 1 ancestor, `ga_positions`, currently unfrozen (has fresh W2 evidence as of `03:38:10Z` today, no `asset_frozen` yet) -- staged, will poll every cycle from now on alongside the two existing E-gates. (2) Audited `## CAPABILITIES LANDED` against live `main` + live DB rather than assuming its prior single entry was complete: found `tail_watch` genuinely shipped and wired (PR #1776, 4 live query modules, 50,104/2,918 real rows) but never announced -- announced it now (see section below), clearing one of L4's three named blockers. Checked the other two named items and found them genuinely different blocker classes: consensus columns (agreement line) are writer-complete but data-blocked on `bo_laksana_rerank`'s own E-gate (same external L1-freeze dependency already tracked); grounding fields (`grounding_tier`/`citation_granularity`/`bodha_grounding_matches`, N-11/N-12/N-13) are genuinely UNIMPLEMENTED -- no column, no migration, checked directly against `platform/` source, not assumed from the plan doc. Recorded this distinction in `## CAPABILITIES LANDED` so "waiting on L1" and "not yet built" aren't conflated. Next cycle: begin real grounding-lane implementation work (N-11/N-12/N-13) as the priority, per this directive. |
 
 ## ASSET TABLE (22)
 
@@ -1355,6 +1356,41 @@ shipped - adjudication table live.
   should not begin consuming corrected salience values yet -- only the guarantee that the next
   rebuild produces them.
 - *(the other eight W3 PRs are in the merge queue; each is announced here the moment it merges)*
+- **2026-09-07T08:13Z -- `tail_watch` shipped AS DATA, not just a writer (PR #1776, MERGED on
+  `origin/main`; landing announced late, verified before writing this line, not assumed).** This
+  is the genuine, consumer-usable capability C6 asks for: `buildTailWatch()`
+  (`platform/src/lib/retrieval/tail/build_tail_watch.ts`) is live-imported and called in FOUR
+  served L2_bodha query modules on `main` --
+  `query_chart_gestalt.ts`/`query_cdlm_summary.ts`/`query_question_lenses.ts`/`query_discoveries.ts`
+  -- and its two source tables carry real rows on the canonical chart RIGHT NOW:
+  `bodha_msr_signals` 50,104 rows, `bodha_anomalies` 2,918 rows (both from the prior, pre-W3-fix
+  L2 build -- genuinely queryable today, not waiting on the held `bo_laksana` rebuild, since
+  `tail_watch` reads existing salience/anomaly rows rather than the corrected-formula columns).
+  The hard-floor/trim-immunity protection half (`response_budget.ts`,
+  `platform-mcp/src/tools/registry_bridge.ts`) is also live. **A downstream layer may consume
+  `tail_watch` today.** L4's `tail_watch` blocker (per the coordination directive naming
+  agreement-line/śruti-quote/tail_watch as the three items L4's held W3 waits on) is CLEARED.
+
+**Consensus columns and grounding fields status, checked this cycle (2026-09-07T08:13Z) per the
+coordination directive's instruction to land data, not just writers -- two genuinely different
+blocker types, not conflated:**
+- **`cross_system_consensus_count` / `contradicts_signals_array` ("agreement line")** --
+  writer-complete (migration 662, `bo_laksana_rerank`), but the DATA cannot land until
+  `bo_laksana_rerank` dispatches -- and its own E-gate (15/24 unfrozen ancestors, tracked every
+  cycle above) is the SAME external L1-freeze blocker as `bo_laksana`'s. Nothing L2 can do until
+  L1's freeze ceremony runs (per `#1770`'s ruling: `#2180`'s rebuild first, then freeze, then this
+  gate opens clean). Re-verified this cycle: unchanged.
+- **`grounding_tier` / `citation_granularity` / `bodha_grounding_matches` (N-13) + the grounding
+  matcher (N-11) + the concordance-substrate plug (N-12)** -- checked directly against the
+  codebase this cycle: **genuinely UNIMPLEMENTED, not merely undispatched.** No `grounding_tier`
+  column exists anywhere (`grep` across `platform/` returns zero hits); migrations 660/661 --
+  the numbers N-13 names -- were reassigned to unrelated work
+  (`660_nirmana_l2_registry_accuracy.sql`, `661_l2_bodha_signal_identity.sql`) sometime after the
+  plan was written, so even the schema was never created. This is real, un-started W3
+  implementation work (design + migration + writer + matcher logic), not a dispatch-blocked item
+  -- distinguishing the two prevents treating "waiting on L1" and "not yet built" as the same
+  kind of blocker. Flagging as the next concrete W3 priority per this cycle's directive
+  ("populating the data... above further W3 polish").
 
 **Ruled definition, to be carried here verbatim when the grounding lane lands (#1726 condition 3):**
 `sruti` means **text-direct at the finest granularity the corpus supports** -- NOT verse-direct.
