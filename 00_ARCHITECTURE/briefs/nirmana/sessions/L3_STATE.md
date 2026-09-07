@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~462:0xZ — L3-W4 — PR hygiene: `#2313` confirmed
+  MERGED. Rebased 16 local commits onto fresh `origin/main`, 4
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-31`, pushed, opened
+  `#2322`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2322`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~461:0xZ — L3-W4 — PR hygiene: `#2313` still position
   1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
   Gates` remains (~6.2min, within normal range). No new
