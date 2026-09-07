@@ -1449,3 +1449,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. New
   activity on #2258 is Conductor's ruling on L2's own grounding-lane design question — not
   L0-relevant. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  #2258's new activity is L2's own grounding-schema implementation progress (PR #2346) — not
+  L0-relevant. Nothing eligible.
