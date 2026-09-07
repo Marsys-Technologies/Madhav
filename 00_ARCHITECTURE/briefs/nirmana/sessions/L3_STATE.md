@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~323:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group` run still `in_progress` (~2.5min, well within normal
+  range), `Unit Tests` (the previously-flaky job) running clean this
+  time, no failures yet. No new `origin/main` merges, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2251` finishing; next action: same.
 - `2026-09-07T~322:0xZ — L3-W4 — PR hygiene: root-caused why `#2251`
   got dequeued last cycle — pulled the PRIOR `merge_group` run's job
   log (`Unit Tests`, `conclusion: failure`) and found the failure was
