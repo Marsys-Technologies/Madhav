@@ -495,6 +495,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~190:0xZ — L3-W4 — PR hygiene: `#2206` MERGED. Rebased the
+  ~18 not-yet-merged local heartbeat commits onto fresh `origin/main`.
+  Hit the standard empty-theirs prepend-conflict pattern 8x
+  (auto-resolved via the marker-strip loop, each verified empty-theirs
+  before stripping). Verified zero conflict markers remain across the
+  repo; rebased diff vs `origin/main` is `L3_STATE.md`-only (no
+  migrations touched, guard skipped as not applicable). Renamed branch
+  to `codex/nirmana-l3-heartbeat-idle-5`, pushed, opened PR `#2210`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set — `gh pr merge --auto` printed the usual merge-queue-strategy
+  message, not an error). Other open PRs authored under this bot
+  identity (`#2209`/`#2208`/`#2201` L1, `#2165` L2, and the long-parked
+  PARKED/PRESERVE PRs) belong to concurrent sibling-layer sessions or
+  are explicitly do-not-merge — out of this session's L3 scope, left
+  untouched. Re-ran `egate.sql` live: unchanged, `ga_positions` still
+  `OPEN-PENDING-PIN` (L1 PR `#2205` merged this cycle authoring its
+  `natural_key_partition`, explicitly "fix 1/2" — not yet the freeze
+  itself). No new E-gate opening for L3. IDLE-OK. — blocked on: `#2210`
+  clearing checks/queue; next action: same monitoring cadence, watch
+  for `ga_positions` freeze.
 - `2026-09-07T~189:0xZ — L3-W4 — PR hygiene: `#2206`'s own `merge_group`
   build still `in_progress` (~6.8min, within range). No new
   `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
