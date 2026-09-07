@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:22:09Z` — cycle 814: **IDLE-OK (verified).** #2228 now CLEAN and genuinely
+  queued (all checks passed). #2227's checks restarted again — normal churn, not stuck. Fleet
+  DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:19:45Z` — cycle 813: **RULED + CLOSED #2240 — resolved-by-existing-fix, no new
   code needed.** L0 hit the dedup guard blocking `bg_cohort`'s re-dispatch post-D-NATIVE-07.
   Started building a fix in a fresh worktree before checking `origin/main`'s actual current
