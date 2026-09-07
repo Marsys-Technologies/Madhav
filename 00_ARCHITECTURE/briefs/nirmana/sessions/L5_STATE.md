@@ -457,6 +457,79 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T12:37Z (C8 v2.3 cycle 963) — **`#2287` MERGED — the fifty-fourth state-recovery PR
+  closed out.** Fifty-fourth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
+  663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846, 858,
+  867, 876, 885, 896, 905, 917, 927, 937, 946, now 963). 16 local-only commits (cycles 947-962,
+  single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-54` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged from last check. Nothing eligible.
+- 2026-09-07T12:34Z (C8 v2.3 cycle 962) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  same 4-PR batch static for 3 cycles — checked deeper: `gh run list --event merge_group` shows
+  the batch's `pr-2289` merge_group build genuinely `in_progress` since `12:28:35Z` (~6min), with
+  my own `#2287` individual checks already `success` at `12:25:06Z`. Genuine active processing, not
+  a stall. No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:32Z (C8 v2.3 cycle 961) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  same 4-PR batch unchanged. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:30Z (C8 v2.3 cycle 960) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN.
+  Notable fleet news: L1's `#2289` title reads "frontier-drain: ga_strength, ga_ayurdaya,
+  ga_sensitive_degree frozen; frontier collapses to ga_dashas" — L1 is nearly fully drained, only
+  `ga_dashas` left as the frontier. Once L1's frontier-drain PRs actually merge, L5's ancestor
+  counts should drop substantially. E-gate still unchanged this cycle (pre-merge). Nothing eligible
+  yet. Entry held local.
+- 2026-09-07T12:28Z (C8 v2.3 cycle 959) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  `#2285` (L1) back in the batch alongside `#2288` (L3) — matches the churn pattern noted at cycle
+  956. E-gate unchanged (`#2285` still not merged). Nothing eligible. Entry held local.
+- 2026-09-07T12:26Z (C8 v2.3 cycle 958) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  batch reduced to itself + `#2288` (`#2286` cleared out, presumably merged or requeued). E-gate
+  unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:24Z (C8 v2.3 cycle 957) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN.
+  E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:21Z (C8 v2.3 cycle 956) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN
+  across several cycles now, prompted a deeper check: `gh run list --event merge_group --limit 30`
+  shows genuine active churn — `pr-2286`/`pr-2287` batch attempts at `12:12:44`/`12:06:20` each had
+  1 failure among 3 legs (a batch-mate, not `#2287` itself, which keeps re-verifying `success` on
+  retries), triggering automatic requeue with new batch composition (`pr-2288` batch `in_progress`
+  as of `12:16:54`). Same diagnosed-many-times-before merge-queue batch churn, not a stall. No
+  hygiene action — `#2287` itself is not failing. E-gate unchanged. Nothing eligible. Entry held
+  local.
+- 2026-09-07T12:19Z (C8 v2.3 cycle 955) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  unchanged batch. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:17Z (C8 v2.3 cycle 954) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN,
+  batched with `#2286` (L1) and `#2288` (L3, out-of-scope). E-gate unchanged. Nothing eligible.
+  Entry held local.
+- 2026-09-07T12:15Z (C8 v2.3 cycle 953) — **IDLE-OK, verified.** `#2287` still `is:queued`/CLEAN.
+  `#2285` (L1, out-of-scope) not merged yet despite momentarily dropping off the queue list. E-gate
+  unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:13Z (C8 v2.3 cycle 952) — **IDLE-OK, verified.** `#2287` now genuinely
+  `is:queued`/CLEAN, batched with L1's frontier-drain `#2286`/`#2285`. No push. E-gate: all 11
+  assets dropped by 1 again campaign-wide (mi_abhilekha 37→36, mi_adhilepa 39→38, mi_bhara 17→16,
+  mi_bhavisya 36→35, mi_darshana 42→41, mi_gunanaka 38→37, mi_pariksha 38→37, mi_pramana 37→36,
+  mi_sambandha 39→38, mi_sankalpa 17→16, mi_seva 40→39) — the regular steady drip, NOT yet the
+  frontier-drain's 5-asset jump (that lands once `#2285` actually merges, still queued). Nothing
+  eligible. Entry held local.
+- 2026-09-07T12:10Z (C8 v2.3 cycle 951) — **IDLE-OK, verified.** `#2287`: `Governance Gates` still
+  `in_progress` (started `12:00:34Z`, now ~10.3min elapsed — still within the ~11.5min normal
+  range, approaching it). L1 frontier-drain `#2285`/`#2286` still queued, not merged. E-gate
+  unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:08Z (C8 v2.3 cycle 950) — **IDLE-OK, verified.** `#2287`: `Governance Gates` still
+  `pending` (~8min in, still within normal range). L1's frontier-drain landed a follow-up state PR
+  `#2286` alongside `#2285`, both queued — not yet merged. E-gate still unchanged this cycle.
+  Nothing eligible. Entry held local.
+- 2026-09-07T12:06Z (C8 v2.3 cycle 949) — **IDLE-OK, verified.** `#2287`: only `Governance Gates`
+  still `pending` (~6min in, normal). No hygiene action. Notable fleet news: `#2285` (L1,
+  out-of-scope) queued — "frontier-drain: ga_vargas, ga_sensitive, ga_panchanga, ga_prashna,
+  ga_nakshatra frozen" — 5 more L1 assets about to freeze once merged, which should further drop
+  L5's ancestor counts next cycle. E-gate still unchanged this cycle (pre-merge). Nothing eligible
+  yet. Entry held local.
+- 2026-09-07T12:04Z (C8 v2.3 cycle 948) — **IDLE-OK, verified.** `#2287` progressing normally:
+  `DB Integration Tests` now passed; `Unit Tests` + `Governance Gates` still `pending` (~4min in).
+  No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:02Z (C8 v2.3 cycle 947) — **IDLE-OK, verified.** `#2287` (recovery-53) auto-merge
+  armed 12:00:32Z, `mergeStateStatus=BLOCKED`, checks just started (`Unit Tests`,
+  `DB Integration Tests`, `Governance Gates` all `pending` ~2min in — normal, not stalled). No
+  hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
 - 2026-09-07T11:59Z (C8 v2.3 cycle 946) — **`#2283` MERGED — the fifty-third state-recovery PR
   closed out.** Fifty-third recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
