@@ -529,7 +529,7 @@ your layer close.
   ahead. `#2329` (which had shown `UNMERGEABLE` alongside `#2347`)
   is no longer in the queue listing either. No new E-gate opening.
   IDLE-OK. — blocked on: `#2347` finishing; next action: same.
-- `2026-09-07T~505:0xZ — L3-W4 — PR hygiene: `#2347` still position
+- `2026-09-07T~504:0xZ — L3-W4 — PR hygiene: `#2347` still position
   3, `UNMERGEABLE` (queue entry), unchanged. Root cause now clearer:
   `#2346` (position 1, ahead) is `AWAITING_CHECKS`, ~10.4min queued,
   own build not yet visible — this is the standard "strict"
