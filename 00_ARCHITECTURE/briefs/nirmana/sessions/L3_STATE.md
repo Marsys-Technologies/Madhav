@@ -495,6 +495,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~231:0xZ — L3-W4 — PR hygiene: `#2222` advanced to
+  position 1 (top of queue), `AWAITING_CHECKS`, own `merge_group`
+  ~10.9min in — right at the edge of the confirmed ~11min normal
+  range, matching the precedent from `#2214`/`#2218` right before
+  they each finished. NOTABLE: `#2221` merged — "fix ga_positions
+  sandhi_flag undercount in migrations 868/875" — yet another
+  correction to `ga_positions`' authoring chain (this one a bugfix on
+  the prior two fixes, not new component authoring). `ga_positions`
+  re-verified live: still `OPEN-PENDING-PIN`. No new E-gate opening
+  for L3. IDLE-OK. — blocked on: `#2222` finishing; next action:
+  same, expect completion next cycle per precedent.
 - `2026-09-07T~230:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
   run, now ~8.8min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
