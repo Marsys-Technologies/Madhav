@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~350:0xZ — L3-W4 — PR hygiene: `#2267` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red; `mergeStateStatus` briefly `UNKNOWN`,
+  normal async lag), `autoMergeRequest.enabledAt` confirmed set. Two
+  new `origin/main` merges (L2's own frontier-canary W4 EXECUTE and
+  an L2 heartbeat continuation, no L3 overlap). `ga_positions`
+  re-confirmed still frozen (absent from `egate.sql`'s blocked list,
+  count check = 0). No new E-gate opening for L3. IDLE-OK. — blocked
+  on: `#2267` clearing checks/queue; next action: same.
 - `2026-09-07T~349:0xZ — L3-W4 — PR hygiene: `#2264` MERGED (confirmed
   `merged: true`). Rebased the 14 not-yet-merged local heartbeat
   commits onto fresh `origin/main`. Hit the standard empty-theirs
