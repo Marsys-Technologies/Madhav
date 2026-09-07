@@ -497,6 +497,86 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~447:0xZ — L3-W4 — PR hygiene: `#2299` still position
+  1, `AWAITING_CHECKS`, `enqueuedAt: 13:19:37Z` — now ~11.2min with
+  no own `merge_group` run visible yet. Investigated: the repo shows
+  unusually heavy concurrent CI load right now (`gh run list` shows
+  many active branches — L1/L2/L5 sessions all pushing simultaneously,
+  `Ganga Quality Gate`/`TAP CI`/deploy runs stacked up across
+  multiple unrelated branches) — reads as GitHub Actions runner-
+  capacity congestion, not a technical stall specific to `#2299`
+  itself (no error, `mergeStateStatus` still resolving normally, no
+  DIRTY/RED signal). Nothing actionable yet — will re-check next
+  cycle and escalate scrutiny if the own-build genuinely never
+  starts. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2299`'s own build starting; next action:
+  same, watch closely.
+- `2026-09-07T~446:0xZ — L3-W4 — PR hygiene: `#2299` still position
+  1, `AWAITING_CHECKS` — its own `merge_group` run hasn't visibly
+  started yet in `gh run list`, but a `pr-2301` run was seen
+  running speculatively (GitHub's queue can run checks for
+  multiple queued PRs in parallel) — `#2301` is queued behind
+  `#2299` at position 2, not ahead, so this isn't a stall signal for
+  `#2299` itself. No new `origin/main` merges. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2299`'s own build starting/
+  finishing; next action: same, watch closely for its own
+  `merge_group` run to appear.
+- `2026-09-07T~445:0xZ — L3-W4 — PR hygiene: `#2299` advanced to
+  position 1 (top of queue) — `#2298` merged (unrelated L5
+  heartbeat PR, confirmed via `origin/main`, no L3 overlap).
+  `#2299`'s own `merge_group` run hasn't started yet, normal
+  right after advancing. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2299` finishing; next action: same.
+- `2026-09-07T~444:0xZ — L3-W4 — PR hygiene: `#2299` still position
+  2, `AWAITING_CHECKS` — `#2298`'s own `merge_group` run hasn't
+  started yet (serial queue processing, no failure signal). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2298` starting/finishing; next action: same.
+- `2026-09-07T~443:0xZ — L3-W4 — PR hygiene: `#2299` now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 2 — the
+  `enqueuePullRequest` fallback took effect, own `merge_group` run
+  started. One unrelated L5 PR (`#2298`) ahead, itself still
+  `AWAITING_CHECKS`, normal congestion. No new `origin/main` merges.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2298` clearing
+  ahead of `#2299`; next action: same.
+- `2026-09-07T~442:0xZ — L3-W4 — PR hygiene: `#2299`'s checks
+  finished (0 failures — the ~10.3min run resolved cleanly),
+  `mergeStateStatus: CLEAN` but `isInMergeQueue: false` — the known
+  CLEAN-but-unqueued case (`gh pr merge --auto` re-run didn't
+  self-resolve it). Used the established fallback: direct GraphQL
+  `enqueuePullRequest` mutation — succeeded immediately, now
+  `QUEUED`, position 2. No new `origin/main` merges this cycle. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2299` clearing the
+  queue; next action: same.
+- `2026-09-07T~441:0xZ — L3-W4 — PR hygiene: `#2299`'s last check,
+  same run, now ~10.3min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2299` finishing; next action: same.
+- `2026-09-07T~440:0xZ — L3-W4 — PR hygiene: `#2299`'s last check
+  (`Governance Gates`) ~8.3min into the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, within the confirmed ~11min
+  normal range. One new `origin/main` merge (`#2297`, L1: PR
+  hygiene fix on `#2277`, base-retarget metadata-only — not a
+  freeze event, no E-gate impact). IDLE-OK. — blocked on: `#2299`
+  finishing; next action: same.
+- `2026-09-07T~439:0xZ — L3-W4 — PR hygiene: `#2299`'s `Unit Tests`
+  now passed; only `Governance Gates` remains. One new `origin/main`
+  merge (`#2295`, L1: `create_campaign_run` accepted-rebuild guard
+  scoping — not a freeze event, no E-gate impact). IDLE-OK. —
+  blocked on: `#2299` clearing checks/queue; next action: same.
+- `2026-09-07T~438:0xZ — L3-W4 — PR hygiene: `#2299`'s
+  `DB Integration Tests` now passed; `Unit Tests`/
+  `Governance Gates` still pending, nothing red. One new
+  `origin/main` merge (`#2277`, L1: `ga_dashas`
+  `integrity_check_sql` perf fix — not a freeze event, no E-gate
+  impact). IDLE-OK. — blocked on: `#2299` clearing checks/queue;
+  next action: same.
+- `2026-09-07T~437:0xZ — L3-W4 — PR hygiene: `#2299`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2299` clearing checks/queue; next action: same.
 - `2026-09-07T~436:0xZ — L3-W4 — PR hygiene: `#2294` confirmed
   MERGED. Rebased 28 local commits onto fresh `origin/main`, 12
   empty-theirs conflicts auto-resolved cleanly, zero markers left.
