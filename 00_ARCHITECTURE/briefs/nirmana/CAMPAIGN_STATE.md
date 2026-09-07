@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:19:20Z` — cycle 836: **IDLE-OK (verified).** #2227's checks unchanged (3
+  pending). Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T07:16:59Z` — cycle 835: **IDLE-OK (verified).** #2247 self-resolved (no longer
   CONFLICTING). #2227 still progressing (3 pending checks). Fleet DIRTY empty; adjudications
   unchanged (11).
