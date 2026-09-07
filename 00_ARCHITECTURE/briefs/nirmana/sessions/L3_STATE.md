@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~230:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
+  run, now ~8.8min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` finishing; next
+  action: same, check step-level detail next cycle if still on this
+  exact run.
 - `2026-09-07T~229:0xZ — L3-W4 — PR hygiene: `#2222`'s own `merge_group`
   build still `in_progress`, `Unit Tests` now passed, only
   `Governance Gates` remains (~6.7min, within range, same run). No
