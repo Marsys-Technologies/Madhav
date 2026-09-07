@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:58:16Z` — cycle 728: **IDLE-OK (verified).** Own-PR hygiene clean;
+  adjudications unchanged (10). #2201 self-resolved into `is:queued` (no nudge needed). #2165
+  still open/unqueued but already nudged last cycle — not re-nudging per standing discipline.
+  No new replies on #2180/#1888. Nothing rose to a bounded unit.
 - `2026-09-07T01:56:00Z` — cycle 727: **IDLE-OK (verified).** Own-PR hygiene clean;
   adjudications unchanged (10); fleet PR list unchanged (#2165 still open, too soon after
   nudge; #2201 still fresh); no new replies on #2180/#1888. Nothing rose to a bounded unit.
