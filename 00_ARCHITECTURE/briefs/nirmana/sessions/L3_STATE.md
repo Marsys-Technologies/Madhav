@@ -497,6 +497,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~387:0xZ — L3-W4 — PR hygiene: `#2280` confirmed
+  MERGED. Rebased 18 local commits onto fresh `origin/main` (4 new
+  commits arrived, including our own `#2280` merge). First rebase
+  attempt hit a nested-conflict corruption from an automated
+  marker-strip loop bug (didn't halt on a real non-empty-theirs
+  case, kept compounding); aborted cleanly back to a known-good HEAD
+  and redid it one commit at a time with verification after each
+  strip. 7 empty-theirs conflicts auto-resolved correctly this way;
+  1 later commit's content was already upstream and git skipped it
+  automatically. Verified zero leftover conflict markers before
+  proceeding. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-24`, pushed, opened `#2282`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal, not yet
+  queued). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2282`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~386:0xZ — L3-W4 — PR hygiene: `#2280` advanced to
   position 2, `state: MERGEABLE` (its own checks are done — only
   `#2279` (L1: state cycles 192-193) remains ahead in queue,
