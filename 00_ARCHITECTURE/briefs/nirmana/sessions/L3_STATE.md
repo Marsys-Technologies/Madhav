@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~480:0xZ — L3-W4 — PR hygiene: `#2327` merged
+  (congestion self-resolved again, confirmed via `origin/main`, no
+  L3 overlap). Live queue listing shows `#2330` actually at position
+  2 (the PR-level GraphQL query lagged behind, still reporting stale
+  position 3) — one unrelated L2 PR (`#2328`) ahead, itself still
+  `AWAITING_CHECKS`. Also noted: `#2329` (L1, queued BEHIND `#2330`
+  at position 3) shows `UNMERGEABLE` — not my PR, not blocking me,
+  no action taken. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2328` clearing ahead of `#2330`; next action: same.
 - `2026-09-07T~479:0xZ — L3-W4 — PR hygiene: `#2330` still position
   3, `AWAITING_CHECKS` — `#2327` (ahead, position 1) has been
   queued ~10.9min with no own `merge_group` run visible yet, same
