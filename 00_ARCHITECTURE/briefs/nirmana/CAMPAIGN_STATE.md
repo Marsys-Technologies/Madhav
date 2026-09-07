@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:32:43Z` — cycle 975: **IDLE-OK, Δfrozen +0.** No reaction yet to the #2224
+  diff. Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T13:30:32Z` — cycle 974: **Drafted #2224's exact fix locally, then reverted —
   handed the precise diff to L1 rather than ship unverified.** Attempted implementing my own
   #2224 ruling directly (worktree lacks `node_modules`, can't run the test suite to verify
