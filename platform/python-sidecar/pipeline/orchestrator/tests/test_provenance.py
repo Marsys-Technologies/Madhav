@@ -16,6 +16,7 @@ from pipeline.orchestrator.provenance import (
     persist_successful_receipt,
     previous_output_digest,
     previous_receipt_matches_inputs,
+    reattribute_unchanged_receipt,
     reconcile_receipt,
 )
 from pipeline.orchestrator.provenance_inventory import DEFAULT_OUTPUT
@@ -283,3 +284,61 @@ def test_never_mutates():
     previous_receipt_matches_inputs(cursor, **_MATCH_KWARGS)
     assert len(cursor.executed) == 1
     assert cursor.executed[0][0].strip().upper().startswith("SELECT")
+
+
+# ── reattribute_unchanged_receipt freshness reconciliation (D-NATIVE-10, #2300) ─
+
+def test_delta_skip_reattribution_clears_stale_freshness_for_a_proven_receipt():
+    # The registry_changed-stale + byte-identical-content case: the delta-skip
+    # rebuild IS the run that re-verified the output under current inputs, so
+    # freshness must reconcile to 'fresh' exactly as a full rebuild would.
+    cursor = _Cursor([{
+        "receipt_state": "proven", "unknown_reasons": [], "receipt_version": "receipt-v1",
+    }])
+    reattribute_unchanged_receipt(
+        cursor, asset_id="ga_dashas", chart_id="00000000-0000-0000-0000-000000000001",
+        partition_declaration="chart_id", build_id="00000000-0000-0000-0000-00000000000b",
+    )
+    assert len(cursor.executed) == 2
+    update_sql = cursor.executed[0][0]
+    assert "UPDATE asset_provenance_receipts" in update_sql
+    assert "RETURNING receipt_state" in update_sql
+    freshness_sql, freshness_params = cursor.executed[1]
+    assert "INSERT INTO asset_freshness" in freshness_sql
+    assert "fresh" in freshness_params
+    assert "stale" not in freshness_params
+
+
+def test_delta_skip_reattribution_never_promotes_an_unknown_receipt_to_fresh():
+    cursor = _Cursor([{
+        "receipt_state": "unknown",
+        "unknown_reasons": ["output_digest_unavailable"],
+        "receipt_version": "receipt-v1",
+    }])
+    reattribute_unchanged_receipt(
+        cursor, asset_id="ga_dashas", chart_id="00000000-0000-0000-0000-000000000001",
+        partition_declaration="chart_id", build_id="00000000-0000-0000-0000-00000000000b",
+    )
+    assert len(cursor.executed) == 2
+    freshness_sql, freshness_params = cursor.executed[1]
+    assert "INSERT INTO asset_freshness" in freshness_sql
+    assert "unknown" in freshness_params
+    assert "fresh" not in freshness_params
+
+
+def test_delta_skip_reattribution_tuple_row_and_missing_row():
+    # Tuple-shaped row follows the module's dict/tuple convention.
+    cursor = _Cursor([("proven", [], "receipt-v1")])
+    reattribute_unchanged_receipt(
+        cursor, asset_id="ga_dashas", chart_id=None,
+        partition_declaration=None, build_id=None,
+    )
+    assert len(cursor.executed) == 2
+    assert "fresh" in cursor.executed[1][1]
+    # Missing row (unreachable in practice): no freshness invented (§N.7 honest null).
+    cursor = _Cursor([None])
+    reattribute_unchanged_receipt(
+        cursor, asset_id="ga_dashas", chart_id=None,
+        partition_declaration=None, build_id=None,
+    )
+    assert len(cursor.executed) == 1
