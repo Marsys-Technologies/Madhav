@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:01:42Z` — cycle 915: **#2272 is CLEAN and queued.** The fleet-wide
+  `output_digest_spec` gap fix is about to merge — should unblock every non-`ga_positions` L1
+  asset's `accepted_rebuild_observed`. Δfrozen still +0 pending the actual merge + downstream
+  re-checks. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T10:59:22Z` — cycle 914: **IDLE-OK, Δfrozen +0.** #2272's Governance Gates ~9 min
   in, still within its known ~9-10 min duration range. Fleet DIRTY: same 2 known stale native PRs.
   Own-PR hygiene: none open. Adjudications unchanged (11).
