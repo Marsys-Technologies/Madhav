@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 149; began closing F-B32's 57-category gap incrementally, one verified cluster at a time (PR #2193, queued): the 5 graha_avastha_*_per_varga categories, confirmed genuinely reachable via get_avasthas.ts's own data-driven `fact_category = ANY($2)` query (opt-in via the `categories` param, same precedent as the file's existing ashtakavarga_bindu_per_varga entries), non-trivial live row counts checked before adding, tsc + coverage_gate.test.ts (6/6) both green. ~52 of 57 remain open. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 150; shipped F-B32 slice 2/N onto the same open PR #2193 (queued): 4 more graha_*_bala_per_varga categories (cheshta/drik/kala/sthana), same verified-opt-in doctrine as slice 1, confirmed via get_strength.ts's own data-driven query + live row counts (735 each). 9/57 categories now closed, ~48 remain. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8391,3 +8391,28 @@ record — they are the only entries in this table with a real wall-clock behind
   clean-but-unqueued PR); shipped the first verified slice of F-B32's real fix (5/57 categories,
   PR #2193) -- next: ~52 categories remain; continue one verified cluster per cycle rather than
   rushing a bulk pass; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T4xZ -- CYCLE 150 (C8 v2.3). PR hygiene: `#2191` genuinely `is:queued` (GraphQL
+  confirmed). `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  149 -- still no reply.
+  Continued F-B32's incremental closure with slice 2: `graha_cheshta_bala_per_varga`,
+  `graha_drik_bala_per_varga`, `graha_kala_bala_per_varga`, `graha_sthana_bala_per_varga` (4 of
+  the remaining 52). Read `get_strength.ts` directly (same verification discipline as slice 1):
+  confirmed its query is also `fact_category = ANY($2::text[])` over the caller's `categories`
+  param, `STRENGTH_CATEGORIES` (21 entries) being only the default subset, not a hard filter --
+  these 4 per-varga breakdowns of the already-served cheshta/drik/kala/sthana shadbala
+  components are genuinely reachable today via the same tool, opt-in only, same doctrine as
+  slice 1. Checked live row counts before adding: 735/735/735/735 (canonical chart) -- real,
+  populated. Added all 4 to both `CHART_FACTS_CATEGORIES` and `CATEGORY_TOOL_COVERAGE`
+  (alphabetically placed, `tsc --noEmit` catching the type mismatch until both moved together),
+  with a matching comment. Updated the file's own header note to record slice 2's closure and
+  the new remaining count (~48). Ran `coverage_gate.test.ts` -- still 6/6 pass.
+  Per the established multi-commit-PR-continuation pattern, checked `#2193` was still OPEN
+  before adding new work -- it was -- so committed slice 2 as a second commit onto the SAME
+  branch/PR rather than opening a colliding parallel PR (both slices touch the same file's same
+  regions; a second branch would conflict at merge time regardless). Rebased onto origin/main
+  (already up to date, no conflicts), pushed, updated the PR title/description to cover both
+  slices, re-confirmed `autoMergeRequest` armed and `mergeable: MERGEABLE`. 9/57 categories now
+  closed. CYCLE 150 L1: PR hygiene clean; shipped F-B32 slice 2 (4 more categories, same PR
+  #2193) -- next: ~48 categories + 6 phantom entries remain; continue one verified cluster per
+  cycle; keep re-checking #2113/#2180 every cycle regardless.

@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.7-DRAFT"
+version: "0.8-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -28,7 +28,7 @@ CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quant
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
 — 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
-cycle 149 onward (5/57 landed, PR #2193). See §2 for the corrected
+cycle 149 onward (9/57 landed across 2 slices, PR #2193). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
@@ -301,13 +301,16 @@ awaits either a dedicated prep cycle or genuine W6 close.
   not a list defect. The actual edit (assigning each of the 57 to a verified real serving tool,
   and resolving the 6 phantoms) needs per-category verification against real serving code and is
   still too large for one bounded cycle. **Being closed incrementally instead of in one bulk
-  pass, cycle 149 onward**: slice 1/N (`graha_avastha_baladi_per_varga`,
-  `_deeptaadi_per_varga`, `_jagradadi_per_varga`, `_lajjitadi_per_varga`, `_sayanadi_per_varga` —
-  5/57) landed PR #2193, verified via `get_avasthas.ts`'s own data-driven query (opt-in via the
-  `categories` param, same doctrine as the file's existing `ashtakavarga_bindu_per_varga`
-  precedent) plus live row counts before adding. **~52/57 remain open**; the 6 phantom entries
-  are untouched (need their own separate investigation — real category renamed vs.
-  never-implemented — before either removing or re-pointing).
+  pass, cycle 149 onward, all landing on the same PR #2193**: slice 1
+  (`graha_avastha_baladi_per_varga`, `_deeptaadi_per_varga`, `_jagradadi_per_varga`,
+  `_lajjitadi_per_varga`, `_sayanadi_per_varga` — 5/57), verified via `get_avasthas.ts`'s own
+  data-driven query (opt-in via the `categories` param, same doctrine as the file's existing
+  `ashtakavarga_bindu_per_varga` precedent); slice 2 (`graha_cheshta_bala_per_varga`,
+  `graha_drik_bala_per_varga`, `graha_kala_bala_per_varga`, `graha_sthana_bala_per_varga` —
+  4/57), same doctrine verified against `get_strength.ts`'s equivalent query — both slices
+  confirmed via live row counts before adding. **9/57 closed, ~48/57 remain open**; the 6
+  phantom entries are untouched (need their own separate investigation — real category renamed
+  vs. never-implemented — before either removing or re-pointing).
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -319,8 +322,8 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slice 1/N (5
-categories) landed cycle 149 PR #2193; ~52/57 + 6 phantoms remain, unheld, does not need
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-2 (9
+categories) landed cycles 149-150, PR #2193; ~48/57 + 6 phantoms remain, unheld, does not need
 #2113)** · W4 execution (blocked, #2113) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
