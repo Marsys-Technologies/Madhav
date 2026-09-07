@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:48:59Z` — cycle 824: **IDLE-OK (verified).** #2244 resolved on its own (no
+  longer CONFLICTING). #2227 down to 3 pending checks, converging. Fleet DIRTY empty;
+  adjudications unchanged (11).
 - `2026-09-07T06:46:39Z` — cycle 823: **New fleet DIRTY spotted, not yet nudge-worthy.** #2244
   (L1, `get_structural.ts` F-B32 slice 8) is CONFLICTING but only ~4min old — likely a normal
   merge race in this busy period, watching next cycle before nudging (>2-cycle threshold not
