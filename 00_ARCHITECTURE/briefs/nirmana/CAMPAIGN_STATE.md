@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:04:19Z` — cycle 854: **Fleet sweep — nudged #2254** (CONFLICTING ~25min, same
+  `get_*.ts` merge-race pattern). #2227 unchanged. Adjudications unchanged (11).
 - `2026-09-07T08:02:00Z` — cycle 853: **MILESTONE — L0 confirmed genuinely 40/40 frozen.**
   Live-verified: `bg_cohort` reached `asset_frozen` at 06:39:39Z (zero unfrozen `bg_*` assets
   remain). D-NATIVE-07's fix worked end-to-end — L0 successfully re-dispatched after the
