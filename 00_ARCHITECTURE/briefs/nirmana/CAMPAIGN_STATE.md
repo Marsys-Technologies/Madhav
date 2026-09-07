@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:11:06Z` — cycle 967: **Nudged L2 on #1770 — ~50 min since the ruling, still
+  cycling heartbeats instead of acting.** Posted a direct restatement of the exact snapshot
+  scope + dispatch action to #1770 (comment 5571142817), asking for the blocker to be named if
+  one exists rather than continued silent heartbeat cycling. `ga_condition` unchanged since last
+  check. Δfrozen still +0 (56/128). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T13:08:38Z` — cycle 966: **IDLE-OK, Δfrozen +0.** `ga_condition` mid-W4
   (`implementation_accepted`). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
   open. Adjudications unchanged (11).
