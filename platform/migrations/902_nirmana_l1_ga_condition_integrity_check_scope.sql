@@ -1,4 +1,4 @@
--- 899_nirmana_l1_ga_condition_integrity_check_scope.sql
+-- 902_nirmana_l1_ga_condition_integrity_check_scope.sql
 --
 -- NIRMĀṆA L1 Gaṇita — cycle 259: `ga_condition`'s `integrity_check_sql` conjunct (a)
 -- (varga_dignity_composite re-derivation) is unscoped across all 3 canonical charts — the
@@ -43,9 +43,9 @@ SET integrity_check_sql = $SQL$
 -- ga_condition integrity contract (target table: ga_condition_composite).
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).
 -- Distinctness already DB-enforced (ga_condition_composite_unique); not re-asserted (rule 4).
--- Conjunct (a) SCOPED to the canonical chart (migration 899): disclosed coverage tradeoff,
+-- Conjunct (a) SCOPED to the canonical chart (migration 902): disclosed coverage tradeoff,
 -- same precedent as ga_dashas (migration 882) and ga_vargas (migration 884). Non-canonical
--- charts carry pre-F-C8-writer rows until their own coordinated rebuild (see migration 899
+-- charts carry pre-F-C8-writer rows until their own coordinated rebuild (see migration 902
 -- header); conjuncts (b)/(c)/(d) remain table-wide.
 SELECT
   -- (a) varga_dignity_composite must equal the weighted average of per-varga dignity scores in

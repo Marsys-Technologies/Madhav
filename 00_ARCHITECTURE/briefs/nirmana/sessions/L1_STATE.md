@@ -12703,7 +12703,7 @@ image still pre-#2385 (a4b2 CI in flight) -- next: verify image contains a4b2fa9
 on #1713, redispatch ga_dashas, then drain ga_condition/ga_structural/ga_tajaka back-to-back.
 
 ## CYCLE 259 (C8 v2.3) — FRONTIER UNBLOCKED: ga_dashas freshness reconciled via #2385;
-## ga_condition first real dispatch → post-write check failure → migration 899 (884-precedent
+## ga_condition first real dispatch → post-write check failure → migration 902 (884-precedent
 ## scoping fix); drain in progress
 
 **Phase 1 — ga_dashas freshness flush (the #2300 ruling's step 1) — DONE, verified:**
@@ -12738,8 +12738,8 @@ on #1713, redispatch ga_dashas, then drain ga_condition/ga_structural/ga_tajaka 
   (45) — pre-F-C8-writer rows the chart-scoped dispatch never touched. **Canonical chart:
   0 violations — the F-C8 fix + rebuild is genuinely correct.** Same defect class and same
   signature as ga_vargas' first dispatch (migration 884) and ga_dashas (882).
-- **Migration 899** (number 852 in my ledger was stale — L3 consumed 852-859 on main; the real
-  convention is sequential, 898 was highest): scope conjunct (a) to the canonical chart,
+- **Migration 902** (number 852 in my ledger was stale — L3 consumed 852-859 on main; authored
+  as 899, renumbered 899→902 by Conductor after main took 899-901 first — MIG-1 collision): scope conjunct (a) to the canonical chart,
   conjuncts (b)/(c)/(d) left table-wide (they pass everywhere — no coverage traded where none
   needs to be). New check body dry-run TRUE; applied live (UPDATE 1); stored check re-executed
   verbatim from the registry: TRUE.
