@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~362:0xZ — L3-W4 — PR hygiene: `#2270`'s pre-queue check
+  run still `in_progress` (~4.75min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` finishing; next
+  action: same.
 - `2026-09-07T~361:0xZ — L3-W4 — PR hygiene: `#2270` pre-queue checks
   running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
   all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
