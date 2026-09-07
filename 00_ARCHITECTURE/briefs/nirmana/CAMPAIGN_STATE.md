@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:02:04Z` — cycle 940: **IDLE-OK, Δfrozen +0.** `ga_dashas` has a fresh W2
+  re-acceptance round (`asset_analysis_accepted`/`optimization_verdict_accepted`/`implementation_
+  accepted` all at ~10:39-10:41) sitting on top of its earlier `accepted_rebuild_observed` — still
+  hasn't reached `integrity_verified`/`asset_frozen` despite L1 successfully freezing 5 other
+  assets around it. Watching, not escalating yet (L1 is demonstrably active and effective
+  elsewhere). L2/L3 still zero movement on the frontier. Fleet DIRTY: same 2 known stale native
+  PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:59:07Z` — cycle 939: **Frontier expanded — L2 now has 4 eligible (up from 1).**
   Re-ran the frontier query: L1's cascade opened `bo_nakshatra_semantic`, `bo_special_lagna`,
   `bo_vargottama_dhana` for L2 (alongside `bo_sudarshana`); L1 itself has 5 left (`ga_ayurdaya`,
