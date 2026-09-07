@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~313:0xZ — L3-W4 — PR hygiene: `#2251` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2251` clearing checks/queue; next action: same.
 - `2026-09-07T~312:0xZ — L3-W4 — PR hygiene: `#2248` MERGED (confirmed
   `merged: true`, `mergedAt` set — noticed directly this cycle via
   `origin/main`'s own tip carrying `#2248`'s squash commit, then
