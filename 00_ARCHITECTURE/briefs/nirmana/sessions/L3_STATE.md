@@ -214,7 +214,8 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~`ka_muhurta_seva`'s W2 route submission~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T~102:0xZ — recorded live, independently re-verified.** `egate.sql` confirms `OPEN-PENDING-PIN`. See heartbeat for the full procedure and digest cross-check. Next: W4 probe/freeze chain via a genuinely fresh subagent (D-CND-35). |
 | ~~`ka_muhurta_seva`'s W4 probe/freeze dispatch~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T21:10:00Z — `asset_frozen` recorded for real, via a genuinely fresh subagent from the start (no D-CND-35 process gap this time).** See asset table + heartbeat for the full chain and independent re-verification. |
 | ~~deploy-pipeline defect (`migrate` job checks out wrong commit)~~ | ~~Conductor/native ruling on #2159~~ | **RESOLVED — RULED + FIXED (PR #2161, merged 2026-09-06T19:45:43Z), CLOSED by Conductor.** Confirmed my diagnosis exactly right (root cause, evidence chain, the `deploy-web` precedent to mirror); added the identical commit-provenance guard to `migrate` PLUS 3 more jobs an independent review found also missing it (`deploy-sidecar`, `deploy-mcp`, `deploy-pipeline-job`) — all 4 now fail loud on a SHA mismatch. `DEPLOY_SHA`'s own resolution strategy deliberately left open (separate, larger decision). Discovered this cycle via a related fix, `#2172` ("CONDUCTOR: changed-paths gate diffs from last successful deploy"), which explicitly cites #2159 as "same defect class, different root cause" (that job's diff base, not `DEPLOY_SHA`'s checkout) — a second, independently-caught instance of the same underlying class, campaign-wide validation the finding mattered. |
-| 20 of 23 assets' W4 (declared OR true ancestors unfrozen) | L0/L1/L2 freezes (E-gate, C2) | genuinely open — `ga_positions` remains the single highest-leverage unlock (5+ assets); re-verified via `egate.sql` this cycle, no L0/L1/L2 freeze progress since W1 |
+| ~~20 of 23 assets' W4 (declared OR true ancestors unfrozen)~~ | ~~L0/L1/L2 freezes (E-gate, C2)~~ | **PARTIALLY RESOLVED T~344:0xZ — `ga_positions` has FROZEN.** Confirmed live: it no longer appears anywhere in `egate.sql`'s not-yet-frozen output for any layer, and no L1/L3 asset lists it as a blocking ancestor any more. This ancestor-clears (but does not yet W4-dispatch-ready) `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_sudarshana_varsha`, `ka_tithi_pravesha`, `ka_vedha_gochara` — all 5 now `unfrozen_ancestors: 0`, gate reads `BLOCKED-NO-ROUTE`. `ga_dashas`/`ga_sensitive` remain `OPEN-PENDING-PIN` (not yet frozen), so `ka_gochara_resonance`'s D-CND-26 true-closure hold is UNCHANGED — its true ancestors are 2/3 still open. See the new row below for what `BLOCKED-NO-ROUTE` actually requires for the 5 newly-ancestor-clear assets. |
+| 5 assets' `BLOCKED-NO-ROUTE` gate (`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/`ka_tithi_pravesha`/`ka_vedha_gochara`) — genuinely open, scoped not attempted this cycle | missing `asset_analysis_accepted` + `optimization_verdict_accepted` campaign events (zero exist for any of the 5, confirmed via direct query) | **INVESTIGATED T~344:0xZ, correcting an initial wrong hypothesis.** First guessed this meant an `asset_registry.health_probe` JSON was missing (wrong column — these 5 are `rebuild_only`/`verified_reuse` route, not `probe` route, so `health_probe` is irrelevant to them). Read `egate.sql` itself: `BLOCKED-NO-ROUTE` = C2.2 = no `asset_analysis_accepted`/`optimization_verdict_accepted` events recorded in `nirmana_evidence.nirmana_elevation_campaign_events` — confirmed live, zero rows for all 5. Checked whether this is a deliberate hold: `L3_W2_DECIDE_v1_0.md` line 169 cites `#1715` as holding ALL L3 W2-acceptance-event writes — but `L3_STATE.md`'s own held-items table already shows `#1715` RESOLVED (Option A granted, evidence spine `#1736` merged+deployed, `ka_graha_sancara`'s event already recorded live) — so writing these events is NOT currently blocked by any standing ruling; it just hasn't been exercised for these 5 yet. Real W1/W2 analysis already exists and is NOT missing: `L3_W2_DECIDE_v1_0.md` rows 47–51 carry a genuine `examined_and_already_efficient` verdict for all 5, each with a real one-line finding (not fabricated). The submission mechanism is `platform/src/app/api/admin/nirmana-elevation/evidence` (an authenticated admin API route; schema in `evidence-command.ts` — `asset_analysis_accepted` needs `registry_fingerprint_sha256` + `analysis_digest` SHA-256 + `source_ref` as an exact `git:<40-hex>` + `layer`; `optimization_verdict_accepted` needs a registry/analysis-bound verdict+basis+proposal + the same `source_ref`/`layer` shape) — NOT `dispatch_nirmana_campaign_wave.py` (that script only DISPATCHES BUILD waves and explicitly never records acceptance evidence, per its own docstring, though its `_live_registry_fingerprint()` helper is the right reference for computing `registry_fingerprint_sha256` correctly). Did not attempt the actual submission this cycle: correctly computing `registry_fingerprint_sha256`/`analysis_digest` and finding a valid `git:<40-hex>` source_ref for the existing analysis needs care this cycle didn't have budget left for after the investigation; a wrong digest would corrupt real campaign evidence, not just fail loudly. Left fully scoped for a dedicated future cycle. |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | genuinely open — PR #1741 landed the WRITER only (confirmed via `L2_STATE.md` CAPABILITIES LANDED); data unreachable until the (held) `bo_laksana` rebuild |
 | ~~W4 for ALL 23 assets, blocked on #1730~~ | ~~dispatcher strict-layer-sequencing~~ | **RESOLVED** — #1730 ruled via #1737 (merged), dispatcher now gates on C2's ancestor closure |
@@ -495,6 +496,49 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~344:0xZ — L3-W4 — **MAJOR EVENT: `ga_positions` HAS
+  FROZEN.** After #2261 merged, this cycle's routine `egate.sql`
+  re-check found `ga_positions` no longer in the not-yet-frozen
+  output at all (across L1 AND L3), and no asset lists it as a
+  blocking ancestor any more — confirmed directly via
+  `asset_registry` (`has_writer: t`, `expected_volume_formula` set,
+  no longer surfacing as OPEN). This is the single highest-leverage
+  unlock this whole resumed session has tracked. Immediate effect:
+  `ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/
+  `ka_tithi_pravesha`/`ka_vedha_gochara` all now read
+  `unfrozen_ancestors: 0`, gate `BLOCKED-NO-ROUTE` (not
+  `BLOCKED-ANCESTORS`) — a genuinely different, second blocker. Spent
+  this cycle's PR-hygiene rebase + a full investigation cycle scoping
+  what `BLOCKED-NO-ROUTE` actually requires for these 5 (see the new
+  Held-items row above): corrected an initial wrong hypothesis
+  (`health_probe` — wrong column, irrelevant to `rebuild_only`/
+  `verified_reuse` route assets), found the true C2.2 requirement
+  (`asset_analysis_accepted` + `optimization_verdict_accepted`
+  campaign events, zero recorded for any of the 5), verified the
+  standing hold once cited for ALL L3 W2-event writes (`#1715`) is
+  already RESOLVED per this state file's own held-items table, found
+  the real existing `examined_and_already_efficient` W2 verdicts for
+  all 5 in `L3_W2_DECIDE_v1_0.md` (genuine analysis, not missing —
+  just never submitted as events), and located the correct submission
+  mechanism (`/api/admin/nirmana-elevation/evidence`, schema per
+  `evidence-command.ts`) versus a plausible-looking wrong tool
+  (`dispatch_nirmana_campaign_wave.py`, which only dispatches BUILD
+  waves, never acceptance evidence, per its own docstring). Did NOT
+  attempt the actual event submission this cycle — computing a
+  correct `registry_fingerprint_sha256`/`analysis_digest` and a valid
+  `git:<40-hex>` source_ref needs its own careful cycle; a wrong
+  digest would corrupt real campaign evidence, not just fail loudly.
+  `ga_dashas`/`ga_sensitive` (the other two true ancestors D-CND-26
+  requires for `ka_gochara_resonance`) remain `OPEN-PENDING-PIN` —
+  that hold is unchanged. `#2261` MERGED (confirmed `merged: true`).
+  This IS this cycle's bounded unit — an investigation-and-scoping
+  cycle, not an execution one, given the correctness stakes. — blocked
+  on: computing correct W2-event payloads for the 5 assets (next
+  cycle's work); PR hygiene otherwise clean, nothing queued right
+  now. Next action: rebase held commits (none currently — will check
+  next cycle), then attempt the real W2-event submission for one of
+  the 5 assets (start with `ka_tithi_pravesha`, the simplest/most
+  well-built per the DECIDE doc) as the next bounded unit.
 - `2026-09-07T~342:0xZ — L3-W4 — PR hygiene: `#2261` genuinely queued,
   `mergeQueueEntry.state: AWAITING_CHECKS`, position 3 — its own
   `merge_group` run has started. No new `origin/main` merges,
