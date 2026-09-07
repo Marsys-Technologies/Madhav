@@ -497,6 +497,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~410:0xZ — L3-W4 — PR hygiene: `#2284` confirmed
+  MERGED. Rebased 27 local commits onto fresh `origin/main`. Hit 12
+  conflicts, all standard empty-theirs (patch content already
+  present via the squash-merged predecessor PR), all auto-resolved
+  with the per-hunk verification method; one further commit's
+  content was already upstream and git skipped it automatically.
+  Verified zero leftover markers before pushing. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-26`, pushed, opened `#2288`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2288`'s own
+  checks completing; next action: same monitoring cadence.
+
 - `2026-09-07T~409:0xZ — L3-W4 — PR hygiene: `#2284` still position
   1, `AWAITING_CHECKS` — same run, now ~10.8min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
