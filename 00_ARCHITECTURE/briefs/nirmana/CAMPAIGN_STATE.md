@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:24:39Z` — cycle 815: **IDLE-OK (verified).** #2228 still queued, progressing.
+  #2227's checks converging slowly (7 pending, down from 8) amid frequent branch-update churn —
+  not stuck. Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:22:09Z` — cycle 814: **IDLE-OK (verified).** #2228 now CLEAN and genuinely
   queued (all checks passed). #2227's checks restarted again — normal churn, not stuck. Fleet
   DIRTY empty; adjudications unchanged (11).
