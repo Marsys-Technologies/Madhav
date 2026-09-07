@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:46:54Z` — cycle 994: **`ga_transit_anchors` dispatched and build_run
+  `completed` — the #2317 fix shipped and worked.** First real build of this asset ever
+  (previously permanently deadlocked since cycle 171). Awaiting evidence chain to `asset_frozen`.
+  Δfrozen still +0 (56/128). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications
+  unchanged (12).
 - `2026-09-07T14:44:28Z` — cycle 993: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
   same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T14:42:07Z` — cycle 992: **IDLE-OK, Δfrozen +0.** No reaction yet to the #2317
