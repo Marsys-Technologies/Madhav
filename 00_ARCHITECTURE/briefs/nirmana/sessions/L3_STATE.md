@@ -495,6 +495,27 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~155:0xZ — L3-W4/W3 — PR hygiene: `#2195` own `merge_group`
+  build confirmed healthy (~9min, within normal range). Nothing to fix.
+  With F-L3-4 now CLOSED, swept the rest of the findings ledger (F-L3-1
+  through F-L3-10) and the Held-items table for any other unheld,
+  L3-actionable W3 item: F-L3-1/2/3 (registry-fingerprint ordering,
+  `integrity_verified` mandate, `ka_graha_sancara` diagnosis) are long
+  resolved; F-L3-5 (catalog_status) already fully resolved; F-L3-6
+  (dispatcher sequencing) resolved via #1737; F-L3-7 (D-CND-03
+  contracts) landed as migration 670; F-L3-8 (`natural_key_partition`
+  NULL) is explicitly a campaign-wide pattern (0/40 across every
+  layer except L0) recorded so a future W2 rules on it deliberately —
+  not a unilateral L3 fix to make. Every remaining Held item is either
+  already resolved or externally blocked (L0/L1/L2 freezes, L2's
+  `bo_laksana` rebuild, L2 salience capabilities, #1838 in flight, the
+  `chara`/`chara_karaka` gap already logged). Re-ran `egate.sql`:
+  unchanged, no new opening. No new bounded W3/tier-5 work genuinely
+  available this cycle — recording an honest IDLE-OK rather than
+  manufacturing busywork. — blocked on: nothing new; next action: push
+  once `#2195` merges/finishes, then hold at routine PR-hygiene/E-gate
+  monitoring cadence until `ga_positions` freezes or a fresh finding
+  surfaces.
 - `2026-09-07T~154:0xZ — L3-W3 — PR hygiene: `#2195` genuinely queued
   (position 1, `CLEAN`), nothing to fix. **F-L3-4 CLOSED IN FULL THIS
   CYCLE** — derived `ka_kshetra`'s formula, the last of the 20
