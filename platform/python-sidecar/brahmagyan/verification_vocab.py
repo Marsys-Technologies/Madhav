@@ -281,12 +281,6 @@ DIVERGENT_FLAGGED: Final[str] = "divergent_flagged"
 #: table the producer itself draws from: real, but a tautology over its own input space.
 CLASSICAL_MATCH: Final[str] = "classical_match"
 
-#: Named constant for the EXISTING vocabulary member `scope_cap_sentinel` (entry 9 above) — same
-#: rationale as `CLASSICAL_MATCH`: adds no member, only removes a bare-literal emission site
-#: (F-A17, L1 W2 DECIDE). A sentinel row marking where a declared scope cap truncated emission;
-#: carries no computed value to verify.
-SCOPE_CAP_SENTINEL: Final[str] = "scope_cap_sentinel"
-
 
 def two_pass_verdict(engine_value: Any, derived_value: Any) -> str:
     """The ONLY sanctioned producer of `two_pass_verified` (M-22 / CLAUDE.md §N.8).

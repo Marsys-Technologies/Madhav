@@ -41,10 +41,35 @@ from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
     DIVERGENT_FLAGGED,
-    SCOPE_CAP_SENTINEL,
     TWO_PASS_VERIFIED,
     UNVERIFIED_DEFAULT,
+    entry_for as _vocab_entry_for,
 )
+
+# F-A17 fix, second half: 'scope_cap_sentinel' (verification_vocab.py's settled
+# vocabulary entry 9) had no exported named constant -- CLASSICAL_MATCH/
+# TWO_PASS_VERIFIED/DIVERGENT_FLAGGED/UNVERIFIED_DEFAULT are the only four the
+# module exports symbols for. Adding a fifth top-level constant there would be
+# the doctrinally cleaner fix, but verification_vocab.py is a shared L0 module
+# every ga_*/bo_* writer's provenance digest transitively includes
+# (pipeline/orchestrator/asset_runner.py's get_writer_source_hash walks the
+# local-import closure) -- confirmed live: editing that file and regenerating
+# nirmana-writer-digests.json shifted ~24 unrelated L1+L2 writers' digests, and
+# `nirmana_analysis_layer_pins.py --check` then reported ALL THREE of L0/L1/L2's
+# writer_inventory_sha256 stale, the exact "would invalidate already-frozen
+# capsules, not forced through unilaterally" residual this file's own F-A10 fix
+# already named for RESTRICTED_TABLE_VOCAB (see write_dasha_scope_cap_sentinels
+# below). Resolved here without touching the shared module: still reads the
+# canonical vocabulary's OWN stored value via `entry_for()` (so a shared-module
+# rename would still be caught, not silently drift), at exactly one controlled
+# lookup site instead of two raw literal emission sites -- not a second local
+# copy of the string, a read of the single source of truth.
+_SCOPE_CAP_SENTINEL_ENTRY = _vocab_entry_for("scope_cap_sentinel")
+assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
+    "verification_vocab.py no longer has a 'scope_cap_sentinel' member; "
+    "ga_dashas_writer.py's scope-cap sentinel rows have nothing to reference"
+)
+SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
