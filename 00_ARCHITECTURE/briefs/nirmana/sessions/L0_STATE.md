@@ -1072,3 +1072,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. Hit a
+  transient network error (`connection reset by peer`) on the first `gh issue list` call this cycle
+  — retried the `#1713` tail check independently rather than assume anything from the failed call,
+  confirmed unchanged. Adjudication list unchanged. Nothing eligible.
