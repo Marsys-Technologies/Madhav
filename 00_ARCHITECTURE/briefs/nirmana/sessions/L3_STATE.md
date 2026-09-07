@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~394:0xZ — L3-W4 — PR hygiene: `#2282` still position
+  2, `AWAITING_CHECKS` — `#2281` (unrelated L5 PR) ahead is itself
+  still `AWAITING_CHECKS`, so `#2282`'s own `merge_group` run hasn't
+  started yet (serial queue processing). No new `origin/main`
+  merges. No new E-gate opening. IDLE-OK. — blocked on: `#2281`
+  clearing ahead of `#2282`; next action: same.
 - `2026-09-07T~393:0xZ — L3-W4 — PR hygiene: `#2282`'s checks
   finished (0 failures — the ~11min run resolved cleanly, same edge
   precedent held again). Now genuinely `isInMergeQueue: true`,
