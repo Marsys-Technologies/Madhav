@@ -752,9 +752,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; five known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec (2026-09-07)', () => {
+  it('the checked-in allowlist parses; seven known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 5.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 7.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -772,10 +772,21 @@ describe('loadRenumberDisclosures', () => {
     //   (bo_sudarshana_natural_key_partition, PR #2262) that merged to main first. Disclosed
     //   2026-09-07 (caught by the E2 NEW-COLLISION CI gate on PR #2272 before merge, by the L1
     //   NIRMANA campaign lane).
+    // Entry 6: 896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql applied to
+    //   production, renumbered to 897 after colliding with an unrelated, independently-authored
+    //   L2 896 migration (bo_sudarshana_output_digest_spec) that merged to main first. Disclosed
+    //   2026-09-07 (caught by the E2 NEW-COLLISION CI gate on PR #2329 before merge, by the L1
+    //   NIRMANA campaign lane).
+    // Entry 7: the SAME file, renumbered a second time, 897->898, after the merge queue's own
+    //   speculative merge-group check caught ANOTHER collision at 897 against an unrelated,
+    //   independently-authored, still-in-flight L2 897 migration (bo_bodha_grounding_matches_
+    //   schema, PR #2346, ahead of PR #2329 in the merge queue) before either PR had actually
+    //   merged to main. Disclosed 2026-09-07 (caught by the merge queue's speculative
+    //   merge-group Unit Tests run for PR #2329, by the L1 NIRMANA campaign lane).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(5)
+    expect(map.size).toBe(7)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -806,6 +817,18 @@ describe('loadRenumberDisclosures', () => {
     expect(entry881!.sql_identity).toBe('b641c15e348896ddff992f0a560fe69c13db103104df156479f0e5b6b666e19d')
     expect(entry881!.disposition).toBe('already-applied-under-old-name')
     expect(entry881!.disclosed_on).toBe('2026-09-07')
+    const entry897 = map.get('897_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry897).toBeDefined()
+    expect(entry897!.applied_filename).toBe('896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry897!.sql_identity).toBe('fe69f2f440828433117c3542f861538e17182b54c55a65706471d3a8df00f8a9')
+    expect(entry897!.disposition).toBe('already-applied-under-old-name')
+    expect(entry897!.disclosed_on).toBe('2026-09-07')
+    const entry898 = map.get('898_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry898).toBeDefined()
+    expect(entry898!.applied_filename).toBe('896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry898!.sql_identity).toBe('fe69f2f440828433117c3542f861538e17182b54c55a65706471d3a8df00f8a9')
+    expect(entry898!.disposition).toBe('already-applied-under-old-name')
+    expect(entry898!.disclosed_on).toBe('2026-09-07')
   })
 })
 
