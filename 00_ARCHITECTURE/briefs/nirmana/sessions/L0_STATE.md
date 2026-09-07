@@ -1340,3 +1340,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   #2300 rather than filing a duplicate — L1's proposed one-line `_upsert_freshness` fix (pending
   native ruling, since this is FROZEN-orchestrator code) would resolve both `bg_*` instances too.
   Not fixing unilaterally — same posture as L1's own filing. Nothing else eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. #1713
+  tail is just my own prior post cross-referenced, no new information. Nothing eligible.
