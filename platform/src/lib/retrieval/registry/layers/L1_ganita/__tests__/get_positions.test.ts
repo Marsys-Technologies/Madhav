@@ -25,13 +25,21 @@ describe('getPositionsCapability (ganita_positions_get) — CR-50', () => {
     expect(content['include_upagrahas']).toBe(false)
   })
 
-  it('include_upagrahas=true adds upagraha/aprakasha behind the explicit facet', async () => {
+  it('include_upagrahas=true adds upagraha/sun_derived_upagraha/aprakasha behind the explicit facet', async () => {
     const result = await getPositionsCapability.handler(
       { chart_id: CHART_ID, include_upagrahas: true }, undefined,
     )
     const content = result.content as Record<string, unknown>
-    expect(content['categories']).toEqual(['graha_position', 'upagraha_position', 'aprakasha_position'])
+    expect(content['categories']).toEqual(['graha_position', 'upagraha_position', 'sun_derived_upagraha', 'aprakasha_position'])
     expect(content['include_upagrahas']).toBe(true)
+  })
+
+  it('an explicit `categories` list can reach sandhi_flag (opt-in only, never in include_upagrahas)', async () => {
+    const result = await getPositionsCapability.handler(
+      { chart_id: CHART_ID, categories: ['sandhi_flag'] }, undefined,
+    )
+    const content = result.content as Record<string, unknown>
+    expect(content['categories']).toEqual(['sandhi_flag'])
   })
 
   it('an explicit `categories` list overrides the CR-50 default entirely', async () => {

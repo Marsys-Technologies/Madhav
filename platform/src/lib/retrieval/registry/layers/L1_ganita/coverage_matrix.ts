@@ -71,10 +71,22 @@
  * asset's `natural_key_partition` (migration 876) but still lacking a serving-layer fix —
  * deliberately deferred to its own pass on `get_positions.ts` (frame-rebasing math, CR-50
  * discipline — a materially higher-blast-radius file than this one) rather than rushed in here.
- * `sun_derived_upagraha` and bare `tara_bala` remain open for the same reason: both single-
- * writer (`ga_sensitive_writer.py` / `ga_structural_writer.py` respectively) but with no
- * obvious existing-tool home, needing their own scoping pass. See `L1_W6_CLOSE_REPORT_v1_0.md`
- * §3.5/§5 for the full account.
+ *
+ * **`sun_derived_upagraha`/`sandhi_flag` closed here (cycle 184) via `get_positions.ts`**:
+ * both are genuinely single-writer. `sun_derived_upagraha` (`ga_sensitive_writer.py`, 4
+ * Sun-derived shadow points, 20 rows/ayanamsha, carries `house_d1`) joins the
+ * `include_upagrahas` opt-in bundle since it IS an upagraha and the `frame` facet applies to it
+ * exactly like `upagraha_position`. `sandhi_flag` (`ga_positions_writer.py`'s own
+ * `_build_chalit_rows`, already correctly declared in this asset's `natural_key_partition`
+ * since migration 876, but never served) is categories-only opt-in — it has no `house_d1` (a
+ * flag/reasons pair, not a position) and is not an upagraha, so it does NOT join that bundle.
+ * Both were deliberately deferred across cycles 181-183 pending a careful pass on this
+ * specific, higher-blast-radius file (frame-rebasing math, CR-50 discipline) rather than a
+ * rushed addition riding along with an unrelated tool's fix. Bare `tara_bala`
+ * (`ga_structural_writer.py`) remains the last open F-B32 category as of this PR — a separate
+ * PR (not assumed merged here) closes it via `get_structural_signals.ts`. See
+ * `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full, current account of every category's
+ * disposition.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -279,12 +291,14 @@ export const CHART_FACTS_CATEGORIES = [
   'sade_sati_saturn_retrograde_subset',
   'saham_position',
   'sambandha_grade',
+  'sandhi_flag',
   'saturn_derived_point',
   'sensitive_degree_check',
   'sensitive_point_gulika_mandi',
   'sensitive_point_yogi',
   'significator_path',
   'special_lagna',
+  'sun_derived_upagraha',
   'swamsa_position',
   'tajik_hadda_lord',
   'tajik_triraashipathi',
@@ -314,6 +328,11 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   // previously-unserved category; opt-in via categories:["nakshatra_cross_ayanamsha"] on
   // get_positions (not on the default page — see get_positions.ts header comment).
   nakshatra_cross_ayanamsha:            ['marsys://tool/L1/get_positions'],
+  // F-B32 (cycle 184): sun_derived_upagraha joins the include_upagrahas bundle (has house_d1,
+  // frame facet applies); sandhi_flag is categories-only opt-in (no house_d1, not an upagraha)
+  // — see get_positions.ts header comment for the full disambiguation account.
+  sun_derived_upagraha:                 ['marsys://tool/L1/get_positions'],
+  sandhi_flag:                          ['marsys://tool/L1/get_positions'],
 
   // ── Strength / Shadbala ───────────────────────────────────────────────────
   graha_shadbala_cheshta:               ['marsys://tool/L1/get_strength'],
