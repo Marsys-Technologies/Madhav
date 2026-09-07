@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T02:19:16Z` — cycle 736: **IDLE-OK (verified).** #2206 merged (confirmed via direct
+  `gh pr view`, not the search list which lags per known doctrine). #2205/#2207/#2201 all still
+  `is:queued`, progressing normally. Own-PR hygiene clean; adjudications unchanged (10); no new
+  #2180 reply.
 - `2026-09-07T02:16:30Z` — cycle 735: **IDLE-OK (verified).** #2205/#2206/#2207 all now
   `is:queued`. Only #2208 (brand new) and #2165 (already nudged) remain unqueued, both
   expected. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
