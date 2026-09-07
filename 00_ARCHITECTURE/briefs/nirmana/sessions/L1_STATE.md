@@ -8862,3 +8862,18 @@ record — they are the only entries in this table with a real wall-clock behind
   `ga_sensitive`, `ga_sensitive_degree` -- `ga_sensitive` needs the most careful verification,
   found to own ~25 categories), plus `ga_positions`' own `output_digest_spec` (fix 2 of the
   ruling's own two-part authorization); keep re-checking #2113/#2180 every cycle regardless.
+  **PR-hygiene addendum, same cycle**: after pushing this state update, found `#2205` reading
+  `autoMergeRequest: null` / `mergeStateStatus: CLEAN` (all checks green) via BOTH the GraphQL
+  `is:queued` search AND the REST `auto_merge` field -- looked genuinely unqueued by every check
+  this contract treats as authoritative. `gh pr merge --auto` replied "already queued to merge";
+  a direct `enablePullRequestAutoMerge` mutation returned `autoMergeRequest: null` (no-op, since
+  this repo uses a real GitHub Merge Queue, confirmed via `repository.mergeQueue(branch:"main")`
+  returning a real ID -- not simple auto-merge, a different mutation). The AUTHORITATIVE check
+  turned out to be attempting `enqueuePullRequest` directly: it returned the server error
+  "Pull request is already in the queue" -- a live, real-time answer, not a cached one. So #2205
+  genuinely was queued the whole time; both the GraphQL search index AND the REST `auto_merge`
+  field were lagging behind the real merge-queue state, not just `autoMergeRequest` (which the
+  contract already documents as unreliable). Noting this because it means `is:queued` search can
+  ALSO lag on rare occasions, not just `autoMergeRequest` -- if a PR looks unqueued by every
+  check but `gh pr merge` insists it's already queued, trying `enqueuePullRequest` directly and
+  reading its error message is a more authoritative tie-breaker than re-trying the search.
