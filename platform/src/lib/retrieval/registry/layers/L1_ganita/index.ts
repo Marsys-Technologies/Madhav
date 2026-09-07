@@ -52,6 +52,10 @@ import { getPrashnaLagnaCapability }        from './get_prashna_lagna'
 // SARVA-SIDDHI W-4 lane D-4 (CR-30): dedicated first-class KP (Krishnamurti Paddhati)
 // cusp/sub-lord serving face over the already-stored KP fact categories (no new computation).
 import { getKpCuspsCapability }             from './get_kp_cusps'
+// F-B32 (L1_W6_CLOSE_REPORT_v1_0.md §5): ga_structural's residual 15 fact_categories with
+// zero serving path anywhere (ganita_structural_get was a canonical-face name with no
+// backing capability at all) — closes that gap.
+import { getStructuralSignalsCapability }   from './get_structural_signals'
 // Elevation Campaign v2.1, STREAM α Lane-H, Task 1: discovery substrate (C3 SchemaMap) +
 // concept-alias resolver.
 import { getDatabaseSchemaCapability }      from './get_database_schema'
@@ -96,6 +100,7 @@ registerCapability(getAvTransitGatingCapability)
 registerCapability(getConditionCompositeCapability)
 registerCapability(getPrashnaLagnaCapability)
 registerCapability(getKpCuspsCapability)
+registerCapability(getStructuralSignalsCapability)
 registerCapability(getDatabaseSchemaCapability)
 registerCapability(conceptLocateCapability)
 registerCapability(queryPlanetCapability)
