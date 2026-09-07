@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:56:01Z` — cycle 851: **IDLE-OK.** Fleet DIRTY empty; adjudications unchanged
+  (11).
 - `2026-09-07T07:53:38Z` — cycle 850: **IDLE-OK.** Fleet DIRTY empty; adjudications unchanged
   (11).
 - `2026-09-07T07:51:18Z` — cycle 849: **IDLE-OK.** Fleet DIRTY empty; adjudications unchanged
