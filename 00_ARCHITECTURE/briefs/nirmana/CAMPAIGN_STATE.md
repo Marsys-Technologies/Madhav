@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:56:39Z` — cycle 869: **Frontier stalled >1 cycle → escalated per D-NATIVE-08.**
+  Live-checked `asset_throughput` for all 16 newly-eligible assets: every one still
+  `state='stale'`, last built Aug 8-12, zero `build_runs` since the cascade opened ~8 min ago —
+  unlike `ga_positions` (ruled→dispatched in ~4 min once cleared, proving the mechanism works).
+  Posted a direct nudge to #1713 naming all 16 by layer, flagging `ka_gochara_resonance`
+  specifically as now 3 cycles undispatched (comment 5568051589). Fleet DIRTY: same 2 known stale
+  native PRs, unchanged. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:53:46Z` — cycle 868: **IDLE-OK, Δfrozen +0.** ~5 min since the cascade post, no
   new `build_runs` yet — still within the ~15 min turnaround the `ga_positions` chain itself took,
   not stall-worthy. #1180 flickered back to CONFLICTING (already flagged as moot last cycle it
