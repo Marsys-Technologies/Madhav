@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~326:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group`'s last check, same run, now ~9.5min — approaching but
+  still within the confirmed ~11min normal range, still on the same
+  `pytest` step. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251` finishing; next action: same.
 - `2026-09-07T~325:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
   `merge_group` build still `in_progress`, `Unit Tests` PASSED this
   time (confirms last cycle's flake diagnosis — no repeat failure),
