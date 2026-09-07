@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~377:0xZ — L3-W4 — PR hygiene: `#2275` still position 2,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2275-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~4.25min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges. `ga_dashas`/`ga_sensitive` still
+  `OPEN-PENDING-PIN`, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening for L3. IDLE-OK. — blocked on: `#2275`
+  finishing; next action: same.
 - `2026-09-07T~376:0xZ — L3-W4 — PR hygiene: `#2275`'s checks finished
   (0 failures — the ~9.4min run resolved cleanly). Now genuinely
   `isInMergeQueue: true`, `AWAITING_CHECKS`, position 2 — its own
