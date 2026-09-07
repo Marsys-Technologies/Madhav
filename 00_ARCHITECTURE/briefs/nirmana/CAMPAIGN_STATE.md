@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:38:18Z` — cycle 863: **IDLE-OK, Δfrozen +0.** Only ~2 min since last check — no
+  new `ga_positions` events beyond the still-pending `implementation_accepted`; too short a gap to
+  read as a stall. Fleet DIRTY unchanged (#1180/#446, both already flagged, native's own). Own-PR
+  hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:36:06Z` — cycle 862: **`ga_positions` W4 progressing, Δfrozen still +0 — not yet
   nudge-worthy.** New event since last check: `implementation_accepted` at 08:40:00Z (a type not
   seen in the reference `bg_cohort` W2→W6 sequence — noting the observed_at reads ~4 min ahead of
