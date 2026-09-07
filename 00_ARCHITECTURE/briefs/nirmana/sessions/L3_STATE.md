@@ -222,6 +222,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
 | `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
+| `ka_sangam`'s F-L3-4 volume-formula derivation (last 2 of 20 originally-NULL L3 assets, with `ka_kshetra`) | real, verified structural complexity, not yet fully traced | genuinely open — investigated this cycle without reaching a confident number. Verified: `_generate_windows` runs Mode A (dasha-prior search) + Mode B (off-dasha sweep) or Mode C (SUBSYSTEM predicates → sign-ingress) per SELECTED predicate, but **Mode D (SAV-bindhu, `mode_d_av_bindhu`) fires only once per SUBSTEP** (`if pred_dict is pred_dicts[0]`), not once per predicate — my own first working assumption (once-per-predicate) was wrong, caught before writing anything down. Two substep horizon scopes exist: `'near'` = 5yr (today..+5y), one substep total; `'lifetime:{i}'` = birth_year..birth_year+`_LIFETIME_HORIZON_YEARS`, ONE substep per selected lifetime predicate (up to `_LIFETIME_MAX_PREDICATES=60`). Live: `kala_convergence` for the canonical chart is 80% mode D (11950 of 14868), meaning Mode D's per-substep output (planets x SAV-strong-signs x ingresses-over-that-substep's-own-horizon) dominates the total, and getting an honest total right needs: (a) how many lifetime substeps this chart actually selected (up to 60, not verified), (b) `_LIFETIME_HORIZON_YEARS`'s exact value, (c) how many of this chart's 12 signs clear the SAV>=28 threshold, (d) real ingress counts for Jupiter/Saturn/Mars per horizon length -- none of these were queried live this cycle. Not fixed or guessed at; recorded as a head start for whichever session next attempts this, so the mode-D-per-substep-not-per-predicate correction isn't re-discovered from scratch. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -494,6 +495,32 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~149:0xZ — L3-W3 — PR hygiene: `#2192` own `merge_group`
+  build confirmed via full `gh run list` scan — ~3.6min elapsed, healthy,
+  nothing red. Nothing to fix. Attempted `ka_sangam`'s F-L3-4 volume
+  formula (the last remaining tractable-looking candidate alongside
+  `ka_kshetra`) and made real progress but stopped short of a confident
+  number this cycle — recorded as a new Held item rather than force an
+  inaccurate migration. Key finding, self-corrected before writing
+  anything down: Mode D (SAV-bindhu) fires ONCE PER SUBSTEP
+  (`if pred_dict is pred_dicts[0]`), not once per predicate as my first
+  reading assumed — this alone would have produced a wildly wrong
+  formula had I not re-checked the actual invocation site. Confirmed
+  two substep horizon scopes (`'near'`=5yr, one substep;
+  `'lifetime:{i}'`=birth-to-`_LIFETIME_HORIZON_YEARS`, up to 60
+  substeps) but did not verify how many lifetime substeps this chart
+  actually selects, the exact horizon-years constant, this chart's own
+  SAV-strong-sign count, or real per-planet ingress counts — all
+  needed before a formula could be honestly written. No migration, no
+  code change this cycle; this investigation itself is the bounded
+  unit, logged so the next attempt doesn't re-discover the mode-D
+  correction from scratch. — blocked on: nothing new; next action:
+  push once `#2192` merges/finishes, then either complete the
+  `ka_sangam` investigation (query the 4 missing facts above) or move
+  to a different tier if still no E-gate work. **F-L3-4 status
+  unchanged this cycle: 16 of 20 closed**; `ka_kshetra`/`ka_sangam`
+  remain, both now confirmed via direct investigation (not assumption)
+  to be genuinely complex.
 - `2026-09-07T~148:0xZ — L3-W3 — PR hygiene: `#2192` now genuinely
   `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix.
   Revisited `ka_gochara_v3_century_materialize` — one of the 3 assets
