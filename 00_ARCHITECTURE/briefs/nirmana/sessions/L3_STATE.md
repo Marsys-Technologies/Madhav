@@ -495,6 +495,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~243:0xZ — L3-W4 — PR hygiene: `#2225` at ~11.45min —
+  first time this session past the confirmed ~11min normal range on
+  the surface-level check filter. Investigated for a genuine stall:
+  fetched the FULL job list for its `merge_group` run (all 3 run
+  attempts), found every job — including `Governance Gates` and `Unit
+  Tests` — `completed`/`success`; the PR-level `AWAITING_CHECKS` +
+  `isInMergeQueue: true` + not-yet-`merged` combination is the merge
+  queue's own evaluation lagging slightly behind CI completion, the
+  same async-lag class as prior `UNKNOWN`/`BLOCKED` transients — not a
+  stall. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2225`'s merge-queue evaluation catching up; next action: same,
+  expect merged status next cycle.
 - `2026-09-07T~242:0xZ — L3-W4 — PR hygiene: `#2225`'s last check, same
   run, now ~9.4min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
