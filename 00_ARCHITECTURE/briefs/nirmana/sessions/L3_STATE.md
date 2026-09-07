@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~389:0xZ — L3-W4 — PR hygiene: `#2282`'s last check
+  (`Governance Gates`) ~4.4min elapsed, on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range. `Unit Tests`/`DB Integration Tests` now both passed.
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2282` finishing; next action: same.
 - `2026-09-07T~388:0xZ — L3-W4 — PR hygiene: `#2282`'s pre-queue
   checks in progress, nothing red — 19/26 gates already passed
   (`DB Integration Tests`, `Unit Tests`, `Governance Gates` still
