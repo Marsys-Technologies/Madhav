@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T02:11:10Z` — cycle 733: **Fleet sweep (Step 1.5) — nudged #2205.** #2206
+  self-resolved into queue. #2205's previously-pending check finished (`mergeStateStatus:
+  CLEAN`) but it's genuinely CLEAN-but-unqueued now — nudged. Own-PR hygiene clean; adjudications
+  unchanged (10); no new #2180 reply.
 - `2026-09-07T02:08:19Z` — cycle 732: **IDLE-OK (verified).** Own-PR hygiene clean;
   adjudications unchanged (10). Checked #2205's actual check statuses since it's stayed
   unqueued 3 cycles running — confirmed it's just still-running CI ("Build Check (PR only)"
