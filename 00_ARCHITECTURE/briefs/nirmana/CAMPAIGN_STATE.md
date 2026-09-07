@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:33:14Z` — cycle 765: **IDLE-OK (verified).** New PR #2221 — L1's own separate
+  `ga_positions` sandhi_flag undercount fix (migration 876), unrelated to #2180, no ruling
+  needed. Fleet healthy, none CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10).
 - `2026-09-07T03:30:56Z` — cycle 764: **IDLE-OK (verified).** #2217 merged to main — the full
   7/7 `chart_facts` co-writer `natural_key_partition` backfill is now landed. Several PRs show
   transient `UNKNOWN` mergeable post-rotation (not DIRTY — CONFLICTING search still empty). Own-
