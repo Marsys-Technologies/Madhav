@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 205; no movement — `#2307` now genuinely green (0 failing/pending checks, REST `mergeable_state: clean`) but not yet picked up by the merge queue (`is:queued` empty, GraphQL still `BLOCKED`); not a gap, just queue timing. `#2301` confirmed `MERGED`. Zero new comments on any tracked issue. L1's frontier remains genuinely, externally exhausted.
+last_updated: 2026-09-07 — C8 v2.3 cycle 206; **`#2307` (the #2224 fix) MERGED** into `main` as `0470c1a62`, but confirmed NOT yet deployed via a real `git merge-base --is-ancestor` check against live `NIRMANA_DEPLOYED_SHA` (currently 3 commits behind) — not assumed from "merged" alone. Polled ~2 minutes, no change; correctly stopped rather than over-waiting in-cycle. `#2300` unchanged, still needs native sign-off. No W3 fallback exists.
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -11831,3 +11831,30 @@ CYCLE 205 L1: PR hygiene clean; `#2307` is genuinely green (0 failing/pending ch
 state: clean`) but not yet in the merge queue -- not a gap, just queue timing, nothing to act on;
 zero movement on any tracked issue -- next: keep checking `#2307`'s actual merge (not just
 green-checks) and deploy status every cycle; retry `ga_transit_anchors` the instant it deploys.
+
+## CYCLE 206 (C8 v2.3) — `#2307` MERGED; not yet deployed, confirmed via a real ancestor check
+## rather than guessed; polled ~2 minutes, correctly stopped rather than burning the cycle
+
+PR hygiene trivially clean: zero open L1-authored PRs (`#2307`/`#2312` both `MERGED`).
+
+**`#2307` (the #2224 fix) merged into `main` as `0470c1a62`.** Checked deploy status properly --
+fetched the live `NIRMANA_DEPLOYED_SHA` (`ecc23674b...`) and ran `git merge-base --is-ancestor
+0470c1a62 <deployed-sha>` rather than assuming "merged" means "deployed": returned false --
+`ecc23674b` sits 3 commits BEHIND `0470c1a62` in `origin/main`'s own history (confirmed via `git
+log --oneline | grep -n`, not inferred). Polled `NIRMANA_DEPLOYED_SHA` every ~20s for ~2 minutes
+-- unchanged throughout. Correctly did NOT attempt `ga_transit_anchors`' verdict retry against
+the still-old deployed code (would just reproduce the original 409) and did NOT burn the rest of
+the cycle sleep-polling past a reasonable window -- deploys on this fleet have historically landed
+within a few minutes but not instantly; next cycle's own fresh check is the right cadence, not a
+longer in-cycle wait loop.
+
+Re-checked `#2300`: no new comment. No W3 fallback exists.
+
+CYCLE 206 L1: PR hygiene trivially clean (nothing open); **`#2307` MERGED** but confirmed NOT yet
+deployed via a real `git merge-base --is-ancestor` check against live `NIRMANA_DEPLOYED_SHA`
+(3 commits behind), not assumed from "merged" alone; polled ~2 minutes, no change, correctly
+stopped rather than over-waiting in-cycle -- next: check `NIRMANA_DEPLOYED_SHA` fresh every
+cycle; the instant it's a descendant of `0470c1a62`, retry `ga_transit_anchors`'
+`optimization_verdict_accepted` submission immediately (evidence has stood valid since cycle
+171/196, should resolve cleanly on the first attempt). `#2300` unchanged, still needs native
+sign-off.
