@@ -16,7 +16,10 @@
  * confirmed against the real serving tool's actual query logic, not inferred from naming alone.
  * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07 slice 1; `graha_{cheshta,drik,
  * kala,sthana}_bala_per_varga` (4 categories) closed 2026-09-07 slice 2; the get_nakshatra.ts
- * cluster (12 categories) closed 2026-09-07 slice 3; the remaining ~36 are still open.
+ * cluster (12 categories) closed 2026-09-07 slice 3; special_lagna/upapada_lagna/
+ * sensitive_point_gulika_mandi (get_sensitive_points.ts) + sensitive_degree_check/
+ * sensitive_point_yogi (get_sensitive_degrees.ts) closed 2026-09-07 slice 4 (5 categories);
+ * the remaining ~31 are still open.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -199,12 +202,17 @@ export const CHART_FACTS_CATEGORIES = [
   'sade_sati_saturn_retrograde_subset',
   'saham_position',
   'saturn_derived_point',
+  'sensitive_degree_check',
+  'sensitive_point_gulika_mandi',
+  'sensitive_point_yogi',
+  'special_lagna',
   'swamsa_position',
   'tajik_hadda_lord',
   'tajik_triraashipathi',
   'tajik_vargottama_specific',
   'tara_bala_natal_baseline',
   'upagraha_position',
+  'upapada_lagna',
   'vargottama_per_varga',
   'vimsopaka_bala_per_graha',
   'virodha_argala_natal_matrix',
@@ -403,6 +411,23 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   saham_position:                    ['marsys://tool/L1/get_sensitive_points'],
   saturn_derived_point:              ['marsys://tool/L1/get_sensitive_points'],
   nakshatra_pada_sensitive:          ['marsys://tool/L1/get_sensitive_points'],
+  // F-B32 (2026-09-07, slice 4/N): opt-in only, same "fact_category = ANY($2)" doctrine as
+  // every prior slice (get_sensitive_points.ts:78) — none of these three are in the tool's own
+  // default SP_CATEGORIES, but tool_name_bridge.ts:87 explicitly maps the retired
+  // `query_special_lagnas` tool name onto this URI, confirming special_lagna's data now lives
+  // here rather than in a since-removed dedicated tool. Live rows (canonical chart):
+  // special_lagna=245, upapada_lagna=10, sensitive_point_gulika_mandi=70.
+  special_lagna:                     ['marsys://tool/L1/get_sensitive_points'],
+  upapada_lagna:                     ['marsys://tool/L1/get_sensitive_points'],
+  sensitive_point_gulika_mandi:      ['marsys://tool/L1/get_sensitive_points'],
+
+  // ── Sensitive Degrees (Yogi/Avayogi + classical degree checks) ────────────
+  // F-B32 (2026-09-07, slice 4/N): get_sensitive_degrees.ts unconditionally serves BOTH
+  // categories on its default page via SERVED_FACT_CATEGORIES (not opt-in — no caller override
+  // exists, unlike every other tool in this file). F-B14's own fix. Live rows (canonical chart):
+  // sensitive_degree_check=275, sensitive_point_yogi=60.
+  sensitive_degree_check:            ['marsys://tool/L1/get_sensitive_degrees'],
+  sensitive_point_yogi:              ['marsys://tool/L1/get_sensitive_degrees'],
 
   // ── Karakas / KP / Jaimini ───────────────────────────────────────────────
   arudha_pada:                   ['marsys://tool/L1/get_karakas'],
