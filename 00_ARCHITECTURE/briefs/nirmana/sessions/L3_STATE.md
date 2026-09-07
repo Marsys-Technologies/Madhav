@@ -495,6 +495,85 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~302:0xZ — L3-W4 — PR hygiene: `#2243`'s last check, same
+  run, now ~9.3min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2243` finishing; next
+  action: same.
+- `2026-09-07T~301:0xZ — L3-W4 — PR hygiene: `#2243`'s own `merge_group`
+  build still `in_progress`, `Unit Tests` now passed, only
+  `Governance Gates` remains (~7.2min, within range, same run). No
+  new `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2243` finishing;
+  next action: same.
+- `2026-09-07T~300:0xZ — L3-W4 — PR hygiene: `#2243`'s own `merge_group`
+  build still `in_progress` (~5.1min, within range, same run). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2243` finishing; next
+  action: same.
+- `2026-09-07T~299:0xZ — L3-W4 — PR hygiene: `#2243` still position 1,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2243-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~2.9min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2243` finishing; next
+  action: same.
+- `2026-09-07T~298:0xZ — L3-W4 — PR hygiene: `#2243`'s checks finished
+  (0 failures — the ~11.1min precedent held again). Now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1 — its own
+  `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2243` finishing; next action: same.
+- `2026-09-07T~297:0xZ — L3-W4 — PR hygiene: `#2243`'s last check, same
+  run, now ~11.1min — at the recurring edge-of-range pattern. Step-
+  level unchanged, no separate stall signal. No new `origin/main`
+  merges, `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2243` finishing; next action:
+  same, expect resolution next cycle per precedent.
+- `2026-09-07T~296:0xZ — L3-W4 — PR hygiene: `#2243`'s last check, same
+  run, now ~9min — approaching but still within the confirmed ~11min
+  normal range, still on the same `pytest` step. No new `origin/main`
+  merges, `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2243` finishing; next action:
+  same.
+- `2026-09-07T~295:0xZ — L3-W4 — PR hygiene: `#2243`'s last check
+  (`Governance Gates`) ~6.7min, within normal range, `Unit Tests` now
+  also passed. One new `origin/main` merge (`#2242`, L1
+  `ga_nakshatra` cross-ayanamsha undercount fix, no L3 overlap).
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2243` finishing; next action: same.
+- `2026-09-07T~294:0xZ — L3-W4 — PR hygiene: `#2243`'s pre-queue check
+  run still `in_progress` (~4.3min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2243` finishing; next
+  action: same.
+- `2026-09-07T~293:0xZ — L3-W4 — PR hygiene: `#2243` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. Two new `origin/main` merges (an L5 heartbeat PR, and L1
+  state cycle 170 noting `#2224` ruled / 7/9 wave-1 `ga_*` assets
+  evidence-fresh — no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2243` clearing checks/queue; next action: same.
+- `2026-09-07T~292:0xZ — L3-W4 — PR hygiene: `#2239` MERGED (confirmed
+  `merged: true`, `mergedAt` set — its mid-queue rebase-against-fresh-
+  main resolved cleanly, not a stall). Rebased the 27 not-yet-merged
+  local heartbeat commits onto fresh `origin/main`. Hit the standard
+  empty-theirs prepend-conflict pattern 10x (auto-resolved via the
+  marker-strip loop, each verified empty-theirs before stripping).
+  Verified zero conflict markers remain; rebased diff vs
+  `origin/main` is `L3_STATE.md`-only. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-14`, pushed, opened PR `#2243`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2243` clearing
+  checks/queue; next action: same monitoring cadence, watch closely
+  for the freeze.
 - `2026-09-07T~291:0xZ — L3-W4 — PR hygiene: `#2239`'s fresh (rebased)
   `merge_group` run still `in_progress` (~8.3min, within the confirmed
   ~11min normal range, same run). No new `origin/main` merges,
