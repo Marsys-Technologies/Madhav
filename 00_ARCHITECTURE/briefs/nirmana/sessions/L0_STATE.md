@@ -7,18 +7,18 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — Conductor RULED #2240 resolved-by-existing-fix (PR #1851, already on
-  origin/main, narrowed the dedup guard to in-flight states only) — my local worktree was stale, the
-  exact "long-lived branch predates a shared-file fix" trap. Re-ran from a fresh detached worktree off
-  origin/main: both guards cleared, dry-run succeeded. Took a fresh Cloud SQL backup, committed the
-  real dispatch, and (after discovering + fixing a SECOND gap — `build_run_authorized` must be
-  submitted in the few-second race window between commit and the orchestrator setting `started_at`,
-  or `accepted_rebuild_observed` is structurally unreachable for that run) successfully got
-  `accepted_rebuild_observed` ACCEPTED for `bg_cohort` on a fresh, receipt-proven build
-  (`d35590e5-...`, `receipt_state=proven`). **D-L0-II is now provably closed for bg_cohort — the
-  service-dependency provenance wall is dead.** A separate verifier subagent (D-CND-35 identity
-  separation) is in flight now to submit `integrity_verified` + `asset_frozen` and close L0 to 40/40.
-  NEXT ACTION: confirm the verifier subagent's report, log the final freeze, post to #1713.
+last_updated: 2026-09-07 — **L0 IS 40/40 FROZEN.** `bg_cohort`, the last holdout (blocked on the C12
+  service-dependency provenance wall / D-L0-II), froze end-to-end this session: Conductor ruled #2240
+  resolved-by-existing-fix (PR #1851, stale local worktree was the real cause) → fresh worktree
+  re-dispatch cleared both guards → fresh Cloud SQL backup → committed dispatch → discovered/fixed a
+  `build_run_authorized` race-window gap → `accepted_rebuild_observed` accepted on a genuine
+  `receipt_state=proven` build → a separate verifier subagent (D-CND-35) submitted `integrity_verified`
+  + `asset_frozen`. Independently re-verified myself via direct DB query (not just trusting the
+  subagent): `bg_cohort`'s full 5-event chain is real, `count(DISTINCT entity_id) WHERE layer='L0' AND
+  event_type='asset_frozen'` = 40. Posted the milestone to #1713. **What remains open, NOT L0's own
+  lane**: the campaign-wide W6 stage-transition-acceptance ceremony (#1945) has its own unrelated
+  blockers (invalidated-analysis backlog, deploy lag) — that's Conductor/cross-layer scoped, not
+  something to force from here. L0's own asset-freeze work is done.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -40,13 +40,23 @@ so re-pasting the prompt into a fresh session is safe at any moment.
 
 ## Position
 
-**39/40 frozen.** bg_gochara_arcs, bg_dasha_systems, bg_doshas, bg_vidhi_floors, bg_parihara_rules,
-bg_compendium_index, bg_rules, bg_text_index, bg_concordance, bg_yogas all froze across the sessions
-between the last detailed heartbeat entry below and 2026-09-06/07 (see heartbeat log for the
-bg_yogas/D-NATIVE-06 account — the fullest-documented one; the others' individual W1→freeze accounts
-were not re-transcribed into this file session-by-session and are recoverable from their PRs/issue
-#1713 history if ever needed). **Only `bg_cohort` remains unfrozen**, blocked on Conductor's C12
-carve-out (see Held items). Separately, **issue #2122** (F-D21/F-D23: `bg_vidhi_primitives`'
+**40/40 FROZEN — L0 IS COMPLETE.** bg_gochara_arcs, bg_dasha_systems, bg_doshas, bg_vidhi_floors,
+bg_parihara_rules, bg_compendium_index, bg_rules, bg_text_index, bg_concordance, bg_yogas all froze
+across the sessions between the last detailed heartbeat entry below and 2026-09-06/07 (see heartbeat
+log for the bg_yogas/D-NATIVE-06 account — the fullest-documented one; the others' individual
+W1→freeze accounts were not re-transcribed into this file session-by-session and are recoverable
+from their PRs/issue #1713 history if ever needed). **`bg_cohort` — the last holdout, blocked on
+Conductor's C12 carve-out — froze 2026-09-07** once PR #2234 (D-NATIVE-07) shipped, deployed, and
+was correctly re-dispatched (full account in the heartbeat log below: the stale-worktree trap, the
+build_run_authorized race-window gap, the separate verifier subagent's integrity_verified+asset_frozen
+submission). Independently re-verified by me (not just trusting the subagent's narrative): live query
+confirms `bg_cohort`'s full 5-event chain and `count(DISTINCT entity_id) WHERE layer='L0' AND
+event_type='asset_frozen'` = **40**. **What's NOT yet closed**: L0's formal W6 layer-freeze *ceremony*
+is a separate, campaign-wide `stage_transition_accepted` mechanism (issue #1945, Conductor/cross-layer
+scoped — "zero stage-spine receipts exist, W6 will be rejected") with its own open blockers (22
+invalidated analyses backlog, ordinary deploy lag) unrelated to L0's own asset count. That is not
+L0's own lane to fix unilaterally; posted the 40/40 milestone to #1713 for Conductor visibility.
+Separately, **issue #2122** (F-D21/F-D23: `bg_vidhi_primitives`'
 `from_moon_view` Vidhi primitive pointed at an inert `reference_point` arg on
 `ganita_chart_facts_get`) surfaced via a Conductor fleet-status post on #1713 — this is NEW L0 work,
 independent of the freeze-tracking count above (it does not un-freeze `bg_vidhi_primitives`; it
@@ -54,11 +64,11 @@ corrects a served primitive's routing). Fixed and shipped as **PR #2153, merged,
 live-verified end-to-end — the arc is CLOSED** (see heartbeat for the full account, including the
 deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic level).
 
-## The 1 unfrozen asset
+## The 1 unfrozen asset — RESOLVED 2026-09-07
 
 | asset | route | status / blocker |
 |---|---|---|
-| bg_cohort | rebuild_only | held on Conductor's C12 carve-out (dep on `bg_ephemeris_engine` service semantics) — see Held items |
+| ~~bg_cohort~~ | rebuild_only | **FROZEN 2026-09-07.** Was held on Conductor's C12 carve-out (dep on `bg_ephemeris_engine` service semantics) — PR #2234 shipped+deployed, re-dispatched successfully, full evidence chain complete. L0 is now 40/40. |
 
 ## Decisions log
 
@@ -876,3 +886,33 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   still running (~5min in — reading validator code, live-checking bg_cohort's integrity_check_sql,
   and minting/submitting two evidence events is genuinely multi-step work, not stuck). Nothing else
   eligible.
+- 2026-09-07 — **VERIFIER SUBAGENT REPORTED: `integrity_verified` + `asset_frozen` both ACCEPTED
+  (HTTP 201). L0 IS 40/40 FROZEN.** Did not just trust the narrative — independently re-verified via
+  a fresh, direct DB query of my own: `bg_cohort`'s chain now reads `asset_analysis_accepted` →
+  `optimization_verdict_accepted` → `accepted_rebuild_observed` → `integrity_verified` →
+  `asset_frozen`, all 5 events present and correctly ordered, and
+  `count(DISTINCT entity_id) FROM ... WHERE layer='L0' AND event_type='asset_frozen'` = **40**. The
+  subagent's own account (worth keeping for audit trail): it ran `bg_cohort`'s `integrity_check_sql`
+  live itself first (returned true) before submitting anything; the server independently re-ran the
+  same detector server-side at request time and overwrote the submitted `detector_observation`/
+  `result_digest` with its own live recomputation (`detector_sql_sha256:
+  e4884b03cf06ed96f8e7129702294c29a0cc6ccaf0f9db3f4cd03ff571543280`) — meaning the integrity claim is
+  a real, server-verified detector result, not a self-reported one (§N.8 discipline satisfied).
+  `lifecycle_digest` was computed as sha256(stableJson(the 4 prior accepted events' canonical
+  fields)), matching `requireFreezeProvenance`'s exact reconstruction (validated by the 201 itself).
+  Also ran `capsule_audit.sql` (pulled read-only from `origin/main`, not present on this branch) against
+  the live DB: §1 (incomplete chains) = 0 rows; §2 (identity-crossing) = all rows `ok`, zero crossings
+  — `asset_frozen`/`integrity_verified` correctly written by the verifier identity, everything else by
+  the executor identity, exactly as D-CND-35 requires; §3 = `L0 | 40 | 40 | 0 | 0 | 100.0`. **D-L0-II is
+  closed. bg_cohort is frozen. L0's own asset-level work is complete.**
+  - **Posted the 40/40 milestone to #1713** for Conductor/campaign visibility.
+  - **Checked #1945** (open, Conductor/cross-layer scoped: "zero stage-spine receipts exist — L0's W6
+    freeze ceremony will be rejected") before claiming anything more than the asset count: this is a
+    SEPARATE, campaign-wide `stage_transition_accepted` mechanism with its own open blockers (a
+    22-event invalidated-analysis backlog, and an ordinary ~2-commit deploy-lag gap) — not an L0-only
+    concern, not something to force from this session. L0's 40/40 asset freeze and the campaign's W6
+    ceremony are two different things; only the former is done. Not overclaiming the latter.
+  - **What's actually left for this session going forward**: monitor #1945/W6 for when it's ready
+    (not L0's to drive), keep doing PR hygiene + heartbeat cycles, and pick up any new L0-scoped work
+    that surfaces (registry drift, new adjudications, etc.) — L0 has no more of its own 40 assets to
+    process.
