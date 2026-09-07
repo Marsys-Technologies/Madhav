@@ -381,6 +381,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:42:28Z` — cycle 955: **Second real bug found and ruled — `ga_transit_anchors`'
+  permanent deadlock in `definitions.ts`.** L1's PR #2293 root-caused it precisely (posted to
+  #2224): `requireAcceptedOptimizationVerdictProvenance`'s SQL requires the verdict's `source_ref`
+  to equal BOTH the current live deploy SHA and the earlier analysis event's `source_ref` — on a
+  fleet redeploying every few minutes, once those two diverge (any W2 pair not submitted inside
+  one deploy's lifetime) it's permanently unsatisfiable, and `findExistingLifecycleReceipt` blocks
+  re-submitting the analysis under a fresh `source_ref` too. Generic trap, not asset-specific.
+  Ruled (comment 5570808695): ship L1's option (a) — drop the redundant `source_ref` match,
+  keeping only the `(registry_fingerprint_sha256, analysis_digest)` generation binding that
+  actually pins correctness. Narrower/safer than option (b)'s new equality-check logic. Scoped
+  this as a confirmed bug with a safety-neutral fix (unlike the Lane C semantics question I
+  flagged for native earlier) — authorized under my own adjudication standing, asked for a
+  regression test. Δfrozen still +0 (55/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR
+  hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:40:09Z` — cycle 954: **IDLE-OK, Δfrozen +0.** No reaction to the #2276 ruling
   yet (~4 min old). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:36:03Z` — cycle 953: **Found `ga_dashas`' real blocker — ruled #2276, the
