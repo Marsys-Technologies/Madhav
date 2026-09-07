@@ -1301,3 +1301,8 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Conductor ruled on #2224 (drop the redundant source_ref check, authorized L1 to implement) — not
   L0's task. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  L1 implemented #2276's fix (PR #2295) — this is a THIRD related dedup-guard fix in
+  `dispatch_nirmana_campaign_wave.py`, distinct from PR #1851's build_runs-triggered_by guard I hit
+  for bg_cohort; worth remembering if a future L0 asset ever needs post-freeze redispatch. Not L0's
+  task. Nothing eligible.
