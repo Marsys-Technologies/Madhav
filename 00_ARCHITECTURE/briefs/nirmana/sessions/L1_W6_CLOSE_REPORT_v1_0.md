@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.18-DRAFT"
+version: "0.19-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -361,12 +361,13 @@ awaits either a dedicated prep cycle or genuine W6 close.
   (`ga_positions`) dispatched and completed the same cycle (see §3.5 item 3). RULED AGAIN cycle
   159, authorizing two registry-configuration fixes (`natural_key_partition` ×7,
   `output_digest_spec` for `ga_positions`+3 L0 assets). `natural_key_partition` shipped for
-  `ga_positions` (migration 868, PR #2205) and `ga_ayurdaya` (migration 869, PR #2208, cycle
-  160) — 2/7. **Still open**: `natural_key_partition` for the other 5 `chart_facts` co-writers
-  (`ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`, `ga_sensitive`, `ga_sensitive_degree` —
-  `ga_sensitive` in particular needs careful per-category verification, found to own ~25
-  categories, more than initially assumed) and `ga_positions`' own `output_digest_spec`
-  (fix 2) — both needed before wave 1 can genuinely dispatch.
+  `ga_positions` (migration 868, PR #2205), `ga_ayurdaya` (migration 869, PR #2208), and
+  `ga_sensitive_degree` (migration 870, PR #2209, cycle 161) — 3/7. **Still open**:
+  `natural_key_partition` for the other 4 `chart_facts` co-writers (`ga_nakshatra`,
+  `ga_panchanga`, `ga_sade_sati`, `ga_sensitive` — `ga_sensitive` in particular needs careful
+  per-category verification, found to own ~25 categories, more than initially assumed) and
+  `ga_positions`' own `output_digest_spec` (fix 2) — both needed before wave 1 can genuinely
+  dispatch.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
@@ -489,8 +490,8 @@ does not need
 #2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
 cycle 153/156, distinct from F-B32's own list-repair scope)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
-2/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208; 5 co-writers' partitions +
-fix 2/`output_digest_spec` still needed for wave 1)
+3/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209;
+4 co-writers' partitions + fix 2/`output_digest_spec` still needed for wave 1)
 · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually

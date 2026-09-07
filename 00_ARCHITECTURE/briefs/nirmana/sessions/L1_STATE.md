@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 160; shipped natural_key_partition fix 2/7 (ga_ayurdaya, migration 869, PR #2208) -- simplest of the seven, a single hardcoded FACT_CATEGORY="ayurdaya" constant, zero overlap confirmed with the other six writers. Applied locally, verified. 5 co-writers (ga_nakshatra, ga_panchanga, ga_sade_sati, ga_sensitive, ga_sensitive_degree) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet (own comments stand), checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 161; shipped natural_key_partition fix 3/7 (ga_sensitive_degree, migration 870, PR #2209): sensitive_degree_check + sensitive_point_yogi, confirmed via the writer's own header comment; caught that ga_sensitive_writer.py mentions sensitive_point_yogi too but only in a cross-referencing docstring about its own different category (esoteric_point_yogi), not a genuine write -- verified real vs. incidental overlap before concluding clean. 4 co-writers (ga_nakshatra, ga_panchanga, ga_sade_sati, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8877,3 +8877,34 @@ record — they are the only entries in this table with a real wall-clock behind
   ALSO lag on rare occasions, not just `autoMergeRequest` -- if a PR looks unqueued by every
   check but `gh pr merge` insists it's already queued, trying `enqueuePullRequest` directly and
   reading its error message is a more authoritative tie-breaker than re-trying the search.
+- 2026-09-07T15xZ -- CYCLE 161 (C8 v2.3). PR hygiene: `#2201`/`#2205`/`#2208` all confirmed
+  healthy -- `#2205` genuinely `is:queued` this time (GraphQL confirmed, resolving last cycle's
+  lag); `#2208`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known
+  mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle 160 -- still no
+  reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked
+  `ga_sensitive_degree` next -- already fully characterized from F-B32 slice 4 (cycle 152):
+  `sensitive_degree_check`, `sensitive_point_yogi`. Re-confirmed directly against the writer for
+  this migration rather than trusting the earlier serving-tool finding at face value: the
+  writer's own header comment (line 5) states `Table: chart_facts (fact_category =
+  'sensitive_degree_check')`, and `build_yogi_points_rows()` emits `sensitive_point_yogi` for a
+  ninth facet, both under the same `replace_prior_chart_facts` idempotency scope.
+  Checked for overlap and found ONE genuine hit needing investigation: `ga_sensitive_writer.py`
+  also mentions `sensitive_point_yogi`. Read the actual context rather than treating a grep hit
+  as an automatic overlap defect (the same discipline this whole `natural_key_partition` effort
+  depends on) -- it's a cross-referencing DOCSTRING comment (lines 802-816) explaining that
+  `ga_sensitive_writer.py`'s OWN category (`esoteric_point_yogi`) computes the same classical
+  BPHS Ch.20 construction independently and agrees with `sensitive_point_yogi` to ~4e-7 deg
+  (an MC-029 Śodhana-Śeṣa reconciliation note) -- not a genuine second write of
+  `sensitive_point_yogi` itself. Confirmed clean.
+  Checked migration numbering carefully again: 868/869 are reserved by cycles 159/160's own
+  still-open PRs (confirmed via `git ls-tree` against BOTH branches, not just `origin/main`),
+  so used 870. Wrote the migration, ran `--dry-run` (870 the only pending), applied for real,
+  verified `asset_registry.natural_key_partition` now set. Branched fresh off `origin/main`,
+  re-confirmed 870 still free there, committed, pushed, opened PR #2209, queued, confirmed
+  `autoMergeRequest` armed.
+  CYCLE 161 L1: PR hygiene clean; shipped `natural_key_partition` fix 3/7 (`ga_sensitive_degree`,
+  PR #2209) -- next: 4 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`,
+  `ga_sensitive` -- `ga_sensitive` is the one needing the most careful verification, ~25
+  categories) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
+  #2113/#2180 every cycle regardless.
