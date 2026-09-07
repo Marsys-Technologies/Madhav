@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 171; investigated `ga_dashas`/`ga_transit_anchors`' zero-evidence gap (deferred cycle 170). `ga_transit_anchors` verified genuinely clean (all W2 findings F-D21/D22/D23/D25 closed+verified, 45/45 floor) -- attempted first-time evidence acceptance, hit a NEW structural finding: submitting `asset_analysis_accepted` + `optimization_verdict_accepted` as two separate calls races this fleet's fast CD cadence -- once the first lands, a second analysis event for the SAME (fingerprint,digest) generation can never be created (any source_ref), and the verdict independently requires an EXACT match to whatever's CURRENTLY deployed -- so a debugging pause between the two calls (I hit one, fixing a payload schema error) can PERMANENTLY orphan the analysis event once the deploy SHA moves past it (mine did, twice, in the gap). Documented and posted to #2224 as an operational gotcha for the rest of Lane C's backlog, not a platform bug (the immutable-per-generation design is intentional). `ga_dashas` investigated separately: F-A10 (scope-cap sentinel) and F-A12 (dignity vocabulary) both confirmed genuinely fixed in code/schema (migration 652 CHECK constraint live-confirmed) but NOT YET reflected in the canonical chart's live chart_dashas data (zero scope_cap rows -- needs a rebuild to apply, same class as ga_positions). F-A17 ("bare tier literals") is UNTRACKED since its original W2 mention -- zero references anywhere in this session's own record since -- AND collides with an unrelated LATER F-A17 (ga_structural's vargottama-flag fix, cycles 47-48) -- a genuine finding-ID collision, a governance-hygiene defect. Did NOT submit evidence for ga_dashas given this real uncertainty. #2113/#2180/#2224 checked -- no new Conductor reply beyond my own comments
+last_updated: 2026-09-07 — C8 v2.3 cycle 172; **closed F-A17** (`ga_dashas`' "bare tier literals", untracked since W2, PR #2229). Root cause: the writer already imports named constants from `brahmagyan.verification_vocab` (TWO_PASS_VERIFIED/CLASSICAL_MATCH/UNVERIFIED_DEFAULT) and uses them correctly in SOME places, but 38 other call sites emitted the equivalent bare string literal instead -- exactly CLAUDE.md §N.4's forbidden pattern. `scope_cap_sentinel` additionally had NO named constant to import at all (legal vocab member, no symbol) -- added `SCOPE_CAP_SENTINEL` to verification_vocab.py following `CLASSICAL_MATCH`'s own precedent (no new vocabulary member, just a symbol). Scripted the 38-site replacement, individually spot-checked, left 4 docstring/comment prose lines untouched (quoting the strings in English, not emitting them). Added a static regression test (greps source text, not runtime behavior, since the emitted VALUE is identical either way -- only a text-level check can catch this class of drift). All 60 tests across the touched/adjacent suites pass. This closes `ga_dashas`' last blocking MUST-tier uncertainty -- its evidence submission (F-A10/F-A12 already confirmed fixed in code, needs a rebuild to apply to canonical-chart data) is now safe to attempt in a future cycle. #2113/#2180/#2224 checked -- no new Conductor reply beyond my own comments
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9540,4 +9540,66 @@ untracked MUST finding (F-A17) that also collides in ID with an unrelated later 
 deliberately did not submit false evidence for it — next: resolve F-A17's actual content/status
 for `ga_dashas` (a real investigation, not a re-stamp), or complete `ga_transit_anchors`'
 evidence pair whenever its registry next changes / in one clean fast attempt; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 172 (C8 v2.3) — F-A17 CLOSED: `ga_dashas`' bare verification-tier literals fixed
+## (38 sites, PR #2229), a real W3 defect fix, not evidence bookkeeping
+
+PR hygiene: `#2228` (this state PR) `MERGEABLE`/`BLOCKED` (pending CI, nothing RED). No other
+L1-authored PR open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new
+Conductor reply beyond my own prior comments on any of the three.
+
+**Unit of work: resolve F-A17's actual content**, deferred cycle 171 as "a real investigation,
+not a re-stamp." Read `CLAUDE.md §N.4` again deliberately before guessing at "bare tier
+literals"' meaning: *"Writers must still emit the tier via `brahmagyan/verification_vocab.py`
+named constants... never a bare string literal."* This directly named the hypothesis: `ga_dashas_
+writer.py` might emit `verification_pass_status`/`verification_method` values as raw strings
+instead of importing the constants `verification_vocab.py` exists specifically to provide.
+
+Confirmed by direct grep: the writer DOES import `TWO_PASS_VERIFIED`/`CLASSICAL_MATCH`/
+`UNVERIFIED_DEFAULT` and uses them correctly at SOME call sites (e.g. lines 684, 944, 2169) — but
+**38 other sites** across the file emit the identical bare literal instead (`"two_pass_verified"`
+× ~27, `"classical_match"` × 7, `"single"` × 2, `"scope_cap_sentinel"` × 2 — the exact line
+already flagged as F-A10's own sentinel-write site, line 3375, turned out to ALSO be an F-A17
+instance). Confirmed `scope_cap_sentinel` had **no named constant to import at all** — a legal
+vocabulary member (`verification_vocab.py` entry 9) but only 4 of its 12 members had exported
+symbols, which is precisely why the bare literal existed for THAT one — not an oversight the
+writer could have avoided.
+
+Fixed both halves: (1) added `SCOPE_CAP_SENTINEL: Final[str] = "scope_cap_sentinel"` to
+`verification_vocab.py`, following `CLASSICAL_MATCH`'s own precedent addition (adds no new
+vocabulary member, only a missing symbol); (2) scripted the 38-site replacement in
+`ga_dashas_writer.py` (`"two_pass_verified"`→`TWO_PASS_VERIFIED`, `"classical_match"`→
+`CLASSICAL_MATCH`, `"single"`→`UNVERIFIED_DEFAULT`, `"scope_cap_sentinel"`→`SCOPE_CAP_SENTINEL`),
+explicitly excluding 4 pinned docstring/comment lines that quote the strings in prose (describing
+the vocabulary in English, not emitting a value — replacing those would have been wrong, not
+careful). Individually spot-checked several changed sites (both a `return CLASSICAL_MATCH` code
+line and the excluded docstring prose immediately around it) to confirm the exclusion held.
+
+**Added a static regression test** (`test_ga_dashas_f_a17_bare_tier_literals.py`) rather than a
+behavior-level one — deliberately, since the emitted STRING VALUE is byte-identical whether it
+comes from a literal or the constant, so no runtime assertion could ever distinguish "fixed" from
+"regressed." The test greps the source text itself for any bare literal outside the pinned
+allowed-prose line set, and separately asserts the writer imports `SCOPE_CAP_SENTINEL` and that
+the constant's value still matches a genuine, still-legal vocabulary member (guarding against a
+future edit accidentally inventing a NEW status rather than just naming an existing one).
+
+Ran the full relevant test surface before committing: `test_ga_dashas_copy_upsert.py`,
+`test_ga_dashas_f_a12_dignity_vocab.py` (F-A12, the sibling finding — confirmed unaffected),
+the new F-A17 test, `test_l1_dashas.py`, `test_verification_vocab.py` — **60/60 pass**. Committed,
+pushed, opened PR #2229, queued via `gh pr merge --auto` (`autoMergeRequest.enabledAt` confirmed
+set).
+
+This closes `ga_dashas`' last genuinely open MUST-tier uncertainty from cycle 171's investigation.
+F-A10 (scope-cap sentinel, needs a rebuild to apply to the canonical chart's data) and F-A12
+(dignity vocabulary) were already confirmed fixed in code; F-A17 is now ALSO genuinely fixed, not
+just re-labeled. `ga_dashas`' campaign evidence submission (still zero events, the original gap
+from cycle 170) is now safe to attempt in a future cycle without the uncertainty that correctly
+blocked it cycle 171.
+
+CYCLE 172 L1: PR hygiene clean; **closed F-A17** — `ga_dashas`' 38-site bare verification-tier
+literal defect (PR #2229), a real W3 code fix following the exact investigation this session's
+own F-A17/ID-collision finding demanded rather than deferring further — next: submit `ga_dashas`'
+first-time campaign evidence (all three of its MUST findings now confirmed genuinely closed) or
+complete `ga_transit_anchors`' still-orphaned evidence pair; keep re-checking
 #2113/#2180/#2224 every cycle regardless.

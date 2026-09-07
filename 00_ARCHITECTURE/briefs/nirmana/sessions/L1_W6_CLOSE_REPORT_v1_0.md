@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.29-DRAFT"
+version: "0.30-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -448,10 +448,16 @@ awaits either a dedicated prep cycle or genuine W6 close.
   data — same class as `ga_positions`), but **F-A17 ("bare tier literals") is untracked since
   its original W2 mention AND collides in ID with an unrelated later finding**
   (`ga_structural`'s vargottama fix, cycles 47-48) — a real governance-hygiene defect. Did NOT
-  submit evidence for `ga_dashas` given this genuine, unresolved uncertainty. **Still open**:
-  wave 1 dispatch itself remains blocked by the `asset_frozen` E-gate regardless of evidence
-  freshness, campaign-wide — not an L1 registry fix; `ga_dashas`' F-A17 needs a real
-  investigation, not a re-stamp.
+  submit evidence for `ga_dashas` given this genuine, unresolved uncertainty. **F-A17 CLOSED
+  cycle 172** (PR #2229): root cause was 38 bare `verification_pass_status`/`verification_method`
+  string literals in `ga_dashas_writer.py` where `CLAUDE.md §N.4` requires the imported
+  `brahmagyan.verification_vocab` named constants — `scope_cap_sentinel` additionally had no
+  named constant to import at all until this fix added `SCOPE_CAP_SENTINEL`. Static
+  regression test added (source-text grep, not runtime behavior, since the emitted value is
+  identical either way); 60/60 relevant tests pass. `ga_dashas`' three original MUST findings
+  (F-A10/F-A12/F-A17) are now all genuinely confirmed fixed — its evidence submission (still
+  zero events) is safe to attempt. **Still open**: wave 1 dispatch itself remains blocked by the
+  `asset_frozen` E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
