@@ -731,6 +731,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 676 | 2026-09-07T10:02Z | L2-W3 | `#2268` still genuinely queued (front position, 24/26 checks complete on its merge-group commit -- genuinely progressing). All three E-gates unchanged. `#1770` still no reply. `#2258` still no ruling. No new `nirmana-adjudication` issues; other tracked counts unchanged. Nothing eligible -- IDLE-OK. |
 | 677 | 2026-09-07T10:08Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2271` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 676. All three E-gates re-verified unchanged. `#1770` still no reply. `#2258` still no ruling. No new `nirmana-adjudication` issues; other tracked comment counts unchanged. Nothing eligible -- printing IDLE-OK |
 | 678 | 2026-09-07T10:11Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2271` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 677. All three E-gates re-verified unchanged. `#1770` still no reply. `#2258` still no ruling. No new `nirmana-adjudication` issues; other tracked comment counts unchanged. Nothing eligible -- printing IDLE-OK |
+| 679 | 2026-09-07T10:13Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2271` healthy `BLOCKED`/`MERGEABLE`, still pre-queue. Main unchanged since loop 678 (3 cycles static). All three E-gates re-verified unchanged. `#1770` still no reply. `#2258` still no ruling. No new `nirmana-adjudication` issues; other tracked comment counts unchanged. Nothing eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
