@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~419:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `AWAITING_CHECKS` — `#2287`'s own `merge_group` run: `TAP CI`/
+  `EKV` both completed/passed, `CI — Ganga Quality Gate` still
+  `in_progress`, genuine progress not a stall. No new `origin/main`
+  merges. IDLE-OK. — blocked on: `#2287` finishing; next action:
+  same.
 - `2026-09-07T~418:0xZ — L3-W4 — PR hygiene: `#2288` advanced to
   position 2 — `#2286` was `CLOSED` **without merging** (confirmed
   via GraphQL: `merged: false`, `mergeCommit: null`), not landed on
