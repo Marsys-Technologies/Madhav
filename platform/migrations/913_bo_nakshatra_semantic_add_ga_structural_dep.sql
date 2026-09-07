@@ -1,4 +1,4 @@
--- 911_bo_nakshatra_semantic_add_ga_structural_dep.sql
+-- 913_bo_nakshatra_semantic_add_ga_structural_dep.sql
 --
 -- NIRMĀṆA L2 Bodha — issue #2403 (D-NATIVE-12 Conductor ruling, 2026-09-07T23:37:34Z).
 --
