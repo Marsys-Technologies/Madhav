@@ -497,6 +497,47 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~452:0xZ — L3-W4 — PR hygiene: `#2310`'s last check,
+  same run, now ~8.1min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2310` finishing; next
+  action: same.
+- `2026-09-07T~451:0xZ — L3-W4 — PR hygiene: `#2310`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2310` finishing; next
+  action: same.
+- `2026-09-07T~450:0xZ — L3-W4 — PR hygiene: `#2310`'s pre-queue
+  check run in progress (~4.2min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2310` finishing; next action: same.
+- `2026-09-07T~449:0xZ — L3-W4 — PR hygiene: `#2310`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. One
+  new `origin/main` merge (`#2301`, L1: `ga_condition`
+  `output_digest_spec` — not a freeze event, no E-gate impact).
+  IDLE-OK. — blocked on: `#2310` clearing checks/queue; next action:
+  same.
+- `2026-09-07T~448:0xZ — L3-W4 — PR hygiene: `#2299` confirmed
+  MERGED (the ~11.2min queue delay self-resolved as suspected —
+  genuine runner congestion, not a stall). Rebased 26 local commits
+  onto fresh `origin/main`. Hit one genuine (non-empty-theirs)
+  conflict this time: an earlier commit's held-items table edit
+  collided with the later D-CND-26-resolution edit to the SAME row
+  (the earlier commit was itself mid-updating "5 assets" → the later
+  one had already updated it to "6 assets" with the full
+  `ka_gochara_resonance` reclassification) — resolved by keeping the
+  newer, correct 6-asset version and discarding the stale
+  intermediate one; verified post-rebase the table row is intact
+  and the historical "superseded" row is unaffected. Remaining 11
+  conflicts were standard empty-theirs, auto-resolved cleanly.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-29`, pushed, opened
+  `#2310`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2310`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~447:0xZ — L3-W4 — PR hygiene: `#2299` still position
   1, `AWAITING_CHECKS`, `enqueuedAt: 13:19:37Z` — now ~11.2min with
   no own `merge_group` run visible yet. Investigated: the repo shows
