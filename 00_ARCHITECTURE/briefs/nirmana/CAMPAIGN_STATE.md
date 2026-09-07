@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:37:05Z` — cycle 930: **L1 now running 2 in parallel — `ga_prashna` +
+  `ga_nakshatra` claimed simultaneously.** Genuine saturation behavior matching the directive.
+  `ga_prashna`'s `accepted_rebuild_observed` already landed. L2/L3 still zero movement, ~9 min
+  since the sharp nudge — giving one more cycle before a third identical ping. Δfrozen still +0
+  (50/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T11:34:55Z` — cycle 929: **IDLE-OK, Δfrozen +0.** `ga_prashna` building (1 slot
   active), L2/L3 still unmoved. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
   open. Adjudications unchanged (11).
