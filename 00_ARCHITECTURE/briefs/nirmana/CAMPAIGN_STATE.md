@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:26:45Z` — cycle 949: **IDLE-OK, Δfrozen +0.** No new events for `ga_dashas`,
+  `ga_transit_anchors`, or L2/L3's frontier since last check. Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:23:57Z` — cycle 948: **Flagged `ga_dashas` as a genuine outlier — stuck
   ~1h43m at `implementation_accepted` (10:41:00Z) while 9 other L1 assets froze around it.**
   Posted to #1713 (had a shell-escaping glitch drop the asset name mid-backtick — corrected in
