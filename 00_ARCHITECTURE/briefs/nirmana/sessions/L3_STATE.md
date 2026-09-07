@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~288:0xZ — L3-W4 — PR hygiene: `#2239` advanced to
+  position 1 (top of queue), own `merge_group` ~10min in, within the
+  confirmed ~11min normal range. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2239` finishing; next action: same.
 - `2026-09-07T~287:0xZ — L3-W4 — PR hygiene: `#2239`'s last check, same
   run, now ~8min, within the confirmed ~11min normal range. No new
   `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
