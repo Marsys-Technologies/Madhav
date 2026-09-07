@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~274:0xZ — L3-W4 — PR hygiene: `#2236` still position 1,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2236-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~3.2min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2236` finishing; next
+  action: same.
 - `2026-09-07T~273:0xZ — L3-W4 — PR hygiene: `#2236`'s checks finished
   (0 failures — the ~10.6min precedent held again). Now genuinely
   `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1 — its own
