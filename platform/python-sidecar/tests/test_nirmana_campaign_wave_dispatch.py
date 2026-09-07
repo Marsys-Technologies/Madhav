@@ -569,6 +569,103 @@ def test_l0_dispatch_receipt_binding_accepts_current_deployment_and_excludes_his
         )
 
 
+def test_accepts_a_verdict_bound_to_a_current_analysis_stamped_under_an_earlier_deploy() -> None:
+    """Adjudication #2317 (ruled 2026-09-07, Option (b)).
+
+    An asset_analysis_accepted event may be accepted under an earlier deployed
+    commit than the optimization_verdict_accepted event that binds it, once
+    the fleet has deployed again in between (adjudication #2224 made this a
+    legitimate pattern: the verdict's own assertNirmanaGitCommitMatchesDeployment
+    requires its source_ref match the CURRENT deploy, which is necessarily
+    later than whatever deploy the analysis was accepted under). The analysis
+    event's source_ref no longer needs to equal reviewed_deployment_sha -- its
+    content is independently verified via canonical_analysis_digests already.
+    The verdict's source_ref still must match reviewed_deployment_sha.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    analysis_digest = "2" * 64
+    earlier_deploy_sha = "a" * 40
+    current_deploy_sha = "b" * 40
+    assert earlier_deploy_sha != current_deploy_sha
+
+    bindings = module.validate_wave_evidence_bindings(
+        asset_ids=["ga_transit_anchors"],
+        live_registry_fingerprints={"ga_transit_anchors": current_fingerprint},
+        canonical_analysis_digests={"ga_transit_anchors": analysis_digest},
+        reviewed_deployment_sha=current_deploy_sha,
+        evidence_rows=[
+            _evidence_row(
+                event_id=1,
+                asset_id="ga_transit_anchors",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=analysis_digest,
+                source_ref=f"git:{earlier_deploy_sha}",
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="ga_transit_anchors",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=analysis_digest,
+                source_ref=f"git:{current_deploy_sha}",
+            ),
+        ],
+    )
+
+    assert bindings == {
+        "ga_transit_anchors": {
+            "registry_fingerprint_sha256": current_fingerprint,
+            "analysis_digest": analysis_digest,
+        }
+    }
+
+
+def test_still_rejects_a_verdict_whose_own_source_ref_is_not_the_reviewed_deployment() -> None:
+    """Adjudication #2317 (ruled 2026-09-07, Option (b)).
+
+    The relaxation is scoped to the analysis event only. A verdict event
+    stamped to neither the current deployment NOR any reviewed generation
+    must still be refused -- the verdict's own source_ref is the one
+    representing "this decision was reviewed under this specific commit."
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    analysis_digest = "2" * 64
+    current_deploy_sha = "b" * 40
+    stale_verdict_sha = "c" * 40
+    assert stale_verdict_sha != current_deploy_sha
+
+    with pytest.raises(RuntimeError, match="current live"):
+        module.validate_wave_evidence_bindings(
+            asset_ids=["ga_transit_anchors"],
+            live_registry_fingerprints={"ga_transit_anchors": current_fingerprint},
+            canonical_analysis_digests={"ga_transit_anchors": analysis_digest},
+            reviewed_deployment_sha=current_deploy_sha,
+            evidence_rows=[
+                _evidence_row(
+                    event_id=1,
+                    asset_id="ga_transit_anchors",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256=current_fingerprint,
+                    analysis_digest=analysis_digest,
+                    source_ref=f"git:{current_deploy_sha}",
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="ga_transit_anchors",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256=current_fingerprint,
+                    analysis_digest=analysis_digest,
+                    source_ref=f"git:{stale_verdict_sha}",
+                ),
+            ],
+        )
+
+
 def test_l0_dispatch_receipt_binding_rejects_stale_convergence_source() -> None:
     module = _load_dispatch_module()
     assert module is not None
