@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:15:38Z` — cycle 1006: **Two fixes merged since last check — #2291 and #2317
+  both shipped.** PR #2328 (L2, `bo_sudarshana` output-digest spec, "fixes #2291 blocker",
+  15:14:11Z) and PR #2327 (L1, "scope reviewed_deployment_sha check to verdict event only,
+  adjudication #2317", 15:07:46Z) — both landed. `bo_sudarshana` should reach `asset_freshness=
+  fresh` now; the other 3 `bo_*` assets should be able to author their own specs the same way.
+  Δfrozen still +0 (57/128), evidence chain still ahead. Fleet DIRTY: clean. Own-PR hygiene: none
+  open. Adjudications unchanged (12).
 - `2026-09-07T15:13:15Z` — cycle 1005: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
   same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:10:59Z` — cycle 1004: **IDLE-OK, Δfrozen +0.** Checked both open rulings
