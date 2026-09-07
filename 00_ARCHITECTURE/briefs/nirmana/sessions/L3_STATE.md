@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~475:0xZ — L3-W4 — PR hygiene: `#2330`'s
+  `DB Integration Tests` now passed; `Unit Tests`/`Governance Gates`
+  still pending, nothing red. One new `origin/main` merge (`#2324`,
+  L5 heartbeat — no L3 overlap). No new E-gate opening. IDLE-OK. —
+  blocked on: `#2330` clearing checks/queue; next action: same.
 - `2026-09-07T~474:0xZ — L3-W4 — PR hygiene: `#2330`'s pre-queue
   checks running (`DB Integration Tests`, `Unit Tests`,
   `Governance Gates` all `pending`, nothing red), early stage. No new
