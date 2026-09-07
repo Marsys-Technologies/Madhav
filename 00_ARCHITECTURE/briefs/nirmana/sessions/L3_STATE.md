@@ -496,6 +496,50 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~346:0xZ — L3-W4 — Located and verified `analysis_digest`'s
+  exact formula (my earlier "3 unknowns" note was wrong about it being
+  free-hash-of-doc-text). Traced `canonicalNirmanaAssetAnalysisDigestForRegistryRow`
+  (`definitions.ts:1144`) → it is NOT a hash of the W1/W2 analysis
+  markdown at all — it's `sha256(stableJson({schema_version:
+  'nirmana-asset-analysis-receipt/v1', base: receiptBase,
+  frozen_manifest_asset: <frozen manifest's asset entry>,
+  current_registry_contract: registryContractFingerprintInput(liveRow)}))`,
+  where `receiptBase` comes from `getNirmanaAnalysisReceiptBase(assetId,
+  layer)` — itself NOT hardcoded per-asset but computed at runtime from
+  two generated JSON files (`nirmana-writer-digests.json` +
+  `nirmana-analysis-layer-pins.json`) via a fail-closed inventory-hash
+  check. Verified L3's pin is genuinely live right now, not stale:
+  computed the live `ka_*` writer-digest slice's SHA-256 in Python
+  (sorted keys, `json.dumps(separators=(",",":"))`, matching the TS
+  `Object.fromEntries(...).sort(localeCompare)` +
+  `JSON.stringify` convention) and it byte-matches the pinned
+  `writer_inventory_sha256` in `nirmana-analysis-layer-pins.json`
+  exactly (`6fd76349…0281ed`), with `receipt_count: 23` matching
+  live `22` writers + 1 `non_writer_assets` (`ka_gochara_sweep`) = 23.
+  **This means L3's analysis-receipt infrastructure is genuinely
+  available for all 23 `ka_*` assets right now** — not a missing
+  prerequisite, just an unexercised one. `analysis_digest` is fully
+  computable for `ka_tithi_pravesha` given: (1) its `receiptBase`
+  (constructible from the pin + its writer digest), (2) its exact
+  frozen-manifest asset entry (from
+  `nirmana_elevation_campaign_definitions.manifest`, definition
+  `t0-2026-09-01-0e5b06fb`), (3) its live `registryContractFingerprintInput`
+  (already verified computable last cycle). `canonicalNirmanaAssetAnalysisReceiptDigest`
+  uses the SAME `stableJson`+sha256 pattern as
+  `registry_fingerprint_sha256`, already cross-language-verified.
+  Remaining unknowns before an actual write: (1) `NirmanaAssetAnalysisReceiptSchema`'s
+  exact zod field list (need to confirm no extra/renamed fields vs.
+  what I've inferred structurally); (2) a valid `git:<40-hex>` `source_ref`
+  — likely the commit that carries `L3_W2_DECIDE_v1_0.md`, not yet
+  located; (3) the admin API's auth mechanism for
+  `/api/admin/nirmana-elevation/evidence`. `#2264` genuinely queued,
+  position 2, `AWAITING_CHECKS`. No new `origin/main` merges,
+  `ga_positions` confirmed still frozen. IDLE-OK-but-productive. —
+  blocked on: the 3 remaining unknowns above; next action: read
+  `NirmanaAssetAnalysisReceiptSchema`'s zod definition, find the
+  `L3_W2_DECIDE_v1_0.md` commit SHA via `git log`, and find the API
+  auth pattern (likely a service-role/admin bearer token similar to
+  `PYTHON_SIDECAR_API_KEY`) before attempting any write.
 - `2026-09-07T~345:0xZ — L3-W4 — Continued the W2-event-submission
   scoping from last cycle (`ka_tithi_pravesha` first candidate).
   Cross-verified `registry_fingerprint_sha256`'s algorithm byte-for-
