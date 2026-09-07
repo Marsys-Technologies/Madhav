@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~178:0xZ — L3-W4 — PR hygiene: `#2203`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 1 — past its own checks, waiting for its merge turn. One
+  more unrelated L1 merge (#2202), no L3 overlap, no new E-gate opening.
+  — blocked on: `#2203` finishing; next action: same.
 - `2026-09-07T~177:0xZ — L3-W4 — PR hygiene: `#2203`'s last check, same
   run, now ~10.1min — approaching but still within the confirmed ~11min
   normal range, still on the same `pytest` step. No new `origin/main`
