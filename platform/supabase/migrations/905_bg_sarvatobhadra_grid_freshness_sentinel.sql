@@ -1,4 +1,4 @@
--- Migration 902: bg_sarvatobhadra_grid asset_freshness sentinel row
+-- Migration 905: bg_sarvatobhadra_grid asset_freshness sentinel row
 -- =============================================================================
 -- CONDUCTOR ruling (D-NATIVE-12, overnight), issue #2393 — closing the mechanical
 -- DEP-ASSERT collision #2387 authorized dispatch on but did not itself resolve.
@@ -83,7 +83,7 @@ BEGIN
       AND state = 'lit';
     IF _cnt = 0 THEN
         RAISE EXCEPTION
-            'Migration 902 preflight failed: no asset_throughput(state=''lit'') row '
+            'Migration 905 preflight failed: no asset_throughput(state=''lit'') row '
             'for bg_sarvatobhadra_grid at global scope. Apply migration 553 first.';
     END IF;
 END $$;
@@ -97,7 +97,7 @@ BEGIN
     SELECT COUNT(*) INTO _cnt FROM bg_sarvatobhadra_grid;
     IF _cnt != 0 THEN
         RAISE EXCEPTION
-            'Migration 902 preflight failed: bg_sarvatobhadra_grid has % rows '
+            'Migration 905 preflight failed: bg_sarvatobhadra_grid has % rows '
             '(expected 0 — deliberately empty per ADJUDICATION-11). If content has '
             'landed, this sentinel is obsolete; re-evaluate rather than applying.',
             _cnt;
@@ -135,13 +135,13 @@ BEGIN
 
     IF _state IS NULL THEN
         RAISE EXCEPTION
-            'Migration 902 post-condition failed: no asset_freshness row found '
+            'Migration 905 post-condition failed: no asset_freshness row found '
             'for bg_sarvatobhadra_grid after INSERT. This should not happen.';
     END IF;
 
     IF _state != 'fresh' THEN
         RAISE EXCEPTION
-            'Migration 902 post-condition failed: asset_freshness.freshness_state=% '
+            'Migration 905 post-condition failed: asset_freshness.freshness_state=% '
             '(expected ''fresh'') for bg_sarvatobhadra_grid.', _state;
     END IF;
 END $$;
