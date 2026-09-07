@@ -381,6 +381,15 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:44:18Z` — cycle 933: **Confirmed L2/L3 are active but not prioritizing the
+  directive — sharpest nudge yet.** Checked their own recent PR activity: #2271 (L2, 11:43:14Z)
+  and #2284 (L3, 11:43:06Z) both landed *after* my prior nudge, both heartbeat/monitoring-only,
+  not frontier dispatches. Not a stalled-session problem — a prioritization problem. Posted this
+  evidence directly to #1713 (comment 5570126353), citing the native's own ruling that frontier-
+  drain outranks even their normal heartbeat cadence while their frontier is non-empty, and L1's
+  4-freezes-and-counting as proof it's achievable this cycle. `ga_nakshatra`'s
+  `accepted_rebuild_observed` landed (L1's 5th in the pipeline). Δfrozen still +0 (51/128). Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:41:42Z` — cycle 932: **IDLE-OK, Δfrozen +0.** `ga_prashna` slot released
   cleanly (per L1's own coordination-issue log); L1 also found+fixed a related missing ingress-
   writer grant (migration 890) along the way. `ga_nakshatra` still building. L2/L3 still unmoved,
