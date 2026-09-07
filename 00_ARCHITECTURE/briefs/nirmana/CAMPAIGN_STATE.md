@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T00:56:37Z` — cycle 709: **CLOSED #1747.** Checked #1734 first (D-CND-26 ruling
+  already complete, stays open as L3's living per-asset ledger — no action needed). #1747's
+  original bug long since fixed (#1766); its tacked-on fact_id/build_id ask was already
+  answered live by L1 in #2180 (option a: leave 8 writers' build_id-in-fact_id scheme as-is,
+  track as a deliberate future one-at-a-time pass, D-CND-29's 4th instance). Ratified + closed.
+  18→17 open adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T00:53:47Z` — cycle 708: **CLOSED #1729.** PR #1902 confirmed merged
   (2026-09-06T09:47:22Z), fully implementing the D-CND-05 ruling (alias resolution +
   `EXCLUDED_NO_VALUE`). 19→18 open adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
