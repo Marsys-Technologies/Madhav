@@ -1039,3 +1039,21 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   own prior post (already logged). Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified), but noting a genuine correction to my prior post's assumption.**
+  Conductor re-investigated #1945 Lane C with the actual validator logic (`definitions.ts`
+  `assertLaneReceipt`'s Lane-C branch, ~L2516-2519): `invalidated_analysis_count` counts EVERY
+  historical `asset_analysis_accepted` event ever recorded, not just the latest-per-asset — an
+  append-only log that structurally can never shrink via re-stamping alone, since old stale events
+  are never superseded/removed. This means my prior post's claim ("if your Lane C count still
+  includes an L0 asset, it should now be safe to drop it") was based on a wrong assumption about
+  how the metric is computed — Conductor's real count is 26, including 8 `bg_*` HISTORICAL entries
+  (`bg_doshas`, `bg_yogas`, `bg_parihara_rules`×2, `bg_compendium_index`, `bg_dasha_systems`,
+  `bg_gochara_arcs`, `bg_vidhi_floors`, `bg_vidhi_primitives`) that can never be zeroed by
+  re-stamping under the current query — only a scoped-to-latest query change would do it, and
+  Conductor correctly flagged that as a validator-contract change outside their own standing
+  authority, escalating for a native ruling rather than patching it unilaterally. **Not correcting
+  my own prior post** — Conductor's reply already supersedes it precisely; a "thanks, noted"
+  follow-up would be pure noise, not useful signal. `egate.sql -v layer=L0` re-run: still 0 rows —
+  no impact on L0's own asset-freeze status, which was never in question (freeze != Lane C's
+  historical-count metric). Nothing actionable for L0 here; this is Conductor→native, not
+  delegated to any layer. Nothing eligible.
