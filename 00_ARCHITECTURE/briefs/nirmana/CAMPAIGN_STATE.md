@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:16:53Z` — cycle 921: **IDLE-OK, Δfrozen +0.** ~4 min since #2272 merged, still
+  0 active slots, no new `build_runs` yet — too soon to read as a stall. Fleet DIRTY: clean.
+  Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:14:32Z` — cycle 920: **#2272 MERGED.** The fleet-wide `output_digest_spec`
   gap fix is now genuinely landed on `main`, not just live-applied out-of-band. L1's remaining 8
   eligible `ga_*` assets should now have a clean structural path to `accepted_rebuild_observed`.
