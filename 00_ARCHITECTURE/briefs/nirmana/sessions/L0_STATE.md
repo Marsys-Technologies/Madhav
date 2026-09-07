@@ -954,3 +954,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   proxy; always `ORDER BY recorded_at`. And: always compute against a fresh `origin/main` worktree
   for `src/generated/*.json`, never this branch's own copy — this is the second time this exact
   mistake nearly shipped wrong evidence, worth remembering for good.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0` re-run fresh: still 0
+  rows — all 40 stay frozen, no regression from yesterday's re-stamp. Adjudication list and #1713
+  tail both unchanged. Nothing eligible.
