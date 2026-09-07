@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 185; **F-B32 FULLY CLOSED (PR #2254): bare `tara_bala` was the backlog's last remaining named category, and its "no obvious existing-tool home" characterization was itself wrong.** `ga_structural_writer.py`'s own `_build_nakshatra_relationship_rows` docstring names it alongside `nakshatra_co_tenancy`/`nakshatra_lord_relationship` — both already served by `get_structural_signals.ts` since cycle 181. Added directly (43 live rows, single-writer). The original ~57-category F-B32 gap (quantified cycle 148) is now fully accounted for across 13 slices spanning 7 PRs. **PR hygiene caught and fixed 2 genuine DIRTY conflicts mid-cycle** (#2252 and #2247, both against #2250's just-landed merge, both touching `coverage_matrix.ts`'s F-B32 header comment) — rebased and re-merged the narrative sections carefully rather than picking one side, verified clean before re-pushing both. #2250/#2247/#2254 all confirmed genuinely queued or clean by cycle close; #2246/#2252 mid-CI, nothing DIRTY/RED remaining. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 186; **Governance-hygiene fix on the close report itself: found and corrected a stale §6/§5 claim that survived 2 close-out passes.** With F-B32 now fully closed, swept the close report's own OPEN section for anything else genuinely done-but-not-marked — found §6 (and §5's forward-work list) still said "6 MUST-tier id-groups (9 F-ids) rest on an uncited cycle-125 claim," a bullet that was actually resolved cycle 178 (all 6 independently re-verified and cited in §2.5's own "Honest count" paragraph) but never removed from §6/§5 when that work landed, surviving unnoticed through the F-B32 slice-8-through-13 close-out cycles. Corrected both spots to point at the real citation rather than leave a stale TODO that could mislead a future reader (or session) into re-doing already-done verification work. No code touched — docs-only, no PR needed, committed directly to the state branch alongside this cycle's own update. #2254/#2252 confirmed genuinely queued; #2247/#2246 mid-CI, nothing DIRTY/RED. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -10419,3 +10419,42 @@ mid-cycle merge -> next: confirm #2246/#2252/#2254 all reach `is:queued`; with F
 closed, the next highest-priority item is either the still-blocked `asset_frozen` E-gate
 (campaign-wide, not self-resolvable) or a fresh sweep of the close report's remaining OPEN items
 (§6: NOW/NEVER-LATER per-finding tables, cost actuals); keep re-checking #2113/#2180/#2224.
+
+## CYCLE 186 (C8 v2.3) — with F-B32 fully closed, swept the close report's own remaining OPEN
+## items for stale entries rather than assuming they're all still accurate
+
+PR hygiene first: `is:queued` showed #2254/#2252 genuinely queued at cycle open; #2246/#2247
+mid-CI, nothing DIRTY/RED. Checked #2113/#2180/#2224 -- no new Conductor reply.
+
+**Unit of work.** With F-B32 -- the single largest, most-worked item in this close report --
+now fully closed, the natural next step per Step 2's priority order was to look for the next
+genuinely-unheld W3 item rather than assume none exists. Re-read the close report's own §5
+forward-work list and §6 OPEN section start to finish, rather than trusting the last-known
+snapshot of what's open -- the same discipline that has repeatedly paid off finding stale claims
+elsewhere in this document (F-B32 itself, the get_nakshatra.ts docstring, `karaka_web_per_varga`,
+etc.).
+
+Found one: §6 (and §5's own forward-work bullet list) still read "6 MUST-tier id-groups (9
+F-ids) rest on an uncited cycle-125 claim rather than a dedicated re-check" -- but §2.5's own
+table, immediately below that exact claim in the SAME document, already shows all 6 (F-A10/
+F-A12, F-C8, F-A4/B2/B12, F-A9/B1/D14/E1/E15) independently re-verified and specifically cited,
+work that was actually completed cycle 178. The §6/§5 bullets were simply never updated when
+that work landed -- a stale TODO sitting seven cycles (178 through 185) alongside its own
+already-complete answer, unnoticed through several intervening close-out passes on this same
+file (including this session's own version bumps 0.30 through 0.42). Left uncorrected, a future
+session (or a fresh-context restart of this one) reading §6 first could have been misled into
+re-running verification work already done and cited two sections earlier in the same file.
+
+Corrected both spots to point at the real §2.5 citation rather than restate the stale claim,
+following the same "point, don't restate" discipline CLAUDE.md's own §D snapshot table uses for
+exactly this failure mode (a hardcoded number/claim drifting from its own source of truth). No
+code touched -- pure documentation correction, committed directly to the state branch (this file
+lives there, not in a code PR) alongside this cycle's own state update.
+
+CYCLE 186 L1: found and corrected a stale close-report claim (§6/§5 said 6 MUST-tier id-groups
+were still uncited; §2.5's own table already cited all 6 as of cycle 178) that had survived
+7 cycles and several intervening close-out passes unnoticed -> next: with F-B32 closed and this
+stale-claim sweep complete, the close report's genuinely remaining OPEN items are cost-actuals
+reconciliation (§4) and the NOW/NEVER-LATER per-finding tables (deliberately deferred, not
+stale) -- both smaller prep-tier items; the E-gate (#2224) remains the only real blocker on
+substantive new W4/W5 work; keep re-checking #2113/#2180/#2224 every cycle.

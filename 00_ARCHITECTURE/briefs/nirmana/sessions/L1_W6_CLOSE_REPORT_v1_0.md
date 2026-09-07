@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.42-DRAFT"
+version: "0.43-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -677,14 +677,20 @@ awaits either a dedicated prep cycle or genuine W6 close.
 - MUST-tier per-finding disposition table built §2.5 (cycle 158); NOW/NEVER-LATER tiers'
   per-finding tables remain OPEN (tier-level summaries in §2 already account for every finding
   in both, and neither has had a correction found against it).
-- A dedicated live re-check of the 6 MUST-tier id-groups (9 F-ids) §2.5 found resting on an
-  uncited cycle-125 claim rather than a specific PR/migration citation.
+- ~~A dedicated live re-check of the 6 MUST-tier id-groups (9 F-ids) §2.5 found resting on an
+  uncited cycle-125 claim rather than a specific PR/migration citation.~~ **DONE (cycle 178)**:
+  all 6 (F-A10/F-A12, F-C8, F-A4/B2/B12, F-A9/B1/D14/E1/E15) independently re-verified live and
+  cited in §2.5's own table — see the "Honest count" paragraph immediately following it. This
+  bullet was left stale here after that work landed; corrected cycle 186 rather than left to
+  mislead a future reader into re-doing already-done work.
 - Session-level cost actuals reconciliation (§4's own noted OPEN item).
 
 ## §6 — OPEN
 
-Per-finding disposition table — MUST tier built §2.5 (cycle 158), 6 id-groups (9 F-ids) still
-resting on an uncited cycle-125 claim rather than a dedicated re-check; NOW/NEVER-LATER tiers
+Per-finding disposition table — MUST tier built §2.5 (cycle 158); the 6 id-groups (9 F-ids)
+that once rested on an uncited cycle-125 claim were independently re-verified and cited by
+cycle 178 (see §2.5's own "Honest count" — this §6 bullet was stale, corrected cycle 186).
+NOW/NEVER-LATER tiers
 still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; slice 8 (2 more categories) landed cycle 180, PR
