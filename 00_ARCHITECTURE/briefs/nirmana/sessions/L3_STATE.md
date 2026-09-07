@@ -497,6 +497,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~523:0xZ — L3-W4 — PR hygiene: `#2358` confirmed
+  MERGED. Rebased 29 local commits onto fresh `origin/main`. **Hit a
+  rebase-tooling incident this cycle**: while resolving a genuine
+  (non-empty-theirs) conflict — a duplicate-timestamp-label case
+  where an earlier commit had accidentally reused `T~505` for
+  content that should have been `T~504` — a Python script that
+  spliced the file by hand-computed line indices used STALE indices
+  (from an earlier Read, not re-verified against the file's actual
+  current state) and truncated ~500 lines of heartbeat history on
+  write. **Caught immediately** via a routine line-count sanity check
+  (`grep -c heartbeat-entry-pattern` before staging) — the count
+  dropped from 390 to a handful, an unmistakable signal. Ran `git
+  rebase --abort` to cleanly discard the bad write (rebase was still
+  mid-conflict, nothing had been staged/committed), verified the
+  restored file was back to 390 entries/zero markers, then redid the
+  SAME two genuine conflicts (this one recurred identically across
+  a couple of the later cherry-picks too) by reading fresh exact
+  byte content each time and asserting line content before writing,
+  never trusting stale line numbers across edits. Post-rebase,
+  did a thorough integrity pass: 390 heartbeat entries (exact
+  pre-incident match), zero duplicate timestamps, D-CND-26 table
+  content confirmed intact. Renamed to
+  `codex/nirmana-l3-heartbeat-idle-36`, pushed, opened `#2369`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2369`'s own
+  checks completing; next action: same monitoring cadence, and going
+  forward re-verify line numbers fresh (not from a prior Read) before
+  any manual splice-by-index conflict resolution.
+
 - `2026-09-07T~522:0xZ — L3-W4 — PR hygiene: `#2358` still position
   1, `AWAITING_CHECKS` — same run, now ~10.2min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
