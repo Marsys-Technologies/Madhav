@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.23-DRAFT"
+version: "0.24-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -74,9 +74,18 @@ corrected via a dynamic-construction trace of `f"panchanga_{window_name}"`), `ga
 (874, 37 categories — same undercount class repeated: a for-loop-constructed `cat` variable in
 `_build_brahma_vishnu_shiva_rows` hid 3 categories a literal grep alone found only 34 of). **All
 7/7 `natural_key_partition` backfills from fix 1 are now shipped** (five of the seven still
-mid-CI/queued as of cycle 165's close, not yet confirmed merged to `main`). Only fix 2 remains
-before wave 1 can genuinely dispatch and read back `fresh`: `ga_positions`' own `output_digest_
-spec` (D-CND-27 recipe, precedent migrations 820/821/822) — not yet started. · **W5 ⛔ BLOCKED**
+mid-CI/queued as of cycle 165's close, not yet confirmed merged to `main`). **Fix 2 shipped
+cycle 166** (migration 875, PR #2220): `ga_positions`' `output_digest_spec`, scoped to the same
+4-category `chart_facts` slice via `where_equals`/`where_in`; `key_columns=fact_id` (confirmed
+stable across rebuilds since PR #1898); `value_columns` = every real content column minus
+`computed_at` + `build_id` (both bookkeeping — `build_id` a new exclusion this segment
+establishes, since including a volatile per-run UUID as content would make the digest differ on
+every rebuild regardless of real content change). Rehearsed live (rollback-only) before writing
+the migration, then independently re-confirmed the identical digest after applying for real.
+**Both fixes of #2180's second ruling are now fully shipped.** Not yet attempted: a genuine
+`ga_positions` re-dispatch to confirm `asset_freshness` actually reads back `'fresh'` — the
+original symptom that opened this sub-investigation, and the natural next step once the
+remaining `natural_key_partition` PRs are confirmed merged to `main`. · **W5 ⛔ BLOCKED**
 (no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
@@ -378,10 +387,15 @@ awaits either a dedicated prep cycle or genuine W6 close.
   names, not the ~16 this session had assumed), and `ga_sensitive` (migration 874, PR #2217,
   cycle 165 — same undercount class: a literal-string grep found 34 categories, but a
   for-loop-constructed `cat` variable in `_build_brahma_vishnu_shiva_rows` hid 3 more, true
-  total 37) — **7/7, all shipped**. **Still open**: `ga_positions`' own `output_digest_spec`
-  (fix 2 of #2180's two-part ruling) — the last prerequisite needed before wave 1 can genuinely
-  dispatch and read back `fresh`; five of the seven `natural_key_partition` PRs also not yet
-  confirmed merged to `main` as of cycle 165's close (mid-CI/queued).
+  total 37) — **7/7, all shipped**. `ga_positions`' own `output_digest_spec` (migration 875,
+  PR #2220, cycle 166) shipped: scoped to `chart_id` + the same 4-category `where_in` filter,
+  `key_columns=fact_id`, `value_columns` = all real content columns minus `computed_at`+
+  `build_id`; rehearsed live (rollback-only) before applying, then independently
+  re-confirmed the identical digest against the real persisted spec. **Both fixes of #2180's
+  two-part ruling now fully shipped.** **Still open**: whether a genuine `ga_positions`
+  re-dispatch now actually reads `asset_freshness.freshness_state` back as `'fresh'` — not yet
+  attempted; five of the seven `natural_key_partition` PRs also not yet confirmed merged to
+  `main` as of cycle 166's close (mid-CI/queued).
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated

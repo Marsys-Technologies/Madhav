@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 165; shipped natural_key_partition fix 7/7 -- the FINAL co-writer, ga_sensitive (migration 874, PR #2217). A literal-string-only grep found 34 categories, but ga_sensitive repeats ga_panchanga's exact undercount pattern (cycle 164): _build_brahma_vishnu_shiva_rows constructs its category via a for-loop over a literal tuple list, so the call site passes a bare variable invisible to a literal-argument grep -- surfacing 3 more categories (esoteric_point_brahma/vishnu/shiva). True total 37, confirmed no other dynamic-construction path exists (no f-strings; other variable-based calls are internal to _long_rows's own body; two dict-literal fallback rows both hardcode the already-counted kp_cuspal_significators). 34/37 confirmed live; the 3 absent (trisphuta/chatushphuta/panchasphuta) are an honest B.10 gap -- _build_trisphuta_family_rows needs sunrise_jd/birth_jd its sole caller never supplies. No overlap with any of the other six sibling writers. Applied locally, verified via psql, PR queued (autoMergeRequest armed, CI pending as of this cycle). **All 7/7 natural_key_partition fixes (fix 1 of #2180's two-part ruling) now shipped.** Only fix 2 remains before wave 1 can genuinely dispatch: ga_positions' own output_digest_spec (D-CND-27 recipe, not yet started). #2113/#2180 checked again this cycle -- no new Conductor reply (the 01:59:43 comment on #2180 is this session's own cycle-155 status update, already known)
+last_updated: 2026-09-07 — C8 v2.3 cycle 166; shipped ga_positions' output_digest_spec (migration 875, PR #2220) -- fix 2/2 of #2180's second ruling, the LAST prerequisite before wave 1 can dispatch. Scoped to chart_id + fact_category IN the same 4 categories migration 868 verified; key_columns=fact_id (chart_facts' real PK, confirmed stable across rebuilds since PR #1898 stripped build_id out of its hash); value_columns = every real content column except computed_at + build_id (both pipeline bookkeeping -- build_id excluded because it's a volatile per-run UUID that would make the digest differ every rebuild even with zero content change). spec_sha256 computed+validated via the real canonical_digest()/_validate_spec() functions; end-to-end rehearsed live (rollback-only INSERT+compute_output_digest()+ROLLBACK against production) BEFORE writing the migration, then independently re-confirmed the identical digest (d5837f05...) against the real persisted spec after applying for real -- same value both times, zero residue. **Both fixes of #2180's two-part ruling (natural_key_partition x7 + this output_digest_spec) are now fully shipped** -- wave 1 dispatch readiness itself (does asset_freshness actually read back 'fresh' now) is a separate, not-yet-attempted next step. #2113/#2180 checked again this cycle -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9067,4 +9067,76 @@ CYCLE 165 L1: PR hygiene clean; shipped `natural_key_partition` fix **7/7** (`ga
 #2217) — the final co-writer, correcting this session's own 34-category undercount to the true
 37 via the same dynamic-construction lesson `ga_panchanga` taught last cycle — next: `ga_positions`'
 own `output_digest_spec` (fix 2 of #2180, the last prerequisite before wave 1 can dispatch); keep
+re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 166 (C8 v2.3) — `ga_positions`' `output_digest_spec` (migration 875, PR #2220) — fix
+## 2/2 of #2180's second ruling, both fixes now shipped
+
+PR hygiene: `#2216` (`ga_panchanga`) genuinely `is:queued` per the authoritative search. `#2217`
+(`ga_sensitive`) and `#2201` (this state branch) both `mergeStateStatus: BLOCKED` but with zero
+RED checks — `gh pr checks` on both showed only `pending`/`skipping`/`pass`, the standard
+just-pushed mid-CI pattern, not a failure. Nothing DIRTY, nothing RED, nothing CLEAN-but-unqueued.
+Re-checked `#2113`/`#2180`: unchanged since cycle 165 (same two `amonty84` comments, both already
+fully accounted for — no new Conductor reply).
+
+**Unit of work: `ga_positions`' `output_digest_spec`, the last open item from #2180's second
+ruling.** Reviewed the D-CND-27 recipe precedent directly (migrations 820/821/822, L5's
+`mi_jivanaghatana`/`mi_vistara`/`mi_kula`) and `output_digest.py`'s own validator/compute
+functions (`_validate_spec`, `_where_in`, `compute_output_digest`) before writing anything.
+
+Design decisions, each independently verified rather than assumed:
+- **Scope**: `ga_positions` shares `chart_facts` with six other co-writers, so the digest must
+  scope to exactly its own slice — `where_equals: {chart_id: <canonical>}` (same mechanism
+  migration 820 used for `mi_jivanaghatana`'s per-chart scoping) AND `where_in: {fact_category:
+  [...]}` using the identical 4-category list migration 868 already verified against
+  `ga_positions_writer.py`'s actual write sites (`bhava_cusps`, `graha_position`,
+  `graha_sign_attributes`, `house_chalit` — confirmed pre-sorted, satisfying `_where_in`'s
+  sortedness requirement).
+- **`key_columns: ["fact_id"]`** — `chart_facts`' actual registered PK (`chart_facts_pkey`,
+  confirmed via `\d chart_facts`). Read `ga_positions_writer.py`'s `_fact_id()` directly to
+  confirm it's a deterministic SHA-256 of `(category, subject, key, chart_id, ayanamsha_id)`
+  since PR #1898/#1747 stripped `build_id` out of the hash specifically to make `fact_id` stable
+  across rebuilds — safe to use as a sort key since `key_columns` is never hashed into digest
+  content, only used for ordering + NULL-preflight.
+- **`value_columns`**: all 25 `chart_facts` columns minus `computed_at` (row-insert timestamp,
+  same bookkeeping-exclusion class as `created_at`/`updated_at` in 820/821/822) and, a NEW
+  exclusion this segment establishes (no precedent table had this column): `build_id` — an
+  arbitrary per-run UUID with no business content; including it would make the digest differ on
+  every single rebuild even when nothing computed actually changed, defeating compute_output_
+  digest's whole purpose of detecting real content drift (same reasoning that motivated pulling
+  `build_id` out of `fact_id`'s own hash in #1747). `fact_id` itself IS included in value_columns
+  (mirrors `mi_jivanaghatana`'s precedent of including its own key columns as content too), since
+  it is now genuinely stable/deterministic, not volatile.
+
+Computed `spec_sha256` and validated the spec via the REAL `canonical_digest()`/`_validate_spec()`
+functions (never hand-reimplemented) — passed. **End-to-end rehearsed live BEFORE writing the
+migration file**: opened a rollback-only transaction, `INSERT`ed the spec row, called the real
+`compute_output_digest(cur, asset_id='ga_positions')` against production, captured
+digest=`d5837f05...` over 1115 live rows for the canonical chart, zero NULL-key rows, then
+`ROLLBACK`ed and independently re-verified via a fresh connection that 0 spec rows remained for
+`ga_positions`. Only after this rehearsal succeeded did I write the migration file.
+
+Migration numbering: re-verified live — `origin/main` highest still 872; 873 (`ga_panchanga`) and
+874 (`ga_sensitive`) both still reserved by their own still-open PRs. Used **875**. Branched fresh
+off `origin/main`, wrote the migration, ran `--dry-run` (875 the only pending), applied for real,
+verified the spec row persisted via direct `psql`, then called `compute_output_digest()` again
+against the now-real (not rehearsed) state — got the IDENTICAL digest value
+(`d5837f053d6fc7f192f851ecd538057a950b4acf6af1315681d486f4c82c120f`), confirming determinism
+end-to-end. Committed, pushed, opened PR #2220, queued via `gh pr merge --auto`
+(`autoMergeRequest.enabledAt` confirmed set; `mergeStateStatus: BLOCKED` pending CI, the standard
+just-opened pattern).
+
+**Both fixes of #2180's second ruling are now fully shipped**: `natural_key_partition` ×7
+(migrations 868-874) and `ga_positions`' `output_digest_spec` (migration 875). This closes every
+registry-configuration prerequisite the ruling identified. **Not yet attempted**: whether a
+genuine re-dispatch of `ga_positions` now actually reads `asset_freshness.freshness_state` back
+as `'fresh'` (the original symptom that opened this whole sub-investigation) — that requires an
+actual W4 dispatch against the DEP-ASSERT gate, a separate, larger unit of work than this cycle's
+scope, and the natural next priority-1 item once the five still-mid-CI PRs (870/871/872/873/874)
+are confirmed merged to `main`.
+
+CYCLE 166 L1: PR hygiene clean; shipped `ga_positions`' `output_digest_spec` (migration 875, PR
+#2220) — **both fixes of #2180's second ruling now complete** — next: confirm the five
+still-queued `natural_key_partition` PRs land on `main`, then attempt a genuine `ga_positions`
+re-dispatch to verify `asset_freshness` actually reads back `'fresh'`, unblocking wave 1; keep
 re-checking #2113/#2180 every cycle regardless.
