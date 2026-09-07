@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycles 189-190; dispatched `ga_dashas` (highest downstream leverage of the 8 newly-eligible assets, tied with `ga_vargas`, 8 blocked siblings each) toward W4/W5. **Discovered and fixed a fleet-wide structural gap**: `asset_output_digest_specs` had rows for `ga_positions` ONLY, so every other L1 asset's `accepted_rebuild_observed` was structurally blocked (`receipt_state='unknown'` even on a correct, completed build) — closed for `ga_dashas` via migration 880 (PR #2272), spec design verified against live data (excluded `dasha_row_id`/`parent_row_id`, both random UUIDs regenerated every rebuild that would otherwise break `digest_identical` detection entirely). Real Cloud Run Job build redispatched after the fix landed; receipt confirmed `proven`. `accepted_rebuild_observed` recorded clean. **`ga_dashas` NOT frozen this cycle**: its `integrity_check_sql` measured 48.5s real execution (direct `psql`, no artificial limit) against the ingress pool's 25s `statement_timeout` — a genuine, reproducible defect (query scans all 3 canonical charts' `chart_dashas`, ~1.46M rows total, unscoped), not a transient load fluke. Deliberately did NOT rewrite the SQL this cycle: the check's own comments show its multi-chart scope (mentions chart `1c826d5a` specifically) looks intentional, not an oversight, so narrowing it to canonical-chart-only would be a real coverage tradeoff needing its own deliberate pass, not a rushed side-effect of a dispatch cycle. `capsule_audit.sql` §1/§2 stayed clean throughout (no partial/false capsule). #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 191; **PR hygiene RED gate fixed**: migration 880 (`ga_dashas` `output_digest_spec`, cycle 190) collided with L2's own independently-authored 880 (PR #2262, merged first) — a genuine authoring-time numbering race, not a mistake. Renumbered to 881 and filed the disclosed-renumber reconciliation (`migration_renumber_disclosed.json`, `disposition: already-applied-under-old-name`), verified live via `migrate.ts` (`Reconciled (not executed)`, exactly one row in `asset_output_digest_specs`, no double-insert). PR #2272 pushed, auto-merge still armed. Cycles 189-190 (still open on this same PR #2273): dispatched `ga_dashas` toward W4/W5 — real `accepted_rebuild_observed` recorded clean against a `proven` receipt, but NOT frozen: `integrity_check_sql` measures 48.5s real execution against the ingress pool's 25s `statement_timeout` (genuine, reproducible — scans all 3 canonical charts' `chart_dashas` unscoped, ~1.46M rows), deliberately left for its own deliberate pass rather than rushed (the check's own comments suggest multi-chart coverage is intentional design). `capsule_audit.sql` §1/§2 stayed clean throughout (no partial/false capsule). #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -11028,3 +11028,40 @@ whole evidence chain under the new registry generation and finish the freeze; or
 legitimate, native/Conductor has no stated preference between them. Check
 `asset_output_digest_specs` for the target asset BEFORE dispatching, now that the gap is
 known. Keep checking #2113/#2180/#2224 for new Conductor replies.
+
+## CYCLE 191 (C8 v2.3) — PR hygiene RED gate: migration 880 numbering collision
+## with L2's own 880, root-caused and fixed via the disclosed-renumber mechanism
+
+PR hygiene surfaced a genuine RED gate on PR #2272 (last cycle's `ga_dashas`
+`output_digest_spec` migration): "Unit Tests" failing with `FAIL [E2 NEW-COLLISION]
+migration number 880 is claimed 2 times`. Root cause: L2's own
+`880_nirmana_l2_bo_sudarshana_natural_key_partition.sql` (PR #2262) merged to `main` first —
+a genuine authoring-time numbering race between two parallel campaign lanes (each session
+checks `origin/main` + open PRs for the next free number at authoring time, but two sessions
+can both see 880 free within the same window), not a mistake on either side.
+
+Renumbered mine to 881 (the next free number after rebasing onto L2's merge). Since the SQL
+had ALREADY been applied to production under the 880 filename (verified live in cycle 190 —
+`asset_output_digest_specs` has the row, `ga_dashas`'s redispatched build already landed
+`receipt_state='proven'` against it), this is exactly the "disclosed renumber" hazard
+`scripts/migrate.ts` has dedicated machinery for (`MigrationRenumberedError` /
+`migration_renumber_disclosed.json`) — the same mechanism and pattern L5's own
+`output_digest_spec` migrations already hit twice this campaign (692→821, 806→820). Filed
+the reconciliation entry (`disposition: already-applied-under-old-name`, `sql_identity`
+computed via the documented `sqlIdentityOf` command, matching exactly). Verified live, not
+assumed: re-ran `migrate.ts` against production and confirmed `Reconciled (not executed):
+881_... — already applied as 880_...` — exactly one row in `asset_output_digest_specs`
+(no double-insert), both `880_...` and `881_...` filenames correctly tracked in
+`_migrations_applied`. PR #2272 pushed with the fix, auto-merge still armed, mid-CI.
+
+No campaign W4 dispatch work this cycle — PR hygiene's RED-gate fix was substantial enough
+(root-cause diagnosis, not a trivial rename) to be this cycle's bounded unit, per the same
+precedent cycle 182's own genuine RED-gate fix set.
+
+-> next: resume the choice left open at cycle 190's close — either take on `ga_dashas`'
+`integrity_check_sql` timeout as its own deliberate bounded unit (decide scope-narrowing vs.
+multi-chart-preserving optimization, then resubmit its evidence chain under the new registry
+generation), or move to `ga_vargas` (tied-highest downstream leverage, 8 blocked siblings) and
+return to `ga_dashas` after. Check `asset_output_digest_specs` for whichever asset is picked
+next BEFORE dispatching. Keep checking #2113/#2180/#2224 for new Conductor replies; re-verify
+PR #2272/#2273 reach `is:queued` next cycle before starting new work.
