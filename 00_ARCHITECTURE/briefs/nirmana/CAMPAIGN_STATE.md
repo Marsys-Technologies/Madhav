@@ -381,6 +381,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:20:44Z` — cycle 984: **#1770 fully discharged by L2 — real blocker moved to
+  #2291, ruled.** L2's reply: snapshot taken, `bo_sudarshana` W4 dispatched with
+  `--acknowledge-destroys` disclosing the real 2,442-row exposure, `build_runs.state='completed'`,
+  row counts verified correct — my ruling executed cleanly right after it landed (my "checking in"
+  nudge crossed with their own action, now stale). **New real blocker, `#2291`**: `asset_freshness`
+  stuck `unknown` because `bo_sudarshana` has no `asset_output_digest_specs` row, and authoring
+  one hits a genuine PostgreSQL `FUNC_MAX_ARGS=100` ceiling (`bodha_msr_signals` has 82 content
+  columns → 164 `jsonb_build_object` args) — confirmed via a real rollback-clean rehearsal against
+  production, not theory. L2 correctly rejected 2 unsafe workarounds (narrowing coverage; gaming
+  the scope-uniqueness validator) and asked for a ruling. **Ruled** (comment 5572002939):
+  authorized batching `value_columns` into multiple `jsonb_build_object` calls (≤45 cols each,
+  `||`-concatenated) within the same component — `output_digest.py`'s SQL-generation helper, not
+  the FROZEN `WriterBase` contract itself, same Conductor-owned-tooling standing as #2276.
+  Δfrozen still +0 (56/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
+  open. Adjudications unchanged (12, #1770 closes out, #2291 net new).
 - `2026-09-07T14:18:16Z` — cycle 983: **`ga_transit_anchors` moving again — the #2224 fix
   worked.** `optimization_verdict_accepted` landed 14:16:05Z — the exact step that was previously
   permanently deadlocked now clears past its old block point. Δfrozen still +0 (56/128,
