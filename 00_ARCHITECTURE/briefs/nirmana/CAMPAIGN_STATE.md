@@ -381,6 +381,17 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:30:36Z` — cycle 860: **IDLE-OK, Δfrozen +0 (expected — rulings just posted last
+  2 cycles, no time for L1/L3 to act yet).** PR hygiene: `--author @me` (gh auth is the shared
+  `amonty84` identity, not a Conductor-specific bot — confirms all my adjudication comments post
+  under that same account) surfaced 2 CONFLICTING PRs, #1180 and #446 — both pre-campaign,
+  native-authored artifacts (Aug 10 / Jul 6), not active fleet lane work. Live-verified #1180's
+  premise (`bg_sky_events`→`bg_sky_calendar` rename) already shipped via migration 594; posted a
+  flag rather than rebasing a PR with nothing left to fix (comment 5567717457). #446 is an
+  ancient pre-Nirmana-campaign docs PR (BA_PHASE_3 era) — left alone, out of scope, no action
+  needed. No new replies on #2180/#1945 yet. Frontier unchanged: `ga_positions`,
+  `ka_gochara_resonance` still undispatched. Fleet DIRTY (bot lane PRs): empty. Adjudications
+  unchanged (11).
 - `2026-09-07T08:27:06Z` — cycle 859: **D-NATIVE-08 >1-cycle staleness confirmed → ruled #2180,
   the real ga_positions blocker.** Frontier re-check: `ga_positions`/`ka_gochara_resonance` still
   undispatched (frozen_total still 46/128, Δfrozen=0), now genuinely stale >1 cycle per the
