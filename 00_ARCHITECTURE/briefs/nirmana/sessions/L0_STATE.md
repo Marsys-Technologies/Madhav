@@ -925,3 +925,32 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   no new activity since. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0` re-run fresh: still 0
   rows. Adjudication list and #1713 tail both unchanged since last cycle. Nothing eligible.
+- 2026-09-07 — **Proactive hygiene sweep: full L0 registry-fingerprint drift check across all 40
+  frozen assets (the #2224/#1945 "invalidated analysis" mechanism, applied to L0's own layer before
+  it bites a future rebuild).** For each of the 40, recomputed the live `registry_fingerprint_sha256`
+  and compared against the stored accepted-analysis fingerprint. First pass found 6 "drifted"
+  (`bg_dasha_systems`, `bg_doshas`, `bg_gochara_arcs`, `bg_parihara_rules`, `bg_vidhi_primitives`,
+  `bg_yogas`) and attempted to re-stamp all 6 — **all 12 submissions correctly bounced (409s), which
+  surfaced a real bug in my OWN analysis, not a platform defect: I'd picked each asset's "latest"
+  accepted-analysis row via `ORDER BY event_id DESC`, but `event_id` is `gen_random_uuid()` — not
+  time-ordered at all. 5 of the 6 were false positives from comparing against the wrong (non-latest)
+  row; my computed digests for those 5 were ALSO wrong for a second, independent reason (read
+  `nirmana-writer-digests.json`/`nirmana-analysis-layer-pins.json` from this branch's own stale
+  worktree instead of a fresh `origin/main` checkout — the SAME trap from #2240, self-repeated one
+  cycle later).** No harm done — evidence is append-only and idempotency/conflict guards rejected all
+  6 bad submissions cleanly; nothing corrupted. Redid the check correctly: `ORDER BY recorded_at DESC`
+  for "latest," fresh worktree for the generated files. **Real result: only 1 asset genuinely
+  drifted — `bg_vidhi_primitives`** (last accepted 2026-09-04, before PR #2153's `from_moon_view`
+  routing fix changed its writer digest 93469b4c...→63f0a35a...; the other 5 had already been
+  correctly re-stamped by whoever did that work, I just couldn't see it through my own ordering bug).
+  Also learned along the way: the evidence route's git-commit check validates against the LIVE
+  SERVER's own `NIRMANA_DEPLOYED_SHA` env var (`assertNirmanaGitCommitMatchesDeployment` in
+  `definitions.ts`), not just any valid main-branch commit — fetched the actually-deployed SHA from
+  `amjis-web`'s own live serving revision's `commit-sha` label (`7d3008f08...`) rather than guessing.
+  Re-stamped `bg_vidhi_primitives` correctly with the fresh digest bound to that exact deployed SHA —
+  **both `asset_analysis_accepted` and `optimization_verdict_accepted` accepted (HTTP 201).** All 40
+  L0 assets' accepted analyses now genuinely match their live registry contracts. Lesson for future
+  cycles, logged plainly: `event_id` is a random UUID in this schema — never use it as a recency
+  proxy; always `ORDER BY recorded_at`. And: always compute against a fresh `origin/main` worktree
+  for `src/generated/*.json`, never this branch's own copy — this is the second time this exact
+  mistake nearly shipped wrong evidence, worth remembering for good.
