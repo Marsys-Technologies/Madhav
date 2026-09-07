@@ -497,12 +497,47 @@ your layer close.
 
 ## Heartbeat
 
-- `2026-09-07T~382:0xZ — L3-W4 — PR hygiene: `#2280`'s pre-queue check
-  run still `in_progress` (~4.8min, well within the confirmed ~11min
-  normal range). `Unit Tests` still pending. No new `origin/main`
-  merges, `ga_dashas`/`ga_sensitive` still `OPEN-PENDING-PIN`. No new
-  E-gate opening. IDLE-OK. — blocked on: `#2280` finishing; next
-  action: same.
+- `2026-09-07T~383:0xZ — L3-W4 — EXTERNAL INSTRUCTION RECEIVED
+  mid-cycle: "drain the eligible frontier" across L1(9)/L2(1)/L3(6),
+  dispatch W4→verify→freeze back-to-back until empty, keeping ≤3
+  concurrent slots busy. Applied the same scrutiny as the earlier
+  `ka_gochara_resonance` conflict: (1) **L1 (9 assets:
+  `ga_vargas`/`ga_dashas`/`ga_sensitive`/`ga_panchanga`/`ga_prashna`/
+  `ga_nakshatra`/`ga_transit_anchors`/`ga_sensitive_degree`/
+  `ga_ayurdaya`) and L2 (`bo_sudarshana`) are OUT OF THIS SESSION'S
+  SCOPE** — this is the L3 session; L1 and L2 each have their own
+  dedicated concurrent sessions actively working exactly these items
+  right now (evidenced repeatedly this window: `339261664` "L1: state
+  cycles 189-190 — `ga_dashas` dispatched", and several cycles ago
+  "L2 W4 EXECUTE: `bo_sudarshana` natural_key_partition" — both from
+  those sessions' own state files, not mine). Dispatching them from
+  here would race/duplicate against active concurrent work, not
+  drain anything. (2) **For the 6 named L3 assets, re-verified live —
+  all unchanged from prior cycles, zero new information:**
+  `ka_gochara_resonance` remains genuinely HELD per the standing
+  D-CND-26 ruling, which the native/operator explicitly upheld via
+  `AskUserQuestion` in this very session a handful of cycles ago
+  ("Hold per D-CND-26") — re-litigating an answer just given isn't
+  warranted. The other 5
+  (`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/
+  `ka_tithi_pravesha`/`ka_vedha_gochara`) remain blocked on the SAME
+  hard technical wall exhaustively proven a few cycles ago: their W2
+  campaign events (`asset_analysis_accepted`/
+  `optimization_verdict_accepted`) require `requireSuperAdmin()`
+  session auth this Bash-only session does not have, and this
+  session's own DB credential (`amjis_app`) is confirmed `SELECT`-
+  only on the events table — this is not a judgment call to
+  re-investigate, it is a hard access-control fact already verified.
+  Correctly did NOT attempt any cross-layer dispatch or write-access
+  workaround. Decide-and-log per the standing supervisor contract,
+  not a new adjudication (nothing here is actually ambiguous — every
+  blocker was already conclusively established with evidence).
+  Resuming routine PR hygiene: `#2280`'s pre-queue check
+  run still `in_progress` (~8.1min, within the confirmed ~11min
+  normal range). No new `origin/main` merges. All 6 named L3 assets
+  re-verified live this cycle, unchanged (see above). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2280` finishing; next action:
+  same.
 - `2026-09-07T~381:0xZ — L3-W4 — PR hygiene: `#2280`'s pre-queue check
   run still `in_progress` (~2.5min, well within the confirmed ~11min
   normal range). `DB Integration Tests` now passed. No new
