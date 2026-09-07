@@ -33,7 +33,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from . import WriterBase, ContextSpec, WriterResult
+from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.grounding_matcher import classify_yoga_dosha_firing, classify_msr_signal
 
 logger = logging.getLogger(__name__)
@@ -97,15 +97,14 @@ def _match_to_row(match, chart_id: str, ayanamsha_id: str, build_id: str, now: s
     }
 
 
-# REGISTRATION DEFERRED (#2258): the receipt-spine gate (nirmana_analysis_layer_pins
-# --check) pins L2's receipt_count to the frozen campaign manifest's 22 bo_* assets;
-# a 23rd registered writer can never pass it until the Conductor rules how a net-new
-# mid-campaign asset joins the manifest (amendment vs. pins-script extension).
-# When that ruling lands: re-import the register decorator, apply it to this class
-# with asset id bo_grounding, add the asset_registry seed row + has_writer migration,
-# and regenerate digests + the L2 pin. (Deliberately NOT spelled as the decorator
-# call here -- test_has_writer_completeness.py's three-way diff collects writer ids
-# by regex over source, comments included.)
+# Registered per D-NATIVE-11 (#2258, native-ruled 2026-09-07): bo_grounding is a
+# SUPPORTING infrastructure writer -- registered in the orchestrator DAG so it runs
+# and its dependents see it, deliberately NOT added to the frozen 128-asset
+# elevation manifest (the denominator stays 128; no separate terminal capsule; its
+# correctness is verified as part of the grounding of the assets it serves). The
+# receipt spine accommodates this via SUPPORTING_WRITERS in
+# scripts/generate/nirmana_analysis_layer_pins.py.
+@register("bo_grounding")
 class BoGroundingWriter(WriterBase):
     """bo_grounding: D-GROUNDING tier-assignment matches for the v1 target scope."""
     asset_id = "bo_grounding"

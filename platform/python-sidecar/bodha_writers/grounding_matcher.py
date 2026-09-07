@@ -44,6 +44,8 @@ v1 scope (Conductor-ruled, #2258 (a)): target_kind in
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -65,6 +67,17 @@ class GroundingMatch:
 # confirmed with current data -- a rule using them never contributes to
 # sruti or yukti here (ambiguity -> lower tier, not a guess).
 _VERIFIABLE_RELATION = "occupies"
+
+# sutravali_rules.verse_ref is page:column shaped for every row in the corpus
+# ("PG94:C1" -- 3,002/3,002 verified live 2026-09-08). #1726 condition 3's
+# ruled sruti definition requires the stored granularity to say what the
+# corpus actually supports: a page-column ref must never be stored wearing
+# the finer-sounding 'chapter_verse' label.
+_PAGE_COLUMN_REF = re.compile(r"^PG\d+:C\d+$")
+
+
+def _citation_granularity(verse_ref: Any) -> str:
+    return "page_column" if _PAGE_COLUMN_REF.match(str(verse_ref or "")) else "chapter_verse"
 
 
 def _occupies_pairs(antecedent_jsonb: Any) -> list[tuple[str, int]] | None:
@@ -121,7 +134,7 @@ def classify_yoga_dosha_firing(
                 target_kind="yoga_dosha_firing",
                 target_id=target_id,
                 grounding_tier="sruti",
-                citation_granularity="chapter_verse",
+                citation_granularity=_citation_granularity(rule.get("verse_ref")),
                 grounding_evidence_jsonb={
                     "text_id": rule.get("text_id"),
                     "verse_ref": rule.get("verse_ref"),
@@ -193,7 +206,11 @@ def classify_msr_signal(
             target_kind="msr_signal",
             target_id=target_id,
             grounding_tier="sruti",
-            citation_granularity="chapter_verse",
+            # No verse_ref is available on this path (ids only), and the corpus
+            # behind rule_ids/text_chunk_ids is the same page-column-paginated
+            # one (#1726 condition 3) -- claim the granularity the corpus
+            # actually supports, never the finer-sounding one.
+            citation_granularity="page_column",
             grounding_evidence_jsonb={"rule_ids": rule_ids, "text_chunk_ids": text_chunk_ids},
             derivation_chain=[matched_id],
             matched_rule_id=matched_id,

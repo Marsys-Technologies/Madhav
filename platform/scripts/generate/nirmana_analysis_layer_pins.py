@@ -49,6 +49,17 @@ WRITER_DIGESTS_PATH = GENERATED / "nirmana-writer-digests.json"
 PINS_PATH = GENERATED / "nirmana-analysis-layer-pins.json"
 
 PINS_VERSION = "nirmana-analysis-layer-pins/v1"
+
+# D-NATIVE-11 (#2258, native-ruled 2026-09-07): supporting infrastructure
+# writers are registered in the orchestrator DAG (so they run and their
+# dependents see them) but are NOT elevation-denominator assets -- they never
+# join the frozen manifest, produce no terminal capsule, and are verified as
+# part of the grounding of the assets they serve. They therefore stay OUT of
+# receipt_count arithmetic, while remaining IN writer_inventory_sha256: a
+# supporting writer's code change must still fail the spine closed and force
+# a reviewed re-pin, exactly like any other writer in the layer.
+SUPPORTING_WRITERS = frozenset({"bo_grounding"})
+
 LAYER_PREFIX = {
     "L0": "bg_",
     "L1": "ga_",
@@ -201,7 +212,9 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
             )
         expected_receipts = pin.get("receipt_count")
         actual_receipts = sum(
-            1 for asset_id in writer_digests if asset_id.startswith(prefix)
+            1
+            for asset_id in writer_digests
+            if asset_id.startswith(prefix) and asset_id not in SUPPORTING_WRITERS
         ) + len(pin.get("non_writer_assets") or [])
         if expected_receipts != actual_receipts:
             failures.append(

@@ -2034,6 +2034,32 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     asset_kind: 'data',
   },
 
+
+  {
+    // D-NATIVE-11 (#2258, native-ruled 2026-09-07): SUPPORTING infrastructure
+    // writer — registered in the orchestrator DAG so it runs and dependents
+    // see it; deliberately NOT in the frozen 128-asset elevation manifest (no
+    // terminal capsule; verified as part of the grounding of the assets it
+    // serves). Registry row: migration 899. Schema: migration 897. Writer:
+    // PR #2379 (D-NATIVE-09 detector order, evidence stored per row).
+    asset_id: 'bo_grounding',
+    layer: 'bodha', sort_order: 25,
+    catalog_status: 'DRAFT',
+    sanskrit_name: 'Śruti Yukti Pratyakṣa',
+    english_name: 'Grounding Tier Matches',
+    english_description: 'D-GROUNDING tier assignment (sruti/yukti/pratyaksa) per D-NATIVE-09 — deterministic detector order, first-earned tier wins, earning evidence stored per row; v1 targets: fired ga_yoga_firings + bodha_msr_signals',
+    storage_type: 'postgres_table',
+    target_table: 'bodha_grounding_matches',
+    count_sql: 'SELECT count(*) FROM bodha_grounding_matches WHERE chart_id = $1',
+    size_sql: null,
+    target_floor: 0,
+    expected_volume_formula: 'FIRED_YOGA_FIRINGS + MSR_SIGNALS',
+    expected_volume_inputs: null,
+    volume_explanation: 'One grounding row per fired ga_yoga_firings row plus one per bodha_msr_signals row (v1 target_kinds); both sources are already per-(chart, ayanamsha), so expected volume is their live per-chart sum at build time.',
+    depends_on: ['ga_yoga', 'bo_laksana'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
   {
     // MR-06 (PARISHKARA cutover durability): post-cutover identity.
     // The old global-scope service asset (storage_type='service', scope='global')
