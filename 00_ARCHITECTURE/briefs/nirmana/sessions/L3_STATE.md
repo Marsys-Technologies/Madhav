@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~384:0xZ — L3-W4 — PR hygiene: `#2280`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 4 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_dashas`/`ga_sensitive`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2280` finishing; next action: same.
 - `2026-09-07T~383:0xZ — L3-W4 — EXTERNAL INSTRUCTION RECEIVED
   mid-cycle: "drain the eligible frontier" across L1(9)/L2(1)/L3(6),
   dispatch W4→verify→freeze back-to-back until empty, keeping ≤3
