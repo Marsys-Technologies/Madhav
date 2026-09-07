@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:13:24Z` — cycle 981: **IDLE-OK, Δfrozen +0.** L1's own most-recent state
+  (#2312, merged 14:06:40Z — after #2307's fix landed) still reads "no movement," confirming
+  they haven't retried `ga_transit_anchors` yet, not that the retry failed. Giving it more room
+  before flagging. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (12).
 - `2026-09-07T14:10:22Z` — cycle 980: **#2307 MERGED (13:54:05Z). `ga_transit_anchors` not yet
   re-dispatched — checked, confirmed genuinely quiet not stalled.** Zero campaign events fleet-
   wide in the ~28 min since #2307's merge initially looked alarming — cross-checked via recent-
