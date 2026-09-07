@@ -495,6 +495,41 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~154:0xZ — L3-W3 — PR hygiene: `#2195` genuinely queued
+  (position 1, `CLEAN`), nothing to fix. **F-L3-4 CLOSED IN FULL THIS
+  CYCLE** — derived `ka_kshetra`'s formula, the last of the 20
+  originally-NULL L3 assets. `ka_kshetra` (14,000+ lines, ~25 files,
+  the layer's largest asset by a wide margin) turned out to have a
+  tractable row-count shape despite its scoring complexity, the same
+  "separate the count from the computation" pattern that closed
+  `ka_gochara_v3_century_materialize` and `ka_sangam`: `kala_field`
+  stores one row per breakpoint-derived segment per (chart,
+  event_class); live-verified this chart discovers 25 of 27 canonical
+  event classes (`_discover_event_classes`, MR-16 dynamic discovery),
+  and EVERY one has exactly 343,991 segments — identical across all 25,
+  not a sample — with `refinement_depth=0` for every single row (the
+  adaptive-subdivision machinery never actually fired). This
+  class-invariance means the breakpoint set itself (`EnvelopeIndex.
+  breakpoints()`) is chart-wide/transit-derived, not event-class-
+  specific — only the field VALUES differ by domain. 25 x 343,991 =
+  8,599,775 exactly, matching `target_floor`/`count_sql`. The internal
+  knot-density mechanics behind 343,991 are honestly left undecomposed
+  (would require tracing every primitive's own knot generation across
+  the full stage0-stage8 pipeline). Migration 867 + paired test
+  authored (no self-transaction wrapper from the start), all 7 tests
+  pass (27.8s — expected, given the 8.6M-row table); the live tests
+  independently re-derive the per-class uniformity and
+  `refinement_depth` claims from `kala_field` directly. Migration-number
+  guard PASS (867, confirmed free). Committed locally (`67a6171a6`),
+  held from push — `#2195` still mid-queue-attempt. — blocked on:
+  nothing new; next action: push once `#2195` merges/finishes. **F-L3-4
+  status: CLOSED — all 20 originally-NULL L3 assets now have a derived,
+  auditable `expected_volume_formula`, across 16 migrations (852-867).**
+  With this finding exhausted, future cycles fall back further down the
+  priority list (E-gate dispatch remains blocked on `ga_positions`;
+  W5 verification has nothing new pending; no other unheld W3 item is
+  currently identified — the next tier-5 prep item, if any, will need
+  fresh investigation rather than continuing this batch).
 - `2026-09-07T~153:0xZ — L3-W3 — PR hygiene: `#2195` build ~5.7min,
   within normal range, nothing red. **Closed the `ka_sangam` F-L3-4
   investigation for real this cycle** — a third pass, this time running
